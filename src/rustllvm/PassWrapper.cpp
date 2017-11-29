@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include <vector>
+#include <set>
 
 #include "rustllvm.h"
 
@@ -885,86 +886,6 @@ getFirstDefinitionForLinker(const GlobalValueSummaryList &GVSummaryList) {
   return FirstDefForLinker->get();
 }
 
-// This is a helper function we added that isn't present in LLVM's source.
-//
-// The way LTO works in Rust is that we typically have a number of symbols that
-// we know ahead of time need to be preserved. We want to ensure that ThinLTO
-// doesn't accidentally internalize any of these and otherwise is always
-// ready to keep them linking correctly.
-//
-// This function will recursively walk the `GUID` provided and all of its
-// references, as specified in the `Index`. In other words, we're taking a
-// `GUID` as input, adding it to `Preserved`, and then taking all `GUID`
-// items that the input references and recursing.
-static void
-addPreservedGUID(const ModuleSummaryIndex &Index,
-                 DenseSet<GlobalValue::GUID> &Preserved,
-                 GlobalValue::GUID GUID) {
-  if (Preserved.count(GUID))
-    return;
-  Preserved.insert(GUID);
-
-#if LLVM_VERSION_GE(5, 0)
-  auto Info = Index.getValueInfo(GUID);
-  if (!Info) {
-    return;
-  }
-  for (auto &Summary : Info.getSummaryList()) {
-    for (auto &Ref : Summary->refs()) {
-      addPreservedGUID(Index, Preserved, Ref.getGUID());
-    }
-
-    GlobalValueSummary *GVSummary = Summary.get();
-    if (isa<FunctionSummary>(GVSummary)) {
-      auto *FS = cast<FunctionSummary>(GVSummary);
-      for (auto &Call: FS->calls()) {
-        addPreservedGUID(Index, Preserved, Call.first.getGUID());
-      }
-      for (auto &GUID: FS->type_tests()) {
-        addPreservedGUID(Index, Preserved, GUID);
-      }
-    }
-    if (isa<AliasSummary>(GVSummary)) {
-      auto *AS = cast<AliasSummary>(GVSummary);
-      auto GUID = AS->getAliasee().getOriginalName();
-      addPreservedGUID(Index, Preserved, GUID);
-    }
-  }
-#else
-  auto SummaryList = Index.findGlobalValueSummaryList(GUID);
-  if (SummaryList == Index.end())
-    return;
-  for (auto &Summary : SummaryList->second) {
-    for (auto &Ref : Summary->refs()) {
-      if (Ref.isGUID()) {
-        addPreservedGUID(Index, Preserved, Ref.getGUID());
-      } else {
-        auto Value = Ref.getValue();
-        addPreservedGUID(Index, Preserved, Value->getGUID());
-      }
-    }
-
-    if (auto *FS = dyn_cast<FunctionSummary>(Summary.get())) {
-      for (auto &Call: FS->calls()) {
-        if (Call.first.isGUID()) {
-          addPreservedGUID(Index, Preserved, Call.first.getGUID());
-        } else {
-          auto Value = Call.first.getValue();
-          addPreservedGUID(Index, Preserved, Value->getGUID());
-        }
-      }
-      for (auto &GUID: FS->type_tests()) {
-        addPreservedGUID(Index, Preserved, GUID);
-      }
-    }
-    if (auto *AS = dyn_cast<AliasSummary>(Summary.get())) {
-      auto GUID = AS->getAliasee().getOriginalName();
-      addPreservedGUID(Index, Preserved, GUID);
-    }
-  }
-#endif
-}
-
 // The main entry point for creating the global ThinLTO analysis. The structure
 // here is basically the same as before threads are spawned in the `run`
 // function of `lib/LTO/ThinLTOCodeGenerator.cpp`.
@@ -1004,12 +925,10 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   Ret->Index.collectDefinedGVSummariesPerModule(Ret->ModuleToDefinedGVSummaries);
 
   // Convert the preserved symbols set from string to GUID, this is then needed
-  // for internalization. We use `addPreservedGUID` to include any transitively
-  // used symbol as well.
+  // for internalization.
   for (int i = 0; i < num_symbols; i++) {
-    addPreservedGUID(Ret->Index,
-                     Ret->GUIDPreservedSymbols,
-                     GlobalValue::getGUID(preserved_symbols[i]));
+    auto GUID = GlobalValue::getGUID(preserved_symbols[i]);
+    Ret->GUIDPreservedSymbols.insert(GUID);
   }
 
   // Collect the import/export lists for all modules from the call-graph in the
@@ -1038,7 +957,8 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // Resolve LinkOnce/Weak symbols, this has to be computed early be cause it
   // impacts the caching.
   //
-  // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`
+  // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp` with some of this
+  // being lifted from `lib/LTO/LTO.cpp` as well
   StringMap<std::map<GlobalValue::GUID, GlobalValue::LinkageTypes>> ResolvedODR;
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
@@ -1062,11 +982,27 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
   thinLTOResolveWeakForLinkerInIndex(Ret->Index, isPrevailing, recordNewLinkage);
+
+  // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
+  // callback below. This callback below will dictate the linkage for all
+  // summaries in the index, and we basically just only want to ensure that dead
+  // symbols are internalized. Otherwise everything that's already external
+  // linkage will stay as external, and internal will stay as internal.
+  std::set<GlobalValue::GUID> ExportedGUIDs;
+  for (auto &List : Ret->Index) {
+    for (auto &GVS: List.second) {
+      if (!GlobalValue::isExternalLinkage(GVS->linkage()))
+        continue;
+      auto GUID = GVS->getOriginalName();
+      if (!DeadSymbols.count(GUID))
+        ExportedGUIDs.insert(GUID);
+    }
+  }
   auto isExported = [&](StringRef ModuleIdentifier, GlobalValue::GUID GUID) {
     const auto &ExportList = Ret->ExportLists.find(ModuleIdentifier);
     return (ExportList != Ret->ExportLists.end() &&
       ExportList->second.count(GUID)) ||
-      Ret->GUIDPreservedSymbols.count(GUID);
+      ExportedGUIDs.count(GUID);
   };
   thinLTOInternalizeAndPromoteInIndex(Ret->Index, isExported);
 
