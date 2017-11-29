@@ -116,7 +116,7 @@ pub fn format_expr(
                         rw
                     } else {
                         let prefix = block_prefix(context, block, shape)?;
-                        rewrite_block_with_visitor(context, &prefix, block, shape, false)
+                        rewrite_block_with_visitor(context, &prefix, block, shape, true)
                     }
                 }
                 ExprType::SubExpression => block.rewrite(context, shape),
@@ -603,7 +603,7 @@ pub fn rewrite_block_with_visitor(
     prefix: &str,
     block: &ast::Block,
     shape: Shape,
-    is_dummy: bool,
+    has_braces: bool,
 ) -> Option<String> {
     if let rw @ Some(_) = rewrite_empty_block(context, block, shape) {
         return rw;
@@ -621,7 +621,7 @@ pub fn rewrite_block_with_visitor(
         ast::BlockCheckMode::Default => visitor.last_pos = block.span.lo(),
     }
 
-    visitor.visit_block(block, None, is_dummy);
+    visitor.visit_block(block, None, has_braces);
     Some(format!("{}{}", prefix, visitor.buffer))
 }
 
@@ -636,7 +636,7 @@ impl Rewrite for ast::Block {
         let prefix = block_prefix(context, self, shape)?;
         let shape = shape.offset_left(last_line_width(&prefix))?;
 
-        let result = rewrite_block_with_visitor(context, &prefix, self, shape, false);
+        let result = rewrite_block_with_visitor(context, &prefix, self, shape, true);
         if let Some(ref result_str) = result {
             if result_str.lines().count() <= 3 {
                 if let rw @ Some(_) = rewrite_single_line_block(context, &prefix, self, shape) {
@@ -1067,7 +1067,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let mut block_context = context.clone();
         block_context.is_if_else_block = self.else_block.is_some();
         let block_str =
-            rewrite_block_with_visitor(&block_context, "", self.block, block_shape, false)?;
+            rewrite_block_with_visitor(&block_context, "", self.block, block_shape, true)?;
 
         let mut result = format!("{}{}", cond_str, block_str);
 

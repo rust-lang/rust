@@ -131,7 +131,7 @@ fn rewrite_closure_with_block(
         rules: ast::BlockCheckMode::Default,
         span: body.span,
     };
-    let block = ::expr::rewrite_block_with_visitor(context, "", &block, shape, true)?;
+    let block = ::expr::rewrite_block_with_visitor(context, "", &block, shape, false)?;
     Some(format!("{} {}", prefix, block))
 }
 

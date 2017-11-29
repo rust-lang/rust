@@ -94,7 +94,7 @@ impl<'a> FmtVisitor<'a> {
         &mut self,
         b: &ast::Block,
         inner_attrs: Option<&[ast::Attribute]>,
-        is_dummy: bool,
+        has_braces: bool,
     ) {
         debug!(
             "visit_block: {:?} {:?}",
@@ -103,7 +103,7 @@ impl<'a> FmtVisitor<'a> {
         );
 
         // Check if this block has braces.
-        let brace_compensation = BytePos(if is_dummy { 0 } else { 1 });
+        let brace_compensation = BytePos(if has_braces { 1 } else { 0 });
 
         self.last_pos = self.last_pos + brace_compensation;
         self.block_indent = self.block_indent.block_indent(self.config);
@@ -275,7 +275,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         self.last_pos = source!(self, block.span).lo();
-        self.visit_block(block, inner_attrs, false)
+        self.visit_block(block, inner_attrs, true)
     }
 
     pub fn visit_item(&mut self, item: &ast::Item) {
