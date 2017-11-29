@@ -1819,7 +1819,9 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
 
 fn shorter<'a>(s: Option<&'a str>) -> String {
     match s {
-        Some(s) => s.lines().take_while(|line|{
+        Some(s) => s.lines()
+            .skip_while(|s| s.chars().all(|c| c.is_whitespace()))
+            .take_while(|line|{
             (*line).chars().any(|chr|{
                 !chr.is_whitespace()
             })
