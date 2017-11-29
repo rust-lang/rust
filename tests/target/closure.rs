@@ -230,3 +230,10 @@ fn issue2171() {
         }
     })
 }
+
+fn issue2207() {
+    a.map(|_| {
+        unsafe { a_very_very_very_very_very_very_very_long_function_name_or_anything_else() }
+            .to_string()
+    })
+}
