@@ -1814,6 +1814,10 @@ where
     let used_width = extra_offset(callee_str, shape);
     let one_line_width = shape.width.checked_sub(used_width + 2 * paren_overhead)?;
 
+    // 1 = "(" or ")"
+    let one_line_shape = shape
+        .offset_left(last_line_width(callee_str) + 1)?
+        .sub_width(1)?;
     let nested_shape = shape_from_indent_style(
         context,
         shape,
@@ -1828,6 +1832,7 @@ where
         context,
         args,
         args_span,
+        one_line_shape,
         nested_shape,
         one_line_width,
         args_max_width,
@@ -1867,7 +1872,8 @@ fn rewrite_call_args<'a, T>(
     context: &RewriteContext,
     args: &[&T],
     span: Span,
-    shape: Shape,
+    one_line_shape: Shape,
+    nested_shape: Shape,
     one_line_width: usize,
     args_max_width: usize,
     force_trailing_comma: bool,
@@ -1882,7 +1888,7 @@ where
         ",",
         |item| item.span().lo(),
         |item| item.span().hi(),
-        |item| item.rewrite(context, shape),
+        |item| item.rewrite(context, nested_shape),
         span.lo(),
         span.hi(),
         true,
@@ -1896,7 +1902,8 @@ where
         context,
         &mut item_vec,
         &args[..],
-        shape,
+        one_line_shape,
+        nested_shape,
         one_line_width,
         args_max_width,
     );
@@ -1912,7 +1919,7 @@ where
             context.config.trailing_comma()
         },
         separator_place: SeparatorPlace::Back,
-        shape: shape,
+        shape: nested_shape,
         ends_with_newline: context.use_block_indent() && tactic == DefinitiveListTactic::Vertical,
         preserve_newline: false,
         config: context.config,
@@ -1927,7 +1934,8 @@ fn try_overflow_last_arg<'a, T>(
     context: &RewriteContext,
     item_vec: &mut Vec<ListItem>,
     args: &[&T],
-    shape: Shape,
+    one_line_shape: Shape,
+    nested_shape: Shape,
     one_line_width: usize,
     args_max_width: usize,
 ) -> DefinitiveListTactic
@@ -1945,7 +1953,7 @@ where
                 context.force_one_line_chain = true;
             }
         }
-        last_arg_shape(&context, item_vec, shape, args_max_width).and_then(|arg_shape| {
+        last_arg_shape(&context, item_vec, one_line_shape, args_max_width).and_then(|arg_shape| {
             rewrite_last_arg_with_overflow(&context, args, &mut item_vec[args.len() - 1], arg_shape)
         })
     } else {
