@@ -67,7 +67,8 @@ define_impl! {
 }
 
 define_ty_doc! {
-    __m256i, i64, i64, i64, i64 |
+    __m256i,
+    i64, i64, i64, i64 |
     /// 256-bit wide signed integer vector type
 }
 

@@ -67,8 +67,7 @@ pub unsafe fn _mm256_and_ps(a: f32x8, b: f32x8) -> f32x8 {
 }
 
 /// Compute the bitwise OR packed double-precision (64-bit) floating-point
-/// elements
-/// in `a` and `b`.
+/// elements in `a` and `b`.
 #[inline(always)]
 #[target_feature = "+avx"]
 // FIXME: Should be 'vorpd' instuction.
@@ -3485,7 +3484,7 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_storeu_si256() {
-        let a = i8x32::splat(9).into();
+        let a = __m256i::from(i8x32::splat(9));
         let mut r = avx::_mm256_undefined_si256();
         avx::_mm256_storeu_si256(&mut r as *mut _, a);
         assert_eq!(r, a);
@@ -3915,7 +3914,7 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn _mm256_setzero_si256() {
         let r = avx::_mm256_setzero_si256();
-        assert_eq!(r, i8x32::splat(0).into());
+        assert_eq!(r, __m256i::from(i8x32::splat(0)));
     }
 
     #[simd_test = "avx"]
@@ -4003,7 +4002,7 @@ mod tests {
             25, 26, 27, 28, 29, 30, 31, 32
         );
 
-        assert_eq!(r, e.into());
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx"]
@@ -4094,21 +4093,21 @@ mod tests {
             0, 0, -96, 64, 0, 0, -64, 64,
             0, 0, -32, 64, 0, 0, 0, 65,
         );
-        assert_eq!(r, e.into());
+        assert_eq!(i8x32::from(r), e);
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_castsi256_ps() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = i8x32::new(
+        let a = __m256i::from(i8x32::new(
             0, 0, -128, 63, 0, 0, 0, 64,
             0, 0, 64, 64, 0, 0, -128, 64,
             0, 0, -96, 64, 0, 0, -64, 64,
             0, 0, -32, 64, 0, 0, 0, 65,
-        );
-        let r = avx::_mm256_castsi256_ps(a.into());
+        ));
+        let r = avx::_mm256_castsi256_ps(a);
         let e = f32x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
-        assert_eq!(r, e.into());
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx"]
@@ -4191,23 +4190,24 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn _mm256_set_m128i() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let hi = i8x16::new(
+        let hi = __m128i::from(i8x16::new(
             17, 18, 19, 20,
             21, 22, 23, 24,
             25, 26, 27, 28,
             29, 30, 31, 32,
+        ));
+        let lo = __m128i::from(
+            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
         );
-        let lo =
-            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let r = avx::_mm256_set_m128i(hi.into(), lo.into());
+        let r = avx::_mm256_set_m128i(hi, lo);
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let e = i8x32::new(
+        let e = __m256i::from(i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
-        );
-        assert_eq!(r, e.into());
+        ));
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx"]
@@ -4230,22 +4230,23 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_setr_m128i() {
-        let lo =
-            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let lo = __m128i::from(
+            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
+        );
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let hi = i8x16::new(
+        let hi = __m128i::from(i8x16::new(
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
-        );
-        let r = avx::_mm256_setr_m128i(lo.into(), hi.into());
+        ));
+        let r = avx::_mm256_setr_m128i(lo, hi);
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let e = i8x32::new(
+        let e = __m256i::from(i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
-        );
-        assert_eq!(r, e.into());
+        ));
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx"]
@@ -4284,13 +4285,13 @@ mod tests {
             &lo as *const _ as *const _,
         );
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let e = i8x32::new(
+        let e = __m256i::from(i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
-        );
-        assert_eq!(r, e.into());
+        ));
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx"]
@@ -4327,30 +4328,27 @@ mod tests {
     unsafe fn _mm256_storeu2_m128i() {
         use x86::i586::sse2::_mm_undefined_si128;
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = i8x32::new(
+        let a = __m256i::from(i8x32::new(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
-        );
+        ));
         let mut hi = _mm_undefined_si128();
         let mut lo = _mm_undefined_si128();
-        avx::_mm256_storeu2_m128i(
-            &mut hi as *mut _,
-            &mut lo as *mut _,
-            a.into(),
-        );
+        avx::_mm256_storeu2_m128i(&mut hi as *mut _, &mut lo as *mut _, a);
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let e = i8x16::new(
+        let e_hi = __m128i::from(i8x16::new(
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32
-        );
+        ));
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let e_lo = __m128i::from(i8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16
+        ));
 
-        assert_eq!(hi, e.into());
-        assert_eq!(
-            lo,
-            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
-                .into()
-        );
+        assert_eq!(hi, e_hi);
+        assert_eq!(lo, e_lo);
     }
 }

@@ -3169,16 +3169,17 @@ mod tests {
     unsafe fn _mm256_and_si256() {
         let a = i8x32::splat(5);
         let b = i8x32::splat(3);
-        let got = avx2::_mm256_and_si256(a.into(), b.into());
-        assert_eq!(got, i8x32::splat(1).into());
+        let got = avx2::_mm256_and_si256(__m256i::from(a), __m256i::from(b));
+        assert_eq!(got, __m256i::from(i8x32::splat(1)));
     }
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_andnot_si256() {
         let a = i8x32::splat(5);
         let b = i8x32::splat(3);
-        let got = avx2::_mm256_andnot_si256(a.into(), b.into());
-        assert_eq!(got, i8x32::splat(2).into());
+        let got =
+            avx2::_mm256_andnot_si256(__m256i::from(a), __m256i::from(b));
+        assert_eq!(got, __m256i::from(i8x32::splat(2)));
     }
 
     #[simd_test = "avx2"]
@@ -3236,9 +3237,9 @@ mod tests {
     #[simd_test = "avx2"]
     unsafe fn _mm256_blendv_epi8() {
         let (a, b) = (i8x32::splat(4), i8x32::splat(2));
-        let mask = i8x32::splat(0).replace(2, -1);
+        let mask = __m256i::from(i8x32::splat(0).replace(2, -1));
         let e = i8x32::splat(4).replace(2, 2);
-        let r = avx2::_mm256_blendv_epi8(a, b, mask.into());
+        let r = avx2::_mm256_blendv_epi8(a, b, mask);
         assert_eq!(r, e);
     }
 
@@ -3863,10 +3864,10 @@ mod tests {
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_or_si256() {
-        let a = i8x32::splat(-1);
-        let b = i8x32::splat(0);
-        let r = avx2::_mm256_or_si256(a.into(), b.into());
-        assert_eq!(r, a.into());
+        let a = __m256i::from(i8x32::splat(-1));
+        let b = __m256i::from(i8x32::splat(0));
+        let r = avx2::_mm256_or_si256(a, b);
+        assert_eq!(r, a);
     }
 
     #[simd_test = "avx2"]
@@ -4274,10 +4275,10 @@ mod tests {
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_xor_si256() {
-        let a = i8x32::splat(5);
-        let b = i8x32::splat(3);
-        let r = avx2::_mm256_xor_si256(a.into(), b.into());
-        assert_eq!(r, i8x32::splat(6).into());
+        let a = __m256i::from(i8x32::splat(5));
+        let b = __m256i::from(i8x32::splat(3));
+        let r = avx2::_mm256_xor_si256(a, b);
+        assert_eq!(r, __m256i::from(i8x32::splat(6)));
     }
 
     #[simd_test = "avx2"]
