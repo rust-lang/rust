@@ -24,7 +24,6 @@ use simd_llvm::{simd_shuffle16, simd_shuffle32};
 
 use v256::*;
 use v128::*;
-use x86::__m256i;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -186,7 +185,7 @@ pub unsafe fn _mm256_alignr_epi8(a: i8x32, b: i8x32, n: i32) -> i8x32 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vandps))]
 pub unsafe fn _mm256_and_si256(a: __m256i, b: __m256i) -> __m256i {
-    a & b
+    __m256i::from(i8x32::from(a) & i8x32::from(b))
 }
 
 /// Compute the bitwise NOT of 256 bits (representing integer data)
@@ -195,7 +194,7 @@ pub unsafe fn _mm256_and_si256(a: __m256i, b: __m256i) -> __m256i {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vandnps))]
 pub unsafe fn _mm256_andnot_si256(a: __m256i, b: __m256i) -> __m256i {
-    (!a) & b
+    __m256i::from((!i8x32::from(a)) & i8x32::from(b))
 }
 
 /// Average packed unsigned 16-bit integers in `a` and `b`.
@@ -349,7 +348,7 @@ pub unsafe fn _mm256_blend_epi16(a: i16x16, b: i16x16, imm8: i32) -> i16x16 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vpblendvb))]
 pub unsafe fn _mm256_blendv_epi8(a: i8x32, b: i8x32, mask: __m256i) -> i8x32 {
-    pblendvb(a, b, mask)
+    pblendvb(a, b, i8x32::from(mask))
 }
 
 /// Broadcast the low packed 8-bit integer from `a` to all elements of
@@ -1546,7 +1545,7 @@ pub unsafe fn _mm256_mulhrs_epi16(a: i16x16, b: i16x16) -> i16x16 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vorps))]
 pub unsafe fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
-    a | b
+    __m256i::from(i8x32::from(a) | i8x32::from(b))
 }
 
 /// Convert packed 16-bit integers from `a` and `b` to packed 8-bit integers
@@ -2658,7 +2657,7 @@ pub unsafe fn _mm256_unpacklo_epi64(a: i64x4, b: i64x4) -> i64x4 {
 #[target_feature = "+avx2"]
 #[cfg_attr(test, assert_instr(vxorps))]
 pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
-    a ^ b
+    __m256i::from(i8x32::from(a) ^ i8x32::from(b))
 }
 
 #[allow(improper_ctypes)]
@@ -2682,7 +2681,7 @@ extern "C" {
     #[link_name = "llvm.x86.avx2.pavg.w"]
     fn pavgw(a: u16x16, b: u16x16) -> u16x16;
     #[link_name = "llvm.x86.avx2.pblendvb"]
-    fn pblendvb(a: i8x32, b: i8x32, mask: __m256i) -> i8x32;
+    fn pblendvb(a: i8x32, b: i8x32, mask: i8x32) -> i8x32;
     #[link_name = "llvm.x86.avx2.phadd.w"]
     fn phaddw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.phadd.d"]
@@ -2911,7 +2910,6 @@ mod tests {
     use v256::*;
     use v128::*;
     use x86::i586::avx2;
-    use x86::__m256i;
     use std;
 
     #[simd_test = "avx2"]
@@ -3169,18 +3167,18 @@ mod tests {
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_and_si256() {
-        let a = __m256i::splat(5);
-        let b = __m256i::splat(3);
-        let got = avx2::_mm256_and_si256(a, b);
-        assert_eq!(got, __m256i::splat(1));
+        let a = i8x32::splat(5);
+        let b = i8x32::splat(3);
+        let got = avx2::_mm256_and_si256(a.into(), b.into());
+        assert_eq!(got, i8x32::splat(1).into());
     }
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_andnot_si256() {
-        let a = __m256i::splat(5);
-        let b = __m256i::splat(3);
-        let got = avx2::_mm256_andnot_si256(a, b);
-        assert_eq!(got, __m256i::splat(2));
+        let a = i8x32::splat(5);
+        let b = i8x32::splat(3);
+        let got = avx2::_mm256_andnot_si256(a.into(), b.into());
+        assert_eq!(got, i8x32::splat(2).into());
     }
 
     #[simd_test = "avx2"]
@@ -3240,7 +3238,7 @@ mod tests {
         let (a, b) = (i8x32::splat(4), i8x32::splat(2));
         let mask = i8x32::splat(0).replace(2, -1);
         let e = i8x32::splat(4).replace(2, 2);
-        let r = avx2::_mm256_blendv_epi8(a, b, mask);
+        let r = avx2::_mm256_blendv_epi8(a, b, mask.into());
         assert_eq!(r, e);
     }
 
@@ -3865,10 +3863,10 @@ mod tests {
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_or_si256() {
-        let a = __m256i::splat(-1);
-        let b = __m256i::splat(0);
-        let r = avx2::_mm256_or_si256(a, b);
-        assert_eq!(r, a);
+        let a = i8x32::splat(-1);
+        let b = i8x32::splat(0);
+        let r = avx2::_mm256_or_si256(a.into(), b.into());
+        assert_eq!(r, a.into());
     }
 
     #[simd_test = "avx2"]
@@ -4276,10 +4274,10 @@ mod tests {
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_xor_si256() {
-        let a = __m256i::splat(5);
-        let b = __m256i::splat(3);
-        let r = avx2::_mm256_xor_si256(a, b);
-        assert_eq!(r, __m256i::splat(6));
+        let a = i8x32::splat(5);
+        let b = i8x32::splat(3);
+        let r = avx2::_mm256_xor_si256(a.into(), b.into());
+        assert_eq!(r, i8x32::splat(6).into());
     }
 
     #[simd_test = "avx2"]

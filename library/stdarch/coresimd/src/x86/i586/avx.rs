@@ -22,7 +22,6 @@ use stdsimd_test::assert_instr;
 use simd_llvm::{simd_cast, simd_shuffle2, simd_shuffle4, simd_shuffle8};
 use v128::{__m128i, f32x4, f64x2, i32x4, i64x2};
 use v256::*;
-use x86::__m256i;
 
 /// Add packed double-precision (64-bit) floating-point elements
 /// in `a` and `b`.
@@ -1406,7 +1405,7 @@ pub unsafe fn _mm256_store_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
 pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
-    let mut dst = __m256i::splat(mem::uninitialized());
+    let mut dst: __m256i = mem::uninitialized();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
         &mut dst as *mut __m256i as *mut u8,
@@ -1421,7 +1420,7 @@ pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
 pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
-    storeusi256(mem_addr, a);
+    storeusi256(mem_addr as *mut i8x32, i8x32::from(a));
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory
@@ -2466,7 +2465,7 @@ extern "C" {
     #[link_name = "llvm.x86.avx.storeu.ps.256"]
     fn storeups256(mem_addr: *mut f32, a: f32x8);
     #[link_name = "llvm.x86.avx.storeu.si.256"]
-    fn storeusi256(mem_addr: *mut __m256i, a: __m256i);
+    fn storeusi256(mem_addr: *mut i8x32, a: i8x32);
     #[link_name = "llvm.x86.avx.maskload.pd.256"]
     fn maskloadpd256(mem_addr: *const i8, mask: i64x4) -> f64x4;
     #[link_name = "llvm.x86.avx.maskstore.pd.256"]
@@ -2533,7 +2532,6 @@ mod tests {
     use v128::{__m128i, f32x4, f64x2, i32x4, i64x2, i8x16};
     use v256::*;
     use x86::i586::avx;
-    use x86::__m256i;
 
     #[simd_test = "avx"]
     unsafe fn _mm256_add_pd() {
@@ -3432,7 +3430,7 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_storeu_si256() {
-        let a = i8x32::splat(9);
+        let a = i8x32::splat(9).into();
         let mut r = avx::_mm256_undefined_si256();
         avx::_mm256_storeu_si256(&mut r as *mut _, a);
         assert_eq!(r, a);
@@ -3862,7 +3860,7 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn _mm256_setzero_si256() {
         let r = avx::_mm256_setzero_si256();
-        assert_eq!(r, i8x32::splat(0));
+        assert_eq!(r, i8x32::splat(0).into());
     }
 
     #[simd_test = "avx"]
@@ -3950,7 +3948,7 @@ mod tests {
             25, 26, 27, 28, 29, 30, 31, 32
         );
 
-        assert_eq!(r, e);
+        assert_eq!(r, e.into());
     }
 
     #[simd_test = "avx"]
@@ -4041,7 +4039,7 @@ mod tests {
             0, 0, -96, 64, 0, 0, -64, 64,
             0, 0, -32, 64, 0, 0, 0, 65,
         );
-        assert_eq!(r, e);
+        assert_eq!(r, e.into());
     }
 
     #[simd_test = "avx"]
@@ -4053,9 +4051,9 @@ mod tests {
             0, 0, -96, 64, 0, 0, -64, 64,
             0, 0, -32, 64, 0, 0, 0, 65,
         );
-        let r = avx::_mm256_castsi256_ps(a);
+        let r = avx::_mm256_castsi256_ps(a.into());
         let e = f32x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
-        assert_eq!(r, e);
+        assert_eq!(r, e.into());
     }
 
     #[simd_test = "avx"]
@@ -4154,7 +4152,7 @@ mod tests {
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         );
-        assert_eq!(r, e);
+        assert_eq!(r, e.into());
     }
 
     #[simd_test = "avx"]
@@ -4192,7 +4190,7 @@ mod tests {
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         );
-        assert_eq!(r, e);
+        assert_eq!(r, e.into());
     }
 
     #[simd_test = "avx"]
@@ -4237,7 +4235,7 @@ mod tests {
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         );
-        assert_eq!(r, e);
+        assert_eq!(r, e.into());
     }
 
     #[simd_test = "avx"]
@@ -4282,7 +4280,11 @@ mod tests {
         );
         let mut hi = _mm_undefined_si128();
         let mut lo = _mm_undefined_si128();
-        avx::_mm256_storeu2_m128i(&mut hi as *mut _, &mut lo as *mut _, a);
+        avx::_mm256_storeu2_m128i(
+            &mut hi as *mut _,
+            &mut lo as *mut _,
+            a.into(),
+        );
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let e = i8x16::new(
             17, 18, 19, 20, 21, 22, 23, 24,

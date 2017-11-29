@@ -25,7 +25,3 @@ pub use self::i686::*;
 mod x86_64;
 #[cfg(target_arch = "x86_64")]
 pub use self::x86_64::*;
-
-/// 256-bit wide signed integer vector type
-#[allow(non_camel_case_types)]
-pub type __m256i = ::v256::i8x32;
