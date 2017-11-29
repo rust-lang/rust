@@ -1,0 +1,26 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/elided_is_not_inferred.rs:16:10
+   |
+16 | impl Bar<T> {
+   |          ^ not found in this scope
+
+error[E0308]: mismatched types
+  --> $DIR/elided_is_not_inferred.rs:23:17
+   |
+23 |     let _:u32 = foo::<usize>();
+   |                 ^^^^^^^^^^^^^^ expected u32, found struct `std::string::String`
+   |
+   = note: expected type `u32`
+              found type `std::string::String`
+
+error[E0308]: mismatched types
+  --> $DIR/elided_is_not_inferred.rs:24:22
+   |
+24 |     let _:Bar<u32> = Bar::new::<usize>();
+   |                      ^^^^^^^^^^^^^^^^^^^ expected u32, found struct `std::string::String`
+   |
+   = note: expected type `Bar<u32>`
+              found type `Bar<std::string::String>`
+
+error: aborting due to 3 previous errors
+
