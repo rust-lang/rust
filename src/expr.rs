@@ -1971,7 +1971,7 @@ where
         }
         _ if args.len() >= 1 => {
             item_vec[args.len() - 1].item = args.last()
-                .and_then(|last_arg| last_arg.rewrite(context, shape));
+                .and_then(|last_arg| last_arg.rewrite(context, nested_shape));
             // Use horizontal layout for a function with a single argument as long as
             // everything fits in a single line.
             if args.len() == 1
