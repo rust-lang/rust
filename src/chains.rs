@@ -166,18 +166,11 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let all_in_one_line = !parent_rewrite_contains_newline
         && rewrites.iter().all(|s| !s.contains('\n'))
         && almost_total < one_line_budget;
-    let last_shape = {
-        let last_shape = if rewrites.len() == 0 {
-            first_child_shape
-        } else {
-            other_child_shape
-        };
-        match context.config.indent_style() {
-            IndentStyle::Visual => last_shape.sub_width(shape.rhs_overhead(context.config))?,
-            IndentStyle::Block => last_shape,
-        }
-    };
-    let last_shape = last_shape.sub_width(suffix_try_num)?;
+    let last_shape = if rewrites.len() == 0 {
+        first_child_shape
+    } else {
+        other_child_shape
+    }.sub_width(shape.rhs_overhead(context.config) + suffix_try_num)?;
 
     // Rewrite the last child. The last child of a chain requires special treatment. We need to
     // know whether 'overflowing' the last child make a better formatting:
