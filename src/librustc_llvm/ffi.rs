@@ -88,11 +88,11 @@ pub const False: Bool = 0 as Bool;
 pub use root::*;
 pub use llvm::*;
 
-//#[allow(dead_code)]
-//#[allow(non_camel_case_types)]
-//#[allow(non_snake_case)]
-//#[allow(non_upper_case_globals)]
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+#[allow(dead_code)]
+#[allow(non_camel_case_types)]
+#[allow(non_snake_case)]
+#[allow(non_upper_case_globals)]
+include!("bindings.rs");
 
 pub mod debuginfo {
     use super::LLVMMetadataRef as MetadataRef;

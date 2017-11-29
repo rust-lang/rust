@@ -141,9 +141,7 @@ fn main() {
     let mut cfg = cc::Build::new();
     cfg.warnings(false);
 
-    let out_path = PathBuf::from(env::var("OUT_DIR")
-        .expect("Failed to determine output directory"));
-
+    #[cfg(feature = "rebuild-bindings")]
     let mut builder = bindgen::builder()
         .header("../rustllvm/PassWrapper.cpp")
         .header("../rustllvm/RustWrapper.cpp")
@@ -166,6 +164,7 @@ fn main() {
             destructors: false,
         });
 
+    #[cfg(feature = "rebuild-bindings")]
     for visible_type in [
         // Rust wants to define constants of this type.
         "LLVMBool",
@@ -188,6 +187,7 @@ fn main() {
             .whitelist_type(visible_type);
     }
 
+    #[cfg(feature = "rebuild-bindings")]
     for opaque_type in [
         "LLVMContextRef",
         "LLVMDebugLocRef",
@@ -230,7 +230,7 @@ fn main() {
             .whitelist_type(opaque_type);
     }
 
-
+    #[cfg(feature = "rebuild-bindings")]
     for bitfield_enum in [
         "LLVMRustDIFlags",
     ].into_iter() {
@@ -239,6 +239,7 @@ fn main() {
             .bitfield_enum(bitfield_enum);
     }
 
+    #[cfg(feature = "rebuild-bindings")]
     for rustified_enum in [
         "LLVMAtomicOrdering",
         "LLVMAtomicRMWBinOp",
@@ -274,6 +275,8 @@ fn main() {
             .rustified_enum(rustified_enum);
     }
 
+
+    #[cfg(feature = "rebuild-bindings")]
     for llvm_function in [
         "LLVMAddCase",
         "LLVMAddClause",
@@ -525,18 +528,25 @@ fn main() {
         }
 
         cfg.flag(flag);
-        builder = builder.clang_arg(flag);
+        #[cfg(feature = "rebuild-bindings")]
+        {
+            builder = builder.clang_arg(flag);
+        }
     }
 
-    builder = builder.clang_arg(
-        "-I/home/tduberstein/local/clang/clang+llvm-5.0.0-linux-x86_64-sles11.3/lib/clang/5.0.0/include",
-    );
+    #[cfg(feature = "rebuild-bindings")]
+    {
+        builder = builder.clang_arg(
+             "-I/home/tduberstein/local/clang/clang+llvm-5.0.0-linux-x86_64-sles11.3/lib/clang/5.0.0/include",
+        );
+    }
     let libclang_path_var = "LIBCLANG_PATH";
     let var = env::var(libclang_path_var);
     env::set_var(libclang_path_var, "/home/tduberstein/local/clang/clang+llvm-5.0.0-linux-x86_64-sles11.3/lib");
+    #[cfg(feature = "rebuild-bindings")]
     builder.generate()
         .expect("Failed to generate bindings")
-        .write_to_file(out_path.join("bindings.rs"))
+        .write_to_file("bindings.rs")
         .expect("Failed to write bindings");
     match var {
        Ok(var) => env::set_var(libclang_path_var, var),

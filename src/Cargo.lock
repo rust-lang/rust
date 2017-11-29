@@ -113,7 +113,7 @@ source = "git+https://github.com/rust-lang-nursery/rust-bindgen.git?rev=75f9e1c#
 dependencies = [
  "cexpr 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "clang-sys 0.21.1",
+ "clang-sys 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.27.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -282,6 +282,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "clang-sys"
 version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "glob 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2698,6 +2699,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum cc 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a9b13a57efd6b30ecd6598ebdb302cca617930b5470647570468a65d12ef9719"
 "checksum cexpr 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "cdbb21df6ff3497a61df5059994297f746267020ba38ce237aad9c875f7b4313"
 "checksum cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d4c819a1287eb618df47cc647173c5c4c66ba19d888a6e50d605672aed3140de"
+"checksum clang-sys 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)" = "00048189ee171715296dfe3b2fcfd439563c7bfec0d98d3976ce3402d62c8f07"
 "checksum clap 2.27.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1b8c532887f1a292d17de05ae858a8fe50a301e196f9ef0ddb7ccd0d1d00f180"
 "checksum cmake 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)" = "e14cd15a7cbc2c6a905677e54b831ee91af2ff43b352010f6133236463b65cac"
 "checksum commoncrypto 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d056a8586ba25a1e4d61cb090900e495952c7886786fc55f909ab2f819b69007"

@@ -10,10 +10,10 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [features]
-static-libstdcpp = []
+rebuild-bindings = ["bindgen"]
 
 [build-dependencies]
 # https://github.com/rust-lang-nursery/rust-bindgen/pull/1162.
-bindgen = { git = "https://github.com/rust-lang-nursery/rust-bindgen.git", rev = "75f9e1c" }
+bindgen = { git = "https://github.com/rust-lang-nursery/rust-bindgen.git", rev = "75f9e1c", optional = true }
 cc = "1.0.1"
 build_helper = { path = "../build_helper" }
