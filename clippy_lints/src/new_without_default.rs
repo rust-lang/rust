@@ -98,23 +98,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                     }
                     if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
                         let name = impl_item.name;
-                        let span = impl_item.span;
                         let id = impl_item.id;
-                        let decl = &sig.decl;
                         if sig.constness == hir::Constness::Const {
                             // can't be implemented by default
                             return;
                         }
-                        if !impl_item.generics
-                            .ty_params
-                            .is_empty()
-                        {
+                        if !impl_item.generics.ty_params.is_empty() {
                             // when the result of `new()` depends on a type parameter we should not require
                             // an
                             // impl of `Default`
                             return;
                         }
-                        if decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
+                        if sig.decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
                             let self_ty = cx.tcx
                                 .type_of(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));
                             if_chain! {
@@ -126,7 +121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                         span_lint_and_then(
                                             cx,
                                             NEW_WITHOUT_DEFAULT_DERIVE,
-                                            span,
+                                            impl_item.span,
                                             &format!("you should consider deriving a `Default` implementation for `{}`", self_ty),
                                             |db| {
                                                 db.suggest_item_with_attr(cx, sp, "try this", "#[derive(Default)]");
@@ -135,12 +130,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                         span_lint_and_then(
                                             cx,
                                             NEW_WITHOUT_DEFAULT,
-                                            span,
+                                            impl_item.span,
                                             &format!("you should consider adding a `Default` implementation for `{}`", self_ty),
                                             |db| {
                                                 db.suggest_prepend_item(
                                                     cx,
-                                                    span,
+                                                    item.span,
                                                     "try this",
                                                     &create_new_without_default_suggest_msg(self_ty),
                                                 );
