@@ -83,4 +83,10 @@ impl IgnoreGenericNew {
     pub fn new<T>() -> Self { IgnoreGenericNew } // the derived Default does not make sense here as the result depends on T
 }
 
+pub trait TraitWithNew: Sized {
+    fn new() -> Self {
+        panic!()
+    }
+}
+
 fn main() {}
