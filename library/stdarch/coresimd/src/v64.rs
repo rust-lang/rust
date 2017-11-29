@@ -74,9 +74,7 @@ define_casts!(
     (u16x4, u32x4, as_u32x4),
     (u16x4, i32x4, as_i32x4),
     (u32x2, u64x2, as_u64x2),
-    (u32x2, i64x2, as_i64x2) /* FIXME:
-                              * (__m64, __m128i, as___m128i),
-                              * (__m64, __m256i, as___m256i) */
+    (u32x2, i64x2, as_i64x2)
 );
 
 #[cfg(test)]
