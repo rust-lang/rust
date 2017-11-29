@@ -50,14 +50,16 @@ use std::fs::{self, File};
 use std::io;
 use std::io::{Read, Write};
 use std::mem;
+use std::os::raw::c_void;
 use std::path::{Path, PathBuf};
+use std::ptr;
 use std::str;
 use std::sync::Arc;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::slice;
 use std::time::Instant;
 use std::thread;
-use libc::{c_uint, c_void, c_char, size_t};
+use libc::{c_uint, c_char, size_t};
 
 pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
     ("pic", llvm::RelocMode::PIC),
@@ -66,7 +68,7 @@ pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
     ("dynamic-no-pic", llvm::RelocMode::DynamicNoPic),
     ("ropi", llvm::RelocMode::ROPI),
     ("rwpi", llvm::RelocMode::RWPI),
-    ("ropi-rwpi", llvm::RelocMode::ROPI_RWPI),
+    ("ropi-rwpi", llvm::RelocMode::ROPIRWPI),
 ];
 
 pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
@@ -78,10 +80,10 @@ pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
 ];
 
 pub const TLS_MODEL_ARGS : [(&'static str, llvm::ThreadLocalMode); 4] = [
-    ("global-dynamic", llvm::ThreadLocalMode::GeneralDynamic),
-    ("local-dynamic", llvm::ThreadLocalMode::LocalDynamic),
-    ("initial-exec", llvm::ThreadLocalMode::InitialExec),
-    ("local-exec", llvm::ThreadLocalMode::LocalExec),
+    ("global-dynamic", llvm::ThreadLocalMode::LLVMGeneralDynamicTLSModel),
+    ("local-dynamic", llvm::ThreadLocalMode::LLVMLocalDynamicTLSModel),
+    ("initial-exec", llvm::ThreadLocalMode::LLVMInitialExecTLSModel),
+    ("local-exec", llvm::ThreadLocalMode::LLVMLocalExecTLSModel),
 ];
 
 pub fn llvm_err(handler: &errors::Handler, msg: String) -> FatalError {
@@ -398,8 +400,8 @@ impl<'a> DiagnosticHandlers<'a> {
         let data = Box::new((cgcx, handler));
         unsafe {
             let arg = &*data as &(_, _) as *const _ as *mut _;
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, arg);
-            llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, arg);
+            llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, Some(inline_asm_handler), arg);
+            llvm::LLVMContextSetDiagnosticHandler(llcx, Some(diagnostic_handler), arg);
         }
         DiagnosticHandlers {
             inner: data,
@@ -411,8 +413,16 @@ impl<'a> DiagnosticHandlers<'a> {
 impl<'a> Drop for DiagnosticHandlers<'a> {
     fn drop(&mut self) {
         unsafe {
-            llvm::LLVMRustSetInlineAsmDiagnosticHandler(self.llcx, inline_asm_handler, 0 as *mut _);
-            llvm::LLVMContextSetDiagnosticHandler(self.llcx, diagnostic_handler, 0 as *mut _);
+            llvm::LLVMRustSetInlineAsmDiagnosticHandler(
+                self.llcx,
+                Some(inline_asm_handler),
+                ptr::null_mut(),
+            );
+            llvm::LLVMContextSetDiagnosticHandler(
+                self.llcx,
+                Some(diagnostic_handler),
+                ptr::null_mut(),
+            );
         }
     }
 }
@@ -424,7 +434,7 @@ unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext,
 }
 
 unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
-                                        user: *const c_void,
+                                        user: *mut c_void,
                                         cookie: c_uint) {
     if user.is_null() {
         return
@@ -719,7 +729,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
             }
 
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr(), demangle_callback);
+                llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr(), Some(demangle_callback));
                 llvm::LLVMDisposePassManager(cpm);
             });
             timeline.record("ir");

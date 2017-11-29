@@ -176,19 +176,19 @@ impl Type {
 
     pub fn func(args: &[Type], ret: &Type) -> Type {
         let slice: &[TypeRef] = Type::to_ref_slice(args);
-        ty!(llvm::LLVMFunctionType(ret.to_ref(), slice.as_ptr(),
+        ty!(llvm::LLVMFunctionType(ret.to_ref(), slice.as_ptr() as *mut _,
                                    args.len() as c_uint, False))
     }
 
     pub fn variadic_func(args: &[Type], ret: &Type) -> Type {
         let slice: &[TypeRef] = Type::to_ref_slice(args);
-        ty!(llvm::LLVMFunctionType(ret.to_ref(), slice.as_ptr(),
+        ty!(llvm::LLVMFunctionType(ret.to_ref(), slice.as_ptr() as *mut _,
                                    args.len() as c_uint, True))
     }
 
     pub fn struct_(ccx: &CrateContext, els: &[Type], packed: bool) -> Type {
         let els: &[TypeRef] = Type::to_ref_slice(els);
-        ty!(llvm::LLVMStructTypeInContext(ccx.llcx(), els.as_ptr(),
+        ty!(llvm::LLVMStructTypeInContext(ccx.llcx(), els.as_ptr() as *mut _,
                                           els.len() as c_uint,
                                           packed as Bool))
     }
@@ -216,7 +216,7 @@ impl Type {
     pub fn set_struct_body(&mut self, els: &[Type], packed: bool) {
         let slice: &[TypeRef] = Type::to_ref_slice(els);
         unsafe {
-            llvm::LLVMStructSetBody(self.to_ref(), slice.as_ptr(),
+            llvm::LLVMStructSetBody(self.to_ref(), slice.as_ptr() as *mut _,
                                     els.len() as c_uint, packed as Bool)
         }
     }

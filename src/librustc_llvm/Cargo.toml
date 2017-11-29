@@ -13,6 +13,7 @@ crate-type = ["dylib"]
 static-libstdcpp = []
 
 [build-dependencies]
-bindgen = "0.31.2"
+# https://github.com/rust-lang-nursery/rust-bindgen/pull/1162.
+bindgen = { git = "https://github.com/rust-lang-nursery/rust-bindgen.git", rev = "75f9e1c" }
 cc = "1.0.1"
 build_helper = { path = "../build_helper" }

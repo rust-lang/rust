@@ -58,4 +58,3 @@ cargo = { path = "tools/cargo" }
 
 [patch.crates-io]
 rustfmt-nightly = { path = "tools/rustfmt" }
-bindgen = { path = "../../rust-bindgen" }

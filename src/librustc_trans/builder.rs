@@ -155,7 +155,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn aggregate_ret(&self, ret_vals: &[ValueRef]) {
         unsafe {
             llvm::LLVMBuildAggregateRet(self.llbuilder,
-                                        ret_vals.as_ptr(),
+                                        ret_vals.as_ptr() as *mut _,
                                         ret_vals.len() as c_uint);
         }
     }
@@ -208,7 +208,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         unsafe {
             llvm::LLVMRustBuildInvoke(self.llbuilder,
                                       llfn,
-                                      args.as_ptr(),
+                                      args.as_ptr() as *mut _,
                                       args.len() as c_uint,
                                       then,
                                       catch,
@@ -561,7 +561,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
                                   llvm::LLVMMDNodeInContext(self.ccx.llcx(),
-                                                            v.as_ptr(),
+                                                            v.as_ptr() as *mut _,
                                                             v.len() as c_uint));
         }
     }
@@ -569,7 +569,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn nonnull_metadata(&self, load: ValueRef) {
         unsafe {
             llvm::LLVMSetMetadata(load, llvm::MD_nonnull as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null(), 0));
+                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null_mut(), 0));
         }
     }
 
@@ -626,7 +626,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // [1]: http://llvm.org/docs/LangRef.html#store-instruction
             let one = C_i32(self.ccx, 1);
             let node = llvm::LLVMMDNodeInContext(self.ccx.llcx(),
-                                                 &one,
+                                                 &one as *const _ as *mut _,
                                                  1);
             llvm::LLVMSetMetadata(insn,
                                   llvm::MD_nontemporal as c_uint,
@@ -638,7 +638,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn gep(&self, ptr: ValueRef, indices: &[ValueRef]) -> ValueRef {
         self.count_insn("gep");
         unsafe {
-            llvm::LLVMBuildGEP(self.llbuilder, ptr, indices.as_ptr(),
+            llvm::LLVMBuildGEP(self.llbuilder, ptr, indices.as_ptr() as *mut _,
                                indices.len() as c_uint, noname())
         }
     }
@@ -647,7 +647,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.count_insn("inboundsgep");
         unsafe {
             llvm::LLVMBuildInBoundsGEP(
-                self.llbuilder, ptr, indices.as_ptr(), indices.len() as c_uint, noname())
+                self.llbuilder, ptr, indices.as_ptr() as *mut _, indices.len() as c_uint, noname())
         }
     }
 
@@ -812,14 +812,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn icmp(&self, op: IntPredicate, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("icmp");
         unsafe {
-            llvm::LLVMBuildICmp(self.llbuilder, op as c_uint, lhs, rhs, noname())
+            llvm::LLVMBuildICmp(self.llbuilder, op, lhs, rhs, noname())
         }
     }
 
     pub fn fcmp(&self, op: RealPredicate, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("fcmp");
         unsafe {
-            llvm::LLVMBuildFCmp(self.llbuilder, op as c_uint, lhs, rhs, noname())
+            llvm::LLVMBuildFCmp(self.llbuilder, op, lhs, rhs, noname())
         }
     }
 
@@ -836,8 +836,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let phi = self.empty_phi(ty);
         self.count_insn("addincoming");
         unsafe {
-            llvm::LLVMAddIncoming(phi, vals.as_ptr(),
-                                  bbs.as_ptr(),
+            llvm::LLVMAddIncoming(phi, vals.as_ptr() as *mut _,
+                                  bbs.as_ptr() as *mut _,
                                   vals.len() as c_uint);
             phi
         }
@@ -889,7 +889,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let fty = Type::func(&argtys[..], &output);
         unsafe {
             let v = llvm::LLVMRustInlineAsm(
-                fty.to_ref(), asm, cons, volatile, alignstack, dia);
+                fty.to_ref(), asm as *mut _, cons as *mut _, volatile, alignstack, dia);
             self.call(v, inputs, None)
         }
     }
@@ -909,7 +909,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(ptr::null_mut());
 
         unsafe {
-            llvm::LLVMRustBuildCall(self.llbuilder, llfn, args.as_ptr(),
+            llvm::LLVMRustBuildCall(self.llbuilder, llfn, args.as_ptr() as *mut _,
                                     args.len() as c_uint, bundle, noname())
         }
     }
@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let args: &[ValueRef] = &[];
             self.count_insn("trap");
             llvm::LLVMRustBuildCall(self.llbuilder, t,
-                                    args.as_ptr(), args.len() as c_uint,
+                                    args.as_ptr() as *mut _, args.len() as c_uint,
                                     ptr::null_mut(),
                                     noname());
         }
@@ -1055,7 +1055,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             llvm::LLVMRustBuildCleanupPad(self.llbuilder,
                                           parent,
                                           args.len() as c_uint,
-                                          args.as_ptr(),
+                                          args.as_ptr() as *mut _,
                                           name.as_ptr())
         };
         assert!(!ret.is_null(), "LLVM does not have support for cleanuppad");
@@ -1080,7 +1080,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let name = CString::new("catchpad").unwrap();
         let ret = unsafe {
             llvm::LLVMRustBuildCatchPad(self.llbuilder, parent,
-                                        args.len() as c_uint, args.as_ptr(),
+                                        args.len() as c_uint, args.as_ptr() as *mut _,
                                         name.as_ptr())
         };
         assert!(!ret.is_null(), "LLVM does not have support for catchpad");
@@ -1158,14 +1158,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub fn add_incoming_to_phi(&self, phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
         unsafe {
-            llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
+            llvm::LLVMAddIncoming(
+                phi,
+                &val as *const _ as *mut _,
+                &bb as *const _ as *mut _,
+                1 as c_uint,
+            );
         }
     }
 
     pub fn set_invariant_load(&self, load: ValueRef) {
         unsafe {
             llvm::LLVMSetMetadata(load, llvm::MD_invariant_load as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null(), 0));
+                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null_mut(), 0));
         }
     }
 
@@ -1177,7 +1182,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let stored_ty = val_ty(val);
         let stored_ptr_ty = stored_ty.ptr_to();
 
-        assert_eq!(dest_ptr_ty.kind(), llvm::TypeKind::Pointer);
+        assert_eq!(dest_ptr_ty.kind(), llvm::TypeKind::LLVMPointerTypeKind);
 
         if dest_ptr_ty == stored_ptr_ty {
             ptr
@@ -1196,11 +1201,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                       args: &'b [ValueRef]) -> Cow<'b, [ValueRef]> {
         let mut fn_ty = val_ty(llfn);
         // Strip off pointers
-        while fn_ty.kind() == llvm::TypeKind::Pointer {
+        while fn_ty.kind() == llvm::TypeKind::LLVMPointerTypeKind {
             fn_ty = fn_ty.element_type();
         }
 
-        assert!(fn_ty.kind() == llvm::TypeKind::Function,
+        assert!(fn_ty.kind() == llvm::TypeKind::LLVMFunctionTypeKind,
                 "builder::{} not passed a function, but {:?}", typ, fn_ty);
 
         let param_tys = fn_ty.func_params();

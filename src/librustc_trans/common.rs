@@ -231,20 +231,20 @@ pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef 
 pub fn C_struct_in_context(llcx: ContextRef, elts: &[ValueRef], packed: bool) -> ValueRef {
     unsafe {
         llvm::LLVMConstStructInContext(llcx,
-                                       elts.as_ptr(), elts.len() as c_uint,
+                                       elts.as_ptr() as *mut _, elts.len() as c_uint,
                                        packed as Bool)
     }
 }
 
 pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstArray(ty.to_ref(), elts.as_ptr(), elts.len() as c_uint);
+        llvm::LLVMConstArray(ty.to_ref(), elts.as_ptr() as *mut _, elts.len() as c_uint)
     }
 }
 
 pub fn C_vector(elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint);
+        llvm::LLVMConstVector(elts.as_ptr() as *mut _, elts.len() as c_uint)
     }
 }
 
@@ -255,7 +255,7 @@ pub fn C_bytes(cx: &CrateContext, bytes: &[u8]) -> ValueRef {
 pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
-        return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);
+        llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True)
     }
 }
 
@@ -263,7 +263,7 @@ pub fn const_get_elt(v: ValueRef, idx: u64) -> ValueRef {
     unsafe {
         assert_eq!(idx as c_uint as u64, idx);
         let us = &[idx as c_uint];
-        let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
+        let r = llvm::LLVMConstExtractValue(v, us.as_ptr() as *mut _, us.len() as c_uint);
 
         debug!("const_get_elt(v={:?}, idx={}, r={:?})",
                Value(v), idx, Value(r));
@@ -366,7 +366,7 @@ pub fn shift_mask_val<'a, 'tcx>(
 ) -> ValueRef {
     let kind = llty.kind();
     match kind {
-        TypeKind::Integer => {
+        TypeKind::LLVMIntegerTypeKind => {
             // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
             let val = llty.int_width() - 1;
             if invert {
@@ -375,7 +375,7 @@ pub fn shift_mask_val<'a, 'tcx>(
                 C_uint(mask_llty, val)
             }
         },
-        TypeKind::Vector => {
+        TypeKind::LLVMVectorTypeKind => {
             let mask = shift_mask_val(bcx, llty.element_type(), mask_llty.element_type(), invert);
             bcx.vector_splat(mask_llty.vector_length(), mask)
         },

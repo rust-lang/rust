@@ -397,7 +397,11 @@ impl OperandBundleDef {
     pub fn new(name: &str, vals: &[ValueRef]) -> OperandBundleDef {
         let name = CString::new(name).unwrap();
         let def = unsafe {
-            LLVMRustBuildOperandBundleDef(name.as_ptr(), vals.as_ptr() as *mut _, vals.len() as c_uint)
+            LLVMRustBuildOperandBundleDef(
+                name.as_ptr(),
+                vals.as_ptr() as *mut _,
+                vals.len() as c_uint,
+            )
         };
         OperandBundleDef { inner: def }
     }

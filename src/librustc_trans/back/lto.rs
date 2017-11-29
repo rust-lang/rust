@@ -346,7 +346,7 @@ fn thin_lto(diag_handler: &Handler,
             let buffer = ThinBuffer::new(llvm.llmod);
             thin_modules.push(llvm::ThinLTOModule {
                 identifier: name.as_ptr(),
-                data: buffer.data().as_ptr(),
+                data: buffer.data().as_ptr() as *const _,
                 len: buffer.data().len(),
             });
             thin_buffers.push(buffer);
@@ -375,7 +375,7 @@ fn thin_lto(diag_handler: &Handler,
             info!("foreign module {:?}", name);
             thin_modules.push(llvm::ThinLTOModule {
                 identifier: name.as_ptr(),
-                data: module.data().as_ptr(),
+                data: module.data().as_ptr() as *const _,
                 len: module.data().len(),
             });
             serialized.push(module);
@@ -508,7 +508,7 @@ impl ModuleBuffer {
         unsafe {
             let ptr = llvm::LLVMRustModuleBufferPtr(self.0);
             let len = llvm::LLVMRustModuleBufferLen(self.0);
-            slice::from_raw_parts(ptr, len)
+            slice::from_raw_parts(ptr as *const _, len)
         }
     }
 }
@@ -609,7 +609,7 @@ impl ThinModule {
         let llcx = llvm::LLVMContextCreate();
         let llmod = llvm::LLVMRustParseBitcodeForThinLTO(
             llcx,
-            self.data().as_ptr(),
+            self.data().as_ptr() as *const _,
             self.data().len(),
             self.shared.module_names[self.idx].as_ptr(),
         );

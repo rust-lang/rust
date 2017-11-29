@@ -14,15 +14,34 @@ pub use LLVMBasicBlockRef as BasicBlockRef;
 pub use LLVMBool as Bool;
 pub use LLVMBuilderRef as BuilderRef;
 pub use LLVMContextRef as ContextRef;
+pub use LLVMDLLStorageClass as DLLStorageClass;
 pub use LLVMDebugLocRef as DebugLocRef;
 pub use LLVMDiagnosticInfoRef as DiagnosticInfoRef;
 pub use LLVMIntPredicate as IntPredicate;
+pub use LLVMIntPredicate::LLVMIntEQ as IntEQ;
+pub use LLVMIntPredicate::LLVMIntNE as IntNE;
+pub use LLVMIntPredicate::LLVMIntSGE as IntSGE;
+pub use LLVMIntPredicate::LLVMIntSGT as IntSGT;
+pub use LLVMIntPredicate::LLVMIntSLE as IntSLE;
+pub use LLVMIntPredicate::LLVMIntSLT as IntSLT;
+pub use LLVMIntPredicate::LLVMIntUGE as IntUGE;
+pub use LLVMIntPredicate::LLVMIntUGT as IntUGT;
+pub use LLVMIntPredicate::LLVMIntULE as IntULE;
+pub use LLVMIntPredicate::LLVMIntULT as IntULT;
 pub use LLVMMemoryBufferRef as MemoryBufferRef;
 pub use LLVMModuleRef as ModuleRef;
 pub use LLVMObjectFileRef as ObjectFileRef;
+pub use LLVMOpcode as Opcode;
+pub use LLVMPassManagerBuilderRef as PassManagerBuilderRef;
 pub use LLVMPassManagerRef as PassManagerRef;
 pub use LLVMRealPredicate as RealPredicate;
-pub use LLVMRelocMode as RelocMode;
+pub use LLVMRealPredicate::LLVMRealOEQ as RealOEQ;
+pub use LLVMRealPredicate::LLVMRealOGE as RealOGE;
+pub use LLVMRealPredicate::LLVMRealOGT as RealOGT;
+pub use LLVMRealPredicate::LLVMRealOLE as RealOLE;
+pub use LLVMRealPredicate::LLVMRealOLT as RealOLT;
+pub use LLVMRealPredicate::LLVMRealULT as RealULT;
+pub use LLVMRealPredicate::LLVMRealUNE as RealUNE;
 pub use LLVMRustArchiveChildRef as ArchiveChildRef;
 pub use LLVMRustArchiveIteratorRef as ArchiveIteratorRef;
 pub use LLVMRustArchiveKind as ArchiveKind;
@@ -34,9 +53,14 @@ pub use LLVMRustCodeModel as CodeModel;
 pub use LLVMRustDiagnosticKind as DiagnosticKind;
 pub use LLVMRustFileType as FileType;
 pub use LLVMRustLinkage as Linkage;
+pub use LLVMRustModuleBuffer as ModuleBuffer;
 pub use LLVMRustOperandBundleDefRef as OperandBundleDefRef;
 pub use LLVMRustPassKind as PassKind;
+pub use LLVMRustRelocMode as RelocMode;
 pub use LLVMRustSynchronizationScope as SynchronizationScope;
+pub use LLVMRustThinLTOBuffer as ThinLTOBuffer;
+pub use LLVMRustThinLTOData as ThinLTOData;
+pub use LLVMRustThinLTOModule as ThinLTOModule;
 pub use LLVMRustVisibility as Visibility;
 pub use LLVMSMDiagnosticRef as SMDiagnosticRef;
 pub use LLVMSectionIteratorRef as SectionIteratorRef;
@@ -45,11 +69,10 @@ pub use LLVMTargetMachineRef as TargetMachineRef;
 pub use LLVMThreadLocalMode as ThreadLocalMode;
 pub use LLVMTwineRef as TwineRef;
 pub use LLVMTypeKind as TypeKind;
-pub use LLVMDLLStorageClass as DLLStorageClass;
 pub use LLVMTypeKind::LLVMDoubleTypeKind as Double;
+pub use LLVMTypeKind::LLVMFP128TypeKind as FP128;
 pub use LLVMTypeKind::LLVMFloatTypeKind as Float;
 pub use LLVMTypeKind::LLVMPPC_FP128TypeKind as PPC_FP128;
-pub use LLVMTypeKind::LLVMFP128TypeKind as FP128;
 pub use LLVMTypeKind::LLVMVectorTypeKind as Vector;
 pub use LLVMTypeKind::LLVMX86_FP80TypeKind as X86_FP80;
 pub use LLVMTypeRef as TypeRef;
@@ -57,9 +80,7 @@ pub use LLVMValueRef as ValueRef;
 pub use llvm_CallingConv__bindgen_ty_1 as CallConv;
 pub use llvm_LLVMContext__bindgen_ty_1 as MetadataType;
 
-use libc::c_char;
-
-pub type Opcode = u32;
+pub type LLVMSMDiagnosticRef = *const llvm_SMDiagnostic;
 
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
@@ -69,17 +90,6 @@ pub const False: Bool = 0 as Bool;
 //#[allow(non_snake_case)]
 //#[allow(non_upper_case_globals)]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
-/// LLVMRustThinLTOModule
-#[repr(C)]
-pub struct ThinLTOModule {
-    pub identifier: *const c_char,
-    pub data: *const u8,
-    pub len: usize,
-}
-
-pub type DiagnosticHandler = LLVMDiagnosticHandler;
-pub type InlineAsmDiagHandler = llvm_LLVMContext_InlineAsmDiagHandlerTy;
 
 pub mod debuginfo {
     use super::LLVMMetadataRef as MetadataRef;
@@ -108,5 +118,4 @@ pub mod debuginfo {
     pub type DISubrange = DIDescriptor;
     pub type DIEnumerator = DIDescriptor;
     pub type DITemplateTypeParameter = DIDescriptor;
-    pub use super::LLVMRustDIFlags as DIFlags;
 }

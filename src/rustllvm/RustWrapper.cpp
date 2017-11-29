@@ -57,7 +57,11 @@ static AtomicOrdering fromRust(LLVMAtomicOrdering Ordering) {
   report_fatal_error("Invalid LLVMAtomicOrdering value!");
 }
 
-static LLVM_THREAD_LOCAL char *LastError;
+static
+#ifndef BINDGEN_NO_TLS
+LLVM_THREAD_LOCAL
+#endif
+char *LastError;
 
 extern "C" LLVMMemoryBufferRef
 LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
@@ -342,6 +346,12 @@ LLVMRustBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Target,
   return wrap(ACXI);
 }
 
+enum class LLVMRustSynchronizationScope {
+  Other,
+  SingleThread,
+  CrossThread,
+};
+
 #if LLVM_VERSION_GE(5, 0)
 static SyncScope::ID fromRust(LLVMRustSynchronizationScope Scope) {
   switch (Scope) {
@@ -378,6 +388,12 @@ extern "C" void LLVMRustSetDebug(int Enabled) {
 #endif
 }
 
+enum class LLVMRustAsmDialect {
+  Other,
+  Att,
+  Intel,
+};
+
 static InlineAsm::AsmDialect fromRust(LLVMRustAsmDialect Dialect) {
   switch (Dialect) {
   case LLVMRustAsmDialect::Att:
@@ -402,7 +418,11 @@ extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm) 
   unwrap(M)->appendModuleInlineAsm(StringRef(Asm));
 }
 
+typedef DIBuilder *LLVMRustDIBuilderRef;
+
 #if LLVM_VERSION_LT(5, 0)
+typedef struct LLVMOpaqueMetadata *LLVMMetadataRef;
+
 namespace llvm {
 DEFINE_ISA_CONVERSION_FUNCTIONS(Metadata, LLVMMetadataRef)
 
@@ -419,6 +439,32 @@ template <typename DIT> DIT *unwrapDIPtr(LLVMMetadataRef Ref) {
 #define DIDescriptor DIScope
 #define DIArray DINodeArray
 #define unwrapDI unwrapDIPtr
+
+// These values **must** match debuginfo::DIFlags! They also *happen*
+// to match LLVM, but that isn't required as we do giant sets of
+// matching below. The value shouldn't be directly passed to LLVM.
+enum class LLVMRustDIFlags : uint32_t {
+  FlagZero = 0,
+  FlagPrivate = 1,
+  FlagProtected = 2,
+  FlagPublic = 3,
+  FlagFwdDecl = (1 << 2),
+  FlagAppleBlock = (1 << 3),
+  FlagBlockByrefStruct = (1 << 4),
+  FlagVirtual = (1 << 5),
+  FlagArtificial = (1 << 6),
+  FlagExplicit = (1 << 7),
+  FlagPrototyped = (1 << 8),
+  FlagObjcClassComplete = (1 << 9),
+  FlagObjectPointer = (1 << 10),
+  FlagVector = (1 << 11),
+  FlagStaticMember = (1 << 12),
+  FlagLValueReference = (1 << 13),
+  FlagRValueReference = (1 << 14),
+  FlagMainSubprogram      = (1 << 21),
+  // Do not add values that are not supported by the minimum LLVM
+  // version we support!
+};
 
 inline LLVMRustDIFlags operator&(LLVMRustDIFlags A, LLVMRustDIFlags B) {
   return static_cast<LLVMRustDIFlags>(static_cast<uint32_t>(A) &
@@ -524,8 +570,8 @@ extern "C" void LLVMRustAddModuleFlag(LLVMModuleRef M, const char *Name,
   unwrap(M)->addModuleFlag(Module::Warning, Name, Value);
 }
 
-extern "C" void LLVMRustMetadataAsValue(LLVMContextRef C, LLVMMetadataRef MD) {
-  wrap(MetadataAsValue::get(*unwrap(C), unwrap(MD)));
+extern "C" LLVMValueRef LLVMRustMetadataAsValue(LLVMContextRef C, LLVMMetadataRef MD) {
+  return wrap(MetadataAsValue::get(*unwrap(C), unwrap(MD)));
 }
 
 extern "C" LLVMRustDIBuilderRef LLVMRustDIBuilderCreate(LLVMModuleRef M) {
@@ -755,7 +801,7 @@ LLVMRustDIBuilderGetOrCreateArray(LLVMRustDIBuilderRef Builder,
 
 extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareAtEnd(
     LLVMRustDIBuilderRef Builder, LLVMValueRef V, LLVMMetadataRef VarInfo,
-    int64_t *AddrOps, unsigned AddrOpsCount, LLVMValueRef DL,
+    const int64_t *AddrOps, unsigned AddrOpsCount, LLVMValueRef DL,
     LLVMBasicBlockRef InsertAtEnd) {
   return wrap(Builder->insertDeclare(
       unwrap(V), unwrap<DILocalVariable>(VarInfo),
@@ -862,7 +908,7 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
   }
 }
 
-extern "C" bool LLVMRustLinkInExternalBitcode(LLVMModuleRef DstRef, char *BC,
+extern "C" bool LLVMRustLinkInExternalBitcode(LLVMModuleRef DstRef, const char *BC,
                                               size_t Len) {
   Module *Dst = unwrap(DstRef);
 
@@ -1012,6 +1058,21 @@ extern "C" void LLVMRustWriteDiagnosticInfoToString(LLVMDiagnosticInfoRef DI,
   DiagnosticPrinterRawOStream DP(OS);
   unwrap(DI)->print(DP);
 }
+
+enum class LLVMRustDiagnosticKind {
+  Other,
+  InlineAsm,
+  StackSize,
+  DebugMetadataVersion,
+  SampleProfile,
+  OptimizationRemark,
+  OptimizationRemarkMissed,
+  OptimizationRemarkAnalysis,
+  OptimizationRemarkAnalysisFPCommute,
+  OptimizationRemarkAnalysisAliasing,
+  OptimizationRemarkOther,
+  OptimizationFailure,
+};
 
 static LLVMRustDiagnosticKind toRust(DiagnosticKind Kind) {
   switch (Kind) {
@@ -1199,6 +1260,8 @@ extern "C" void LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
 #endif
 }
 
+typedef OperandBundleDef *LLVMRustOperandBundleDefRef;
+
 #if LLVM_VERSION_GE(3, 8)
 extern "C" OperandBundleDef *LLVMRustBuildOperandBundleDef(const char *Name,
                                                            LLVMValueRef *Inputs,
@@ -1273,6 +1336,20 @@ extern "C" void LLVMRustUnsetComdat(LLVMValueRef V) {
   GlobalObject *GV = unwrap<GlobalObject>(V);
   GV->setComdat(nullptr);
 }
+
+enum class LLVMRustLinkage {
+  ExternalLinkage = 0,
+  AvailableExternallyLinkage = 1,
+  LinkOnceAnyLinkage = 2,
+  LinkOnceODRLinkage = 3,
+  WeakAnyLinkage = 4,
+  WeakODRLinkage = 5,
+  AppendingLinkage = 6,
+  InternalLinkage = 7,
+  PrivateLinkage = 8,
+  ExternalWeakLinkage = 9,
+  CommonLinkage = 10,
+};
 
 static LLVMRustLinkage toRust(LLVMLinkage Linkage) {
   switch (Linkage) {
@@ -1360,6 +1437,12 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *hig
 extern "C" LLVMContextRef LLVMRustGetValueContext(LLVMValueRef V) {
   return wrap(&unwrap(V)->getContext());
 }
+
+enum class LLVMRustVisibility {
+  Default = 0,
+  Hidden = 1,
+  Protected = 2,
+};
 
 static LLVMRustVisibility toRust(LLVMVisibility Vis) {
   switch (Vis) {

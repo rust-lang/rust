@@ -21,8 +21,13 @@ use abi;
 use context::SharedCrateContext;
 
 use llvm::{self, ValueRef};
-use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
-                      DICompositeType, DILexicalBlock, DIFlags};
+use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType, DILexicalBlock};
+// https://github.com/rust-lang-nursery/rust-bindgen/issues/1165.
+use llvm::{
+    LLVMRustDIFlags,
+    LLVMRustDIFlags_FlagZero,
+    LLVMRustDIFlags_FlagArtificial,
+};
 
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
@@ -323,7 +328,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             offset: Size::from_bytes(0),
             size: pointer_size,
             align: pointer_align,
-            flags: DIFlags::FlagZero,
+            flags: LLVMRustDIFlags_FlagZero,
         },
         MemberDescription {
             name: "length".to_string(),
@@ -331,7 +336,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             offset: pointer_size,
             size: usize_size,
             align: usize_align,
-            flags: DIFlags::FlagZero,
+            flags: LLVMRustDIFlags_FlagZero,
         },
     ];
 
@@ -432,7 +437,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             offset: layout.fields.offset(0),
             size: data_ptr_field.size,
             align: data_ptr_field.align,
-            flags: DIFlags::FlagArtificial,
+            flags: LLVMRustDIFlags_FlagArtificial,
         },
         MemberDescription {
             name: "vtable".to_string(),
@@ -440,7 +445,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             offset: layout.fields.offset(1),
             size: vtable_field.size,
             align: vtable_field.align,
-            flags: DIFlags::FlagArtificial,
+            flags: LLVMRustDIFlags_FlagArtificial,
         },
     ];
 
@@ -841,7 +846,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
                 cu_desc_metadata,
             ];
             let gcov_metadata = llvm::LLVMMDNodeInContext(debug_context.llcontext,
-                                                          gcov_cu_info.as_ptr(),
+                                                          gcov_cu_info.as_ptr() as *mut _,
                                                           gcov_cu_info.len() as c_uint);
 
             let llvm_gcov_ident = CString::new("llvm.gcov").unwrap();
@@ -886,7 +891,7 @@ struct MemberDescription {
     offset: Size,
     size: Size,
     align: Align,
-    flags: DIFlags,
+    flags: LLVMRustDIFlags,
 }
 
 // A factory for MemberDescriptions. It produces a list of member descriptions
@@ -953,7 +958,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                 offset: layout.fields.offset(i),
                 size,
                 align,
-                flags: DIFlags::FlagZero,
+                flags: LLVMRustDIFlags_FlagZero,
             }
         }).collect()
     }
@@ -1016,7 +1021,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
                 offset: layout.fields.offset(i),
                 size,
                 align,
-                flags: DIFlags::FlagZero,
+                flags: LLVMRustDIFlags_FlagZero,
             }
         }).collect()
     }
@@ -1069,7 +1074,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
                 offset: Size::from_bytes(0),
                 size,
                 align,
-                flags: DIFlags::FlagZero,
+                flags: LLVMRustDIFlags_FlagZero,
             }
         }).collect()
     }
@@ -1153,7 +1158,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         offset: Size::from_bytes(0),
                         size: self.layout.size,
                         align: self.layout.align,
-                        flags: DIFlags::FlagZero
+                        flags: LLVMRustDIFlags_FlagZero
                     }
                 ]
             }
@@ -1182,7 +1187,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         offset: Size::from_bytes(0),
                         size: variant.size,
                         align: variant.align,
-                        flags: DIFlags::FlagZero
+                        flags: LLVMRustDIFlags_FlagZero
                     }
                 }).collect()
             }
@@ -1243,7 +1248,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         offset: Size::from_bytes(0),
                         size: variant.size,
                         align: variant.align,
-                        flags: DIFlags::FlagZero
+                        flags: LLVMRustDIFlags_FlagZero
                     }
                 ]
             }
@@ -1274,7 +1279,7 @@ impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
                 offset: self.offsets[i],
                 size,
                 align,
-                flags: DIFlags::FlagZero
+                flags: LLVMRustDIFlags_FlagZero
             }
         }).collect()
     }
@@ -1451,7 +1456,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         UNKNOWN_LINE_NUMBER,
         enum_type_size.bits(),
         enum_type_align.abi_bits() as u32,
-        DIFlags::FlagZero,
+        LLVMRustDIFlags_FlagZero,
         ptr::null_mut(),
         0, // RuntimeLang
         unique_type_id_str.as_ptr())
@@ -1585,7 +1590,7 @@ fn create_struct_stub<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             UNKNOWN_LINE_NUMBER,
             struct_size.bits(),
             struct_align.abi_bits() as u32,
-            DIFlags::FlagZero,
+            LLVMRustDIFlags_FlagZero,
             ptr::null_mut(),
             empty_array,
             0,
@@ -1622,7 +1627,7 @@ fn create_union_stub<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             UNKNOWN_LINE_NUMBER,
             union_size.bits(),
             union_align.abi_bits() as u32,
-            DIFlags::FlagZero,
+            LLVMRustDIFlags_FlagZero,
             empty_array,
             0, // RuntimeLang
             unique_type_id.as_ptr())
@@ -1728,7 +1733,7 @@ pub fn create_vtable_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             UNKNOWN_LINE_NUMBER,
             Size::from_bytes(0).bits(),
             cx.tcx().data_layout.pointer_align.abi_bits() as u32,
-            DIFlags::FlagArtificial,
+            LLVMRustDIFlags_FlagArtificial,
             ptr::null_mut(),
             empty_array,
             0,

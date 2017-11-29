@@ -78,7 +78,7 @@ pub unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
             AllocatorTy::Ptr => panic!("invalid allocator output"),
         };
         let ty = llvm::LLVMFunctionType(output.unwrap_or(void),
-                                        args.as_ptr(),
+                                        args.as_mut_ptr(),
                                         args.len() as c_uint,
                                         False);
         let name = CString::new(format!("__rust_{}", method.name)).unwrap();
@@ -102,7 +102,7 @@ pub unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
         }).collect::<Vec<_>>();
         let ret = llvm::LLVMRustBuildCall(llbuilder,
                                           callee,
-                                          args.as_ptr(),
+                                          args.as_ptr() as *mut _,
                                           args.len() as c_uint,
                                           ptr::null_mut(),
                                           "\0".as_ptr() as *const _);

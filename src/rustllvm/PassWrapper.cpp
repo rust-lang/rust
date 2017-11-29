@@ -67,6 +67,12 @@ extern "C" void LLVMInitializePasses() {
   initializeTarget(Registry);
 }
 
+enum class LLVMRustPassKind {
+  Other,
+  Function,
+  Module,
+};
+
 static LLVMRustPassKind toRust(PassKind Kind) {
   switch (Kind) {
   case PT_Function:
@@ -204,6 +210,16 @@ extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
   return false;
 }
 
+enum class LLVMRustCodeModel {
+  Other,
+  Default,
+  JITDefault,
+  Small,
+  Kernel,
+  Medium,
+  Large,
+};
+
 static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
   switch (Model) {
   case LLVMRustCodeModel::Default:
@@ -222,6 +238,14 @@ static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
     report_fatal_error("Bad CodeModel.");
   }
 }
+
+enum class LLVMRustCodeGenOptLevel {
+  Other,
+  None,
+  Less,
+  Default,
+  Aggressive,
+};
 
 static CodeGenOpt::Level fromRust(LLVMRustCodeGenOptLevel Level) {
   switch (Level) {
@@ -462,7 +486,7 @@ extern "C" void LLVMRustRunFunctionPassManager(LLVMPassManagerRef PMR,
   P->doFinalization();
 }
 
-extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
+extern "C" void LLVMRustSetLLVMOptions(int Argc, char * const *Argv) {
   // Initializing the command-line options more than once is not allowed. So,
   // check if they've already been initialized.  (This could happen if we're
   // being called from rustpkg, for example). If the arguments change, then
@@ -473,6 +497,12 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   Initialized = true;
   cl::ParseCommandLineOptions(Argc, Argv);
 }
+
+enum class LLVMRustFileType {
+  Other,
+  AssemblyFile,
+  ObjectFile,
+};
 
 static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
   switch (Type) {
@@ -685,7 +715,7 @@ extern "C" void LLVMRustAddAlwaysInlinePass(LLVMPassManagerBuilderRef PMBR,
 #endif
 }
 
-extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
+extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, const char * const *Symbols,
                                            size_t Len) {
   llvm::legacy::PassManager passes;
 
@@ -939,14 +969,14 @@ addPreservedGUID(const ModuleSummaryIndex &Index,
 // here is basically the same as before threads are spawned in the `run`
 // function of `lib/LTO/ThinLTOCodeGenerator.cpp`.
 extern "C" LLVMRustThinLTOData*
-LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
-                          int num_modules,
-                          const char **preserved_symbols,
-                          int num_symbols) {
+LLVMRustCreateThinLTOData(const LLVMRustThinLTOModule *modules,
+                          unsigned num_modules,
+                          const char * const *preserved_symbols,
+                          unsigned num_symbols) {
   auto Ret = llvm::make_unique<LLVMRustThinLTOData>();
 
   // Load each module's summary and merge it into one combined index
-  for (int i = 0; i < num_modules; i++) {
+  for (unsigned i = 0; i < num_modules; i++) {
     auto module = &modules[i];
     StringRef buffer(module->data, module->len);
     MemoryBufferRef mem_buffer(buffer, module->identifier);
@@ -976,7 +1006,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // Convert the preserved symbols set from string to GUID, this is then needed
   // for internalization. We use `addPreservedGUID` to include any transitively
   // used symbol as well.
-  for (int i = 0; i < num_symbols; i++) {
+  for (unsigned i = 0; i < num_symbols; i++) {
     addPreservedGUID(Ret->Index,
                      Ret->GUIDPreservedSymbols,
                      GlobalValue::getGUID(preserved_symbols[i]));

@@ -405,7 +405,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let offset = bcx.urem(ptr_val, align);
             let zero = C_null(bcx.ccx.isize_ty());
             // `offset == 0`
-            let is_zero = bcx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
+            let is_zero = bcx.icmp(llvm::IntPredicate::LLVMIntEQ, offset, zero);
             // `if offset == 0 { 0 } else { offset - align }`
             bcx.select(is_zero, zero, bcx.sub(offset, align))
         }
@@ -428,24 +428,27 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
             let is_cxchg = split[1] == "cxchg" || split[1] == "cxchgweak";
             let (order, failorder) = match split.len() {
-                2 => (SequentiallyConsistent, SequentiallyConsistent),
+                2 => (
+                    LLVMAtomicOrderingSequentiallyConsistent,
+                    LLVMAtomicOrderingSequentiallyConsistent,
+                ),
                 3 => match split[2] {
-                    "unordered" => (Unordered, Unordered),
-                    "relaxed" => (Monotonic, Monotonic),
-                    "acq"     => (Acquire, Acquire),
-                    "rel"     => (Release, Monotonic),
-                    "acqrel"  => (AcquireRelease, Acquire),
+                    "unordered" => (LLVMAtomicOrderingUnordered, LLVMAtomicOrderingUnordered),
+                    "relaxed" => (LLVMAtomicOrderingMonotonic, LLVMAtomicOrderingMonotonic),
+                    "acq"     => (LLVMAtomicOrderingAcquire, LLVMAtomicOrderingAcquire),
+                    "rel"     => (LLVMAtomicOrderingRelease, LLVMAtomicOrderingMonotonic),
+                    "acqrel"  => (LLVMAtomicOrderingAcquireRelease, LLVMAtomicOrderingAcquire),
                     "failrelaxed" if is_cxchg =>
-                        (SequentiallyConsistent, Monotonic),
+                        (LLVMAtomicOrderingSequentiallyConsistent, LLVMAtomicOrderingMonotonic),
                     "failacq" if is_cxchg =>
-                        (SequentiallyConsistent, Acquire),
+                        (LLVMAtomicOrderingSequentiallyConsistent, LLVMAtomicOrderingAcquire),
                     _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
                 },
                 4 => match (split[2], split[3]) {
                     ("acq", "failrelaxed") if is_cxchg =>
-                        (Acquire, Monotonic),
+                        (LLVMAtomicOrderingAcquire, LLVMAtomicOrderingMonotonic),
                     ("acqrel", "failrelaxed") if is_cxchg =>
-                        (AcquireRelease, Monotonic),
+                        (LLVMAtomicOrderingAcquireRelease, LLVMAtomicOrderingMonotonic),
                     _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
                 },
                 _ => ccx.sess().fatal("Atomic intrinsic not in correct format"),
@@ -516,17 +519,17 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 // These are all AtomicRMW ops
                 op => {
                     let atom_op = match op {
-                        "xchg"  => llvm::AtomicXchg,
-                        "xadd"  => llvm::AtomicAdd,
-                        "xsub"  => llvm::AtomicSub,
-                        "and"   => llvm::AtomicAnd,
-                        "nand"  => llvm::AtomicNand,
-                        "or"    => llvm::AtomicOr,
-                        "xor"   => llvm::AtomicXor,
-                        "max"   => llvm::AtomicMax,
-                        "min"   => llvm::AtomicMin,
-                        "umax"  => llvm::AtomicUMax,
-                        "umin"  => llvm::AtomicUMin,
+                        "xchg"  => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXchg,
+                        "xadd"  => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAdd,
+                        "xsub"  => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpSub,
+                        "and"   => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAnd,
+                        "nand"  => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpNand,
+                        "or"    => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpOr,
+                        "xor"   => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXor,
+                        "max"   => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMax,
+                        "min"   => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMin,
+                        "umax"  => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMax,
+                        "umin"  => llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMin,
                         _ => ccx.sess().fatal("unknown atomic operation")
                     };
 
@@ -1052,7 +1055,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                   found `{}` with length {}",
                  in_len, in_ty,
                  ret_ty, out_len);
-        require!(llret_ty.element_type().kind() == llvm::Integer,
+        require!(llret_ty.element_type().kind() == llvm::LLVMTypeKind::LLVMIntegerTypeKind,
                  "expected return type with integer elements, found `{}` with non-integer `{}`",
                  ret_ty,
                  ret_ty.simd_type(tcx));

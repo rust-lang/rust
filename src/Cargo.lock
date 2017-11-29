@@ -109,6 +109,7 @@ version = "0.1.0"
 [[package]]
 name = "bindgen"
 version = "0.31.3"
+source = "git+https://github.com/rust-lang-nursery/rust-bindgen.git?rev=75f9e1c#75f9e1c233ab4c41a3e52afe7b349142d569dc0a"
 dependencies = [
  "cexpr 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1816,7 +1817,7 @@ dependencies = [
 name = "rustc_llvm"
 version = "0.0.0"
 dependencies = [
- "bindgen 0.31.3",
+ "bindgen 0.31.3 (git+https://github.com/rust-lang-nursery/rust-bindgen.git?rev=75f9e1c)",
  "build_helper 0.1.0",
  "cc 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2689,6 +2690,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum atty 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "21e50800ec991574876040fff8ee46b136a53e985286fbe6a3bdfe6421b78860"
 "checksum backtrace 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8709cc7ec06f6f0ae6c2c7e12f6ed41540781f72b488d83734978295ceae182e"
 "checksum backtrace-sys 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "44585761d6161b0f57afc49482ab6bd067e4edef48c12a152c237eb0203f7661"
+"checksum bindgen 0.31.3 (git+https://github.com/rust-lang-nursery/rust-bindgen.git?rev=75f9e1c)" = "<none>"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4efd02e230a02e18f92fc2735f44597385ed02ad8f831e7c1c1156ee5e1ab3a5"
 "checksum bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b3c30d3802dfb7281680d6285f2ccdaa8c2d8fee41f93805dba5c4cf50dc23cf"
