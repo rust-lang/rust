@@ -62,7 +62,6 @@ use isolated_encoder::IsolatedEncoder;
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::cstore::EncodedMetadataHash;
 use rustc::ty::TyCtxt;
 use syntax::ast;
 
@@ -128,18 +127,9 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         // unclear whether that would be a win since hashing is cheap enough.
         let _task = tcx.dep_graph.in_ignore();
 
-        let ecx: &'x mut EncodeContext<'b, 'tcx> = &mut *self.ecx;
-        let mut entry_builder = IsolatedEncoder::new(ecx);
+        let mut entry_builder = IsolatedEncoder::new(self.ecx);
         let entry = op(&mut entry_builder, data);
         let entry = entry_builder.lazy(&entry);
-
-        let (fingerprint, ecx) = entry_builder.finish();
-        if let Some(hash) = fingerprint {
-            ecx.metadata_hashes.hashes.push(EncodedMetadataHash {
-                def_index: id.index.as_u32(),
-                hash,
-            });
-        }
 
         self.items.record(id, entry);
     }

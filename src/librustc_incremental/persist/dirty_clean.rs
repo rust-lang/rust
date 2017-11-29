@@ -23,21 +23,6 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 //!
-//! The `#[rustc_metadata_dirty]` and `#[rustc_metadata_clean]` attributes
-//! can be used to check the incremental compilation hash (ICH) values of
-//! metadata exported in rlibs.
-//!
-//! - If a node is marked with `#[rustc_metadata_clean(cfg="rev2")]` we
-//!   check that the metadata hash for that node is the same for "rev2"
-//!   it was for "rev1".
-//! - If a node is marked with `#[rustc_metadata_dirty(cfg="rev2")]` we
-//!   check that the metadata hash for that node is *different* for "rev2"
-//!   than it was for "rev1".
-//!
-//! Note that the metadata-testing attributes must never specify the
-//! first revision. This would lead to a crash since there is no
-//! previous revision to compare things to.
-//!
 
 use std::collections::HashSet;
 use std::iter::FromIterator;
@@ -49,10 +34,9 @@ use rustc::hir::map::Node as HirNode;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit;
-use rustc::ich::{Fingerprint, ATTR_DIRTY, ATTR_CLEAN, ATTR_DIRTY_METADATA,
-                 ATTR_CLEAN_METADATA};
+use rustc::ich::{ATTR_DIRTY, ATTR_CLEAN};
 use syntax::ast::{self, Attribute, NestedMetaItem};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::Span;
 use rustc::ty::TyCtxt;
 
@@ -553,157 +537,6 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_dirty_clean_metadata<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    prev_metadata_hashes: &FxHashMap<DefId, Fingerprint>,
-    current_metadata_hashes: &FxHashMap<DefId, Fingerprint>)
-{
-    if !tcx.sess.opts.debugging_opts.query_dep_graph {
-        return;
-    }
-
-    tcx.dep_graph.with_ignore(||{
-        let krate = tcx.hir.krate();
-        let mut dirty_clean_visitor = DirtyCleanMetadataVisitor {
-            tcx,
-            prev_metadata_hashes,
-            current_metadata_hashes,
-            checked_attrs: FxHashSet(),
-        };
-        intravisit::walk_crate(&mut dirty_clean_visitor, krate);
-
-        let mut all_attrs = FindAllAttrs {
-            tcx,
-            attr_names: vec![ATTR_DIRTY_METADATA, ATTR_CLEAN_METADATA],
-            found_attrs: vec![],
-        };
-        intravisit::walk_crate(&mut all_attrs, krate);
-
-        // Note that we cannot use the existing "unused attribute"-infrastructure
-        // here, since that is running before trans. This is also the reason why
-        // all trans-specific attributes are `Whitelisted` in syntax::feature_gate.
-        all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
-    });
-}
-
-pub struct DirtyCleanMetadataVisitor<'a, 'tcx: 'a, 'm> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    prev_metadata_hashes: &'m FxHashMap<DefId, Fingerprint>,
-    current_metadata_hashes: &'m FxHashMap<DefId, Fingerprint>,
-    checked_attrs: FxHashSet<ast::AttrId>,
-}
-
-impl<'a, 'tcx, 'm> intravisit::Visitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
-
-    fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-        intravisit::NestedVisitorMap::All(&self.tcx.hir)
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
-        self.check_item(item.id, item.span);
-        intravisit::walk_item(self, item);
-    }
-
-    fn visit_variant(&mut self,
-                     variant: &'tcx hir::Variant,
-                     generics: &'tcx hir::Generics,
-                     parent_id: ast::NodeId) {
-        if let Some(e) = variant.node.disr_expr {
-            self.check_item(e.node_id, variant.span);
-        }
-
-        intravisit::walk_variant(self, variant, generics, parent_id);
-    }
-
-    fn visit_variant_data(&mut self,
-                          variant_data: &'tcx hir::VariantData,
-                          _: ast::Name,
-                          _: &'tcx hir::Generics,
-                          _parent_id: ast::NodeId,
-                          span: Span) {
-        if self.tcx.hir.find(variant_data.id()).is_some() {
-            // VariantData that represent structs or tuples don't have a
-            // separate entry in the HIR map and checking them would error,
-            // so only check if this is an enum or union variant.
-            self.check_item(variant_data.id(), span);
-        }
-
-        intravisit::walk_struct_def(self, variant_data);
-    }
-
-    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        self.check_item(item.id, item.span);
-        intravisit::walk_trait_item(self, item);
-    }
-
-    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
-        self.check_item(item.id, item.span);
-        intravisit::walk_impl_item(self, item);
-    }
-
-    fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem) {
-        self.check_item(i.id, i.span);
-        intravisit::walk_foreign_item(self, i);
-    }
-
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
-        self.check_item(s.id, s.span);
-        intravisit::walk_struct_field(self, s);
-    }
-}
-
-impl<'a, 'tcx, 'm> DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
-
-    fn check_item(&mut self, item_id: ast::NodeId, item_span: Span) {
-        let def_id = self.tcx.hir.local_def_id(item_id);
-
-        for attr in self.tcx.get_attrs(def_id).iter() {
-            if attr.check_name(ATTR_DIRTY_METADATA) {
-                if check_config(self.tcx, attr) {
-                    if self.checked_attrs.insert(attr.id) {
-                        self.assert_state(false, def_id, item_span);
-                    }
-                }
-            } else if attr.check_name(ATTR_CLEAN_METADATA) {
-                if check_config(self.tcx, attr) {
-                    if self.checked_attrs.insert(attr.id) {
-                        self.assert_state(true, def_id, item_span);
-                    }
-                }
-            }
-        }
-    }
-
-    fn assert_state(&self, should_be_clean: bool, def_id: DefId, span: Span) {
-        let item_path = self.tcx.item_path_str(def_id);
-        debug!("assert_state({})", item_path);
-
-        if let Some(&prev_hash) = self.prev_metadata_hashes.get(&def_id) {
-            let hashes_are_equal = prev_hash == self.current_metadata_hashes[&def_id];
-
-            if should_be_clean && !hashes_are_equal {
-                self.tcx.sess.span_err(
-                        span,
-                        &format!("Metadata hash of `{}` is dirty, but should be clean",
-                                 item_path));
-            }
-
-            let should_be_dirty = !should_be_clean;
-            if should_be_dirty && hashes_are_equal {
-                self.tcx.sess.span_err(
-                        span,
-                        &format!("Metadata hash of `{}` is clean, but should be dirty",
-                                 item_path));
-            }
-        } else {
-            self.tcx.sess.span_err(
-                        span,
-                        &format!("Could not find previous metadata hash of `{}`",
-                                 item_path));
-        }
-    }
-}
-
 /// Given a `#[rustc_dirty]` or `#[rustc_clean]` attribute, scan
 /// for a `cfg="foo"` attribute and check whether we have a cfg
 /// flag called `foo`.
@@ -758,7 +591,6 @@ fn expect_associated_value(tcx: TyCtxt, item: &NestedMetaItem) -> ast::Name {
         tcx.sess.span_fatal(item.span, &msg);
     }
 }
-
 
 // A visitor that collects all #[rustc_dirty]/#[rustc_clean] attributes from
 // the HIR. It is used to verfiy that we really ran checks for all annotated

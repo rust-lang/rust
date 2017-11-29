@@ -39,7 +39,7 @@ use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::trans::{Linkage, Visibility, Stats};
-use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
+use rustc::middle::cstore::EncodedMetadata;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::ty::maps::Providers;
@@ -602,8 +602,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                             llmod_id: &str,
                             link_meta: &LinkMeta,
                             exported_symbols: &NodeSet)
-                            -> (ContextRef, ModuleRef,
-                                EncodedMetadata, EncodedMetadataHashes) {
+                            -> (ContextRef, ModuleRef, EncodedMetadata) {
     use std::io::Write;
     use flate2::Compression;
     use flate2::write::DeflateEncoder;
@@ -635,13 +634,12 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     if kind == MetadataKind::None {
         return (metadata_llcx,
                 metadata_llmod,
-                EncodedMetadata::new(),
-                EncodedMetadataHashes::new());
+                EncodedMetadata::new());
     }
 
-    let (metadata, hashes) = tcx.encode_metadata(link_meta, exported_symbols);
+    let metadata = tcx.encode_metadata(link_meta, exported_symbols);
     if kind == MetadataKind::Uncompressed {
-        return (metadata_llcx, metadata_llmod, metadata, hashes);
+        return (metadata_llcx, metadata_llmod, metadata);
     }
 
     assert!(kind == MetadataKind::Compressed);
@@ -669,7 +667,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let directive = CString::new(directive).unwrap();
         llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
     }
-    return (metadata_llcx, metadata_llmod, metadata, hashes);
+    return (metadata_llcx, metadata_llmod, metadata);
 }
 
 pub struct ValueIter {
@@ -720,7 +718,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let shared_ccx = SharedCrateContext::new(tcx);
     // Translate the metadata.
     let llmod_id = "metadata";
-    let (metadata_llcx, metadata_llmod, metadata, metadata_incr_hashes) =
+    let (metadata_llcx, metadata_llmod, metadata) =
         time(tcx.sess.time_passes(), "write metadata", || {
             write_metadata(tcx, llmod_id, &link_meta, &exported_symbol_node_ids)
         });
@@ -756,9 +754,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ongoing_translation.submit_pre_translated_module_to_llvm(tcx, metadata_module);
         ongoing_translation.translation_finished(tcx);
 
-        assert_and_save_dep_graph(tcx,
-                                  metadata_incr_hashes,
-                                  link_meta);
+        assert_and_save_dep_graph(tcx);
 
         ongoing_translation.check_for_errors(tcx.sess);
 
@@ -932,24 +928,18 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     ongoing_translation.check_for_errors(tcx.sess);
 
-    assert_and_save_dep_graph(tcx,
-                              metadata_incr_hashes,
-                              link_meta);
+    assert_and_save_dep_graph(tcx);
     ongoing_translation
 }
 
-fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       metadata_incr_hashes: EncodedMetadataHashes,
-                                       link_meta: LinkMeta) {
+fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     time(tcx.sess.time_passes(),
          "assert dep graph",
          || rustc_incremental::assert_dep_graph(tcx));
 
     time(tcx.sess.time_passes(),
          "serialize dep graph",
-         || rustc_incremental::save_dep_graph(tcx,
-                                              &metadata_incr_hashes,
-                                              link_meta.crate_hash));
+         || rustc_incremental::save_dep_graph(tcx));
 }
 
 #[inline(never)] // give this a place in the profiler
