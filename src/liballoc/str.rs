@@ -2110,7 +2110,6 @@ impl str {
     /// [`to_uppercase`]: #method.to_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
-    #[cfg(not(stage0))]
     pub fn to_ascii_uppercase(&self) -> String {
         let mut bytes = self.as_bytes().to_vec();
         bytes.make_ascii_uppercase();
@@ -2141,7 +2140,6 @@ impl str {
     /// [`to_lowercase`]: #method.to_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
-    #[cfg(not(stage0))]
     pub fn to_ascii_lowercase(&self) -> String {
         let mut bytes = self.as_bytes().to_vec();
         bytes.make_ascii_lowercase();
@@ -2163,7 +2161,6 @@ impl str {
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
     #[inline]
-    #[cfg(not(stage0))]
     pub fn eq_ignore_ascii_case(&self, other: &str) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
     }
@@ -2178,7 +2175,6 @@ impl str {
     ///
     /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
-    #[cfg(not(stage0))]
     pub fn make_ascii_uppercase(&mut self) {
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_uppercase()
@@ -2194,7 +2190,6 @@ impl str {
     ///
     /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
-    #[cfg(not(stage0))]
     pub fn make_ascii_lowercase(&mut self) {
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()

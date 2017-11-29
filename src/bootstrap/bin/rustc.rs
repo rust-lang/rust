@@ -175,7 +175,7 @@ fn main() {
         if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
             cmd.arg("-C").arg(format!("codegen-units={}", s));
         }
-        if stage != "0" && env::var("RUSTC_THINLTO").is_ok() {
+        if env::var("RUSTC_THINLTO").is_ok() {
             cmd.arg("-Ccodegen-units=16").arg("-Zthinlto");
         }
 

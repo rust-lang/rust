@@ -38,8 +38,6 @@ use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit::{self, FnKind};
 use hir;
 use session::Session;
-#[cfg(stage0)]
-use std::ascii::AsciiExt;
 use std::hash;
 use syntax::ast;
 use syntax::codemap::MultiSpan;
