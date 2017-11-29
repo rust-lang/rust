@@ -29,15 +29,14 @@ use std::ops::Add;
 
 trait Itarator: Iterator {
     type Iten;
-    // Bug: Even though it's unambiguos, using Self::Iten dosen't work here.
-    // probably can be fixed in fn associated_path_def_to_ty.
-    fn foo<T:Default=<Self as Itarator>::Iten>(&self) -> T {
+
+    fn foo<T:Default=Self::Iten>(&self) -> T {
         T::default()
     }
 
-    fn suma<S=<<Self as Itarator>::Iten as Add>::Output>(self) -> S
+    fn suma<S=<Self::Iten as Add>::Output>(self) -> S
         where Self: Sized,
-              S: Sum<<Self as Iterator>::Item>,
+              S: Sum<Self::Item>,
     {
         Sum::sum(self)
     }
@@ -56,7 +55,7 @@ fn main() {
     {
         let v = x.iter();
         // Bug: if we put a cast such as `as u64`, inference fails.
-        //The usual guess is that we propagate the origin but not the default of the inference var.
+        // The guess is that we propagate the origin but not the default of the inference var.
         v.suma();
     }
     x.clone().into_iter().suma();
