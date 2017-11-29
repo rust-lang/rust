@@ -206,8 +206,7 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
             End(Link(_, _)) => in_link = None,
             Start(_tag) | End(_tag) => (),         // We don't care about other tags
             Html(_html) | InlineHtml(_html) => (), // HTML is weird, just ignore it
-            SoftBreak => (),
-            HardBreak => (),
+            SoftBreak | HardBreak => (),
             FootnoteReference(text) | Text(text) => {
                 if Some(&text) == in_link.as_ref() {
                     // Probably a link of the form `<http://example.com>`

@@ -305,6 +305,14 @@ fn match_wild_err_arm() {
         (Ok(_), Some(x)) => println!("ok {}", x),
         _ => println!("err")
     }
+
+    // because of a bug, no warning was generated for this case before #2251
+    match x {
+        Ok(_tmp) => println!("ok"),
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => {unreachable!();}
+    }
 }
 
 fn main() {

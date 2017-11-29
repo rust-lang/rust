@@ -325,10 +325,13 @@ where
 
     for expr in exprs {
         match map.entry(hash(expr)) {
-            Entry::Occupied(o) => for o in o.get() {
-                if eq(o, expr) {
-                    return Some((o, expr));
+            Entry::Occupied(mut o) => {
+                for o in o.get() {
+                    if eq(o, expr) {
+                        return Some((o, expr));
+                    }
                 }
+                o.get_mut().push(expr);
             },
             Entry::Vacant(v) => {
                 v.insert(vec![expr]);
