@@ -1162,6 +1162,7 @@ for hir::def_id::DefIndex {
 impl_stable_hash_for!(struct hir::def::Export {
     ident,
     def,
+    vis,
     span
 });
 

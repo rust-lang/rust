@@ -305,11 +305,11 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                 let mut add_child = |bfs_queue: &mut VecDeque<_>,
                                      child: &def::Export,
                                      parent: DefId| {
-                    let child = child.def.def_id();
-
-                    if tcx.visibility(child) != ty::Visibility::Public {
+                    if child.vis != ty::Visibility::Public {
                         return;
                     }
+
+                    let child = child.def.def_id();
 
                     match visible_parent_map.entry(child) {
                         Entry::Occupied(mut entry) => {

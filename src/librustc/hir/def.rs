@@ -14,6 +14,7 @@ use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax_pos::Span;
 use hir;
+use ty;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum CtorKind {
@@ -126,6 +127,9 @@ pub struct Export {
     pub def: Def,
     /// The span of the target definition.
     pub span: Span,
+    /// The visibility of the export.
+    /// We include non-`pub` exports for hygienic macros that get used from extern crates.
+    pub vis: ty::Visibility,
 }
 
 impl CtorKind {

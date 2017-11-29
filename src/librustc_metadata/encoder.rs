@@ -506,9 +506,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         let data = ModData {
             reexports: match tcx.module_exports(def_id) {
-                Some(ref exports) if *vis == hir::Public => {
-                    self.lazy_seq_from_slice(exports.as_slice())
-                }
+                Some(ref exports) => self.lazy_seq_from_slice(exports.as_slice()),
                 _ => LazySeq::empty(),
             },
         };
