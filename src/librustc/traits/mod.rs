@@ -282,7 +282,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[derive(Clone)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -327,14 +327,14 @@ pub enum Vtable<'tcx, N> {
 /// is `Obligation`, as one might expect. During trans, however, this
 /// is `()`, because trans only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableGeneratorData<'tcx, N> {
     pub closure_def_id: DefId,
     pub substs: ty::ClosureSubsts<'tcx>,
@@ -343,7 +343,7 @@ pub struct VtableGeneratorData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableClosureData<'tcx, N> {
     pub closure_def_id: DefId,
     pub substs: ty::ClosureSubsts<'tcx>,
@@ -352,20 +352,20 @@ pub struct VtableClosureData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct VtableAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>
 }
 
-#[derive(Clone)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct VtableBuiltinData<N> {
     pub nested: Vec<N>
 }
 
 /// A vtable for some object-safe trait `Foo` automatically derived
 /// for the object type `Foo`.
-#[derive(PartialEq,Eq,Clone)]
+#[derive(PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
 pub struct VtableObjectData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
@@ -378,7 +378,7 @@ pub struct VtableObjectData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>
