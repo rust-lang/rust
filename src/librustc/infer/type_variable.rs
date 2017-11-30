@@ -70,7 +70,8 @@ pub enum TypeVariableOrigin {
     Generalized(ty::TyVid),
 }
 
-pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableOrigin>;
+pub type TypeVariableMap<'tcx> = FxHashMap<ty::TyVid, (TypeVariableOrigin,
+                                                       Option<UserDefault<'tcx>>)>;
 
 struct TypeVariableData<'tcx> {
     value: TypeVariableValue<'tcx>,
@@ -196,7 +197,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                    diverging: bool,
                    origin: TypeVariableOrigin,
                    default: Option<UserDefault<'tcx>>,) -> ty::TyVid {
-        debug!("new_var(diverging={:?}, origin={:?})", diverging, origin);
+        debug!("new_var(diverging={:?}, origin={:?} default={:?})", diverging, origin, default);
         self.eq_relations.new_key(());
         self.sub_relations.new_key(());
 
@@ -314,7 +315,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// ty-variables created during the snapshot, and the values
     /// `{V2}` are the root variables that they were unified with,
     /// along with their origin.
-    pub fn types_created_since_snapshot(&mut self, s: &Snapshot) -> TypeVariableMap {
+    pub fn types_created_since_snapshot(&mut self, s: &Snapshot) -> TypeVariableMap<'tcx> {
         let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
 
         actions_since_snapshot
@@ -325,7 +326,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
             })
             .map(|vid| {
                 let origin = self.values.get(vid.index as usize).origin.clone();
-                (vid, origin)
+                let default = self.default(vid).clone().as_user();
+                (vid, (origin, default))
             })
             .collect()
     }

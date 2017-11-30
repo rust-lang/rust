@@ -111,7 +111,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 pub struct RegionFudger<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    type_variables: &'a TypeVariableMap,
+    type_variables: &'a TypeVariableMap<'tcx>,
     region_vars: &'a Vec<ty::RegionVid>,
     origin: &'a RegionVariableOrigin,
 }
@@ -135,11 +135,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
                         ty
                     }
 
-                    Some(&origin) => {
+                    Some(&(origin, ref default)) => {
                         // This variable was created during the
                         // fudging. Recreate it with a fresh variable
                         // here.
-                        self.infcx.next_ty_var(origin)
+                        self.infcx.next_ty_var_with_default(default.clone(), origin)
                     }
                 }
             }

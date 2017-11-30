@@ -29,10 +29,7 @@ fn main() {
     let x = X(0);
     let y = x.b();
     foo(y);
-    // Uncommenting the following line makes the fallback fail.
-    // Probably we are creating a new inference var,
-    // that is carrying over the origin but not the value of the default.
-    // x.0;
+    x.0;
 }
 
 fn foo<T = X>(a: T) -> T {

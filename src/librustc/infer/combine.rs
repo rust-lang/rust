@@ -46,7 +46,6 @@ use ty::error::TypeError;
 use ty::relate::{self, Relate, RelateResult, TypeRelation};
 use ty::subst::Substs;
 use traits::{Obligation, PredicateObligations};
-use infer::type_variable::Default;
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -425,12 +424,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                             }
 
                             let origin = variables.origin(vid);
-                            let orig_default = variables.default(vid).clone();
-                            let default = if let Default::User(user_default) = orig_default {
-                                Some(user_default)
-                            } else {
-                                None
-                            };
+                            let default = variables.default(vid).as_user().clone();
                             let new_var_id = variables.new_var(false, origin, default);
                             let u = self.tcx().mk_var(new_var_id);
                             debug!("generalize: replacing original vid={:?} with new={:?}",
