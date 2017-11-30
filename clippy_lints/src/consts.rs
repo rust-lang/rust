@@ -74,9 +74,8 @@ impl PartialEq for Constant {
                 }
             },
             (&Constant::Bool(l), &Constant::Bool(r)) => l == r,
-            (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l == r,
+            (&Constant::Vec(ref l), &Constant::Vec(ref r)) | (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => l == r,
             (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
-            (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => l == r,
             _ => false, // TODO: Are there inter-type equalities?
         }
     }

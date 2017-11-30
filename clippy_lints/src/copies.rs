@@ -203,14 +203,10 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
                     db.span_note(i.body.span, "same as this");
 
                     // Note: this does not use `span_suggestion` on purpose: there is no clean way
-                    // to
-                    // remove the other arm. Building a span and suggest to replace it to "" makes
-                    // an
-                    // even more confusing error message. Also in order not to make up a span for
-                    // the
-                    // whole pattern, the suggestion is only shown when there is only one pattern.
-                    // The
-                    // user should know about `|` if they are already using it…
+                    // to remove the other arm. Building a span and suggest to replace it to ""
+                    // makes an even more confusing error message. Also in order not to make up a
+                    // span for the whole pattern, the suggestion is only shown when there is only
+                    // one pattern. The user should know about `|` if they are already using it…
 
                     if i.pats.len() == 1 && j.pats.len() == 1 {
                         let lhs = snippet(cx, i.pats[0].span, "<pat1>");
@@ -329,10 +325,13 @@ where
 
     for expr in exprs {
         match map.entry(hash(expr)) {
-            Entry::Occupied(o) => for o in o.get() {
-                if eq(o, expr) {
-                    return Some((o, expr));
+            Entry::Occupied(mut o) => {
+                for o in o.get() {
+                    if eq(o, expr) {
+                        return Some((o, expr));
+                    }
                 }
+                o.get_mut().push(expr);
             },
             Entry::Vacant(v) => {
                 v.insert(vec![expr]);

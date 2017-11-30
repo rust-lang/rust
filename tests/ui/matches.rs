@@ -277,6 +277,42 @@ fn match_wild_err_arm() {
         Ok(_) => println!("ok"),
         Err(_) => {unreachable!();}
     }
+
+    // no warning because of the guard
+    match x {
+        Ok(x) if x*x == 64 => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => println!("err")
+    }
+
+    // this is a current false positive, see #1996
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(x) if x*x == 64 => println!("ok 64"),
+        Ok(_) => println!("ok"),
+        Err(_) => println!("err")
+    }
+
+    match (x, Some(1i32)) {
+        (Ok(x), Some(_)) => println!("ok {}", x),
+        (Ok(_), Some(x)) => println!("ok {}", x),
+        _ => println!("err")
+    }
+
+    // no warning because of the different types for x
+    match (x, Some(1.0f64)) {
+        (Ok(x), Some(_)) => println!("ok {}", x),
+        (Ok(_), Some(x)) => println!("ok {}", x),
+        _ => println!("err")
+    }
+
+    // because of a bug, no warning was generated for this case before #2251
+    match x {
+        Ok(_tmp) => println!("ok"),
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => {unreachable!();}
+    }
 }
 
 fn main() {
