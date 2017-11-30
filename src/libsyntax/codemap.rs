@@ -105,7 +105,7 @@ impl FileLoader for RealFileLoader {
 // This is a FileMap identifier that is used to correlate FileMaps between
 // subsequent compilation sessions (which is something we need to do during
 // incremental compilation).
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct StableFilemapId(u128);
 
 impl StableFilemapId {

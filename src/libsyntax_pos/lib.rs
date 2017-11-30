@@ -931,6 +931,11 @@ impl FileMap {
             (lines[line_index], lines[line_index + 1])
         }
     }
+
+    #[inline]
+    pub fn contains(&self, byte_pos: BytePos) -> bool {
+        byte_pos >= self.start_pos && byte_pos <= self.end_pos
+    }
 }
 
 /// Remove utf-8 BOM if any.
