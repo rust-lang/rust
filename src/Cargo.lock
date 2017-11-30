@@ -282,11 +282,11 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.171"
+version = "0.0.174"
 dependencies = [
  "cargo_metadata 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy-mini-macro-test 0.1.0",
- "clippy_lints 0.0.171",
+ "clippy_lints 0.0.174",
  "compiletest_rs 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "duct 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -301,7 +301,7 @@ version = "0.1.0"
 
 [[package]]
 name = "clippy_lints"
-version = "0.0.171"
+version = "0.0.174"
 dependencies = [
  "if_chain 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
