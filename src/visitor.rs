@@ -328,7 +328,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match item.node {
-            ast::ItemKind::Use(ref vp) => self.format_import(item, vp),
+            ast::ItemKind::Use(ref tree) => self.format_import(item, tree),
             ast::ItemKind::Impl(..) => {
                 let snippet = self.snippet(item.span);
                 let where_span_end = snippet
