@@ -2462,7 +2462,6 @@ fn rewrite_trait_bounds(
     bounds: &[ast::TyParamBound],
     shape: Shape,
 ) -> Option<String> {
-
     if bounds.is_empty() {
         return Some(String::new());
     }
