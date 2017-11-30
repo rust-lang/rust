@@ -479,7 +479,17 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
         separator: ",",
         trailing_separator: if trailing_comma {
             SeparatorTactic::Always
-        } else if context.inside_macro || context.config.indent_style() == IndentStyle::Visual {
+        } else if context.inside_macro && !exprs.is_empty() {
+            let ends_with_bracket = context.snippet(span).ends_with(']');
+            let bracket_offset = if ends_with_bracket { 1 } else { 0 };
+            let snippet = context.snippet(mk_sp(span.lo(), span.hi() - BytePos(bracket_offset)));
+            let last_char_index = snippet.rfind(|c: char| !c.is_whitespace())?;
+            if &snippet[last_char_index..last_char_index + 1] == "," {
+                SeparatorTactic::Always
+            } else {
+                SeparatorTactic::Never
+            }
+        } else if context.config.indent_style() == IndentStyle::Visual {
             SeparatorTactic::Never
         } else {
             SeparatorTactic::Vertical
