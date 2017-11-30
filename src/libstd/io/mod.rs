@@ -367,7 +367,7 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
 
-    let size_hint = r.size_hint();
+    let size_hint = r.size_hint()?;
     if size_hint > 0 {
         unsafe {
             g.buf.reserve(size_hint.saturating_add(1));
@@ -564,8 +564,8 @@ pub trait Read {
     /// [`read_to_string`]: #method.read_to_string
     #[unstable(feature = "read_size_hint", issue = /* FIXME */ "0")]
     #[inline]
-    fn size_hint(&self) -> usize {
-        0
+    fn size_hint(&self) -> Result<usize> {
+        Ok(0)
     }
 
     /// Read all bytes until EOF in this source, placing them into `buf`.
@@ -1744,11 +1744,11 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         self.second.read(buf)
     }
 
-    fn size_hint(&self) -> usize {
+    fn size_hint(&self) -> Result<usize> {
         if self.done_first {
             self.second.size_hint()
         } else {
-            self.first.size_hint().saturating_add(self.second.size_hint())
+            Ok(self.first.size_hint()?.saturating_add(self.second.size_hint()?))
         }
     }
 
@@ -1950,11 +1950,11 @@ impl<T: Read> Read for Take<T> {
         Ok(n)
     }
 
-    fn size_hint(&self) -> usize {
+    fn size_hint(&self) -> Result<usize> {
         if self.limit == 0 {
-            0
+            Ok(0)
         } else {
-            cmp::min(self.limit, self.inner.size_hint() as u64) as usize
+            Ok(cmp::min(self.limit, self.inner.size_hint()? as u64) as usize)
         }
     }
 

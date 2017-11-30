@@ -449,11 +449,8 @@ impl Read for File {
         self.inner.read(buf)
     }
 
-    fn size_hint(&self) -> usize {
-        match self.metadata() {
-            Ok(meta) => meta.len() as usize,
-            Err(_) => 0,
-        }
+    fn size_hint(&self) -> io::Result<usize> {
+        Ok(self.metadata()?.len() as usize)
     }
 
     #[inline]
@@ -480,7 +477,7 @@ impl<'a> Read for &'a File {
         self.inner.read(buf)
     }
 
-    fn size_hint(&self) -> usize {
+    fn size_hint(&self) -> io::Result<usize> {
         (**self).size_hint()
     }
 

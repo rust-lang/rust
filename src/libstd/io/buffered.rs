@@ -212,9 +212,9 @@ impl<R: Read> Read for BufReader<R> {
     }
 
     #[inline]
-    fn size_hint(&self) -> usize {
+    fn size_hint(&self) -> io::Result<usize> {
         let buffered_len = self.cap - self.pos;
-        buffered_len.saturating_add(self.inner.size_hint())
+        Ok(buffered_len.saturating_add(self.inner.size_hint()?))
     }
 
     // we can't skip unconditionally because of the large buffer case in read.

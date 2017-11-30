@@ -24,7 +24,7 @@ impl<'a, R: Read + ?Sized> Read for &'a mut R {
     }
 
     #[inline]
-    fn size_hint(&self) -> usize {
+    fn size_hint(&self) -> io::Result<usize> {
         (**self).size_hint()
     }
 
@@ -98,7 +98,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
-    fn size_hint(&self) -> usize {
+    fn size_hint(&self) -> io::Result<usize> {
         (**self).size_hint()
     }
 
@@ -192,8 +192,8 @@ impl<'a> Read for &'a [u8] {
     }
 
     #[inline]
-    fn size_hint(&self) -> usize {
-        self.len()
+    fn size_hint(&self) -> io::Result<usize> {
+        Ok(self.len())
     }
 
     #[inline]
