@@ -12,8 +12,11 @@
 
 fn foo(x: usize, y: !, z: usize) { }
 
+#[deny(coerce_never)]
 fn cast_a() {
     let y = {return; 22} as !;
+    //~^ ERROR cannot coerce `i32` to !
+    //~| hard error
 }
 
 fn cast_b() {
