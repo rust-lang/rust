@@ -1630,7 +1630,7 @@ impl<T> [T] {
 #[cfg(not(test))]
 impl [u8] {
     /// Checks if all bytes in this slice are within the ASCII range.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn is_ascii(&self) -> bool {
         self.iter().all(|b| b.is_ascii())
@@ -1645,7 +1645,7 @@ impl [u8] {
     /// To uppercase the value in-place, use [`make_ascii_uppercase`].
     ///
     /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Vec<u8> {
         let mut me = self.to_vec();
@@ -1662,7 +1662,7 @@ impl [u8] {
     /// To lowercase the value in-place, use [`make_ascii_lowercase`].
     ///
     /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Vec<u8> {
         let mut me = self.to_vec();
@@ -1674,7 +1674,7 @@ impl [u8] {
     ///
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporaries.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
         self.len() == other.len() &&
@@ -1692,7 +1692,7 @@ impl [u8] {
     /// [`to_ascii_uppercase`].
     ///
     /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         for byte in self {
@@ -1709,7 +1709,7 @@ impl [u8] {
     /// [`to_ascii_lowercase`].
     ///
     /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         for byte in self {

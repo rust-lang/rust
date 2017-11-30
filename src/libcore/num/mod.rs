@@ -2286,7 +2286,7 @@ impl u8 {
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn is_ascii(&self) -> bool {
         *self & 128 == 0
@@ -2308,7 +2308,7 @@ impl u8 {
     /// ```
     ///
     /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> u8 {
         ASCII_UPPERCASE_MAP[*self as usize]
@@ -2330,7 +2330,7 @@ impl u8 {
     /// ```
     ///
     /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> u8 {
         ASCII_LOWERCASE_MAP[*self as usize]
@@ -2348,7 +2348,7 @@ impl u8 {
     ///
     /// assert!(lowercase_a.eq_ignore_ascii_case(&uppercase_a));
     /// ```
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
@@ -2373,7 +2373,7 @@ impl u8 {
     /// ```
     ///
     /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         *self = self.to_ascii_uppercase();
@@ -2398,7 +2398,7 @@ impl u8 {
     /// ```
     ///
     /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         *self = self.to_ascii_lowercase();
