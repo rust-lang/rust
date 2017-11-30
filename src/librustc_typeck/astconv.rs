@@ -244,20 +244,30 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return ty;
             }
 
+            let inferred_param = || if !default_needs_object_self(def) {
+                                        self.ty_infer_for_def(def, substs, span)
+                                    } else {
+                                        self.ty_infer(span)
+                                    };
+
             let i = i - self_ty.is_some() as usize - decl_generics.regions.len();
             if i < num_types_provided {
                 // A provided type parameter.
-                self.ast_ty_to_ty(&parameters.types[i])
+                let provided = &parameters.types[i];
+                if provided.node != hir::Ty_::TyInfer {
+                    self.ast_ty_to_ty(provided)
+                } else {
+                    let inferred = inferred_param();
+                    self.record_ty(provided.hir_id, inferred, provided.span);
+                    inferred
+                }
             } else if infer_types {
                 // No type parameters were provided, we can infer all.
-                let ty_var = if !default_needs_object_self(def) {
-                    self.ty_infer_for_def(def, substs, span)
-                } else {
-                    self.ty_infer(span)
-                };
-                ty_var
+                inferred_param()
             } else if def.has_default {
                 // No type parameter provided, but a default exists.
+                // FIXME(leodasvacas):
+                // For fns and impls, feature gate under `default_type_parameter_fallback`.
 
                 // If we are converting an object type, then the
                 // `Self` parameter is unknown. However, some of the

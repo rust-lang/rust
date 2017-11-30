@@ -10,15 +10,13 @@
 
 #![feature(default_type_parameter_fallback)]
 
-struct Foo<A>(A);
-
-impl<A:Default=i32> Foo<A> {
-    fn new() -> Foo<A> {
-        Foo(A::default())
-    }
+enum Opt<T=String> {
+    Som(T),
+    Non,
 }
 
+struct Foo<A=String>(Opt<A>);
+
 fn main() {
-    let _ = Foo::new();
-    Foo::<_>::new();
+    let _: Foo<_> = Foo(Opt::Non);
 }

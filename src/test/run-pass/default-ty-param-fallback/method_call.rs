@@ -19,9 +19,6 @@ impl Foo {
 }
 
 fn main() {
-    // Bug: Replacing with Foo.method::<_>() fails.
-    // Suspicion: astconv and tycheck are considering this a "A provided type parameter.",
-    // resulting in type_var_for_def not being called and a TypeInference var being created
-    // rather than a TypeParameterDefinition var.
     let _ = Foo.method();
+    Foo.method::<_>();
 }

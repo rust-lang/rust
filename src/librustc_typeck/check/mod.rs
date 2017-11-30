@@ -4878,9 +4878,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if let Some(ast_ty) = types.get(i) {
                 // A provided type parameter.
-                self.to_ty(ast_ty)
+                if ast_ty.node != hir::Ty_::TyInfer {
+                    self.to_ty(ast_ty)
+                } else {
+                    let inferred = self.type_var_for_def(span, def, substs);
+                    self.record_ty(ast_ty.hir_id, inferred, ast_ty.span);
+                    inferred
+                }
             } else if !infer_types && def.has_default {
                 // No type parameter provided, but a default exists.
+                // FIXME(leodasvacas):
+                // For fns and impls, feature gate under `default_type_parameter_fallback`.
                 let default = self.tcx.type_of(def.def_id);
                 self.normalize_ty(
                     span,
