@@ -75,7 +75,6 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
 use errors::DiagnosticBuilder;
-use syntax::abi;
 use syntax::feature_gate;
 use syntax::ptr::P;
 use syntax_pos;
@@ -670,22 +669,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 // to
                 //     `fn(arg0,arg1,...) -> _`
                 let sig = self.closure_sig(def_id_a, substs_a);
-                let converted_sig = sig.map_bound(|s| {
-                    let params_iter = match s.inputs()[0].sty {
-                        ty::TyTuple(params, _) => {
-                            params.into_iter().cloned()
-                        }
-                        _ => bug!(),
-                    };
-                    self.tcx.mk_fn_sig(
-                        params_iter,
-                        s.output(),
-                        s.variadic,
-                        hir::Unsafety::Normal,
-                        abi::Abi::Rust
-                    )
-                });
-                let pointer_ty = self.tcx.mk_fn_ptr(converted_sig);
+                let pointer_ty = self.tcx.coerce_closure_fn_ty(sig);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})",
                        a, b, pointer_ty);
                 self.unify_and(pointer_ty, b, simple(Adjust::ClosureFnPointer))
