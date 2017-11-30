@@ -73,6 +73,13 @@ impl<'a> StringReader<'a> {
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
         unwrap_or!(self.override_span, Span::new(lo, hi, NO_EXPANSION))
     }
+    fn mk_ident(&self, string: &str) -> Ident {
+        let mut ident = Ident::from_str(string);
+        if let Some(span) = self.override_span {
+            ident.ctxt = span.ctxt();
+        }
+        ident
+    }
 
     fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
         let res = self.try_next_token();
@@ -1103,7 +1110,7 @@ impl<'a> StringReader<'a> {
                     token::Underscore
                 } else {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
-                    token::Ident(Ident::from_str(string))
+                    token::Ident(self.mk_ident(string))
                 }
             }));
         }
@@ -1286,13 +1293,13 @@ impl<'a> StringReader<'a> {
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
                     let ident = self.with_str_from(start, |lifetime_name| {
-                        Ident::from_str(&format!("'{}", lifetime_name))
+                        self.mk_ident(&format!("'{}", lifetime_name))
                     });
 
                     // Conjure up a "keyword checking ident" to make sure that
                     // the lifetime name is not a keyword.
                     let keyword_checking_ident = self.with_str_from(start, |lifetime_name| {
-                        Ident::from_str(lifetime_name)
+                        self.mk_ident(lifetime_name)
                     });
                     let keyword_checking_token = &token::Ident(keyword_checking_ident);
                     let last_bpos = self.pos;
