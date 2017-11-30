@@ -1496,6 +1496,7 @@ pub struct StaticParts<'a> {
     ty: &'a ast::Ty,
     mutability: ast::Mutability,
     expr_opt: Option<&'a ptr::P<ast::Expr>>,
+    defaultness: Option<ast::Defaultness>,
     span: Span,
 }
 
@@ -1515,6 +1516,7 @@ impl<'a> StaticParts<'a> {
             ty: ty,
             mutability: mutability,
             expr_opt: Some(expr),
+            defaultness: None,
             span: item.span,
         }
     }
@@ -1531,6 +1533,7 @@ impl<'a> StaticParts<'a> {
             ty: ty,
             mutability: ast::Mutability::Immutable,
             expr_opt: expr_opt.as_ref(),
+            defaultness: None,
             span: ti.span,
         }
     }
@@ -1547,6 +1550,7 @@ impl<'a> StaticParts<'a> {
             ty: ty,
             mutability: ast::Mutability::Immutable,
             expr_opt: Some(expr),
+            defaultness: Some(ii.defaultness),
             span: ii.span,
         }
     }
@@ -1562,8 +1566,9 @@ fn rewrite_static(
         context.config.space_after_colon(),
     );
     let prefix = format!(
-        "{}{} {}{}{}",
+        "{}{}{} {}{}{}",
         format_visibility(static_parts.vis),
+        static_parts.defaultness.map_or("", format_defaultness),
         static_parts.prefix,
         format_mutability(static_parts.mutability),
         static_parts.ident,

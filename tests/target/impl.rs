@@ -36,3 +36,8 @@ where
 default impl Trait for X {}
 default unsafe impl Trait for Y {}
 pub default unsafe impl Trait for Z {}
+
+// #2212
+impl ConstWithDefault {
+    default const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+}
