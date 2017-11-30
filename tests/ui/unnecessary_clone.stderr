@@ -54,9 +54,17 @@ error: using `clone` on a double-reference; this will copy the reference instead
   --> $DIR/unnecessary_clone.rs:49:22
    |
 49 |     let z: &Vec<_> = y.clone();
-   |                      ^^^^^^^^^ help: try dereferencing it: `(*y).clone()`
+   |                      ^^^^^^^^^
    |
    = note: `-D clone-double-ref` implied by `-D warnings`
+help: try dereferencing it
+   |
+49 |     let z: &Vec<_> = &(*y).clone();
+   |                      ^^^^^^^^^^^^^
+help: or try being explicit about what type to clone
+   |
+49 |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
   --> $DIR/unnecessary_clone.rs:56:27

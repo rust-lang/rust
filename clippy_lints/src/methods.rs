@@ -7,6 +7,7 @@ use rustc::ty::subst::Substs;
 use rustc_const_eval::ConstContext;
 use std::borrow::Cow;
 use std::fmt;
+use std::iter;
 use syntax::ast;
 use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_self, is_self_ty,
@@ -944,7 +945,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_ty: Ty) {
     let ty = cx.tables.expr_ty(expr);
     if let ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) = arg_ty.sty {
-        if let ty::TyRef(..) = inner.sty {
+        if let ty::TyRef(_, ty::TypeAndMut { ty: innermost, .. }) = inner.sty {
             span_lint_and_then(
                 cx,
                 CLONE_DOUBLE_REF,
@@ -952,7 +953,17 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
                 "using `clone` on a double-reference; \
                  this will copy the reference instead of cloning the inner type",
                 |db| if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
-                    db.span_suggestion(expr.span, "try dereferencing it", format!("({}).clone()", snip.deref()));
+                    let mut ty = innermost;
+                    let mut n = 0;
+                    while let ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) = ty.sty {
+                        ty = inner;
+                        n += 1;
+                    }
+                    let refs: String = iter::repeat('&').take(n + 1).collect();
+                    let derefs: String = iter::repeat('*').take(n).collect();
+                    let explicit = format!("{}{}::clone({})", refs, ty, snip);
+                    db.span_suggestion(expr.span, "try dereferencing it", format!("{}({}{}).clone()", refs, derefs, snip.deref()));
+                    db.span_suggestion(expr.span, "or try being explicit about what type to clone", explicit);
                 },
             );
             return; // don't report clone_on_copy
@@ -960,13 +971,40 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
     }
 
     if is_copy(cx, ty) {
-        span_lint_and_then(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type", |db| {
-            if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
-                if let ty::TyRef(..) = cx.tables.expr_ty(arg).sty {
-                    db.span_suggestion(expr.span, "try dereferencing it", format!("{}", snip.deref()));
-                } else {
-                    db.span_suggestion(expr.span, "try removing the `clone` call", format!("{}", snip));
+        let snip;
+        if let Some(snippet) = sugg::Sugg::hir_opt(cx, arg) {
+            if let ty::TyRef(..) = cx.tables.expr_ty(arg).sty {
+                let parent = cx.tcx.hir.get_parent_node(expr.id);
+                match cx.tcx.hir.get(parent) {
+                    hir::map::NodeExpr(parent) => match parent.node {
+                        // &*x is a nop, &x.clone() is not
+                        hir::ExprAddrOf(..) |
+                        // (*x).func() is useless, x.clone().func() can work in case func borrows mutably
+                        hir::ExprMethodCall(..) => return,
+                        _ => {},
+                    }
+                    hir::map::NodeStmt(stmt) => {
+                        if let hir::StmtDecl(ref decl, _) = stmt.node {
+                            if let hir::DeclLocal(ref loc) = decl.node {
+                                if let hir::PatKind::Ref(..) = loc.pat.node {
+                                    // let ref y = *x borrows x, let ref y = x.clone() does not
+                                    return;
+                                }
+                            }
+                        }
+                    },
+                    _ => {},
                 }
+                snip = Some(("try dereferencing it", format!("{}", snippet.deref())));
+            } else {
+                snip = Some(("try removing the `clone` call", format!("{}", snippet)));
+            }
+        } else {
+            snip = None;
+        }
+        span_lint_and_then(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type", |db| {
+            if let Some((text, snip)) = snip {
+                db.span_suggestion(expr.span, text, snip);
             }
         });
     }
