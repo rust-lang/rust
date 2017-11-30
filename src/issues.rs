@@ -16,8 +16,8 @@ use std::fmt;
 
 pub use config::ReportTactic;
 
-const TO_DO_CHARS: &'static [char] = &['T', 'O', 'D', 'O'];
-const FIX_ME_CHARS: &'static [char] = &['F', 'I', 'X', 'M', 'E'];
+const TO_DO_CHARS: &[char] = &['T', 'O', 'D', 'O'];
+const FIX_ME_CHARS: &[char] = &['F', 'I', 'X', 'M', 'E'];
 
 // Enabled implementation detail is here because it is
 // irrelevant outside the issues module

@@ -437,7 +437,7 @@ where
 
             let mut formatted_comment = rewrite_post_comment(&mut item_max_width)?;
 
-            if !starts_with_newline(&comment) {
+            if !starts_with_newline(comment) {
                 let mut comment_alignment =
                     post_comment_alignment(item_max_width, inner_item.len());
                 if first_line_width(&formatted_comment) + last_line_width(&result)
@@ -457,7 +457,7 @@ where
                 }
             } else {
                 result.push('\n');
-                result.push_str(&indent_str);
+                result.push_str(indent_str);
             }
             if formatted_comment.contains('\n') {
                 item_max_width = None;
@@ -594,7 +594,7 @@ where
                     let mut block_open_index = post_snippet.find("/*");
                     // check if it really is a block comment (and not `//*` or a nested comment)
                     if let Some(i) = block_open_index {
-                        match post_snippet.find("/") {
+                        match post_snippet.find('/') {
                             Some(j) if j < i => block_open_index = None,
                             _ if i > 0 && &post_snippet[i - 1..i] == "/" => block_open_index = None,
                             _ => (),
@@ -620,15 +620,13 @@ where
                             (_, Some(j)) if j > separator_index => j + 1,
                             _ => post_snippet.len(),
                         }
-                    } else {
+                    } else if let Some(newline_index) = newline_index {
                         // Match arms may not have trailing comma. In any case, for match arms,
                         // we will assume that the post comment belongs to the next arm if they
                         // do not end with trailing comma.
-                        if let Some(newline_index) = newline_index {
-                            newline_index + 1
-                        } else {
-                            0
-                        }
+                        newline_index + 1
+                    } else {
+                        0
                     }
                 }
                 None => post_snippet

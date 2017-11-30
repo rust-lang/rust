@@ -380,7 +380,7 @@ where
         FunctionRetTy::Default(..) => String::new(),
     };
 
-    let extendable = (!list_str.contains('\n') || list_str.is_empty()) && !output.contains("\n");
+    let extendable = (!list_str.contains('\n') || list_str.is_empty()) && !output.contains('\n');
     let args = wrap_args_with_parens(
         context,
         &list_str,
