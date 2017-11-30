@@ -17,9 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu
-ENV SCRIPT python2.7 ../x.py --no-fail-fast \
-  src/tools/rls \
-  src/tools/rustfmt \
-  src/tools/miri \
-  src/tools/clippy
+COPY x86_64-gnu-tools/checktools.sh /tmp/
+
+ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu --save-toolstates=/tmp/toolstates.json
+ENV SCRIPT /tmp/checktools.sh ../x.py /tmp/toolstates.json
