@@ -1196,6 +1196,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
+                    CastKind::ClosureFnPointer => {
+                        let sig = match op.ty(mir, tcx).sty {
+                            ty::TyClosure(def_id, substs) => {
+                                substs.closure_sig_ty(def_id, tcx).fn_sig(tcx)
+                            }
+                            _ => bug!(),
+                        };
+                        let ty_fn_ptr_from = tcx.coerce_closure_fn_ty(sig);
+
+                        if let Err(terr) = self.eq_types(ty_fn_ptr_from, ty, location.at_self()) {
+                            span_mirbug!(self, "", "casting {:?}", terr);
+                        }
+                    }
+
                     CastKind::UnsafeFnPointer => {
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(op.ty(mir, tcx).fn_sig(tcx));
 
@@ -1204,9 +1218,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
-                    CastKind::ClosureFnPointer |
-                    CastKind::Misc |
-                    CastKind::Unsize => {}
+                    CastKind::Misc | CastKind::Unsize => {}
                 }
             }
 
