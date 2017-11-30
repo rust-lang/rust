@@ -289,6 +289,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 // This has nothing here because it means we did string
                                 // concatenation (e.g. "Hello " + "World!"). This means
                                 // we don't want the note in the else clause to be emitted
+                            } else if let ty::TyParam(_) = lhs_ty.sty {
+                                // FIXME: point to span of param
+                                err.note(
+                                    &format!("`{}` might need a bound for `{}`",
+                                             lhs_ty, missing_trait));
                             } else {
                                 err.note(
                                     &format!("an implementation of `{}` might be missing for `{}`",
