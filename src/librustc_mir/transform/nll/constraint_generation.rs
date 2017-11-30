@@ -152,10 +152,17 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
             // associated types and parameters). We need to normalize
             // associated types here and possibly recursively process.
             for ty in dtorck_types {
-                // FIXME -- I think that this may disregard some region obligations
-                // or something. Do we care? -nmatsakis
                 let cause = ObligationCause::dummy();
-                match traits::fully_normalize(self.infcx, cause, self.param_env, &ty) {
+                // We know that our original `dropped_ty` is well-formed,
+                // so region obligations resulting from this normalization
+                // should always hold.
+                //
+                // Therefore we ignore them instead of trying to match
+                // them up with a location.
+                let fulfillcx = traits::FulfillmentContext::new_ignoring_regions();
+                match traits::fully_normalize_with_fulfillcx(
+                    self.infcx, fulfillcx, cause, self.param_env, &ty
+                ) {
                     Ok(ty) => match ty.sty {
                         ty::TyParam(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
                             self.add_regular_live_constraint(ty, location);
