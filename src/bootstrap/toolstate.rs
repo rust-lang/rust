@@ -10,7 +10,7 @@
 
 use build_helper::BuildExpectation;
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 /// Whether a tool can be compiled, tested or neither
 pub enum ToolState {
     /// The tool compiles successfully, but the test suite fails

@@ -112,6 +112,8 @@ pub struct Config {
     pub channel: String,
     pub quiet_tests: bool,
     pub test_miri: bool,
+    pub save_toolstates: Option<PathBuf>,
+
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<PathBuf>,
@@ -279,6 +281,7 @@ struct Rust {
     dist_src: Option<bool>,
     quiet_tests: Option<bool>,
     test_miri: Option<bool>,
+    save_toolstates: Option<String>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -473,6 +476,7 @@ impl Config {
             set(&mut config.test_miri, rust.test_miri);
             config.rustc_default_linker = rust.default_linker.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
+            config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
 
             match rust.codegen_units {
                 Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),
