@@ -1,0 +1,8 @@
+error[E0422]: cannot find struct, variant or union type `TyUInt` in this scope
+  --> $DIR/issue-46332.rs:19:5
+   |
+19 |     TyUInt {};
+   |     ^^^^^^ did you mean `TyUint`?
+
+error: aborting due to previous error
+
