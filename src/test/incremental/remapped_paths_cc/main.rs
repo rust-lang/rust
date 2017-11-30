@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions:rpass1 rpass2 rpass3
-// compile-flags: -Z query-dep-graph -g -Zincremental-cc
+// compile-flags: -Z query-dep-graph -g
 // aux-build:extern_crate.rs
 
 // This test case makes sure that we detect if paths emitted into debuginfo

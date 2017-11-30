@@ -36,8 +36,6 @@ fn change_simple_index(slice: &[u32]) -> u32 {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn change_simple_index(slice: &[u32]) -> u32 {
     slice[4]
 }
@@ -55,8 +53,6 @@ fn change_lower_bound(slice: &[u32]) -> &[u32] {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn change_lower_bound(slice: &[u32]) -> &[u32] {
     &slice[2..5]
 }
@@ -74,8 +70,6 @@ fn change_upper_bound(slice: &[u32]) -> &[u32] {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn change_upper_bound(slice: &[u32]) -> &[u32] {
     &slice[3..7]
 }
@@ -93,8 +87,6 @@ fn add_lower_bound(slice: &[u32]) -> &[u32] {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn add_lower_bound(slice: &[u32]) -> &[u32] {
     &slice[3..4]
 }
@@ -112,8 +104,6 @@ fn add_upper_bound(slice: &[u32]) -> &[u32] {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn add_upper_bound(slice: &[u32]) -> &[u32] {
     &slice[3..7]
 }
@@ -131,8 +121,6 @@ fn change_mutability(slice: &mut [u32]) -> u32 {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn change_mutability(slice: &mut [u32]) -> u32 {
     (&slice[3..5])[0]
 }
@@ -150,8 +138,6 @@ fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
     &slice[3..=7]
 }

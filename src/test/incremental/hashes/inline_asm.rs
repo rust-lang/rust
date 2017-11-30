@@ -48,8 +48,6 @@ fn change_template(a: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn change_template(a: i32) -> i32 {
     let c: i32;
@@ -88,8 +86,6 @@ fn change_output(a: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn change_output(a: i32) -> i32 {
     let mut _out1: i32 = 0;
@@ -128,8 +124,6 @@ fn change_input(_a: i32, _b: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn change_input(_a: i32, _b: i32) -> i32 {
     let _out;
@@ -167,8 +161,6 @@ fn change_input_constraint(_a: i32, _b: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn change_input_constraint(_a: i32, _b: i32) -> i32 {
     let _out;
@@ -206,8 +198,6 @@ fn change_clobber(_a: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn change_clobber(_a: i32) -> i32 {
     let _out;
@@ -245,8 +235,6 @@ fn change_options(_a: i32) -> i32 {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn change_options(_a: i32) -> i32 {
     let _out;

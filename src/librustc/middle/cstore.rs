@@ -175,32 +175,6 @@ impl EncodedMetadata {
     }
 }
 
-/// The hash for some metadata that (when saving) will be exported
-/// from this crate, or which (when importing) was exported by an
-/// upstream crate.
-#[derive(Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
-pub struct EncodedMetadataHash {
-    pub def_index: u32,
-    pub hash: ich::Fingerprint,
-}
-
-/// The hash for some metadata that (when saving) will be exported
-/// from this crate, or which (when importing) was exported by an
-/// upstream crate.
-#[derive(Debug, RustcEncodable, RustcDecodable, Clone)]
-pub struct EncodedMetadataHashes {
-    // Stable content hashes for things in crate metadata, indexed by DefIndex.
-    pub hashes: Vec<EncodedMetadataHash>,
-}
-
-impl EncodedMetadataHashes {
-    pub fn new() -> EncodedMetadataHashes {
-        EncodedMetadataHashes {
-            hashes: Vec::new(),
-        }
-    }
-}
-
 /// The backend's way to give the crate store access to the metadata in a library.
 /// Note that it returns the raw metadata bytes stored in the library file, whether
 /// it is compressed, uncompressed, some weird mix, etc.
@@ -286,7 +260,7 @@ pub trait CrateStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> (EncodedMetadata, EncodedMetadataHashes);
+                                 -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -370,7 +344,7 @@ impl CrateStore for DummyCrateStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> (EncodedMetadata, EncodedMetadataHashes) {
+                                 -> EncodedMetadata {
         bug!("encode_metadata")
     }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }

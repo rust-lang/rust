@@ -201,7 +201,7 @@ impl TransCrate for MetadataOnlyTransCrate {
                         .fingerprint_of(&DepNode::new_no_params(DepKind::Krate));
         let link_meta = build_link_meta(crate_hash);
         let exported_symbols = ::find_exported_symbols(tcx);
-        let (metadata, _hashes) = tcx.encode_metadata(&link_meta, &exported_symbols);
+        let metadata = tcx.encode_metadata(&link_meta, &exported_symbols);
 
         OngoingCrateTranslation {
             metadata: metadata,
