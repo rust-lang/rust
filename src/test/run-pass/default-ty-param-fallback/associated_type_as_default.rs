@@ -54,9 +54,7 @@ fn main() {
     let x = vec![0u32];
     {
         let v = x.iter();
-        // Bug: if we put a cast such as `as u64`, inference fails.
-        // The guess is that we propagate the origin but not the default of the inference var.
-        v.suma();
+        v.suma() as u64;
     }
     x.clone().into_iter().suma();
     x.into_iter().suma();

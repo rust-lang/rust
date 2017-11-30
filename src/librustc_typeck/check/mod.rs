@@ -5088,6 +5088,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // If not, error.
             if alternative.is_ty_var() || alternative.references_error() {
                 if !self.is_tainted_by_errors() {
+                    // Try user fallbacks as a last attempt.
+                    if self.tcx.sess.features.borrow().default_type_parameter_fallback {
+                        self.apply_user_type_parameter_fallback();
+                        let ty = self.resolve_type_vars_with_obligations(ty);
+                        if !ty.is_ty_var() {
+                            return ty;
+                        }
+                    }
                     type_error_struct!(self.tcx.sess, sp, ty, E0619,
                                        "the type of this value must be known in this context")
                         .emit();

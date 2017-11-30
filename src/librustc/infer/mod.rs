@@ -695,25 +695,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns a type variable's default fallback if any exists. A default
-    /// must be attached to the variable when created, if it is created
-    /// without a default, this will return NoDefault.
-    ///
-    /// This code does not apply to integral or floating point variables,
-    /// only to use declared defaults.
-    ///
-    /// See `new_ty_var_with_default` to create a type variable with a default.
-    /// See `type_variable::Default` for details about what a default entails.
-    pub fn default(&self, ty: Ty<'tcx>) -> type_variable::Default<'tcx> {
-        match ty.sty {
-            ty::TyInfer(ty::TyVar(vid)) => self.type_variables
-                .borrow()
-                .default(vid)
-                .clone(),
-            _ => type_variable::Default::None,
-        }
-    }
-
     // Returns a vector containing all type variables that have an applicable default,
     // along with their defaults.
     //
