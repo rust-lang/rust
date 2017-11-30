@@ -450,6 +450,8 @@ impl Read for File {
     }
 
     fn size_snapshot(&self) -> Option<usize> {
+        // Ignore I/O errors; we're just querying the size and position of an
+        // already-open file in preparation for reading from it.
         if let Ok(meta) = self.metadata() {
             let len = meta.len();
             if let Ok(position) = self.inner.seek(SeekFrom::Current(0)) {
