@@ -1814,6 +1814,9 @@ where
     };
     let used_width = extra_offset(callee_str, shape);
     let one_line_width = shape.width.checked_sub(used_width + 2 * paren_overhead)?;
+    // 1 = "("
+    let combine_arg_with_callee =
+        callee_str.len() + 1 <= context.config.tab_spaces() && args.len() == 1;
 
     // 1 = "(" or ")"
     let one_line_shape = shape
@@ -1838,6 +1841,7 @@ where
         one_line_width,
         args_max_width,
         force_trailing_comma,
+        combine_arg_with_callee,
     )?;
 
     if !context.use_block_indent() && need_block_indent(&list_str, nested_shape) && !extendable {
@@ -1878,6 +1882,7 @@ fn rewrite_call_args<'a, T>(
     one_line_width: usize,
     args_max_width: usize,
     force_trailing_comma: bool,
+    combine_arg_with_callee: bool,
 ) -> Option<(bool, String)>
 where
     T: Rewrite + Spanned + ToExpr + 'a,
@@ -1907,6 +1912,7 @@ where
         nested_shape,
         one_line_width,
         args_max_width,
+        combine_arg_with_callee,
     );
 
     let fmt = ListFormatting {
@@ -1937,19 +1943,22 @@ fn try_overflow_last_arg<'a, T>(
     nested_shape: Shape,
     one_line_width: usize,
     args_max_width: usize,
+    combine_arg_with_callee: bool,
 ) -> DefinitiveListTactic
 where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
-    let overflow_last = can_be_overflowed(context, args);
+    let overflow_last = combine_arg_with_callee || can_be_overflowed(context, args);
 
     // Replace the last item with its first line to see if it fits with
     // first arguments.
     let placeholder = if overflow_last {
         let mut context = context.clone();
-        if let Some(expr) = args[args.len() - 1].to_expr() {
-            if let ast::ExprKind::MethodCall(..) = expr.node {
-                context.force_one_line_chain = true;
+        if !combine_arg_with_callee {
+            if let Some(expr) = args[args.len() - 1].to_expr() {
+                if let ast::ExprKind::MethodCall(..) = expr.node {
+                    context.force_one_line_chain = true;
+                }
             }
         }
         last_arg_shape(args, item_vec, one_line_shape, args_max_width).and_then(|arg_shape| {
