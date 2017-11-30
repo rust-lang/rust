@@ -408,3 +408,10 @@ fn newlines_between_list_like_expr() {
         _ => bar(),
     };
 }
+
+fn issue2178() {
+    Ok(result
+        .iter()
+        .map(|item| ls_util::rls_to_location(item))
+        .collect())
+}
