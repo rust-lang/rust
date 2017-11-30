@@ -543,7 +543,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         Mir::new(self.cfg.basic_blocks,
                  self.visibility_scopes,
-                 ClearOnDecode::Set(self.visibility_scope_info),
+                 ClearCrossCrate::Set(self.visibility_scope_info),
                  IndexVec::new(),
                  yield_ty,
                  self.local_decls,

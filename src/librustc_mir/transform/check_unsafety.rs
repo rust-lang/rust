@@ -20,6 +20,7 @@ use rustc::mir::*;
 use rustc::mir::visit::{LvalueContext, Visitor};
 
 use syntax::ast;
+use syntax::symbol::Symbol;
 
 use std::rc::Rc;
 use util;
@@ -145,7 +146,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     self.visibility_scope_info[source_info.scope].lint_root;
                 self.register_violations(&[UnsafetyViolation {
                     source_info,
-                    description: "borrow of packed field",
+                    description: Symbol::intern("borrow of packed field").as_str(),
                     kind: UnsafetyViolationKind::BorrowPacked(lint_root)
                 }], &[]);
             }
@@ -209,7 +210,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.visibility_scope_info[source_info.scope].lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
-                        description: "use of extern static",
+                        description: Symbol::intern("use of extern static").as_str(),
                         kind: UnsafetyViolationKind::ExternStatic(lint_root)
                     }], &[]);
                 }
@@ -225,7 +226,9 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     {
         let source_info = self.source_info;
         self.register_violations(&[UnsafetyViolation {
-            source_info, description, kind: UnsafetyViolationKind::General
+            source_info,
+            description: Symbol::intern(description).as_str(),
+            kind: UnsafetyViolationKind::General,
         }], &[]);
     }
 
@@ -320,8 +323,8 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     let mir = &tcx.mir_built(def_id).borrow();
 
     let visibility_scope_info = match mir.visibility_scope_info {
-        ClearOnDecode::Set(ref data) => data,
-        ClearOnDecode::Clear => {
+        ClearCrossCrate::Set(ref data) => data,
+        ClearCrossCrate::Clear => {
             debug!("unsafety_violations: {:?} - remote, skipping", def_id);
             return UnsafetyCheckResult {
                 violations: Rc::new([]),
@@ -433,7 +436,7 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
                 struct_span_err!(
                     tcx.sess, source_info.span, E0133,
                     "{} requires unsafe function or block", description)
-                    .span_label(source_info.span, description)
+                    .span_label(source_info.span, &description[..])
                     .emit();
             }
             UnsafetyViolationKind::ExternStatic(lint_node_id) => {
@@ -441,7 +444,7 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
                               lint_node_id,
                               source_info.span,
                               &format!("{} requires unsafe function or \
-                                        block (error E0133)", description));
+                                        block (error E0133)", &description[..]));
             }
             UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
                 if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id) {
@@ -451,7 +454,7 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
                                   lint_node_id,
                                   source_info.span,
                                   &format!("{} requires unsafe function or \
-                                            block (error E0133)", description));
+                                            block (error E0133)", &description[..]));
                 }
             }
         }

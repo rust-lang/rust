@@ -1124,11 +1124,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn stability(self) -> Rc<stability::Index<'tcx>> {
-        // FIXME(#42293) we should actually track this, but fails too many tests
-        // today.
-        self.dep_graph.with_ignore(|| {
-            self.stability_index(LOCAL_CRATE)
-        })
+        self.stability_index(LOCAL_CRATE)
     }
 
     pub fn crates(self) -> Rc<Vec<CrateNum>> {

@@ -36,6 +36,7 @@ use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 use std::vec::IntoIter;
 use syntax::ast::{self, Name};
+use syntax::symbol::InternedString;
 use syntax_pos::Span;
 
 mod cache;
@@ -75,7 +76,7 @@ pub struct Mir<'tcx> {
 
     /// Crate-local information for each visibility scope, that can't (and
     /// needn't) be tracked across crates.
-    pub visibility_scope_info: ClearOnDecode<IndexVec<VisibilityScope, VisibilityScopeInfo>>,
+    pub visibility_scope_info: ClearCrossCrate<IndexVec<VisibilityScope, VisibilityScopeInfo>>,
 
     /// Rvalues promoted from this function, such as borrows of constants.
     /// Each of them is the Mir of a constant with the fn's type parameters
@@ -129,8 +130,8 @@ pub const START_BLOCK: BasicBlock = BasicBlock(0);
 impl<'tcx> Mir<'tcx> {
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
                visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
-               visibility_scope_info: ClearOnDecode<IndexVec<VisibilityScope,
-                                                             VisibilityScopeInfo>>,
+               visibility_scope_info: ClearCrossCrate<IndexVec<VisibilityScope,
+                                                               VisibilityScopeInfo>>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
                yield_ty: Option<Ty<'tcx>>,
                local_decls: IndexVec<Local, LocalDecl<'tcx>>,
@@ -283,7 +284,7 @@ impl<'tcx> Mir<'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct VisibilityScopeInfo {
     /// A NodeId with lint levels equivalent to this scope's lint levels.
     pub lint_root: ast::NodeId,
@@ -291,7 +292,7 @@ pub struct VisibilityScopeInfo {
     pub safety: Safety,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum Safety {
     Safe,
     /// Unsafe because of a PushUnsafeBlock
@@ -335,22 +336,13 @@ impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub enum ClearOnDecode<T> {
+pub enum ClearCrossCrate<T> {
     Clear,
     Set(T)
 }
 
-impl<T> serialize::Encodable for ClearOnDecode<T> {
-    fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        serialize::Encodable::encode(&(), s)
-    }
-}
-
-impl<T> serialize::Decodable for ClearOnDecode<T> {
-    fn decode<D: serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        serialize::Decodable::decode(d).map(|()| ClearOnDecode::Clear)
-    }
-}
+impl<T: serialize::Encodable> serialize::UseSpecializedEncodable for ClearCrossCrate<T> {}
+impl<T: serialize::Decodable> serialize::UseSpecializedDecodable for ClearCrossCrate<T> {}
 
 /// Grouped information about the source code origin of a MIR entity.
 /// Intended to be inspected by diagnostics and debuginfo.
@@ -1733,21 +1725,21 @@ impl Location {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UnsafetyViolationKind {
     General,
     ExternStatic(ast::NodeId),
     BorrowPacked(ast::NodeId),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
-    pub description: &'static str,
+    pub description: InternedString,
     pub kind: UnsafetyViolationKind,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UnsafetyCheckResult {
     /// Violations that are propagated *upwards* from this function
     pub violations: Rc<[UnsafetyViolation]>,
