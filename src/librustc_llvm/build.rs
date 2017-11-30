@@ -154,13 +154,13 @@ fn main() {
     }
 
     for component in &components {
-        let mut flag = String::from("-DLLVM_COMPONENT_");
+        let mut flag = String::from("LLVM_COMPONENT_");
         flag.push_str(&component.to_uppercase());
-        cfg.flag(&flag);
+        cfg.define(&flag, None);
     }
 
     if env::var_os("LLVM_RUSTLLVM").is_some() {
-        cfg.flag("-DLLVM_RUSTLLVM");
+        cfg.define("LLVM_RUSTLLVM", None);
     }
 
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
@@ -169,7 +169,7 @@ fn main() {
        .file("../rustllvm/ArchiveWrapper.cpp")
        .cpp(true)
        .cpp_link_stdlib(None) // we handle this below
-       .compile("librustllvm.a");
+       .compile("rustllvm");
 
     let (llvm_kind, llvm_link_arg) = detect_llvm_link(major, minor, &llvm_config);
 

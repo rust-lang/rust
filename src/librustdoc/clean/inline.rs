@@ -332,74 +332,10 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
 
     let predicates = tcx.predicates_of(did);
     let trait_items = tcx.associated_items(did).filter_map(|item| {
-        match item.kind {
-            ty::AssociatedKind::Const => {
-                let default = if item.defaultness.has_value() {
-                    Some(print_inlined_const(cx, item.def_id))
-                } else {
-                    None
-                };
-                Some(clean::Item {
-                    name: Some(item.name.clean(cx)),
-                    inner: clean::AssociatedConstItem(
-                        tcx.type_of(item.def_id).clean(cx),
-                        default,
-                    ),
-                    source: tcx.def_span(item.def_id).clean(cx),
-                    attrs: clean::Attributes::default(),
-                    visibility: None,
-                    stability: tcx.lookup_stability(item.def_id).clean(cx),
-                    deprecation: tcx.lookup_deprecation(item.def_id).clean(cx),
-                    def_id: item.def_id
-                })
-            }
-            ty::AssociatedKind::Method => {
-                if item.vis != ty::Visibility::Public && associated_trait.is_none() {
-                    return None
-                }
-                let mut cleaned = item.clean(cx);
-                cleaned.inner = match cleaned.inner.clone() {
-                    clean::TyMethodItem(clean::TyMethod {
-                        unsafety, decl, generics, abi
-                    }) => {
-                        let constness = if tcx.is_const_fn(item.def_id) {
-                            hir::Constness::Const
-                        } else {
-                            hir::Constness::NotConst
-                        };
-
-                        clean::MethodItem(clean::Method {
-                            unsafety,
-                            constness,
-                            decl,
-                            generics,
-                            abi,
-                        })
-                    }
-                    ref r => panic!("not a tymethod: {:?}", r),
-                };
-                Some(cleaned)
-            }
-            ty::AssociatedKind::Type => {
-                let typedef = clean::Typedef {
-                    type_: tcx.type_of(item.def_id).clean(cx),
-                    generics: clean::Generics {
-                        lifetimes: vec![],
-                        type_params: vec![],
-                        where_predicates: vec![]
-                    }
-                };
-                Some(clean::Item {
-                    name: Some(item.name.clean(cx)),
-                    inner: clean::TypedefItem(typedef, true),
-                    source: tcx.def_span(item.def_id).clean(cx),
-                    attrs: clean::Attributes::default(),
-                    visibility: None,
-                    stability: tcx.lookup_stability(item.def_id).clean(cx),
-                    deprecation: tcx.lookup_deprecation(item.def_id).clean(cx),
-                    def_id: item.def_id
-                })
-            }
+        if associated_trait.is_some() || item.vis == ty::Visibility::Public {
+            Some(item.clean(cx))
+        } else {
+            None
         }
     }).collect::<Vec<_>>();
     let polarity = tcx.impl_polarity(did);
