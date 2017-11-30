@@ -1196,11 +1196,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
+                    CastKind::UnsafeFnPointer => {
+                        let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(op.ty(mir, tcx).fn_sig(tcx));
+
+                        if let Err(terr) = self.eq_types(ty_fn_ptr_from, ty, location.at_self()) {
+                            span_mirbug!(self, "", "casting {:?}", terr);
+                        }
+                    }
+
                     CastKind::ClosureFnPointer |
-                    CastKind::UnsafeFnPointer |
                     CastKind::Misc |
                     CastKind::Unsize => {}
-
                 }
             }
 
