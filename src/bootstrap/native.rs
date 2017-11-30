@@ -316,7 +316,7 @@ impl Step for TestHelpers {
            .warnings(false)
            .debug(false)
            .file(build.src.join("src/rt/rust_test_helpers.c"))
-           .compile("librust_test_helpers.a");
+           .compile("rust_test_helpers");
     }
 }
 
