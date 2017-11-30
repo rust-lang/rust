@@ -928,8 +928,8 @@ where
 #### `true`:
 
 ```rust
-impl<T> Lorem for T where
-    Option<T>: Ipsum {
+impl<T> Lorem for T
+where Option<T>: Ipsum {
     ...
 }
 ```
