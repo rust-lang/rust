@@ -452,11 +452,15 @@ impl Read for File {
     fn size_snapshot(&self) -> Option<usize> {
         if let Ok(meta) = self.metadata() {
             let len = meta.len();
-            let size = len as usize;
-            // Don't trust a length of zero. For example, "pseudofiles" on Linux
-            // like /proc/meminfo report a size of 0.
-            if size != 0 && size as u64 == len {
-                return Some(size);
+            if let Ok(position) = self.inner.seek(SeekFrom::Current(0)) {
+                if let Some(distance) = len.checked_sub(position) {
+                    let size = distance as usize;
+                    // Don't trust a length of zero. For example, "pseudofiles"
+                    // on Linux like /proc/meminfo report a size of 0.
+                    if size != 0 && size as u64 == distance {
+                        return Some(size);
+                    }
+                }
             }
         }
         None
