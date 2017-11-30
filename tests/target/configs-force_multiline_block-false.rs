@@ -3,9 +3,11 @@
 
 fn main() {
     match lorem {
-        Lorem::Ipsum => if ipsum {
-            println!("dolor");
-        },
+        Lorem::Ipsum => {
+            if ipsum {
+                println!("dolor");
+            }
+        }
         Lorem::Dolor => println!("amet"),
     }
 }

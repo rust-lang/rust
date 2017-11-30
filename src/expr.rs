@@ -1502,8 +1502,7 @@ fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bo
         {
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                 (
-                    !context.config.force_multiline_blocks()
-                        && can_extend_match_arm_body(expr),
+                    !context.config.force_multiline_blocks() && can_extend_match_arm_body(expr),
                     &*expr,
                 )
             } else {
@@ -1731,24 +1730,24 @@ fn can_extend_match_arm_body(body: &ast::Expr) -> bool {
         // We do not allow `if` to stay on the same line, since we could easily mistake
         // `pat => if cond { ... }` and `pat if cond => { ... }`.
         ast::ExprKind::If(..) | ast::ExprKind::IfLet(..) => false,
-        ast::ExprKind::ForLoop(..) |
-        ast::ExprKind::Loop(..) |
-        ast::ExprKind::While(..) |
-        ast::ExprKind::WhileLet(..) |
-        ast::ExprKind::Match(..) |
-        ast::ExprKind::Block(..) |
-        ast::ExprKind::Closure(..) |
-        ast::ExprKind::Array(..) |
-        ast::ExprKind::Call(..) |
-        ast::ExprKind::MethodCall(..) |
-        ast::ExprKind::Mac(..) |
-        ast::ExprKind::Struct(..) |
-        ast::ExprKind::Tup(..) => true,
-        ast::ExprKind::AddrOf(_, ref expr) |
-        ast::ExprKind::Box(ref expr) |
-        ast::ExprKind::Try(ref expr) |
-        ast::ExprKind::Unary(_, ref expr) |
-        ast::ExprKind::Cast(ref expr, _) => can_extend_match_arm_body(expr),
+        ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..)
+        | ast::ExprKind::Match(..)
+        | ast::ExprKind::Block(..)
+        | ast::ExprKind::Closure(..)
+        | ast::ExprKind::Array(..)
+        | ast::ExprKind::Call(..)
+        | ast::ExprKind::MethodCall(..)
+        | ast::ExprKind::Mac(..)
+        | ast::ExprKind::Struct(..)
+        | ast::ExprKind::Tup(..) => true,
+        ast::ExprKind::AddrOf(_, ref expr)
+        | ast::ExprKind::Box(ref expr)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::Unary(_, ref expr)
+        | ast::ExprKind::Cast(ref expr, _) => can_extend_match_arm_body(expr),
         _ => false,
     }
 }
