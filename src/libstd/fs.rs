@@ -450,7 +450,8 @@ impl Read for File {
     }
 
     fn size_hint(&self) -> io::Result<usize> {
-        Ok(self.metadata()?.len() as usize)
+        let position = self.inner.seek(SeekFrom::Current(0))?;
+        Ok(self.metadata()?.len().saturating_sub(position) as usize)
     }
 
     #[inline]
