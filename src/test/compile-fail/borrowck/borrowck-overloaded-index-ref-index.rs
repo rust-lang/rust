@@ -70,5 +70,5 @@ fn main() {
     };
     s[2] = 20;
     //[ast]~^ ERROR cannot assign to immutable indexed content
-    // FIXME Error for MIR
+    //[mir]~^^ ERROR cannot assign to immutable item
 }

@@ -271,6 +271,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                         self.access_lvalue(context,
                                            (output, span),
                                            (Deep, Read(ReadKind::Copy)),
+                                           LocalMutationIsAllowed::No,
                                            flow_state);
                         self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
                                                     (output, span), flow_state);
@@ -300,7 +301,9 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
             StatementKind::StorageDead(local) => {
                 self.access_lvalue(ContextKind::StorageDead.new(location),
                     (&Lvalue::Local(local), span),
-                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)), flow_state);
+                    (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
+                    LocalMutationIsAllowed::Yes,
+                    flow_state);
             }
         }
     }
@@ -322,6 +325,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 self.access_lvalue(ContextKind::Drop.new(loc),
                                    (drop_lvalue, span),
                                    (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                                   LocalMutationIsAllowed::Yes,
                                    flow_state);
             }
             TerminatorKind::DropAndReplace { location: ref drop_lvalue,
@@ -391,6 +395,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                                 ContextKind::StorageDead.new(loc),
                                 (&root_lvalue, self.mir.source_info(borrow.location).span),
                                 (Deep, Write(WriteKind::StorageDeadOrDrop)),
+                                LocalMutationIsAllowed::Yes,
                                 flow_state
                             );
                         }
@@ -399,6 +404,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                                 ContextKind::StorageDead.new(loc),
                                 (&root_lvalue, self.mir.source_info(borrow.location).span),
                                 (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
+                                LocalMutationIsAllowed::Yes,
                                 flow_state
                             );
                         }
@@ -445,6 +451,8 @@ enum ShallowOrDeep {
     Deep,
 }
 
+/// Kind of access to a value: read or write
+/// (For informational purposes only)
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ReadOrWrite {
     /// From the RFC: "A *read* means that the existing data may be
@@ -457,18 +465,36 @@ enum ReadOrWrite {
     Write(WriteKind),
 }
 
+/// Kind of read access to a value
+/// (For informational purposes only)
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ReadKind {
     Borrow(BorrowKind),
     Copy,
 }
 
+/// Kind of write access to a value
+/// (For informational purposes only)
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum WriteKind {
     StorageDeadOrDrop,
     MutableBorrow(BorrowKind),
     Mutate,
     Move,
+}
+
+/// When checking permissions for an lvalue access, this flag is used to indicate that an immutable
+/// local lvalue can be mutated.
+///
+/// FIXME: @nikomatsakis suggested that this flag could be removed with the following modifications:
+/// - Merge `check_access_permissions()` and `check_if_reassignment_to_immutable_state()`
+/// - Split `is_mutable()` into `is_assignable()` (can be directly assigned) and
+///   `is_declared_mutable()`
+/// - Take flow state into consideration in `is_assignable()` for local variables
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum LocalMutationIsAllowed {
+    Yes,
+    No
 }
 
 #[derive(Copy, Clone)]
@@ -510,6 +536,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                      context: Context,
                      lvalue_span: (&Lvalue<'tcx>, Span),
                      kind: (ShallowOrDeep, ReadOrWrite),
+                     is_local_mutation_allowed: LocalMutationIsAllowed,
                      flow_state: &InProgress<'cx, 'gcx, 'tcx>) {
         let (sd, rw) = kind;
 
@@ -526,9 +553,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         // Check permissions
-        self.check_access_permissions(lvalue_span, rw);
+        let mut error_reported = self.check_access_permissions(lvalue_span,
+                                                               rw,
+                                                               is_local_mutation_allowed);
 
-        let mut error_reported = false;
         self.each_borrow_involving_path(
             context, (sd, lvalue_span.0), flow_state, |this, _index, borrow, common_prefix| {
                 match (rw, borrow.kind) {
@@ -614,7 +642,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        self.access_lvalue(context, lvalue_span, (kind, Write(WriteKind::Mutate)), flow_state);
+        self.access_lvalue(context,
+                           lvalue_span,
+                           (kind, Write(WriteKind::Mutate)),
+                           LocalMutationIsAllowed::Yes,
+                           flow_state);
 
         // check for reassignments to immutable local variables
         self.check_if_reassignment_to_immutable_state(context, lvalue_span, flow_state);
@@ -632,7 +664,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     BorrowKind::Unique |
                     BorrowKind::Mut => (Deep, Write(WriteKind::MutableBorrow(bk))),
                 };
-                self.access_lvalue(context, (lvalue, span), access_kind, flow_state);
+                self.access_lvalue(context,
+                                   (lvalue, span),
+                                   access_kind,
+                                   LocalMutationIsAllowed::No,
+                                   flow_state);
                 self.check_if_path_is_moved(context, InitializationRequiringAction::Borrow,
                                             (lvalue, span), flow_state);
             }
@@ -651,8 +687,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Rvalue::Discriminant(..) => ArtificialField::Discriminant,
                     _ => unreachable!(),
                 };
-                self.access_lvalue(
-                    context, (lvalue, span), (Shallow(Some(af)), Read(ReadKind::Copy)), flow_state);
+                self.access_lvalue(context,
+                                   (lvalue, span),
+                                   (Shallow(Some(af)), Read(ReadKind::Copy)),
+                                   LocalMutationIsAllowed::No,
+                                   flow_state);
                 self.check_if_path_is_moved(context, InitializationRequiringAction::Use,
                                             (lvalue, span), flow_state);
             }
@@ -690,6 +729,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.access_lvalue(context,
                                    (lvalue, span),
                                    (Deep, Read(ReadKind::Copy)),
+                                   LocalMutationIsAllowed::No,
                                    flow_state);
 
                 // Finally, check if path was already moved.
@@ -701,6 +741,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.access_lvalue(context,
                                    (lvalue, span),
                                    (Deep, Write(WriteKind::Move)),
+                                   LocalMutationIsAllowed::Yes,
                                    flow_state);
 
                 // Finally, check if path was already moved.
@@ -735,9 +776,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
                 Lvalue::Static(ref static_) => {
                     // mutation of non-mut static is always illegal,
-                    // independent of dataflow.
+                    // independent of dataflow. However it will be catched by
+                    // `check_access_permissions()`, we call delay_span_bug here
+                    // to be sure that no case has been missed
                     if !self.tcx.is_static_mut(static_.def_id) {
-                        self.report_assignment_to_static(context, (lvalue, span));
+                        let item_msg = match self.describe_lvalue(lvalue) {
+                            Some(name) => format!("immutable static item `{}`", name),
+                            None => "immutable static item".to_owned()
+                        };
+                        self.tcx.sess.delay_span_bug(span,
+                            &format!("cannot assign to {}, should have been caught by \
+                            `check_access_permissions()`", item_msg));
                     }
                     return;
                 }
@@ -949,41 +998,101 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// Check the permissions for the given lvalue and read or write kind
-    fn check_access_permissions(&self, (lvalue, span): (&Lvalue<'tcx>, Span), kind: ReadOrWrite) {
+    ///
+    /// Returns true if an error is reported, false otherwise.
+    fn check_access_permissions(&self,
+                                (lvalue, span): (&Lvalue<'tcx>, Span),
+                                kind: ReadOrWrite,
+                                is_local_mutation_allowed: LocalMutationIsAllowed)
+                                -> bool {
+        debug!("check_access_permissions({:?}, {:?}, {:?})",
+               lvalue, kind, is_local_mutation_allowed);
+        let mut error_reported = false;
         match kind {
             Write(WriteKind::MutableBorrow(BorrowKind::Unique)) => {
                 if let Err(_lvalue_err) = self.is_unique(lvalue) {
-                    span_bug!(span, "&unique borrow for `{}` should not fail",
-                        self.describe_lvalue(lvalue));
+                    span_bug!(span, "&unique borrow for {:?} should not fail", lvalue);
                 }
             },
             Write(WriteKind::MutableBorrow(BorrowKind::Mut)) => {
-                if let Err(lvalue_err) = self.is_mutable(lvalue) {
+                if let Err(lvalue_err) = self.is_mutable(lvalue, is_local_mutation_allowed) {
+                    error_reported = true;
+
+                    let item_msg = match self.describe_lvalue(lvalue) {
+                        Some(name) => format!("immutable item `{}`", name),
+                        None => "immutable item".to_owned()
+                    };
+
                     let mut err = self.tcx.cannot_borrow_path_as_mutable(span,
-                        &format!("immutable item `{}`",
-                                  self.describe_lvalue(lvalue)),
+                        &item_msg,
                         Origin::Mir);
                     err.span_label(span, "cannot borrow as mutable");
 
                     if lvalue != lvalue_err {
-                        err.note(&format!("Value not mutable causing this error: `{}`",
-                            self.describe_lvalue(lvalue_err)));
+                        if let Some(name) = self.describe_lvalue(lvalue_err) {
+                            err.note(&format!("Value not mutable causing this error: `{}`", name));
+                        }
                     }
 
                     err.emit();
                 }
             },
-            _ => {}// Access authorized
+            Write(WriteKind::Mutate) => {
+                if let Err(lvalue_err) = self.is_mutable(lvalue, is_local_mutation_allowed) {
+                    error_reported = true;
+
+                    let item_msg = match self.describe_lvalue(lvalue) {
+                        Some(name) => format!("immutable item `{}`", name),
+                        None => "immutable item".to_owned()
+                    };
+
+                    let mut err = self.tcx.cannot_assign(span,
+                        &item_msg,
+                        Origin::Mir);
+                    err.span_label(span, "cannot mutate");
+
+                    if lvalue != lvalue_err {
+                        if let Some(name) = self.describe_lvalue(lvalue_err) {
+                            err.note(&format!("Value not mutable causing this error: `{}`", name));
+                        }
+                    }
+
+                    err.emit();
+                }
+            },
+            Write(WriteKind::Move) |
+            Write(WriteKind::StorageDeadOrDrop) |
+            Write(WriteKind::MutableBorrow(BorrowKind::Shared)) => {
+                if let Err(_lvalue_err) = self.is_mutable(lvalue, is_local_mutation_allowed) {
+                    self.tcx.sess.delay_span_bug(span,
+                        &format!("Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
+                            lvalue,
+                            kind));
+                }
+            },
+            Read(ReadKind::Borrow(BorrowKind::Unique)) |
+            Read(ReadKind::Borrow(BorrowKind::Mut)) |
+            Read(ReadKind::Borrow(BorrowKind::Shared)) |
+            Read(ReadKind::Copy) => {} // Access authorized
         }
+
+        error_reported
     }
 
     /// Can this value be written or borrowed mutably
-    fn is_mutable<'d>(&self, lvalue: &'d Lvalue<'tcx>) -> Result<(), &'d Lvalue<'tcx>> {
+    fn is_mutable<'d>(&self,
+                      lvalue: &'d Lvalue<'tcx>,
+                      is_local_mutation_allowed: LocalMutationIsAllowed)
+                      -> Result<(), &'d Lvalue<'tcx>> {
         match *lvalue {
             Lvalue::Local(local) => {
                 let local = &self.mir.local_decls[local];
                 match local.mutability {
-                    Mutability::Not => Err(lvalue),
+                    Mutability::Not =>
+                        match is_local_mutation_allowed {
+                            LocalMutationIsAllowed::Yes => Ok(()),
+                            LocalMutationIsAllowed::No => Err(lvalue),
+                        },
                     Mutability::Mut => Ok(())
                 }
             },
@@ -1001,7 +1110,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                         // `Box<T>` owns its content, so mutable if its location is mutable
                         if base_ty.is_box() {
-                            return self.is_mutable(&proj.base);
+                            return self.is_mutable(&proj.base, LocalMutationIsAllowed::No);
                         }
 
                         // Otherwise we check the kind of deref to decide
@@ -1035,7 +1144,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     ProjectionElem::ConstantIndex{..} |
                     ProjectionElem::Subslice{..} |
                     ProjectionElem::Downcast(..) =>
-                        self.is_mutable(&proj.base)
+                        self.is_mutable(&proj.base, LocalMutationIsAllowed::No)
                 }
             }
         }
@@ -1343,12 +1452,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             |moi| curr_move_out.contains(moi)).collect::<Vec<_>>();
 
         if mois.is_empty() {
+            let item_msg = match self.describe_lvalue(lvalue) {
+                Some(name) => format!("`{}`", name),
+                None => "value".to_owned()
+            };
             self.tcx.cannot_act_on_uninitialized_variable(span,
                                                           desired_action.as_noun(),
-                                                          &self.describe_lvalue(lvalue),
+                                                          &self.describe_lvalue(lvalue)
+                                                            .unwrap_or("_".to_owned()),
                                                           Origin::Mir)
-                    .span_label(span, format!("use of possibly uninitialized `{}`",
-                                              self.describe_lvalue(lvalue)))
+                    .span_label(span, format!("use of possibly uninitialized {}", item_msg))
                     .emit();
         } else {
             let msg = ""; //FIXME: add "partially " or "collaterally "
@@ -1356,7 +1469,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let mut err = self.tcx.cannot_act_on_moved_value(span,
                                                              desired_action.as_noun(),
                                                              msg,
-                                                             &self.describe_lvalue(lvalue),
+                                                             &self.describe_lvalue(lvalue)
+                                                                .unwrap_or("_".to_owned()),
                                                              Origin::Mir);
 
             err.span_label(span, format!("value {} here after move",
@@ -1381,14 +1495,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                       _context: Context,
                                       (lvalue, span): (&Lvalue<'tcx>, Span),
                                       borrow: &BorrowData<'tcx>) {
+        let value_msg = match self.describe_lvalue(lvalue) {
+            Some(name) => format!("`{}`", name),
+            None => "value".to_owned()
+        };
+        let borrow_msg = match self.describe_lvalue(&borrow.lvalue) {
+            Some(name) => format!("`{}`", name),
+            None => "value".to_owned()
+        };
         self.tcx.cannot_move_when_borrowed(span,
-                                           &self.describe_lvalue(lvalue),
+                                           &self.describe_lvalue(lvalue).unwrap_or("_".to_owned()),
                                            Origin::Mir)
                 .span_label(self.retrieve_borrow_span(borrow),
-                            format!("borrow of `{}` occurs here",
-                                    self.describe_lvalue(&borrow.lvalue)))
-                .span_label(span, format!("move out of `{}` occurs here",
-                                          self.describe_lvalue(lvalue)))
+                            format!("borrow of {} occurs here", borrow_msg))
+                .span_label(span, format!("move out of {} occurs here", value_msg))
                 .emit();
     }
 
@@ -1398,8 +1518,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                          borrow : &BorrowData<'tcx>) {
 
         let mut err = self.tcx.cannot_use_when_mutably_borrowed(
-            span, &self.describe_lvalue(lvalue),
-            self.retrieve_borrow_span(borrow), &self.describe_lvalue(&borrow.lvalue),
+            span,
+            &self.describe_lvalue(lvalue).unwrap_or("_".to_owned()),
+            self.retrieve_borrow_span(borrow),
+            &self.describe_lvalue(&borrow.lvalue).unwrap_or("_".to_owned()),
             Origin::Mir);
 
         err.emit();
@@ -1488,7 +1610,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let old_closure_span = self.find_closure_span(issued_span, issued_borrow.location);
         let issued_span = old_closure_span.map(|(args, _)| args).unwrap_or(issued_span);
 
-        let desc_lvalue = self.describe_lvalue(lvalue);
+        let desc_lvalue = self.describe_lvalue(lvalue).unwrap_or("_".to_owned());
 
         // FIXME: supply non-"" `opt_via` when appropriate
         let mut err = match (gen_borrow_kind, "immutable", "mutable",
@@ -1566,7 +1688,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                            (lvalue, span): (&Lvalue<'tcx>, Span),
                                            loan: &BorrowData) {
         let mut err = self.tcx.cannot_assign_to_borrowed(
-            span, self.retrieve_borrow_span(loan), &self.describe_lvalue(lvalue), Origin::Mir);
+            span,
+            self.retrieve_borrow_span(loan),
+            &self.describe_lvalue(lvalue).unwrap_or("_".to_owned()),
+            Origin::Mir);
 
         err.emit();
     }
@@ -1576,31 +1701,29 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                    (lvalue, span): (&Lvalue<'tcx>, Span),
                                    assigned_span: Span) {
         let mut err = self.tcx.cannot_reassign_immutable(span,
-                                           &self.describe_lvalue(lvalue),
+                                           &self.describe_lvalue(lvalue).unwrap_or("_".to_owned()),
                                            Origin::Mir);
         err.span_label(span, "cannot assign twice to immutable variable");
         if span != assigned_span {
-            err.span_label(assigned_span, format!("first assignment to `{}`",
-                                              self.describe_lvalue(lvalue)));
+            let value_msg = match self.describe_lvalue(lvalue) {
+                Some(name) => format!("`{}`", name),
+                None => "value".to_owned()
+            };
+            err.span_label(assigned_span, format!("first assignment to {}", value_msg));
         }
-        err.emit();
-    }
-
-    fn report_assignment_to_static(&mut self,
-                                   _context: Context,
-                                   (lvalue, span): (&Lvalue<'tcx>, Span)) {
-        let mut err = self.tcx.cannot_assign_static(
-            span, &self.describe_lvalue(lvalue), Origin::Mir);
         err.emit();
     }
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
-    // End-user visible description of `lvalue`
-    fn describe_lvalue(&self, lvalue: &Lvalue<'tcx>) -> String {
+    // End-user visible description of `lvalue` if one can be found. If the
+    // lvalue is a temporary for instance, None will be returned.
+    fn describe_lvalue(&self, lvalue: &Lvalue<'tcx>) -> Option<String> {
         let mut buf = String::new();
-        self.append_lvalue_to_string(lvalue, &mut buf, false);
-        buf
+        match self.append_lvalue_to_string(lvalue, &mut buf, false) {
+            Ok(()) => Some(buf),
+            Err(()) => None
+        }
     }
 
     /// If this is a field projection, and the field is being projected from a closure type,
@@ -1632,10 +1755,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn append_lvalue_to_string(&self,
                                lvalue: &Lvalue<'tcx>,
                                buf: &mut String,
-                               mut autoderef: bool) {
+                               mut autoderef: bool) -> Result<(), ()> {
         match *lvalue {
             Lvalue::Local(local) => {
-                self.append_local_to_string(local, buf, "_");
+                self.append_local_to_string(local, buf,)?;
             }
             Lvalue::Static(ref static_) => {
                 buf.push_str(&format!("{}", &self.tcx.item_name(static_.def_id)));
@@ -1653,15 +1776,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             }
                         } else {
                             if autoderef {
-                                self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                                self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                             } else {
                                 buf.push_str(&"*");
-                                self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                                self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                             }
                         }
                     },
                     ProjectionElem::Downcast(..) => {
-                        self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                        self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                     },
                     ProjectionElem::Field(field, _ty) => {
                         autoderef = true;
@@ -1672,16 +1795,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             buf.push_str(&name);
                         } else {
                             let field_name = self.describe_field(&proj.base, field);
-                            self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                            self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                             buf.push_str(&format!(".{}", field_name));
                         }
                     },
                     ProjectionElem::Index(index) => {
                         autoderef = true;
 
-                        self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                        self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                         buf.push_str("[");
-                        self.append_local_to_string(index, buf, "..");
+                        if let Err(_) = self.append_local_to_string(index, buf) {
+                            buf.push_str("..");
+                        }
                         buf.push_str("]");
                     },
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
@@ -1689,21 +1814,26 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         // Since it isn't possible to borrow an element on a particular index and
                         // then use another while the borrow is held, don't output indices details
                         // to avoid confusing the end-user
-                        self.append_lvalue_to_string(&proj.base, buf, autoderef);
+                        self.append_lvalue_to_string(&proj.base, buf, autoderef)?;
                         buf.push_str(&"[..]");
                     },
                 };
             }
         }
+
+        Ok(())
     }
 
     // Appends end-user visible description of the `local` lvalue to `buf`. If `local` doesn't have
-    // a name, then `none_string` is appended instead
-    fn append_local_to_string(&self, local_index: Local, buf: &mut String, none_string: &str) {
+    // a name, then `Err` is returned
+    fn append_local_to_string(&self, local_index: Local, buf: &mut String) -> Result<(), ()> {
         let local = &self.mir.local_decls[local_index];
         match local.name {
-            Some(name) => buf.push_str(&format!("{}", name)),
-            None => buf.push_str(none_string)
+            Some(name) => {
+                buf.push_str(&format!("{}", name));
+                Ok(())
+            },
+            None => Err(())
         }
     }
 
