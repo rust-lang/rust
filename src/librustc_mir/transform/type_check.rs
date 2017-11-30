@@ -1218,7 +1218,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
-                    CastKind::Misc | CastKind::Unsize => {}
+                    CastKind::Unsize => {
+                        let trait_ref = ty::TraitRef {
+                            def_id: tcx.lang_items().coerce_unsized_trait().unwrap(),
+                            substs: tcx.mk_substs_trait(op.ty(mir, tcx), &[ty]),
+                        };
+
+                        self.prove_trait_ref(trait_ref, location);
+                    }
+
+                    CastKind::Misc => {}
                 }
             }
 
