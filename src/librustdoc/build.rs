@@ -27,6 +27,6 @@ fn main() {
        .warnings(false)
        .include(src_dir)
        .warnings(false)
-       .compile("libhoedown.a");
+       .compile("hoedown");
 }
 
