@@ -1424,7 +1424,7 @@ fn rewrite_match_arm(
 ///     - `&[small]`
 fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
     // We also require that the pattern is reasonably 'small' with its literal width.
-    pat_str.len() <= 20 && !pat_str.contains("\n") && is_short_pattern_inner(pat)
+    pat_str.len() <= 20 && !pat_str.contains('\n') && is_short_pattern_inner(pat)
 }
 
 fn is_short_pattern_inner(pat: &ast::Pat) -> bool {

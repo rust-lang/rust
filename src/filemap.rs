@@ -30,7 +30,7 @@ pub fn append_newline(s: &mut StringBuffer) {
     s.push_str("\n");
 }
 
-pub fn write_all_files<T>(file_map: &FileMap, out: &mut T, config: &Config) -> Result<(), io::Error>
+pub fn write_all_files<T>(file_map: &[FileRecord], out: &mut T, config: &Config) -> Result<(), io::Error>
 where
     T: Write,
 {

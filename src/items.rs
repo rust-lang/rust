@@ -500,8 +500,8 @@ impl<'a> FmtVisitor<'a> {
         let mut items: Vec<_> =
             itemize_list_with(self.config.width_heuristics().struct_variant_width);
         // If one of the variants use multiple lines, use multi-lined formatting for all variants.
-        let has_multiline_variant = items.iter().any(|item| item.inner_as_ref().contains("\n"));
-        let has_single_line_variant = items.iter().any(|item| !item.inner_as_ref().contains("\n"));
+        let has_multiline_variant = items.iter().any(|item| item.inner_as_ref().contains('\n'));
+        let has_single_line_variant = items.iter().any(|item| !item.inner_as_ref().contains('\n'));
         if has_multiline_variant && has_single_line_variant {
             items = itemize_list_with(0);
         }
@@ -1308,7 +1308,7 @@ fn format_tuple_struct(
         result.push(')');
     } else {
         let shape = Shape::indented(offset, context.config).sub_width(1)?;
-        let fields = &fields.iter().map(|field| field).collect::<Vec<_>>()[..];
+        let fields = &fields.iter().collect::<Vec<_>>()[..];
         let one_line_width = context.config.width_heuristics().fn_call_width;
         result = rewrite_call_inner(context, &result, fields, span, shape, one_line_width, false)?;
     }
@@ -1593,7 +1593,7 @@ pub fn rewrite_associated_type(
 ) -> Option<String> {
     let prefix = format!("type {}", ident);
 
-    let type_bounds_str = if let Some(ref bounds) = ty_param_bounds_opt {
+    let type_bounds_str = if let Some(bounds) = ty_param_bounds_opt {
         // 2 = ": ".len()
         let shape = Shape::indented(indent, context.config).offset_left(prefix.len() + 2)?;
         let bound_str = bounds
@@ -2459,10 +2459,9 @@ pub fn wrap_generics_with_angle_brackets(
 
 fn rewrite_trait_bounds(
     context: &RewriteContext,
-    type_param_bounds: &ast::TyParamBounds,
+    bounds: &[ast::TyParamBound],
     shape: Shape,
 ) -> Option<String> {
-    let bounds: &[_] = type_param_bounds;
 
     if bounds.is_empty() {
         return Some(String::new());
