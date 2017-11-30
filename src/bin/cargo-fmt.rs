@@ -94,11 +94,13 @@ fn execute() -> i32 {
             print_usage_to_stderr(&opts, &e.to_string());
             failure
         }
-        Ok(status) => if status.success() {
-            success
-        } else {
-            status.code().unwrap_or(failure)
-        },
+        Ok(status) => {
+            if status.success() {
+                success
+            } else {
+                status.code().unwrap_or(failure)
+            }
+        }
     }
 }
 

@@ -720,11 +720,13 @@ impl Rewrite for ast::Ty {
                     SeparatorPlace::Back,
                 )
             }
-            ast::TyKind::Infer => if shape.width >= 1 {
-                Some("_".to_owned())
-            } else {
-                None
-            },
+            ast::TyKind::Infer => {
+                if shape.width >= 1 {
+                    Some("_".to_owned())
+                } else {
+                    None
+                }
+            }
             ast::TyKind::BareFn(ref bare_fn) => rewrite_bare_fn(bare_fn, self.span, context, shape),
             ast::TyKind::Never => Some(String::from("!")),
             ast::TyKind::Mac(..) => None,

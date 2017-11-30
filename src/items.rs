@@ -550,12 +550,14 @@ impl<'a> FmtVisitor<'a> {
                 self.block_indent,
                 Some(one_line_width),
             )?,
-            ast::VariantData::Unit(..) => if let Some(ref expr) = field.node.disr_expr {
-                let lhs = format!("{} =", field.node.name);
-                rewrite_assign_rhs(&context, lhs, &**expr, shape)?
-            } else {
-                field.node.name.to_string()
-            },
+            ast::VariantData::Unit(..) => {
+                if let Some(ref expr) = field.node.disr_expr {
+                    let lhs = format!("{} =", field.node.name);
+                    rewrite_assign_rhs(&context, lhs, &**expr, shape)?
+                } else {
+                    field.node.name.to_string()
+                }
+            }
         };
 
         let attrs_extendable = attrs_str.is_empty()
@@ -643,11 +645,13 @@ pub fn format_impl(
             _ if last_line_contains_single_line_comment(&result) => result.push_str(&sep),
             BraceStyle::AlwaysNextLine => result.push_str(&sep),
             BraceStyle::PreferSameLine => result.push(' '),
-            BraceStyle::SameLineWhere => if !where_clause_str.is_empty() {
-                result.push_str(&sep);
-            } else {
-                result.push(' ');
-            },
+            BraceStyle::SameLineWhere => {
+                if !where_clause_str.is_empty() {
+                    result.push_str(&sep);
+                } else {
+                    result.push(' ');
+                }
+            }
         }
 
         result.push('{');
@@ -1039,14 +1043,16 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 result.push_str(&offset.to_string(context.config));
             }
             BraceStyle::PreferSameLine => result.push(' '),
-            BraceStyle::SameLineWhere => if !where_clause_str.is_empty()
-                && (!trait_items.is_empty() || result.contains('\n'))
-            {
-                result.push('\n');
-                result.push_str(&offset.to_string(context.config));
-            } else {
-                result.push(' ');
-            },
+            BraceStyle::SameLineWhere => {
+                if !where_clause_str.is_empty()
+                    && (!trait_items.is_empty() || result.contains('\n'))
+                {
+                    result.push('\n');
+                    result.push_str(&offset.to_string(context.config));
+                } else {
+                    result.push(' ');
+                }
+            }
         }
         result.push('{');
 

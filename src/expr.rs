@@ -462,18 +462,20 @@ where
                 None => DefinitiveListTactic::Vertical,
             }
         }
-        IndentStyle::Visual => if has_long_item || items.iter().any(ListItem::is_multiline) {
-            definitive_tactic(
-                &items,
-                ListTactic::LimitedHorizontalVertical(
-                    context.config.width_heuristics().array_width,
-                ),
-                Separator::Comma,
-                nested_shape.width,
-            )
-        } else {
-            DefinitiveListTactic::Mixed
-        },
+        IndentStyle::Visual => {
+            if has_long_item || items.iter().any(ListItem::is_multiline) {
+                definitive_tactic(
+                    &items,
+                    ListTactic::LimitedHorizontalVertical(
+                        context.config.width_heuristics().array_width,
+                    ),
+                    Separator::Comma,
+                    nested_shape.width,
+                )
+            } else {
+                DefinitiveListTactic::Mixed
+            }
+        }
     };
     let ends_with_newline = tactic.ends_with_newline(context.config.indent_style());
 
@@ -1500,8 +1502,8 @@ fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bo
         {
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                 (
-                    !context.config.force_multiline_blocks() && expr.can_be_overflowed(context, 1),
-                    &**expr,
+                    !context.config.force_multiline_blocks() && can_extend_match_arm_body(expr),
+                    &*expr,
                 )
             } else {
                 (false, &*body)
@@ -1721,6 +1723,33 @@ fn rewrite_pat_expr(
     let nested_indent_str = nested_shape.indent.to_string(context.config);
     expr.rewrite(context, nested_shape)
         .map(|expr_rw| format!("\n{}{}", nested_indent_str, expr_rw))
+}
+
+fn can_extend_match_arm_body(body: &ast::Expr) -> bool {
+    match body.node {
+        // We do not allow `if` to stay on the same line, since we could easily mistake
+        // `pat => if cond { ... }` and `pat if cond => { ... }`.
+        ast::ExprKind::If(..) | ast::ExprKind::IfLet(..) => false,
+        ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::Loop(..)
+        | ast::ExprKind::While(..)
+        | ast::ExprKind::WhileLet(..)
+        | ast::ExprKind::Match(..)
+        | ast::ExprKind::Block(..)
+        | ast::ExprKind::Closure(..)
+        | ast::ExprKind::Array(..)
+        | ast::ExprKind::Call(..)
+        | ast::ExprKind::MethodCall(..)
+        | ast::ExprKind::Mac(..)
+        | ast::ExprKind::Struct(..)
+        | ast::ExprKind::Tup(..) => true,
+        ast::ExprKind::AddrOf(_, ref expr)
+        | ast::ExprKind::Box(ref expr)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::Unary(_, ref expr)
+        | ast::ExprKind::Cast(ref expr, _) => can_extend_match_arm_body(expr),
+        _ => false,
+    }
 }
 
 pub fn rewrite_literal(context: &RewriteContext, l: &ast::Lit, shape: Shape) -> Option<String> {
