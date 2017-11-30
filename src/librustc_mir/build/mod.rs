@@ -581,7 +581,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             self.local_decls.push(LocalDecl {
-                mutability: Mutability::Not,
+                mutability: Mutability::Mut,
                 ty,
                 source_info: SourceInfo {
                     scope: ARGUMENT_VISIBILITY_SCOPE,
