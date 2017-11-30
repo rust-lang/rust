@@ -1717,6 +1717,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }))
     }
 
+    /// Create an unsafe fn ty based on a safe fn ty.
+    pub fn coerce_closure_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
+        let converted_sig = sig.map_bound(|s| {
+            let params_iter = match s.inputs()[0].sty {
+                ty::TyTuple(params, _) => {
+                    params.into_iter().cloned()
+                }
+                _ => bug!(),
+            };
+            self.mk_fn_sig(
+                params_iter,
+                s.output(),
+                s.variadic,
+                hir::Unsafety::Normal,
+                abi::Abi::Rust
+                )
+        });
+
+        self.mk_fn_ptr(converted_sig)
+    }
+
     // Interns a type/name combination, stores the resulting box in cx.interners,
     // and returns the box as cast to an unsafe ptr (see comments for Ty above).
     pub fn mk_ty(self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
