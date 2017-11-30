@@ -884,13 +884,13 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Item {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        let (is_const, hash_spans) = match self.node {
+        let is_const = match self.node {
             hir::ItemStatic(..)      |
             hir::ItemConst(..)       => {
-                (true, hcx.hash_spans())
+                true
             }
             hir::ItemFn(_, _, constness, ..) => {
-                (constness == hir::Constness::Const, hcx.hash_spans())
+                constness == hir::Constness::Const
             }
             hir::ItemUse(..)         |
             hir::ItemExternCrate(..) |
@@ -904,7 +904,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Item {
             hir::ItemEnum(..)        |
             hir::ItemStruct(..)      |
             hir::ItemUnion(..)       => {
-                (false, false)
+                false
             }
         };
 
@@ -919,13 +919,11 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Item {
         } = *self;
 
         hcx.hash_hir_item_like(attrs, is_const, |hcx| {
-            hcx.while_hashing_spans(hash_spans, |hcx| {
-                name.hash_stable(hcx, hasher);
-                attrs.hash_stable(hcx, hasher);
-                node.hash_stable(hcx, hasher);
-                vis.hash_stable(hcx, hasher);
-                span.hash_stable(hcx, hasher);
-            });
+            name.hash_stable(hcx, hasher);
+            attrs.hash_stable(hcx, hasher);
+            node.hash_stable(hcx, hasher);
+            vis.hash_stable(hcx, hasher);
+            span.hash_stable(hcx, hasher);
         });
     }
 }
