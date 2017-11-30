@@ -257,24 +257,14 @@ pub fn rewrite_macro(
                     trailing_comma = false;
                 }
                 // Convert `MacroArg` into `ast::Expr`, as `rewrite_array` only accepts the latter.
-                let expr_vec: Vec<_> = arg_vec
-                    .iter()
-                    .filter_map(|e| match *e {
-                        MacroArg::Expr(ref e) => Some(e.clone()),
-                        _ => None,
-                    })
-                    .collect();
-                if expr_vec.len() != arg_vec.len() {
-                    return Some(context.snippet(mac.span));
-                }
                 let sp = mk_sp(
                     context
                         .codemap
                         .span_after(mac.span, original_style.opener()),
                     mac.span.hi() - BytePos(1),
                 );
-                let rewrite =
-                    rewrite_array(expr_vec.iter(), sp, context, mac_shape, trailing_comma)?;
+                let arg_vec = &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..];
+                let rewrite = rewrite_array(arg_vec, sp, context, mac_shape, trailing_comma)?;
 
                 Some(format!("{}{}", macro_name, rewrite))
             }

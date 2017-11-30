@@ -63,7 +63,7 @@ pub fn format_expr(
 
     let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => rewrite_array(
-            expr_vec.iter().map(|e| &**e),
+            &ptr_vec_to_ref_vec(expr_vec),
             mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi()),
             context,
             shape,
@@ -397,16 +397,13 @@ where
     ))
 }
 
-pub fn rewrite_array<'a, I>(
-    expr_iter: I,
+pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
+    exprs: &[&T],
     span: Span,
     context: &RewriteContext,
     shape: Shape,
     trailing_comma: bool,
-) -> Option<String>
-where
-    I: Iterator<Item = &'a ast::Expr>,
-{
+) -> Option<String> {
     let bracket_size = if context.config.spaces_within_parens_and_brackets() {
         2 // "[ "
     } else {
@@ -426,11 +423,11 @@ where
 
     let items = itemize_list(
         context.codemap,
-        expr_iter,
+        exprs.iter(),
         "]",
         ",",
-        |item| item.span.lo(),
-        |item| item.span.hi(),
+        |item| item.span().lo(),
+        |item| item.span().hi(),
         |item| item.rewrite(context, nested_shape),
         span.lo(),
         span.hi(),
@@ -484,7 +481,17 @@ where
         separator: ",",
         trailing_separator: if trailing_comma {
             SeparatorTactic::Always
-        } else if context.inside_macro || context.config.indent_style() == IndentStyle::Visual {
+        } else if context.inside_macro && !exprs.is_empty() {
+            let ends_with_bracket = context.snippet(span).ends_with(']');
+            let bracket_offset = if ends_with_bracket { 1 } else { 0 };
+            let snippet = context.snippet(mk_sp(span.lo(), span.hi() - BytePos(bracket_offset)));
+            let last_char_index = snippet.rfind(|c: char| !c.is_whitespace())?;
+            if &snippet[last_char_index..last_char_index + 1] == "," {
+                SeparatorTactic::Always
+            } else {
+                SeparatorTactic::Never
+            }
+        } else if context.config.indent_style() == IndentStyle::Visual {
             SeparatorTactic::Never
         } else {
             SeparatorTactic::Vertical
