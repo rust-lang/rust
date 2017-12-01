@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(never_type)]
-
-fn foo(x: usize, y: !, z: usize) { }
-
-#[deny(coerce_never)]
-fn cast_a() {
-    let y = {return; 22} as !;
-    //~^ ERROR cannot coerce `i32` to !
-    //~| hard error
-}
-
-fn cast_b() {
-    let y = 22 as !; //~ ERROR non-primitive cast
-}
-
-fn main() { }
+// @has 'issue_46377/index.html' '//*[@class="docblock-short"]' 'Check out this struct!'
+/// # Check out this struct!
+pub struct SomeStruct;

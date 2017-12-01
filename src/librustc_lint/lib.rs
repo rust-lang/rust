@@ -247,6 +247,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(SAFE_PACKED_BORROWS),
             reference: "issue #46043 <https://github.com/rust-lang/rust/issues/46043>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(COERCE_NEVER),
+            reference: "issue #46325 <https://github.com/rust-lang/rust/issues/46325>",
+        },
 
         ]);
 

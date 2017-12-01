@@ -184,6 +184,15 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
                     return None;
                 }
             }
+            if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
+                for typaram in generics {
+                    if let Some(did) = typaram.def_id() {
+                        if did.is_local() && !self.retained.contains(&did) {
+                            return None;
+                        }
+                    }
+                }
+            }
         }
         self.fold_item_recur(i)
     }

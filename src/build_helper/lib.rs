@@ -190,6 +190,9 @@ pub fn mtime(path: &Path) -> FileTime {
 ///
 /// Uses last-modified time checks to verify this.
 pub fn up_to_date(src: &Path, dst: &Path) -> bool {
+    if !dst.exists() {
+        return false;
+    }
     let threshold = mtime(dst);
     let meta = match fs::metadata(src) {
         Ok(meta) => meta,
