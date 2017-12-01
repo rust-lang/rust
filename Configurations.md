@@ -906,6 +906,37 @@ fn lorem() -> usize {
 
 See also [`control_brace_style`](#control_brace_style).
 
+
+## `where_single_line`
+
+To force single line where layout
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+
+#### `false` (default):
+
+```rust
+impl<T> Lorem for T
+where
+    Option<T>: Ipsum,
+{
+    ...
+}
+```
+
+#### `true`:
+
+```rust
+impl<T> Lorem for T
+where Option<T>: Ipsum {
+    ...
+}
+```
+
+See also [`brace_style`](#brace_style), [`control_brace_style`](#control_brace_style).
+
+
 ## `force_explicit_abi`
 
 Always print the abi for extern items
