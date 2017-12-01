@@ -178,22 +178,26 @@ fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
 
 /// Implementation if `MATCH_SAME_ARMS`.
 fn lint_match_arms(cx: &LateContext, expr: &Expr) {
-    let hash = |arm: &Arm| -> u64 {
-        let mut h = SpanlessHash::new(cx);
-        h.hash_expr(&arm.body);
-        h.finish()
-    };
-
-    let eq = |lhs: &Arm, rhs: &Arm| -> bool {
-        // Arms with a guard are ignored, those can’t always be merged together
-        lhs.guard.is_none() && rhs.guard.is_none() &&
-            SpanlessEq::new(cx).eq_expr(&lhs.body, &rhs.body) &&
-            // all patterns should have the same bindings
-            bindings(cx, &lhs.pats[0]) == bindings(cx, &rhs.pats[0])
-    };
-
     if let ExprMatch(_, ref arms, MatchSource::Normal) = expr.node {
-        if let Some((i, j)) = search_same(arms, hash, eq) {
+        let hash = |&(_, arm): &(usize, &Arm)| -> u64 {
+            let mut h = SpanlessHash::new(cx);
+            h.hash_expr(&arm.body);
+            h.finish()
+        };
+
+        let eq = |&(lindex, lhs): &(usize, &Arm), &(rindex, rhs): &(usize, &Arm)| -> bool {
+            let min_index = usize::min(lindex, rindex);
+            let max_index = usize::max(rindex, rindex);
+            // Arms with a guard are ignored, those can’t always be merged together
+            // This is also the case for arms in-between each there is an arm with a guard
+            (min_index..=max_index).all(|index| arms[index].guard.is_none()) &&
+                SpanlessEq::new(cx).eq_expr(&lhs.body, &rhs.body) &&
+                // all patterns should have the same bindings
+                bindings(cx, &lhs.pats[0]) == bindings(cx, &rhs.pats[0])
+        };
+
+        let indexed_arms: Vec<(usize, &Arm)> = arms.iter().enumerate().collect();
+        if let Some((&(_, i), &(_, j))) = search_same(&indexed_arms, hash, eq) {
             span_lint_and_then(
                 cx,
                 MATCH_SAME_ARMS,
