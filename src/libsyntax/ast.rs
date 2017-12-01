@@ -2022,10 +2022,6 @@ pub enum ItemKind {
     ///
     /// E.g. `trait Foo = Bar + Quux;`
     TraitAlias(Generics, TyParamBounds),
-    /// Auto trait implementation.
-    ///
-    /// E.g. `impl Trait for .. {}` or `impl<T> Trait<T> for .. {}`
-    AutoImpl(Unsafety, TraitRef),
     /// An implementation.
     ///
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
@@ -2064,8 +2060,7 @@ impl ItemKind {
             ItemKind::TraitAlias(..) => "trait alias",
             ItemKind::Mac(..) |
             ItemKind::MacroDef(..) |
-            ItemKind::Impl(..) |
-            ItemKind::AutoImpl(..) => "item"
+            ItemKind::Impl(..) => "item"
         }
     }
 }

@@ -15,16 +15,6 @@
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use syntax::ast;
-use rustc::hir;
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
-
-pub fn check_auto_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut overlap = OverlapChecker { tcx };
-
-    // this secondary walk specifically checks for some other cases,
-    // like defaulted traits, for which additional overlap rules exist
-    tcx.hir.krate().visit_all_item_likes(&mut overlap);
-}
 
 pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
     let impl_def_id = tcx.hir.local_def_id(node_id);
@@ -64,47 +54,5 @@ pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
                           tcx.item_path_str(trait_def_id));
             }
         }
-    }
-}
-
-struct OverlapChecker<'cx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
-}
-
-impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OverlapChecker<'cx, 'tcx> {
-    fn visit_item(&mut self, item: &'v hir::Item) {
-        match item.node {
-            hir::ItemAutoImpl(..) => {
-                // look for another auto impl; note that due to the
-                // general orphan/coherence rules, it must always be
-                // in this crate.
-                let impl_def_id = self.tcx.hir.local_def_id(item.id);
-                let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
-
-                let prev_id = self.tcx.hir.trait_auto_impl(trait_ref.def_id).unwrap();
-                if prev_id != item.id {
-                    let mut err = struct_span_err!(self.tcx.sess,
-                                                   self.tcx.span_of_impl(impl_def_id).unwrap(),
-                                                   E0521,
-                                                   "redundant auto implementations of trait \
-                                                    `{}`:",
-                                                   trait_ref);
-                    err.span_note(self.tcx
-                                      .span_of_impl(self.tcx.hir.local_def_id(prev_id))
-                                      .unwrap(),
-                                  "redundant implementation is here:");
-                    err.emit();
-                }
-            }
-            hir::ItemImpl(.., Some(_), _, _) => {
-            }
-            _ => {}
-        }
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-    }
-
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }

@@ -147,10 +147,6 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 cmp::min(self.item_ty_level(def_id), self.impl_trait_level(def_id))
             }
-            hir::ItemAutoImpl(..) => {
-                let def_id = self.tcx.hir.local_def_id(item.id);
-                self.impl_trait_level(def_id)
-            }
             // Foreign mods inherit level from parents
             hir::ItemForeignMod(..) => {
                 self.prev_level
@@ -214,7 +210,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             }
             hir::ItemUse(..) | hir::ItemStatic(..) | hir::ItemConst(..) |
             hir::ItemGlobalAsm(..) | hir::ItemTy(..) | hir::ItemMod(..) | hir::ItemTraitAlias(..) |
-            hir::ItemFn(..) | hir::ItemExternCrate(..) | hir::ItemAutoImpl(..) => {}
+            hir::ItemFn(..) | hir::ItemExternCrate(..) => {}
         }
 
         // Mark all items in interfaces of reachable items as reachable
@@ -225,8 +221,6 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemMod(..) => {}
             // Reexports are handled in visit_mod
             hir::ItemUse(..) => {}
-            // The interface is empty
-            hir::ItemAutoImpl(..) => {}
             // The interface is empty
             hir::ItemGlobalAsm(..) => {}
             // Visit everything
@@ -1571,8 +1565,6 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                     self.check(field.id, min(item_visibility, field_visibility)).ty();
                 }
             }
-            // The interface is empty
-            hir::ItemAutoImpl(..) => {}
             // An inherent impl is public when its type is public
             // Subitems of inherent impls have their own publicity
             hir::ItemImpl(.., None, _, ref impl_item_refs) => {

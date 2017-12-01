@@ -229,9 +229,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                         item.span,
                                         Some("place qualifiers on individual impl items instead"));
             }
-            ItemKind::AutoImpl(..) => {
-                self.invalid_visibility(&item.vis, item.span, None);
-            }
             ItemKind::ForeignMod(..) => {
                 self.invalid_visibility(&item.vis,
                                         item.span,

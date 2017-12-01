@@ -511,17 +511,6 @@ impl Sig for ast::Item {
 
                 Ok(sig)
             }
-            ast::ItemKind::AutoImpl(unsafety, ref trait_ref) => {
-                let mut text = String::new();
-                if unsafety == ast::Unsafety::Unsafe {
-                    text.push_str("unsafe ");
-                }
-                text.push_str("impl ");
-                let trait_sig = trait_ref.path.make(offset + text.len(), id, scx)?;
-                text.push_str(&trait_sig.text);
-                text.push_str(" for .. {}");
-                Ok(replace_text(trait_sig, text))
-            }
             ast::ItemKind::Impl(
                 unsafety,
                 polarity,
