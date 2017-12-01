@@ -1,22 +1,56 @@
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use std::rc::Rc;
 use rustc_data_structures::bitvec::BitMatrix;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::Location;
+use rustc_data_structures::indexed_vec::IndexVec;
+use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::RegionVid;
 
 /// Maps between the various kinds of elements of a region value to
 /// the internal indices that w use.
 pub(super) struct RegionValueElements {
-    points: Vec<Location>,
+    /// For each basic block, how many points are contained within?
+    statements_before_block: IndexVec<BasicBlock, usize>,
+    num_points: usize,
     num_universal_regions: usize,
 }
 
 impl RegionValueElements {
-    pub(super) fn new(points: Vec<Location>, num_universal_regions: usize) -> Self {
+    pub(super) fn new(mir: &Mir<'_>, num_universal_regions: usize) -> Self {
+        let mut num_points = 0;
+        let statements_before_block =
+            mir.basic_blocks()
+               .iter()
+               .map(|block_data| {
+                   let v = num_points;
+                   num_points += block_data.statements.len() + 1;
+                   v
+               })
+               .collect();
+
+        debug!("RegionValueElements(num_universal_regions={:?})", num_universal_regions);
+        debug!("RegionValueElements: statements_before_block={:#?}", statements_before_block);
+        debug!("RegionValueElements: num_points={:#?}", num_points);
+
         Self {
-            points,
+            statements_before_block,
             num_universal_regions,
+            num_points,
         }
+    }
+
+    /// Total number of element indices that exist.
+    pub(super) fn num_elements(&self) -> usize {
+        self.num_points + self.num_universal_regions
     }
 
     /// Converts an element of a region value into a `RegionElementIndex`.
@@ -26,7 +60,7 @@ impl RegionValueElements {
 
     /// Iterates over the `RegionElementIndex` for all points in the CFG.
     pub(super) fn all_point_indices<'a>(&'a self) -> impl Iterator<Item = RegionElementIndex> + 'a {
-        (0..self.points.len()).map(move |i| RegionElementIndex::new(i + self.num_universal_regions))
+        (0..self.num_points).map(move |i| RegionElementIndex::new(i + self.num_universal_regions))
     }
 
     /// Iterates over the `RegionElementIndex` for all points in the CFG.
@@ -36,10 +70,42 @@ impl RegionValueElements {
 
     /// Converts a particular `RegionElementIndex` to the `RegionElement` it represents.
     pub(super) fn to_element(&self, i: RegionElementIndex) -> RegionElement {
+        debug!("to_element(i={:?})", i);
+
         if let Some(r) = self.to_universal_region(i) {
             RegionElement::UniversalRegion(r)
         } else {
-            RegionElement::Location(self.points[i.index() - self.num_universal_regions])
+            let point_index = i.index() - self.num_universal_regions;
+
+            // Find the basic block. We have a vector with the
+            // starting index of the statement in each block. Imagine
+            // we have statement #22, and we have a vector like:
+            //
+            // [0, 10, 20]
+            //
+            // In that case, this represents point_index 2 of
+            // basic block BB2. We know this because BB0 accounts for
+            // 0..10, BB1 accounts for 11..20, and BB2 accounts for
+            // 20...
+            //
+            // To compute this, we could do a binary search, but
+            // because I am lazy we instead iterate through to find
+            // the last point where the "first index" (0, 10, or 20)
+            // was less than the statement index (22). In our case, this will
+            // be (BB2, 20).
+            //
+            // Nit: we could do a binary search here but I'm too lazy.
+            let (block, &first_index) =
+                self.statements_before_block
+                    .iter_enumerated()
+                    .filter(|(_, first_index)| **first_index <= point_index)
+                    .last()
+                    .unwrap();
+
+            RegionElement::Location(Location {
+                block,
+                statement_index: point_index - first_index,
+            })
         }
     }
 
@@ -85,8 +151,9 @@ pub(super) trait ToElementIndex {
 
 impl ToElementIndex for Location {
     fn to_element_index(self, elements: &RegionValueElements) -> RegionElementIndex {
-        let index = elements.points.binary_search(&self).unwrap();
-        RegionElementIndex::new(index + elements.num_universal_regions)
+        let Location { block, statement_index } = self;
+        let start_index = elements.statements_before_block[block];
+        RegionElementIndex::new(elements.num_universal_regions + start_index + statement_index)
     }
 }
 
@@ -120,11 +187,9 @@ impl RegionValues {
             "universal regions are a subset of the region variables"
         );
 
-        let num_columns = elements.points.len() + elements.num_universal_regions;
-
         Self {
             elements: elements.clone(),
-            matrix: BitMatrix::new(num_region_variables, num_columns),
+            matrix: BitMatrix::new(num_region_variables, elements.num_elements()),
         }
     }
 

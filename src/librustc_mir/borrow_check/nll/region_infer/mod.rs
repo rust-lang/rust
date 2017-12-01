@@ -107,16 +107,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let num_region_variables = var_origins.len();
         let num_universal_regions = universal_regions.len();
 
-        let mut points = Vec::new();
-        for (block, block_data) in mir.basic_blocks().iter_enumerated() {
-            for statement_index in 0..block_data.statements.len() + 1 {
-                points.push(Location {
-                    block,
-                    statement_index,
-                });
-            }
-        }
-        let elements = &Rc::new(RegionValueElements::new(points, num_universal_regions));
+        let elements = &Rc::new(RegionValueElements::new(mir, num_universal_regions));
 
         // Create a RegionDefinition for each inference variable.
         let definitions = var_origins
