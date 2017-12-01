@@ -2042,42 +2042,27 @@ where
                 tactic = DefinitiveListTactic::Horizontal;
             } else {
                 tactic = default_tactic();
-                let is_simple_enough =
-                    tactic == DefinitiveListTactic::Vertical && is_every_args_simple(args);
-                if is_simple_enough
-                    && FORMAT_LIKE_WHITELIST
-                        .iter()
-                        .find(|s| **s == callee_str)
-                        .is_some()
-                {
+
+                // For special-case macros, we may want to use different tactics.
+                let maybe_args_offset = maybe_get_args_offset(callee_str, args);
+
+                if tactic == DefinitiveListTactic::Vertical && maybe_args_offset.is_some() {
+                    let args_offset = maybe_args_offset.unwrap();
                     let args_tactic = definitive_tactic(
-                        &item_vec[1..],
+                        &item_vec[args_offset..],
                         ListTactic::HorizontalVertical,
                         Separator::Comma,
                         nested_shape.width,
                     );
-                    tactic = if args_tactic == DefinitiveListTactic::Horizontal {
-                        DefinitiveListTactic::FormatCall
-                    } else {
-                        default_tactic()
-                    };
-                } else if is_simple_enough && item_vec.len() >= 2
-                    && WRITE_LIKE_WHITELIST
-                        .iter()
-                        .find(|s| **s == callee_str)
-                        .is_some()
-                {
-                    let args_tactic = definitive_tactic(
-                        &item_vec[2..],
-                        ListTactic::HorizontalVertical,
-                        Separator::Comma,
-                        nested_shape.width,
-                    );
-                    tactic = if args_tactic == DefinitiveListTactic::Horizontal {
-                        DefinitiveListTactic::WriteCall
-                    } else {
-                        default_tactic()
-                    };
+
+                    // Every argument is simple and fits on a single line.
+                    if args_tactic == DefinitiveListTactic::Horizontal {
+                        tactic = if args_offset == 1 {
+                            DefinitiveListTactic::FormatCall
+                        } else {
+                            DefinitiveListTactic::WriteCall
+                        };
+                    }
                 }
             }
         }
@@ -2109,6 +2094,29 @@ fn is_every_args_simple<T: ToExpr>(lists: &[&T]) -> bool {
     lists
         .iter()
         .all(|arg| arg.to_expr().map_or(false, is_simple_arg))
+}
+
+/// In case special-case style is required, returns an offset from which we start horizontal layout.
+fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<usize> {
+    if FORMAT_LIKE_WHITELIST
+        .iter()
+        .find(|s| **s == callee_str)
+        .is_some()
+        && args.len() >= 1
+        && is_every_args_simple(args)
+    {
+        Some(1)
+    } else if WRITE_LIKE_WHITELIST
+        .iter()
+        .find(|s| **s == callee_str)
+        .is_some()
+        && args.len() >= 2
+        && is_every_args_simple(args)
+    {
+        Some(2)
+    } else {
+        None
+    }
 }
 
 /// Returns a shape for the last argument which is going to be overflowed.
