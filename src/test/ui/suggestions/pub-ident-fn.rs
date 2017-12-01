@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub   foo(s: usize) -> bool { true }
+//~^ ERROR missing `fn` for method definition
+
 fn main() {
-    let caller<F> = |f: F|  //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `<`
-    where F: Fn() -> i32
-    {
-        let x = f();
-        println!("Y {}",x);
-        return x;
-    };
-    //~^ ERROR expected item, found `;`
-
-    caller(bar_handler);
-}
-
-fn bar_handler() -> i32 {
-    5
+    foo(2);
 }

@@ -1945,7 +1945,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_use_tree(item, use_tree, &path);
             }
 
-            ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_)=> {
+            ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_) => {
                 // do nothing, these are just around to be encoded
             }
 

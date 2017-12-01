@@ -11,7 +11,7 @@
 macro_rules! failed {
     () => {{
         let x = 5 ""; //~ ERROR found `""`
-    }} //~ ERROR macro expansion ignores token `}`
+    }}
 }
 
 fn main() {

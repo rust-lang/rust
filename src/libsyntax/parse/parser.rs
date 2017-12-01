@@ -1156,6 +1156,7 @@ impl<'a> Parser<'a> {
             None => token::CloseDelim(self.token_cursor.frame.delim),
         })
     }
+
     fn look_ahead_span(&self, dist: usize) -> Span {
         if dist == 0 {
             return self.span
@@ -4268,7 +4269,16 @@ impl<'a> Parser<'a> {
         let mut stmts = vec![];
 
         while !self.eat(&token::CloseDelim(token::Brace)) {
-            if let Some(stmt) = self.parse_full_stmt(false)? {
+            let stmt = match self.parse_full_stmt(false) {
+                Err(mut err) => {
+                    err.emit();
+                    self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Break);
+                    self.eat(&token::CloseDelim(token::Brace));
+                    break;
+                }
+                Ok(stmt) => stmt,
+            };
+            if let Some(stmt) = stmt {
                 stmts.push(stmt);
             } else if self.token == token::Eof {
                 break;
@@ -4277,7 +4287,6 @@ impl<'a> Parser<'a> {
                 continue;
             };
         }
-
         Ok(P(ast::Block {
             stmts,
             id: ast::DUMMY_NODE_ID,
@@ -5325,18 +5334,45 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics), None))
     }
 
+    fn consume_block(&mut self, delim: token::DelimToken) {
+        let mut brace_depth = 0;
+        if !self.eat(&token::OpenDelim(delim)) {
+            return;
+        }
+        loop {
+            if self.eat(&token::OpenDelim(delim)) {
+                brace_depth += 1;
+            } else if self.eat(&token::CloseDelim(delim)) {
+                if brace_depth == 0 {
+                    return;
+                } else {
+                    brace_depth -= 1;
+                    continue;
+                }
+            } else if self.eat(&token::Eof) || self.eat(&token::CloseDelim(token::NoDelim)) {
+                return;
+            } else {
+                self.bump();
+            }
+        }
+    }
+
     pub fn parse_record_struct_body(&mut self) -> PResult<'a, Vec<StructField>> {
         let mut fields = Vec::new();
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
-                fields.push(self.parse_struct_decl_field().map_err(|e| {
+                let field = self.parse_struct_decl_field().map_err(|e| {
                     self.recover_stmt();
-                    self.eat(&token::CloseDelim(token::Brace));
                     e
-                })?);
+                });
+                match field {
+                    Ok(field) => fields.push(field),
+                    Err(mut err) => {
+                        err.emit();
+                    }
+                }
             }
-
-            self.bump();
+            self.eat(&token::CloseDelim(token::Brace));
         } else {
             let token_str = self.this_token_to_string();
             return Err(self.fatal(&format!("expected `where`, or `{{` after struct \
@@ -5384,8 +5420,15 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
             token::CloseDelim(token::Brace) => {}
-            token::DocComment(_) => return Err(self.span_fatal_err(self.span,
-                                                                   Error::UselessDocComment)),
+            token::DocComment(_) => {
+                let mut err = self.span_fatal_err(self.span, Error::UselessDocComment);
+                self.bump(); // consume the doc comment
+                if self.eat(&token::Comma) || self.token == token::CloseDelim(token::Brace) {
+                    err.emit();
+                } else {
+                    return Err(err);
+                }
+            }
             _ => return Err(self.span_fatal_help(self.span,
                     &format!("expected `,`, or `}}`, found `{}`", self.this_token_to_string()),
                     "struct fields should be separated by commas")),
@@ -6241,7 +6284,65 @@ impl<'a> Parser<'a> {
             return Ok(Some(macro_def));
         }
 
-        self.parse_macro_use_or_failure(attrs,macros_allowed,attributes_allowed,lo,visibility)
+        // Verify wether we have encountered a struct or method definition where the user forgot to
+        // add the `struct` or `fn` keyword after writing `pub`: `pub S {}`
+        if visibility == Visibility::Public &&
+            self.check_ident() &&
+            self.look_ahead(1, |t| *t != token::Not)
+        {
+            // Space between `pub` keyword and the identifier
+            //
+            //     pub   S {}
+            //        ^^^ `sp` points here
+            let sp = self.prev_span.between(self.span);
+            let full_sp = self.prev_span.to(self.span);
+            let ident_sp = self.span;
+            if self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) {
+                // possible public struct definition where `struct` was forgotten
+                let ident = self.parse_ident().unwrap();
+                let msg = format!("add `struct` here to parse `{}` as a public struct",
+                                  ident);
+                let mut err = self.diagnostic()
+                    .struct_span_err(sp, "missing `struct` for struct definition");
+                err.span_suggestion_short(sp, &msg, " struct ".into());
+                return Err(err);
+            } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
+                let ident = self.parse_ident().unwrap();
+                self.consume_block(token::Paren);
+                let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) ||
+                    self.check(&token::OpenDelim(token::Brace))
+                {
+                    ("fn", "method", false)
+                } else if self.check(&token::Colon) {
+                    let kw = "struct";
+                    (kw, kw, false)
+                } else {
+                    ("fn` or `struct", "method or struct", true)
+                };
+
+                let msg = format!("missing `{}` for {} definition", kw, kw_name);
+                let mut err = self.diagnostic().struct_span_err(sp, &msg);
+                if !ambiguous {
+                    let suggestion = format!("add `{}` here to parse `{}` as a public {}",
+                                             kw,
+                                             ident,
+                                             kw_name);
+                    err.span_suggestion_short(sp, &suggestion, format!(" {} ", kw));
+                } else {
+                    if let Ok(snippet) = self.sess.codemap().span_to_snippet(ident_sp) {
+                        err.span_suggestion(
+                            full_sp,
+                            "if you meant to call a macro, write instead",
+                            format!("{}!", snippet));
+                    } else {
+                        err.help("if you meant to call a macro, remove the `pub` \
+                                  and add a trailing `!` after the identifier");
+                    }
+                }
+                return Err(err);
+            }
+        }
+        self.parse_macro_use_or_failure(attrs, macros_allowed, attributes_allowed, lo, visibility)
     }
 
     /// Parse a foreign item.
