@@ -3212,7 +3212,6 @@ impl<'a> Resolver<'a> {
         let name = path[path.len() - 1].node.name;
         // Make sure error reporting is deterministic.
         names.sort_by_key(|name| name.as_str());
-
         match find_best_match_for_name(names.iter(), &name.as_str(), None) {
             Some(found) if found != name => Some(found),
             _ => None,
