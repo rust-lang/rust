@@ -778,7 +778,6 @@ pub enum Abi {
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
-        packed: bool
     }
 }
 
@@ -790,18 +789,7 @@ impl Abi {
             Abi::Scalar(_) |
             Abi::ScalarPair(..) |
             Abi::Vector { .. } => false,
-            Abi::Aggregate { sized, .. } => !sized
-        }
-    }
-
-    /// Returns true if the fields of the layout are packed.
-    pub fn is_packed(&self) -> bool {
-        match *self {
-            Abi::Uninhabited |
-            Abi::Scalar(_) |
-            Abi::ScalarPair(..) |
-            Abi::Vector { .. } => false,
-            Abi::Aggregate { packed, .. } => packed
+            Abi::Aggregate { sized } => !sized
         }
     }
 }
@@ -1077,10 +1065,7 @@ impl<'a, 'tcx> LayoutDetails {
             }
 
             let size = min_size.abi_align(align);
-            let mut abi = Abi::Aggregate {
-                sized,
-                packed
-            };
+            let mut abi = Abi::Aggregate { sized };
 
             // Unpack newtype ABIs and find scalar pairs.
             if sized && size.bytes() > 0 {
@@ -1254,10 +1239,7 @@ impl<'a, 'tcx> LayoutDetails {
                         stride: element.size,
                         count
                     },
-                    abi: Abi::Aggregate {
-                        sized: true,
-                        packed: false
-                    },
+                    abi: Abi::Aggregate { sized: true },
                     align: element.align,
                     size
                 })
@@ -1270,10 +1252,7 @@ impl<'a, 'tcx> LayoutDetails {
                         stride: element.size,
                         count: 0
                     },
-                    abi: Abi::Aggregate {
-                        sized: false,
-                        packed: false
-                    },
+                    abi: Abi::Aggregate { sized: false },
                     align: element.align,
                     size: Size::from_bytes(0)
                 })
@@ -1285,10 +1264,7 @@ impl<'a, 'tcx> LayoutDetails {
                         stride: Size::from_bytes(1),
                         count: 0
                     },
-                    abi: Abi::Aggregate {
-                        sized: false,
-                        packed: false
-                    },
+                    abi: Abi::Aggregate { sized: false },
                     align: dl.i8_align,
                     size: Size::from_bytes(0)
                 })
@@ -1302,7 +1278,7 @@ impl<'a, 'tcx> LayoutDetails {
                 let mut unit = univariant_uninterned(&[], &ReprOptions::default(),
                   StructKind::AlwaysSized)?;
                 match unit.abi {
-                    Abi::Aggregate { ref mut sized, .. } => *sized = false,
+                    Abi::Aggregate { ref mut sized } => *sized = false,
                     _ => bug!()
                 }
                 tcx.intern_layout(unit)
@@ -1418,10 +1394,7 @@ impl<'a, 'tcx> LayoutDetails {
                     return Ok(tcx.intern_layout(LayoutDetails {
                         variants: Variants::Single { index: 0 },
                         fields: FieldPlacement::Union(variants[0].len()),
-                        abi: Abi::Aggregate {
-                            sized: true,
-                            packed
-                        },
+                        abi: Abi::Aggregate { sized: true },
                         align,
                         size: size.abi_align(align)
                     }));
@@ -1525,15 +1498,10 @@ impl<'a, 'tcx> LayoutDetails {
                             let abi = if offset.bytes() == 0 && niche.value.size(dl) == size {
                                 Abi::Scalar(niche.clone())
                             } else {
-                                let mut packed = st[i].abi.is_packed();
                                 if offset.abi_align(niche_align) != offset {
-                                    packed = true;
                                     niche_align = dl.i8_align;
                                 }
-                                Abi::Aggregate {
-                                    sized: true,
-                                    packed
-                                }
+                                Abi::Aggregate { sized: true }
                             };
                             align = align.max(niche_align);
 
@@ -1681,10 +1649,7 @@ impl<'a, 'tcx> LayoutDetails {
                 let abi = if discr.value.size(dl) == size {
                     Abi::Scalar(discr.clone())
                 } else {
-                    Abi::Aggregate {
-                        sized: true,
-                        packed: false
-                    }
+                    Abi::Aggregate { sized: true }
                 };
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Tagged {
@@ -2277,11 +2242,6 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         self.abi.is_unsized()
     }
 
-    /// Returns true if the fields of the layout are packed.
-    pub fn is_packed(&self) -> bool {
-        self.abi.is_packed()
-    }
-
     /// Returns true if the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
@@ -2289,7 +2249,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             Abi::Scalar(_) |
             Abi::ScalarPair(..) |
             Abi::Vector { .. } => false,
-            Abi::Aggregate { sized, .. } => sized && self.size.bytes() == 0
+            Abi::Aggregate { sized } => sized && self.size.bytes() == 0
         }
     }
 
@@ -2452,8 +2412,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Abi {
                 element.hash_stable(hcx, hasher);
                 count.hash_stable(hcx, hasher);
             }
-            Aggregate { packed, sized } => {
-                packed.hash_stable(hcx, hasher);
+            Aggregate { sized } => {
                 sized.hash_stable(hcx, hasher);
             }
         }

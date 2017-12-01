@@ -8,7 +8,7 @@ use rustc::mir;
 use rustc::ty::{self, Instance};
 use rustc::ty::layout::LayoutOf;
 use rustc::middle::const_val::ConstVal;
-use rustc::mir::interpret::{PtrAndAlign, GlobalId};
+use rustc::mir::interpret::GlobalId;
 
 use rustc::mir::interpret::{EvalResult, EvalErrorKind};
 use super::{EvalContext, StackPopCleanup, Place, Machine};
@@ -182,13 +182,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             layout.align.abi(),
             None,
         )?;
-        self.tcx.interpret_interner.borrow_mut().cache(
-            cid,
-            PtrAndAlign {
-                ptr: ptr.into(),
-                aligned: !layout.is_packed(),
-            },
-        );
+        self.tcx.interpret_interner.borrow_mut().cache(cid, ptr.into());
         let internally_mutable = !layout.ty.is_freeze(self.tcx, self.param_env, span);
         let mutability = if mutability == Mutability::Mutable || internally_mutable {
             Mutability::Mutable
@@ -273,13 +267,7 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                         layout.align.abi(),
                         None,
                     )?;
-                    this.ecx.tcx.interpret_interner.borrow_mut().cache(
-                        cid,
-                        PtrAndAlign {
-                            ptr: ptr.into(),
-                            aligned: !layout.is_packed(),
-                        },
-                    );
+                    this.ecx.tcx.interpret_interner.borrow_mut().cache(cid, ptr.into());
                     trace!("pushing stack frame for {:?}", index);
                     this.ecx.push_stack_frame(
                         this.instance,

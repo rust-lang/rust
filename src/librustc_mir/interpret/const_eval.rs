@@ -12,7 +12,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
-use rustc::mir::interpret::{EvalResult, EvalError, EvalErrorKind, GlobalId, Value, PrimVal, PtrAndAlign};
+use rustc::mir::interpret::{EvalResult, EvalError, EvalErrorKind, GlobalId, Value, Pointer, PrimVal, PtrAndAlign};
 use super::{Place, PlaceExtra, EvalContext, StackPopCleanup, ValTy, HasMemory};
 
 use rustc_const_math::ConstInt;
@@ -45,7 +45,7 @@ pub fn eval_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, (PtrAndAlign, Ty<'tcx>)> {
+) -> EvalResult<'tcx, (Pointer, Ty<'tcx>)> {
     debug!("eval_body: {:?}, {:?}", instance, param_env);
     let limits = super::ResourceLimits::default();
     let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
@@ -69,13 +69,7 @@ pub fn eval_body<'a, 'tcx>(
             layout.align.abi(),
             None,
         )?;
-        tcx.interpret_interner.borrow_mut().cache(
-            cid,
-            PtrAndAlign {
-                ptr: ptr.into(),
-                aligned: !layout.is_packed(),
-            },
-        );
+        tcx.interpret_interner.borrow_mut().cache(cid, ptr.into());
         let cleanup = StackPopCleanup::MarkStatic(Mutability::Immutable);
         let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
         trace!("const_eval: pushing stack frame for global: {}", name);
@@ -101,7 +95,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
     let ptr_ty = eval_body(tcx, instance, param_env);
     let (ptr, ty) = ptr_ty?;
     let ecx = mk_eval_cx(tcx, instance, param_env)?;
-    let prim = match ecx.read_maybe_aligned(ptr.aligned, |ectx| ectx.try_read_value(ptr.ptr, ty))? {
+    let prim = match ecx.try_read_value(ptr, ty)? {
         Some(Value::ByVal(prim)) => prim.to_bytes()?,
         _ => return err!(TypeNotPrimitive(ty)),
     };
@@ -363,7 +357,10 @@ pub fn const_eval_provider<'a, 'tcx>(
             (_, Err(err)) => Err(err),
             (Ok((miri_val, miri_ty)), Ok(ctfe)) => {
                 let mut ecx = mk_eval_cx(tcx, instance, key.param_env).unwrap();
-                check_ctfe_against_miri(&mut ecx, miri_val, miri_ty, ctfe.val);
+                check_ctfe_against_miri(&mut ecx, PtrAndAlign {
+                    ptr: miri_val,
+                    aligned: true
+                }, miri_ty, ctfe.val);
                 Ok(ctfe)
             }
         }

@@ -55,11 +55,7 @@ impl ops::BitOr for Alignment {
 
 impl<'a> From<TyLayout<'a>> for Alignment {
     fn from(layout: TyLayout) -> Self {
-        if layout.is_packed() {
-            Alignment::Packed(layout.align)
-        } else {
-            Alignment::AbiAligned
-        }
+        Alignment::Packed(layout.align)
     }
 }
 
@@ -232,25 +228,27 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
             }
         };
 
-        // Simple case - we can just GEP the field
-        //   * Packed struct - There is no alignment padding
-        //   * Field is sized - pointer is properly aligned already
-        if self.layout.is_packed() || !field.is_unsized() {
-            return simple();
-        }
-
-        // If the type of the last field is [T], str or a foreign type, then we don't need to do
-        // any adjusments
+        // Simple cases, which don't need DST adjustment:
+        //   * no metadata available - just log the case
+        //   * known alignment - sized types, [T], str or a foreign type
+        //   * packed struct - there is no alignment padding
         match field.ty.sty {
+            _ if !self.has_extra() => {
+                debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
+                    ix, Value(self.llval));
+                return simple();
+            }
+            _ if !field.is_unsized() => return simple(),
             ty::TySlice(..) | ty::TyStr | ty::TyForeign(..) => return simple(),
-            _ => ()
-        }
-
-        // There's no metadata available, log the case and just do the GEP.
-        if !self.has_extra() {
-            debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
-                ix, Value(self.llval));
-            return simple();
+            ty::TyAdt(def, _) => {
+                if def.repr.packed() {
+                    // FIXME(eddyb) generalize the adjustment when we
+                    // start supporting packing to larger alignments.
+                    assert_eq!(self.layout.align.abi(), 1);
+                    return simple();
+                }
+            }
+            _ => {}
         }
 
         // We need to get the pointer manually now.

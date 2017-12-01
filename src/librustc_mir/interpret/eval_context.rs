@@ -261,11 +261,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                let cid = GlobalId {
+                return Ok(self.read_global_as_value(GlobalId {
                     instance,
                     promoted: None,
-                };
-                return Ok(Value::ByRef(self.tcx.interpret_interner.borrow().get_cached(cid).expect("static/const not cached")));
+                }));
             }
 
             Aggregate(..) |
@@ -834,11 +833,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Literal::Value { ref value } => self.const_to_value(&value.val)?,
 
                     Literal::Promoted { index } => {
-                        let cid = GlobalId {
+                        self.read_global_as_value(GlobalId {
                             instance: self.frame().instance,
                             promoted: Some(index),
-                        };
-                        Value::ByRef(self.tcx.interpret_interner.borrow().get_cached(cid).expect("promoted not cached"))
+                        })
                     }
                 };
 
@@ -951,7 +949,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn read_global_as_value(&self, gid: GlobalId) -> Value {
-        Value::ByRef(self.tcx.interpret_interner.borrow().get_cached(gid).expect("global not cached"))
+        Value::ByRef(PtrAndAlign {
+            ptr: self.tcx.interpret_interner.borrow().get_cached(gid).expect("global not cached"),
+            aligned: true
+        })
     }
 
     fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx> {
@@ -1149,51 +1150,29 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
             Value::ByVal(primval) => {
                 let layout = self.layout_of(dest_ty)?;
-                if layout.is_zst() {
-                    assert!(primval.is_undef());
-                    Ok(())
-                } else {
-                    // TODO: Do we need signedness?
-                    self.memory.write_maybe_aligned_mut(!layout.is_packed(), |mem| {
-                        mem.write_primval(dest.to_ptr()?, primval, layout.size.bytes(), false)
-                    })
+                match layout.abi {
+                    layout::Abi::Scalar(_) => {}
+                    _ if primval.is_undef() => {}
+                    _ => bug!("write_value_to_ptr: invalid ByVal layout: {:#?}", layout)
                 }
+                // TODO: Do we need signedness?
+                self.memory.write_primval(dest.to_ptr()?, primval, layout.size.bytes(), false)
             }
-            Value::ByValPair(a, b) => {
+            Value::ByValPair(a_val, b_val) => {
                 let ptr = dest.to_ptr()?;
                 let mut layout = self.layout_of(dest_ty)?;
                 trace!("write_value_to_ptr valpair: {:#?}", layout);
-                let mut packed = layout.is_packed();
-                'outer: loop {
-                    for i in 0..layout.fields.count() {
-                        let field = layout.field(&self, i)?;
-                        if layout.fields.offset(i).bytes() == 0 && layout.size == field.size {
-                            layout = field;
-                            packed |= layout.is_packed();
-                            continue 'outer;
-                        }
-                    }
-                    break;
-                }
-                trace!("write_value_to_ptr valpair: {:#?}", layout);
-                assert_eq!(layout.fields.count(), 2);
-                let field_0 = layout.field(&self, 0)?;
-                let field_1 = layout.field(&self, 1)?;
-                trace!("write_value_to_ptr field 0: {:#?}", field_0);
-                trace!("write_value_to_ptr field 1: {:#?}", field_1);
-                assert_eq!(
-                    field_0.is_packed(),
-                    field_1.is_packed(),
-                    "the two fields must agree on being packed"
-                );
-                packed |= field_0.is_packed();
-                let field_0_ptr = ptr.offset(layout.fields.offset(0).bytes(), &self)?.into();
-                let field_1_ptr = ptr.offset(layout.fields.offset(1).bytes(), &self)?.into();
+                let (a, b) = match layout.abi {
+                    layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
+                    _ => bug!("write_value_to_ptr: invalid ByValPair layout: {:#?}", layout)
+                };
+                let (a_size, b_size) = (a.size(&self), b.size(&self));
+                let a_ptr = ptr;
+                let b_offset = a_size.abi_align(b.align(&self));
+                let b_ptr = ptr.offset(b_offset.bytes(), &self)?.into();
                 // TODO: What about signedess?
-                self.memory.write_maybe_aligned_mut(!packed, |mem| {
-                    mem.write_primval(field_0_ptr, a, field_0.size.bytes(), false)?;
-                    mem.write_primval(field_1_ptr, b, field_1.size.bytes(), false)
-                })?;
+                self.memory.write_primval(a_ptr, a_val, a_size.bytes(), false)?;
+                self.memory.write_primval(b_ptr, b_val, b_size.bytes(), false)?;
                 Ok(())
             }
         }

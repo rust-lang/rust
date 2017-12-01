@@ -1,6 +1,6 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{LayoutOf, TyLayout};
+use rustc::ty::layout::{self, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{GlobalId, PtrAndAlign};
 
@@ -106,9 +106,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     instance,
                     promoted: None,
                 };
-                Ok(Some(Value::ByRef(
-                    self.tcx.interpret_interner.borrow().get_cached(cid).expect("global not cached"),
-                )))
+                Ok(Some(self.read_global_as_value(cid)))
             }
             Projection(ref proj) => self.try_read_place_projection(proj),
         }
@@ -193,7 +191,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     promoted: None,
                 };
                 Place::Ptr {
-                    ptr: self.tcx.interpret_interner.borrow().get_cached(gid).expect("uncached global"),
+                    ptr: PtrAndAlign {
+                        ptr: self.tcx.interpret_interner.borrow().get_cached(gid).expect("uncached global"),
+                        aligned: true
+                    },
                     extra: PlaceExtra::None,
                 }
             }
@@ -232,15 +233,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let (base_ptr, base_extra) = match base {
             Place::Ptr { ptr, extra } => (ptr, extra),
             Place::Local { frame, local } => {
-                match self.stack[frame].get_local(local)? {
+                match (&self.stack[frame].get_local(local)?, &base_layout.abi) {
                     // in case the field covers the entire type, just return the value
-                    Value::ByVal(_) if offset.bytes() == 0 &&
-                                       field.size == base_layout.size => {
+                    (&Value::ByVal(_), &layout::Abi::Scalar(_)) |
+                    (&Value::ByValPair(..), &layout::Abi::ScalarPair(..))
+                        if offset.bytes() == 0 && field.size == base_layout.size =>
+                    {
                         return Ok((base, field));
                     }
-                    Value::ByRef { .. } |
-                    Value::ByValPair(..) |
-                    Value::ByVal(_) => self.force_allocation(base)?.to_ptr_extra_aligned(),
+                    _ => self.force_allocation(base)?.to_ptr_extra_aligned(),
                 }
             }
         };
@@ -257,9 +258,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         };
 
         let mut ptr = base_ptr.offset(offset, &self)?;
-        // if we were unaligned, stay unaligned
-        // no matter what we were, if we are packed, we must not be aligned anymore
-        ptr.aligned &= !base_layout.is_packed();
+        ptr.aligned &= base_layout.align.abi() >= field.align.abi();
 
         let extra = if !field.is_unsized() {
             PlaceExtra::None
