@@ -51,3 +51,21 @@ note: Consider removing the trailing semicolon
 42 |             x;
    |             ^^
 
+error: This expression evaluates to the Unit type ()
+  --> $DIR/is_unit_expr.rs:76:14
+   |
+76 |     let x1 = {};
+   |              ^^
+
+error: This expression evaluates to the Unit type ()
+  --> $DIR/is_unit_expr.rs:77:14
+   |
+77 |     let x2 = if true {} else {};
+   |              ^^^^^^^^^^^^^^^^^^
+
+error: This expression evaluates to the Unit type ()
+  --> $DIR/is_unit_expr.rs:78:14
+   |
+78 |     let x3 = match None { Some(_) => {}, None => {}, };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

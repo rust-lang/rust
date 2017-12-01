@@ -71,3 +71,9 @@ pub fn foo() -> i32 {
     };
     55
 }
+
+pub fn issue_2160() {
+    let x1 = {};
+    let x2 = if true {} else {};
+    let x3 = match None { Some(_) => {}, None => {}, };
+}
