@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Translation Item Collection
+//! Mono Item Collection
 //! ===========================
 //!
 //! This module is responsible for discovering all items that will contribute to
@@ -22,7 +22,7 @@
 //! in crate X might produce monomorphizations that are compiled into crate Y.
 //! We also have to collect these here.
 //!
-//! The following kinds of "translation items" are handled here:
+//! The following kinds of "mono items" are handled here:
 //!
 //! - Functions
 //! - Methods
@@ -43,24 +43,24 @@
 //! -----------------
 //! Let's define some terms first:
 //!
-//! - A "translation item" is something that results in a function or global in
-//!   the LLVM IR of a codegen unit. Translation items do not stand on their
-//!   own, they can reference other translation items. For example, if function
-//!   `foo()` calls function `bar()` then the translation item for `foo()`
-//!   references the translation item for function `bar()`. In general, the
-//!   definition for translation item A referencing a translation item B is that
+//! - A "mono item" is something that results in a function or global in
+//!   the LLVM IR of a codegen unit. Mono items do not stand on their
+//!   own, they can reference other mono items. For example, if function
+//!   `foo()` calls function `bar()` then the mono item for `foo()`
+//!   references the mono item for function `bar()`. In general, the
+//!   definition for mono item A referencing a mono item B is that
 //!   the LLVM artifact produced for A references the LLVM artifact produced
 //!   for B.
 //!
-//! - Translation items and the references between them form a directed graph,
-//!   where the translation items are the nodes and references form the edges.
-//!   Let's call this graph the "translation item graph".
+//! - Mono items and the references between them form a directed graph,
+//!   where the mono items are the nodes and references form the edges.
+//!   Let's call this graph the "mono item graph".
 //!
-//! - The translation item graph for a program contains all translation items
+//! - The mono item graph for a program contains all mono items
 //!   that are needed in order to produce the complete LLVM IR of the program.
 //!
 //! The purpose of the algorithm implemented in this module is to build the
-//! translation item graph for the current crate. It runs in two phases:
+//! mono item graph for the current crate. It runs in two phases:
 //!
 //! 1. Discover the roots of the graph by traversing the HIR of the crate.
 //! 2. Starting from the roots, find neighboring nodes by inspecting the MIR
@@ -69,26 +69,26 @@
 //!
 //! ### Discovering roots
 //!
-//! The roots of the translation item graph correspond to the non-generic
+//! The roots of the mono item graph correspond to the non-generic
 //! syntactic items in the source code. We find them by walking the HIR of the
 //! crate, and whenever we hit upon a function, method, or static item, we
-//! create a translation item consisting of the items DefId and, since we only
+//! create a mono item consisting of the items DefId and, since we only
 //! consider non-generic items, an empty type-substitution set.
 //!
 //! ### Finding neighbor nodes
-//! Given a translation item node, we can discover neighbors by inspecting its
+//! Given a mono item node, we can discover neighbors by inspecting its
 //! MIR. We walk the MIR and any time we hit upon something that signifies a
-//! reference to another translation item, we have found a neighbor. Since the
-//! translation item we are currently at is always monomorphic, we also know the
+//! reference to another mono item, we have found a neighbor. Since the
+//! mono item we are currently at is always monomorphic, we also know the
 //! concrete type arguments of its neighbors, and so all neighbors again will be
 //! monomorphic. The specific forms a reference to a neighboring node can take
 //! in MIR are quite diverse. Here is an overview:
 //!
 //! #### Calling Functions/Methods
-//! The most obvious form of one translation item referencing another is a
+//! The most obvious form of one mono item referencing another is a
 //! function or method call (represented by a CALL terminator in MIR). But
 //! calls are not the only thing that might introduce a reference between two
-//! function translation items, and as we will see below, they are just a
+//! function mono items, and as we will see below, they are just a
 //! specialized of the form described next, and consequently will don't get any
 //! special treatment in the algorithm.
 //!
@@ -112,10 +112,10 @@
 //! }
 //! ```
 //! The MIR of none of these functions will contain an explicit call to
-//! `print_val::<i32>`. Nonetheless, in order to translate this program, we need
+//! `print_val::<i32>`. Nonetheless, in order to mono this program, we need
 //! an instance of this function. Thus, whenever we encounter a function or
 //! method in operand position, we treat it as a neighbor of the current
-//! translation item. Calls are just a special case of that.
+//! mono item. Calls are just a special case of that.
 //!
 //! #### Closures
 //! In a way, closures are a simple case. Since every closure object needs to be
@@ -124,8 +124,8 @@
 //! true for closures inlined from other crates.
 //!
 //! #### Drop glue
-//! Drop glue translation items are introduced by MIR drop-statements. The
-//! generated translation item will again have drop-glue item neighbors if the
+//! Drop glue mono items are introduced by MIR drop-statements. The
+//! generated mono item will again have drop-glue item neighbors if the
 //! type to be dropped contains nested values that also need to be dropped. It
 //! might also have a function item neighbor for the explicit `Drop::drop`
 //! implementation of its type.
@@ -150,8 +150,8 @@
 //! defined in the source code of that crate. It will also contain monomorphic
 //! instantiations of any extern generic functions and of functions marked with
 //! #[inline].
-//! The collection algorithm handles this more or less transparently. If it is
-//! about to create a translation item for something with an external `DefId`,
+//! The collection algorithm handles this more or less mono. If it is
+//! about to create a mono item for something with an external `DefId`,
 //! it will take a look if the MIR for that item is available, and if so just
 //! proceed normally. If the MIR is not available, it assumes that the item is
 //! just linked to and no node is created; which is exactly what we want, since
@@ -159,14 +159,14 @@
 //!
 //! Eager and Lazy Collection Mode
 //! ------------------------------
-//! Translation item collection can be performed in one of two modes:
+//! Mono item collection can be performed in one of two modes:
 //!
 //! - Lazy mode means that items will only be instantiated when actually
 //!   referenced. The goal is to produce the least amount of machine code
 //!   possible.
 //!
 //! - Eager mode is meant to be used in conjunction with incremental compilation
-//!   where a stable set of translation items is more important than a minimal
+//!   where a stable set of mono items is more important than a minimal
 //!   one. Thus, eager mode will instantiate drop-glue for every drop-able type
 //!   in the crate, even of no drop call for that type exists (yet). It will
 //!   also instantiate default implementations of trait methods, something that
@@ -183,9 +183,9 @@
 //! statics we cannot inspect these properly.
 //!
 //! ### Const Fns
-//! Ideally, no translation item should be generated for const fns unless there
+//! Ideally, no mono item should be generated for const fns unless there
 //! is a call to them that cannot be evaluated at compile time. At the moment
-//! this is not implemented however: a translation item will be produced
+//! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
 use rustc::hir;
@@ -218,18 +218,18 @@ pub enum MonoItemCollectionMode {
     Lazy
 }
 
-/// Maps every translation item to all translation items it references in its
+/// Maps every mono item to all mono items it references in its
 /// body.
 pub struct InliningMap<'tcx> {
-    // Maps a source translation item to the range of translation items
+    // Maps a source mono item to the range of mono items
     // accessed by it.
     // The two numbers in the tuple are the start (inclusive) and
     // end index (exclusive) within the `targets` vecs.
     index: FxHashMap<MonoItem<'tcx>, (usize, usize)>,
     targets: Vec<MonoItem<'tcx>>,
 
-    // Contains one bit per translation item in the `targets` field. That bit
-    // is true if that translation item needs to be inlined into every CGU.
+    // Contains one bit per mono item in the `targets` field. That bit
+    // is true if that mono item needs to be inlined into every CGU.
     inlines: BitVector,
 }
 
@@ -300,7 +300,7 @@ pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                      InliningMap<'tcx>) {
     let roots = collect_roots(tcx, mode);
 
-    debug!("Building translation item graph, beginning at roots");
+    debug!("Building mono item graph, beginning at roots");
     let mut visited = FxHashSet();
     let mut recursion_depths = DefIdMap();
     let mut inlining_map = InliningMap::new();
@@ -347,7 +347,7 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     roots
 }
 
-// Collect all monomorphized translation items reachable from `starting_point`
+// Collect all monomorphized items reachable from `starting_point`
 fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    starting_point: MonoItem<'tcx>,
                                    visited: &mut FxHashSet<MonoItem<'tcx>>,
@@ -930,7 +930,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 self.output.push(MonoItem::Static(item.id));
             }
             hir::ItemConst(..) => {
-                // const items only generate translation items if they are
+                // const items only generate mono items if they are
                 // actually used somewhere. Just declaring them is insufficient.
             }
             hir::ItemFn(..) => {
