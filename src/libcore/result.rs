@@ -153,12 +153,12 @@
 //! }
 //! ```
 //!
-//! # The `?` syntax
+//! # The question mark operator, `?`
 //!
 //! When writing code that calls many functions that return the
-//! [`Result`] type, the error handling can be tedious. The [`?`]
-//! syntax hides some of the boilerplate of propagating errors up the
-//! call stack.
+//! [`Result`] type, the error handling can be tedious. The question mark
+//! operator, [`?`], hides some of the boilerplate of propagating errors
+//! up the call stack.
 //!
 //! It replaces this:
 //!
