@@ -353,10 +353,7 @@ where
             if one_line_width <= shape.width {
                 return Some(format!(
                     "{}{}{}{}",
-                    lhs_result,
-                    pp.infix,
-                    rhs_result,
-                    pp.suffix
+                    lhs_result, pp.infix, rhs_result, pp.suffix
                 ));
             }
         }
@@ -390,10 +387,7 @@ where
     };
     Some(format!(
         "{}{}{}{}",
-        lhs_result,
-        infix_with_sep,
-        rhs_result,
-        pp.suffix
+        lhs_result, infix_with_sep, rhs_result, pp.suffix
     ))
 }
 
@@ -883,10 +877,7 @@ impl<'a> ControlFlow<'a> {
 
             let result = format!(
                 "{} {} {{ {} }} else {{ {} }}",
-                self.keyword,
-                pat_expr_str,
-                if_str,
-                else_str
+                self.keyword, pat_expr_str, if_str, else_str
             );
 
             if result.len() <= width {
@@ -1589,10 +1580,7 @@ fn rewrite_match_body(
 
         Some(format!(
             "{} =>{}{}{}",
-            pats_str,
-            block_sep,
-            body_str,
-            body_suffix
+            pats_str, block_sep, body_str, body_suffix
         ))
     };
 

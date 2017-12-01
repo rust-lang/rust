@@ -714,8 +714,7 @@ mod test {
             toml,
             format!(
                 "merge_derives = {}\nskip_children = {}\n",
-                merge_derives,
-                skip_children,
+                merge_derives, skip_children,
             )
         );
     }

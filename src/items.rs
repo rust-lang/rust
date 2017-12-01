@@ -844,9 +844,7 @@ fn rewrite_trait_ref(
         if !(retry && trait_ref_str.contains('\n')) {
             return Some(format!(
                 "{} {}{}",
-                generics_str,
-                polarity_str,
-                &trait_ref_str
+                generics_str, polarity_str, &trait_ref_str
             ));
         }
     }
