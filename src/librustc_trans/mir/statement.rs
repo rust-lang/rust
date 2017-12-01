@@ -25,10 +25,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         self.set_debug_loc(&bcx, statement.source_info);
         match statement.kind {
-            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                if let mir::Lvalue::Local(index) = *lvalue {
+            mir::StatementKind::Assign(ref place, ref rvalue) => {
+                if let mir::Place::Local(index) = *place {
                     match self.locals[index] {
-                        LocalRef::Lvalue(tr_dest) => {
+                        LocalRef::Place(tr_dest) => {
                             self.trans_rvalue(bcx, tr_dest, rvalue)
                         }
                         LocalRef::Operand(None) => {
@@ -49,30 +49,30 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         }
                     }
                 } else {
-                    let tr_dest = self.trans_lvalue(&bcx, lvalue);
+                    let tr_dest = self.trans_place(&bcx, place);
                     self.trans_rvalue(bcx, tr_dest, rvalue)
                 }
             }
-            mir::StatementKind::SetDiscriminant{ref lvalue, variant_index} => {
-                self.trans_lvalue(&bcx, lvalue)
+            mir::StatementKind::SetDiscriminant{ref place, variant_index} => {
+                self.trans_place(&bcx, place)
                     .trans_set_discr(&bcx, variant_index);
                 bcx
             }
             mir::StatementKind::StorageLive(local) => {
-                if let LocalRef::Lvalue(tr_lval) = self.locals[local] {
-                    tr_lval.storage_live(&bcx);
+                if let LocalRef::Place(tr_place) = self.locals[local] {
+                    tr_place.storage_live(&bcx);
                 }
                 bcx
             }
             mir::StatementKind::StorageDead(local) => {
-                if let LocalRef::Lvalue(tr_lval) = self.locals[local] {
-                    tr_lval.storage_dead(&bcx);
+                if let LocalRef::Place(tr_place) = self.locals[local] {
+                    tr_place.storage_dead(&bcx);
                 }
                 bcx
             }
             mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
                 let outputs = outputs.iter().map(|output| {
-                    self.trans_lvalue(&bcx, output)
+                    self.trans_place(&bcx, output)
                 }).collect();
 
                 let input_vals = inputs.iter().map(|input| {

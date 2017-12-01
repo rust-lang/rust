@@ -30,7 +30,7 @@
 //! future.
 
 use rustc::hir;
-use rustc::mir::{Constant, Local, LocalKind, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
+use rustc::mir::{Constant, Local, LocalKind, Location, Place, Mir, Operand, Rvalue, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use transform::{MirPass, MirSource};
@@ -108,8 +108,8 @@ impl MirPass for CopyPropagation {
                             dest_local);
                         continue;
                     }
-                    let dest_lvalue_def = dest_use_info.defs_not_including_drop().next().unwrap();
-                    location = dest_lvalue_def.location;
+                    let dest_place_def = dest_use_info.defs_not_including_drop().next().unwrap();
+                    location = dest_place_def.location;
 
                     let basic_block = &mir[location.block];
                     let statement_index = location.statement_index;
@@ -123,12 +123,12 @@ impl MirPass for CopyPropagation {
 
                     // That use of the source must be an assignment.
                     match statement.kind {
-                        StatementKind::Assign(Lvalue::Local(local), Rvalue::Use(ref operand)) if
+                        StatementKind::Assign(Place::Local(local), Rvalue::Use(ref operand)) if
                                 local == dest_local => {
                             let maybe_action = match *operand {
-                                Operand::Copy(ref src_lvalue) |
-                                Operand::Move(ref src_lvalue) => {
-                                    Action::local_copy(&mir, &def_use_analysis, src_lvalue)
+                                Operand::Copy(ref src_place) |
+                                Operand::Move(ref src_place) => {
+                                    Action::local_copy(&mir, &def_use_analysis, src_place)
                                 }
                                 Operand::Constant(ref src_constant) => {
                                     Action::constant(src_constant)
@@ -173,12 +173,12 @@ fn eliminate_self_assignments<'tcx>(
             if let Some(stmt) = mir[location.block].statements.get(location.statement_index) {
                 match stmt.kind {
                     StatementKind::Assign(
-                        Lvalue::Local(local),
-                        Rvalue::Use(Operand::Copy(Lvalue::Local(src_local))),
+                        Place::Local(local),
+                        Rvalue::Use(Operand::Copy(Place::Local(src_local))),
                     ) |
                     StatementKind::Assign(
-                        Lvalue::Local(local),
-                        Rvalue::Use(Operand::Move(Lvalue::Local(src_local))),
+                        Place::Local(local),
+                        Rvalue::Use(Operand::Move(Place::Local(src_local))),
                     ) if local == dest_local && dest_local == src_local => {}
                     _ => {
                         continue;
@@ -202,10 +202,10 @@ enum Action<'tcx> {
 }
 
 impl<'tcx> Action<'tcx> {
-    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_lvalue: &Lvalue<'tcx>)
+    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
-        let src_local = if let Lvalue::Local(local) = *src_lvalue {
+        let src_local = if let Place::Local(local) = *src_place {
             local
         } else {
             debug!("  Can't copy-propagate local: source is not a local");
@@ -269,14 +269,14 @@ impl<'tcx> Action<'tcx> {
                 debug!("  Replacing all uses of {:?} with {:?} (local)",
                        dest_local,
                        src_local);
-                for lvalue_use in &def_use_analysis.local_info(dest_local).defs_and_uses {
-                    if lvalue_use.context.is_storage_marker() {
-                        mir.make_statement_nop(lvalue_use.location)
+                for place_use in &def_use_analysis.local_info(dest_local).defs_and_uses {
+                    if place_use.context.is_storage_marker() {
+                        mir.make_statement_nop(place_use.location)
                     }
                 }
-                for lvalue_use in &def_use_analysis.local_info(src_local).defs_and_uses {
-                    if lvalue_use.context.is_storage_marker() {
-                        mir.make_statement_nop(lvalue_use.location)
+                for place_use in &def_use_analysis.local_info(src_local).defs_and_uses {
+                    if place_use.context.is_storage_marker() {
+                        mir.make_statement_nop(place_use.location)
                     }
                 }
 
@@ -297,22 +297,22 @@ impl<'tcx> Action<'tcx> {
                        dest_local,
                        src_constant);
                 let dest_local_info = def_use_analysis.local_info(dest_local);
-                for lvalue_use in &dest_local_info.defs_and_uses {
-                    if lvalue_use.context.is_storage_marker() {
-                        mir.make_statement_nop(lvalue_use.location)
+                for place_use in &dest_local_info.defs_and_uses {
+                    if place_use.context.is_storage_marker() {
+                        mir.make_statement_nop(place_use.location)
                     }
                 }
 
                 // Replace all uses of the destination local with the constant.
                 let mut visitor = ConstantPropagationVisitor::new(dest_local,
                                                                   src_constant);
-                for dest_lvalue_use in &dest_local_info.defs_and_uses {
-                    visitor.visit_location(mir, dest_lvalue_use.location)
+                for dest_place_use in &dest_local_info.defs_and_uses {
+                    visitor.visit_location(mir, dest_place_use.location)
                 }
 
                 // Zap the assignment instruction if we eliminated all the uses. We won't have been
                 // able to do that if the destination was used in a projection, because projections
-                // must have lvalues on their LHS.
+                // must have places on their LHS.
                 let use_count = dest_local_info.use_count();
                 if visitor.uses_replaced == use_count {
                     debug!("  {} of {} use(s) replaced; deleting assignment",
@@ -356,8 +356,8 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
         self.super_operand(operand, location);
 
         match *operand {
-            Operand::Copy(Lvalue::Local(local)) |
-            Operand::Move(Lvalue::Local(local)) if local == self.dest_local => {}
+            Operand::Copy(Place::Local(local)) |
+            Operand::Move(Place::Local(local)) if local == self.dest_local => {}
             _ => return,
         }
 

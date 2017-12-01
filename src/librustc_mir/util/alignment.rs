@@ -12,32 +12,32 @@
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 
-/// Return `true` if this lvalue is allowed to be less aligned
+/// Return `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
 /// struct).
 pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   local_decls: &L,
                                   param_env: ty::ParamEnv<'tcx>,
-                                  lvalue: &Lvalue<'tcx>)
+                                  place: &Place<'tcx>)
                                   -> bool
     where L: HasLocalDecls<'tcx>
 {
-    debug!("is_disaligned({:?})", lvalue);
-    if !is_within_packed(tcx, local_decls, lvalue) {
-        debug!("is_disaligned({:?}) - not within packed", lvalue);
+    debug!("is_disaligned({:?})", place);
+    if !is_within_packed(tcx, local_decls, place) {
+        debug!("is_disaligned({:?}) - not within packed", place);
         return false
     }
 
-    let ty = lvalue.ty(local_decls, tcx).to_ty(tcx);
+    let ty = place.ty(local_decls, tcx).to_ty(tcx);
     match tcx.layout_raw(param_env.and(ty)) {
         Ok(layout) if layout.align.abi() == 1 => {
             // if the alignment is 1, the type can't be further
             // disaligned.
-            debug!("is_disaligned({:?}) - align = 1", lvalue);
+            debug!("is_disaligned({:?}) - align = 1", place);
             false
         }
         _ => {
-            debug!("is_disaligned({:?}) - true", lvalue);
+            debug!("is_disaligned({:?}) - true", place);
             true
         }
     }
@@ -45,14 +45,14 @@ pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn is_within_packed<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  local_decls: &L,
-                                 lvalue: &Lvalue<'tcx>)
+                                 place: &Place<'tcx>)
                                  -> bool
     where L: HasLocalDecls<'tcx>
 {
-    let mut lvalue = lvalue;
-    while let &Lvalue::Projection(box Projection {
+    let mut place = place;
+    while let &Place::Projection(box Projection {
         ref base, ref elem
-    }) = lvalue {
+    }) = place {
         match *elem {
             // encountered a Deref, which is ABI-aligned
             ProjectionElem::Deref => break,
@@ -67,7 +67,7 @@ fn is_within_packed<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             _ => {}
         }
-        lvalue = base;
+        place = base;
     }
 
     false

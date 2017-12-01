@@ -42,7 +42,7 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
 }
 
 // temporarily allow some dead fields: `kind` and `region` will be
-// needed by borrowck; `lvalue` will probably be a MovePathIndex when
+// needed by borrowck; `place` will probably be a MovePathIndex when
 // that is extended to include borrowed data paths.
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -50,7 +50,7 @@ pub struct BorrowData<'tcx> {
     pub(crate) location: Location,
     pub(crate) kind: mir::BorrowKind,
     pub(crate) region: Region<'tcx>,
-    pub(crate) lvalue: mir::Lvalue<'tcx>,
+    pub(crate) place: mir::Place<'tcx>,
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {
@@ -62,7 +62,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
         };
         let region = format!("{}", self.region);
         let region = if region.len() > 0 { format!("{} ", region) } else { region };
-        write!(w, "&{}{}{:?}", region, kind, self.lvalue)
+        write!(w, "&{}{}{:?}", region, kind, self.place)
     }
 }
 
@@ -101,11 +101,11 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             fn visit_rvalue(&mut self,
                             rvalue: &mir::Rvalue<'tcx>,
                             location: mir::Location) {
-                if let mir::Rvalue::Ref(region, kind, ref lvalue) = *rvalue {
-                    if is_unsafe_lvalue(self.tcx, self.mir, lvalue) { return; }
+                if let mir::Rvalue::Ref(region, kind, ref place) = *rvalue {
+                    if is_unsafe_place(self.tcx, self.mir, place) { return; }
 
                     let borrow = BorrowData {
-                        location: location, kind: kind, region: region, lvalue: lvalue.clone(),
+                        location: location, kind: kind, region: region, place: place.clone(),
                     };
                     let idx = self.idx_vec.push(borrow);
                     self.location_map.insert(location, idx);
@@ -206,8 +206,8 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             }
 
             mir::StatementKind::Assign(_, ref rhs) => {
-                if let mir::Rvalue::Ref(region, _, ref lvalue) = *rhs {
-                    if is_unsafe_lvalue(self.tcx, self.mir, lvalue) { return; }
+                if let mir::Rvalue::Ref(region, _, ref place) = *rhs {
+                    if is_unsafe_place(self.tcx, self.mir, place) { return; }
                     let index = self.location_map.get(&location).unwrap_or_else(|| {
                         panic!("could not find BorrowIndex for location {:?}", location);
                     });
@@ -269,7 +269,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                              _in_out: &mut IdxSet<BorrowIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
-                             _dest_lval: &mir::Lvalue) {
+                             _dest_place: &mir::Place) {
         // there are no effects on the region scopes from method calls.
     }
 }
@@ -288,15 +288,15 @@ impl<'a, 'gcx, 'tcx> DataflowOperator for Borrows<'a, 'gcx, 'tcx> {
     }
 }
 
-fn is_unsafe_lvalue<'a, 'gcx: 'tcx, 'tcx: 'a>(
+fn is_unsafe_place<'a, 'gcx: 'tcx, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
-    lvalue: &mir::Lvalue<'tcx>
+    place: &mir::Place<'tcx>
 ) -> bool {
-    use self::mir::Lvalue::*;
+    use self::mir::Place::*;
     use self::mir::ProjectionElem;
 
-    match *lvalue {
+    match *place {
         Local(_) => false,
         Static(ref static_) => tcx.is_static_mut(static_.def_id),
         Projection(ref proj) => {
@@ -306,13 +306,13 @@ fn is_unsafe_lvalue<'a, 'gcx: 'tcx, 'tcx: 'a>(
                 ProjectionElem::Subslice { .. } |
                 ProjectionElem::ConstantIndex { .. } |
                 ProjectionElem::Index(_) => {
-                    is_unsafe_lvalue(tcx, mir, &proj.base)
+                    is_unsafe_place(tcx, mir, &proj.base)
                 }
                 ProjectionElem::Deref => {
                     let ty = proj.base.ty(mir, tcx).to_ty(tcx);
                     match ty.sty {
                         ty::TyRawPtr(..) => true,
-                        _ => is_unsafe_lvalue(tcx, mir, &proj.base),
+                        _ => is_unsafe_place(tcx, mir, &proj.base),
                     }
                 }
             }

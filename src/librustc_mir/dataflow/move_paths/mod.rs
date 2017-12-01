@@ -94,7 +94,7 @@ pub struct MovePath<'tcx> {
     pub next_sibling: Option<MovePathIndex>,
     pub first_child: Option<MovePathIndex>,
     pub parent: Option<MovePathIndex>,
-    pub lvalue: Lvalue<'tcx>,
+    pub place: Place<'tcx>,
 }
 
 impl<'tcx> fmt::Debug for MovePath<'tcx> {
@@ -109,13 +109,13 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
         if let Some(next_sibling) = self.next_sibling {
             write!(w, " next_sibling: {:?}", next_sibling)?;
         }
-        write!(w, " lvalue: {:?} }}", self.lvalue)
+        write!(w, " place: {:?} }}", self.place)
     }
 }
 
 impl<'tcx> fmt::Display for MovePath<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
-        write!(w, "{:?}", self.lvalue)
+        write!(w, "{:?}", self.place)
     }
 }
 
@@ -224,11 +224,11 @@ impl fmt::Debug for Init {
 pub struct MovePathLookup<'tcx> {
     locals: IndexVec<Local, MovePathIndex>,
 
-    /// projections are made from a base-lvalue and a projection
-    /// elem. The base-lvalue will have a unique MovePathIndex; we use
+    /// projections are made from a base-place and a projection
+    /// elem. The base-place will have a unique MovePathIndex; we use
     /// the latter as the index into the outer vector (narrowing
     /// subsequent search so that it is solely relative to that
-    /// base-lvalue). For the remaining lookup, we map the projection
+    /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
     projections: FxHashMap<(MovePathIndex, AbstractElem<'tcx>), MovePathIndex>
 }
@@ -246,11 +246,11 @@ impl<'tcx> MovePathLookup<'tcx> {
     // alternative will *not* create a MovePath on the fly for an
     // unknown l-value, but will rather return the nearest available
     // parent.
-    pub fn find(&self, lval: &Lvalue<'tcx>) -> LookupResult {
-        match *lval {
-            Lvalue::Local(local) => LookupResult::Exact(self.locals[local]),
-            Lvalue::Static(..) => LookupResult::Parent(None),
-            Lvalue::Projection(ref proj) => {
+    pub fn find(&self, place: &Place<'tcx>) -> LookupResult {
+        match *place {
+            Place::Local(local) => LookupResult::Exact(self.locals[local]),
+            Place::Static(..) => LookupResult::Parent(None),
+            Place::Projection(ref proj) => {
                 match self.find(&proj.base) {
                     LookupResult::Exact(base_path) => {
                         match self.projections.get(&(base_path, proj.elem.lift())) {

@@ -30,7 +30,7 @@ use cabi_sparc64;
 use cabi_nvptx;
 use cabi_nvptx64;
 use cabi_hexagon;
-use mir::lvalue::{Alignment, LvalueRef};
+use mir::place::{Alignment, PlaceRef};
 use mir::operand::OperandValue;
 use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
@@ -545,17 +545,17 @@ impl<'a, 'tcx> ArgType<'tcx> {
         self.mode == PassMode::Ignore
     }
 
-    /// Get the LLVM type for an lvalue of the original Rust type of
+    /// Get the LLVM type for an place of the original Rust type of
     /// this argument/return, i.e. the result of `type_of::type_of`.
     pub fn memory_ty(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
         self.layout.llvm_type(ccx)
     }
 
     /// Store a direct/indirect value described by this ArgType into a
-    /// lvalue for the original Rust type of this argument/return.
+    /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    pub fn store(&self, bcx: &Builder<'a, 'tcx>, val: ValueRef, dst: LvalueRef<'tcx>) {
+    pub fn store(&self, bcx: &Builder<'a, 'tcx>, val: ValueRef, dst: PlaceRef<'tcx>) {
         if self.is_ignore() {
             return;
         }
@@ -606,7 +606,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
         }
     }
 
-    pub fn store_fn_arg(&self, bcx: &Builder<'a, 'tcx>, idx: &mut usize, dst: LvalueRef<'tcx>) {
+    pub fn store_fn_arg(&self, bcx: &Builder<'a, 'tcx>, idx: &mut usize, dst: PlaceRef<'tcx>) {
         if self.pad.is_some() {
             *idx += 1;
         }

@@ -18,7 +18,7 @@ use builder::Builder;
 
 use rustc::hir;
 
-use mir::lvalue::LvalueRef;
+use mir::place::PlaceRef;
 use mir::operand::OperandValue;
 
 use std::ffi::CString;
@@ -29,7 +29,7 @@ use libc::{c_uint, c_char};
 pub fn trans_inline_asm<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     ia: &hir::InlineAsm,
-    outputs: Vec<LvalueRef<'tcx>>,
+    outputs: Vec<PlaceRef<'tcx>>,
     mut inputs: Vec<ValueRef>
 ) {
     let mut ext_constraints = vec![];
@@ -37,15 +37,15 @@ pub fn trans_inline_asm<'a, 'tcx>(
 
     // Prepare the output operands
     let mut indirect_outputs = vec![];
-    for (i, (out, lvalue)) in ia.outputs.iter().zip(&outputs).enumerate() {
+    for (i, (out, place)) in ia.outputs.iter().zip(&outputs).enumerate() {
         if out.is_rw {
-            inputs.push(lvalue.load(bcx).immediate());
+            inputs.push(place.load(bcx).immediate());
             ext_constraints.push(i.to_string());
         }
         if out.is_indirect {
-            indirect_outputs.push(lvalue.load(bcx).immediate());
+            indirect_outputs.push(place.load(bcx).immediate());
         } else {
-            output_types.push(lvalue.layout.llvm_type(bcx.ccx));
+            output_types.push(place.layout.llvm_type(bcx.ccx));
         }
     }
     if !indirect_outputs.is_empty() {
@@ -100,9 +100,9 @@ pub fn trans_inline_asm<'a, 'tcx>(
 
     // Again, based on how many outputs we have
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
-    for (i, (_, &lvalue)) in outputs.enumerate() {
+    for (i, (_, &place)) in outputs.enumerate() {
         let v = if num_outputs == 1 { r } else { bcx.extract_value(r, i as u64) };
-        OperandValue::Immediate(v).store(bcx, lvalue);
+        OperandValue::Immediate(v).store(bcx, place);
     }
 
     // Store mark in a metadata node so we can map LLVM errors

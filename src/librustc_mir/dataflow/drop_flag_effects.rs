@@ -20,12 +20,12 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
                                         mut cond: F)
                                         -> Option<MovePathIndex>
-    where F: FnMut(&mir::LvalueProjection<'tcx>) -> bool
+    where F: FnMut(&mir::PlaceProjection<'tcx>) -> bool
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {
-        match move_data.move_paths[child_index].lvalue {
-            mir::Lvalue::Projection(ref proj) => {
+        match move_data.move_paths[child_index].place {
+            mir::Place::Projection(ref proj) => {
                 if cond(proj) {
                     return Some(child_index)
                 }
@@ -42,12 +42,12 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 /// paths (1.) past arrays, slices, and pointers, nor (2.) into a type
 /// that implements `Drop`.
 ///
-/// Lvalues behind references or arrays are not tracked by elaboration
+/// Places behind references or arrays are not tracked by elaboration
 /// and are always assumed to be initialized when accessible. As
 /// references and indexes can be reseated, trying to track them can
 /// only lead to trouble.
 ///
-/// Lvalues behind ADT's with a Drop impl are not tracked by
+/// Places behind ADT's with a Drop impl are not tracked by
 /// elaboration since they can never have a drop-flag state that
 /// differs from that of the parent with the Drop impl.
 ///
@@ -56,19 +56,19 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 /// is no need to maintain separate drop flags to track such state.
 ///
 /// FIXME: we have to do something for moving slice patterns.
-fn lvalue_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn place_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                             mir: &Mir<'tcx>,
-                                                            lv: &mir::Lvalue<'tcx>) -> bool {
-    let ty = lv.ty(mir, tcx).to_ty(tcx);
+                                                            place: &mir::Place<'tcx>) -> bool {
+    let ty = place.ty(mir, tcx).to_ty(tcx);
     match ty.sty {
         ty::TyArray(..) | ty::TySlice(..) | ty::TyRef(..) | ty::TyRawPtr(..) => {
-            debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} refd => true",
-                   lv, ty);
+            debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} refd => true",
+                   place, ty);
             true
         }
         ty::TyAdt(def, _) if (def.has_dtor(tcx) && !def.is_box()) || def.is_union() => {
-            debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} Drop => true",
-                   lv, ty);
+            debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} Drop => true",
+                   place, ty);
             true
         }
         _ => {
@@ -109,8 +109,8 @@ pub(crate) fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
         move_data: &MoveData<'tcx>,
         path: MovePathIndex) -> bool
     {
-        lvalue_contents_drop_state_cannot_differ(
-            tcx, mir, &move_data.move_paths[path].lvalue)
+        place_contents_drop_state_cannot_differ(
+            tcx, mir, &move_data.move_paths[path].place)
     }
 
     fn on_all_children_bits<'a, 'gcx, 'tcx, F>(
@@ -145,9 +145,9 @@ pub(crate) fn on_all_drop_children_bits<'a, 'gcx, 'tcx, F>(
     where F: FnMut(MovePathIndex)
 {
     on_all_children_bits(tcx, mir, &ctxt.move_data, path, |child| {
-        let lvalue = &ctxt.move_data.move_paths[path].lvalue;
-        let ty = lvalue.ty(mir, tcx).to_ty(tcx);
-        debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, lvalue, ty);
+        let place = &ctxt.move_data.move_paths[path].place;
+        let ty = place.ty(mir, tcx).to_ty(tcx);
+        debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, place, ty);
 
         let gcx = tcx.global_tcx();
         let erased_ty = gcx.lift(&tcx.erase_regions(&ty)).unwrap();
@@ -168,8 +168,8 @@ pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
 {
     let move_data = &ctxt.move_data;
     for arg in mir.args_iter() {
-        let lvalue = mir::Lvalue::Local(arg);
-        let lookup_result = move_data.rev_lookup.find(&lvalue);
+        let place = mir::Place::Local(arg);
+        let lookup_result = move_data.rev_lookup.find(&place);
         on_lookup_result_bits(tcx, mir, move_data,
                               lookup_result,
                               |mpi| callback(mpi, DropFlagState::Present));

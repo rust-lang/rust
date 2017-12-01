@@ -227,7 +227,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     }
 
     /// Get the LLVM type corresponding to a Rust type, i.e. `rustc::ty::Ty`.
-    /// The pointee type of the pointer in `LvalueRef` is always this type.
+    /// The pointee type of the pointer in `PlaceRef` is always this type.
     /// For sized types, it is also the right LLVM type for an `alloca`
     /// containing a value of that type, and most immediates (except `bool`).
     /// Unsized types, however, are represented by a "minimal unit", e.g.

@@ -50,7 +50,7 @@ use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
 use rustc_incremental;
 use allocator;
-use mir::lvalue::LvalueRef;
+use mir::place::PlaceRef;
 use attributes;
 use builder::Builder;
 use callee;
@@ -272,8 +272,8 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                                     src: LvalueRef<'tcx>,
-                                     dst: LvalueRef<'tcx>) {
+                                     src: PlaceRef<'tcx>,
+                                     dst: PlaceRef<'tcx>) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     let coerce_ptr = || {

@@ -12,7 +12,7 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::mir;
-use rustc::mir::tcx::LvalueTy;
+use rustc::mir::tcx::PlaceTy;
 use rustc_data_structures::indexed_vec::Idx;
 use base;
 use builder::Builder;
@@ -73,26 +73,26 @@ impl Alignment {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct LvalueRef<'tcx> {
-    /// Pointer to the contents of the lvalue
+pub struct PlaceRef<'tcx> {
+    /// Pointer to the contents of the place
     pub llval: ValueRef,
 
-    /// This lvalue's extra data if it is unsized, or null
+    /// This place's extra data if it is unsized, or null
     pub llextra: ValueRef,
 
-    /// Monomorphized type of this lvalue, including variant information
+    /// Monomorphized type of this place, including variant information
     pub layout: TyLayout<'tcx>,
 
-    /// Whether this lvalue is known to be aligned according to its layout
+    /// Whether this place is known to be aligned according to its layout
     pub alignment: Alignment,
 }
 
-impl<'a, 'tcx> LvalueRef<'tcx> {
+impl<'a, 'tcx> PlaceRef<'tcx> {
     pub fn new_sized(llval: ValueRef,
                      layout: TyLayout<'tcx>,
                      alignment: Alignment)
-                     -> LvalueRef<'tcx> {
-        LvalueRef {
+                     -> PlaceRef<'tcx> {
+        PlaceRef {
             llval,
             llextra: ptr::null_mut(),
             layout,
@@ -101,7 +101,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     pub fn alloca(bcx: &Builder<'a, 'tcx>, layout: TyLayout<'tcx>, name: &str)
-                  -> LvalueRef<'tcx> {
+                  -> PlaceRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, layout);
         let tmp = bcx.alloca(layout.llvm_type(bcx.ccx), name, layout.align);
         Self::new_sized(tmp, layout, Alignment::AbiAligned)
@@ -117,7 +117,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 C_usize(ccx, count)
             }
         } else {
-            bug!("unexpected layout `{:#?}` in LvalueRef::len", self.layout)
+            bug!("unexpected layout `{:#?}` in PlaceRef::len", self.layout)
         }
     }
 
@@ -126,7 +126,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     pub fn load(&self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
-        debug!("LvalueRef::load: {:?}", self);
+        debug!("PlaceRef::load: {:?}", self);
 
         assert!(!self.has_extra());
 
@@ -202,7 +202,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     /// Access a field, at a point when the value's case is known.
-    pub fn project_field(self, bcx: &Builder<'a, 'tcx>, ix: usize) -> LvalueRef<'tcx> {
+    pub fn project_field(self, bcx: &Builder<'a, 'tcx>, ix: usize) -> PlaceRef<'tcx> {
         let ccx = bcx.ccx;
         let field = self.layout.field(ccx, ix);
         let offset = self.layout.fields.offset(ix);
@@ -219,7 +219,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             } else {
                 bcx.struct_gep(self.llval, self.layout.llvm_field_index(ix))
             };
-            LvalueRef {
+            PlaceRef {
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
                 llval: bcx.pointercast(llval, field.llvm_type(ccx).ptr_to()),
                 llextra: if ccx.shared().type_has_metadata(field.ty) {
@@ -295,7 +295,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let ll_fty = field.llvm_type(ccx);
         debug!("struct_field_ptr: Field type is {:?}", ll_fty);
 
-        LvalueRef {
+        PlaceRef {
             llval: bcx.pointercast(byte_ptr, ll_fty.ptr_to()),
             llextra: self.llextra,
             layout: field,
@@ -413,8 +413,8 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     pub fn project_index(&self, bcx: &Builder<'a, 'tcx>, llindex: ValueRef)
-                         -> LvalueRef<'tcx> {
-        LvalueRef {
+                         -> PlaceRef<'tcx> {
+        PlaceRef {
             llval: bcx.inbounds_gep(self.llval, &[C_usize(bcx.ccx, 0), llindex]),
             llextra: ptr::null_mut(),
             layout: self.layout.field(bcx.ccx, 0),
@@ -423,7 +423,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     pub fn project_downcast(&self, bcx: &Builder<'a, 'tcx>, variant_index: usize)
-                            -> LvalueRef<'tcx> {
+                            -> PlaceRef<'tcx> {
         let mut downcast = *self;
         downcast.layout = self.layout.for_variant(bcx.ccx, variant_index);
 
@@ -444,42 +444,42 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_lvalue(&mut self,
+    pub fn trans_place(&mut self,
                         bcx: &Builder<'a, 'tcx>,
-                        lvalue: &mir::Lvalue<'tcx>)
-                        -> LvalueRef<'tcx> {
-        debug!("trans_lvalue(lvalue={:?})", lvalue);
+                        place: &mir::Place<'tcx>)
+                        -> PlaceRef<'tcx> {
+        debug!("trans_place(place={:?})", place);
 
         let ccx = bcx.ccx;
         let tcx = ccx.tcx();
 
-        if let mir::Lvalue::Local(index) = *lvalue {
+        if let mir::Place::Local(index) = *place {
             match self.locals[index] {
-                LocalRef::Lvalue(lvalue) => {
-                    return lvalue;
+                LocalRef::Place(place) => {
+                    return place;
                 }
                 LocalRef::Operand(..) => {
-                    bug!("using operand local {:?} as lvalue", lvalue);
+                    bug!("using operand local {:?} as place", place);
                 }
             }
         }
 
-        let result = match *lvalue {
-            mir::Lvalue::Local(_) => bug!(), // handled above
-            mir::Lvalue::Static(box mir::Static { def_id, ty }) => {
-                LvalueRef::new_sized(consts::get_static(ccx, def_id),
+        let result = match *place {
+            mir::Place::Local(_) => bug!(), // handled above
+            mir::Place::Static(box mir::Static { def_id, ty }) => {
+                PlaceRef::new_sized(consts::get_static(ccx, def_id),
                                      ccx.layout_of(self.monomorphize(&ty)),
                                      Alignment::AbiAligned)
             },
-            mir::Lvalue::Projection(box mir::Projection {
+            mir::Place::Projection(box mir::Projection {
                 ref base,
                 elem: mir::ProjectionElem::Deref
             }) => {
                 // Load the pointer from its location.
                 self.trans_consume(bcx, base).deref(bcx.ccx)
             }
-            mir::Lvalue::Projection(ref projection) => {
-                let tr_base = self.trans_lvalue(bcx, &projection.base);
+            mir::Place::Projection(ref projection) => {
+                let tr_base = self.trans_place(bcx, &projection.base);
 
                 match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
@@ -487,7 +487,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         tr_base.project_field(bcx, field.index())
                     }
                     mir::ProjectionElem::Index(index) => {
-                        let index = &mir::Operand::Copy(mir::Lvalue::Local(index));
+                        let index = &mir::Operand::Copy(mir::Place::Local(index));
                         let index = self.trans_operand(bcx, index);
                         let llindex = index.immediate();
                         tr_base.project_index(bcx, llindex)
@@ -509,7 +509,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     mir::ProjectionElem::Subslice { from, to } => {
                         let mut subslice = tr_base.project_index(bcx,
                             C_usize(bcx.ccx, from as u64));
-                        let projected_ty = LvalueTy::Ty { ty: tr_base.layout.ty }
+                        let projected_ty = PlaceTy::Ty { ty: tr_base.layout.ty }
                             .projection_ty(tcx, &projection.elem).to_ty(bcx.tcx());
                         subslice.layout = bcx.ccx.layout_of(self.monomorphize(&projected_ty));
 
@@ -519,7 +519,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 C_usize(bcx.ccx, (from as u64) + (to as u64)));
                         }
 
-                        // Cast the lvalue pointer type to the new
+                        // Cast the place pointer type to the new
                         // array or slice type (*[%_; new_len]).
                         subslice.llval = bcx.pointercast(subslice.llval,
                             subslice.layout.llvm_type(bcx.ccx).ptr_to());
@@ -532,14 +532,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
             }
         };
-        debug!("trans_lvalue(lvalue={:?}) => {:?}", lvalue, result);
+        debug!("trans_place(place={:?}) => {:?}", place, result);
         result
     }
 
-    pub fn monomorphized_lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
+    pub fn monomorphized_place_ty(&self, place: &mir::Place<'tcx>) -> Ty<'tcx> {
         let tcx = self.ccx.tcx();
-        let lvalue_ty = lvalue.ty(self.mir, tcx);
-        self.monomorphize(&lvalue_ty.to_ty(tcx))
+        let place_ty = place.ty(self.mir, tcx);
+        self.monomorphize(&place_ty.to_ty(tcx))
     }
 }
 

@@ -21,7 +21,7 @@ use hir::def_id::DefId;
 use middle::free_region::{FreeRegionMap, RegionRelations};
 use middle::region;
 use middle::lang_items;
-use mir::tcx::LvalueTy;
+use mir::tcx::PlaceTy;
 use ty::subst::{Kind, Subst, Substs};
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
@@ -518,15 +518,15 @@ impl_trans_normalize!('gcx,
     ty::ExistentialTraitRef<'gcx>
 );
 
-impl<'gcx> TransNormalize<'gcx> for LvalueTy<'gcx> {
+impl<'gcx> TransNormalize<'gcx> for PlaceTy<'gcx> {
     fn trans_normalize<'a, 'tcx>(&self,
                                  infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                  param_env: ty::ParamEnv<'tcx>)
                                  -> Self {
         match *self {
-            LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.trans_normalize(infcx, param_env) },
-            LvalueTy::Downcast { adt_def, substs, variant_index } => {
-                LvalueTy::Downcast {
+            PlaceTy::Ty { ty } => PlaceTy::Ty { ty: ty.trans_normalize(infcx, param_env) },
+            PlaceTy::Downcast { adt_def, substs, variant_index } => {
+                PlaceTy::Downcast {
                     adt_def,
                     substs: substs.trans_normalize(infcx, param_env),
                     variant_index,

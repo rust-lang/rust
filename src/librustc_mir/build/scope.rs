@@ -39,10 +39,10 @@ mapping is from one scope to a vector of SEME regions.
 ### Drops
 
 The primary purpose for scopes is to insert drops: while translating
-the contents, we also accumulate lvalues that need to be dropped upon
+the contents, we also accumulate places that need to be dropped upon
 exit from each scope. This is done by calling `schedule_drop`. Once a
 drop is scheduled, whenever we branch out we will insert drops of all
-those lvalues onto the outgoing edge. Note that we don't know the full
+those places onto the outgoing edge. Note that we don't know the full
 set of scheduled drops up front, and so whenever we exit from the
 scope we only drop the values scheduled thus far. For example, consider
 the scope S corresponding to this loop:
@@ -120,7 +120,7 @@ pub struct Scope<'tcx> {
     ///  * freeing up stack space has no effect during unwinding
     needs_cleanup: bool,
 
-    /// set of lvalues to drop when exiting this scope. This starts
+    /// set of places to drop when exiting this scope. This starts
     /// out empty but grows as variables are declared during the
     /// building process. This is a stack, so we always drop from the
     /// end of the vector (top of the stack) first.
@@ -138,11 +138,11 @@ pub struct Scope<'tcx> {
 
 #[derive(Debug)]
 struct DropData<'tcx> {
-    /// span where drop obligation was incurred (typically where lvalue was declared)
+    /// span where drop obligation was incurred (typically where place was declared)
     span: Span,
 
-    /// lvalue to drop
-    location: Lvalue<'tcx>,
+    /// place to drop
+    location: Place<'tcx>,
 
     /// Whether this is a full value Drop, or just a StorageDead.
     kind: DropKind
@@ -184,7 +184,7 @@ pub struct BreakableScope<'tcx> {
     pub break_block: BasicBlock,
     /// The destination of the loop/block expression itself (i.e. where to put the result of a
     /// `break` expression)
-    pub break_destination: Lvalue<'tcx>,
+    pub break_destination: Place<'tcx>,
 }
 
 impl CachedBlock {
@@ -270,7 +270,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn in_breakable_scope<F, R>(&mut self,
                                     loop_block: Option<BasicBlock>,
                                     break_block: BasicBlock,
-                                    break_destination: Lvalue<'tcx>,
+                                    break_destination: Place<'tcx>,
                                     f: F) -> R
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> R
     {
@@ -608,20 +608,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Scheduling drops
     // ================
-    /// Indicates that `lvalue` should be dropped on exit from
+    /// Indicates that `place` should be dropped on exit from
     /// `region_scope`.
     pub fn schedule_drop(&mut self,
                          span: Span,
                          region_scope: region::Scope,
-                         lvalue: &Lvalue<'tcx>,
-                         lvalue_ty: Ty<'tcx>) {
-        let needs_drop = self.hir.needs_drop(lvalue_ty);
+                         place: &Place<'tcx>,
+                         place_ty: Ty<'tcx>) {
+        let needs_drop = self.hir.needs_drop(place_ty);
         let drop_kind = if needs_drop {
             DropKind::Value { cached_block: CachedBlock::default() }
         } else {
             // Only temps and vars need their storage dead.
-            match *lvalue {
-                Lvalue::Local(index) if index.index() > self.arg_count => DropKind::Storage,
+            match *place {
+                Place::Local(index) if index.index() > self.arg_count => DropKind::Storage,
                 _ => return
             }
         };
@@ -685,13 +685,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let scope_end = region_scope_span.with_lo(region_scope_span.hi());
                 scope.drops.push(DropData {
                     span: scope_end,
-                    location: lvalue.clone(),
+                    location: place.clone(),
                     kind: drop_kind
                 });
                 return;
             }
         }
-        span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, lvalue);
+        span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, place);
     }
 
     // Other
@@ -748,7 +748,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn build_drop(&mut self,
                       block: BasicBlock,
                       span: Span,
-                      location: Lvalue<'tcx>,
+                      location: Place<'tcx>,
                       ty: Ty<'tcx>) -> BlockAnd<()> {
         if !self.hir.needs_drop(ty) {
             return block.unit();
@@ -769,7 +769,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn build_drop_and_replace(&mut self,
                                   block: BasicBlock,
                                   span: Span,
-                                  location: Lvalue<'tcx>,
+                                  location: Place<'tcx>,
                                   value: Operand<'tcx>) -> BlockAnd<()> {
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
@@ -883,7 +883,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
         // Drop the storage for both value and storage drops.
         // Only temps and vars need their storage dead.
         match drop_data.location {
-            Lvalue::Local(index) if index.index() > arg_count => {
+            Place::Local(index) if index.index() > arg_count => {
                 cfg.push(block, Statement {
                     source_info,
                     kind: StatementKind::StorageDead(index)

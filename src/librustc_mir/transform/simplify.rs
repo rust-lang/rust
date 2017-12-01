@@ -41,7 +41,7 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::visit::{MutVisitor, Visitor, LvalueContext};
+use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext};
 use std::borrow::Cow;
 use transform::{MirPass, MirSource};
 
@@ -352,9 +352,9 @@ struct DeclMarker {
 }
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
-    fn visit_local(&mut self, local: &Local, ctx: LvalueContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
         // ignore these altogether, they get removed along with their otherwise unused decls.
-        if ctx != LvalueContext::StorageLive && ctx != LvalueContext::StorageDead {
+        if ctx != PlaceContext::StorageLive && ctx != PlaceContext::StorageDead {
             self.locals.insert(local.index());
         }
     }
@@ -377,7 +377,7 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
         });
         self.super_basic_block_data(block, data);
     }
-    fn visit_local(&mut self, l: &mut Local, _: LvalueContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, l: &mut Local, _: PlaceContext<'tcx>, _: Location) {
         *l = Local::new(self.map[l.index()]);
     }
 }

@@ -404,12 +404,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 // If the call is something like `a[*i] = f(i)`, where
                 // `i : &mut usize`, then just duplicating the `a[*i]`
-                // Lvalue could result in two different locations if `f`
+                // Place could result in two different locations if `f`
                 // writes to `i`. To prevent this we need to create a temporary
-                // borrow of the lvalue and pass the destination as `*temp` instead.
-                fn dest_needs_borrow(lval: &Lvalue) -> bool {
-                    match *lval {
-                        Lvalue::Projection(ref p) => {
+                // borrow of the place and pass the destination as `*temp` instead.
+                fn dest_needs_borrow(place: &Place) -> bool {
+                    match *place {
+                        Place::Projection(ref p) => {
                             match p.elem {
                                 ProjectionElem::Deref |
                                 ProjectionElem::Index(_) => true,
@@ -418,7 +418,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         }
                         // Static variables need a borrow because the callee
                         // might modify the same static.
-                        Lvalue::Static(_) => true,
+                        Place::Static(_) => true,
                         _ => false
                     }
                 }
@@ -435,7 +435,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
                     let tmp = caller_mir.local_decls.push(temp);
-                    let tmp = Lvalue::Local(tmp);
+                    let tmp = Place::Local(tmp);
 
                     let stmt = Statement {
                         source_info: callsite.location,
@@ -456,8 +456,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     // needs to generate the cast.
                     // FIXME: we should probably just generate correct MIR in the first place...
 
-                    let arg = if let Operand::Move(ref lval) = args[0] {
-                        lval.clone()
+                    let arg = if let Operand::Move(ref place) = args[0] {
+                        place.clone()
                     } else {
                         bug!("Constant arg to \"box_free\"");
                     };
@@ -508,7 +508,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         }
     }
 
-    fn cast_box_free_arg(&self, arg: Lvalue<'tcx>, ptr_ty: Ty<'tcx>,
+    fn cast_box_free_arg(&self, arg: Place<'tcx>, ptr_ty: Ty<'tcx>,
                          callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Local {
         let arg = Rvalue::Ref(
             self.tcx.types.re_erased,
@@ -518,7 +518,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         let ty = arg.ty(caller_mir, self.tcx);
         let ref_tmp = LocalDecl::new_temp(ty, callsite.location.span);
         let ref_tmp = caller_mir.local_decls.push(ref_tmp);
-        let ref_tmp = Lvalue::Local(ref_tmp);
+        let ref_tmp = Place::Local(ref_tmp);
 
         let ref_stmt = Statement {
             source_info: callsite.location,
@@ -542,7 +542,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let cast_stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Lvalue::Local(cast_tmp), raw_ptr)
+            kind: StatementKind::Assign(Place::Local(cast_tmp), raw_ptr)
         };
 
         caller_mir[callsite.bb]
@@ -588,7 +588,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
             assert!(args.next().is_none());
 
-            let tuple = Lvalue::Local(tuple);
+            let tuple = Place::Local(tuple);
             let tuple_tys = if let ty::TyTuple(s, _) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
                 s
             } else {
@@ -627,7 +627,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Move(Lvalue::Local(local)) = arg {
+        if let Operand::Move(Place::Local(local)) = arg {
             if caller_mir.local_kind(local) == LocalKind::Temp {
                 // Reuse the operand if it's a temporary already
                 return local;
@@ -645,7 +645,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Lvalue::Local(arg_tmp), arg),
+            kind: StatementKind::Assign(Place::Local(arg_tmp), arg),
         };
         caller_mir[callsite.bb].statements.push(stmt);
         arg_tmp
@@ -696,7 +696,7 @@ struct Integrator<'a, 'tcx: 'a> {
     scope_map: IndexVec<VisibilityScope, VisibilityScope>,
     promoted_map: IndexVec<Promoted, Promoted>,
     _callsite: CallSite<'tcx>,
-    destination: Lvalue<'tcx>,
+    destination: Place<'tcx>,
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
@@ -713,15 +713,15 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
 impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _ctxt: LvalueContext<'tcx>,
+                   _ctxt: PlaceContext<'tcx>,
                    _location: Location) {
-        if *local == RETURN_POINTER {
+        if *local == RETURN_PLACE {
             match self.destination {
-                Lvalue::Local(l) => {
+                Place::Local(l) => {
                     *local = l;
                     return;
                 },
-                ref lval => bug!("Return lvalue is {:?}, not local", lval)
+                ref place => bug!("Return place is {:?}, not local", place)
             }
         }
         let idx = local.index() - 1;
@@ -732,15 +732,15 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         *local = self.local_map[Local::new(idx - self.args.len())];
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &mut Lvalue<'tcx>,
-                    _ctxt: LvalueContext<'tcx>,
+    fn visit_place(&mut self,
+                    place: &mut Place<'tcx>,
+                    _ctxt: PlaceContext<'tcx>,
                     _location: Location) {
-        if let Lvalue::Local(RETURN_POINTER) = *lvalue {
-            // Return pointer; update the lvalue itself
-            *lvalue = self.destination.clone();
+        if let Place::Local(RETURN_PLACE) = *place {
+            // Return pointer; update the place itself
+            *place = self.destination.clone();
         } else {
-            self.super_lvalue(lvalue, _ctxt, _location);
+            self.super_place(place, _ctxt, _location);
         }
     }
 

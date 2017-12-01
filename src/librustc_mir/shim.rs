@@ -216,7 +216,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 tcx,
                 param_env
             };
-            let dropee = Lvalue::Local(Local::new(1+0)).deref();
+            let dropee = Place::Local(Local::new(1+0)).deref();
             let resume_block = elaborator.patch.resume_block();
             elaborate_drops::elaborate_drop(
                 &mut elaborator,
@@ -381,19 +381,19 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     }
 
     fn copy_shim(&mut self) {
-        let rcvr = Lvalue::Local(Local::new(1+0)).deref();
+        let rcvr = Place::Local(Local::new(1+0)).deref();
         let ret_statement = self.make_statement(
             StatementKind::Assign(
-                Lvalue::Local(RETURN_POINTER),
+                Place::Local(RETURN_PLACE),
                 Rvalue::Use(Operand::Copy(rcvr))
             )
         );
         self.block(vec![ret_statement], TerminatorKind::Return, false);
     }
 
-    fn make_lvalue(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Lvalue<'tcx> {
+    fn make_place(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
         let span = self.span;
-        Lvalue::Local(
+        Place::Local(
             self.local_decls.push(temp_decl(mutability, ty, span))
         )
     }
@@ -401,10 +401,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     fn make_clone_call(
         &mut self,
         ty: Ty<'tcx>,
-        rcvr_field: Lvalue<'tcx>,
+        rcvr_field: Place<'tcx>,
         next: BasicBlock,
         cleanup: BasicBlock
-    ) -> Lvalue<'tcx> {
+    ) -> Place<'tcx> {
         let tcx = self.tcx;
 
         let substs = Substs::for_item(
@@ -427,7 +427,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             },
         });
 
-        let ref_loc = self.make_lvalue(
+        let ref_loc = self.make_place(
             Mutability::Not,
             tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
                 ty,
@@ -435,7 +435,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             })
         );
 
-        let loc = self.make_lvalue(Mutability::Not, ty);
+        let loc = self.make_place(Mutability::Not, ty);
 
         // `let ref_loc: &ty = &rcvr_field;`
         let statement = self.make_statement(
@@ -458,15 +458,15 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
     fn loop_header(
         &mut self,
-        beg: Lvalue<'tcx>,
-        end: Lvalue<'tcx>,
+        beg: Place<'tcx>,
+        end: Place<'tcx>,
         loop_body: BasicBlock,
         loop_end: BasicBlock,
         is_cleanup: bool
     ) {
         let tcx = self.tcx;
 
-        let cond = self.make_lvalue(Mutability::Mut, tcx.types.bool);
+        let cond = self.make_place(Mutability::Mut, tcx.types.bool);
         let compute_cond = self.make_statement(
             StatementKind::Assign(
                 cond.clone(),
@@ -499,11 +499,11 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     fn array_shim(&mut self, ty: Ty<'tcx>, len: u64) {
         let tcx = self.tcx;
         let span = self.span;
-        let rcvr = Lvalue::Local(Local::new(1+0)).deref();
+        let rcvr = Place::Local(Local::new(1+0)).deref();
 
         let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
-        let end = self.make_lvalue(Mutability::Not, tcx.types.usize);
-        let ret = self.make_lvalue(Mutability::Mut, tcx.mk_array(ty, len));
+        let end = self.make_place(Mutability::Not, tcx.types.usize);
+        let ret = self.make_place(Mutability::Mut, tcx.mk_array(ty, len));
 
         // BB #0
         // `let mut beg = 0;`
@@ -512,7 +512,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let inits = vec![
             self.make_statement(
                 StatementKind::Assign(
-                    Lvalue::Local(beg),
+                    Place::Local(beg),
                     Rvalue::Use(Operand::Constant(self.make_usize(0)))
                 )
             ),
@@ -530,7 +530,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         //     BB #3;
         // }
         // BB #4;
-        self.loop_header(Lvalue::Local(beg), end, BasicBlock::new(2), BasicBlock::new(4), false);
+        self.loop_header(Place::Local(beg), end, BasicBlock::new(2), BasicBlock::new(4), false);
 
         // BB #2
         // `let cloned = Clone::clone(rcvr[beg])`;
@@ -552,10 +552,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             ),
             self.make_statement(
                 StatementKind::Assign(
-                    Lvalue::Local(beg),
+                    Place::Local(beg),
                     Rvalue::BinaryOp(
                         BinOp::Add,
-                        Operand::Copy(Lvalue::Local(beg)),
+                        Operand::Copy(Place::Local(beg)),
                         Operand::Constant(self.make_usize(1))
                     )
                 )
@@ -567,7 +567,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `return ret;`
         let ret_statement = self.make_statement(
             StatementKind::Assign(
-                Lvalue::Local(RETURN_POINTER),
+                Place::Local(RETURN_PLACE),
                 Rvalue::Use(Operand::Move(ret.clone())),
             )
         );
@@ -581,7 +581,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
         let init = self.make_statement(
             StatementKind::Assign(
-                Lvalue::Local(beg),
+                Place::Local(beg),
                 Rvalue::Use(Operand::Constant(self.make_usize(0)))
             )
         );
@@ -592,7 +592,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         //     BB #8;
         // }
         // BB #9;
-        self.loop_header(Lvalue::Local(beg), Lvalue::Local(end),
+        self.loop_header(Place::Local(beg), Place::Local(end),
                          BasicBlock::new(7), BasicBlock::new(9), true);
 
         // BB #7 (cleanup)
@@ -608,10 +608,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `goto #6;`
         let statement = self.make_statement(
             StatementKind::Assign(
-                Lvalue::Local(beg),
+                Place::Local(beg),
                 Rvalue::BinaryOp(
                     BinOp::Add,
-                    Operand::Copy(Lvalue::Local(beg)),
+                    Operand::Copy(Place::Local(beg)),
                     Operand::Constant(self.make_usize(1))
                 )
             )
@@ -628,7 +628,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             _ => bug!("only tuples and closures are accepted"),
         };
 
-        let rcvr = Lvalue::Local(Local::new(1+0)).deref();
+        let rcvr = Place::Local(Local::new(1+0)).deref();
 
         let mut returns = Vec::new();
         for (i, ity) in tys.iter().enumerate() {
@@ -663,7 +663,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `return kind(returns[0], returns[1], ..., returns[tys.len() - 1]);`
         let ret_statement = self.make_statement(
             StatementKind::Assign(
-                Lvalue::Local(RETURN_POINTER),
+                Place::Local(RETURN_PLACE),
                 Rvalue::Aggregate(
                     box kind,
                     returns.into_iter().map(Operand::Move).collect()
@@ -701,7 +701,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
 
     let rcvr_arg = Local::new(1+0);
-    let rcvr_l = Lvalue::Local(rcvr_arg);
+    let rcvr_l = Place::Local(rcvr_arg);
     let mut statements = vec![];
 
     let rcvr = match rcvr_adjustment {
@@ -720,11 +720,11 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             statements.push(Statement {
                 source_info,
                 kind: StatementKind::Assign(
-                    Lvalue::Local(ref_rcvr),
+                    Place::Local(ref_rcvr),
                     Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, rcvr_l)
                 )
             });
-            Operand::Move(Lvalue::Local(ref_rcvr))
+            Operand::Move(Place::Local(ref_rcvr))
         }
     };
 
@@ -749,12 +749,12 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if let Some(untuple_args) = untuple_args {
         args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
-            let arg_lv = Lvalue::Local(Local::new(1+1));
-            Operand::Move(arg_lv.field(Field::new(i), *ity))
+            let arg_place = Place::Local(Local::new(1+1));
+            Operand::Move(arg_place.field(Field::new(i), *ity))
         }));
     } else {
         args.extend((1..sig.inputs().len()).map(|i| {
-            Operand::Move(Lvalue::Local(Local::new(1+i)))
+            Operand::Move(Place::Local(Local::new(1+i)))
         }));
     }
 
@@ -771,7 +771,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     block(&mut blocks, statements, TerminatorKind::Call {
         func: callee,
         args,
-        destination: Some((Lvalue::Local(RETURN_POINTER),
+        destination: Some((Place::Local(RETURN_PLACE),
                            BasicBlock::new(1))),
         cleanup: if let Adjustment::RefMut = rcvr_adjustment {
             Some(BasicBlock::new(3))
@@ -783,7 +783,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let Adjustment::RefMut = rcvr_adjustment {
         // BB #1 - drop for Self
         block(&mut blocks, vec![], TerminatorKind::Drop {
-            location: Lvalue::Local(rcvr_arg),
+            location: Place::Local(rcvr_arg),
             target: BasicBlock::new(2),
             unwind: None
         }, false);
@@ -793,7 +793,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let Adjustment::RefMut = rcvr_adjustment {
         // BB #3 - drop if closure panics
         block(&mut blocks, vec![], TerminatorKind::Drop {
-            location: Lvalue::Local(rcvr_arg),
+            location: Place::Local(rcvr_arg),
             target: BasicBlock::new(4),
             unwind: None
         }, true);
@@ -864,11 +864,11 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         statements: vec![Statement {
             source_info,
             kind: StatementKind::Assign(
-                Lvalue::Local(RETURN_POINTER),
+                Place::Local(RETURN_PLACE),
                 Rvalue::Aggregate(
                     box AggregateKind::Adt(adt_def, variant_no, substs, None),
                     (1..sig.inputs().len()+1).map(|i| {
-                        Operand::Move(Lvalue::Local(Local::new(i)))
+                        Operand::Move(Place::Local(Local::new(i)))
                     }).collect()
                 )
             )

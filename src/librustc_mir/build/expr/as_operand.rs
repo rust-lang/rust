@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Compile `expr` into a value that can be used as an operand.
-    /// If `expr` is an lvalue like `x`, this will introduce a
+    /// If `expr` is a place like `x`, this will introduce a
     /// temporary `tmp = x`, so that we capture the value of `x` at
     /// this time.
     ///
@@ -70,11 +70,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let constant = this.as_constant(expr);
                 block.and(Operand::Constant(box constant))
             }
-            Category::Lvalue |
+            Category::Place |
             Category::Rvalue(..) => {
                 let operand =
                     unpack!(block = this.as_temp(block, scope, expr));
-                block.and(Operand::Move(Lvalue::Local(operand)))
+                block.and(Operand::Move(Place::Local(operand)))
             }
         }
     }

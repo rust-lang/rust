@@ -22,7 +22,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
     pub fn into_expr(&mut self,
-                     destination: &Lvalue<'tcx>,
+                     destination: &Place<'tcx>,
                      mut block: BasicBlock,
                      expr: Expr<'tcx>)
                      -> BlockAnd<()>
@@ -241,7 +241,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         internal: true,
                         is_user_variable: false
                     });
-                    let ptr_temp = Lvalue::Local(ptr_temp);
+                    let ptr_temp = Place::Local(ptr_temp);
                     let block = unpack!(this.into(&ptr_temp, block, ptr));
                     this.into(&ptr_temp.deref(), block, val)
                 } else {

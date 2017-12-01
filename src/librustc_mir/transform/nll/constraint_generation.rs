@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use rustc::hir;
-use rustc::mir::{Location, Lvalue, Mir, Rvalue};
+use rustc::mir::{Location, Place, Mir, Rvalue};
 use rustc::mir::visit::Visitor;
-use rustc::mir::Lvalue::Projection;
-use rustc::mir::{LvalueProjection, ProjectionElem};
+use rustc::mir::Place::Projection;
+use rustc::mir::{PlaceProjection, ProjectionElem};
 use rustc::infer::InferCtxt;
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty};
@@ -189,10 +189,10 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
         &mut self,
         location: Location,
         borrow_region: ty::Region<'tcx>,
-        borrowed_lv: &Lvalue<'tcx>,
+        borrowed_place: &Place<'tcx>,
     ) {
-        if let Projection(ref proj) = *borrowed_lv {
-            let LvalueProjection { ref base, ref elem } = **proj;
+        if let Projection(ref proj) = *borrowed_place {
+            let PlaceProjection { ref base, ref elem } = **proj;
 
             if let ProjectionElem::Deref = *elem {
                 let tcx = self.infcx.tcx;
@@ -232,8 +232,8 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cx, 'gcx, 'tcx> {
         // where L is the path that is borrowed. In that case, we have
         // to add the reborrow constraints (which don't fall out
         // naturally from the type-checker).
-        if let Rvalue::Ref(region, _bk, ref borrowed_lv) = *rvalue {
-            self.add_reborrow_constraint(location, region, borrowed_lv);
+        if let Rvalue::Ref(region, _bk, ref borrowed_place) = *rvalue {
+            self.add_reborrow_constraint(location, region, borrowed_place);
         }
 
         self.super_rvalue(rvalue, location);

@@ -15,14 +15,14 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::{self, Location, TerminatorKind, Literal};
-use rustc::mir::visit::{Visitor, LvalueContext};
+use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::mir::traversal;
 use rustc::ty;
 use rustc::ty::layout::LayoutOf;
 use type_of::LayoutLlvmExt;
 use super::MirContext;
 
-pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
+pub fn memory_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
     let mir = mircx.mir;
     let mut analyzer = LocalAnalyzer::new(mircx);
 
@@ -44,16 +44,16 @@ pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
             // (e.g. structs) into an alloca unconditionally, just so
             // that we don't have to deal with having two pathways
             // (gep vs extractvalue etc).
-            analyzer.mark_as_lvalue(mir::Local::new(index));
+            analyzer.mark_as_memory(mir::Local::new(index));
         }
     }
 
-    analyzer.lvalue_locals
+    analyzer.memory_locals
 }
 
 struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
     cx: &'mir MirContext<'a, 'tcx>,
-    lvalue_locals: BitVector,
+    memory_locals: BitVector,
     seen_assigned: BitVector
 }
 
@@ -61,7 +61,7 @@ impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
     fn new(mircx: &'mir MirContext<'a, 'tcx>) -> LocalAnalyzer<'mir, 'a, 'tcx> {
         let mut analyzer = LocalAnalyzer {
             cx: mircx,
-            lvalue_locals: BitVector::new(mircx.mir.local_decls.len()),
+            memory_locals: BitVector::new(mircx.mir.local_decls.len()),
             seen_assigned: BitVector::new(mircx.mir.local_decls.len())
         };
 
@@ -73,14 +73,14 @@ impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
         analyzer
     }
 
-    fn mark_as_lvalue(&mut self, local: mir::Local) {
-        debug!("marking {:?} as lvalue", local);
-        self.lvalue_locals.insert(local.index());
+    fn mark_as_memory(&mut self, local: mir::Local) {
+        debug!("marking {:?} as memory", local);
+        self.memory_locals.insert(local.index());
     }
 
     fn mark_assigned(&mut self, local: mir::Local) {
         if !self.seen_assigned.insert(local.index()) {
-            self.mark_as_lvalue(local);
+            self.mark_as_memory(local);
         }
     }
 }
@@ -88,18 +88,18 @@ impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
 impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
-                    lvalue: &mir::Lvalue<'tcx>,
+                    place: &mir::Place<'tcx>,
                     rvalue: &mir::Rvalue<'tcx>,
                     location: Location) {
-        debug!("visit_assign(block={:?}, lvalue={:?}, rvalue={:?})", block, lvalue, rvalue);
+        debug!("visit_assign(block={:?}, place={:?}, rvalue={:?})", block, place, rvalue);
 
-        if let mir::Lvalue::Local(index) = *lvalue {
+        if let mir::Place::Local(index) = *place {
             self.mark_assigned(index);
             if !self.cx.rvalue_creates_operand(rvalue) {
-                self.mark_as_lvalue(index);
+                self.mark_as_memory(index);
             }
         } else {
-            self.visit_lvalue(lvalue, LvalueContext::Store, location);
+            self.visit_place(place, PlaceContext::Store, location);
         }
 
         self.visit_rvalue(rvalue, location);
@@ -121,8 +121,8 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
-                if let mir::Operand::Move(ref lvalue) = args[0] {
-                    self.visit_lvalue(lvalue, LvalueContext::Drop, location);
+                if let mir::Operand::Move(ref place) = args[0] {
+                    self.visit_place(place, PlaceContext::Drop, location);
                 }
             }
             _ => {}
@@ -131,17 +131,17 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
         self.super_terminator_kind(block, kind, location);
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &mir::Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
+    fn visit_place(&mut self,
+                    place: &mir::Place<'tcx>,
+                    context: PlaceContext<'tcx>,
                     location: Location) {
-        debug!("visit_lvalue(lvalue={:?}, context={:?})", lvalue, context);
+        debug!("visit_place(place={:?}, context={:?})", place, context);
         let ccx = self.cx.ccx;
 
-        if let mir::Lvalue::Projection(ref proj) = *lvalue {
+        if let mir::Place::Projection(ref proj) = *place {
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
-                LvalueContext::Copy | LvalueContext::Move => true,
+                PlaceContext::Copy | PlaceContext::Move => true,
                 _ => false
             };
             if is_consume {
@@ -160,51 +160,51 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
-                        // which would trigger `mark_as_lvalue` on locals.
-                        self.visit_lvalue(&proj.base, context, location);
+                        // which would trigger `mark_as_memory` on locals.
+                        self.visit_place(&proj.base, context, location);
                         return;
                     }
                 }
             }
 
-            // A deref projection only reads the pointer, never needs the lvalue.
+            // A deref projection only reads the pointer, never needs the place.
             if let mir::ProjectionElem::Deref = proj.elem {
-                return self.visit_lvalue(&proj.base, LvalueContext::Copy, location);
+                return self.visit_place(&proj.base, PlaceContext::Copy, location);
             }
         }
 
-        self.super_lvalue(lvalue, context, location);
+        self.super_place(place, context, location);
     }
 
     fn visit_local(&mut self,
                    &index: &mir::Local,
-                   context: LvalueContext<'tcx>,
+                   context: PlaceContext<'tcx>,
                    _: Location) {
         match context {
-            LvalueContext::Call => {
+            PlaceContext::Call => {
                 self.mark_assigned(index);
             }
 
-            LvalueContext::StorageLive |
-            LvalueContext::StorageDead |
-            LvalueContext::Validate |
-            LvalueContext::Copy |
-            LvalueContext::Move => {}
+            PlaceContext::StorageLive |
+            PlaceContext::StorageDead |
+            PlaceContext::Validate |
+            PlaceContext::Copy |
+            PlaceContext::Move => {}
 
-            LvalueContext::Inspect |
-            LvalueContext::Store |
-            LvalueContext::Borrow { .. } |
-            LvalueContext::Projection(..) => {
-                self.mark_as_lvalue(index);
+            PlaceContext::Inspect |
+            PlaceContext::Store |
+            PlaceContext::Borrow { .. } |
+            PlaceContext::Projection(..) => {
+                self.mark_as_memory(index);
             }
 
-            LvalueContext::Drop => {
-                let ty = mir::Lvalue::Local(index).ty(self.cx.mir, self.cx.ccx.tcx());
+            PlaceContext::Drop => {
+                let ty = mir::Place::Local(index).ty(self.cx.mir, self.cx.ccx.tcx());
                 let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
 
-                // Only need the lvalue if we're actually dropping it.
+                // Only need the place if we're actually dropping it.
                 if self.cx.ccx.shared().type_needs_drop(ty) {
-                    self.mark_as_lvalue(index);
+                    self.mark_as_memory(index);
                 }
             }
         }

@@ -14,7 +14,7 @@ use intrinsics::{self, Intrinsic};
 use llvm;
 use llvm::{ValueRef};
 use abi::{Abi, FnType, PassMode};
-use mir::lvalue::{LvalueRef, Alignment};
+use mir::place::{PlaceRef, Alignment};
 use mir::operand::{OperandRef, OperandValue};
 use base::*;
 use common::*;
@@ -106,7 +106,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let name = &*tcx.item_name(def_id);
 
     let llret_ty = ccx.layout_of(ret_ty).llvm_type(ccx);
-    let result = LvalueRef::new_sized(llresult, fn_ty.ret.layout, Alignment::AbiAligned);
+    let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, Alignment::AbiAligned);
 
     let simple = get_simple_intrinsic(ccx, name);
     let llval = match name {
@@ -625,7 +625,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             OperandValue::Ref(ptr, align) => (ptr, align),
                             _ => bug!()
                         };
-                        let arg = LvalueRef::new_sized(ptr, arg.layout, align);
+                        let arg = PlaceRef::new_sized(ptr, arg.layout, align);
                         (0..contents.len()).map(|i| {
                             arg.project_field(bcx, i).load(bcx).immediate()
                         }).collect()

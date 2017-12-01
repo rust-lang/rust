@@ -27,12 +27,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// NB: **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
-    pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Lvalue<'tcx> {
+    pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
-        let lvalue = Lvalue::Local(temp);
+        let place = Place::Local(temp);
         debug!("temp: created temp {:?} with type {:?}",
-               lvalue, self.local_decls[temp].ty);
-        lvalue
+               place, self.local_decls[temp].ty);
+        place
     }
 
     pub fn literal_operand(&mut self,
@@ -121,7 +121,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                       block: BasicBlock,
                       source_info: SourceInfo,
                       value: u64)
-                      -> Lvalue<'tcx> {
+                      -> Place<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty, source_info.span);
         self.cfg.push_assign_constant(
@@ -134,13 +134,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         temp
     }
 
-    pub fn consume_by_copy_or_move(&self, lvalue: Lvalue<'tcx>) -> Operand<'tcx> {
+    pub fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
         let tcx = self.hir.tcx();
-        let ty = lvalue.ty(&self.local_decls, tcx).to_ty(tcx);
+        let ty = place.ty(&self.local_decls, tcx).to_ty(tcx);
         if self.hir.type_moves_by_default(ty, DUMMY_SP) {
-            Operand::Move(lvalue)
+            Operand::Move(place)
         } else {
-            Operand::Copy(lvalue)
+            Operand::Copy(place)
         }
     }
 }

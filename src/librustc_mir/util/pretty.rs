@@ -344,12 +344,12 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         }
     }
 
-    // Print return pointer
+    // Print return place
     let indented_retptr = format!("{}let mut {:?}: {};",
                                   INDENT,
-                                  RETURN_POINTER,
-                                  mir.local_decls[RETURN_POINTER].ty);
-    writeln!(w, "{0:1$} // return pointer",
+                                  RETURN_PLACE,
+                                  mir.local_decls[RETURN_PLACE].ty);
+    writeln!(w, "{0:1$} // return place",
              indented_retptr,
              ALIGN)?;
 
@@ -389,7 +389,7 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
                 if i != 0 {
                     write!(w, ", ")?;
                 }
-                write!(w, "{:?}: {}", Lvalue::Local(arg), mir.local_decls[arg].ty)?;
+                write!(w, "{:?}: {}", Place::Local(arg), mir.local_decls[arg].ty)?;
             }
 
             write!(w, ") -> {}", mir.return_ty())

@@ -610,7 +610,7 @@ pub trait BitDenotation: DataflowOperator {
                              in_out: &mut IdxSet<Self::Idx>,
                              call_bb: mir::BasicBlock,
                              dest_bb: mir::BasicBlock,
-                             dest_lval: &mir::Lvalue);
+                             dest_place: &mir::Place);
 }
 
 impl<'a, 'gcx, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
@@ -714,11 +714,11 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                         self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
                     }
                 }
-                if let Some((ref dest_lval, ref dest_bb)) = *destination {
+                if let Some((ref dest_place, ref dest_bb)) = *destination {
                     // N.B.: This must be done *last*, after all other
                     // propagation, as documented in comment above.
                     self.flow_state.operator.propagate_call_return(
-                        in_out, bb, *dest_bb, dest_lval);
+                        in_out, bb, *dest_bb, dest_place);
                     self.propagate_bits_into_entry_set_for(in_out, changed, dest_bb);
                 }
             }

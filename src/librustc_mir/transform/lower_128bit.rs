@@ -75,19 +75,19 @@ impl Lower128Bit {
                 };
 
                 let bin_statement = block.statements.pop().unwrap();
-                let (source_info, lvalue, lhs, mut rhs) = match bin_statement {
+                let (source_info, place, lhs, mut rhs) = match bin_statement {
                     Statement {
                         source_info,
                         kind: StatementKind::Assign(
-                            lvalue,
+                            place,
                             Rvalue::BinaryOp(_, lhs, rhs))
-                    } => (source_info, lvalue, lhs, rhs),
+                    } => (source_info, place, lhs, rhs),
                     Statement {
                         source_info,
                         kind: StatementKind::Assign(
-                            lvalue,
+                            place,
                             Rvalue::CheckedBinaryOp(_, lhs, rhs))
-                    } => (source_info, lvalue, lhs, rhs),
+                    } => (source_info, place, lhs, rhs),
                     _ => bug!("Statement doesn't match pattern any more?"),
                 };
 
@@ -99,17 +99,17 @@ impl Lower128Bit {
                     block.statements.push(Statement {
                         source_info: source_info,
                         kind: StatementKind::Assign(
-                            Lvalue::Local(local),
+                            Place::Local(local),
                             Rvalue::Cast(
                                 CastKind::Misc,
                                 rhs,
                                 rhs_override_ty.unwrap())),
                     });
-                    rhs = Operand::Move(Lvalue::Local(local));
+                    rhs = Operand::Move(Place::Local(local));
                 }
 
                 let call_did = check_lang_item_type(
-                    lang_item, &lvalue, &lhs, &rhs, local_decls, tcx);
+                    lang_item, &place, &lhs, &rhs, local_decls, tcx);
 
                 let bb = BasicBlock::new(cur_len + new_blocks.len());
                 new_blocks.push(after_call);
@@ -121,7 +121,7 @@ impl Lower128Bit {
                             func: Operand::function_handle(tcx, call_did,
                                 Slice::empty(), source_info.span),
                             args: vec![lhs, rhs],
-                            destination: Some((lvalue, bb)),
+                            destination: Some((place, bb)),
                             cleanup: None,
                         },
                     });
@@ -134,7 +134,7 @@ impl Lower128Bit {
 
 fn check_lang_item_type<'a, 'tcx, D>(
     lang_item: LangItem,
-    lvalue: &Lvalue<'tcx>,
+    place: &Place<'tcx>,
     lhs: &Operand<'tcx>,
     rhs: &Operand<'tcx>,
     local_decls: &D,
@@ -147,8 +147,8 @@ fn check_lang_item_type<'a, 'tcx, D>(
     let sig = tcx.no_late_bound_regions(&poly_sig).unwrap();
     let lhs_ty = lhs.ty(local_decls, tcx);
     let rhs_ty = rhs.ty(local_decls, tcx);
-    let lvalue_ty = lvalue.ty(local_decls, tcx).to_ty(tcx);
-    let expected = [lhs_ty, rhs_ty, lvalue_ty];
+    let place_ty = place.ty(local_decls, tcx).to_ty(tcx);
+    let expected = [lhs_ty, rhs_ty, place_ty];
     assert_eq!(sig.inputs_and_output[..], expected,
         "lang item {}", tcx.def_symbol_name(did));
     did

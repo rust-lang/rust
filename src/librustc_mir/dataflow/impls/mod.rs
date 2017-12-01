@@ -368,11 +368,11 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
                              in_out: &mut IdxSet<MovePathIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
-                             dest_lval: &mir::Lvalue) {
+                             dest_place: &mir::Place) {
         // when a call returns successfully, that means we need to set
-        // the bits for that dest_lval to 1 (initialized).
+        // the bits for that dest_place to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_lval),
+                              self.move_data().rev_lookup.find(dest_place),
                               |mpi| { in_out.add(&mpi); });
     }
 }
@@ -384,7 +384,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
         self.move_data().move_paths.len()
     }
 
-    // sets on_entry bits for Arg lvalues
+    // sets on_entry bits for Arg places
     fn start_block_effect(&self, sets: &mut BlockSets<MovePathIndex>) {
         // set all bits to 1 (uninit) before gathering counterevidence
         for e in sets.on_entry.words_mut() { *e = !0; }
@@ -423,11 +423,11 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
                              in_out: &mut IdxSet<MovePathIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
-                             dest_lval: &mir::Lvalue) {
+                             dest_place: &mir::Place) {
         // when a call returns successfully, that means we need to set
-        // the bits for that dest_lval to 0 (initialized).
+        // the bits for that dest_place to 0 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_lval),
+                              self.move_data().rev_lookup.find(dest_place),
                               |mpi| { in_out.remove(&mpi); });
     }
 }
@@ -439,7 +439,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'gcx, 'tcx
         self.move_data().move_paths.len()
     }
 
-    // sets on_entry bits for Arg lvalues
+    // sets on_entry bits for Arg places
     fn start_block_effect(&self, sets: &mut BlockSets<MovePathIndex>) {
         for e in sets.on_entry.words_mut() { *e = 0; }
 
@@ -477,11 +477,11 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'gcx, 'tcx
                              in_out: &mut IdxSet<MovePathIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
-                             dest_lval: &mir::Lvalue) {
+                             dest_place: &mir::Place) {
         // when a call returns successfully, that means we need to set
-        // the bits for that dest_lval to 1 (initialized).
+        // the bits for that dest_place to 1 (initialized).
         on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_lval),
+                              self.move_data().rev_lookup.find(dest_place),
                               |mpi| { in_out.add(&mpi); });
     }
 }
@@ -561,7 +561,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
                              in_out: &mut IdxSet<MoveOutIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
-                             dest_lval: &mir::Lvalue) {
+                             dest_place: &mir::Place) {
         let move_data = self.move_data();
         let bits_per_block = self.bits_per_block();
 
@@ -569,7 +569,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
         on_lookup_result_bits(self.tcx,
                               self.mir,
                               move_data,
-                              move_data.rev_lookup.find(dest_lval),
+                              move_data.rev_lookup.find(dest_place),
                               |mpi| for moi in &path_map[mpi] {
                                   assert!(moi.index() < bits_per_block);
                                   in_out.remove(&moi);
@@ -612,7 +612,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
             mir::StatementKind::StorageDead(local) => {
                 // End inits for StorageDead, so that an immutable variable can
                 // be reinitialized on the next iteration of the loop.
-                if let LookupResult::Exact(mpi) = rev_lookup.find(&mir::Lvalue::Local(local)) {
+                if let LookupResult::Exact(mpi) = rev_lookup.find(&mir::Place::Local(local)) {
                     debug!("stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
                         stmt, location, &init_path_map[mpi]);
                     for ii in &init_path_map[mpi] {
@@ -647,7 +647,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
                              in_out: &mut IdxSet<InitIndex>,
                              call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
-                             _dest_lval: &mir::Lvalue) {
+                             _dest_place: &mir::Place) {
         let move_data = self.move_data();
         let bits_per_block = self.bits_per_block();
         let init_loc_map = &move_data.init_loc_map;

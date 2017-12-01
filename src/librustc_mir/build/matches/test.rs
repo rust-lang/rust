@@ -109,21 +109,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn add_cases_to_switch<'pat>(&mut self,
-                                     test_lvalue: &Lvalue<'tcx>,
+                                     test_place: &Place<'tcx>,
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
                                      options: &mut Vec<&'tcx ty::Const<'tcx>>,
                                      indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
                                      -> bool
     {
-        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
+        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
             Some(match_pair) => match_pair,
             _ => { return false; }
         };
 
         match *match_pair.pattern.kind {
             PatternKind::Constant { value } => {
-                // if the lvalues match, the type should match
+                // if the places match, the type should match
                 assert_eq!(match_pair.pattern.ty, switch_ty);
 
                 indices.entry(value)
@@ -150,12 +150,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn add_variants_to_switch<'pat>(&mut self,
-                                        test_lvalue: &Lvalue<'tcx>,
+                                        test_place: &Place<'tcx>,
                                         candidate: &Candidate<'pat, 'tcx>,
                                         variants: &mut BitVector)
                                         -> bool
     {
-        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
+        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
             Some(match_pair) => match_pair,
             _ => { return false; }
         };
@@ -177,7 +177,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Generates the code to perform a test.
     pub fn perform_test(&mut self,
                         block: BasicBlock,
-                        lvalue: &Lvalue<'tcx>,
+                        place: &Place<'tcx>,
                         test: &Test<'tcx>)
                         -> Vec<BasicBlock> {
         let source_info = self.source_info(test.span);
@@ -212,7 +212,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty, test.span);
                 self.cfg.push_assign(block, source_info, &discr,
-                                     Rvalue::Discriminant(lvalue.clone()));
+                                     Rvalue::Discriminant(place.clone()));
                 assert_eq!(values.len() + 1, targets.len());
                 self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
                     discr: Operand::Move(discr),
@@ -233,7 +233,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ConstVal::Bool(false) => vec![false_bb, true_bb],
                         v => span_bug!(test.span, "expected boolean value but got {:?}", v)
                     };
-                    (ret, TerminatorKind::if_(self.hir.tcx(), Operand::Copy(lvalue.clone()),
+                    (ret, TerminatorKind::if_(self.hir.tcx(), Operand::Copy(place.clone()),
                                               true_bb, false_bb))
                 } else {
                     // The switch may be inexhaustive so we
@@ -248,7 +248,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         v.val.to_const_int().expect("switching on integral")
                     ).collect();
                     (targets.clone(), TerminatorKind::SwitchInt {
-                        discr: Operand::Copy(lvalue.clone()),
+                        discr: Operand::Copy(place.clone()),
                         switch_ty,
                         values: From::from(values),
                         targets,
@@ -259,14 +259,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             TestKind::Eq { value, mut ty } => {
-                let mut val = Operand::Copy(lvalue.clone());
+                let mut val = Operand::Copy(place.clone());
 
                 // If we're using b"..." as a pattern, we need to insert an
                 // unsizing coercion, as the byte string has the type &[u8; N].
                 let expect = if let ConstVal::ByteStr(bytes) = value.val {
                     let tcx = self.hir.tcx();
 
-                    // Unsize the lvalue to &[u8], too, if necessary.
+                    // Unsize the place to &[u8], too, if necessary.
                     if let ty::TyRef(region, mt) = ty.sty {
                         if let ty::TyArray(_, _) = mt.ty.sty {
                             ty = tcx.mk_imm_ref(region, tcx.mk_slice(tcx.types.u8));
@@ -335,7 +335,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, ty.clone(), lo.clone());
                 let hi = self.literal_operand(test.span, ty.clone(), hi.clone());
-                let val = Operand::Copy(lvalue.clone());
+                let val = Operand::Copy(place.clone());
 
                 let fail = self.cfg.start_new_block();
                 let block = self.compare(block, fail, test.span, BinOp::Le, lo, val.clone());
@@ -352,9 +352,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let (actual, result) = (self.temp(usize_ty, test.span),
                                         self.temp(bool_ty, test.span));
 
-                // actual = len(lvalue)
+                // actual = len(place)
                 self.cfg.push_assign(block, source_info,
-                                     &actual, Rvalue::Len(lvalue.clone()));
+                                     &actual, Rvalue::Len(place.clone()));
 
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
@@ -399,7 +399,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         target_block
     }
 
-    /// Given that we are performing `test` against `test_lvalue`,
+    /// Given that we are performing `test` against `test_place`,
     /// this job sorts out what the status of `candidate` will be
     /// after the test. The `resulting_candidates` vector stores, for
     /// each possible outcome of `test`, a vector of the candidates
@@ -430,12 +430,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// not apply to this candidate, but it might be we can get
     /// tighter match code if we do something a bit different.
     pub fn sort_candidate<'pat>(&mut self,
-                                test_lvalue: &Lvalue<'tcx>,
+                                test_place: &Place<'tcx>,
                                 test: &Test<'tcx>,
                                 candidate: &Candidate<'pat, 'tcx>,
                                 resulting_candidates: &mut [Vec<Candidate<'pat, 'tcx>>])
                                 -> bool {
-        // Find the match_pair for this lvalue (if any). At present,
+        // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
         // adopted a more general `@` operator, there might be more
         // than one, but it'd be very unusual to have two sides that
@@ -443,12 +443,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // away.)
         let tested_match_pair = candidate.match_pairs.iter()
                                                      .enumerate()
-                                                     .filter(|&(_, mp)| mp.lvalue == *test_lvalue)
+                                                     .filter(|&(_, mp)| mp.place == *test_place)
                                                      .next();
         let (match_pair_index, match_pair) = match tested_match_pair {
             Some(pair) => pair,
             None => {
-                // We are not testing this lvalue. Therefore, this
+                // We are not testing this place. Therefore, this
                 // candidate applies to ALL outcomes.
                 return false;
             }
@@ -614,7 +614,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.candidate_without_match_pair(match_pair_index, candidate);
         self.prefix_slice_suffix(
             &mut new_candidate.match_pairs,
-            &candidate.match_pairs[match_pair_index].lvalue,
+            &candidate.match_pairs[match_pair_index].place,
             prefix,
             opt_slice,
             suffix);
@@ -635,15 +635,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // we want to create a set of derived match-patterns like
         // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
         let elem = ProjectionElem::Downcast(adt_def, variant_index);
-        let downcast_lvalue = match_pair.lvalue.clone().elem(elem); // `(x as Variant)`
+        let downcast_place = match_pair.place.clone().elem(elem); // `(x as Variant)`
         let consequent_match_pairs =
             subpatterns.iter()
                        .map(|subpattern| {
                            // e.g., `(x as Variant).0`
-                           let lvalue = downcast_lvalue.clone().field(subpattern.field,
+                           let place = downcast_place.clone().field(subpattern.field,
                                                                       subpattern.pattern.ty);
                            // e.g., `(x as Variant).0 @ P1`
-                           MatchPair::new(lvalue, &subpattern.pattern)
+                           MatchPair::new(place, &subpattern.pattern)
                        });
 
         // In addition, we need all the other match pairs from the old candidate.
