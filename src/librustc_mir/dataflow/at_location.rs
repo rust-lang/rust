@@ -18,6 +18,8 @@ use rustc_data_structures::indexed_vec::Idx;
 use dataflow::{BitDenotation, BlockSets, DataflowResults};
 use dataflow::move_paths::{HasMoveData, MovePathIndex};
 
+use std::iter;
+
 /// A trait for "cartesian products" of multiple FlowAtLocation.
 ///
 /// There's probably a way to auto-impl this, but I think
@@ -94,9 +96,9 @@ where
         self.curr_state.contains(x)
     }
 
-    pub fn elems_incoming(&self) -> indexed_set::Elems<BD::Idx> {
+    pub fn elems_incoming(&self) -> iter::Peekable<indexed_set::Elems<BD::Idx>> {
         let univ = self.base_results.sets().bits_per_block();
-        self.curr_state.elems(univ)
+        self.curr_state.elems(univ).peekable()
     }
 
     pub fn with_elems_outgoing<F>(&self, f: F)

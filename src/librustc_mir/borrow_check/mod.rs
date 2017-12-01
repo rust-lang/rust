@@ -701,9 +701,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             context,
             (sd, place_span.0),
             flow_state,
-            |this, _index, borrow| match (rw, borrow.kind) {
+            |this, index, borrow| match (rw, borrow.kind) {
                 (Read(_), BorrowKind::Shared) => Control::Continue,
+
                 (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut) => {
+                    // Reading from mere reservations of mutable-borrows is OK.
+                    if this.tcx.sess.opts.debugging_opts.two_phase_borrows &&
+                        index.is_reservation()
+                    {
+                        return Control::Continue;
+                    }
+
                     match kind {
                         ReadKind::Copy => {
                             error_reported = true;
@@ -1826,9 +1834,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
-        for i in flow_state.borrows.elems_incoming() {
-            // FIXME for now, just skip the activation state.
-            if i.is_activation() { continue }
+        let mut elems_incoming = flow_state.borrows.elems_incoming();
+        while let Some(i) = elems_incoming.next() {
+            // Skip any reservation that has a corresponding current
+            // activation.  This way, the traversal will visit each
+            // borrow_index at most once.
+            if let Some(j) = elems_incoming.peek() {
+                if i.is_reservation() && j.is_activation() {
+                    assert_eq!(i.borrow_index(), j.borrow_index());
+                    continue;
+                }
+            }
 
             let borrowed = &data[i.borrow_index()];
 
