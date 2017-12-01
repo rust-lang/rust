@@ -1079,7 +1079,9 @@ impl<'a, 'tcx> LayoutDetails {
                         // We have exactly one non-ZST field.
                         (Some((i, field)), None, None) => {
                             // Field fills the struct and it has a scalar or scalar pair ABI.
-                            if offsets[i].bytes() == 0 && size == field.size {
+                            if offsets[i].bytes() == 0 &&
+                               align.abi() == field.align.abi() &&
+                               size == field.size {
                                 match field.abi {
                                     // For plain scalars we can't unpack newtypes
                                     // for `#[repr(C)]`, as that affects C ABIs.
