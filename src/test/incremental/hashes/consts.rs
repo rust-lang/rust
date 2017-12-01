@@ -32,8 +32,6 @@ const CONST_VISIBILITY: u8 = 0;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 pub const CONST_VISIBILITY: u8 = 0;
 
 
@@ -44,8 +42,6 @@ const CONST_CHANGE_TYPE_1: i32 = 0;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_TYPE_1: u32 = 0;
 
 
@@ -56,15 +52,12 @@ const CONST_CHANGE_TYPE_2: Option<u32> = None;
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_TYPE_2: Option<u64> = None;
 
 
 // Change value between simple literals ---------------------------------------
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_1: i16 = {
     #[cfg(cfail1)]
     { 1 }
@@ -77,8 +70,6 @@ const CONST_CHANGE_VALUE_1: i16 = {
 // Change value between expressions -------------------------------------------
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_2: i16 = {
     #[cfg(cfail1)]
     { 1 + 1 }
@@ -89,8 +80,6 @@ const CONST_CHANGE_VALUE_2: i16 = {
 
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_3: i16 = {
     #[cfg(cfail1)]
     { 2 + 3 }
@@ -101,8 +90,6 @@ const CONST_CHANGE_VALUE_3: i16 = {
 
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
 const CONST_CHANGE_VALUE_4: i16 = {
     #[cfg(cfail1)]
     { 1 + 2 * 3 }
@@ -125,13 +112,9 @@ mod const_change_type_indirectly {
 
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     const CONST_CHANGE_TYPE_INDIRECTLY_1: Type = Type;
 
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     const CONST_CHANGE_TYPE_INDIRECTLY_2: Option<Type> = None;
 }

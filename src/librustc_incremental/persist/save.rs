@@ -9,14 +9,9 @@
 // except according to those terms.
 
 use rustc::dep_graph::{DepGraph, DepKind};
-use rustc::hir::def_id::{DefId, DefIndex};
-use rustc::hir::svh::Svh;
-use rustc::ich::Fingerprint;
-use rustc::middle::cstore::EncodedMetadataHashes;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::common::time;
-use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
@@ -30,37 +25,12 @@ use super::dirty_clean;
 use super::file_format;
 use super::work_product;
 
-use super::load::load_prev_metadata_hashes;
-
-pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                metadata_hashes: &EncodedMetadataHashes,
-                                svh: Svh) {
+pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     debug!("save_dep_graph()");
     let _ignore = tcx.dep_graph.in_ignore();
     let sess = tcx.sess;
     if sess.opts.incremental.is_none() {
         return;
-    }
-
-    // We load the previous metadata hashes now before overwriting the file
-    // (if we need them for testing).
-    let prev_metadata_hashes = if tcx.sess.opts.debugging_opts.query_dep_graph {
-        load_prev_metadata_hashes(tcx)
-    } else {
-        DefIdMap()
-    };
-
-    let mut current_metadata_hashes = FxHashMap();
-
-    if sess.opts.debugging_opts.incremental_cc ||
-       sess.opts.debugging_opts.query_dep_graph {
-        save_in(sess,
-                metadata_hash_export_path(sess),
-                |e| encode_metadata_hashes(tcx,
-                                           svh,
-                                           metadata_hashes,
-                                           &mut current_metadata_hashes,
-                                           e));
     }
 
     time(sess.time_passes(), "persist query result cache", || {
@@ -78,9 +48,6 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     dirty_clean::check_dirty_clean_annotations(tcx);
-    dirty_clean::check_dirty_clean_metadata(tcx,
-                                            &prev_metadata_hashes,
-                                            &current_metadata_hashes);
 }
 
 pub fn save_work_products(sess: &Session, dep_graph: &DepGraph) {
@@ -254,43 +221,6 @@ fn encode_dep_graph(tcx: TyCtxt,
     }
 
     serialized_graph.encode(encoder)?;
-
-    Ok(())
-}
-
-fn encode_metadata_hashes(tcx: TyCtxt,
-                          svh: Svh,
-                          metadata_hashes: &EncodedMetadataHashes,
-                          current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
-                          encoder: &mut Encoder)
-                          -> io::Result<()> {
-    assert_eq!(metadata_hashes.hashes.len(),
-        metadata_hashes.hashes.iter().map(|x| (x.def_index, ())).collect::<FxHashMap<_,_>>().len());
-
-    let mut serialized_hashes = SerializedMetadataHashes {
-        entry_hashes: metadata_hashes.hashes.to_vec(),
-        index_map: FxHashMap()
-    };
-
-    if tcx.sess.opts.debugging_opts.query_dep_graph {
-        for serialized_hash in &serialized_hashes.entry_hashes {
-            let def_id = DefId::local(DefIndex::from_u32(serialized_hash.def_index));
-
-            // Store entry in the index_map
-            let def_path_hash = tcx.def_path_hash(def_id);
-            serialized_hashes.index_map.insert(def_id.index.as_u32(), def_path_hash);
-
-            // Record hash in current_metadata_hashes
-            current_metadata_hashes.insert(def_id, serialized_hash.hash);
-        }
-
-        debug!("save: stored index_map (len={}) for serialized hashes",
-               serialized_hashes.index_map.len());
-    }
-
-    // Encode everything.
-    svh.encode(encoder)?;
-    serialized_hashes.encode(encoder)?;
 
     Ok(())
 }

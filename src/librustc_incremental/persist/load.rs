@@ -11,12 +11,9 @@
 //! Code to save/load the dep-graph from files.
 
 use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph};
-use rustc::hir::svh::Svh;
-use rustc::ich::Fingerprint;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::OnDiskCache;
-use rustc::util::nodemap::DefIdMap;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
 use std::path::Path;
@@ -104,64 +101,6 @@ fn delete_dirty_work_product(tcx: TyCtxt,
                              swp: SerializedWorkProduct) {
     debug!("delete_dirty_work_product({:?})", swp);
     work_product::delete_workproduct_files(tcx.sess, &swp.work_product);
-}
-
-pub fn load_prev_metadata_hashes(tcx: TyCtxt) -> DefIdMap<Fingerprint> {
-    let mut output = DefIdMap();
-
-    if !tcx.sess.opts.debugging_opts.query_dep_graph {
-        // Previous metadata hashes are only needed for testing.
-        return output
-    }
-
-    debug!("load_prev_metadata_hashes() - Loading previous metadata hashes");
-
-    let file_path = metadata_hash_export_path(tcx.sess);
-
-    if !file_path.exists() {
-        debug!("load_prev_metadata_hashes() - Couldn't find file containing \
-                hashes at `{}`", file_path.display());
-        return output
-    }
-
-    debug!("load_prev_metadata_hashes() - File: {}", file_path.display());
-
-    let (data, start_pos) = match file_format::read_file(tcx.sess, &file_path) {
-        Ok(Some(data_and_pos)) => data_and_pos,
-        Ok(None) => {
-            debug!("load_prev_metadata_hashes() - File produced by incompatible \
-                    compiler version: {}", file_path.display());
-            return output
-        }
-        Err(err) => {
-            debug!("load_prev_metadata_hashes() - Error reading file `{}`: {}",
-                   file_path.display(), err);
-            return output
-        }
-    };
-
-    debug!("load_prev_metadata_hashes() - Decoding hashes");
-    let mut decoder = Decoder::new(&data, start_pos);
-    let _ = Svh::decode(&mut decoder).unwrap();
-    let serialized_hashes = SerializedMetadataHashes::decode(&mut decoder).unwrap();
-
-    debug!("load_prev_metadata_hashes() - Mapping DefIds");
-
-    assert_eq!(serialized_hashes.index_map.len(), serialized_hashes.entry_hashes.len());
-    let def_path_hash_to_def_id = tcx.def_path_hash_to_def_id.as_ref().unwrap();
-
-    for serialized_hash in serialized_hashes.entry_hashes {
-        let def_path_hash = serialized_hashes.index_map[&serialized_hash.def_index];
-        if let Some(&def_id) = def_path_hash_to_def_id.get(&def_path_hash) {
-            let old = output.insert(def_id, serialized_hash.hash);
-            assert!(old.is_none(), "already have hash for {:?}", def_id);
-        }
-    }
-
-    debug!("load_prev_metadata_hashes() - successfully loaded {} hashes",
-           serialized_hashes.index_map.len());
-
-    output
 }
 
 pub fn load_dep_graph(sess: &Session) -> PreviousDepGraph {

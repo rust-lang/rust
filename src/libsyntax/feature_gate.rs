@@ -742,18 +742,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                         is just used for rustc unit tests \
                                         and will never be stable",
                                        cfg_fn!(rustc_attrs))),
-    ("rustc_metadata_dirty", Whitelisted, Gated(Stability::Unstable,
-                                                "rustc_attrs",
-                                                "the `#[rustc_metadata_dirty]` attribute \
-                                                 is just used for rustc unit tests \
-                                                 and will never be stable",
-                                                 cfg_fn!(rustc_attrs))),
-    ("rustc_metadata_clean", Whitelisted, Gated(Stability::Unstable,
-                                                "rustc_attrs",
-                                                "the `#[rustc_metadata_clean]` attribute \
-                                                 is just used for rustc unit tests \
-                                                 and will never be stable",
-                                                 cfg_fn!(rustc_attrs))),
     ("rustc_partition_reused", Whitelisted, Gated(Stability::Unstable,
                                                   "rustc_attrs",
                                                   "this attribute \

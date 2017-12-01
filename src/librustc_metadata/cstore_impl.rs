@@ -17,8 +17,7 @@ use schema;
 use rustc::ty::maps::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
                             MetadataLoader, LinkMeta,
-                            LoadedMacro, EncodedMetadata,
-                            EncodedMetadataHashes, NativeLibraryKind};
+                            LoadedMacro, EncodedMetadata, NativeLibraryKind};
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
 use rustc::session::{CrateDisambiguator, Session};
@@ -498,7 +497,7 @@ impl CrateStore for cstore::CStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> (EncodedMetadata, EncodedMetadataHashes)
+                                 -> EncodedMetadata
     {
         encoder::encode_metadata(tcx, link_meta, reachable)
     }
