@@ -1807,6 +1807,18 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
     )
 }
 
+const FORMAT_LIKE_WHITELIST: &[&str] = &[
+    "eprint!",
+    "eprintln!",
+    "format!",
+    "format_args!",
+    "panic!",
+    "println!",
+    "unreachable!",
+];
+
+const WRITE_LIKE_WHITELIST: &[&str] = &["assert!", "write!", "writeln!"];
+
 pub fn rewrite_call(
     context: &RewriteContext,
     callee: &str,
