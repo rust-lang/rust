@@ -239,18 +239,13 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             return simple();
         }
 
-        // If the type of the last field is [T], str or a foreign type, then we don't need to do
-        // any adjusments
         match field.ty.sty {
-            ty::TySlice(..) | ty::TyStr | ty::TyForeign(..) => return simple(),
+            // If the type of the last field is [T] or str, then we don't need
+            // to do any adjustments.
+            ty::TySlice(..) | ty::TyStr => return simple(),
+            // extern types aren't allowed in struct tails, this is a bug
+            ty::TyForeign(..) => bug!("extern type in a struct field"),
             _ => ()
-        }
-
-        // There's no metadata available, log the case and just do the GEP.
-        if !self.has_extra() {
-            debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
-                ix, Value(self.llval));
-            return simple();
         }
 
         // We need to get the pointer manually now.

@@ -508,6 +508,7 @@ define_dep_nodes!( <'tcx>
     [] IsForeignItem(DefId),
     [] TypeParamPredicates { item_id: DefId, param_id: DefId },
     [] SizedConstraint(DefId),
+    [] DynSizedConstraint(DefId),
     [] DtorckConstraint(DefId),
     [] AdtDestructor(DefId),
     [] AssociatedItemDefIds(DefId),
@@ -527,6 +528,7 @@ define_dep_nodes!( <'tcx>
 
     [] IsCopy { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] IsSized { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
+    [] IsDynSized { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] IsFreeze { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] NeedsDrop { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] Layout { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },

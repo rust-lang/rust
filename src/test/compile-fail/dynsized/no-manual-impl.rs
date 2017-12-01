@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(dynsized, optin_builtin_traits)]
-#![crate_type = "rlib"]
+// Test that DynSized cannot be implemented manually.
+
+#![feature(extern_types)]
+#![feature(dynsized)]
 
 use std::marker::DynSized;
 
-pub trait DefaultedTrait: ?DynSized { }
-#[allow(auto_impl)]
-impl DefaultedTrait for .. { }
+extern {
+    type foo;
+}
 
-pub struct Something<T> { t: T }
+impl DynSized for foo { }
+//~^ ERROR explicit impls for the `DynSized` trait are not permitted
+
+fn main() { }

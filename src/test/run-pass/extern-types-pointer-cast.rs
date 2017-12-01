@@ -17,16 +17,6 @@ extern {
     type A;
 }
 
-struct Foo {
-    x: u8,
-    tail: A,
-}
-
-struct Bar<T: ?Sized> {
-    x: u8,
-    tail: T,
-}
-
 #[cfg(target_pointer_width = "32")]
 const MAGIC: usize = 0xdeadbeef;
 #[cfg(target_pointer_width = "64")]
@@ -34,7 +24,4 @@ const MAGIC: usize = 0x12345678deadbeef;
 
 fn main() {
     assert_eq!((MAGIC as *const A) as usize, MAGIC);
-    assert_eq!((MAGIC as *const Foo) as usize, MAGIC);
-    assert_eq!((MAGIC as *const Bar<A>) as usize, MAGIC);
-    assert_eq!((MAGIC as *const Bar<Bar<A>>) as usize, MAGIC);
 }

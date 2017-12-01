@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+#![feature(optin_builtin_traits, dynsized)]
 
-trait Foo {}
+use std::marker::DynSized;
+
+trait Foo: ?DynSized {}
 impl Foo for .. {}
 //~^ ERROR The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`
 //~^^ WARN this was previously accepted by the compiler

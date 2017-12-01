@@ -144,12 +144,18 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         }
         "size_of_val" => {
             let tp_ty = substs.type_at(0);
-            if let OperandValue::Pair(_, meta) = args[0].val {
-                let (llsize, _) =
-                    glue::size_and_align_of_dst(bcx, tp_ty, meta);
-                llsize
-            } else {
+            if bcx.ccx.shared().type_is_sized(tp_ty) {
                 C_usize(ccx, ccx.size_of(tp_ty).bytes())
+            } else if bcx.ccx.shared().type_is_dynsized(tp_ty) {
+                if let OperandValue::Pair(_, meta) = args[0].val {
+                    let (llsize, _) =
+                        glue::size_and_align_of_dst(bcx, tp_ty, meta);
+                    llsize
+                } else {
+                    span_bug!(span, "size_of_val: DST pointer layout is not a Pair")
+                }
+            } else {
+                span_bug!(span, "trying to get size of !DynSized type: {:?}", tp_ty)
             }
         }
         "min_align_of" => {
@@ -158,12 +164,18 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         }
         "min_align_of_val" => {
             let tp_ty = substs.type_at(0);
-            if let OperandValue::Pair(_, meta) = args[0].val {
-                let (_, llalign) =
-                    glue::size_and_align_of_dst(bcx, tp_ty, meta);
-                llalign
-            } else {
+            if bcx.ccx.shared().type_is_sized(tp_ty) {
                 C_usize(ccx, ccx.align_of(tp_ty).abi())
+            } else if bcx.ccx.shared().type_is_dynsized(tp_ty) {
+                if let OperandValue::Pair(_, meta) = args[0].val {
+                    let (_, llalign) =
+                        glue::size_and_align_of_dst(bcx, tp_ty, meta);
+                    llalign
+                } else {
+                    span_bug!(span, "align_of_val: DST pointer layout is not a Pair")
+                }
+            } else {
+                span_bug!(span, "trying to get alignment of !DynSized type: {:?}", tp_ty)
             }
         }
         "pref_align_of" => {

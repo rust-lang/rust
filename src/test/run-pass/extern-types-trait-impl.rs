@@ -10,13 +10,15 @@
 
 // Test that traits can be implemented for extern types.
 
-#![feature(extern_types)]
+#![feature(extern_types, dynsized)]
+
+use std::marker::DynSized;
 
 extern {
     type A;
 }
 
-trait Foo {
+trait Foo: ?DynSized {
     fn foo(&self) { }
 }
 
@@ -24,9 +26,9 @@ impl Foo for A {
     fn foo(&self) { }
 }
 
-fn assert_foo<T: ?Sized + Foo>() { }
+fn assert_foo<T: ?DynSized + Foo>() { }
 
-fn use_foo<T: ?Sized + Foo>(x: &Foo) {
+fn use_foo<T: ?DynSized + Foo>(x: &Foo) {
     x.foo();
 }
 

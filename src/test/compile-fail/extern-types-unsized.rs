@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure extern types are !Sized.
+// Make sure extern types are !Sized and !DynSized.
 
 #![feature(extern_types)]
 
@@ -16,28 +16,13 @@ extern {
     type A;
 }
 
-struct Foo {
-    x: u8,
-    tail: A,
-}
-
-struct Bar<T: ?Sized> {
-    x: u8,
-    tail: T,
-}
-
 fn assert_sized<T>() { }
+fn assert_dynsized<T: ?Sized>() { }
 
 fn main() {
     assert_sized::<A>();
     //~^ ERROR the trait bound `A: std::marker::Sized` is not satisfied
 
-    assert_sized::<Foo>();
-    //~^ ERROR the trait bound `A: std::marker::Sized` is not satisfied
-
-    assert_sized::<Bar<A>>();
-    //~^ ERROR the trait bound `A: std::marker::Sized` is not satisfied
-
-    assert_sized::<Bar<Bar<A>>>();
-    //~^ ERROR the trait bound `A: std::marker::Sized` is not satisfied
+    assert_dynsized::<A>();
+    //~^ ERROR the trait bound `A: std::marker::DynSized` is not satisfied
 }

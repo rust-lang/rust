@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(dynsized, optin_builtin_traits)]
-#![crate_type = "rlib"]
+#![feature(dynsized)]
 
 use std::marker::DynSized;
 
-pub trait DefaultedTrait: ?DynSized { }
-#[allow(auto_impl)]
-impl DefaultedTrait for .. { }
+fn foo<T: ?DynSized>() {
+}
 
-pub struct Something<T> { t: T }
+fn bar<T: ?Sized>() {
+    foo::<T>();
+}
+
+fn baz<T>() {
+    bar::<T>();
+}
+
+fn main() { }

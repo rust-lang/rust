@@ -1030,12 +1030,19 @@ define_print! {
 
                         let mut first = true;
                         let mut is_sized = false;
+                        let mut is_dynsized = false;
                         write!(f, "impl")?;
                         for predicate in bounds.predicates {
                             if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
-                                // Don't print +Sized, but rather +?Sized if absent.
-                                if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
+                                let did = trait_ref.def_id();
+
+                                // Don't print Sized, but rather ?Sized if absent.
+                                if Some(did) == tcx.lang_items().sized_trait() {
                                     is_sized = true;
+                                    continue;
+                                // Same for DynSized
+                                } else if Some(did) == tcx.lang_items().dynsized_trait() {
+                                    is_dynsized = true;
                                     continue;
                                 }
 
@@ -1045,7 +1052,11 @@ define_print! {
                                 first = false;
                             }
                         }
-                        if !is_sized {
+                        // check for ?DynSized first, so we can output ?DynSized
+                        // instead of ?DynSized + ?Sized
+                        if !is_dynsized {
+                            write!(f, "{}?DynSized", if first { " " } else { "+" })?;
+                        } else if !is_sized {
                             write!(f, "{}?Sized", if first { " " } else { "+" })?;
                         }
                         Ok(())

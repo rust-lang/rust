@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Ensure `size_of_val` / `align_of_val` can't be used on !DynSized types
+
 #![feature(extern_types)]
 
 use std::mem::{size_of_val, align_of_val};
@@ -21,6 +23,7 @@ fn main() {
         &*(1usize as *const A)
     };
 
-    assert_eq!(size_of_val(x), 0);
-    assert_eq!(align_of_val(x), 1);
+    size_of_val(x); //~ERROR the trait bound `A: std::marker::DynSized` is not satisfied
+
+    align_of_val(x); //~ERROR the trait bound `A: std::marker::DynSized` is not satisfied
 }

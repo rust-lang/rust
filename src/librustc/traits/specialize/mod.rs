@@ -385,13 +385,16 @@ fn to_pretty_impl_header(tcx: TyCtxt, impl_def_id: DefId) -> Option<String> {
 
     let substs = Substs::identity_for_item(tcx, impl_def_id);
 
-    // FIXME: Currently only handles ?Sized.
-    //        Needs to support ?Move and ?DynSized when they are implemented.
-    let mut types_without_default_bounds = FxHashSet::default();
+    // FIXME: Currently only handles ?Sized and ?DynSized.
+    //        Needs to support ?Move when it is implemented.
+    let mut types_without_sized = FxHashSet::default();
+    let mut types_without_dynsized = FxHashSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
+    let dynsized_trait = tcx.lang_items().dynsized_trait();
 
     if !substs.is_noop() {
-        types_without_default_bounds.extend(substs.types());
+        types_without_sized.extend(substs.types());
+        types_without_dynsized.extend(substs.types());
         w.push('<');
         w.push_str(&substs.iter().map(|k| k.to_string()).collect::<Vec<_>>().join(", "));
         w.push('>');
@@ -406,14 +409,22 @@ fn to_pretty_impl_header(tcx: TyCtxt, impl_def_id: DefId) -> Option<String> {
     for p in predicates {
         if let Some(poly_trait_ref) = p.to_opt_poly_trait_ref() {
             if Some(poly_trait_ref.def_id()) == sized_trait {
-                types_without_default_bounds.remove(poly_trait_ref.self_ty());
+                types_without_sized.remove(poly_trait_ref.self_ty());
+                continue;
+            }
+            if Some(poly_trait_ref.def_id()) == dynsized_trait {
+                types_without_dynsized.remove(poly_trait_ref.self_ty());
                 continue;
             }
         }
         pretty_predicates.push(p.to_string());
     }
-    for ty in types_without_default_bounds {
-        pretty_predicates.push(format!("{}: ?Sized", ty));
+    for ty in types_without_sized {
+        if types_without_dynsized.contains(&ty) {
+            pretty_predicates.push(format!("{}: ?DynSized", ty));
+        } else {
+            pretty_predicates.push(format!("{}: ?Sized", ty));
+        }
     }
     if !pretty_predicates.is_empty() {
         write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();

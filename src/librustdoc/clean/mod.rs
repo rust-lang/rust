@@ -870,6 +870,33 @@ impl TyParamBound {
         }
         false
     }
+
+    fn maybe_dynsized(cx: &DocContext) -> TyParamBound {
+        let did = cx.tcx.require_lang_item(lang_items::DynSizedTraitLangItem);
+        let empty = cx.tcx.intern_substs(&[]);
+        let path = external_path(cx, &cx.tcx.item_name(did),
+            Some(did), false, vec![], empty);
+        inline::record_extern_fqn(cx, did, TypeKind::Trait);
+        TraitBound(PolyTrait {
+            trait_: ResolvedPath {
+                path,
+                typarams: None,
+                did,
+                is_generic: false,
+            },
+            lifetimes: vec![]
+        }, hir::TraitBoundModifier::Maybe)
+    }
+
+    fn is_dynsized_bound(&self, cx: &DocContext) -> bool {
+        use rustc::hir::TraitBoundModifier as TBM;
+        if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
+            if trait_.def_id() == cx.tcx.lang_items().dynsized_trait() {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 impl Clean<TyParamBound> for hir::TyParamBound {
@@ -1225,35 +1252,46 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
 
         let mut where_predicates = preds.predicates.to_vec().clean(cx);
 
-        // Type parameters and have a Sized bound by default unless removed with
-        // ?Sized.  Scan through the predicates and mark any type parameter with
-        // a Sized bound, removing the bounds as we find them.
+        // Type parameters have a Sized bound by default unless removed with
+        // ?Sized or ?DynSized.  Scan through the predicates and mark any type parameter with
+        // a Sized or DynSized bound, removing the bounds as we find them.
         //
         // Note that associated types also have a sized bound by default, but we
         // don't actually know the set of associated types right here so that's
         // handled in cleaning associated types
         let mut sized_params = FxHashSet();
+        let mut dynsized_params = FxHashSet();
         where_predicates.retain(|pred| {
             match *pred {
                 WP::BoundPredicate { ty: Generic(ref g), ref bounds } => {
-                    if bounds.iter().any(|b| b.is_sized_bound(cx)) {
-                        sized_params.insert(g.clone());
-                        false
-                    } else {
-                        true
+                    let mut retain = true;
+                    for bound in bounds.iter() {
+                        if bound.is_sized_bound(cx) {
+                            sized_params.insert(g.clone());
+                            retain = false;
+                        } else if bound.is_dynsized_bound(cx) {
+                            dynsized_params.insert(g.clone());
+                            retain = false;
+                        }
                     }
+                    retain
                 }
                 _ => true,
             }
         });
 
-        // Run through the type parameters again and insert a ?Sized
+        // Run through the type parameters again and insert a ?Sized or ?DynSized
         // unbound for any we didn't find to be Sized.
         for tp in &stripped_typarams {
             if !sized_params.contains(&tp.name) {
                 where_predicates.push(WP::BoundPredicate {
                     ty: Type::Generic(tp.name.clone()),
                     bounds: vec![TyParamBound::maybe_sized(cx)],
+                })
+            } else if !dynsized_params.contains(&tp.name) {
+                where_predicates.push(WP::BoundPredicate {
+                    ty: Type::Generic(tp.name.clone()),
+                    bounds: vec![TyParamBound::maybe_dynsized(cx)],
                 })
             }
         }
@@ -1681,14 +1719,37 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     vec![]
                 };
 
-                // Our Sized/?Sized bound didn't get handled when creating the generics
+                // Our Sized/?Sized/?DynSized bound didn't get handled when creating the generics
                 // because we didn't actually get our whole set of bounds until just now
-                // (some of them may have come from the trait). If we do have a sized
-                // bound, we remove it, and if we don't then we add the `?Sized` bound
-                // at the end.
-                match bounds.iter().position(|b| b.is_sized_bound(cx)) {
-                    Some(i) => { bounds.remove(i); }
-                    None => bounds.push(TyParamBound::maybe_sized(cx)),
+                // (some of them may have come from the trait).
+                //
+                // We remove `Sized` and `DynSized` bounds, and then possibly add `?Sized`
+                // or `?DynSized`.
+                //
+                // It's theoretically possible to have a `Sized` bound without a `DynSized` bound.
+                // It means the same as having both, since `DynSized` is a supertrait of `Sized`
+                let mut has_sized_bound = false;
+                let mut has_dynsized_bound = false;
+                bounds.retain(|bound| {
+                    if bound.is_sized_bound(cx) {
+                        has_sized_bound = true;
+                        false
+                    } else if bound.is_dynsized_bound(cx) {
+                        has_dynsized_bound = true;
+                        false
+                    } else {
+                        true
+                    }
+                });
+                if has_sized_bound {
+                    // T
+                    // don't push anything
+                } else if has_dynsized_bound {
+                    // T: ?Sized
+                    bounds.push(TyParamBound::maybe_sized(cx));
+                } else {
+                    // T: ?DynSized
+                    bounds.push(TyParamBound::maybe_dynsized(cx));
                 }
 
                 let ty = if self.defaultness.has_value() {

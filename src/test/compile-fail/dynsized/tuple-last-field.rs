@@ -8,23 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that unsafe impl for Sync/Send can be provided for extern types.
+// Ensure !DynSized fields can't be used in tuples, even as the last field.
 
-#![feature(dynsized, extern_types)]
+#![feature(extern_types)]
+#![feature(dynsized)]
 
 use std::marker::DynSized;
 
 extern {
-    type A;
+    type foo;
 }
 
-unsafe impl Sync for A { }
-unsafe impl Send for A { }
+fn baz<T: ?DynSized>() {
+    let x: &(u8, foo); //~ERROR the trait bound `foo: std::marker::DynSized` is not satisfied
 
-fn assert_sync<T: ?DynSized + Sync>() { }
-fn assert_send<T: ?DynSized + Send>() { }
-
-fn main() {
-    assert_sync::<A>();
-    assert_send::<A>();
+    let y: &(u8, T); //~ERROR the trait bound `T: std::marker::DynSized` is not satisfied
 }
+
+fn main() { }
