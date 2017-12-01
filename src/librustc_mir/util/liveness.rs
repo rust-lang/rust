@@ -34,7 +34,7 @@
 //! doesn't matter).
 
 use rustc::mir::*;
-use rustc::mir::visit::{LvalueContext, Visitor};
+use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
@@ -233,12 +233,12 @@ impl DefsUses {
 }
 
 impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
-    fn visit_local(&mut self, &local: &Local, context: LvalueContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
         match context {
             ///////////////////////////////////////////////////////////////////////////
             // DEFS
 
-            LvalueContext::Store |
+            PlaceContext::Store |
 
             // We let Call define the result in both the success and
             // unwind cases. This is not really correct, however it
@@ -248,12 +248,12 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
             // properly, we would apply the def in call only to the
             // input from the success path and not the unwind
             // path. -nmatsakis
-            LvalueContext::Call |
+            PlaceContext::Call |
 
             // Storage live and storage dead aren't proper defines, but we can ignore
             // values that come before them.
-            LvalueContext::StorageLive |
-            LvalueContext::StorageDead => {
+            PlaceContext::StorageLive |
+            PlaceContext::StorageDead => {
                 self.defs_uses.add_def(local);
             }
 
@@ -264,18 +264,18 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
             // purposes of NLL, these are special in that **all** the
             // lifetimes appearing in the variable must be live for each regular use.
 
-            LvalueContext::Projection(..) |
+            PlaceContext::Projection(..) |
 
             // Borrows only consider their local used at the point of the borrow.
             // This won't affect the results since we use this analysis for generators
             // and we only care about the result at suspension points. Borrows cannot
             // cross suspension points so this behavior is unproblematic.
-            LvalueContext::Borrow { .. } |
+            PlaceContext::Borrow { .. } |
 
-            LvalueContext::Inspect |
-            LvalueContext::Copy |
-            LvalueContext::Move |
-            LvalueContext::Validate => {
+            PlaceContext::Inspect |
+            PlaceContext::Copy |
+            PlaceContext::Move |
+            PlaceContext::Validate => {
                 if self.mode.include_regular_use {
                     self.defs_uses.add_use(local);
                 }
@@ -289,7 +289,7 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
             // uses in drop are special because `#[may_dangle]`
             // attributes can affect whether lifetimes must be live.
 
-            LvalueContext::Drop => {
+            PlaceContext::Drop => {
                 if self.mode.include_drops {
                     self.defs_uses.add_use(local);
                 }

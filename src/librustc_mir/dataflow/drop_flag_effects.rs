@@ -20,12 +20,12 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
                                         mut cond: F)
                                         -> Option<MovePathIndex>
-    where F: FnMut(&mir::LvalueProjection<'tcx>) -> bool
+    where F: FnMut(&mir::PlaceProjection<'tcx>) -> bool
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {
         match move_data.move_paths[child_index].lvalue {
-            mir::Lvalue::Projection(ref proj) => {
+            mir::Place::Projection(ref proj) => {
                 if cond(proj) {
                     return Some(child_index)
                 }
@@ -42,12 +42,12 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 /// paths (1.) past arrays, slices, and pointers, nor (2.) into a type
 /// that implements `Drop`.
 ///
-/// Lvalues behind references or arrays are not tracked by elaboration
+/// Places behind references or arrays are not tracked by elaboration
 /// and are always assumed to be initialized when accessible. As
 /// references and indexes can be reseated, trying to track them can
 /// only lead to trouble.
 ///
-/// Lvalues behind ADT's with a Drop impl are not tracked by
+/// Places behind ADT's with a Drop impl are not tracked by
 /// elaboration since they can never have a drop-flag state that
 /// differs from that of the parent with the Drop impl.
 ///
@@ -58,7 +58,7 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 /// FIXME: we have to do something for moving slice patterns.
 fn lvalue_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                             mir: &Mir<'tcx>,
-                                                            lv: &mir::Lvalue<'tcx>) -> bool {
+                                                            lv: &mir::Place<'tcx>) -> bool {
     let ty = lv.ty(mir, tcx).to_ty(tcx);
     match ty.sty {
         ty::TyArray(..) | ty::TySlice(..) | ty::TyRef(..) | ty::TyRawPtr(..) => {
@@ -168,7 +168,7 @@ pub(crate) fn drop_flag_effects_for_function_entry<'a, 'gcx, 'tcx, F>(
 {
     let move_data = &ctxt.move_data;
     for arg in mir.args_iter() {
-        let lvalue = mir::Lvalue::Local(arg);
+        let lvalue = mir::Place::Local(arg);
         let lookup_result = move_data.rev_lookup.find(&lvalue);
         on_lookup_result_bits(tcx, mir, move_data,
                               lookup_result,

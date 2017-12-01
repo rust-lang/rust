@@ -50,7 +50,7 @@ pub struct BorrowData<'tcx> {
     pub(crate) location: Location,
     pub(crate) kind: mir::BorrowKind,
     pub(crate) region: Region<'tcx>,
-    pub(crate) lvalue: mir::Lvalue<'tcx>,
+    pub(crate) lvalue: mir::Place<'tcx>,
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {
@@ -269,7 +269,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                              _in_out: &mut IdxSet<BorrowIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
-                             _dest_lval: &mir::Lvalue) {
+                             _dest_lval: &mir::Place) {
         // there are no effects on the region scopes from method calls.
     }
 }
@@ -291,9 +291,9 @@ impl<'a, 'gcx, 'tcx> DataflowOperator for Borrows<'a, 'gcx, 'tcx> {
 fn is_unsafe_lvalue<'a, 'gcx: 'tcx, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
-    lvalue: &mir::Lvalue<'tcx>
+    lvalue: &mir::Place<'tcx>
 ) -> bool {
-    use self::mir::Lvalue::*;
+    use self::mir::Place::*;
     use self::mir::ProjectionElem;
 
     match *lvalue {

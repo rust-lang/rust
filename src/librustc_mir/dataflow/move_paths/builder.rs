@@ -44,7 +44,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(mir),
                 rev_lookup: MovePathLookup {
-                    locals: mir.local_decls.indices().map(Lvalue::Local).map(|v| {
+                    locals: mir.local_decls.indices().map(Place::Local).map(|v| {
                         Self::new_move_path(
                             &mut move_paths,
                             &mut path_map,
@@ -68,7 +68,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
                      path_map: &mut IndexVec<MovePathIndex, Vec<MoveOutIndex>>,
                      init_path_map: &mut IndexVec<MovePathIndex, Vec<InitIndex>>,
                      parent: Option<MovePathIndex>,
-                     lvalue: Lvalue<'tcx>)
+                     lvalue: Place<'tcx>)
                      -> MovePathIndex
     {
         let move_path = move_paths.push(MovePath {
@@ -102,31 +102,31 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     /// problematic for borrowck.
     ///
     /// Maybe we should have separate "borrowck" and "moveck" modes.
-    fn move_path_for(&mut self, lval: &Lvalue<'tcx>)
+    fn move_path_for(&mut self, lval: &Place<'tcx>)
                      -> Result<MovePathIndex, MoveError<'tcx>>
     {
         debug!("lookup({:?})", lval);
         match *lval {
-            Lvalue::Local(local) => Ok(self.builder.data.rev_lookup.locals[local]),
-            Lvalue::Static(..) => {
+            Place::Local(local) => Ok(self.builder.data.rev_lookup.locals[local]),
+            Place::Static(..) => {
                 let span = self.builder.mir.source_info(self.loc).span;
                 Err(MoveError::cannot_move_out_of(span, Static))
             }
-            Lvalue::Projection(ref proj) => {
+            Place::Projection(ref proj) => {
                 self.move_path_for_projection(lval, proj)
             }
         }
     }
 
-    fn create_move_path(&mut self, lval: &Lvalue<'tcx>) {
+    fn create_move_path(&mut self, lval: &Place<'tcx>) {
         // This is an assignment, not a move, so this not being a valid
         // move path is OK.
         let _ = self.move_path_for(lval);
     }
 
     fn move_path_for_projection(&mut self,
-                                lval: &Lvalue<'tcx>,
-                                proj: &LvalueProjection<'tcx>)
+                                lval: &Place<'tcx>,
+                                proj: &PlaceProjection<'tcx>)
                                 -> Result<MovePathIndex, MoveError<'tcx>>
     {
         let base = try!(self.move_path_for(&proj.base));
@@ -280,7 +280,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             }
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
-                self.gather_move(&Lvalue::Local(local));
+                self.gather_move(&Place::Local(local));
             }
             StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span,
@@ -339,7 +339,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             TerminatorKind::Unreachable => { }
 
             TerminatorKind::Return => {
-                self.gather_move(&Lvalue::Local(RETURN_POINTER));
+                self.gather_move(&Place::Local(RETURN_POINTER));
             }
 
             TerminatorKind::Assert { .. } |
@@ -382,7 +382,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         }
     }
 
-    fn gather_move(&mut self, lval: &Lvalue<'tcx>) {
+    fn gather_move(&mut self, lval: &Place<'tcx>) {
         debug!("gather_move({:?}, {:?})", self.loc, lval);
 
         let path = match self.move_path_for(lval) {
@@ -401,7 +401,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         self.builder.data.loc_map[self.loc].push(move_out);
     }
 
-    fn gather_init(&mut self, lval: &Lvalue<'tcx>, kind: InitKind) {
+    fn gather_init(&mut self, lval: &Place<'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, lval);
 
         if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(lval) {

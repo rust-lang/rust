@@ -26,7 +26,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::visit::{LvalueContext, Visitor};
+use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
 use syntax::attr;
@@ -197,7 +197,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         self.add(original);
     }
 
-    /// Check if an Lvalue with the current qualifications could
+    /// Check if an Place with the current qualifications could
     /// be consumed, by either an operand or a Deref projection.
     fn try_consume(&mut self) -> bool {
         if self.qualif.intersects(Qualif::STATIC) && self.mode != Mode::Fn {
@@ -224,7 +224,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Assign the current qualification to the given destination.
-    fn assign(&mut self, dest: &Lvalue<'tcx>, location: Location) {
+    fn assign(&mut self, dest: &Place<'tcx>, location: Location) {
         let qualif = self.qualif;
         let span = self.span;
         let store = |slot: &mut Option<Qualif>| {
@@ -236,7 +236,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         // Only handle promotable temps in non-const functions.
         if self.mode == Mode::Fn {
-            if let Lvalue::Local(index) = *dest {
+            if let Place::Local(index) = *dest {
                 if self.mir.local_kind(index) == LocalKind::Temp
                 && self.temp_promotion_state[index].is_promotable() {
                     debug!("store to promotable temp {:?}", index);
@@ -249,24 +249,24 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         // When initializing a local, record whether the *value* being
         // stored in it needs dropping, which it may not, even if its
         // type does, e.g. `None::<String>`.
-        if let Lvalue::Local(local) = *dest {
+        if let Place::Local(local) = *dest {
             if qualif.intersects(Qualif::NEEDS_DROP) {
                 self.local_needs_drop[local] = Some(self.span);
             }
         }
 
         match *dest {
-            Lvalue::Local(index) if self.mir.local_kind(index) == LocalKind::Temp => {
+            Place::Local(index) if self.mir.local_kind(index) == LocalKind::Temp => {
                 debug!("store to temp {:?}", index);
                 store(&mut self.temp_qualif[index])
             }
-            Lvalue::Local(index) if self.mir.local_kind(index) == LocalKind::ReturnPointer => {
+            Place::Local(index) if self.mir.local_kind(index) == LocalKind::ReturnPointer => {
                 debug!("store to return pointer {:?}", index);
                 store(&mut self.return_qualif)
             }
 
-            Lvalue::Projection(box Projection {
-                base: Lvalue::Local(index),
+            Place::Projection(box Projection {
+                base: Place::Local(index),
                 elem: ProjectionElem::Deref
             }) if self.mir.local_kind(index) == LocalKind::Temp
                && self.mir.local_decls[index].ty.is_box()
@@ -280,7 +280,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             // This must be an explicit assignment.
             _ => {
                 // Catch more errors in the destination.
-                self.visit_lvalue(dest, LvalueContext::Store, location);
+                self.visit_lvalue(dest, PlaceContext::Store, location);
                 self.statement_like();
             }
         }
@@ -351,7 +351,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                     for index in mir.vars_iter() {
                         if !self.const_fn_arg_vars.contains(index.index()) {
                             debug!("unassigned variable {:?}", index);
-                            self.assign(&Lvalue::Local(index), Location {
+                            self.assign(&Place::Local(index), Location {
                                 block: bb,
                                 statement_index: usize::MAX,
                             });
@@ -392,7 +392,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             match *candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
                     match self.mir[bb].statements[stmt_idx].kind {
-                        StatementKind::Assign(_, Rvalue::Ref(_, _, Lvalue::Local(index))) => {
+                        StatementKind::Assign(_, Rvalue::Ref(_, _, Place::Local(index))) => {
                             promoted_temps.add(&index);
                         }
                         _ => {}
@@ -412,7 +412,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     fn visit_local(&mut self,
                    &local: &Local,
-                   _: LvalueContext<'tcx>,
+                   _: PlaceContext<'tcx>,
                    _: Location) {
         match self.mir.local_kind(local) {
             LocalKind::ReturnPointer => {
@@ -439,12 +439,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_lvalue(&mut self,
-                    lvalue: &Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
+                    lvalue: &Place<'tcx>,
+                    context: PlaceContext<'tcx>,
                     location: Location) {
         match *lvalue {
-            Lvalue::Local(ref local) => self.visit_local(local, context, location),
-            Lvalue::Static(ref global) => {
+            Place::Local(ref local) => self.visit_local(local, context, location),
+            Place::Static(ref global) => {
                 self.add(Qualif::STATIC);
 
                 if self.mode != Mode::Fn {
@@ -465,7 +465,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                a constant instead", self.mode);
                 }
             }
-            Lvalue::Projection(ref proj) => {
+            Place::Projection(ref proj) => {
                 self.nest(|this| {
                     this.super_lvalue(lvalue, context, location);
                     match proj.elem {
@@ -527,7 +527,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 });
 
                 // Mark the consumed locals to indicate later drops are noops.
-                if let Lvalue::Local(local) = *lvalue {
+                if let Place::Local(local) = *lvalue {
                     self.local_needs_drop[local] = None;
                 }
             }
@@ -635,7 +635,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 let candidate = Candidate::Ref(location);
                 if !self.qualif.intersects(Qualif::NEVER_PROMOTE) {
                     // We can only promote direct borrows of temps.
-                    if let Lvalue::Local(local) = *lvalue {
+                    if let Place::Local(local) = *lvalue {
                         if self.mir.local_kind(local) == LocalKind::Temp {
                             self.promotion_candidates.push(candidate);
                         }
@@ -836,7 +836,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             if self.mode != Mode::Fn {
                 // HACK(eddyb) Emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
-                let needs_drop = if let Lvalue::Local(local) = *lvalue {
+                let needs_drop = if let Place::Local(local) = *lvalue {
                     self.local_needs_drop[local]
                 } else {
                     None
@@ -862,20 +862,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_assign(&mut self,
                     _: BasicBlock,
-                    dest: &Lvalue<'tcx>,
+                    dest: &Place<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         self.visit_rvalue(rvalue, location);
 
         // Check the allowed const fn argument forms.
-        if let (Mode::ConstFn, &Lvalue::Local(index)) = (self.mode, dest) {
+        if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
             if self.mir.local_kind(index) == LocalKind::Var &&
                self.const_fn_arg_vars.insert(index.index()) {
 
                 // Direct use of an argument is permitted.
                 match *rvalue {
-                    Rvalue::Use(Operand::Copy(Lvalue::Local(local))) |
-                    Rvalue::Use(Operand::Move(Lvalue::Local(local))) => {
+                    Rvalue::Use(Operand::Copy(Place::Local(local))) |
+                    Rvalue::Use(Operand::Move(Place::Local(local))) => {
                         if self.mir.local_kind(local) == LocalKind::Arg {
                             return;
                         }
@@ -1030,7 +1030,7 @@ impl MirPass for QualifyAndPromoteConstants {
                 });
                 let terminator = block.terminator_mut();
                 match terminator.kind {
-                    TerminatorKind::Drop { location: Lvalue::Local(index), target, .. } => {
+                    TerminatorKind::Drop { location: Place::Local(index), target, .. } => {
                         if promoted_temps.contains(&index) {
                             terminator.kind = TerminatorKind::Goto {
                                 target,

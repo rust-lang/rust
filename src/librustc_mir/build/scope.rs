@@ -142,7 +142,7 @@ struct DropData<'tcx> {
     span: Span,
 
     /// lvalue to drop
-    location: Lvalue<'tcx>,
+    location: Place<'tcx>,
 
     /// Whether this is a full value Drop, or just a StorageDead.
     kind: DropKind
@@ -184,7 +184,7 @@ pub struct BreakableScope<'tcx> {
     pub break_block: BasicBlock,
     /// The destination of the loop/block expression itself (i.e. where to put the result of a
     /// `break` expression)
-    pub break_destination: Lvalue<'tcx>,
+    pub break_destination: Place<'tcx>,
 }
 
 impl CachedBlock {
@@ -270,7 +270,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn in_breakable_scope<F, R>(&mut self,
                                     loop_block: Option<BasicBlock>,
                                     break_block: BasicBlock,
-                                    break_destination: Lvalue<'tcx>,
+                                    break_destination: Place<'tcx>,
                                     f: F) -> R
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> R
     {
@@ -613,7 +613,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn schedule_drop(&mut self,
                          span: Span,
                          region_scope: region::Scope,
-                         lvalue: &Lvalue<'tcx>,
+                         lvalue: &Place<'tcx>,
                          lvalue_ty: Ty<'tcx>) {
         let needs_drop = self.hir.needs_drop(lvalue_ty);
         let drop_kind = if needs_drop {
@@ -621,7 +621,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         } else {
             // Only temps and vars need their storage dead.
             match *lvalue {
-                Lvalue::Local(index) if index.index() > self.arg_count => DropKind::Storage,
+                Place::Local(index) if index.index() > self.arg_count => DropKind::Storage,
                 _ => return
             }
         };
@@ -748,7 +748,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn build_drop(&mut self,
                       block: BasicBlock,
                       span: Span,
-                      location: Lvalue<'tcx>,
+                      location: Place<'tcx>,
                       ty: Ty<'tcx>) -> BlockAnd<()> {
         if !self.hir.needs_drop(ty) {
             return block.unit();
@@ -769,7 +769,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn build_drop_and_replace(&mut self,
                                   block: BasicBlock,
                                   span: Span,
-                                  location: Lvalue<'tcx>,
+                                  location: Place<'tcx>,
                                   value: Operand<'tcx>) -> BlockAnd<()> {
         let source_info = self.source_info(span);
         let next_target = self.cfg.start_new_block();
@@ -883,7 +883,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
         // Drop the storage for both value and storage drops.
         // Only temps and vars need their storage dead.
         match drop_data.location {
-            Lvalue::Local(index) if index.index() > arg_count => {
+            Place::Local(index) if index.index() > arg_count => {
                 cfg.push(block, Statement {
                     source_info,
                     kind: StatementKind::StorageDead(index)

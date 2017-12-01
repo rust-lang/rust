@@ -108,16 +108,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 });
                 if let Some(scope) = scope {
                     // schedule a shallow free of that memory, lest we unwind:
-                    this.schedule_drop(expr_span, scope, &Lvalue::Local(result), value.ty);
+                    this.schedule_drop(expr_span, scope, &Place::Local(result), value.ty);
                 }
 
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
-                this.cfg.push_assign(block, source_info, &Lvalue::Local(result), box_);
+                this.cfg.push_assign(block, source_info, &Place::Local(result), box_);
 
                 // initialize the box contents:
-                unpack!(block = this.into(&Lvalue::Local(result).deref(), block, value));
-                block.and(Rvalue::Use(Operand::Move(Lvalue::Local(result))))
+                unpack!(block = this.into(&Place::Local(result).deref(), block, value));
+                block.and(Rvalue::Use(Operand::Move(Place::Local(result))))
             }
             ExprKind::Cast { source } => {
                 let source = this.hir.mirror(source);

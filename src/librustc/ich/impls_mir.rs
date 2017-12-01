@@ -318,19 +318,19 @@ impl<'gcx, T> HashStable<StableHashingContext<'gcx>>
 
 impl_stable_hash_for!(enum mir::ValidationOp { Acquire, Release, Suspend(region_scope) });
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Lvalue<'gcx> {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Place<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            mir::Lvalue::Local(ref local) => {
+            mir::Place::Local(ref local) => {
                 local.hash_stable(hcx, hasher);
             }
-            mir::Lvalue::Static(ref statik) => {
+            mir::Place::Static(ref statik) => {
                 statik.hash_stable(hcx, hasher);
             }
-            mir::Lvalue::Projection(ref lvalue_projection) => {
+            mir::Place::Projection(ref lvalue_projection) => {
                 lvalue_projection.hash_stable(hcx, hasher);
             }
         }

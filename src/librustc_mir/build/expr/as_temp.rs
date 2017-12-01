@@ -65,13 +65,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // semantics of `into`, `as_operand`, `as_rvalue`, and (of
         // course) `as_temp`.
         match Category::of(&expr.kind).unwrap() {
-            Category::Lvalue => {
+            Category::Place => {
                 let lvalue = unpack!(block = this.as_lvalue(block, expr));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(lvalue));
-                this.cfg.push_assign(block, source_info, &Lvalue::Local(temp), rvalue);
+                this.cfg.push_assign(block, source_info, &Place::Local(temp), rvalue);
             }
             _ => {
-                unpack!(block = this.into(&Lvalue::Local(temp), block, expr));
+                unpack!(block = this.into(&Place::Local(temp), block, expr));
             }
         }
 
@@ -79,7 +79,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // anything because no values with a destructor can be created in
         // a constant at this time, even if the type may need dropping.
         if let Some(temp_lifetime) = temp_lifetime {
-            this.schedule_drop(expr_span, temp_lifetime, &Lvalue::Local(temp), expr_ty);
+            this.schedule_drop(expr_span, temp_lifetime, &Place::Local(temp), expr_ty);
         }
 
         block.and(temp)

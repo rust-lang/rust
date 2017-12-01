@@ -18,7 +18,7 @@ use rustc::mir::*;
 pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   local_decls: &L,
                                   param_env: ty::ParamEnv<'tcx>,
-                                  lvalue: &Lvalue<'tcx>)
+                                  lvalue: &Place<'tcx>)
                                   -> bool
     where L: HasLocalDecls<'tcx>
 {
@@ -45,12 +45,12 @@ pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn is_within_packed<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  local_decls: &L,
-                                 lvalue: &Lvalue<'tcx>)
+                                 lvalue: &Place<'tcx>)
                                  -> bool
     where L: HasLocalDecls<'tcx>
 {
     let mut lvalue = lvalue;
-    while let &Lvalue::Projection(box Projection {
+    while let &Place::Projection(box Projection {
         ref base, ref elem
     }) = lvalue {
         match *elem {

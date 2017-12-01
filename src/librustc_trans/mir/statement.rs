@@ -26,9 +26,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         self.set_debug_loc(&bcx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                if let mir::Lvalue::Local(index) = *lvalue {
+                if let mir::Place::Local(index) = *lvalue {
                     match self.locals[index] {
-                        LocalRef::Lvalue(tr_dest) => {
+                        LocalRef::Place(tr_dest) => {
                             self.trans_rvalue(bcx, tr_dest, rvalue)
                         }
                         LocalRef::Operand(None) => {
@@ -59,13 +59,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 bcx
             }
             mir::StatementKind::StorageLive(local) => {
-                if let LocalRef::Lvalue(tr_lval) = self.locals[local] {
+                if let LocalRef::Place(tr_lval) = self.locals[local] {
                     tr_lval.storage_live(&bcx);
                 }
                 bcx
             }
             mir::StatementKind::StorageDead(local) => {
-                if let LocalRef::Lvalue(tr_lval) = self.locals[local] {
+                if let LocalRef::Place(tr_lval) = self.locals[local] {
                     tr_lval.storage_dead(&bcx);
                 }
                 bcx

@@ -35,7 +35,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 pub use self::constant::trans_static_initializer;
 
 use self::analyze::CleanupKind;
-use self::lvalue::{Alignment, LvalueRef};
+use self::lvalue::{Alignment, PlaceRef};
 use rustc::mir::traversal;
 
 use self::operand::{OperandRef, OperandValue};
@@ -59,7 +59,7 @@ pub struct MirContext<'a, 'tcx:'a> {
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
     /// then later loaded when generating the DIVERGE_BLOCK.
-    personality_slot: Option<LvalueRef<'tcx>>,
+    personality_slot: Option<PlaceRef<'tcx>>,
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: IndexVec<mir::BasicBlock, BasicBlockRef>,
@@ -79,7 +79,7 @@ pub struct MirContext<'a, 'tcx:'a> {
     unreachable_block: Option<BasicBlockRef>,
 
     /// The location where each MIR arg/var/tmp/ret is stored. This is
-    /// usually an `LvalueRef` representing an alloca, but not always:
+    /// usually an `PlaceRef` representing an alloca, but not always:
     /// sometimes we can skip the alloca and just store the value
     /// directly using an `OperandRef`, which makes for tighter LLVM
     /// IR. The conditions for using an `OperandRef` are as follows:
@@ -171,7 +171,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 }
 
 enum LocalRef<'tcx> {
-    Lvalue(LvalueRef<'tcx>),
+    Place(PlaceRef<'tcx>),
     Operand(Option<OperandRef<'tcx>>),
 }
 
@@ -266,25 +266,25 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 }
 
                 debug!("alloc: {:?} ({}) -> lvalue", local, name);
-                let lvalue = LvalueRef::alloca(&bcx, layout, &name.as_str());
+                let lvalue = PlaceRef::alloca(&bcx, layout, &name.as_str());
                 if dbg {
                     let (scope, span) = mircx.debug_loc(decl.source_info);
                     declare_local(&bcx, &mircx.debug_context, name, layout.ty, scope,
                         VariableAccess::DirectVariable { alloca: lvalue.llval },
                         VariableKind::LocalVariable, span);
                 }
-                LocalRef::Lvalue(lvalue)
+                LocalRef::Place(lvalue)
             } else {
                 // Temporary or return pointer
                 if local == mir::RETURN_POINTER && mircx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return pointer) -> lvalue", local);
                     let llretptr = llvm::get_param(llfn, 0);
-                    LocalRef::Lvalue(LvalueRef::new_sized(llretptr,
+                    LocalRef::Place(PlaceRef::new_sized(llretptr,
                                                           layout,
                                                           Alignment::AbiAligned))
                 } else if lvalue_locals.contains(local.index()) {
                     debug!("alloc: {:?} -> lvalue", local);
-                    LocalRef::Lvalue(LvalueRef::alloca(&bcx, layout, &format!("{:?}", local)))
+                    LocalRef::Place(PlaceRef::alloca(&bcx, layout, &format!("{:?}", local)))
                 } else {
                     // If this is an immediate local, we do not create an
                     // alloca in advance. Instead we wait until we see the
@@ -400,7 +400,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let lvalue = LvalueRef::alloca(bcx, bcx.ccx.layout_of(arg_ty), &name);
+            let lvalue = PlaceRef::alloca(bcx, bcx.ccx.layout_of(arg_ty), &name);
             for i in 0..tupled_arg_tys.len() {
                 let arg = &mircx.fn_ty.args[idx];
                 idx += 1;
@@ -424,7 +424,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 );
             });
 
-            return LocalRef::Lvalue(lvalue);
+            return LocalRef::Place(lvalue);
         }
 
         let arg = &mircx.fn_ty.args[idx];
@@ -474,9 +474,9 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
             bcx.set_value_name(llarg, &name);
             llarg_idx += 1;
-            LvalueRef::new_sized(llarg, arg.layout, Alignment::AbiAligned)
+            PlaceRef::new_sized(llarg, arg.layout, Alignment::AbiAligned)
         } else {
-            let tmp = LvalueRef::alloca(bcx, arg.layout, &name);
+            let tmp = PlaceRef::alloca(bcx, arg.layout, &name);
             arg.store_fn_arg(bcx, &mut llarg_idx, tmp);
             tmp
         };
@@ -532,7 +532,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             let env_ptr = if !env_ref {
-                let alloc = LvalueRef::alloca(bcx,
+                let alloc = PlaceRef::alloca(bcx,
                     bcx.ccx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
                     "__debuginfo_env_ptr");
                 bcx.store(lvalue.llval, alloc.llval, None);
@@ -580,7 +580,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 );
             }
         });
-        LocalRef::Lvalue(lvalue)
+        LocalRef::Place(lvalue)
     }).collect()
 }
 

@@ -16,7 +16,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::traits;
 use rustc::mir;
-use rustc::mir::tcx::LvalueTy;
+use rustc::mir::tcx::PlaceTy;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty::cast::{CastTy, IntTy};
@@ -156,8 +156,8 @@ impl<'a, 'tcx> Const<'tcx> {
         self.get_pair(ccx)
     }
 
-    fn as_lvalue(&self) -> ConstLvalue<'tcx> {
-        ConstLvalue {
+    fn as_lvalue(&self) -> ConstPlace<'tcx> {
+        ConstPlace {
             base: Base::Value(self.llval),
             llextra: ptr::null_mut(),
             ty: self.ty
@@ -212,13 +212,13 @@ enum Base {
 
 /// An lvalue as seen from a constant.
 #[derive(Copy, Clone)]
-struct ConstLvalue<'tcx> {
+struct ConstPlace<'tcx> {
     base: Base,
     llextra: ValueRef,
     ty: Ty<'tcx>
 }
 
-impl<'tcx> ConstLvalue<'tcx> {
+impl<'tcx> ConstPlace<'tcx> {
     fn to_const(&self, span: Span) -> Const<'tcx> {
         match self.base {
             Base::Value(val) => Const::new(val, self.ty),
@@ -242,7 +242,7 @@ impl<'tcx> ConstLvalue<'tcx> {
                 assert!(self.llextra != ptr::null_mut());
                 self.llextra
             }
-            _ => bug!("unexpected type `{}` in ConstLvalue::len", self.ty)
+            _ => bug!("unexpected type `{}` in ConstPlace::len", self.ty)
         }
     }
 }
@@ -427,38 +427,38 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     }
 
     fn store(&mut self,
-             dest: &mir::Lvalue<'tcx>,
+             dest: &mir::Place<'tcx>,
              value: Result<Const<'tcx>, ConstEvalErr<'tcx>>,
              span: Span) {
-        if let mir::Lvalue::Local(index) = *dest {
+        if let mir::Place::Local(index) = *dest {
             self.locals[index] = Some(value);
         } else {
             span_bug!(span, "assignment to {:?} in constant", dest);
         }
     }
 
-    fn const_lvalue(&self, lvalue: &mir::Lvalue<'tcx>, span: Span)
-                    -> Result<ConstLvalue<'tcx>, ConstEvalErr<'tcx>> {
+    fn const_lvalue(&self, lvalue: &mir::Place<'tcx>, span: Span)
+                    -> Result<ConstPlace<'tcx>, ConstEvalErr<'tcx>> {
         let tcx = self.ccx.tcx();
 
-        if let mir::Lvalue::Local(index) = *lvalue {
+        if let mir::Place::Local(index) = *lvalue {
             return self.locals[index].clone().unwrap_or_else(|| {
                 span_bug!(span, "{:?} not initialized", lvalue)
             }).map(|v| v.as_lvalue());
         }
 
         let lvalue = match *lvalue {
-            mir::Lvalue::Local(_)  => bug!(), // handled above
-            mir::Lvalue::Static(box mir::Static { def_id, ty }) => {
-                ConstLvalue {
+            mir::Place::Local(_)  => bug!(), // handled above
+            mir::Place::Static(box mir::Static { def_id, ty }) => {
+                ConstPlace {
                     base: Base::Static(consts::get_static(self.ccx, def_id)),
                     llextra: ptr::null_mut(),
                     ty: self.monomorphize(&ty),
                 }
             }
-            mir::Lvalue::Projection(ref projection) => {
+            mir::Place::Projection(ref projection) => {
                 let tr_base = self.const_lvalue(&projection.base, span)?;
-                let projected_ty = LvalueTy::Ty { ty: tr_base.ty }
+                let projected_ty = PlaceTy::Ty { ty: tr_base.ty }
                     .projection_ty(tcx, &projection.elem);
                 let base = tr_base.to_const(span);
                 let projected_ty = self.monomorphize(&projected_ty).to_ty(tcx);
@@ -505,7 +505,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         (Base::Value(llprojected), llextra)
                     }
                     mir::ProjectionElem::Index(index) => {
-                        let index = &mir::Operand::Copy(mir::Lvalue::Local(index));
+                        let index = &mir::Operand::Copy(mir::Place::Local(index));
                         let llindex = self.const_operand(index, span)?.llval;
 
                         let iv = if let Some(iv) = common::const_to_opt_u128(llindex, false) {
@@ -526,7 +526,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }
                     _ => span_bug!(span, "{:?} in constant", projection.elem)
                 };
-                ConstLvalue {
+                ConstPlace {
                     base: projected,
                     llextra,
                     ty: projected_ty

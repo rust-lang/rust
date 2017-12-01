@@ -32,12 +32,12 @@ use value::Value;
 use super::{MirContext, LocalRef};
 use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
-use super::lvalue::LvalueRef;
+use super::lvalue::PlaceRef;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_rvalue(&mut self,
                         bcx: Builder<'a, 'tcx>,
-                        dest: LvalueRef<'tcx>,
+                        dest: PlaceRef<'tcx>,
                         rvalue: &mir::Rvalue<'tcx>)
                         -> Builder<'a, 'tcx>
     {
@@ -79,14 +79,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // index into the struct, and this case isn't
                         // important enough for it.
                         debug!("trans_rvalue: creating ugly alloca");
-                        let scratch = LvalueRef::alloca(&bcx, operand.layout, "__unsize_temp");
+                        let scratch = PlaceRef::alloca(&bcx, operand.layout, "__unsize_temp");
                         scratch.storage_live(&bcx);
                         operand.val.store(&bcx, scratch);
                         base::coerce_unsized_into(&bcx, scratch, dest);
                         scratch.storage_dead(&bcx);
                     }
                     OperandValue::Ref(llref, align) => {
-                        let source = LvalueRef::new_sized(llref, operand.layout, align);
+                        let source = PlaceRef::new_sized(llref, operand.layout, align);
                         base::coerce_unsized_into(&bcx, source, dest);
                     }
                 }
@@ -139,7 +139,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 header_bcx.cond_br(keep_going, body_bcx.llbb(), next_bcx.llbb());
 
                 tr_elem.val.store(&body_bcx,
-                    LvalueRef::new_sized(current, tr_elem.layout, dest.alignment));
+                    PlaceRef::new_sized(current, tr_elem.layout, dest.alignment));
 
                 let next = body_bcx.inbounds_gep(current, &[C_usize(bcx.ccx, 1)]);
                 body_bcx.br(header_bcx.llbb());
@@ -486,11 +486,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
     fn evaluate_array_len(&mut self,
                           bcx: &Builder<'a, 'tcx>,
-                          lvalue: &mir::Lvalue<'tcx>) -> ValueRef
+                          lvalue: &mir::Place<'tcx>) -> ValueRef
     {
         // ZST are passed as operands and require special handling
         // because trans_lvalue() panics if Local is operand.
-        if let mir::Lvalue::Local(index) = *lvalue {
+        if let mir::Place::Local(index) = *lvalue {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::TyArray(_, n) = op.layout.ty.sty {
                     let n = n.val.to_const_int().unwrap().to_u64().unwrap();

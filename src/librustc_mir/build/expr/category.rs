@@ -15,7 +15,7 @@ pub enum Category {
     // An assignable memory location like `x`, `x.f`, `foo()[3]`, that
     // sort of thing. Something that could appear on the LHS of an `=`
     // sign.
-    Lvalue,
+    Place,
 
     // A literal like `23` or `"foo"`. Does not include constant
     // expressions like `3 + 5`.
@@ -51,7 +51,7 @@ impl Category {
             ExprKind::SelfRef |
             ExprKind::VarRef { .. } |
             ExprKind::StaticRef { .. } =>
-                Some(Category::Lvalue),
+                Some(Category::Place),
 
             ExprKind::LogicalOp { .. } |
             ExprKind::If { .. } |

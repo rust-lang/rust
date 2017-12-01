@@ -61,7 +61,7 @@ impl<'tcx> CFG<'tcx> {
     pub fn push_assign(&mut self,
                        block: BasicBlock,
                        source_info: SourceInfo,
-                       lvalue: &Lvalue<'tcx>,
+                       lvalue: &Place<'tcx>,
                        rvalue: Rvalue<'tcx>) {
         self.push(block, Statement {
             source_info,
@@ -72,7 +72,7 @@ impl<'tcx> CFG<'tcx> {
     pub fn push_assign_constant(&mut self,
                                 block: BasicBlock,
                                 source_info: SourceInfo,
-                                temp: &Lvalue<'tcx>,
+                                temp: &Place<'tcx>,
                                 constant: Constant<'tcx>) {
         self.push_assign(block, source_info, temp,
                          Rvalue::Use(Operand::Constant(box constant)));
@@ -81,7 +81,7 @@ impl<'tcx> CFG<'tcx> {
     pub fn push_assign_unit(&mut self,
                             block: BasicBlock,
                             source_info: SourceInfo,
-                            lvalue: &Lvalue<'tcx>) {
+                            lvalue: &Place<'tcx>) {
         self.push_assign(block, source_info, lvalue, Rvalue::Aggregate(
             box AggregateKind::Tuple, vec![]
         ));

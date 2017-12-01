@@ -70,11 +70,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let constant = this.as_constant(expr);
                 block.and(Operand::Constant(box constant))
             }
-            Category::Lvalue |
+            Category::Place |
             Category::Rvalue(..) => {
                 let operand =
                     unpack!(block = this.as_temp(block, scope, expr));
-                block.and(Operand::Move(Lvalue::Local(operand)))
+                block.and(Operand::Move(Place::Local(operand)))
             }
         }
     }

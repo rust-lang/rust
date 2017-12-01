@@ -322,8 +322,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         });
     }
 
-    fn drop_flag(&mut self, index: MovePathIndex) -> Option<Lvalue<'tcx>> {
-        self.drop_flags.get(&index).map(|t| Lvalue::Local(*t))
+    fn drop_flag(&mut self, index: MovePathIndex) -> Option<Place<'tcx>> {
+        self.drop_flags.get(&index).map(|t| Place::Local(*t))
     }
 
     /// create a patch that elaborates all drops in the input
@@ -451,7 +451,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn elaborate_replace(
         &mut self,
         loc: Location,
-        location: &Lvalue<'tcx>,
+        location: &Place<'tcx>,
         value: &Operand<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>)
@@ -538,7 +538,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         if let Some(&flag) = self.drop_flags.get(&path) {
             let span = self.patch.source_info_for_location(self.mir, loc).span;
             let val = self.constant_bool(span, val.value());
-            self.patch.add_assign(loc, Lvalue::Local(flag), val);
+            self.patch.add_assign(loc, Place::Local(flag), val);
         }
     }
 
@@ -547,7 +547,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let span = self.patch.source_info_for_location(self.mir, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
-            self.patch.add_assign(loc, Lvalue::Local(*flag), false_.clone());
+            self.patch.add_assign(loc, Place::Local(*flag), false_.clone());
         }
     }
 

@@ -22,7 +22,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn as_lvalue<M>(&mut self,
                         block: BasicBlock,
                         expr: M)
-                        -> BlockAnd<Lvalue<'tcx>>
+                        -> BlockAnd<Place<'tcx>>
         where M: Mirror<'tcx, Output=Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn expr_as_lvalue(&mut self,
                       mut block: BasicBlock,
                       expr: Expr<'tcx>)
-                      -> BlockAnd<Lvalue<'tcx>> {
+                      -> BlockAnd<Place<'tcx>> {
         debug!("expr_as_lvalue(block={:?}, expr={:?})", block, expr);
 
         let this = self;
@@ -70,26 +70,26 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      &len, Rvalue::Len(slice.clone()));
                 this.cfg.push_assign(block, source_info, // lt = idx < len
                                      &lt, Rvalue::BinaryOp(BinOp::Lt,
-                                                           Operand::Copy(Lvalue::Local(idx)),
+                                                           Operand::Copy(Place::Local(idx)),
                                                            Operand::Copy(len.clone())));
 
                 let msg = AssertMessage::BoundsCheck {
                     len: Operand::Move(len),
-                    index: Operand::Copy(Lvalue::Local(idx))
+                    index: Operand::Copy(Place::Local(idx))
                 };
                 let success = this.assert(block, Operand::Move(lt), true,
                                           msg, expr_span);
                 success.and(slice.index(idx))
             }
             ExprKind::SelfRef => {
-                block.and(Lvalue::Local(Local::new(1)))
+                block.and(Place::Local(Local::new(1)))
             }
             ExprKind::VarRef { id } => {
                 let index = this.var_indices[&id];
-                block.and(Lvalue::Local(index))
+                block.and(Place::Local(index))
             }
             ExprKind::StaticRef { id } => {
-                block.and(Lvalue::Static(Box::new(Static { def_id: id, ty: expr.ty })))
+                block.and(Place::Static(Box::new(Static { def_id: id, ty: expr.ty })))
             }
 
             ExprKind::Array { .. } |
@@ -124,11 +124,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Call { .. } => {
                 // these are not lvalues, so we need to make a temporary.
                 debug_assert!(match Category::of(&expr.kind) {
-                    Some(Category::Lvalue) => false,
+                    Some(Category::Place) => false,
                     _ => true,
                 });
                 let temp = unpack!(block = this.as_temp(block, expr.temp_lifetime, expr));
-                block.and(Lvalue::Local(temp))
+                block.and(Place::Local(temp))
             }
         }
     }

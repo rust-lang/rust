@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use rustc::hir;
-use rustc::mir::{Location, Lvalue, Mir, Rvalue};
+use rustc::mir::{Location, Place, Mir, Rvalue};
 use rustc::mir::visit::Visitor;
-use rustc::mir::Lvalue::Projection;
-use rustc::mir::{LvalueProjection, ProjectionElem};
+use rustc::mir::Place::Projection;
+use rustc::mir::{PlaceProjection, ProjectionElem};
 use rustc::infer::InferCtxt;
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty};
@@ -189,10 +189,10 @@ impl<'cx, 'gcx, 'tcx> ConstraintGeneration<'cx, 'gcx, 'tcx> {
         &mut self,
         location: Location,
         borrow_region: ty::Region<'tcx>,
-        borrowed_lv: &Lvalue<'tcx>,
+        borrowed_lv: &Place<'tcx>,
     ) {
         if let Projection(ref proj) = *borrowed_lv {
-            let LvalueProjection { ref base, ref elem } = **proj;
+            let PlaceProjection { ref base, ref elem } = **proj;
 
             if let ProjectionElem::Deref = *elem {
                 let tcx = self.infcx.tcx;

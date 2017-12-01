@@ -99,13 +99,13 @@ impl Lower128Bit {
                     block.statements.push(Statement {
                         source_info: source_info,
                         kind: StatementKind::Assign(
-                            Lvalue::Local(local),
+                            Place::Local(local),
                             Rvalue::Cast(
                                 CastKind::Misc,
                                 rhs,
                                 rhs_override_ty.unwrap())),
                     });
-                    rhs = Operand::Move(Lvalue::Local(local));
+                    rhs = Operand::Move(Place::Local(local));
                 }
 
                 let call_did = check_lang_item_type(
@@ -134,7 +134,7 @@ impl Lower128Bit {
 
 fn check_lang_item_type<'a, 'tcx, D>(
     lang_item: LangItem,
-    lvalue: &Lvalue<'tcx>,
+    lvalue: &Place<'tcx>,
     lhs: &Operand<'tcx>,
     rhs: &Operand<'tcx>,
     local_decls: &D,

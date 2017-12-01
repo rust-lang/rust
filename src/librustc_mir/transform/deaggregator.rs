@@ -68,7 +68,7 @@ impl MirPass for Deaggregator {
                     let rhs = Rvalue::Use(op.clone());
 
                     let lhs_cast = if adt_def.is_enum() {
-                        Lvalue::Projection(Box::new(LvalueProjection {
+                        Place::Projection(Box::new(PlaceProjection {
                             base: lhs.clone(),
                             elem: ProjectionElem::Downcast(adt_def, variant),
                         }))
@@ -76,7 +76,7 @@ impl MirPass for Deaggregator {
                         lhs.clone()
                     };
 
-                    let lhs_proj = Lvalue::Projection(Box::new(LvalueProjection {
+                    let lhs_proj = Place::Projection(Box::new(PlaceProjection {
                         base: lhs_cast,
                         elem: ProjectionElem::Field(Field::new(i), ty),
                     }));

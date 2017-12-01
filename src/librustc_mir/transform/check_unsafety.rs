@@ -17,7 +17,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::*;
-use rustc::mir::visit::{LvalueContext, Visitor};
+use rustc::mir::visit::{PlaceContext, Visitor};
 
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -136,10 +136,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
     }
 
     fn visit_lvalue(&mut self,
-                    lvalue: &Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
+                    lvalue: &Place<'tcx>,
+                    context: PlaceContext<'tcx>,
                     location: Location) {
-        if let LvalueContext::Borrow { .. } = context {
+        if let PlaceContext::Borrow { .. } = context {
             if util::is_disaligned(self.tcx, self.mir, self.param_env, lvalue) {
                 let source_info = self.source_info;
                 let lint_root =
@@ -153,11 +153,11 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         }
 
         match lvalue {
-            &Lvalue::Projection(box Projection {
+            &Place::Projection(box Projection {
                 ref base, ref elem
             }) => {
                 let old_source_info = self.source_info;
-                if let &Lvalue::Local(local) = base {
+                if let &Place::Local(local) = base {
                     if self.mir.local_decls[local].internal {
                         // Internal locals are used in the `move_val_init` desugaring.
                         // We want to check unsafety against the source info of the
@@ -172,8 +172,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     }
                     ty::TyAdt(adt, _) => {
                         if adt.is_union() {
-                            if context == LvalueContext::Store ||
-                                context == LvalueContext::Drop
+                            if context == PlaceContext::Store ||
+                                context == PlaceContext::Drop
                             {
                                 let elem_ty = match elem {
                                     &ProjectionElem::Field(_, ty) => ty,
@@ -198,10 +198,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
                 self.source_info = old_source_info;
             }
-            &Lvalue::Local(..) => {
+            &Place::Local(..) => {
                 // locals are safe
             }
-            &Lvalue::Static(box Static { def_id, ty: _ }) => {
+            &Place::Static(box Static { def_id, ty: _ }) => {
                 if self.tcx.is_static_mut(def_id) {
                     self.require_unsafe("use of mutable static");
                 } else if self.tcx.is_foreign_item(def_id) {

@@ -15,7 +15,7 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::{self, Location, TerminatorKind, Literal};
-use rustc::mir::visit::{Visitor, LvalueContext};
+use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::mir::traversal;
 use rustc::ty;
 use rustc::ty::layout::LayoutOf;
@@ -88,18 +88,18 @@ impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
 impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
-                    lvalue: &mir::Lvalue<'tcx>,
+                    lvalue: &mir::Place<'tcx>,
                     rvalue: &mir::Rvalue<'tcx>,
                     location: Location) {
         debug!("visit_assign(block={:?}, lvalue={:?}, rvalue={:?})", block, lvalue, rvalue);
 
-        if let mir::Lvalue::Local(index) = *lvalue {
+        if let mir::Place::Local(index) = *lvalue {
             self.mark_assigned(index);
             if !self.cx.rvalue_creates_operand(rvalue) {
                 self.mark_as_lvalue(index);
             }
         } else {
-            self.visit_lvalue(lvalue, LvalueContext::Store, location);
+            self.visit_lvalue(lvalue, PlaceContext::Store, location);
         }
 
         self.visit_rvalue(rvalue, location);
@@ -122,7 +122,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
                 if let mir::Operand::Move(ref lvalue) = args[0] {
-                    self.visit_lvalue(lvalue, LvalueContext::Drop, location);
+                    self.visit_lvalue(lvalue, PlaceContext::Drop, location);
                 }
             }
             _ => {}
@@ -132,16 +132,16 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
     }
 
     fn visit_lvalue(&mut self,
-                    lvalue: &mir::Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
+                    lvalue: &mir::Place<'tcx>,
+                    context: PlaceContext<'tcx>,
                     location: Location) {
         debug!("visit_lvalue(lvalue={:?}, context={:?})", lvalue, context);
         let ccx = self.cx.ccx;
 
-        if let mir::Lvalue::Projection(ref proj) = *lvalue {
+        if let mir::Place::Projection(ref proj) = *lvalue {
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
-                LvalueContext::Copy | LvalueContext::Move => true,
+                PlaceContext::Copy | PlaceContext::Move => true,
                 _ => false
             };
             if is_consume {
@@ -169,7 +169,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
             // A deref projection only reads the pointer, never needs the lvalue.
             if let mir::ProjectionElem::Deref = proj.elem {
-                return self.visit_lvalue(&proj.base, LvalueContext::Copy, location);
+                return self.visit_lvalue(&proj.base, PlaceContext::Copy, location);
             }
         }
 
@@ -178,28 +178,28 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
     fn visit_local(&mut self,
                    &index: &mir::Local,
-                   context: LvalueContext<'tcx>,
+                   context: PlaceContext<'tcx>,
                    _: Location) {
         match context {
-            LvalueContext::Call => {
+            PlaceContext::Call => {
                 self.mark_assigned(index);
             }
 
-            LvalueContext::StorageLive |
-            LvalueContext::StorageDead |
-            LvalueContext::Validate |
-            LvalueContext::Copy |
-            LvalueContext::Move => {}
+            PlaceContext::StorageLive |
+            PlaceContext::StorageDead |
+            PlaceContext::Validate |
+            PlaceContext::Copy |
+            PlaceContext::Move => {}
 
-            LvalueContext::Inspect |
-            LvalueContext::Store |
-            LvalueContext::Borrow { .. } |
-            LvalueContext::Projection(..) => {
+            PlaceContext::Inspect |
+            PlaceContext::Store |
+            PlaceContext::Borrow { .. } |
+            PlaceContext::Projection(..) => {
                 self.mark_as_lvalue(index);
             }
 
-            LvalueContext::Drop => {
-                let ty = mir::Lvalue::Local(index).ty(self.cx.mir, self.cx.ccx.tcx());
+            PlaceContext::Drop => {
+                let ty = mir::Place::Local(index).ty(self.cx.mir, self.cx.ccx.tcx());
                 let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
 
                 // Only need the lvalue if we're actually dropping it.

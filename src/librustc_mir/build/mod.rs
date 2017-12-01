@@ -309,7 +309,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// Maps node ids of variable bindings to the `Local`s created for them.
     var_indices: NodeMap<Local>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
-    unit_temp: Option<Lvalue<'tcx>>,
+    unit_temp: Option<Place<'tcx>>,
 
     /// cached block with the RESUME terminator; this is created
     /// when first set of cleanups are built.
@@ -480,7 +480,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(&Lvalue::Local(RETURN_POINTER), block, expr));
+    unpack!(block = builder.into_expr(&Place::Local(RETURN_POINTER), block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -599,7 +599,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         for (index, &(ty, pattern)) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return pointer
             let local = Local::new(index + 1);
-            let lvalue = Lvalue::Local(local);
+            let lvalue = Place::Local(local);
 
             if let Some(pattern) = pattern {
                 let pattern = self.hir.pattern_from_hir(pattern);
@@ -630,10 +630,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Lvalue::Local(RETURN_POINTER), block, body)
+        self.into(&Place::Local(RETURN_POINTER), block, body)
     }
 
-    fn get_unit_temp(&mut self) -> Lvalue<'tcx> {
+    fn get_unit_temp(&mut self) -> Place<'tcx> {
         match self.unit_temp {
             Some(ref tmp) => tmp.clone(),
             None => {

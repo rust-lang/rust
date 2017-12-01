@@ -641,14 +641,14 @@ pub enum TerminatorKind<'tcx> {
     /// Indicates a terminator that can never be reached.
     Unreachable,
 
-    /// Drop the Lvalue
+    /// Drop the Place
     Drop {
-        location: Lvalue<'tcx>,
+        location: Place<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>
     },
 
-    /// Drop the Lvalue and assign the new value over it. This ensures
+    /// Drop the Place and assign the new value over it. This ensures
     /// that the assignment to LV occurs *even if* the destructor for
     /// lvalue unwinds. Its semantics are best explained by by the
     /// elaboration:
@@ -675,7 +675,7 @@ pub enum TerminatorKind<'tcx> {
     /// }
     /// ```
     DropAndReplace {
-        location: Lvalue<'tcx>,
+        location: Place<'tcx>,
         value: Operand<'tcx>,
         target: BasicBlock,
         unwind: Option<BasicBlock>,
@@ -691,7 +691,7 @@ pub enum TerminatorKind<'tcx> {
         /// reused across function calls without duplicating the contents.
         args: Vec<Operand<'tcx>>,
         /// Destination for the return value. If some, the call is converging.
-        destination: Option<(Lvalue<'tcx>, BasicBlock)>,
+        destination: Option<(Place<'tcx>, BasicBlock)>,
         /// Cleanups to be done if the call unwinds.
         cleanup: Option<BasicBlock>
     },
@@ -1002,11 +1002,11 @@ impl<'tcx> Statement<'tcx> {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
-    /// Write the RHS Rvalue to the LHS Lvalue.
-    Assign(Lvalue<'tcx>, Rvalue<'tcx>),
+    /// Write the RHS Rvalue to the LHS Place.
+    Assign(Place<'tcx>, Rvalue<'tcx>),
 
-    /// Write the discriminant for a variant to the enum Lvalue.
-    SetDiscriminant { lvalue: Lvalue<'tcx>, variant_index: usize },
+    /// Write the discriminant for a variant to the enum Place.
+    SetDiscriminant { lvalue: Place<'tcx>, variant_index: usize },
 
     /// Start a live range for the storage of the local.
     StorageLive(Local),
@@ -1017,14 +1017,14 @@ pub enum StatementKind<'tcx> {
     /// Execute a piece of inline Assembly.
     InlineAsm {
         asm: Box<InlineAsm>,
-        outputs: Vec<Lvalue<'tcx>>,
+        outputs: Vec<Place<'tcx>>,
         inputs: Vec<Operand<'tcx>>
     },
 
     /// Assert the given lvalues to be valid inhabitants of their type.  These statements are
     /// currently only interpreted by miri and only generated when "-Z mir-emit-validate" is passed.
     /// See <https://internals.rust-lang.org/t/types-as-contracts/5562/73> for more details.
-    Validate(ValidationOp, Vec<ValidationOperand<'tcx, Lvalue<'tcx>>>),
+    Validate(ValidationOp, Vec<ValidationOperand<'tcx, Place<'tcx>>>),
 
     /// Mark one terminating point of a region scope (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)
@@ -1107,12 +1107,12 @@ impl<'tcx> Debug for Statement<'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Lvalues
+// Places
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
-pub enum Lvalue<'tcx> {
+pub enum Place<'tcx> {
     /// local variable
     Local(Local),
 
@@ -1120,7 +1120,7 @@ pub enum Lvalue<'tcx> {
     Static(Box<Static<'tcx>>),
 
     /// projection out of an lvalue (access a field, deref a pointer, etc)
-    Projection(Box<LvalueProjection<'tcx>>),
+    Projection(Box<PlaceProjection<'tcx>>),
 }
 
 /// The def-id of a static, along with its normalized type (which is
@@ -1138,8 +1138,8 @@ impl_stable_hash_for!(struct Static<'tcx> {
 
 /// The `Projection` data structure defines things of the form `B.x`
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
-/// shared between `Constant` and `Lvalue`. See the aliases
-/// `LvalueProjection` etc below.
+/// shared between `Constant` and `Place`. See the aliases
+/// `PlaceProjection` etc below.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Projection<'tcx, B, V, T> {
     pub base: B,
@@ -1186,42 +1186,42 @@ pub enum ProjectionElem<'tcx, V, T> {
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
 /// and the index is a local.
-pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Local, Ty<'tcx>>;
+pub type PlaceProjection<'tcx> = Projection<'tcx, Place<'tcx>, Local, Ty<'tcx>>;
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
 /// and the index is a local.
-pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
+pub type PlaceElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
 newtype_index!(Field { DEBUG_FORMAT = "field[{}]" });
 
-impl<'tcx> Lvalue<'tcx> {
-    pub fn field(self, f: Field, ty: Ty<'tcx>) -> Lvalue<'tcx> {
+impl<'tcx> Place<'tcx> {
+    pub fn field(self, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
         self.elem(ProjectionElem::Field(f, ty))
     }
 
-    pub fn deref(self) -> Lvalue<'tcx> {
+    pub fn deref(self) -> Place<'tcx> {
         self.elem(ProjectionElem::Deref)
     }
 
-    pub fn downcast(self, adt_def: &'tcx AdtDef, variant_index: usize) -> Lvalue<'tcx> {
+    pub fn downcast(self, adt_def: &'tcx AdtDef, variant_index: usize) -> Place<'tcx> {
         self.elem(ProjectionElem::Downcast(adt_def, variant_index))
     }
 
-    pub fn index(self, index: Local) -> Lvalue<'tcx> {
+    pub fn index(self, index: Local) -> Place<'tcx> {
         self.elem(ProjectionElem::Index(index))
     }
 
-    pub fn elem(self, elem: LvalueElem<'tcx>) -> Lvalue<'tcx> {
-        Lvalue::Projection(Box::new(LvalueProjection {
+    pub fn elem(self, elem: PlaceElem<'tcx>) -> Place<'tcx> {
+        Place::Projection(Box::new(PlaceProjection {
             base: self,
             elem,
         }))
     }
 }
 
-impl<'tcx> Debug for Lvalue<'tcx> {
+impl<'tcx> Debug for Place<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        use self::Lvalue::*;
+        use self::Place::*;
 
         match *self {
             Local(id) => write!(fmt, "{:?}", id),
@@ -1281,13 +1281,13 @@ pub enum Operand<'tcx> {
     ///
     /// This implies that the type of the lvalue must be `Copy`; this is true
     /// by construction during build, but also checked by the MIR type checker.
-    Copy(Lvalue<'tcx>),
+    Copy(Place<'tcx>),
     /// Move: The value (including old borrows of it) will not be used again.
     ///
     /// Safe for values of all types (modulo future developments towards `?Move`).
     /// Correct usage patterns are enforced by the borrow checker for safe code.
     /// `Copy` may be converted to `Move` to enable "last-use" optimizations.
-    Move(Lvalue<'tcx>),
+    Move(Place<'tcx>),
     Constant(Box<Constant<'tcx>>),
 }
 
@@ -1336,10 +1336,10 @@ pub enum Rvalue<'tcx> {
     Repeat(Operand<'tcx>, ConstUsize),
 
     /// &x or &mut x
-    Ref(Region<'tcx>, BorrowKind, Lvalue<'tcx>),
+    Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
 
     /// length of a [X] or [X;n] value
-    Len(Lvalue<'tcx>),
+    Len(Place<'tcx>),
 
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
@@ -1353,7 +1353,7 @@ pub enum Rvalue<'tcx> {
     ///
     /// Undefined (i.e. no effort is made to make it defined, but there’s no reason why it cannot
     /// be defined to return, say, a 0) if ADT is not an enum.
-    Discriminant(Lvalue<'tcx>),
+    Discriminant(Place<'tcx>),
 
     /// Create an aggregate value, like a tuple or struct.  This is
     /// only needed because we want to distinguish `dest = Foo { x:
@@ -1828,7 +1828,7 @@ impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx, Lvalue<'tcx>> {
+impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx, Place<'tcx>> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ValidationOperand {
             lval: self.lval.fold_with(folder),
@@ -2012,16 +2012,16 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Lvalue<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match self {
-            &Lvalue::Projection(ref p) => Lvalue::Projection(p.fold_with(folder)),
+            &Place::Projection(ref p) => Place::Projection(p.fold_with(folder)),
             _ => self.clone()
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        if let &Lvalue::Projection(ref p) = self {
+        if let &Place::Projection(ref p) = self {
             p.visit_with(visitor)
         } else {
             false

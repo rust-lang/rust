@@ -124,8 +124,8 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     assert!(args.len() == 1);
     let peek_arg_lval = match args[0] {
-        mir::Operand::Copy(ref lval @ mir::Lvalue::Local(_)) |
-        mir::Operand::Move(ref lval @ mir::Lvalue::Local(_)) => Some(lval),
+        mir::Operand::Copy(ref lval @ mir::Place::Local(_)) |
+        mir::Operand::Move(ref lval @ mir::Place::Local(_)) => Some(lval),
         _ => None,
     };
 

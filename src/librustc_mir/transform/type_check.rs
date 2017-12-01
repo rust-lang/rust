@@ -19,8 +19,8 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
-use rustc::mir::tcx::LvalueTy;
-use rustc::mir::visit::{LvalueContext, Visitor};
+use rustc::mir::tcx::PlaceTy;
+use rustc::mir::visit::{PlaceContext, Visitor};
 use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
@@ -106,8 +106,8 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
     fn visit_lvalue(
         &mut self,
-        lvalue: &Lvalue<'tcx>,
-        context: LvalueContext,
+        lvalue: &Place<'tcx>,
+        context: PlaceContext,
         location: Location,
     ) {
         self.sanitize_lvalue(lvalue, location, context);
@@ -165,16 +165,16 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     }
 
     fn sanitize_lvalue(&mut self,
-                       lvalue: &Lvalue<'tcx>,
+                       lvalue: &Place<'tcx>,
                        location: Location,
-                       context: LvalueContext)
-                       -> LvalueTy<'tcx> {
+                       context: PlaceContext)
+                       -> PlaceTy<'tcx> {
         debug!("sanitize_lvalue: {:?}", lvalue);
         let lvalue_ty = match *lvalue {
-            Lvalue::Local(index) => LvalueTy::Ty {
+            Place::Local(index) => PlaceTy::Ty {
                 ty: self.mir.local_decls[index].ty,
             },
-            Lvalue::Static(box Static { def_id, ty: sty }) => {
+            Place::Static(box Static { def_id, ty: sty }) => {
                 let sty = self.sanitize_type(lvalue, sty);
                 let ty = self.tcx().type_of(def_id);
                 let ty = self.cx.normalize(&ty, location);
@@ -190,19 +190,19 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         terr
                     );
                 }
-                LvalueTy::Ty { ty: sty }
+                PlaceTy::Ty { ty: sty }
             }
-            Lvalue::Projection(ref proj) => {
+            Place::Projection(ref proj) => {
                 let base_context = if context.is_mutating_use() {
-                    LvalueContext::Projection(Mutability::Mut)
+                    PlaceContext::Projection(Mutability::Mut)
                 } else {
-                    LvalueContext::Projection(Mutability::Not)
+                    PlaceContext::Projection(Mutability::Not)
                 };
                 let base_ty = self.sanitize_lvalue(&proj.base, location, base_context);
-                if let LvalueTy::Ty { ty } = base_ty {
+                if let PlaceTy::Ty { ty } = base_ty {
                     if ty.references_error() {
                         assert!(self.errors_reported);
-                        return LvalueTy::Ty {
+                        return PlaceTy::Ty {
                             ty: self.tcx().types.err,
                         };
                     }
@@ -210,7 +210,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 self.sanitize_projection(base_ty, &proj.elem, lvalue, location)
             }
         };
-        if let LvalueContext::Copy = context {
+        if let PlaceContext::Copy = context {
             let ty = lvalue_ty.to_ty(self.tcx());
             if self.cx.infcx.type_moves_by_default(self.cx.param_env, ty, DUMMY_SP) {
                 span_mirbug!(self, lvalue,
@@ -222,11 +222,11 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
     fn sanitize_projection(
         &mut self,
-        base: LvalueTy<'tcx>,
-        pi: &LvalueElem<'tcx>,
-        lvalue: &Lvalue<'tcx>,
+        base: PlaceTy<'tcx>,
+        pi: &PlaceElem<'tcx>,
+        lvalue: &Place<'tcx>,
         location: Location,
-    ) -> LvalueTy<'tcx> {
+    ) -> PlaceTy<'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, lvalue);
         let tcx = self.tcx();
         let base_ty = base.to_ty(tcx);
@@ -234,20 +234,20 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         match *pi {
             ProjectionElem::Deref => {
                 let deref_ty = base_ty.builtin_deref(true, ty::LvaluePreference::NoPreference);
-                LvalueTy::Ty {
+                PlaceTy::Ty {
                     ty: deref_ty.map(|t| t.ty).unwrap_or_else(|| {
                         span_mirbug_and_err!(self, lvalue, "deref of non-pointer {:?}", base_ty)
                     }),
                 }
             }
             ProjectionElem::Index(i) => {
-                let index_ty = Lvalue::Local(i).ty(self.mir, tcx).to_ty(tcx);
+                let index_ty = Place::Local(i).ty(self.mir, tcx).to_ty(tcx);
                 if index_ty != tcx.types.usize {
-                    LvalueTy::Ty {
+                    PlaceTy::Ty {
                         ty: span_mirbug_and_err!(self, i, "index by non-usize {:?}", i),
                     }
                 } else {
-                    LvalueTy::Ty {
+                    PlaceTy::Ty {
                         ty: base_ty.builtin_index().unwrap_or_else(|| {
                             span_mirbug_and_err!(self, lvalue, "index of non-array {:?}", base_ty)
                         }),
@@ -256,13 +256,13 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             }
             ProjectionElem::ConstantIndex { .. } => {
                 // consider verifying in-bounds
-                LvalueTy::Ty {
+                PlaceTy::Ty {
                     ty: base_ty.builtin_index().unwrap_or_else(|| {
                         span_mirbug_and_err!(self, lvalue, "index of non-array {:?}", base_ty)
                     }),
                 }
             }
-            ProjectionElem::Subslice { from, to } => LvalueTy::Ty {
+            ProjectionElem::Subslice { from, to } => PlaceTy::Ty {
                 ty: match base_ty.sty {
                     ty::TyArray(inner, size) => {
                         let size = size.val.to_const_int().unwrap().to_u64().unwrap();
@@ -285,7 +285,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             ProjectionElem::Downcast(adt_def1, index) => match base_ty.sty {
                 ty::TyAdt(adt_def, substs) if adt_def.is_enum() && adt_def == adt_def1 => {
                     if index >= adt_def.variants.len() {
-                        LvalueTy::Ty {
+                        PlaceTy::Ty {
                             ty: span_mirbug_and_err!(
                                 self,
                                 lvalue,
@@ -295,14 +295,14 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                             ),
                         }
                     } else {
-                        LvalueTy::Downcast {
+                        PlaceTy::Downcast {
                             adt_def,
                             substs,
                             variant_index: index,
                         }
                     }
                 }
-                _ => LvalueTy::Ty {
+                _ => PlaceTy::Ty {
                     ty: span_mirbug_and_err!(
                         self,
                         lvalue,
@@ -335,7 +335,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         field_count
                     ),
                 }
-                LvalueTy::Ty { ty: fty }
+                PlaceTy::Ty { ty: fty }
             }
         }
     }
@@ -348,19 +348,19 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn field_ty(
         &mut self,
         parent: &fmt::Debug,
-        base_ty: LvalueTy<'tcx>,
+        base_ty: PlaceTy<'tcx>,
         field: Field,
         location: Location,
     ) -> Result<Ty<'tcx>, FieldAccessError> {
         let tcx = self.tcx();
 
         let (variant, substs) = match base_ty {
-            LvalueTy::Downcast {
+            PlaceTy::Downcast {
                 adt_def,
                 substs,
                 variant_index,
             } => (&adt_def.variants[variant_index], substs),
-            LvalueTy::Ty { ty } => match ty.sty {
+            PlaceTy::Ty { ty } => match ty.sty {
                 ty::TyAdt(adt_def, substs) if !adt_def.is_enum() => {
                     (&adt_def.variants[0], substs)
                 }
@@ -771,7 +771,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         mir: &Mir<'tcx>,
         term: &Terminator<'tcx>,
         sig: &ty::FnSig<'tcx>,
-        destination: &Option<(Lvalue<'tcx>, BasicBlock)>,
+        destination: &Option<(Place<'tcx>, BasicBlock)>,
         term_location: Location,
     ) {
         let tcx = self.tcx();

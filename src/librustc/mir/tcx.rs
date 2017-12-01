@@ -21,7 +21,7 @@ use hir;
 use ty::util::IntTypeExt;
 
 #[derive(Copy, Clone, Debug)]
-pub enum LvalueTy<'tcx> {
+pub enum PlaceTy<'tcx> {
     /// Normal type.
     Ty { ty: Ty<'tcx> },
 
@@ -31,23 +31,23 @@ pub enum LvalueTy<'tcx> {
                variant_index: usize },
 }
 
-impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
-    pub fn from_ty(ty: Ty<'tcx>) -> LvalueTy<'tcx> {
-        LvalueTy::Ty { ty: ty }
+impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
+    pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
+        PlaceTy::Ty { ty: ty }
     }
 
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
-            LvalueTy::Ty { ty } =>
+            PlaceTy::Ty { ty } =>
                 ty,
-            LvalueTy::Downcast { adt_def, substs, variant_index: _ } =>
+            PlaceTy::Downcast { adt_def, substs, variant_index: _ } =>
                 tcx.mk_adt(adt_def, substs),
         }
     }
 
     pub fn projection_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                         elem: &LvalueElem<'tcx>)
-                         -> LvalueTy<'tcx>
+                         elem: &PlaceElem<'tcx>)
+                         -> PlaceTy<'tcx>
     {
         match *elem {
             ProjectionElem::Deref => {
@@ -57,17 +57,17 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                                  bug!("deref projection of non-dereferencable ty {:?}", self)
                              })
                              .ty;
-                LvalueTy::Ty {
+                PlaceTy::Ty {
                     ty,
                 }
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } =>
-                LvalueTy::Ty {
+                PlaceTy::Ty {
                     ty: self.to_ty(tcx).builtin_index().unwrap()
                 },
             ProjectionElem::Subslice { from, to } => {
                 let ty = self.to_ty(tcx);
-                LvalueTy::Ty {
+                PlaceTy::Ty {
                     ty: match ty.sty {
                         ty::TyArray(inner, size) => {
                             let size = size.val.to_const_int().unwrap().to_u64().unwrap();
@@ -87,7 +87,7 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                         assert!(adt_def.is_enum());
                         assert!(index < adt_def.variants.len());
                         assert_eq!(adt_def, adt_def1);
-                        LvalueTy::Downcast { adt_def,
+                        PlaceTy::Downcast { adt_def,
                                              substs,
                                              variant_index: index }
                     }
@@ -95,17 +95,17 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                         bug!("cannot downcast non-ADT type: `{:?}`", self)
                     }
                 },
-            ProjectionElem::Field(_, fty) => LvalueTy::Ty { ty: fty }
+            ProjectionElem::Field(_, fty) => PlaceTy::Ty { ty: fty }
         }
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.fold_with(folder) },
-            LvalueTy::Downcast { adt_def, substs, variant_index } => {
-                LvalueTy::Downcast {
+            PlaceTy::Ty { ty } => PlaceTy::Ty { ty: ty.fold_with(folder) },
+            PlaceTy::Downcast { adt_def, substs, variant_index } => {
+                PlaceTy::Downcast {
                     adt_def,
                     substs: substs.fold_with(folder),
                     variant_index,
@@ -116,22 +116,22 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            LvalueTy::Ty { ty } => ty.visit_with(visitor),
-            LvalueTy::Downcast { substs, .. } => substs.visit_with(visitor)
+            PlaceTy::Ty { ty } => ty.visit_with(visitor),
+            PlaceTy::Downcast { substs, .. } => substs.visit_with(visitor)
         }
     }
 }
 
-impl<'tcx> Lvalue<'tcx> {
-    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> LvalueTy<'tcx>
+impl<'tcx> Place<'tcx> {
+    pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PlaceTy<'tcx>
         where D: HasLocalDecls<'tcx>
     {
         match *self {
-            Lvalue::Local(index) =>
-                LvalueTy::Ty { ty: local_decls.local_decls()[index].ty },
-            Lvalue::Static(ref data) =>
-                LvalueTy::Ty { ty: data.ty },
-            Lvalue::Projection(ref proj) =>
+            Place::Local(index) =>
+                PlaceTy::Ty { ty: local_decls.local_decls()[index].ty },
+            Place::Static(ref data) =>
+                PlaceTy::Ty { ty: data.ty },
+            Place::Projection(ref proj) =>
                 proj.base.ty(local_decls, tcx).projection_ty(tcx, &proj.elem),
         }
     }
@@ -184,7 +184,7 @@ impl<'tcx> Rvalue<'tcx> {
                 } else {
                     // Undefined behaviour, bug for now; may want to return something for
                     // the `discriminant` intrinsic later.
-                    bug!("Rvalue::Discriminant on Lvalue of type {:?}", ty);
+                    bug!("Rvalue::Discriminant on Place of type {:?}", ty);
                 }
             }
             Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),

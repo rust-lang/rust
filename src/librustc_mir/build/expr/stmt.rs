@@ -107,12 +107,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Return { value } => {
                 block = match value {
                     Some(value) => {
-                        unpack!(this.into(&Lvalue::Local(RETURN_POINTER), block, value))
+                        unpack!(this.into(&Place::Local(RETURN_POINTER), block, value))
                     }
                     None => {
                         this.cfg.push_assign_unit(block,
                                                   source_info,
-                                                  &Lvalue::Local(RETURN_POINTER));
+                                                  &Place::Local(RETURN_POINTER));
                         block
                     }
                 };

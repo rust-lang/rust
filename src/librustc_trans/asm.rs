@@ -18,7 +18,7 @@ use builder::Builder;
 
 use rustc::hir;
 
-use mir::lvalue::LvalueRef;
+use mir::lvalue::PlaceRef;
 use mir::operand::OperandValue;
 
 use std::ffi::CString;
@@ -29,7 +29,7 @@ use libc::{c_uint, c_char};
 pub fn trans_inline_asm<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     ia: &hir::InlineAsm,
-    outputs: Vec<LvalueRef<'tcx>>,
+    outputs: Vec<PlaceRef<'tcx>>,
     mut inputs: Vec<ValueRef>
 ) {
     let mut ext_constraints = vec![];

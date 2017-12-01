@@ -16,7 +16,7 @@ use std::u32;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn field_match_pairs<'pat>(&mut self,
-                                   lvalue: Lvalue<'tcx>,
+                                   lvalue: Place<'tcx>,
                                    subpatterns: &'pat [FieldPattern<'tcx>])
                                    -> Vec<MatchPair<'pat, 'tcx>> {
         subpatterns.iter()
@@ -30,7 +30,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     pub fn prefix_slice_suffix<'pat>(&mut self,
                                      match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
-                                     lvalue: &Lvalue<'tcx>,
+                                     lvalue: &Place<'tcx>,
                                      prefix: &'pat [Pattern<'tcx>],
                                      opt_slice: Option<&'pat Pattern<'tcx>>,
                                      suffix: &'pat [Pattern<'tcx>]) {
@@ -78,7 +78,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 }
 
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
-    pub fn new(lvalue: Lvalue<'tcx>, pattern: &'pat Pattern<'tcx>) -> MatchPair<'pat, 'tcx> {
+    pub fn new(lvalue: Place<'tcx>, pattern: &'pat Pattern<'tcx>) -> MatchPair<'pat, 'tcx> {
         MatchPair {
             lvalue,
             pattern,

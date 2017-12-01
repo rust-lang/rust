@@ -94,7 +94,7 @@ pub struct MovePath<'tcx> {
     pub next_sibling: Option<MovePathIndex>,
     pub first_child: Option<MovePathIndex>,
     pub parent: Option<MovePathIndex>,
-    pub lvalue: Lvalue<'tcx>,
+    pub lvalue: Place<'tcx>,
 }
 
 impl<'tcx> fmt::Debug for MovePath<'tcx> {
@@ -246,11 +246,11 @@ impl<'tcx> MovePathLookup<'tcx> {
     // alternative will *not* create a MovePath on the fly for an
     // unknown l-value, but will rather return the nearest available
     // parent.
-    pub fn find(&self, lval: &Lvalue<'tcx>) -> LookupResult {
+    pub fn find(&self, lval: &Place<'tcx>) -> LookupResult {
         match *lval {
-            Lvalue::Local(local) => LookupResult::Exact(self.locals[local]),
-            Lvalue::Static(..) => LookupResult::Parent(None),
-            Lvalue::Projection(ref proj) => {
+            Place::Local(local) => LookupResult::Exact(self.locals[local]),
+            Place::Static(..) => LookupResult::Parent(None),
+            Place::Projection(ref proj) => {
                 match self.find(&proj.base) {
                     LookupResult::Exact(base_path) => {
                         match self.projections.get(&(base_path, proj.elem.lift())) {

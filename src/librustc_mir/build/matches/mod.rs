@@ -30,7 +30,7 @@ mod util;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn match_expr(&mut self,
-                      destination: &Lvalue<'tcx>,
+                      destination: &Place<'tcx>,
                       span: Span,
                       mut block: BasicBlock,
                       discriminant: ExprRef<'tcx>,
@@ -154,7 +154,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn lvalue_into_pattern(&mut self,
                                mut block: BasicBlock,
                                irrefutable_pat: Pattern<'tcx>,
-                               initializer: &Lvalue<'tcx>)
+                               initializer: &Place<'tcx>)
                                -> BlockAnd<()> {
         // create a dummy candidate
         let mut candidate = Candidate {
@@ -223,7 +223,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn storage_live_binding(&mut self, block: BasicBlock, var: NodeId, span: Span)
-                            -> Lvalue<'tcx>
+                            -> Place<'tcx>
     {
         let local_id = self.var_indices[&var];
         let source_info = self.source_info(span);
@@ -231,7 +231,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             source_info,
             kind: StatementKind::StorageLive(local_id)
         });
-        Lvalue::Local(local_id)
+        Place::Local(local_id)
     }
 
     pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span) {
@@ -239,7 +239,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let var_ty = self.local_decls[local_id].ty;
         let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
         let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
-        self.schedule_drop(span, region_scope, &Lvalue::Local(local_id), var_ty);
+        self.schedule_drop(span, region_scope, &Place::Local(local_id), var_ty);
     }
 
     pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, f: &mut F)
@@ -305,7 +305,7 @@ pub struct Candidate<'pat, 'tcx:'pat> {
 #[derive(Clone, Debug)]
 struct Binding<'tcx> {
     span: Span,
-    source: Lvalue<'tcx>,
+    source: Place<'tcx>,
     name: Name,
     var_id: NodeId,
     var_ty: Ty<'tcx>,
@@ -316,7 +316,7 @@ struct Binding<'tcx> {
 #[derive(Clone, Debug)]
 pub struct MatchPair<'pat, 'tcx:'pat> {
     // this lvalue...
-    lvalue: Lvalue<'tcx>,
+    lvalue: Place<'tcx>,
 
     // ... must match this pattern.
     pattern: &'pat Pattern<'tcx>,

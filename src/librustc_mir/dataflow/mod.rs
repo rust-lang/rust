@@ -610,7 +610,7 @@ pub trait BitDenotation: DataflowOperator {
                              in_out: &mut IdxSet<Self::Idx>,
                              call_bb: mir::BasicBlock,
                              dest_bb: mir::BasicBlock,
-                             dest_lval: &mir::Lvalue);
+                             dest_lval: &mir::Place);
 }
 
 impl<'a, 'gcx, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation

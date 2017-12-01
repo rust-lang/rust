@@ -24,13 +24,13 @@ pub struct AddValidation;
 
 /// Determine the "context" of the lval: Mutability and region.
 fn lval_context<'a, 'tcx, D>(
-    lval: &Lvalue<'tcx>,
+    lval: &Place<'tcx>,
     local_decls: &D,
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 ) -> (Option<region::Scope>, hir::Mutability)
     where D: HasLocalDecls<'tcx>
 {
-    use rustc::mir::Lvalue::*;
+    use rustc::mir::Place::*;
 
     match *lval {
         Local { .. } => (None, hir::MutMutable),
@@ -199,7 +199,7 @@ impl MirPass for AddValidation {
         let local_decls = mir.local_decls.clone(); // FIXME: Find a way to get rid of this clone.
 
         // Convert an lvalue to a validation operand.
-        let lval_to_operand = |lval: Lvalue<'tcx>| -> ValidationOperand<'tcx, Lvalue<'tcx>> {
+        let lval_to_operand = |lval: Place<'tcx>| -> ValidationOperand<'tcx, Place<'tcx>> {
             let (re, mutbl) = lval_context(&lval, &local_decls, tcx);
             let ty = lval.ty(&local_decls, tcx).to_ty(tcx);
             ValidationOperand { lval, ty, re, mutbl }
@@ -237,14 +237,14 @@ impl MirPass for AddValidation {
             };
             // Gather all arguments, skip return value.
             let operands = mir.local_decls.iter_enumerated().skip(1).take(mir.arg_count)
-                    .map(|(local, _)| lval_to_operand(Lvalue::Local(local))).collect();
+                    .map(|(local, _)| lval_to_operand(Place::Local(local))).collect();
             emit_acquire(&mut mir.basic_blocks_mut()[START_BLOCK], source_info, operands);
         }
 
         // PART 2
         // Add ReleaseValid/AcquireValid around function call terminators.  We don't use a visitor
         // because we need to access the block that a Call jumps to.
-        let mut returns : Vec<(SourceInfo, Lvalue<'tcx>, BasicBlock)> = Vec::new();
+        let mut returns : Vec<(SourceInfo, Place<'tcx>, BasicBlock)> = Vec::new();
         for block_data in mir.basic_blocks_mut() {
             match block_data.terminator {
                 Some(Terminator { kind: TerminatorKind::Call { ref args, ref destination, .. },
@@ -332,7 +332,7 @@ impl MirPass for AddValidation {
                         // Do an acquire of the result -- but only what it points to, so add a Deref
                         // projection.
                         let dest_lval = Projection { base: dest_lval, elem: ProjectionElem::Deref };
-                        let dest_lval = Lvalue::Projection(Box::new(dest_lval));
+                        let dest_lval = Place::Projection(Box::new(dest_lval));
                         let acquire_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
                             kind: StatementKind::Validate(ValidationOp::Acquire,
