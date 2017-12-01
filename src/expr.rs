@@ -1862,9 +1862,6 @@ where
     };
     let used_width = extra_offset(callee_str, shape);
     let one_line_width = shape.width.checked_sub(used_width + 2 * paren_overhead)?;
-    // 1 = "("
-    let combine_arg_with_callee =
-        callee_str.len() + 1 <= context.config.tab_spaces() && args.len() == 1;
 
     // 1 = "(" or ")"
     let one_line_shape = shape
@@ -1889,7 +1886,7 @@ where
         one_line_width,
         args_max_width,
         force_trailing_comma,
-        combine_arg_with_callee,
+        callee_str,
     )?;
 
     if !context.use_block_indent() && need_block_indent(&list_str, nested_shape) && !extendable {
@@ -1930,7 +1927,7 @@ fn rewrite_call_args<'a, T>(
     one_line_width: usize,
     args_max_width: usize,
     force_trailing_comma: bool,
-    combine_arg_with_callee: bool,
+    callee_str: &str,
 ) -> Option<(bool, String)>
 where
     T: Rewrite + Spanned + ToExpr + 'a,
@@ -1960,7 +1957,7 @@ where
         nested_shape,
         one_line_width,
         args_max_width,
-        combine_arg_with_callee,
+        callee_str,
     );
 
     let fmt = ListFormatting {
@@ -1980,7 +1977,8 @@ where
         config: context.config,
     };
 
-    write_list(&item_vec, &fmt).map(|args_str| (tactic != DefinitiveListTactic::Vertical, args_str))
+    write_list(&item_vec, &fmt)
+        .map(|args_str| (tactic == DefinitiveListTactic::Horizontal, args_str))
 }
 
 fn try_overflow_last_arg<'a, T>(
@@ -1991,11 +1989,14 @@ fn try_overflow_last_arg<'a, T>(
     nested_shape: Shape,
     one_line_width: usize,
     args_max_width: usize,
-    combine_arg_with_callee: bool,
+    callee_str: &str,
 ) -> DefinitiveListTactic
 where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
+    // 1 = "("
+    let combine_arg_with_callee =
+        callee_str.len() + 1 <= context.config.tab_spaces() && args.len() == 1;
     let overflow_last = combine_arg_with_callee || can_be_overflowed(context, args);
 
     // Replace the last item with its first line to see if it fits with
@@ -2032,6 +2033,16 @@ where
         _ if args.len() >= 1 => {
             item_vec[args.len() - 1].item = args.last()
                 .and_then(|last_arg| last_arg.rewrite(context, nested_shape));
+
+            let default_tactic = || {
+                definitive_tactic(
+                    &*item_vec,
+                    ListTactic::LimitedHorizontalVertical(args_max_width),
+                    Separator::Comma,
+                    one_line_width,
+                )
+            };
+
             // Use horizontal layout for a function with a single argument as long as
             // everything fits in a single line.
             if args.len() == 1
@@ -2042,18 +2053,74 @@ where
             {
                 tactic = DefinitiveListTactic::Horizontal;
             } else {
-                tactic = definitive_tactic(
-                    &*item_vec,
-                    ListTactic::LimitedHorizontalVertical(args_max_width),
-                    Separator::Comma,
-                    one_line_width,
-                );
+                tactic = default_tactic();
+                let is_simple_enough =
+                    tactic == DefinitiveListTactic::Vertical && is_every_args_simple(args);
+                if is_simple_enough
+                    && FORMAT_LIKE_WHITELIST
+                        .iter()
+                        .find(|s| **s == callee_str)
+                        .is_some()
+                {
+                    let args_tactic = definitive_tactic(
+                        &item_vec[1..],
+                        ListTactic::HorizontalVertical,
+                        Separator::Comma,
+                        nested_shape.width,
+                    );
+                    tactic = if args_tactic == DefinitiveListTactic::Horizontal {
+                        DefinitiveListTactic::FormatCall
+                    } else {
+                        default_tactic()
+                    };
+                } else if is_simple_enough && item_vec.len() >= 2
+                    && WRITE_LIKE_WHITELIST
+                        .iter()
+                        .find(|s| **s == callee_str)
+                        .is_some()
+                {
+                    let args_tactic = definitive_tactic(
+                        &item_vec[2..],
+                        ListTactic::HorizontalVertical,
+                        Separator::Comma,
+                        nested_shape.width,
+                    );
+                    tactic = if args_tactic == DefinitiveListTactic::Horizontal {
+                        DefinitiveListTactic::WriteCall
+                    } else {
+                        default_tactic()
+                    };
+                }
             }
         }
         _ => (),
     }
 
     tactic
+}
+
+fn is_simple_arg(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprKind::Lit(..) => true,
+        ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
+        ast::ExprKind::AddrOf(_, ref expr)
+        | ast::ExprKind::Box(ref expr)
+        | ast::ExprKind::Cast(ref expr, _)
+        | ast::ExprKind::Field(ref expr, _)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::TupField(ref expr, _)
+        | ast::ExprKind::Unary(_, ref expr) => is_simple_arg(expr),
+        ast::ExprKind::Index(ref lhs, ref rhs) | ast::ExprKind::Repeat(ref lhs, ref rhs) => {
+            is_simple_arg(lhs) && is_simple_arg(rhs)
+        }
+        _ => false,
+    }
+}
+
+fn is_every_args_simple<T: ToExpr>(lists: &[&T]) -> bool {
+    lists
+        .iter()
+        .all(|arg| arg.to_expr().map_or(false, is_simple_arg))
 }
 
 /// Returns a shape for the last argument which is going to be overflowed.
