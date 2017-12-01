@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//compile-flags: -Z borrowck=compare -Z emit-end-regions
-
-#![deny(warnings)]
-
-fn foo<F: FnOnce()>(_f: F) { }
+// revisions: ast mir
+//[mir]compile-flags: -Z emit-end-regions -Z borrowck=mir
 
 fn main() {
-    let mut var = Vec::new();
-    foo(move|| {
-        var.push(1);
-    });
+    let x = 0;
+
+    (move || {
+        x = 1;
+        //[mir]~^ ERROR cannot assign to immutable item `x` [E0594]
+        //[ast]~^^ ERROR cannot assign to captured outer variable in an `FnMut` closure [E0594]
+    })()
 }

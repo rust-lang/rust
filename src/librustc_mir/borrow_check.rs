@@ -761,47 +761,34 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let move_data = self.move_data;
 
         // determine if this path has a non-mut owner (and thus needs checking).
-        let mut l = lvalue;
-        loop {
-            match *l {
-                Lvalue::Projection(ref proj) => {
-                    l = &proj.base;
-                    continue;
-                }
-                Lvalue::Local(local) => {
-                    match self.mir.local_decls[local].mutability {
-                        Mutability::Not => break, // needs check
-                        Mutability::Mut => return,
-                    }
-                }
-                Lvalue::Static(ref static_) => {
-                    // mutation of non-mut static is always illegal,
-                    // independent of dataflow. However it will be catched by
-                    // `check_access_permissions()`, we call delay_span_bug here
-                    // to be sure that no case has been missed
-                    if !self.tcx.is_static_mut(static_.def_id) {
-                        let item_msg = match self.describe_lvalue(lvalue) {
-                            Some(name) => format!("immutable static item `{}`", name),
-                            None => "immutable static item".to_owned()
-                        };
-                        self.tcx.sess.delay_span_bug(span,
-                            &format!("cannot assign to {}, should have been caught by \
-                            `check_access_permissions()`", item_msg));
-                    }
-                    return;
-                }
-            }
+        if let Ok(()) = self.is_mutable(lvalue, LocalMutationIsAllowed::No) {
+            return;
         }
 
-        if let Some(mpi) = self.move_path_for_lvalue(lvalue) {
-            for ii in &move_data.init_path_map[mpi] {
-                if flow_state.ever_inits.curr_state.contains(ii) {
-                    let first_assign_span = self.move_data.inits[*ii].span;
-                    self.report_illegal_reassignment(
-                        context, (lvalue, span), first_assign_span);
-                    break;
+        if let Err(_) = self.is_mutable(lvalue, LocalMutationIsAllowed::Yes) {
+            return;
+        }
+
+        match self.move_path_closest_to(lvalue) {
+            Ok(mpi) => {
+                for ii in &move_data.init_path_map[mpi] {
+                    if flow_state.ever_inits.curr_state.contains(ii) {
+                        let first_assign_span = self.move_data.inits[*ii].span;
+                        self.report_illegal_reassignment(
+                            context, (lvalue, span), first_assign_span);
+                        break;
+                    }
                 }
-            }
+            },
+            Err(NoMovePathFound::ReachedStatic) => {
+                let item_msg = match self.describe_lvalue(lvalue) {
+                    Some(name) => format!("immutable static item `{}`", name),
+                    None => "immutable static item".to_owned()
+                };
+                self.tcx.sess.delay_span_bug(span,
+                    &format!("cannot assign to {}, should have been caught by \
+                    `check_access_permissions()`", item_msg));
+            },
         }
     }
 
@@ -1108,12 +1095,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     ProjectionElem::Deref => {
                         let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
 
-                        // `Box<T>` owns its content, so mutable if its location is mutable
-                        if base_ty.is_box() {
-                            return self.is_mutable(&proj.base, LocalMutationIsAllowed::No);
-                        }
-
-                        // Otherwise we check the kind of deref to decide
+                        // Check the kind of deref to decide
                         match base_ty.sty {
                             ty::TyRef(_, tnm) => {
                                 match tnm.mutbl {
@@ -1121,7 +1103,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     hir::MutImmutable => Err(lvalue),
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
-                                    hir::MutMutable => self.is_unique(&proj.base),
+                                    hir::MutMutable => {
+                                        if self.is_upvar_field_projection(&proj.base).is_some() {
+                                            self.is_mutable(&proj.base, is_local_mutation_allowed)
+                                        } else {
+                                            self.is_unique(&proj.base)
+                                        }
+                                    },
                                 }
                             },
                             ty::TyRawPtr(tnm) => {
@@ -1133,8 +1121,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     hir::MutMutable => Ok(()),
                                 }
                             },
+                            // `Box<T>` owns its content, so mutable if its location is mutable
+                            _ if base_ty.is_box() =>
+                                self.is_mutable(&proj.base, LocalMutationIsAllowed::No),
                             // Deref should only be for reference, pointers or boxes
-                            _ => bug!("Deref of unexpected type: {:?}", base_ty)
+                            _ => bug!("Deref of unexpected type: {:?}", base_ty),
                         }
                     },
                     // All other projections are owned by their base path, so mutable if
@@ -1143,8 +1134,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     ProjectionElem::Index(..) |
                     ProjectionElem::ConstantIndex{..} |
                     ProjectionElem::Subslice{..} |
-                    ProjectionElem::Downcast(..) =>
+                    ProjectionElem::Downcast(..) => {
+                        let field_projection = self.is_upvar_field_projection(lvalue);
+
+                        if let Some(field) = field_projection {
+                            let decl = &self.mir.upvar_decls[field.index()];
+
+                            return match decl.mutability {
+                                Mutability::Mut => self.is_unique(&proj.base),
+                                Mutability::Not => Err(lvalue),
+                            };
+                        }
+
                         self.is_mutable(&proj.base, LocalMutationIsAllowed::No)
+                    }
                 }
             }
         }

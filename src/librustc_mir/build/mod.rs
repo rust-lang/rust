@@ -443,10 +443,20 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             let mut decl = UpvarDecl {
                 debug_name: keywords::Invalid.name(),
                 by_ref,
+                mutability: Mutability::Not,
             };
             if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_id) {
                 if let hir::PatKind::Binding(_, _, ref ident, _) = pat.node {
                     decl.debug_name = ident.node;
+
+                    let bm = *hir.tables.pat_binding_modes()
+                                        .get(pat.hir_id)
+                                        .expect("missing binding mode");
+                    if bm == ty::BindByValue(hir::MutMutable) {
+                        decl.mutability = Mutability::Mut;
+                    } else {
+                        decl.mutability = Mutability::Not;
+                    }
                 }
             }
             decl
@@ -571,7 +581,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             self.local_decls.push(LocalDecl {
-                mutability: Mutability::Not,
+                mutability: Mutability::Mut,
                 ty,
                 source_info: SourceInfo {
                     scope: ARGUMENT_VISIBILITY_SCOPE,
