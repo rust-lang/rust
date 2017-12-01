@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
@@ -18,7 +18,7 @@
 #
 # See all `update-references.sh`, if you just want to update a single test.
 
-if [[ "$1" == "--help" || "$1" == "-h" || "$1" == "" || "$2" != "" ]]; then
+if [ "$1" = "--help" ] || [ "$1" = "-h" ] || [ "$1" = "" ] || [ "$2" != "" ]; then
     echo "usage: $0 <build-directory>"
     echo ""
     echo "For example:"
