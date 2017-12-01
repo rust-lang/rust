@@ -44,14 +44,15 @@ pub struct OutlivesEnvironment<'tcx> {
 
 impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
-        let mut free_region_map = FreeRegionMap::new();
-        free_region_map.relate_free_regions_from_predicates(&param_env.caller_bounds);
-
-        OutlivesEnvironment {
+        let mut env = OutlivesEnvironment {
             param_env,
-            free_region_map,
+            free_region_map: FreeRegionMap::new(),
             region_bound_pairs: vec![],
-        }
+        };
+
+        env.init_free_regions_from_predicates();
+
+        env
     }
 
     /// Borrows current value of the `free_region_map`.
@@ -179,6 +180,29 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
                         // but presently we do not.)
                         self.free_region_map.relate_regions(r_a, r_b);
                     }
+                }
+            }
+        }
+    }
+
+    fn init_free_regions_from_predicates(&mut self) {
+        debug!("init_free_regions_from_predicates()");
+        for predicate in self.param_env.caller_bounds {
+            debug!("init_free_regions_from_predicates: predicate={:?}", predicate);
+            match *predicate {
+                ty::Predicate::Projection(..) |
+                ty::Predicate::Trait(..) |
+                ty::Predicate::Equate(..) |
+                ty::Predicate::Subtype(..) |
+                ty::Predicate::WellFormed(..) |
+                ty::Predicate::ObjectSafe(..) |
+                ty::Predicate::ClosureKind(..) |
+                ty::Predicate::TypeOutlives(..) |
+                ty::Predicate::ConstEvaluatable(..) => {
+                    // No region bounds here
+                }
+                ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
+                    self.free_region_map.relate_regions(r_b, r_a);
                 }
             }
         }

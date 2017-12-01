@@ -90,7 +90,8 @@ use middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
-use rustc::infer::{self, OutlivesEnvironment};
+use rustc::infer;
+use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::ty::adjustment;
 use rustc::ty::outlives::Component;
 
@@ -553,7 +554,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn resolve_regions_and_report_errors(&self) {
         self.fcx.resolve_regions_and_report_errors(self.subject_def_id,
                                                    &self.region_scope_tree,
-                                                   self.outlives_environment.free_region_map());
+                                                   &self.outlives_environment);
     }
 
     fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
