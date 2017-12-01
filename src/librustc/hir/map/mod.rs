@@ -1059,7 +1059,10 @@ pub fn map_crate<'hir>(sess: &::session::Session,
         intravisit::walk_crate(&mut collector, &forest.krate);
 
         let crate_disambiguator = sess.local_crate_disambiguator();
-        collector.finalize_and_compute_crate_hash(crate_disambiguator)
+        let cmdline_args = sess.opts.dep_tracking_hash();
+        collector.finalize_and_compute_crate_hash(crate_disambiguator,
+                                                  cstore,
+                                                  cmdline_args)
     };
 
     if log_enabled!(::log::LogLevel::Debug) {
