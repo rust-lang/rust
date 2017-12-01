@@ -339,10 +339,16 @@ pub fn run_tests(config: &Config) {
 }
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
+    let filter = config.filter.clone().map(|filter| {
+        test::TestNamePattern::new(
+            filter,
+            config.filter_exact,
+            config.filter_glob
+        )
+    });
+
     test::TestOpts {
-        filter: config.filter.clone(),
-        filter_exact: config.filter_exact,
-        filter_glob: config.filter_glob
+        filter: filter,
         run_ignored: config.run_ignored,
         quiet: config.quiet,
         logfile: config.logfile.clone(),
