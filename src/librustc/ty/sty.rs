@@ -356,6 +356,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// Returns the closure kind for this closure; only usable outside
     /// of an inference context, because in that context we know that
     /// there are no type variables.
+    ///
+    /// If you have an inference context, use `infcx.closure_kind()`.
     pub fn closure_kind(self, def_id: DefId, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> ty::ClosureKind {
         self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
     }
@@ -363,6 +365,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// Extracts the signature from the closure; only usable outside
     /// of an inference context, because in that context we know that
     /// there are no type variables.
+    ///
+    /// If you have an inference context, use `infcx.closure_sig()`.
     pub fn closure_sig(self, def_id: DefId, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
         match self.closure_sig_ty(def_id, tcx).sty {
             ty::TyFnPtr(sig) => sig,

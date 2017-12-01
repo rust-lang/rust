@@ -1339,26 +1339,27 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
     vtable: VtableClosureData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
 {
-    let closure_typer = selcx.closure_typer();
-    let closure_type = closure_typer.fn_sig(vtable.closure_def_id)
-        .subst(selcx.tcx(), vtable.substs.substs);
+    let tcx = selcx.tcx();
+    let infcx = selcx.infcx();
+    let closure_sig_ty = vtable.substs.closure_sig_ty(vtable.closure_def_id, tcx);
+    let closure_sig = infcx.shallow_resolve(&closure_sig_ty).fn_sig(tcx);
     let Normalized {
-        value: closure_type,
+        value: closure_sig,
         obligations
     } = normalize_with_depth(selcx,
                              obligation.param_env,
                              obligation.cause.clone(),
                              obligation.recursion_depth+1,
-                             &closure_type);
+                             &closure_sig);
 
-    debug!("confirm_closure_candidate: obligation={:?},closure_type={:?},obligations={:?}",
+    debug!("confirm_closure_candidate: obligation={:?},closure_sig={:?},obligations={:?}",
            obligation,
-           closure_type,
+           closure_sig,
            obligations);
 
     confirm_callable_candidate(selcx,
                                obligation,
-                               closure_type,
+                               closure_sig,
                                util::TupleArgumentsFlag::No)
         .with_addl_obligations(vtable.nested)
         .with_addl_obligations(obligations)

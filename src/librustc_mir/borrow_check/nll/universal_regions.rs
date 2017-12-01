@@ -381,7 +381,10 @@ const FR: NLLRegionVariableOrigin = NLLRegionVariableOrigin::FreeRegion;
 
 impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
     fn build(mut self) -> UniversalRegions<'tcx> {
+        debug!("build(mir_def_id={:?})", self.mir_def_id);
+
         let param_env = self.param_env;
+        debug!("build: param_env={:?}", param_env);
 
         assert_eq!(FIRST_GLOBAL_INDEX, self.infcx.num_region_vars());
 
@@ -393,8 +396,10 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         let first_extern_index = self.infcx.num_region_vars();
 
         let defining_ty = self.defining_ty();
+        debug!("build: defining_ty={:?}", defining_ty);
 
         let indices = self.compute_indices(fr_static, defining_ty);
+        debug!("build: indices={:?}", indices);
 
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
 
@@ -410,12 +415,14 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
 
         // Add the implied bounds from inputs and outputs.
         for ty in inputs_and_output {
+            debug!("build: input_or_output={:?}", ty);
             self.add_implied_bounds(&indices, ty);
         }
 
         // Finally, outlives is reflexive, and static outlives every
         // other free region.
         for fr in (FIRST_GLOBAL_INDEX..num_universals).map(RegionVid::new) {
+            debug!("build: relating free region {:?} to itself and to 'static", fr);
             self.relations.relate_universal_regions(fr, fr);
             self.relations.relate_universal_regions(fr_static, fr);
         }
@@ -562,6 +569,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
     ///
     /// Assumes that `universal_regions` indices map is fully constructed.
     fn add_implied_bounds(&mut self, indices: &UniversalRegionIndices<'tcx>, ty: Ty<'tcx>) {
+        debug!("add_implied_bounds(ty={:?})", ty);
         let span = self.infcx.tcx.def_span(self.mir_def_id);
         let bounds = self.infcx
             .implied_outlives_bounds(self.param_env, self.mir_node_id, ty, span);
@@ -576,6 +584,8 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         I: IntoIterator<Item = OutlivesBound<'tcx>>,
     {
         for outlives_bound in outlives_bounds {
+            debug!("add_outlives_bounds(bound={:?})", outlives_bound);
+
             match outlives_bound {
                 OutlivesBound::RegionSubRegion(r1, r2) => {
                     // The bound says that `r1 <= r2`; we store `r2: r1`.

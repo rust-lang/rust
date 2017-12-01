@@ -16,7 +16,6 @@ use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
 use rustc::ty::{self, TyCtxt, TypeFoldable, LvaluePreference, Ty};
-use rustc::ty::subst::Subst;
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use syntax::abi;
 use syntax::symbol::Symbol;
@@ -109,7 +108,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
                 if self.closure_kind(def_id, substs).is_none() {
-                    let closure_ty = self.fn_sig(def_id).subst(self.tcx, substs.substs);
+                    let closure_ty = self.closure_sig(def_id, substs);
                     let fn_sig = self.replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                    infer::FnCall,
                                                                    &closure_ty)
