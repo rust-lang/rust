@@ -187,7 +187,7 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 
         let eq = |&(lindex, lhs): &(usize, &Arm), &(rindex, rhs): &(usize, &Arm)| -> bool {
             let min_index = usize::min(lindex, rindex);
-            let max_index = usize::max(rindex, rindex);
+            let max_index = usize::max(lindex, rindex);
             // Arms with a guard are ignored, those can’t always be merged together
             // This is also the case for arms in-between each there is an arm with a guard
             (min_index..=max_index).all(|index| arms[index].guard.is_none()) &&
