@@ -2101,17 +2101,13 @@ fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<usi
     if FORMAT_LIKE_WHITELIST
         .iter()
         .find(|s| **s == callee_str)
-        .is_some()
-        && args.len() >= 1
-        && is_every_args_simple(args)
+        .is_some() && args.len() >= 1 && is_every_args_simple(args)
     {
         Some(1)
     } else if WRITE_LIKE_WHITELIST
         .iter()
         .find(|s| **s == callee_str)
-        .is_some()
-        && args.len() >= 2
-        && is_every_args_simple(args)
+        .is_some() && args.len() >= 2 && is_every_args_simple(args)
     {
         Some(2)
     } else {
