@@ -316,7 +316,7 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
                 if src_f.layout.ty == dst_f.layout.ty {
                     memcpy_ty(bcx, dst_f.llval, src_f.llval, src_f.layout,
-                        (src_f.alignment | dst_f.alignment).non_abi());
+                        Some(src_f.align.min(dst_f.align)));
                 } else {
                     coerce_unsized_into(bcx, src_f, dst_f);
                 }

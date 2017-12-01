@@ -24,49 +24,9 @@ use value::Value;
 use glue;
 
 use std::ptr;
-use std::ops;
 
 use super::{MirContext, LocalRef};
 use super::operand::{OperandRef, OperandValue};
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Alignment {
-    Packed(Align),
-    AbiAligned,
-}
-
-impl ops::BitOr for Alignment {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self {
-        match (self, rhs) {
-            (Alignment::Packed(a), Alignment::Packed(b)) => {
-                Alignment::Packed(a.min(b))
-            }
-            (Alignment::Packed(x), _) | (_, Alignment::Packed(x)) => {
-                Alignment::Packed(x)
-            }
-            (Alignment::AbiAligned, Alignment::AbiAligned) => {
-                Alignment::AbiAligned
-            }
-        }
-    }
-}
-
-impl<'a> From<TyLayout<'a>> for Alignment {
-    fn from(layout: TyLayout) -> Self {
-        Alignment::Packed(layout.align)
-    }
-}
-
-impl Alignment {
-    pub fn non_abi(self) -> Option<Align> {
-        match self {
-            Alignment::Packed(x) => Some(x),
-            Alignment::AbiAligned => None,
-        }
-    }
-}
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx> {
@@ -79,20 +39,20 @@ pub struct PlaceRef<'tcx> {
     /// Monomorphized type of this place, including variant information
     pub layout: TyLayout<'tcx>,
 
-    /// Whether this place is known to be aligned according to its layout
-    pub alignment: Alignment,
+    /// What alignment we know for this place
+    pub align: Align,
 }
 
 impl<'a, 'tcx> PlaceRef<'tcx> {
     pub fn new_sized(llval: ValueRef,
                      layout: TyLayout<'tcx>,
-                     alignment: Alignment)
+                     align: Align)
                      -> PlaceRef<'tcx> {
         PlaceRef {
             llval,
             llextra: ptr::null_mut(),
             layout,
-            alignment
+            align
         }
     }
 
@@ -100,7 +60,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                   -> PlaceRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, layout);
         let tmp = bcx.alloca(layout.llvm_type(bcx.ccx), name, layout.align);
-        Self::new_sized(tmp, layout, Alignment::AbiAligned)
+        Self::new_sized(tmp, layout, layout.align)
     }
 
     pub fn len(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
@@ -119,6 +79,14 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
 
     pub fn has_extra(&self) -> bool {
         !self.llextra.is_null()
+    }
+
+    pub fn non_abi_align(self) -> Option<Align> {
+        if self.align.abi() >= self.layout.align.abi() {
+            None
+        } else {
+            Some(self.align)
+        }
     }
 
     pub fn load(&self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
@@ -167,7 +135,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
             let llval = if !const_llval.is_null() {
                 const_llval
             } else {
-                let load = bcx.load(self.llval, self.alignment.non_abi());
+                let load = bcx.load(self.llval, self.non_abi_align());
                 if let layout::Abi::Scalar(ref scalar) = self.layout.abi {
                     scalar_load_metadata(load, scalar);
                 }
@@ -181,7 +149,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                 if scalar.is_bool() {
                     llptr = bcx.pointercast(llptr, Type::i8p(bcx.ccx));
                 }
-                let load = bcx.load(llptr, self.alignment.non_abi());
+                let load = bcx.load(llptr, self.non_abi_align());
                 scalar_load_metadata(load, scalar);
                 if scalar.is_bool() {
                     bcx.trunc(load, Type::i1(bcx.ccx))
@@ -191,7 +159,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
             };
             OperandValue::Pair(load(0, a), load(1, b))
         } else {
-            OperandValue::Ref(self.llval, self.alignment)
+            OperandValue::Ref(self.llval, self.align)
         };
 
         OperandRef { val, layout: self.layout }
@@ -202,7 +170,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         let ccx = bcx.ccx;
         let field = self.layout.field(ccx, ix);
         let offset = self.layout.fields.offset(ix);
-        let alignment = self.alignment | Alignment::from(self.layout);
+        let align = self.align.min(self.layout.align).min(field.align);
 
         let simple = || {
             // Unions and newtypes only use an offset of 0.
@@ -224,7 +192,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                     ptr::null_mut()
                 },
                 layout: field,
-                alignment,
+                align,
             }
         };
 
@@ -271,7 +239,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         let unaligned_offset = C_usize(ccx, offset.bytes());
 
         // Get the alignment of the field
-        let (_, align) = glue::size_and_align_of_dst(bcx, field.ty, meta);
+        let (_, unsized_align) = glue::size_and_align_of_dst(bcx, field.ty, meta);
 
         // Bump the unaligned offset up to the appropriate alignment using the
         // following expression:
@@ -279,9 +247,9 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         //   (unaligned offset + (align - 1)) & -align
 
         // Calculate offset
-        let align_sub_1 = bcx.sub(align, C_usize(ccx, 1u64));
+        let align_sub_1 = bcx.sub(unsized_align, C_usize(ccx, 1u64));
         let offset = bcx.and(bcx.add(unaligned_offset, align_sub_1),
-        bcx.neg(align));
+        bcx.neg(unsized_align));
 
         debug!("struct_field_ptr: DST field offset: {:?}", Value(offset));
 
@@ -297,7 +265,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
             llval: bcx.pointercast(byte_ptr, ll_fty.ptr_to()),
             llextra: self.llextra,
             layout: field,
-            alignment,
+            align,
         }
     }
 
@@ -370,7 +338,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                     .discriminant_for_variant(bcx.tcx(), variant_index)
                     .to_u128_unchecked() as u64;
                 bcx.store(C_int(ptr.layout.llvm_type(bcx.ccx), to as i64),
-                    ptr.llval, ptr.alignment.non_abi());
+                    ptr.llval, ptr.non_abi_align());
             }
             layout::Variants::NicheFilling {
                 dataful_variant,
@@ -414,7 +382,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
             llval: bcx.inbounds_gep(self.llval, &[C_usize(bcx.ccx, 0), llindex]),
             llextra: ptr::null_mut(),
             layout: self.layout.field(bcx.ccx, 0),
-            alignment: self.alignment
+            align: self.align
         }
     }
 
@@ -463,9 +431,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let result = match *place {
             mir::Place::Local(_) => bug!(), // handled above
             mir::Place::Static(box mir::Static { def_id, ty }) => {
-                PlaceRef::new_sized(consts::get_static(ccx, def_id),
-                                     ccx.layout_of(self.monomorphize(&ty)),
-                                     Alignment::AbiAligned)
+                let layout = ccx.layout_of(self.monomorphize(&ty));
+                PlaceRef::new_sized(consts::get_static(ccx, def_id), layout, layout.align)
             },
             mir::Place::Projection(box mir::Projection {
                 ref base,

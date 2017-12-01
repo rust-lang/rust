@@ -42,7 +42,6 @@ use syntax::ast;
 use std::fmt;
 use std::ptr;
 
-use super::place::Alignment;
 use super::operand::{OperandRef, OperandValue};
 use super::MirContext;
 
@@ -182,12 +181,12 @@ impl<'a, 'tcx> Const<'tcx> {
             let align = ccx.align_of(self.ty);
             let ptr = consts::addr_of(ccx, self.llval, align, "const");
             OperandValue::Ref(consts::ptrcast(ptr, layout.llvm_type(ccx).ptr_to()),
-                              Alignment::AbiAligned)
+                              layout.align)
         };
 
         OperandRef {
             val,
-            layout: ccx.layout_of(self.ty)
+            layout
         }
     }
 }

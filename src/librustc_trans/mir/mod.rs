@@ -35,7 +35,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 pub use self::constant::trans_static_initializer;
 
 use self::analyze::CleanupKind;
-use self::place::{Alignment, PlaceRef};
+use self::place::PlaceRef;
 use rustc::mir::traversal;
 
 use self::operand::{OperandRef, OperandValue};
@@ -279,9 +279,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 if local == mir::RETURN_PLACE && mircx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return place) -> place", local);
                     let llretptr = llvm::get_param(llfn, 0);
-                    LocalRef::Place(PlaceRef::new_sized(llretptr,
-                                                          layout,
-                                                          Alignment::AbiAligned))
+                    LocalRef::Place(PlaceRef::new_sized(llretptr, layout, layout.align))
                 } else if memory_locals.contains(local.index()) {
                     debug!("alloc: {:?} -> place", local);
                     LocalRef::Place(PlaceRef::alloca(&bcx, layout, &format!("{:?}", local)))
@@ -474,7 +472,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
             bcx.set_value_name(llarg, &name);
             llarg_idx += 1;
-            PlaceRef::new_sized(llarg, arg.layout, Alignment::AbiAligned)
+            PlaceRef::new_sized(llarg, arg.layout, arg.layout.align)
         } else {
             let tmp = PlaceRef::alloca(bcx, arg.layout, &name);
             arg.store_fn_arg(bcx, &mut llarg_idx, tmp);

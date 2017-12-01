@@ -104,7 +104,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let start = dest.project_index(&bcx, C_usize(bcx.ccx, 0)).llval;
 
                 if let OperandValue::Immediate(v) = tr_elem.val {
-                    let align = dest.alignment.non_abi()
+                    let align = dest.non_abi_align()
                         .unwrap_or(tr_elem.layout.align);
                     let align = C_i32(bcx.ccx, align.abi() as i32);
                     let size = C_usize(bcx.ccx, dest.layout.size.bytes());
@@ -139,7 +139,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 header_bcx.cond_br(keep_going, body_bcx.llbb(), next_bcx.llbb());
 
                 tr_elem.val.store(&body_bcx,
-                    PlaceRef::new_sized(current, tr_elem.layout, dest.alignment));
+                    PlaceRef::new_sized(current, tr_elem.layout, dest.align));
 
                 let next = body_bcx.inbounds_gep(current, &[C_usize(bcx.ccx, 1)]);
                 body_bcx.br(header_bcx.llbb());

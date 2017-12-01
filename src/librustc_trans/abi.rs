@@ -30,7 +30,7 @@ use cabi_sparc64;
 use cabi_nvptx;
 use cabi_nvptx64;
 use cabi_hexagon;
-use mir::place::{Alignment, PlaceRef};
+use mir::place::PlaceRef;
 use mir::operand::OperandValue;
 use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
@@ -561,7 +561,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
         }
         let ccx = bcx.ccx;
         if self.is_indirect() {
-            OperandValue::Ref(val, Alignment::AbiAligned).store(bcx, dst)
+            OperandValue::Ref(val, self.layout.align).store(bcx, dst)
         } else if let PassMode::Cast(cast) = self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.

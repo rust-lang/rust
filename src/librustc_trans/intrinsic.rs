@@ -14,7 +14,7 @@ use intrinsics::{self, Intrinsic};
 use llvm;
 use llvm::{ValueRef};
 use abi::{Abi, FnType, PassMode};
-use mir::place::{PlaceRef, Alignment};
+use mir::place::PlaceRef;
 use mir::operand::{OperandRef, OperandValue};
 use base::*;
 use common::*;
@@ -106,7 +106,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let name = &*tcx.item_name(def_id);
 
     let llret_ty = ccx.layout_of(ret_ty).llvm_type(ccx);
-    let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, Alignment::AbiAligned);
+    let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, fn_ty.ret.layout.align);
 
     let simple = get_simple_intrinsic(ccx, name);
     let llval = match name {
@@ -254,7 +254,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 bcx.volatile_store(b, dst.project_field(bcx, 1).llval);
             } else {
                 let val = if let OperandValue::Ref(ptr, align) = args[1].val {
-                    bcx.load(ptr, align.non_abi())
+                    bcx.load(ptr, Some(align))
                 } else {
                     if dst.layout.is_zst() {
                         return;
@@ -330,9 +330,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             let overflow = bcx.zext(bcx.extract_value(pair, 1), Type::bool(ccx));
 
                             let dest = result.project_field(bcx, 0);
-                            bcx.store(val, dest.llval, dest.alignment.non_abi());
+                            bcx.store(val, dest.llval, dest.non_abi_align());
                             let dest = result.project_field(bcx, 1);
-                            bcx.store(overflow, dest.llval, dest.alignment.non_abi());
+                            bcx.store(overflow, dest.llval, dest.non_abi_align());
 
                             return;
                         },
@@ -473,9 +473,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         let success = bcx.zext(bcx.extract_value(pair, 1), Type::bool(bcx.ccx));
 
                         let dest = result.project_field(bcx, 0);
-                        bcx.store(val, dest.llval, dest.alignment.non_abi());
+                        bcx.store(val, dest.llval, dest.non_abi_align());
                         let dest = result.project_field(bcx, 1);
-                        bcx.store(success, dest.llval, dest.alignment.non_abi());
+                        bcx.store(success, dest.llval, dest.non_abi_align());
                         return;
                     } else {
                         return invalid_monomorphization(ty);
@@ -544,7 +544,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let tp_ty = substs.type_at(0);
             let dst = args[0].deref(bcx.ccx);
             let val = if let OperandValue::Ref(ptr, align) = args[1].val {
-                bcx.load(ptr, align.non_abi())
+                bcx.load(ptr, Some(align))
             } else {
                 from_immediate(bcx, args[1].immediate())
             };
@@ -677,7 +677,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     for i in 0..elems.len() {
                         let dest = result.project_field(bcx, i);
                         let val = bcx.extract_value(val, i as u64);
-                        bcx.store(val, dest.llval, dest.alignment.non_abi());
+                        bcx.store(val, dest.llval, dest.non_abi_align());
                     }
                     return;
                 }
