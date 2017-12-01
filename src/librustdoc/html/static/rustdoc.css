@@ -920,6 +920,12 @@ span.since {
 	border-color: transparent black transparent transparent;
 }
 
+.important-traits .tooltip .tooltiptext {
+	background-color: white;
+	color: black;
+	border: 1px solid #000;
+}
+
 pre.rust {
 	position: relative;
 }

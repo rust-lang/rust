@@ -140,6 +140,6 @@ fn main() {
         cc::Build::new()
             .flag("-fvisibility=hidden")
             .file("pthread_atfork_dummy.c")
-            .compile("libpthread_atfork_dummy.a");
+            .compile("pthread_atfork_dummy");
     }
 }

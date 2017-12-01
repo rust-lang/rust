@@ -575,7 +575,8 @@ impl Definitions {
             self.node_to_def_index.insert(node_id, index);
         }
 
-        if expansion.is_modern() {
+        let expansion = expansion.modern();
+        if expansion != Mark::root() {
             self.expansions.insert(index, expansion);
         }
 
