@@ -470,7 +470,6 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         default_passes = false;
 
         passes = vec![
-            String::from("strip-hidden"),
             String::from("collapse-docs"),
             String::from("unindent-comments"),
         ];
