@@ -40,6 +40,7 @@
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 
+extern crate glob;
 extern crate getopts;
 extern crate term;
 #[cfg(unix)]
@@ -339,6 +340,7 @@ pub struct TestOpts {
     pub list: bool,
     pub filter: Option<String>,
     pub filter_exact: bool,
+    pub filter_glob: bool,
     pub run_ignored: bool,
     pub run_tests: bool,
     pub bench_benchmarks: bool,
@@ -358,6 +360,7 @@ impl TestOpts {
             list: false,
             filter: None,
             filter_exact: false,
+            filter_glob: false,
             run_ignored: false,
             run_tests: false,
             bench_benchmarks: false,
@@ -392,6 +395,7 @@ fn optgroups() -> getopts::Options {
                                be used multiple times)","FILTER")
         .optflag("q", "quiet", "Display one character per test instead of one line")
         .optflag("", "exact", "Exactly match filters rather than by substring")
+        .optflag("g", "glob", "Use glob patterns for matching test names")
         .optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
@@ -445,7 +449,11 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         return None;
     }
 
+    let mut glob = matches.opt_present("glob");
     let filter = if !matches.free.is_empty() {
+        if matches.free[0].chars().any(|c| ['*', '?', '['].contains(&c)) {
+            glob = true;
+        }
         Some(matches.free[0].clone())
     } else {
         None
@@ -500,6 +508,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         list,
         filter,
         filter_exact: exact,
+        filter_glob: glob,
         run_ignored,
         run_tests,
         bench_benchmarks,
@@ -1324,9 +1333,17 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     filtered = match opts.filter {
         None => filtered,
         Some(ref filter) => {
+            let glob = if opts.filter_glob && !opts.filter_exact {
+                glob::Pattern::new(filter).ok()
+            } else {
+                None
+            };
+
             filtered.into_iter()
                     .filter(|test| {
-                        if opts.filter_exact {
+                        if let Some(ref glob) = glob {
+                            glob.matches(&test.desc.name.as_slice())
+                        } else if opts.filter_exact {
                             test.desc.name.as_slice() == &filter[..]
                         } else {
                             test.desc.name.as_slice().contains(&filter[..])
@@ -1339,6 +1356,12 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     // Skip tests that match any of the skip filters
     filtered = filtered.into_iter()
         .filter(|t| !opts.skip.iter().any(|sf| {
+                if opts.filter_glob && !opts.filter_exact {
+                    if let Ok(glob) = glob::Pattern::new(sf) {
+                        return glob.matches(&t.desc.name.as_slice());
+                    }
+                }
+
                 if opts.filter_exact {
                     t.desc.name.as_slice() == &sf[..]
                 } else {
@@ -1920,7 +1943,7 @@ mod tests {
     }
 
     #[test]
-    pub fn exact_filter_match() {
+    pub fn filter_type_match() {
         fn tests() -> Vec<TestDescAndFn> {
             vec!["base",
                  "base::test",
@@ -1987,6 +2010,36 @@ mod tests {
                 filter: Some("base::test".into()),
                 filter_exact: true,
                 ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 1);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("b".into()),
+                filter_glob: true, ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 0);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("base".into()),
+                filter_glob: true, ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 1);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("base*".into()),
+                filter_glob: true, ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 4);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("base::test?".into()),
+                filter_glob: true, ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 2);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some("base::test[2-9]".into()),
+                filter_glob: true, ..TestOpts::new()
             }, tests());
         assert_eq!(exact.len(), 1);
     }

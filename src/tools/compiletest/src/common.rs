@@ -146,6 +146,9 @@ pub struct Config {
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
 
+    /// Match the test name using a glob
+    pub filter_glob: bool,
+
     /// Write out a parseable log of tests that were run
     pub logfile: Option<PathBuf>,
 

@@ -2425,6 +2425,7 @@ name = "test"
 version = "0.0.0"
 dependencies = [
  "getopts 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glob 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "term 0.0.0",
 ]
 

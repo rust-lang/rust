@@ -10,4 +10,5 @@ crate-type = ["dylib", "rlib"]
 
 [dependencies]
 getopts = "0.2"
+glob = "0.2"
 term = { path = "../libterm" }
