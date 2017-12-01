@@ -30,11 +30,12 @@ use syntax_pos::Span;
 
 use dataflow::{do_dataflow, DebugFormatted};
 use dataflow::MoveDataParamEnv;
-use dataflow::DataflowResultsConsumer;
+use dataflow::{DataflowAnalysis, DataflowResultsConsumer};
 use dataflow::{FlowAtLocation, FlowsAtLocation};
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use dataflow::{EverInitializedLvals, MovingOutStatements};
-use dataflow::{BorrowData, BorrowIndex, Borrows};
+use dataflow::{Borrows, BorrowData, ReserveOrActivateIndex};
+use dataflow::{ActiveBorrows, Reservations};
 use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
@@ -48,6 +49,9 @@ use self::MutateMode::{JustWrite, WriteAndRead};
 mod error_reporting;
 mod flows;
 mod prefixes;
+
+use std::borrow::Cow;
+
 pub(crate) mod nll;
 
 pub fn provide(providers: &mut Providers) {
@@ -205,23 +209,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     };
     let flow_inits = flow_inits; // remove mut
 
-    let flow_borrows = FlowAtLocation::new(do_dataflow(
-        tcx,
-        mir,
-        id,
-        &attributes,
-        &dead_unwinds,
-        Borrows::new(tcx, mir, opt_regioncx, def_id, body_id),
-        |bd, i| DebugFormatted::new(bd.location(i)),
-    ));
-
-    let mut state = Flows::new(
-        flow_borrows,
-        flow_inits,
-        flow_uninits,
-        flow_move_outs,
-        flow_ever_inits,
-    );
     let mut mbcx = MirBorrowckCtxt {
         tcx: tcx,
         mir: mir,
@@ -236,6 +223,44 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         storage_dead_or_drop_error_reported_l: FxHashSet(),
         storage_dead_or_drop_error_reported_s: FxHashSet(),
     };
+
+    let borrows = Borrows::new(tcx, mir, opt_regioncx, def_id, body_id);
+    let flow_reservations = do_dataflow(
+        tcx,
+        mir,
+        id,
+        &attributes,
+        &dead_unwinds,
+        Reservations::new(borrows),
+        |rs, i| {
+            // In principle we could make the dataflow ensure that
+            // only reservation bits show up, and assert so here.
+            //
+            // In practice it is easier to be looser; in particular,
+            // it is okay for the kill-sets to hold activation bits.
+            DebugFormatted::new(&(i.kind(), rs.location(i)))
+        });
+    let flow_active_borrows = {
+        let reservations_on_entry = flow_reservations.0.sets.entry_set_state();
+        let reservations = flow_reservations.0.operator;
+        let a = DataflowAnalysis::new_with_entry_sets(mir,
+                                                      &dead_unwinds,
+                                                      Cow::Borrowed(reservations_on_entry),
+                                                      ActiveBorrows::new(reservations));
+        let results = a.run(tcx,
+                            id,
+                            &attributes,
+                            |ab, i| DebugFormatted::new(&(i.kind(), ab.location(i))));
+        FlowAtLocation::new(results)
+    };
+
+    let mut state = Flows::new(
+        flow_active_borrows,
+        flow_inits,
+        flow_uninits,
+        flow_move_outs,
+        flow_ever_inits,
+    );
 
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
 
@@ -504,9 +529,8 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 let data = domain.borrows();
                 flow_state.borrows.with_elems_outgoing(|borrows| {
                     for i in borrows {
-                        let borrow = &data[i];
+                        let borrow = &data[i.borrow_index()];
                         let context = ContextKind::StorageDead.new(loc);
-
                         self.check_for_invalidation_at_exit(context, borrow, span, flow_state);
                     }
                 });
@@ -721,7 +745,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         WriteKind::StorageDeadOrDrop => {
                             error_reported = true;
                             this.report_borrowed_value_does_not_live_long_enough(
-                                context, borrow, place_span.1, flow_state.borrows.operator());
+                                context, borrow, place_span.1,
+                                flow_state.borrows.operator());
                         }
                         WriteKind::Mutate => {
                             error_reported = true;
@@ -1778,7 +1803,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
         mut op: F,
     ) where
-        F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>) -> Control,
+        F: FnMut(&mut Self, ReserveOrActivateIndex, &BorrowData<'tcx>) -> Control,
     {
         let (access, place) = access_place;
 
@@ -1790,7 +1815,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
         for i in flow_state.borrows.elems_incoming() {
-            let borrowed = &data[i];
+            // FIXME for now, just skip the activation state.
+            if i.is_activation() { continue }
+
+            let borrowed = &data[i.borrow_index()];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {
                 let ctrl = op(self, i, borrowed);

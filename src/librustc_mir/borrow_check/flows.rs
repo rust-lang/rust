@@ -17,13 +17,13 @@ use rustc::mir::{BasicBlock, Location};
 
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use dataflow::{EverInitializedLvals, MovingOutStatements};
-use dataflow::{Borrows, FlowAtLocation, FlowsAtLocation};
+use dataflow::{ActiveBorrows, FlowAtLocation, FlowsAtLocation};
 use dataflow::move_paths::HasMoveData;
 use std::fmt;
 
 // (forced to be `pub` due to its use as an associated type below.)
-pub struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
-    pub borrows: FlowAtLocation<Borrows<'b, 'gcx, 'tcx>>,
+pub(crate) struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
+    pub borrows: FlowAtLocation<ActiveBorrows<'b, 'gcx, 'tcx>>,
     pub inits: FlowAtLocation<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
     pub uninits: FlowAtLocation<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
     pub move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
@@ -32,7 +32,7 @@ pub struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
 
 impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
     pub fn new(
-        borrows: FlowAtLocation<Borrows<'b, 'gcx, 'tcx>>,
+        borrows: FlowAtLocation<ActiveBorrows<'b, 'gcx, 'tcx>>,
         inits: FlowAtLocation<MaybeInitializedLvals<'b, 'gcx, 'tcx>>,
         uninits: FlowAtLocation<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
         move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
@@ -87,7 +87,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let borrow_data = &self.borrows.operator().borrows()[borrow];
+            let borrow_data = &self.borrows.operator().borrows()[borrow.borrow_index()];
             s.push_str(&format!("{}", borrow_data));
         });
         s.push_str("] ");
@@ -99,7 +99,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let borrow_data = &self.borrows.operator().borrows()[borrow];
+            let borrow_data = &self.borrows.operator().borrows()[borrow.borrow_index()];
             s.push_str(&format!("{}", borrow_data));
         });
         s.push_str("] ");
