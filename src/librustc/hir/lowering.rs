@@ -131,6 +131,30 @@ pub struct LoweringContext<'a> {
     current_hir_id_owner: Vec<(DefIndex, u32)>,
     item_local_id_counters: NodeMap<u32>,
     node_id_to_hir_id: IndexVec<NodeId, hir::HirId>,
+
+    /// How to handle elided lifetimes; modified as we
+    /// descend the tree.
+    lifetime_elision_behavior: LifetimeElisionBehavior,
+}
+
+/// What to do when we encounter an elided lifetime,
+/// either because nothing was written or because `'_`
+/// was written.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum LifetimeElisionBehavior {
+    /// Generate an early-bound lifetime on the impl
+    /// header. Used in impl headers:
+    ///
+    /// ```
+    /// impl Foo for &str { }
+    /// //           ^ this lifetime here
+    /// ```
+    GenerateEarlyBound,
+
+    /// Generate a reference to the special elided
+    /// lifetime name, this will then be handled
+    /// by `middle::resolve_lifetimes`.
+    GenerateElided,
 }
 
 pub trait Resolver {
@@ -200,6 +224,7 @@ pub fn lower_crate(sess: &Session,
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
+        lifetime_elision_behavior: LifetimeElisionBehavior::GenerateElided,
     }.lower_crate(krate)
 }
 
@@ -408,6 +433,25 @@ impl<'a> LoweringContext<'a> {
                 hir_id: existing_hir_id,
             }
         }
+    }
+
+    /// Shorthand for enabling elision.
+    fn with_elision_permitted<F, R>(&mut self, f: F) -> R
+        where F: FnOnce(&mut Self) -> R
+    {
+        self.with_lifetime_elision_behavior(LifetimeElisionBehavior::GenerateElided, f)
+    }
+
+    /// Updates `lifetime_elision_behavior` to `behavior` for the duration of `f()`,
+    /// resetting it back to its old value afterwards.
+    fn with_lifetime_elision_behavior<F, R>(&mut self, behavior: LifetimeElisionBehavior, f: F) -> R
+        where F: FnOnce(&mut Self) -> R
+    {
+        let old_lifetime_elision_behavior = mem::replace(
+            &mut self.lifetime_elision_behavior, behavior);
+        let result = f(self);
+        self.lifetime_elision_behavior = old_lifetime_elision_behavior;
+        result
     }
 
     fn with_hir_id_owner<F>(&mut self, owner: NodeId, f: F)
@@ -862,13 +906,15 @@ impl<'a> LoweringContext<'a> {
             }
             TyKind::BareFn(ref f) => {
                 self.with_in_scope_lifetime_defs(&f.lifetimes, |this|
+                this.with_elision_permitted(|this| {
                     hir::TyBareFn(P(hir::BareFnTy {
                         lifetimes: this.lower_lifetime_defs(&f.lifetimes),
                         unsafety: this.lower_unsafety(f.unsafety),
                         abi: f.abi,
                         decl: this.lower_fn_decl(&f.decl, None, false),
                         arg_names: this.lower_fn_args_to_names(&f.decl),
-                    })))
+                    }))
+                }))
             }
             TyKind::Never => hir::TyNever,
             TyKind::Tup(ref tys) => {
@@ -916,7 +962,10 @@ impl<'a> LoweringContext<'a> {
                     }
                 }).collect();
                 let lifetime_bound = lifetime_bound.unwrap_or_else(|| {
-                    self.elided_lifetime(t.span)
+                    // The lifetime object bound is scoped to this trait object type, so we want to
+                    // permit elision.
+                    self.with_elision_permitted(
+                        |this| this.elided_lifetime(t.span))
                 });
                 hir::TyTraitObject(bounds, lifetime_bound)
             }
@@ -1342,25 +1391,27 @@ impl<'a> LoweringContext<'a> {
                                           data: &ParenthesizedParameterData)
                                           -> (hir::PathParameters, bool) {
         const DISALLOWED: ImplTraitContext = ImplTraitContext::Disallowed;
-        let &ParenthesizedParameterData { ref inputs, ref output, span } = data;
-        let inputs = inputs.iter().map(|ty| self.lower_ty(ty, DISALLOWED)).collect();
-        let mk_tup = |this: &mut Self, tys, span| {
-            let LoweredNodeId { node_id, hir_id } = this.next_id();
-            P(hir::Ty { node: hir::TyTup(tys), id: node_id, hir_id, span })
-        };
+        self.with_elision_permitted(|this| {
+            let &ParenthesizedParameterData { ref inputs, ref output, span } = data;
+            let inputs = inputs.iter().map(|ty| this.lower_ty(ty, DISALLOWED)).collect();
+            let mk_tup = |this: &mut Self, tys, span| {
+                let LoweredNodeId { node_id, hir_id } = this.next_id();
+                P(hir::Ty { node: hir::TyTup(tys), id: node_id, hir_id, span })
+            };
 
-        (hir::PathParameters {
-            lifetimes: hir::HirVec::new(),
-            types: hir_vec![mk_tup(self, inputs, span)],
-            bindings: hir_vec![hir::TypeBinding {
-                id: self.next_id().node_id,
-                name: Symbol::intern(FN_OUTPUT_NAME),
-                ty: output.as_ref().map(|ty| self.lower_ty(&ty, DISALLOWED))
-                                   .unwrap_or_else(|| mk_tup(self, hir::HirVec::new(), span)),
-                span: output.as_ref().map_or(span, |ty| ty.span),
-            }],
-            parenthesized: true,
-        }, false)
+            (hir::PathParameters {
+                lifetimes: hir::HirVec::new(),
+                types: hir_vec![mk_tup(this, inputs, span)],
+                bindings: hir_vec![hir::TypeBinding {
+                    id: this.next_id().node_id,
+                    name: Symbol::intern(FN_OUTPUT_NAME),
+                    ty: output.as_ref().map(|ty| this.lower_ty(&ty, DISALLOWED))
+                                       .unwrap_or_else(|| mk_tup(this, hir::HirVec::new(), span)),
+                    span: output.as_ref().map_or(span, |ty| ty.span),
+                }],
+                parenthesized: true,
+            }, false)
+        })
     }
 
     fn lower_local(&mut self, l: &Local) -> P<hir::Local> {
@@ -1840,6 +1891,33 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemAutoImpl(self.lower_unsafety(unsafety),
                                      trait_ref)
             }
+            ItemKind::Impl(..) => {
+                self.with_lifetime_elision_behavior(
+                    LifetimeElisionBehavior::GenerateEarlyBound,
+                    |this| this.lower_impl(id, i))
+            }
+            ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
+                let bounds = self.lower_bounds(bounds, ImplTraitContext::Disallowed);
+                let items = items.iter().map(|item| self.lower_trait_item_ref(item)).collect();
+                hir::ItemTrait(self.lower_is_auto(is_auto),
+                               self.lower_unsafety(unsafety),
+                               self.lower_generics(generics),
+                               bounds,
+                               items)
+            }
+            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
+        }
+
+        // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
+        //     not cause an assertion failure inside the `lower_defaultness` function
+    }
+
+    /// Lower an AST impl into a HIR impl. Assumes that the caller has setup
+    /// the elision behavior for us.
+    fn lower_impl(&mut self, id: NodeId, i: &ItemKind) -> hir::Item_ {
+        assert_eq!(self.lifetime_elision_behavior,
+                   LifetimeElisionBehavior::GenerateEarlyBound);
+        match *i {
             ItemKind::Impl(unsafety,
                            polarity,
                            defaultness,
@@ -1881,20 +1959,9 @@ impl<'a> LoweringContext<'a> {
                               lowered_ty,
                               new_impl_items)
             }
-            ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
-                let bounds = self.lower_bounds(bounds, ImplTraitContext::Disallowed);
-                let items = items.iter().map(|item| self.lower_trait_item_ref(item)).collect();
-                hir::ItemTrait(self.lower_is_auto(is_auto),
-                               self.lower_unsafety(unsafety),
-                               self.lower_generics(generics),
-                               bounds,
-                               items)
-            }
-            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
-        }
 
-        // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to
-        //     not cause an assertion failure inside the `lower_defaultness` function
+            _ => bug!("lower_impl invoked with non-impl")
+        }
     }
 
     fn lower_use_tree(&mut self,
@@ -3550,7 +3617,14 @@ impl<'a> LoweringContext<'a> {
                     // so the `Ty` itself needs a different one.
                     id = self.next_id();
 
-                    hir::TyTraitObject(hir_vec![principal], self.elided_lifetime(span))
+                    // Trait object lifetimes are scoped to the
+                    // trait object type and hence can always be
+                    // elided.
+                    let lifetime =
+                        self.with_elision_permitted(
+                            |this| this.elided_lifetime(span));
+
+                    hir::TyTraitObject(hir_vec![principal], lifetime)
                 } else {
                     hir::TyPath(hir::QPath::Resolved(None, path))
                 }
@@ -3561,10 +3635,18 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn elided_lifetime(&mut self, span: Span) -> hir::Lifetime {
-        hir::Lifetime {
-            id: self.next_id().node_id,
-            span,
-            name: hir::LifetimeName::Implicit,
+        match self.lifetime_elision_behavior {
+            LifetimeElisionBehavior::GenerateElided => {
+                hir::Lifetime {
+                    id: self.next_id().node_id,
+                    span,
+                    name: hir::LifetimeName::Implicit,
+                }
+            }
+
+            LifetimeElisionBehavior::GenerateEarlyBound => {
+                self.sess.diagnostic().span_bug(span, "elided lifetime in impl header?")
+            }
         }
     }
 }
