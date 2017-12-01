@@ -1937,14 +1937,12 @@ impl<'a> Resolver<'a> {
                 });
             }
 
-            ItemKind::Use(ref view_path) => {
-                match view_path.node {
-                    ast::ViewPathList(ref prefix, ref items) if items.is_empty() => {
-                        // Resolve prefix of an import with empty braces (issue #28388).
-                        self.smart_resolve_path(item.id, None, prefix, PathSource::ImportPrefix);
-                    }
-                    _ => {}
-                }
+            ItemKind::Use(ref use_tree) => {
+                let path = Path {
+                    segments: vec![],
+                    span: use_tree.span,
+                };
+                self.resolve_use_tree(item, use_tree, &path);
             }
 
             ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_)=> {
@@ -1952,6 +1950,32 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
+        }
+    }
+
+    fn resolve_use_tree(&mut self, item: &Item, use_tree: &ast::UseTree, prefix: &Path) {
+        match use_tree.kind {
+            ast::UseTreeKind::Nested(ref items) => {
+                let path = Path {
+                    segments: prefix.segments
+                        .iter()
+                        .chain(use_tree.prefix.segments.iter())
+                        .cloned()
+                        .collect(),
+                    span: prefix.span.to(use_tree.prefix.span),
+                };
+
+                if items.len() == 0 {
+                    // Resolve prefix of an import with empty braces (issue #28388).
+                    self.smart_resolve_path(item.id, None, &path, PathSource::ImportPrefix);
+                } else {
+                    for &(ref tree, _) in items {
+                        self.resolve_use_tree(item, tree, &path);
+                    }
+                }
+            }
+            ast::UseTreeKind::Simple(_) => {},
+            ast::UseTreeKind::Glob => {},
         }
     }
 

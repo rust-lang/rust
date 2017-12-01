@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod x {
-    pub struct A;
-    pub struct B;
+#![feature(use_nested_groups)]
+#![deny(unused_imports)]
+
+mod foo {
+    pub enum Bar {}
 }
 
-// `.` is similar to `,` so list parsing should continue to closing `}`
-use x::{A. B}; //~ ERROR expected one of `,`, `::`, or `as`, found `.`
+use foo::{*, *}; //~ ERROR unused import: `*`
 
-fn main() {}
+fn main() {
+    let _: Bar;
+}

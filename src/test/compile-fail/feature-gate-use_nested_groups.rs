@@ -8,12 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod x {
-    pub struct A;
-    pub struct B;
+#![allow(unused_imports, dead_code)]
+
+mod a {
+    pub enum B {}
+    pub enum C {}
+
+    pub mod d {
+        pub enum E {}
+        pub enum F {}
+
+        pub mod g {
+            pub enum H {}
+        }
+    }
 }
 
-// `.` is similar to `,` so list parsing should continue to closing `}`
-use x::{A. B}; //~ ERROR expected one of `,`, `::`, or `as`, found `.`
+use a::{B, d::{*, g::H}};  //~ ERROR glob imports in `use` groups are experimental
+                           //~^ ERROR nested groups in `use` are experimental
+                           //~^^ ERROR paths in `use` groups are experimental
 
 fn main() {}

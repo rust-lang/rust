@@ -981,12 +981,6 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         ast_visit::walk_path(self, p);
     }
 
-    fn visit_path_list_item(&mut self, prefix: &'a ast::Path, item: &'a ast::PathListItem) {
-        run_lints!(self, check_path_list_item, early_passes, item);
-        self.check_id(item.node.id);
-        ast_visit::walk_path_list_item(self, prefix, item);
-    }
-
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         run_lints!(self, check_attribute, early_passes, attr);
     }

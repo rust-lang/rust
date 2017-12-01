@@ -133,9 +133,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_path(self, path)
     }
-    fn visit_path_list_item(&mut self, prefix: &Path, item: &PathListItem) {
+    fn visit_use_tree(&mut self, use_tree: &UseTree, id: NodeId, _nested: bool) {
         self.count += 1;
-        walk_path_list_item(self, prefix, item)
+        walk_use_tree(self, use_tree, id)
     }
     fn visit_path_parameters(&mut self, path_span: Span, path_parameters: &PathParameters) {
         self.count += 1;

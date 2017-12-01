@@ -12,7 +12,6 @@
 
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
-pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
 pub use symbol::{Ident, Symbol as Name};
 pub use util::ThinVec;
@@ -1705,45 +1704,19 @@ pub struct Variant_ {
 
 pub type Variant = Spanned<Variant_>;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct PathListItem_ {
-    pub name: Ident,
-    /// renamed in list, e.g. `use foo::{bar as baz};`
-    pub rename: Option<Ident>,
-    pub id: NodeId,
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum UseTreeKind {
+    Simple(Ident),
+    Glob,
+    Nested(Vec<(UseTree, NodeId)>),
 }
-
-pub type PathListItem = Spanned<PathListItem_>;
-
-pub type ViewPath = Spanned<ViewPath_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ViewPath_ {
-
-    /// `foo::bar::baz as quux`
-    ///
-    /// or just
-    ///
-    /// `foo::bar::baz` (with `as baz` implicitly on the right)
-    ViewPathSimple(Ident, Path),
-
-    /// `foo::bar::*`
-    ViewPathGlob(Path),
-
-    /// `foo::bar::{a,b,c}`
-    ViewPathList(Path, Vec<PathListItem>)
+pub struct UseTree {
+    pub kind: UseTreeKind,
+    pub prefix: Path,
+    pub span: Span,
 }
-
-impl ViewPath_ {
-    pub fn path(&self) -> &Path {
-        match *self {
-            ViewPathSimple(_, ref path) |
-            ViewPathGlob (ref path) |
-            ViewPathList(ref path, _) => path
-        }
-    }
-}
-
 
 /// Distinguishes between Attributes that decorate items and Attributes that
 /// are contained as statements within items. These two cases need to be
@@ -1913,7 +1886,7 @@ pub enum ItemKind {
     /// A use declaration (`use` or `pub use`) item.
     ///
     /// E.g. `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`
-    Use(P<ViewPath>),
+    Use(P<UseTree>),
     /// A static item (`static` or `pub static`).
     ///
     /// E.g. `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`

@@ -118,21 +118,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.name.as_str()),
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
             ItemKind::GlobalAsm(..) => DefPathData::Misc,
-            ItemKind::Use(ref view_path) => {
-                match view_path.node {
-                    ViewPathGlob(..) => {}
-
-                    // FIXME(eddyb) Should use the real name. Which namespace?
-                    ViewPathSimple(..) => {}
-                    ViewPathList(_, ref imports) => {
-                        for import in imports {
-                            self.create_def(import.node.id,
-                                            DefPathData::Misc,
-                                            ITEM_LIKE_SPACE);
-                        }
-                    }
-                }
-                DefPathData::Misc
+            ItemKind::Use(..) => {
+                return visit::walk_item(self, i);
             }
         };
         let def = self.create_def(i.id, def_data, ITEM_LIKE_SPACE);
@@ -178,6 +165,11 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             }
             visit::walk_item(this, i);
         });
+    }
+
+    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
+        self.create_def(id, DefPathData::Misc, ITEM_LIKE_SPACE);
+        visit::walk_use_tree(self, use_tree, id);
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
