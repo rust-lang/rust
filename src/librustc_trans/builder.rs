@@ -518,13 +518,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn load(&self, ptr: ValueRef, align: Option<Align>) -> ValueRef {
+    pub fn load(&self, ptr: ValueRef, align: Align) -> ValueRef {
         self.count_insn("load");
         unsafe {
             let load = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
-            if let Some(align) = align {
-                llvm::LLVMSetAlignment(load, align.abi() as c_uint);
-            }
+            llvm::LLVMSetAlignment(load, align.abi() as c_uint);
             load
         }
     }
@@ -573,16 +571,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn store(&self, val: ValueRef, ptr: ValueRef, align: Option<Align>) -> ValueRef {
+    pub fn store(&self, val: ValueRef, ptr: ValueRef, align: Align) -> ValueRef {
         debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store");
         let ptr = self.check_store(val, ptr);
         unsafe {
             let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
-            if let Some(align) = align {
-                llvm::LLVMSetAlignment(store, align.abi() as c_uint);
-            }
+            llvm::LLVMSetAlignment(store, align.abi() as c_uint);
             store
         }
     }

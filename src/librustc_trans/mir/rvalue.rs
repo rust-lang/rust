@@ -104,9 +104,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let start = dest.project_index(&bcx, C_usize(bcx.ccx, 0)).llval;
 
                 if let OperandValue::Immediate(v) = tr_elem.val {
-                    let align = dest.non_abi_align()
-                        .unwrap_or(tr_elem.layout.align);
-                    let align = C_i32(bcx.ccx, align.abi() as i32);
+                    let align = C_i32(bcx.ccx, dest.align.abi() as i32);
                     let size = C_usize(bcx.ccx, dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays

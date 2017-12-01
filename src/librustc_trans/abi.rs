@@ -568,7 +568,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
                 let cast_dst = bcx.pointercast(dst.llval, cast.llvm_type(ccx).ptr_to());
-                bcx.store(val, cast_dst, Some(self.layout.align));
+                bcx.store(val, cast_dst, self.layout.align);
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -585,19 +585,20 @@ impl<'a, 'tcx> ArgType<'tcx> {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = bcx.alloca(cast.llvm_type(ccx), "abi_cast", cast.align(ccx));
                 let scratch_size = cast.size(ccx);
+                let scratch_align = cast.align(ccx);
+                let llscratch = bcx.alloca(cast.llvm_type(ccx), "abi_cast", scratch_align);
                 bcx.lifetime_start(llscratch, scratch_size);
 
                 // ...where we first store the value...
-                bcx.store(val, llscratch, None);
+                bcx.store(val, llscratch, scratch_align);
 
                 // ...and then memcpy it to the intended destination.
                 base::call_memcpy(bcx,
                                   bcx.pointercast(dst.llval, Type::i8p(ccx)),
                                   bcx.pointercast(llscratch, Type::i8p(ccx)),
                                   C_usize(ccx, self.layout.size.bytes()),
-                                  self.layout.align.min(cast.align(ccx)));
+                                  self.layout.align.min(scratch_align));
 
                 bcx.lifetime_end(llscratch, scratch_size);
             }

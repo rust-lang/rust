@@ -40,7 +40,8 @@ impl<'a, 'tcx> VirtualIndex {
         debug!("get_fn({:?}, {:?})", Value(llvtable), self);
 
         let llvtable = bcx.pointercast(llvtable, fn_ty.llvm_type(bcx.ccx).ptr_to().ptr_to());
-        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), None);
+        let ptr_align = bcx.tcx().data_layout.pointer_align;
+        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), ptr_align);
         bcx.nonnull_metadata(ptr);
         // Vtable loads are invariant
         bcx.set_invariant_load(ptr);
@@ -52,7 +53,8 @@ impl<'a, 'tcx> VirtualIndex {
         debug!("get_int({:?}, {:?})", Value(llvtable), self);
 
         let llvtable = bcx.pointercast(llvtable, Type::isize(bcx.ccx).ptr_to());
-        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), None);
+        let usize_align = bcx.tcx().data_layout.pointer_align;
+        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), usize_align);
         // Vtable loads are invariant
         bcx.set_invariant_load(ptr);
         ptr

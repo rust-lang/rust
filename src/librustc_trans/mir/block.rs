@@ -216,7 +216,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     PassMode::Direct(_) | PassMode::Pair(..) => {
                         let op = self.trans_consume(&bcx, &mir::Place::Local(mir::RETURN_PLACE));
                         if let Ref(llval, align) = op.val {
-                            bcx.load(llval, Some(align))
+                            bcx.load(llval, align)
                         } else {
                             op.immediate_or_packed_pair(&bcx)
                         }
@@ -247,7 +247,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         };
                         bcx.load(
                             bcx.pointercast(llslot, cast_ty.llvm_type(bcx.ccx).ptr_to()),
-                            Some(self.fn_ty.ret.layout.align))
+                            self.fn_ty.ret.layout.align)
                     }
                 };
                 bcx.ret(llval);
@@ -653,7 +653,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // have scary latent bugs around.
 
                     let scratch = PlaceRef::alloca(bcx, arg.layout, "arg");
-                    base::memcpy_ty(bcx, scratch.llval, llval, op.layout, Some(align));
+                    base::memcpy_ty(bcx, scratch.llval, llval, op.layout, align);
                     (scratch.llval, scratch.align, true)
                 } else {
                     (llval, align, true)
@@ -665,14 +665,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast(ty) = arg.mode {
                 llval = bcx.load(bcx.pointercast(llval, ty.llvm_type(bcx.ccx).ptr_to()),
-                                 Some(align.min(arg.layout.align)));
+                                 align.min(arg.layout.align));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
                 // may have a type we don't treat as immediate, but the ABI
                 // used for this call is passing it by-value. In that case,
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
-                llval = bcx.load(llval, Some(align));
+                llval = bcx.load(llval, align);
                 if let layout::Abi::Scalar(ref scalar) = arg.layout.abi {
                     if scalar.is_bool() {
                         bcx.range_metadata(llval, 0..2);

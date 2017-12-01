@@ -81,14 +81,6 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         !self.llextra.is_null()
     }
 
-    pub fn non_abi_align(self) -> Option<Align> {
-        if self.align.abi() >= self.layout.align.abi() {
-            None
-        } else {
-            Some(self.align)
-        }
-    }
-
     pub fn load(&self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         debug!("PlaceRef::load: {:?}", self);
 
@@ -135,7 +127,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
             let llval = if !const_llval.is_null() {
                 const_llval
             } else {
-                let load = bcx.load(self.llval, self.non_abi_align());
+                let load = bcx.load(self.llval, self.align);
                 if let layout::Abi::Scalar(ref scalar) = self.layout.abi {
                     scalar_load_metadata(load, scalar);
                 }
@@ -149,7 +141,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                 if scalar.is_bool() {
                     llptr = bcx.pointercast(llptr, Type::i8p(bcx.ccx));
                 }
-                let load = bcx.load(llptr, self.non_abi_align());
+                let load = bcx.load(llptr, self.align);
                 scalar_load_metadata(load, scalar);
                 if scalar.is_bool() {
                     bcx.trunc(load, Type::i1(bcx.ccx))
@@ -338,7 +330,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                     .discriminant_for_variant(bcx.tcx(), variant_index)
                     .to_u128_unchecked() as u64;
                 bcx.store(C_int(ptr.layout.llvm_type(bcx.ccx), to as i64),
-                    ptr.llval, ptr.non_abi_align());
+                    ptr.llval, ptr.align);
             }
             layout::Variants::NicheFilling {
                 dataful_variant,

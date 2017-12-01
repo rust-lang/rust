@@ -223,9 +223,9 @@ impl<'a, 'tcx> OperandValue {
         match self {
             OperandValue::Ref(r, source_align) =>
                 base::memcpy_ty(bcx, dest.llval, r, dest.layout,
-                                Some(source_align.min(dest.align))),
+                                source_align.min(dest.align)),
             OperandValue::Immediate(s) => {
-                bcx.store(base::from_immediate(bcx, s), dest.llval, dest.non_abi_align());
+                bcx.store(base::from_immediate(bcx, s), dest.llval, dest.align);
             }
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
@@ -234,7 +234,7 @@ impl<'a, 'tcx> OperandValue {
                     if common::val_ty(x) == Type::i1(bcx.ccx) {
                         llptr = bcx.pointercast(llptr, Type::i8p(bcx.ccx));
                     }
-                    bcx.store(base::from_immediate(bcx, x), llptr, dest.non_abi_align());
+                    bcx.store(base::from_immediate(bcx, x), llptr, dest.align);
                 }
             }
         }

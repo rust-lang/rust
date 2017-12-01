@@ -530,11 +530,11 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             let env_ptr = if !env_ref {
-                let alloc = PlaceRef::alloca(bcx,
+                let scratch = PlaceRef::alloca(bcx,
                     bcx.ccx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
                     "__debuginfo_env_ptr");
-                bcx.store(place.llval, alloc.llval, None);
-                alloc.llval
+                bcx.store(place.llval, scratch.llval, scratch.align);
+                scratch.llval
             } else {
                 place.llval
             };
