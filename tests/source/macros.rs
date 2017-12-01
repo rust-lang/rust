@@ -216,3 +216,11 @@ make_test!(str_searcher_ascii_haystack, "bb", "abbcbbd", [
     Reject(6, 7),
 ]);
 }
+
+fn special_case_macros() {
+    // format!
+    let s = format!("Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')", result, input, expected);
+
+    // assert!
+    assert!(result, "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')", result, input, expected);
+}
