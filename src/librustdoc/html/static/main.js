@@ -717,6 +717,13 @@
                 return false;
             }
 
+            function generateId(ty) {
+                if (ty.parent && ty.parent.name) {
+                    return itemTypes[ty.ty] + ty.path + ty.parent.name + ty.name;
+                }
+                return itemTypes[ty.ty] + ty.path + ty.name;
+            }
+
             // quoted values mean literal search
             var nSearchWords = searchWords.length;
             if ((val.charAt(0) === "\"" || val.charAt(0) === "'") &&
@@ -727,7 +734,7 @@
                     var in_args = findArg(searchIndex[i], val, true);
                     var returned = checkReturned(searchIndex[i], val, true);
                     var ty = searchIndex[i];
-                    var fullId = itemTypes[ty.ty] + ty.path + ty.name;
+                    var fullId = generateId(ty);
 
                     if (searchWords[i] === val.name) {
                         // filter type: ... queries
@@ -783,7 +790,7 @@
                     if (!type) {
                         continue;
                     }
-                    var fullId = itemTypes[ty.ty] + ty.path + ty.name;
+                    var fullId = generateId(ty);
 
                     // allow searching for void (no output) functions as well
                     var typeOutput = type.output ? type.output.name : "";
@@ -869,7 +876,7 @@
                     var index = -1;
                     // we want lev results to go lower than others
                     var lev = MAX_LEV_DISTANCE + 1;
-                    var fullId = itemTypes[ty.ty] + ty.path + ty.name;
+                    var fullId = generateId(ty);
 
                     if (searchWords[j].indexOf(split[i]) > -1 ||
                         searchWords[j].indexOf(val) > -1 ||
