@@ -347,6 +347,30 @@ impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
     NameValue(lit)
 });
 
+impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
+    call_site,
+    callee
+});
+
+impl_stable_hash_for!(struct ::syntax_pos::hygiene::NameAndSpan {
+    format,
+    allow_internal_unstable,
+    allow_internal_unsafe,
+    span
+});
+
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnFormat {
+    MacroAttribute(sym),
+    MacroBang(sym),
+    CompilerDesugaring(kind)
+});
+
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
+    BackArrow,
+    DotFill,
+    QuestionMark
+});
+
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,

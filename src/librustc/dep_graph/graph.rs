@@ -461,10 +461,10 @@ impl DepGraph {
         self.data.as_ref().and_then(|data| data.colors.borrow().get(dep_node).cloned())
     }
 
-    pub fn try_mark_green(&self,
-                          tcx: TyCtxt,
-                          dep_node: &DepNode)
-                          -> Option<DepNodeIndex> {
+    pub fn try_mark_green<'tcx>(&self,
+                                tcx: TyCtxt<'_, 'tcx, 'tcx>,
+                                dep_node: &DepNode)
+                                -> Option<DepNodeIndex> {
         debug!("try_mark_green({:?}) - BEGIN", dep_node);
         let data = self.data.as_ref().unwrap();
 
@@ -621,7 +621,7 @@ impl DepGraph {
         // ... emitting any stored diagnostic ...
         {
             let diagnostics = tcx.on_disk_query_result_cache
-                                 .load_diagnostics(prev_dep_node_index);
+                                 .load_diagnostics(tcx, prev_dep_node_index);
 
             if diagnostics.len() > 0 {
                 let handle = tcx.sess.diagnostic();

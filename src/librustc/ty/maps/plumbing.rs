@@ -145,7 +145,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 if !self.dep_graph.is_fully_enabled() {
                     return None;
                 }
-                match self.dep_graph.try_mark_green(self, &dep_node) {
+                match self.dep_graph.try_mark_green(self.global_tcx(), &dep_node) {
                     Some(dep_node_index) => {
                         debug_assert!(self.dep_graph.is_green(dep_node_index));
                         self.dep_graph.read_index(dep_node_index);
@@ -392,12 +392,31 @@ macro_rules! define_maps {
             {
                 debug_assert!(tcx.dep_graph.is_green(dep_node_index));
 
-                let result = if tcx.sess.opts.debugging_opts.incremental_queries &&
-                                Self::cache_on_disk(key) {
+                // First we try to load the result from the on-disk cache
+                let result = if Self::cache_on_disk(key) &&
+                                tcx.sess.opts.debugging_opts.incremental_queries {
                     let prev_dep_node_index =
                         tcx.dep_graph.prev_dep_node_index_of(dep_node);
-                    Self::load_from_disk(tcx.global_tcx(), prev_dep_node_index)
+                    let result = Self::try_load_from_disk(tcx.global_tcx(),
+                                                          prev_dep_node_index);
+
+                    // We always expect to find a cached result for things that
+                    // can be forced from DepNode.
+                    debug_assert!(!dep_node.kind.can_reconstruct_query_key() ||
+                                  result.is_some(),
+                                  "Missing on-disk cache entry for {:?}",
+                                  dep_node);
+                    result
                 } else {
+                    // Some things are never cached on disk.
+                    None
+                };
+
+                let result = if let Some(result) = result {
+                    result
+                } else {
+                    // We could not load a result from the on-disk cache, so
+                    // recompute.
                     let (result, _ ) = tcx.cycle_check(span, Query::$name(key), || {
                         // The diagnostics for this query have already been
                         // promoted to the current session during

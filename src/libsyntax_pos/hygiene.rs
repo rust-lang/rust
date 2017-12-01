@@ -140,6 +140,31 @@ impl SyntaxContext {
         SyntaxContext(0)
     }
 
+    // Allocate a new SyntaxContext with the given ExpnInfo. This is used when
+    // deserializing Spans from the incr. comp. cache.
+    // FIXME(mw): This method does not restore MarkData::parent or
+    // SyntaxContextData::prev_ctxt or SyntaxContextData::modern. These things
+    // don't seem to be used after HIR lowering, so everything should be fine
+    // as long as incremental compilation does not kick in before that.
+    pub fn allocate_directly(expansion_info: ExpnInfo) -> Self {
+        HygieneData::with(|data| {
+            data.marks.push(MarkData {
+                parent: Mark::root(),
+                modern: false,
+                expn_info: Some(expansion_info)
+            });
+
+            let mark = Mark(data.marks.len() as u32 - 1);
+
+            data.syntax_contexts.push(SyntaxContextData {
+                outer_mark: mark,
+                prev_ctxt: SyntaxContext::empty(),
+                modern: SyntaxContext::empty(),
+            });
+            SyntaxContext(data.syntax_contexts.len() as u32 - 1)
+        })
+    }
+
     /// Extend a syntax context with a given mark
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
         HygieneData::with(|data| {
@@ -286,7 +311,7 @@ impl fmt::Debug for SyntaxContext {
 }
 
 /// Extra information for tracking spans of macro and syntax sugar expansion
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
@@ -302,7 +327,7 @@ pub struct ExpnInfo {
     pub callee: NameAndSpan
 }
 
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct NameAndSpan {
     /// The format with which the macro was invoked.
     pub format: ExpnFormat,
@@ -330,7 +355,7 @@ impl NameAndSpan {
 }
 
 /// The source of expansion.
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum ExpnFormat {
     /// e.g. #[derive(...)] <item>
     MacroAttribute(Symbol),
@@ -341,7 +366,7 @@ pub enum ExpnFormat {
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CompilerDesugaringKind {
     BackArrow,
     DotFill,

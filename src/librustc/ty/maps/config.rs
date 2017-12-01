@@ -31,9 +31,9 @@ pub(super) trait QueryDescription<'tcx>: QueryConfig {
         false
     }
 
-    fn load_from_disk<'a>(_: TyCtxt<'a, 'tcx, 'tcx>,
+    fn try_load_from_disk(_: TyCtxt<'_, 'tcx, 'tcx>,
                           _: SerializedDepNodeIndex)
-                          -> Self::Value {
+                          -> Option<Self::Value> {
         bug!("QueryDescription::load_from_disk() called for unsupport query.")
     }
 }
@@ -556,12 +556,14 @@ impl<'tcx> QueryDescription<'tcx> for queries::typeck_tables_of<'tcx> {
         def_id.is_local()
     }
 
-    fn load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn try_load_from_disk(tcx: TyCtxt<'_, 'tcx, 'tcx>,
                           id: SerializedDepNodeIndex)
-                          -> Self::Value {
-        let typeck_tables: ty::TypeckTables<'tcx> = tcx.on_disk_query_result_cache
-                                                       .load_query_result(tcx, id);
-        tcx.alloc_tables(typeck_tables)
+                          -> Option<Self::Value> {
+        let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
+            .on_disk_query_result_cache
+            .try_load_query_result(tcx, id);
+
+        typeck_tables.map(|tables| tcx.alloc_tables(tables))
     }
 }
 

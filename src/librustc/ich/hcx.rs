@@ -28,7 +28,7 @@ use syntax::attr;
 use syntax::codemap::CodeMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHashingContextProvider,
                                            StableHasher, StableHasherResult,
@@ -362,64 +362,53 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Span {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        use syntax_pos::Pos;
+        const TAG_VALID_SPAN: u8 = 0;
+        const TAG_INVALID_SPAN: u8 = 1;
+        const TAG_EXPANSION: u8 = 0;
+        const TAG_NO_EXPANSION: u8 = 1;
 
         if !hcx.hash_spans {
             return
+        }
+
+        if *self == DUMMY_SP {
+            return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
         // If this is not an empty or invalid span, we want to hash the last
         // position that belongs to it, as opposed to hashing the first
         // position past it.
         let span = self.data();
-        let span_hi = if span.hi > span.lo {
-            // We might end up in the middle of a multibyte character here,
-            // but that's OK, since we are not trying to decode anything at
-            // this position.
-            span.hi - ::syntax_pos::BytePos(1)
-        } else {
-            span.hi
-        };
 
-        {
-            let loc1 = hcx.codemap().byte_pos_to_line_and_col(span.lo);
-            let loc1 = loc1.as_ref()
-                           .map(|&(ref fm, line, col)| (&fm.name[..], line, col.to_usize()))
-                           .unwrap_or(("???", 0, 0));
-
-            let loc2 = hcx.codemap().byte_pos_to_line_and_col(span_hi);
-            let loc2 = loc2.as_ref()
-                           .map(|&(ref fm, line, col)| (&fm.name[..], line, col.to_usize()))
-                           .unwrap_or(("???", 0, 0));
-
-            if loc1.0 == loc2.0 {
-                std_hash::Hash::hash(&0u8, hasher);
-
-                std_hash::Hash::hash(loc1.0, hasher);
-                std_hash::Hash::hash(&loc1.1, hasher);
-                std_hash::Hash::hash(&loc1.2, hasher);
-
-                // Do not hash the file name twice
-                std_hash::Hash::hash(&loc2.1, hasher);
-                std_hash::Hash::hash(&loc2.2, hasher);
-            } else {
-                std_hash::Hash::hash(&1u8, hasher);
-
-                std_hash::Hash::hash(loc1.0, hasher);
-                std_hash::Hash::hash(&loc1.1, hasher);
-                std_hash::Hash::hash(&loc1.2, hasher);
-
-                std_hash::Hash::hash(loc2.0, hasher);
-                std_hash::Hash::hash(&loc2.1, hasher);
-                std_hash::Hash::hash(&loc2.2, hasher);
-            }
+        if span.hi < span.lo {
+            return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
+        let (file_lo, line_lo, col_lo) = match hcx.codemap()
+                                                  .byte_pos_to_line_and_col(span.lo) {
+            Some(pos) => pos,
+            None => {
+                return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            }
+        };
+
+        if !file_lo.contains(span.hi) {
+            return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+        }
+
+        let len = span.hi - span.lo;
+
+        std_hash::Hash::hash(&TAG_VALID_SPAN, hasher);
+        std_hash::Hash::hash(&file_lo.name, hasher);
+        std_hash::Hash::hash(&line_lo, hasher);
+        std_hash::Hash::hash(&col_lo, hasher);
+        std_hash::Hash::hash(&len, hasher);
+
         if span.ctxt == SyntaxContext::empty() {
-            0u8.hash_stable(hcx, hasher);
+            TAG_NO_EXPANSION.hash_stable(hcx, hasher);
         } else {
-            1u8.hash_stable(hcx, hasher);
-            self.source_callsite().hash_stable(hcx, hasher);
+            TAG_EXPANSION.hash_stable(hcx, hasher);
+            span.ctxt.outer().expn_info().hash_stable(hcx, hasher);
         }
     }
 }
