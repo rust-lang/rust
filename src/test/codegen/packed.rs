@@ -57,3 +57,14 @@ pub fn pkd_pair(pair1: &mut PackedPair, pair2: &mut PackedPair) {
 // CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{.*}}, i8* %{{.*}}, i{{[0-9]+}} 5, i32 1, i1 false)
     *pair2 = *pair1;
 }
+
+#[repr(packed)]
+#[derive(Copy, Clone)]
+pub struct PackedNestedPair((u32, u32));
+
+// CHECK-LABEL: @pkd_nested_pair
+#[no_mangle]
+pub fn pkd_nested_pair(pair1: &mut PackedNestedPair, pair2: &mut PackedNestedPair) {
+// CHECK: call void @llvm.memcpy.{{.*}}(i8* %{{.*}}, i8* %{{.*}}, i{{[0-9]+}} 8, i32 1, i1 false)
+    *pair2 = *pair1;
+}
