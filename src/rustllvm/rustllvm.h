@@ -57,11 +57,7 @@
 
 #define LLVM_VERSION_LT(major, minor) (!LLVM_VERSION_GE((major), (minor)))
 
-#if LLVM_VERSION_GE(3, 7)
 #include "llvm/IR/LegacyPassManager.h"
-#else
-#include "llvm/PassManager.h"
-#endif
 
 #if LLVM_VERSION_GE(4, 0)
 #include "llvm/Bitcode/BitcodeReader.h"
