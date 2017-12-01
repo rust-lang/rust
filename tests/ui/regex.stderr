@@ -112,7 +112,7 @@ error: trivial regex
 error: trivial regex
   --> $DIR/regex.rs:62:40
    |
-62 |     let trivial_backslash = Regex::new("a//.b");
+62 |     let trivial_backslash = Regex::new("a/.b");
    |                                        ^^^^^^^
    |
    = help: consider using consider using `str::contains`
