@@ -74,16 +74,16 @@ impl Alignment {
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx> {
-    /// Pointer to the contents of the lvalue
+    /// Pointer to the contents of the place
     pub llval: ValueRef,
 
-    /// This lvalue's extra data if it is unsized, or null
+    /// This place's extra data if it is unsized, or null
     pub llextra: ValueRef,
 
-    /// Monomorphized type of this lvalue, including variant information
+    /// Monomorphized type of this place, including variant information
     pub layout: TyLayout<'tcx>,
 
-    /// Whether this lvalue is known to be aligned according to its layout
+    /// Whether this place is known to be aligned according to its layout
     pub alignment: Alignment,
 }
 
@@ -444,27 +444,27 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
 }
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_lvalue(&mut self,
+    pub fn trans_place(&mut self,
                         bcx: &Builder<'a, 'tcx>,
-                        lvalue: &mir::Place<'tcx>)
+                        place: &mir::Place<'tcx>)
                         -> PlaceRef<'tcx> {
-        debug!("trans_lvalue(lvalue={:?})", lvalue);
+        debug!("trans_place(place={:?})", place);
 
         let ccx = bcx.ccx;
         let tcx = ccx.tcx();
 
-        if let mir::Place::Local(index) = *lvalue {
+        if let mir::Place::Local(index) = *place {
             match self.locals[index] {
-                LocalRef::Place(lvalue) => {
-                    return lvalue;
+                LocalRef::Place(place) => {
+                    return place;
                 }
                 LocalRef::Operand(..) => {
-                    bug!("using operand local {:?} as lvalue", lvalue);
+                    bug!("using operand local {:?} as place", place);
                 }
             }
         }
 
-        let result = match *lvalue {
+        let result = match *place {
             mir::Place::Local(_) => bug!(), // handled above
             mir::Place::Static(box mir::Static { def_id, ty }) => {
                 PlaceRef::new_sized(consts::get_static(ccx, def_id),
@@ -479,7 +479,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 self.trans_consume(bcx, base).deref(bcx.ccx)
             }
             mir::Place::Projection(ref projection) => {
-                let tr_base = self.trans_lvalue(bcx, &projection.base);
+                let tr_base = self.trans_place(bcx, &projection.base);
 
                 match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
@@ -519,7 +519,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 C_usize(bcx.ccx, (from as u64) + (to as u64)));
                         }
 
-                        // Cast the lvalue pointer type to the new
+                        // Cast the place pointer type to the new
                         // array or slice type (*[%_; new_len]).
                         subslice.llval = bcx.pointercast(subslice.llval,
                             subslice.layout.llvm_type(bcx.ccx).ptr_to());
@@ -532,14 +532,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
             }
         };
-        debug!("trans_lvalue(lvalue={:?}) => {:?}", lvalue, result);
+        debug!("trans_place(place={:?}) => {:?}", place, result);
         result
     }
 
-    pub fn monomorphized_lvalue_ty(&self, lvalue: &mir::Place<'tcx>) -> Ty<'tcx> {
+    pub fn monomorphized_place_ty(&self, place: &mir::Place<'tcx>) -> Ty<'tcx> {
         let tcx = self.ccx.tcx();
-        let lvalue_ty = lvalue.ty(self.mir, tcx);
-        self.monomorphize(&lvalue_ty.to_ty(tcx))
+        let place_ty = place.ty(self.mir, tcx);
+        self.monomorphize(&place_ty.to_ty(tcx))
     }
 }
 

@@ -51,7 +51,7 @@ bitflags! {
         // Function argument.
         const FN_ARGUMENT       = 1 << 2;
 
-        // Static lvalue or move from a static.
+        // Static place or move from a static.
         const STATIC            = 1 << 3;
 
         // Reference to a static.
@@ -261,7 +261,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 store(&mut self.temp_qualif[index])
             }
             Place::Local(index) if self.mir.local_kind(index) == LocalKind::ReturnPointer => {
-                debug!("store to return pointer {:?}", index);
+                debug!("store to return place {:?}", index);
                 store(&mut self.return_qualif)
             }
 
@@ -280,7 +280,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             // This must be an explicit assignment.
             _ => {
                 // Catch more errors in the destination.
-                self.visit_lvalue(dest, PlaceContext::Store, location);
+                self.visit_place(dest, PlaceContext::Store, location);
                 self.statement_like();
             }
         }
@@ -438,11 +438,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &Place<'tcx>,
+    fn visit_place(&mut self,
+                    place: &Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        match *lvalue {
+        match *place {
             Place::Local(ref local) => self.visit_local(local, context, location),
             Place::Static(ref global) => {
                 self.add(Qualif::STATIC);
@@ -467,7 +467,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
             Place::Projection(ref proj) => {
                 self.nest(|this| {
-                    this.super_lvalue(lvalue, context, location);
+                    this.super_place(place, context, location);
                     match proj.elem {
                         ProjectionElem::Deref => {
                             if !this.try_consume() {
@@ -502,7 +502,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                           "cannot refer to the interior of another \
                                            static, use a constant instead");
                             }
-                            let ty = lvalue.ty(this.mir, this.tcx).to_ty(this.tcx);
+                            let ty = place.ty(this.mir, this.tcx).to_ty(this.tcx);
                             this.qualif.restrict(ty, this.tcx, this.param_env);
                         }
 
@@ -519,15 +519,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         match *operand {
-            Operand::Copy(ref lvalue) |
-            Operand::Move(ref lvalue) => {
+            Operand::Copy(ref place) |
+            Operand::Move(ref place) => {
                 self.nest(|this| {
                     this.super_operand(operand, location);
                     this.try_consume();
                 });
 
                 // Mark the consumed locals to indicate later drops are noops.
-                if let Place::Local(local) = *lvalue {
+                if let Place::Local(local) = *place {
                     self.local_needs_drop[local] = None;
                 }
             }
@@ -555,7 +555,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        // Recurse through operands and lvalues.
+        // Recurse through operands and places.
         self.super_rvalue(rvalue, location);
 
         match *rvalue {
@@ -572,20 +572,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Discriminant(..) => {}
 
             Rvalue::Len(_) => {
-                // Static lvalues in consts would have errored already,
+                // Static places in consts would have errored already,
                 // don't treat length checks as reads from statics.
                 self.qualif = self.qualif - Qualif::STATIC;
             }
 
-            Rvalue::Ref(_, kind, ref lvalue) => {
-                // Static lvalues in consts would have errored already,
+            Rvalue::Ref(_, kind, ref place) => {
+                // Static places in consts would have errored already,
                 // only keep track of references to them here.
                 if self.qualif.intersects(Qualif::STATIC) {
                     self.qualif = self.qualif - Qualif::STATIC;
                     self.add(Qualif::STATIC_REF);
                 }
 
-                let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
+                let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
                 if kind == BorrowKind::Mut {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
@@ -635,7 +635,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 let candidate = Candidate::Ref(location);
                 if !self.qualif.intersects(Qualif::NEVER_PROMOTE) {
                     // We can only promote direct borrows of temps.
-                    if let Place::Local(local) = *lvalue {
+                    if let Place::Local(local) = *place {
                         if self.mir.local_kind(local) == LocalKind::Temp {
                             self.promotion_candidates.push(candidate);
                         }
@@ -829,14 +829,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
                 self.assign(dest, location);
             }
-        } else if let TerminatorKind::Drop { location: ref lvalue, .. } = *kind {
+        } else if let TerminatorKind::Drop { location: ref place, .. } = *kind {
             self.super_terminator_kind(bb, kind, location);
 
             // Deny *any* live drops anywhere other than functions.
             if self.mode != Mode::Fn {
                 // HACK(eddyb) Emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
-                let needs_drop = if let Place::Local(local) = *lvalue {
+                let needs_drop = if let Place::Local(local) = *place {
                     self.local_needs_drop[local]
                 } else {
                     None
@@ -844,7 +844,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 if let Some(span) = needs_drop {
                     // Double-check the type being dropped, to minimize false positives.
-                    let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
                     if ty.needs_drop(self.tcx, self.param_env) {
                         struct_span_err!(self.tcx.sess, span, E0493,
                                          "destructors cannot be evaluated at compile-time")
@@ -905,8 +905,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         self.nest(|this| {
             this.visit_source_info(&statement.source_info);
             match statement.kind {
-                StatementKind::Assign(ref lvalue, ref rvalue) => {
-                    this.visit_assign(bb, lvalue, rvalue, location);
+                StatementKind::Assign(ref place, ref rvalue) => {
+                    this.visit_assign(bb, place, rvalue, location);
                 }
                 StatementKind::SetDiscriminant { .. } |
                 StatementKind::StorageLive(_) |

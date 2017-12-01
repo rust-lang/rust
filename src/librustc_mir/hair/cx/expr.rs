@@ -116,7 +116,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 },
             };
 
-            overloaded_lvalue(cx, hir_expr, adjustment.target, Some(call), vec![expr.to_ref()])
+            overloaded_place(cx, hir_expr, adjustment.target, Some(call), vec![expr.to_ref()])
         }
         Adjust::Borrow(AutoBorrow::Ref(r, m)) => {
             ExprKind::Borrow {
@@ -335,7 +335,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprIndex(ref lhs, ref index) => {
             if cx.tables().is_method_call(expr) {
-                overloaded_lvalue(cx, expr, expr_ty, None, vec![lhs.to_ref(), index.to_ref()])
+                overloaded_place(cx, expr, expr_ty, None, vec![lhs.to_ref(), index.to_ref()])
             } else {
                 ExprKind::Index {
                     lhs: lhs.to_ref(),
@@ -346,7 +346,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprUnary(hir::UnOp::UnDeref, ref arg) => {
             if cx.tables().is_method_call(expr) {
-                overloaded_lvalue(cx, expr, expr_ty, None, vec![arg.to_ref()])
+                overloaded_place(cx, expr, expr_ty, None, vec![arg.to_ref()])
             } else {
                 ExprKind::Deref { arg: arg.to_ref() }
             }
@@ -844,15 +844,15 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     }
 }
 
-fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
+fn overloaded_place<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      expr: &'tcx hir::Expr,
-                                     lvalue_ty: Ty<'tcx>,
+                                     place_ty: Ty<'tcx>,
                                      custom_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
                                      args: Vec<ExprRef<'tcx>>)
                                      -> ExprKind<'tcx> {
     // For an overloaded *x or x[y] expression of type T, the method
     // call returns an &T and we must add the deref so that the types
-    // line up (this is because `*x` and `x[y]` represent lvalues):
+    // line up (this is because `*x` and `x[y]` represent places):
 
     let recv_ty = match args[0] {
         ExprRef::Hair(e) => cx.tables().expr_ty_adjusted(e),
@@ -864,10 +864,10 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
     let (region, mt) = match recv_ty.sty {
         ty::TyRef(region, mt) => (region, mt),
-        _ => span_bug!(expr.span, "overloaded_lvalue: receiver is not a reference"),
+        _ => span_bug!(expr.span, "overloaded_place: receiver is not a reference"),
     };
     let ref_ty = cx.tcx.mk_ref(region, ty::TypeAndMut {
-        ty: lvalue_ty,
+        ty: place_ty,
         mutbl: mt.mutbl,
     });
 

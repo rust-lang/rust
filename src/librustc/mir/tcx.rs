@@ -151,11 +151,11 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Repeat(ref operand, count) => {
                 tcx.mk_array_const_usize(operand.ty(local_decls, tcx), count)
             }
-            Rvalue::Ref(reg, bk, ref lv) => {
-                let lv_ty = lv.ty(local_decls, tcx).to_ty(tcx);
+            Rvalue::Ref(reg, bk, ref place) => {
+                let place_ty = place.ty(local_decls, tcx).to_ty(tcx);
                 tcx.mk_ref(reg,
                     ty::TypeAndMut {
-                        ty: lv_ty,
+                        ty: place_ty,
                         mutbl: bk.to_mutbl_lossy()
                     }
                 )
@@ -177,8 +177,8 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
                 operand.ty(local_decls, tcx)
             }
-            Rvalue::Discriminant(ref lval) => {
-                let ty = lval.ty(local_decls, tcx).to_ty(tcx);
+            Rvalue::Discriminant(ref place) => {
+                let ty = place.ty(local_decls, tcx).to_ty(tcx);
                 if let ty::TyAdt(adt_def, _) = ty.sty {
                     adt_def.repr.discr_type().to_ty(tcx)
                 } else {

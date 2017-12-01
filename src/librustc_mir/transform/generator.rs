@@ -108,17 +108,17 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
         assert_ne!(*local, self_arg());
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &mut Place<'tcx>,
+    fn visit_place(&mut self,
+                    place: &mut Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if *lvalue == Place::Local(self_arg()) {
-            *lvalue = Place::Projection(Box::new(Projection {
-                base: lvalue.clone(),
+        if *place == Place::Local(self_arg()) {
+            *place = Place::Projection(Box::new(Projection {
+                base: place.clone(),
                 elem: ProjectionElem::Deref,
             }));
         } else {
-            self.super_lvalue(lvalue, context, location);
+            self.super_place(place, context, location);
         }
     }
 }
@@ -151,7 +151,7 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     // A list of suspension points, generated during the transform
     suspension_points: Vec<SuspensionPoint>,
 
-    // The original RETURN_POINTER local
+    // The original RETURN_PLACE local
     new_ret_local: Local,
 }
 
@@ -200,17 +200,17 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
         assert_eq!(self.remap.get(local), None);
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &mut Place<'tcx>,
+    fn visit_place(&mut self,
+                    place: &mut Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if let Place::Local(l) = *lvalue {
+        if let Place::Local(l) = *place {
             // Replace an Local in the remap with a generator struct access
             if let Some(&(ty, idx)) = self.remap.get(&l) {
-                *lvalue = self.make_field(idx, ty);
+                *place = self.make_field(idx, ty);
             }
         } else {
-            self.super_lvalue(lvalue, context, location);
+            self.super_place(place, context, location);
         }
     }
 
@@ -244,7 +244,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
             // We must assign the value first in case it gets declared dead below
             data.statements.push(Statement {
                 source_info,
-                kind: StatementKind::Assign(Place::Local(RETURN_POINTER),
+                kind: StatementKind::Assign(Place::Local(RETURN_PLACE),
                     self.make_state(state_idx, v)),
             });
             let state = if let Some(resume) = resume { // Yield
@@ -310,7 +310,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
     mir.local_decls.swap(0, new_ret_local.index());
 
     RenameLocalVisitor {
-        from: RETURN_POINTER,
+        from: RETURN_PLACE,
         to: new_ret_local,
     }.visit_mir(mir);
 
@@ -557,7 +557,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
     }
 
     // Replace the return variable
-    mir.local_decls[RETURN_POINTER] = LocalDecl {
+    mir.local_decls[RETURN_PLACE] = LocalDecl {
         mutability: Mutability::Mut,
         ty: tcx.mk_nil(),
         name: None,
@@ -783,8 +783,8 @@ impl MirPass for StateTransform {
             Kind::from(mir.return_ty())].iter());
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
-        // We rename RETURN_POINTER which has type mir.return_ty to new_ret_local
-        // RETURN_POINTER then is a fresh unused local with type ret_ty.
+        // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
+        // RETURN_PLACE then is a fresh unused local with type ret_ty.
         let new_ret_local = replace_result_variable(ret_ty, mir);
 
         // Extract locals which are live across suspension point into `layout`

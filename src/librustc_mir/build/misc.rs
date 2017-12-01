@@ -29,10 +29,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// call `schedule_drop` once the temporary is initialized.
     pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
-        let lvalue = Place::Local(temp);
+        let place = Place::Local(temp);
         debug!("temp: created temp {:?} with type {:?}",
-               lvalue, self.local_decls[temp].ty);
-        lvalue
+               place, self.local_decls[temp].ty);
+        place
     }
 
     pub fn literal_operand(&mut self,
@@ -134,13 +134,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         temp
     }
 
-    pub fn consume_by_copy_or_move(&self, lvalue: Place<'tcx>) -> Operand<'tcx> {
+    pub fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
         let tcx = self.hir.tcx();
-        let ty = lvalue.ty(&self.local_decls, tcx).to_ty(tcx);
+        let ty = place.ty(&self.local_decls, tcx).to_ty(tcx);
         if self.hir.type_moves_by_default(ty, DUMMY_SP) {
-            Operand::Move(lvalue)
+            Operand::Move(place)
         } else {
-            Operand::Copy(lvalue)
+            Operand::Copy(place)
         }
     }
 }

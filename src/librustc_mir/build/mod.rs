@@ -480,7 +480,7 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(&Place::Local(RETURN_POINTER), block, expr));
+    unpack!(block = builder.into_expr(&Place::Local(RETURN_PLACE), block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -523,7 +523,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
             breakable_scopes: vec![],
-            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty,
+            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_place(return_ty,
                                                                              span), 1),
             var_indices: NodeMap(),
             unit_temp: None,
@@ -597,9 +597,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let mut scope = None;
         // Bind the argument patterns
         for (index, &(ty, pattern)) in arguments.iter().enumerate() {
-            // Function arguments always get the first Local indices after the return pointer
+            // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
-            let lvalue = Place::Local(local);
+            let place = Place::Local(local);
 
             if let Some(pattern) = pattern {
                 let pattern = self.hir.pattern_from_hir(pattern);
@@ -613,14 +613,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     _ => {
                         scope = self.declare_bindings(scope, ast_body.span,
                                                       LintLevel::Inherited, &pattern);
-                        unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
+                        unpack!(block = self.place_into_pattern(block, pattern, &place));
                     }
                 }
             }
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                               argument_scope, &lvalue, ty);
+                               argument_scope, &place, ty);
 
         }
 
@@ -630,7 +630,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Place::Local(RETURN_POINTER), block, body)
+        self.into(&Place::Local(RETURN_PLACE), block, body)
     }
 
     fn get_unit_temp(&mut self) -> Place<'tcx> {

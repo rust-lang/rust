@@ -104,13 +104,13 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_lvalue(
+    fn visit_place(
         &mut self,
-        lvalue: &Place<'tcx>,
+        place: &Place<'tcx>,
         context: PlaceContext,
         location: Location,
     ) {
-        self.sanitize_lvalue(lvalue, location, context);
+        self.sanitize_place(place, location, context);
     }
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
@@ -164,18 +164,18 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn sanitize_lvalue(&mut self,
-                       lvalue: &Place<'tcx>,
+    fn sanitize_place(&mut self,
+                       place: &Place<'tcx>,
                        location: Location,
                        context: PlaceContext)
                        -> PlaceTy<'tcx> {
-        debug!("sanitize_lvalue: {:?}", lvalue);
-        let lvalue_ty = match *lvalue {
+        debug!("sanitize_place: {:?}", place);
+        let place_ty = match *place {
             Place::Local(index) => PlaceTy::Ty {
                 ty: self.mir.local_decls[index].ty,
             },
             Place::Static(box Static { def_id, ty: sty }) => {
-                let sty = self.sanitize_type(lvalue, sty);
+                let sty = self.sanitize_type(place, sty);
                 let ty = self.tcx().type_of(def_id);
                 let ty = self.cx.normalize(&ty, location);
                 if let Err(terr) = self.cx
@@ -183,7 +183,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 {
                     span_mirbug!(
                         self,
-                        lvalue,
+                        place,
                         "bad static type ({:?}: {:?}): {:?}",
                         ty,
                         sty,
@@ -198,7 +198,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 } else {
                     PlaceContext::Projection(Mutability::Not)
                 };
-                let base_ty = self.sanitize_lvalue(&proj.base, location, base_context);
+                let base_ty = self.sanitize_place(&proj.base, location, base_context);
                 if let PlaceTy::Ty { ty } = base_ty {
                     if ty.references_error() {
                         assert!(self.errors_reported);
@@ -207,27 +207,27 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         };
                     }
                 }
-                self.sanitize_projection(base_ty, &proj.elem, lvalue, location)
+                self.sanitize_projection(base_ty, &proj.elem, place, location)
             }
         };
         if let PlaceContext::Copy = context {
-            let ty = lvalue_ty.to_ty(self.tcx());
+            let ty = place_ty.to_ty(self.tcx());
             if self.cx.infcx.type_moves_by_default(self.cx.param_env, ty, DUMMY_SP) {
-                span_mirbug!(self, lvalue,
+                span_mirbug!(self, place,
                              "attempted copy of non-Copy type ({:?})", ty);
             }
         }
-        lvalue_ty
+        place_ty
     }
 
     fn sanitize_projection(
         &mut self,
         base: PlaceTy<'tcx>,
         pi: &PlaceElem<'tcx>,
-        lvalue: &Place<'tcx>,
+        place: &Place<'tcx>,
         location: Location,
     ) -> PlaceTy<'tcx> {
-        debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, lvalue);
+        debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
         let tcx = self.tcx();
         let base_ty = base.to_ty(tcx);
         let span = self.last_span;
@@ -236,7 +236,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 let deref_ty = base_ty.builtin_deref(true, ty::LvaluePreference::NoPreference);
                 PlaceTy::Ty {
                     ty: deref_ty.map(|t| t.ty).unwrap_or_else(|| {
-                        span_mirbug_and_err!(self, lvalue, "deref of non-pointer {:?}", base_ty)
+                        span_mirbug_and_err!(self, place, "deref of non-pointer {:?}", base_ty)
                     }),
                 }
             }
@@ -249,7 +249,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 } else {
                     PlaceTy::Ty {
                         ty: base_ty.builtin_index().unwrap_or_else(|| {
-                            span_mirbug_and_err!(self, lvalue, "index of non-array {:?}", base_ty)
+                            span_mirbug_and_err!(self, place, "index of non-array {:?}", base_ty)
                         }),
                     }
                 }
@@ -258,7 +258,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 // consider verifying in-bounds
                 PlaceTy::Ty {
                     ty: base_ty.builtin_index().unwrap_or_else(|| {
-                        span_mirbug_and_err!(self, lvalue, "index of non-array {:?}", base_ty)
+                        span_mirbug_and_err!(self, place, "index of non-array {:?}", base_ty)
                     }),
                 }
             }
@@ -272,14 +272,14 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         } else {
                             span_mirbug_and_err!(
                                 self,
-                                lvalue,
+                                place,
                                 "taking too-small slice of {:?}",
                                 base_ty
                             )
                         }
                     }
                     ty::TySlice(..) => base_ty,
-                    _ => span_mirbug_and_err!(self, lvalue, "slice of non-array {:?}", base_ty),
+                    _ => span_mirbug_and_err!(self, place, "slice of non-array {:?}", base_ty),
                 },
             },
             ProjectionElem::Downcast(adt_def1, index) => match base_ty.sty {
@@ -288,7 +288,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         PlaceTy::Ty {
                             ty: span_mirbug_and_err!(
                                 self,
-                                lvalue,
+                                place,
                                 "cast to variant #{:?} but enum only has {:?}",
                                 index,
                                 adt_def.variants.len()
@@ -305,7 +305,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 _ => PlaceTy::Ty {
                     ty: span_mirbug_and_err!(
                         self,
-                        lvalue,
+                        place,
                         "can't downcast {:?} as {:?}",
                         base_ty,
                         adt_def1
@@ -313,13 +313,13 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 },
             },
             ProjectionElem::Field(field, fty) => {
-                let fty = self.sanitize_type(lvalue, fty);
-                match self.field_ty(lvalue, base, field, location) {
+                let fty = self.sanitize_type(place, fty);
+                match self.field_ty(place, base, field, location) {
                     Ok(ty) => {
                         if let Err(terr) = self.cx.eq_types(span, ty, fty, location.at_self()) {
                             span_mirbug!(
                                 self,
-                                lvalue,
+                                place,
                                 "bad field access ({:?}: {:?}): {:?}",
                                 ty,
                                 fty,
@@ -329,7 +329,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     }
                     Err(FieldAccessError::OutOfRange { field_count }) => span_mirbug!(
                         self,
-                        lvalue,
+                        place,
                         "accessed field #{} but variant only has {}",
                         field.index(),
                         field_count
@@ -551,17 +551,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
-            StatementKind::Assign(ref lv, ref rv) => {
-                let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
+            StatementKind::Assign(ref place, ref rv) => {
+                let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
                 if let Err(terr) =
-                    self.sub_types(rv_ty, lv_ty, location.at_successor_within_block())
+                    self.sub_types(rv_ty, place_ty, location.at_successor_within_block())
                 {
                     span_mirbug!(
                         self,
                         stmt,
                         "bad assignment ({:?} = {:?}): {:?}",
-                        lv_ty,
+                        place_ty,
                         rv_ty,
                         terr
                     );
@@ -569,17 +569,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.check_rvalue(mir, rv, location);
             }
             StatementKind::SetDiscriminant {
-                ref lvalue,
+                ref place,
                 variant_index,
             } => {
-                let lvalue_type = lvalue.ty(mir, tcx).to_ty(tcx);
-                let adt = match lvalue_type.sty {
+                let place_type = place.ty(mir, tcx).to_ty(tcx);
+                let adt = match place_type.sty {
                     TypeVariants::TyAdt(adt, _) if adt.is_enum() => adt,
                     _ => {
                         span_bug!(
                             stmt.source_info.span,
                             "bad set discriminant ({:?} = {:?}): lhs is not an enum",
-                            lvalue,
+                            place,
                             variant_index
                         );
                     }
@@ -588,7 +588,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     span_bug!(
                         stmt.source_info.span,
                         "bad set discriminant ({:?} = {:?}): value of of range",
-                        lvalue,
+                        place,
                         variant_index
                     );
                 };
@@ -627,19 +627,19 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 target,
                 unwind,
             } => {
-                let lv_ty = location.ty(mir, tcx).to_ty(tcx);
+                let place_ty = location.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = value.ty(mir, tcx);
 
                 let locations = Locations {
                     from_location: term_location,
                     at_location: target.start_location(),
                 };
-                if let Err(terr) = self.sub_types(rv_ty, lv_ty, locations) {
+                if let Err(terr) = self.sub_types(rv_ty, place_ty, locations) {
                     span_mirbug!(
                         self,
                         term,
                         "bad DropAndReplace ({:?} = {:?}): {:?}",
-                        lv_ty,
+                        place_ty,
                         rv_ty,
                         terr
                     );
@@ -653,12 +653,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         from_location: term_location,
                         at_location: unwind.start_location(),
                     };
-                    if let Err(terr) = self.sub_types(rv_ty, lv_ty, locations) {
+                    if let Err(terr) = self.sub_types(rv_ty, place_ty, locations) {
                         span_mirbug!(
                             self,
                             term,
                             "bad DropAndReplace ({:?} = {:?}): {:?}",
-                            lv_ty,
+                            place_ty,
                             rv_ty,
                             terr
                         );
@@ -1209,8 +1209,8 @@ trait AtLocation {
     /// its successor within the block is the at-location. This means
     /// that any required region relationships must hold only upon
     /// **exiting** the statement/terminator indicated by `self`. This
-    /// is for example used when you have a `lv = rv` statement: it
-    /// indicates that the `typeof(rv) <: typeof(lv)` as of the
+    /// is for example used when you have a `place = rv` statement: it
+    /// indicates that the `typeof(rv) <: typeof(place)` as of the
     /// **next** statement.
     fn at_successor_within_block(self) -> Locations;
 }

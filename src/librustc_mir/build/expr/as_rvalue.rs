@@ -68,8 +68,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Rvalue::Repeat(value_operand, count))
             }
             ExprKind::Borrow { region, borrow_kind, arg } => {
-                let arg_lvalue = unpack!(block = this.as_lvalue(block, arg));
-                block.and(Rvalue::Ref(region, borrow_kind, arg_lvalue))
+                let arg_place = unpack!(block = this.as_place(block, arg));
+                block.and(Rvalue::Ref(region, borrow_kind, arg_place))
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(block = this.as_operand(block, scope, lhs));
@@ -229,7 +229,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let field_names = this.hir.all_fields(adt_def, variant_index);
 
                 let fields = if let Some(FruInfo { base, field_types }) = base {
-                    let base = unpack!(block = this.as_lvalue(block, base));
+                    let base = unpack!(block = this.as_place(block, base));
 
                     // MIR does not natively support FRU, so for each
                     // base-supplied field, generate an operand that

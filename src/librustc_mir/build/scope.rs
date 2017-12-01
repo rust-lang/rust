@@ -39,10 +39,10 @@ mapping is from one scope to a vector of SEME regions.
 ### Drops
 
 The primary purpose for scopes is to insert drops: while translating
-the contents, we also accumulate lvalues that need to be dropped upon
+the contents, we also accumulate places that need to be dropped upon
 exit from each scope. This is done by calling `schedule_drop`. Once a
 drop is scheduled, whenever we branch out we will insert drops of all
-those lvalues onto the outgoing edge. Note that we don't know the full
+those places onto the outgoing edge. Note that we don't know the full
 set of scheduled drops up front, and so whenever we exit from the
 scope we only drop the values scheduled thus far. For example, consider
 the scope S corresponding to this loop:
@@ -120,7 +120,7 @@ pub struct Scope<'tcx> {
     ///  * freeing up stack space has no effect during unwinding
     needs_cleanup: bool,
 
-    /// set of lvalues to drop when exiting this scope. This starts
+    /// set of places to drop when exiting this scope. This starts
     /// out empty but grows as variables are declared during the
     /// building process. This is a stack, so we always drop from the
     /// end of the vector (top of the stack) first.
@@ -138,10 +138,10 @@ pub struct Scope<'tcx> {
 
 #[derive(Debug)]
 struct DropData<'tcx> {
-    /// span where drop obligation was incurred (typically where lvalue was declared)
+    /// span where drop obligation was incurred (typically where place was declared)
     span: Span,
 
-    /// lvalue to drop
+    /// place to drop
     location: Place<'tcx>,
 
     /// Whether this is a full value Drop, or just a StorageDead.
@@ -608,19 +608,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Scheduling drops
     // ================
-    /// Indicates that `lvalue` should be dropped on exit from
+    /// Indicates that `place` should be dropped on exit from
     /// `region_scope`.
     pub fn schedule_drop(&mut self,
                          span: Span,
                          region_scope: region::Scope,
-                         lvalue: &Place<'tcx>,
-                         lvalue_ty: Ty<'tcx>) {
-        let needs_drop = self.hir.needs_drop(lvalue_ty);
+                         place: &Place<'tcx>,
+                         place_ty: Ty<'tcx>) {
+        let needs_drop = self.hir.needs_drop(place_ty);
         let drop_kind = if needs_drop {
             DropKind::Value { cached_block: CachedBlock::default() }
         } else {
             // Only temps and vars need their storage dead.
-            match *lvalue {
+            match *place {
                 Place::Local(index) if index.index() > self.arg_count => DropKind::Storage,
                 _ => return
             }
@@ -685,13 +685,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let scope_end = region_scope_span.with_lo(region_scope_span.hi());
                 scope.drops.push(DropData {
                     span: scope_end,
-                    location: lvalue.clone(),
+                    location: place.clone(),
                     kind: drop_kind
                 });
                 return;
             }
         }
-        span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, lvalue);
+        span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, place);
     }
 
     // Other

@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Compile `expr` into a value that can be used as an operand.
-    /// If `expr` is an lvalue like `x`, this will introduce a
+    /// If `expr` is a place like `x`, this will introduce a
     /// temporary `tmp = x`, so that we capture the value of `x` at
     /// this time.
     ///

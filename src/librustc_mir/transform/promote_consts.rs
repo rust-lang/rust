@@ -316,7 +316,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             statement_index: usize::MAX
         });
 
-        self.assign(RETURN_POINTER, rvalue, span);
+        self.assign(RETURN_PLACE, rvalue, span);
         self.source.promoted.push(self.promoted);
     }
 }
@@ -373,8 +373,8 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             }
         };
 
-        // Declare return pointer local
-        let initial_locals = iter::once(LocalDecl::new_return_pointer(ty, span))
+        // Declare return place local
+        let initial_locals = iter::once(LocalDecl::new_return_place(ty, span))
             .collect();
 
         let mut promoter = Promoter {

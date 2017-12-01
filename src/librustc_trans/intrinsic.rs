@@ -14,7 +14,7 @@ use intrinsics::{self, Intrinsic};
 use llvm;
 use llvm::{ValueRef};
 use abi::{Abi, FnType, PassMode};
-use mir::lvalue::{PlaceRef, Alignment};
+use mir::place::{PlaceRef, Alignment};
 use mir::operand::{OperandRef, OperandValue};
 use base::*;
 use common::*;

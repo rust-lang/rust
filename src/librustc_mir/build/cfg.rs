@@ -61,11 +61,11 @@ impl<'tcx> CFG<'tcx> {
     pub fn push_assign(&mut self,
                        block: BasicBlock,
                        source_info: SourceInfo,
-                       lvalue: &Place<'tcx>,
+                       place: &Place<'tcx>,
                        rvalue: Rvalue<'tcx>) {
         self.push(block, Statement {
             source_info,
-            kind: StatementKind::Assign(lvalue.clone(), rvalue)
+            kind: StatementKind::Assign(place.clone(), rvalue)
         });
     }
 
@@ -81,8 +81,8 @@ impl<'tcx> CFG<'tcx> {
     pub fn push_assign_unit(&mut self,
                             block: BasicBlock,
                             source_info: SourceInfo,
-                            lvalue: &Place<'tcx>) {
-        self.push_assign(block, source_info, lvalue, Rvalue::Aggregate(
+                            place: &Place<'tcx>) {
+        self.push_assign(block, source_info, place, Rvalue::Aggregate(
             box AggregateKind::Tuple, vec![]
         ));
     }

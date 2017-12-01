@@ -135,12 +135,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         self.super_rvalue(rvalue, location);
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &Place<'tcx>,
+    fn visit_place(&mut self,
+                    place: &Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
         if let PlaceContext::Borrow { .. } = context {
-            if util::is_disaligned(self.tcx, self.mir, self.param_env, lvalue) {
+            if util::is_disaligned(self.tcx, self.mir, self.param_env, place) {
                 let source_info = self.source_info;
                 let lint_root =
                     self.visibility_scope_info[source_info.scope].lint_root;
@@ -152,7 +152,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
         }
 
-        match lvalue {
+        match place {
             &Place::Projection(box Projection {
                 ref base, ref elem
             }) => {
@@ -180,7 +180,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                                     _ => span_bug!(
                                         self.source_info.span,
                                         "non-field projection {:?} from union?",
-                                        lvalue)
+                                        place)
                                 };
                                 if elem_ty.moves_by_default(self.tcx, self.param_env,
                                                             self.source_info.span) {
@@ -216,7 +216,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
             }
         };
-        self.super_lvalue(lvalue, context, location);
+        self.super_place(place, context, location);
     }
 }
 

@@ -64,10 +64,10 @@ impl<'tcx> DefUseAnalysis<'tcx> {
                                where F: for<'a> FnMut(&'a mut Local,
                                                       PlaceContext<'tcx>,
                                                       Location) {
-        for lvalue_use in &self.info[local].defs_and_uses {
+        for place_use in &self.info[local].defs_and_uses {
             MutateUseVisitor::new(local,
                                   &mut callback,
-                                  mir).visit_location(mir, lvalue_use.location)
+                                  mir).visit_location(mir, place_use.location)
         }
     }
 
@@ -108,7 +108,7 @@ impl<'tcx> Info<'tcx> {
     }
 
     pub fn def_count(&self) -> usize {
-        self.defs_and_uses.iter().filter(|lvalue_use| lvalue_use.context.is_mutating_use()).count()
+        self.defs_and_uses.iter().filter(|place_use| place_use.context.is_mutating_use()).count()
     }
 
     pub fn def_count_not_including_drop(&self) -> usize {
@@ -118,14 +118,14 @@ impl<'tcx> Info<'tcx> {
     pub fn defs_not_including_drop(
         &self,
     ) -> iter::Filter<slice::Iter<Use<'tcx>>, fn(&&Use<'tcx>) -> bool> {
-        self.defs_and_uses.iter().filter(|lvalue_use| {
-            lvalue_use.context.is_mutating_use() && !lvalue_use.context.is_drop()
+        self.defs_and_uses.iter().filter(|place_use| {
+            place_use.context.is_mutating_use() && !place_use.context.is_drop()
         })
     }
 
     pub fn use_count(&self) -> usize {
-        self.defs_and_uses.iter().filter(|lvalue_use| {
-            lvalue_use.context.is_nonmutating_use()
+        self.defs_and_uses.iter().filter(|place_use| {
+            place_use.context.is_nonmutating_use()
         }).count()
     }
 }

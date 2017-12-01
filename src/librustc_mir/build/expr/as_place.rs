@@ -18,22 +18,22 @@ use rustc::mir::*;
 use rustc_data_structures::indexed_vec::Idx;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    /// Compile `expr`, yielding an lvalue that we can move from etc.
-    pub fn as_lvalue<M>(&mut self,
+    /// Compile `expr`, yielding a place that we can move from etc.
+    pub fn as_place<M>(&mut self,
                         block: BasicBlock,
                         expr: M)
                         -> BlockAnd<Place<'tcx>>
         where M: Mirror<'tcx, Output=Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
-        self.expr_as_lvalue(block, expr)
+        self.expr_as_place(block, expr)
     }
 
-    fn expr_as_lvalue(&mut self,
+    fn expr_as_place(&mut self,
                       mut block: BasicBlock,
                       expr: Expr<'tcx>)
                       -> BlockAnd<Place<'tcx>> {
-        debug!("expr_as_lvalue(block={:?}, expr={:?})", block, expr);
+        debug!("expr_as_place(block={:?}, expr={:?})", block, expr);
 
         let this = self;
         let expr_span = expr.span;
@@ -41,24 +41,24 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
                 this.in_scope((region_scope, source_info), lint_level, block, |this| {
-                    this.as_lvalue(block, value)
+                    this.as_place(block, value)
                 })
             }
             ExprKind::Field { lhs, name } => {
-                let lvalue = unpack!(block = this.as_lvalue(block, lhs));
-                let lvalue = lvalue.field(name, expr.ty);
-                block.and(lvalue)
+                let place = unpack!(block = this.as_place(block, lhs));
+                let place = place.field(name, expr.ty);
+                block.and(place)
             }
             ExprKind::Deref { arg } => {
-                let lvalue = unpack!(block = this.as_lvalue(block, arg));
-                let lvalue = lvalue.deref();
-                block.and(lvalue)
+                let place = unpack!(block = this.as_place(block, arg));
+                let place = place.deref();
+                block.and(place)
             }
             ExprKind::Index { lhs, index } => {
                 let (usize_ty, bool_ty) = (this.hir.usize_ty(), this.hir.bool_ty());
 
-                let slice = unpack!(block = this.as_lvalue(block, lhs));
-                // region_scope=None so lvalue indexes live forever. They are scalars so they
+                let slice = unpack!(block = this.as_place(block, lhs));
+                // region_scope=None so place indexes live forever. They are scalars so they
                 // do not need storage annotations, and they are often copied between
                 // places.
                 let idx = unpack!(block = this.as_temp(block, None, index));
@@ -122,7 +122,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::InlineAsm { .. } |
             ExprKind::Yield { .. } |
             ExprKind::Call { .. } => {
-                // these are not lvalues, so we need to make a temporary.
+                // these are not places, so we need to make a temporary.
                 debug_assert!(match Category::of(&expr.kind) {
                     Some(Category::Place) => false,
                     _ => true,

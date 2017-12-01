@@ -31,7 +31,7 @@ use syntax_pos::Pos;
 
 use super::{MirContext, LocalRef};
 use super::constant::Const;
-use super::lvalue::{Alignment, PlaceRef};
+use super::place::{Alignment, PlaceRef};
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
@@ -214,7 +214,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }
 
                     PassMode::Direct(_) | PassMode::Pair(..) => {
-                        let op = self.trans_consume(&bcx, &mir::Place::Local(mir::RETURN_POINTER));
+                        let op = self.trans_consume(&bcx, &mir::Place::Local(mir::RETURN_PLACE));
                         if let Ref(llval, align) = op.val {
                             bcx.load(llval, align.non_abi())
                         } else {
@@ -223,13 +223,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }
 
                     PassMode::Cast(cast_ty) => {
-                        let op = match self.locals[mir::RETURN_POINTER] {
+                        let op = match self.locals[mir::RETURN_PLACE] {
                             LocalRef::Operand(Some(op)) => op,
                             LocalRef::Operand(None) => bug!("use of return before def"),
-                            LocalRef::Place(tr_lvalue) => {
+                            LocalRef::Place(tr_place) => {
                                 OperandRef {
-                                    val: Ref(tr_lvalue.llval, tr_lvalue.alignment),
-                                    layout: tr_lvalue.layout
+                                    val: Ref(tr_place.llval, tr_place.alignment),
+                                    layout: tr_place.layout
                                 }
                             }
                         };
@@ -241,7 +241,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             }
                             Ref(llval, align) => {
                                 assert_eq!(align, Alignment::AbiAligned,
-                                           "return pointer is unaligned!");
+                                           "return place is unaligned!");
                                 llval
                             }
                         };
@@ -268,9 +268,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     return
                 }
 
-                let lvalue = self.trans_lvalue(&bcx, location);
-                let mut args: &[_] = &[lvalue.llval, lvalue.llextra];
-                args = &args[..1 + lvalue.has_extra() as usize];
+                let place = self.trans_place(&bcx, location);
+                let mut args: &[_] = &[place.llval, place.llextra];
+                args = &args[..1 + place.has_extra() as usize];
                 let (drop_fn, fn_ty) = match ty.sty {
                     ty::TyDynamic(..) => {
                         let fn_ty = common::instance_ty(bcx.ccx.tcx(), &drop_fn);
@@ -278,7 +278,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let sig = bcx.tcx().erase_late_bound_regions_and_normalize(&sig);
                         let fn_ty = FnType::new_vtable(bcx.ccx, sig, &[]);
                         args = &args[..1];
-                        (meth::DESTRUCTOR.get_fn(&bcx, lvalue.llextra, &fn_ty), fn_ty)
+                        (meth::DESTRUCTOR.get_fn(&bcx, place.llextra, &fn_ty), fn_ty)
                     }
                     _ => {
                         (callee::get_fn(bcx.ccx, drop_fn),
@@ -792,7 +792,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             match self.locals[index] {
                 LocalRef::Place(dest) => dest,
                 LocalRef::Operand(None) => {
-                    // Handle temporary lvalues, specifically Operand ones, as
+                    // Handle temporary places, specifically Operand ones, as
                     // they don't have allocas
                     return if fn_ret.is_indirect() {
                         // Odd, but possible, case, we have an operand temporary,
@@ -813,11 +813,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                 }
                 LocalRef::Operand(Some(_)) => {
-                    bug!("lvalue local already assigned to");
+                    bug!("place local already assigned to");
                 }
             }
         } else {
-            self.trans_lvalue(bcx, dest)
+            self.trans_place(bcx, dest)
         };
         if fn_ret.is_indirect() {
             match dest.alignment {
@@ -845,15 +845,15 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                        dst: &mir::Place<'tcx>) {
         if let mir::Place::Local(index) = *dst {
             match self.locals[index] {
-                LocalRef::Place(lvalue) => self.trans_transmute_into(bcx, src, lvalue),
+                LocalRef::Place(place) => self.trans_transmute_into(bcx, src, place),
                 LocalRef::Operand(None) => {
-                    let dst_layout = bcx.ccx.layout_of(self.monomorphized_lvalue_ty(dst));
+                    let dst_layout = bcx.ccx.layout_of(self.monomorphized_place_ty(dst));
                     assert!(!dst_layout.ty.has_erasable_regions());
-                    let lvalue = PlaceRef::alloca(bcx, dst_layout, "transmute_temp");
-                    lvalue.storage_live(bcx);
-                    self.trans_transmute_into(bcx, src, lvalue);
-                    let op = lvalue.load(bcx);
-                    lvalue.storage_dead(bcx);
+                    let place = PlaceRef::alloca(bcx, dst_layout, "transmute_temp");
+                    place.storage_live(bcx);
+                    self.trans_transmute_into(bcx, src, place);
+                    let op = place.load(bcx);
+                    place.storage_dead(bcx);
                     self.locals[index] = LocalRef::Operand(Some(op));
                 }
                 LocalRef::Operand(Some(op)) => {
@@ -862,7 +862,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
             }
         } else {
-            let dst = self.trans_lvalue(bcx, dst);
+            let dst = self.trans_place(bcx, dst);
             self.trans_transmute_into(bcx, src, dst);
         }
     }
@@ -918,8 +918,8 @@ enum ReturnDest<'tcx> {
     Nothing,
     // Store the return value to the pointer
     Store(PlaceRef<'tcx>),
-    // Stores an indirect return value to an operand local lvalue
+    // Stores an indirect return value to an operand local place
     IndirectOperand(PlaceRef<'tcx>, mir::Local),
-    // Stores a direct return value to an operand local lvalue
+    // Stores a direct return value to an operand local place
     DirectOperand(mir::Local)
 }

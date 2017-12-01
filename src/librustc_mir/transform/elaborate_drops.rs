@@ -358,7 +358,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             });
 
             let path = self.move_data().rev_lookup.find(location);
-            debug!("collect_drop_flags: {:?}, lv {:?} ({:?})",
+            debug!("collect_drop_flags: {:?}, place {:?} ({:?})",
                    bb, location, path);
 
             let path = match path {
@@ -368,7 +368,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     let (_maybe_live, maybe_dead) = init_data.state(parent);
                     if maybe_dead {
                         span_bug!(terminator.source_info.span,
-                                  "drop of untracked, uninitialized value {:?}, lv {:?} ({:?})",
+                                  "drop of untracked, uninitialized value {:?}, place {:?} ({:?})",
                                   bb, location, path);
                     }
                     continue
@@ -443,7 +443,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     /// The desugaring drops the location if needed, and then writes
     /// the value (including setting the drop flag) over it in *both* arms.
     ///
-    /// The `replace` terminator can also be called on lvalues that
+    /// The `replace` terminator can also be called on places that
     /// are not tracked by elaboration (for example,
     /// `replace x[i] <- tmp0`). The borrow checker requires that
     /// these locations are initialized before the assignment,
@@ -554,12 +554,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn drop_flags_for_fn_rets(&mut self) {
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             if let TerminatorKind::Call {
-                destination: Some((ref lv, tgt)), cleanup: Some(_), ..
+                destination: Some((ref place, tgt)), cleanup: Some(_), ..
             } = data.terminator().kind {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: tgt, statement_index: 0 };
-                let path = self.move_data().rev_lookup.find(lv);
+                let path = self.move_data().rev_lookup.find(place);
                 on_lookup_result_bits(
                     self.tcx, self.mir, self.move_data(), path,
                     |child| self.set_drop_flag(loc, child, DropFlagState::Present)
@@ -628,12 +628,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             // so mark the return as initialized *before* the
             // call.
             if let TerminatorKind::Call {
-                destination: Some((ref lv, _)), cleanup: None, ..
+                destination: Some((ref place, _)), cleanup: None, ..
             } = data.terminator().kind {
                 assert!(!self.patch.is_patched(bb));
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
-                let path = self.move_data().rev_lookup.find(lv);
+                let path = self.move_data().rev_lookup.find(place);
                 on_lookup_result_bits(
                     self.tcx, self.mir, self.move_data(), path,
                     |child| self.set_drop_flag(loc, child, DropFlagState::Present)

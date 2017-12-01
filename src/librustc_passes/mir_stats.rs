@@ -188,41 +188,41 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &Place<'tcx>,
+    fn visit_place(&mut self,
+                    place: &Place<'tcx>,
                     context: mir_visit::PlaceContext<'tcx>,
                     location: Location) {
-        self.record("Place", lvalue);
-        self.record(match *lvalue {
+        self.record("Place", place);
+        self.record(match *place {
             Place::Local(..) => "Place::Local",
             Place::Static(..) => "Place::Static",
             Place::Projection(..) => "Place::Projection",
-        }, lvalue);
-        self.super_lvalue(lvalue, context, location);
+        }, place);
+        self.super_place(place, context, location);
     }
 
     fn visit_projection(&mut self,
-                        lvalue: &PlaceProjection<'tcx>,
+                        place: &PlaceProjection<'tcx>,
                         context: mir_visit::PlaceContext<'tcx>,
                         location: Location) {
-        self.record("PlaceProjection", lvalue);
-        self.super_projection(lvalue, context, location);
+        self.record("PlaceProjection", place);
+        self.super_projection(place, context, location);
     }
 
     fn visit_projection_elem(&mut self,
-                             lvalue: &PlaceElem<'tcx>,
+                             place: &PlaceElem<'tcx>,
                              context: mir_visit::PlaceContext<'tcx>,
                              location: Location) {
-        self.record("PlaceElem", lvalue);
-        self.record(match *lvalue {
+        self.record("PlaceElem", place);
+        self.record(match *place {
             ProjectionElem::Deref => "PlaceElem::Deref",
             ProjectionElem::Subslice { .. } => "PlaceElem::Subslice",
             ProjectionElem::Field(..) => "PlaceElem::Field",
             ProjectionElem::Index(..) => "PlaceElem::Index",
             ProjectionElem::ConstantIndex { .. } => "PlaceElem::ConstantIndex",
             ProjectionElem::Downcast(..) => "PlaceElem::Downcast",
-        }, lvalue);
-        self.super_projection_elem(lvalue, context, location);
+        }, place);
+        self.super_projection_elem(place, context, location);
     }
 
     fn visit_constant(&mut self,

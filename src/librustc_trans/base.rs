@@ -50,7 +50,7 @@ use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
 use rustc_incremental;
 use allocator;
-use mir::lvalue::PlaceRef;
+use mir::place::PlaceRef;
 use attributes;
 use builder::Builder;
 use callee;

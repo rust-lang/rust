@@ -25,7 +25,7 @@ use std::fmt;
 use std::ptr;
 
 use super::{MirContext, LocalRef};
-use super::lvalue::{Alignment, PlaceRef};
+use super::place::{Alignment, PlaceRef};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -243,20 +243,20 @@ impl<'a, 'tcx> OperandValue {
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     fn maybe_trans_consume_direct(&mut self,
                                   bcx: &Builder<'a, 'tcx>,
-                                  lvalue: &mir::Place<'tcx>)
+                                  place: &mir::Place<'tcx>)
                                    -> Option<OperandRef<'tcx>>
     {
-        debug!("maybe_trans_consume_direct(lvalue={:?})", lvalue);
+        debug!("maybe_trans_consume_direct(place={:?})", place);
 
         // watch out for locals that do not have an
         // alloca; they are handled somewhat differently
-        if let mir::Place::Local(index) = *lvalue {
+        if let mir::Place::Local(index) = *place {
             match self.locals[index] {
                 LocalRef::Operand(Some(o)) => {
                     return Some(o);
                 }
                 LocalRef::Operand(None) => {
-                    bug!("use of {:?} before def", lvalue);
+                    bug!("use of {:?} before def", place);
                 }
                 LocalRef::Place(..) => {
                     // use path below
@@ -265,7 +265,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
 
         // Moves out of scalar and scalar pair fields are trivial.
-        if let &mir::Place::Projection(ref proj) = lvalue {
+        if let &mir::Place::Projection(ref proj) = place {
             if let mir::ProjectionElem::Field(ref f, _) = proj.elem {
                 if let Some(o) = self.maybe_trans_consume_direct(bcx, &proj.base) {
                     return Some(o.extract_field(bcx, f.index()));
@@ -278,12 +278,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
     pub fn trans_consume(&mut self,
                          bcx: &Builder<'a, 'tcx>,
-                         lvalue: &mir::Place<'tcx>)
+                         place: &mir::Place<'tcx>)
                          -> OperandRef<'tcx>
     {
-        debug!("trans_consume(lvalue={:?})", lvalue);
+        debug!("trans_consume(place={:?})", place);
 
-        let ty = self.monomorphized_lvalue_ty(lvalue);
+        let ty = self.monomorphized_place_ty(place);
         let layout = bcx.ccx.layout_of(ty);
 
         // ZSTs don't require any actual memory access.
@@ -291,13 +291,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             return OperandRef::new_zst(bcx.ccx, layout);
         }
 
-        if let Some(o) = self.maybe_trans_consume_direct(bcx, lvalue) {
+        if let Some(o) = self.maybe_trans_consume_direct(bcx, place) {
             return o;
         }
 
-        // for most lvalues, to consume them we just load them
+        // for most places, to consume them we just load them
         // out from their home
-        self.trans_lvalue(bcx, lvalue).load(bcx)
+        self.trans_place(bcx, place).load(bcx)
     }
 
     pub fn trans_operand(&mut self,
@@ -308,9 +308,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         debug!("trans_operand(operand={:?})", operand);
 
         match *operand {
-            mir::Operand::Copy(ref lvalue) |
-            mir::Operand::Move(ref lvalue) => {
-                self.trans_consume(bcx, lvalue)
+            mir::Operand::Copy(ref place) |
+            mir::Operand::Move(ref place) => {
+                self.trans_consume(bcx, place)
             }
 
             mir::Operand::Constant(ref constant) => {

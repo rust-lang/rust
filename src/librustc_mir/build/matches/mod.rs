@@ -36,7 +36,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                       discriminant: ExprRef<'tcx>,
                       arms: Vec<Arm<'tcx>>)
                       -> BlockAnd<()> {
-        let discriminant_lvalue = unpack!(block = self.as_lvalue(block, discriminant));
+        let discriminant_place = unpack!(block = self.as_place(block, discriminant));
 
         let mut arm_blocks = ArmBlocks {
             blocks: arms.iter()
@@ -77,7 +77,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        (pre_binding_block, next_candidate_pre_binding_block))| {
                     Candidate {
                         span: pattern.span,
-                        match_pairs: vec![MatchPair::new(discriminant_lvalue.clone(), pattern)],
+                        match_pairs: vec![MatchPair::new(discriminant_place.clone(), pattern)],
                         bindings: vec![],
                         guard,
                         arm_index,
@@ -91,7 +91,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.cfg.terminate(*pre_binding_blocks.last().unwrap(),
                            outer_source_info, TerminatorKind::Unreachable);
 
-        // this will generate code to test discriminant_lvalue and
+        // this will generate code to test discriminant_place and
         // branch to the appropriate arm block
         let otherwise = self.match_candidates(span, &mut arm_blocks, candidates, block);
 
@@ -139,19 +139,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Binding { mode: BindingMode::ByValue,
                                    var,
                                    subpattern: None, .. } => {
-                let lvalue = self.storage_live_binding(block, var, irrefutable_pat.span);
-                unpack!(block = self.into(&lvalue, block, initializer));
+                let place = self.storage_live_binding(block, var, irrefutable_pat.span);
+                unpack!(block = self.into(&place, block, initializer));
                 self.schedule_drop_for_binding(var, irrefutable_pat.span);
                 block.unit()
             }
             _ => {
-                let lvalue = unpack!(block = self.as_lvalue(block, initializer));
-                self.lvalue_into_pattern(block, irrefutable_pat, &lvalue)
+                let place = unpack!(block = self.as_place(block, initializer));
+                self.place_into_pattern(block, irrefutable_pat, &place)
             }
         }
     }
 
-    pub fn lvalue_into_pattern(&mut self,
+    pub fn place_into_pattern(&mut self,
                                mut block: BasicBlock,
                                irrefutable_pat: Pattern<'tcx>,
                                initializer: &Place<'tcx>)
@@ -315,8 +315,8 @@ struct Binding<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct MatchPair<'pat, 'tcx:'pat> {
-    // this lvalue...
-    lvalue: Place<'tcx>,
+    // this place...
+    place: Place<'tcx>,
 
     // ... must match this pattern.
     pattern: &'pat Pattern<'tcx>,
@@ -635,7 +635,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         match test.kind {
             TestKind::SwitchInt { switch_ty, ref mut options, ref mut indices } => {
                 for candidate in candidates.iter() {
-                    if !self.add_cases_to_switch(&match_pair.lvalue,
+                    if !self.add_cases_to_switch(&match_pair.place,
                                                  candidate,
                                                  switch_ty,
                                                  options,
@@ -646,7 +646,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             TestKind::Switch { adt_def: _, ref mut variants} => {
                 for candidate in candidates.iter() {
-                    if !self.add_variants_to_switch(&match_pair.lvalue,
+                    if !self.add_variants_to_switch(&match_pair.place,
                                                     candidate,
                                                     variants) {
                         break;
@@ -661,7 +661,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // vector of candidates. Those are the candidates that still
         // apply if the test has that particular outcome.
         debug!("match_candidates: test={:?} match_pair={:?}", test, match_pair);
-        let target_blocks = self.perform_test(block, &match_pair.lvalue, &test);
+        let target_blocks = self.perform_test(block, &match_pair.place, &test);
         let mut target_candidates: Vec<_> = (0..target_blocks.len()).map(|_| vec![]).collect();
 
         // Sort the candidates into the appropriate vector in
@@ -670,7 +670,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // that point, we stop sorting.
         let tested_candidates =
             candidates.iter()
-                      .take_while(|c| self.sort_candidate(&match_pair.lvalue,
+                      .take_while(|c| self.sort_candidate(&match_pair.place,
                                                           &test,
                                                           c,
                                                           &mut target_candidates))

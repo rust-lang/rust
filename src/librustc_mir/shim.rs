@@ -384,14 +384,14 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let rcvr = Place::Local(Local::new(1+0)).deref();
         let ret_statement = self.make_statement(
             StatementKind::Assign(
-                Place::Local(RETURN_POINTER),
+                Place::Local(RETURN_PLACE),
                 Rvalue::Use(Operand::Copy(rcvr))
             )
         );
         self.block(vec![ret_statement], TerminatorKind::Return, false);
     }
 
-    fn make_lvalue(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
+    fn make_place(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
         let span = self.span;
         Place::Local(
             self.local_decls.push(temp_decl(mutability, ty, span))
@@ -427,7 +427,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             },
         });
 
-        let ref_loc = self.make_lvalue(
+        let ref_loc = self.make_place(
             Mutability::Not,
             tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
                 ty,
@@ -435,7 +435,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             })
         );
 
-        let loc = self.make_lvalue(Mutability::Not, ty);
+        let loc = self.make_place(Mutability::Not, ty);
 
         // `let ref_loc: &ty = &rcvr_field;`
         let statement = self.make_statement(
@@ -466,7 +466,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let cond = self.make_lvalue(Mutability::Mut, tcx.types.bool);
+        let cond = self.make_place(Mutability::Mut, tcx.types.bool);
         let compute_cond = self.make_statement(
             StatementKind::Assign(
                 cond.clone(),
@@ -502,8 +502,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let rcvr = Place::Local(Local::new(1+0)).deref();
 
         let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
-        let end = self.make_lvalue(Mutability::Not, tcx.types.usize);
-        let ret = self.make_lvalue(Mutability::Mut, tcx.mk_array(ty, len));
+        let end = self.make_place(Mutability::Not, tcx.types.usize);
+        let ret = self.make_place(Mutability::Mut, tcx.mk_array(ty, len));
 
         // BB #0
         // `let mut beg = 0;`
@@ -567,7 +567,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `return ret;`
         let ret_statement = self.make_statement(
             StatementKind::Assign(
-                Place::Local(RETURN_POINTER),
+                Place::Local(RETURN_PLACE),
                 Rvalue::Use(Operand::Move(ret.clone())),
             )
         );
@@ -663,7 +663,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `return kind(returns[0], returns[1], ..., returns[tys.len() - 1]);`
         let ret_statement = self.make_statement(
             StatementKind::Assign(
-                Place::Local(RETURN_POINTER),
+                Place::Local(RETURN_PLACE),
                 Rvalue::Aggregate(
                     box kind,
                     returns.into_iter().map(Operand::Move).collect()
@@ -749,8 +749,8 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if let Some(untuple_args) = untuple_args {
         args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
-            let arg_lv = Place::Local(Local::new(1+1));
-            Operand::Move(arg_lv.field(Field::new(i), *ity))
+            let arg_place = Place::Local(Local::new(1+1));
+            Operand::Move(arg_place.field(Field::new(i), *ity))
         }));
     } else {
         args.extend((1..sig.inputs().len()).map(|i| {
@@ -771,7 +771,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     block(&mut blocks, statements, TerminatorKind::Call {
         func: callee,
         args,
-        destination: Some((Place::Local(RETURN_POINTER),
+        destination: Some((Place::Local(RETURN_PLACE),
                            BasicBlock::new(1))),
         cleanup: if let Adjustment::RefMut = rcvr_adjustment {
             Some(BasicBlock::new(3))
@@ -864,7 +864,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         statements: vec![Statement {
             source_info,
             kind: StatementKind::Assign(
-                Place::Local(RETURN_POINTER),
+                Place::Local(RETURN_PLACE),
                 Rvalue::Aggregate(
                     box AggregateKind::Adt(adt_def, variant_no, substs, None),
                     (1..sig.inputs().len()+1).map(|i| {

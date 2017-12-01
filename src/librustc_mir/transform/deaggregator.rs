@@ -92,7 +92,7 @@ impl MirPass for Deaggregator {
                 if adt_def.is_enum() {
                     let set_discriminant = Statement {
                         kind: StatementKind::SetDiscriminant {
-                            lvalue: lhs.clone(),
+                            place: lhs.clone(),
                             variant_index: variant,
                         },
                         source_info: src_info,
