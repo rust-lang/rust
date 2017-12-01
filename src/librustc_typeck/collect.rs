@@ -1268,15 +1268,23 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ))
         }
 
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), hir_id, .. }) => {
-            let tables = tcx.typeck_tables_of(def_id);
-            match tables.node_id_to_type(hir_id).sty {
-                ty::TyClosure(closure_def_id, closure_substs) => {
-                    assert_eq!(def_id, closure_def_id);
-                    return closure_substs.closure_sig(closure_def_id, tcx);
-                }
-                ref t => bug!("closure with non-closure type: {:?}", t),
-            }
+        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
+            // In order to property accommodate regions during NLL
+            // inference, `fn_sig` query only works for top-level
+            // functions. This is because closures often contain erased regions
+            // in their signatures that are understood by NLL inference but not other
+            // parts of the system -- these do not appear in the generics and hence
+            // are not properly substituted away without some care.
+            //
+            // To get the signature of a closure, you should use the
+            // `closure_sig` method on the `ClosureSubsts`:
+            //
+            //    closure_substs.closure_sig(def_id, tcx)
+            //
+            // or, inside of an inference context, you can use
+            //
+            //    infcx.closure_sig(def_id, closure_substs)
+            bug!("to get the signature of a closure, use `closure_sig()` not `fn_sig()`");
         }
 
         x => {

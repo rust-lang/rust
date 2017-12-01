@@ -20,7 +20,7 @@ use rustc::mir::tcx::PlaceTy;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::subst::{Kind, Substs, Subst};
+use rustc::ty::subst::{Kind, Substs};
 use rustc_apfloat::{ieee, Float, Status};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use base;
@@ -658,8 +658,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                     .find(|it| it.kind == ty::AssociatedKind::Method)
                                     .unwrap().def_id;
                                 // Now create its substs [Closure, Tuple]
-                                let input = tcx.fn_sig(def_id)
-                                    .subst(tcx, substs.substs).input(0);
+                                let input = substs.closure_sig(def_id, tcx).input(0);
                                 let input = tcx.erase_late_bound_regions_and_normalize(&input);
                                 let substs = tcx.mk_substs([operand.ty, input]
                                     .iter().cloned().map(Kind::from));
