@@ -5374,11 +5374,9 @@ impl<'a> Parser<'a> {
     /// Parses items implementations variants
     ///    impl<T> Foo { ... }
     ///    impl<T> ToString for &'static T { ... }
-    ///    impl Send for .. {}
     fn parse_item_impl(&mut self,
                        unsafety: ast::Unsafety,
                        defaultness: Defaultness) -> PResult<'a, ItemInfo> {
-        let impl_span = self.span;
 
         // First, parse type parameters if necessary.
         let mut generics = self.parse_generics()?;
@@ -5421,48 +5419,31 @@ impl<'a> Parser<'a> {
             None
         };
 
-        if opt_trait.is_some() && self.eat(&token::DotDot) {
-            if generics.is_parameterized() {
-                self.span_err(impl_span, "auto trait implementations are not \
-                                          allowed to have generics");
-            }
+        if opt_trait.is_some() {
+            ty = self.parse_ty()?;
+        }
+        generics.where_clause = self.parse_where_clause()?;
 
-            if let ast::Defaultness::Default = defaultness {
-                self.span_err(impl_span, "`default impl` is not allowed for \
-                                         auto trait implementations");
-            }
+        self.expect(&token::OpenDelim(token::Brace))?;
+        let attrs = self.parse_inner_attributes()?;
 
-            self.expect(&token::OpenDelim(token::Brace))?;
-            self.expect(&token::CloseDelim(token::Brace))?;
-            Ok((keywords::Invalid.ident(),
-             ItemKind::AutoImpl(unsafety, opt_trait.unwrap()), None))
-        } else {
-            if opt_trait.is_some() {
-                ty = self.parse_ty()?;
-            }
-            generics.where_clause = self.parse_where_clause()?;
-
-            self.expect(&token::OpenDelim(token::Brace))?;
-            let attrs = self.parse_inner_attributes()?;
-
-            let mut impl_items = vec![];
-            while !self.eat(&token::CloseDelim(token::Brace)) {
-                let mut at_end = false;
-                match self.parse_impl_item(&mut at_end) {
-                    Ok(item) => impl_items.push(item),
-                    Err(mut e) => {
-                        e.emit();
-                        if !at_end {
-                            self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
-                        }
+        let mut impl_items = vec![];
+        while !self.eat(&token::CloseDelim(token::Brace)) {
+            let mut at_end = false;
+            match self.parse_impl_item(&mut at_end) {
+                Ok(item) => impl_items.push(item),
+                Err(mut e) => {
+                    e.emit();
+                    if !at_end {
+                        self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
                     }
                 }
             }
-
-            Ok((keywords::Invalid.ident(),
-             ItemKind::Impl(unsafety, polarity, defaultness, generics, opt_trait, ty, impl_items),
-             Some(attrs)))
         }
+
+        Ok((keywords::Invalid.ident(),
+            ItemKind::Impl(unsafety, polarity, defaultness, generics, opt_trait, ty, impl_items),
+            Some(attrs)))
     }
 
     fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {

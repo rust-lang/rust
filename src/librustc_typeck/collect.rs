@@ -73,7 +73,6 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
-        is_auto_impl,
         ..*providers
     };
 }
@@ -424,9 +423,6 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             tcx.predicates_of(def_id);
             convert_enum_variant_types(tcx, def_id, &enum_definition.variants);
         },
-        hir::ItemAutoImpl(..) => {
-            tcx.impl_trait_ref(def_id);
-        }
         hir::ItemImpl(..) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
@@ -1109,7 +1105,6 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
-                ItemAutoImpl(..) |
                 ItemTrait(..) | ItemTraitAlias(..) |
                 ItemMod(..) |
                 ItemForeignMod(..) |
@@ -1278,11 +1273,6 @@ fn impl_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     match tcx.hir.expect_item(node_id).node {
-        hir::ItemAutoImpl(_, ref ast_trait_ref) => {
-            Some(AstConv::instantiate_mono_trait_ref(&icx,
-                                                     ast_trait_ref,
-                                                     tcx.mk_self_type()))
-        }
         hir::ItemImpl(.., ref opt_trait_ref, _, _) => {
             opt_trait_ref.as_ref().map(|ast_trait_ref| {
                 let selfty = tcx.type_of(def_id);
@@ -1729,13 +1719,53 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn is_auto_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             def_id: DefId)
-                             -> bool {
-    match tcx.hir.get_if_local(def_id) {
-        Some(hir_map::NodeItem(&hir::Item { node: hir::ItemAutoImpl(..), .. }))
-             => true,
-        Some(_) => false,
-        _ => bug!("is_auto_impl applied to non-local def-id {:?}", def_id)
+struct ImplTraitUniversalInfo<'hir> {
+    id: ast::NodeId,
+    def_id: DefId,
+    span: Span,
+    bounds: &'hir [hir::TyParamBound],
+}
+
+/// Take some possible list of arguments and return the DefIds of the ImplTraitUniversal
+/// arguments
+fn extract_universal_impl_trait_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                               opt_inputs: Option<&'tcx [P<hir::Ty>]>)
+                                               -> Vec<ImplTraitUniversalInfo<'tcx>>
+{
+    // A visitor for simply collecting Universally quantified impl Trait arguments
+    struct ImplTraitUniversalVisitor<'tcx> {
+        items: Vec<&'tcx hir::Ty>
     }
+
+    impl<'tcx> Visitor<'tcx> for ImplTraitUniversalVisitor<'tcx> {
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+            NestedVisitorMap::None
+        }
+
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+            if let hir::TyImplTraitUniversal(..) = ty.node {
+                self.items.push(ty);
+            }
+            intravisit::walk_ty(self, ty);
+        }
+    }
+
+    let mut visitor = ImplTraitUniversalVisitor { items: Vec::new() };
+
+    if let Some(inputs) = opt_inputs {
+        for t in inputs.iter() {
+            visitor.visit_ty(t);
+        }
+    }
+
+    visitor.items.into_iter().map(|ty| if let hir::TyImplTraitUniversal(_, ref bounds) = ty.node {
+        ImplTraitUniversalInfo {
+            id: ty.id,
+            def_id: tcx.hir.local_def_id(ty.id),
+            span: ty.span,
+            bounds: bounds
+        }
+    } else {
+        span_bug!(ty.span, "this type should be a universally quantified impl trait. this is a bug")
+    }).collect()
 }

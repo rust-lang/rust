@@ -1902,12 +1902,6 @@ impl<'a> Resolver<'a> {
                                              |this| visit::walk_item(this, item));
             }
 
-            ItemKind::AutoImpl(_, ref trait_ref) => {
-                self.with_optional_trait_ref(Some(trait_ref), |this, _| {
-                    // Resolve type arguments in trait path
-                    visit::walk_trait_ref(this, trait_ref);
-                });
-            }
             ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
                 self.resolve_implementation(generics,
                                             opt_trait_ref,

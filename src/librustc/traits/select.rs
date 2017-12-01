@@ -2434,7 +2434,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         VtableBuiltinData { nested: obligations }
     }
 
-    /// This handles the case where a `impl Foo for ..` impl is being used.
+    /// This handles the case where a `auto trait Foo` impl is being used.
     /// The idea is that the impl applies to `X : Foo` if the following conditions are met:
     ///
     /// 1. For each constituent type `Y` in `X`, `Y : Foo` holds
@@ -3276,7 +3276,7 @@ impl<'tcx> TraitObligation<'tcx> {
         /*!
          * Creates a cause for obligations that are derived from
          * `obligation` by a recursive search (e.g., for a builtin
-         * bound, or eventually a `impl Foo for ..`). If `obligation`
+         * bound, or eventually a `auto trait Foo`). If `obligation`
          * is itself a derived obligation, this is just a clone, but
          * otherwise we create a "derived obligation" cause so as to
          * keep track of the original root obligation for error

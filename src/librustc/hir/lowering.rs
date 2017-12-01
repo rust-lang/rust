@@ -1952,16 +1952,6 @@ impl<'a> LoweringContext<'a> {
                 let vdata = self.lower_variant_data(vdata);
                 hir::ItemUnion(vdata, self.lower_generics(generics))
             }
-            ItemKind::AutoImpl(unsafety, ref trait_ref) => {
-                let trait_ref = self.lower_trait_ref(trait_ref, ImplTraitContext::Disallowed);
-
-                if let Def::Trait(def_id) = trait_ref.path.def {
-                    self.trait_auto_impl.insert(def_id, id);
-                }
-
-                hir::ItemAutoImpl(self.lower_unsafety(unsafety),
-                                     trait_ref)
-            }
             ItemKind::Impl(unsafety,
                            polarity,
                            defaultness,

@@ -40,14 +40,9 @@ use hash::Hasher;
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
-pub unsafe trait Send {
+pub unsafe auto trait Send {
     // empty.
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-unsafe impl Send for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Send for *const T { }
@@ -345,14 +340,9 @@ pub trait Copy : Clone {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
-pub unsafe trait Sync {
+pub unsafe auto trait Sync {
     // Empty
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-unsafe impl Sync for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> !Sync for *const T { }
@@ -563,11 +553,7 @@ mod impls {
 /// This affects, for example, whether a `static` of that type is
 /// placed in read-only static memory or writable static memory.
 #[lang = "freeze"]
-unsafe trait Freeze {}
-
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-unsafe impl Freeze for .. {}
+unsafe auto trait Freeze {}
 
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}

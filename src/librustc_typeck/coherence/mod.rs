@@ -131,7 +131,6 @@ pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     unsafety::check(tcx);
     orphan::check(tcx);
-    overlap::check_auto_impls(tcx);
 
     // these queries are executed for side-effects (error reporting):
     ty::maps::queries::crate_inherent_impls::ensure(tcx, LOCAL_CRATE);

@@ -1192,7 +1192,6 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemTrait(..) => "trait",
                 ItemTraitAlias(..) => "trait alias",
                 ItemImpl(..) => "impl",
-                ItemAutoImpl(..) => "default impl",
             };
             format!("{} {}{}", item_str, path_str(), id_str)
         }

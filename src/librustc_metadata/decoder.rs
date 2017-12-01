@@ -404,7 +404,6 @@ impl<'tcx> EntryKind<'tcx> {
 
             EntryKind::ForeignMod |
             EntryKind::Impl(_) |
-            EntryKind::AutoImpl(_) |
             EntryKind::Field |
             EntryKind::Generator(_) |
             EntryKind::Closure(_) => return None,
@@ -690,8 +689,7 @@ impl<'a, 'tcx> CrateMetadata {
                         }
                         continue;
                     }
-                    EntryKind::Impl(_) |
-                    EntryKind::AutoImpl(_) => continue,
+                    EntryKind::Impl(_) => continue,
 
                     _ => {}
                 }
@@ -1043,13 +1041,6 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
         self.dllimport_foreign_items.contains(&id)
-    }
-
-    pub fn is_auto_impl(&self, impl_id: DefIndex) -> bool {
-        match self.entry(impl_id).kind {
-            EntryKind::AutoImpl(_) => true,
-            _ => false,
-        }
     }
 
     pub fn fn_sig(&self,

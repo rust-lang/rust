@@ -400,7 +400,7 @@ impl<'a> Resolver<'a> {
                 self.insert_field_names(item_def_id, field_names);
             }
 
-            ItemKind::AutoImpl(..) | ItemKind::Impl(..) => {}
+            ItemKind::Impl(..) => {}
 
             ItemKind::Trait(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
