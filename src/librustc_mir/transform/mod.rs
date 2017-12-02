@@ -228,6 +228,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     run_passes![tcx, mir, def_id, 2;
         no_landing_pads::NoLandingPads,
         simplify_branches::SimplifyBranches::new("initial"),
+        simplify::SimplifyTempMoves,
 
         // These next passes must be executed together
         add_call_guards::CriticalCallEdges,

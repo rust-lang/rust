@@ -10,12 +10,18 @@
 
 //! A number of passes which remove various redundancies in the CFG.
 //!
-//! The `SimplifyCfg` pass gets rid of unnecessary blocks in the CFG, whereas the `SimplifyLocals`
-//! gets rid of all the unnecessary local variable declarations.
+//! The `SimplifyCfg` pass gets rid of unnecessary blocks in the CFG, the `SimplifyTempMoves` pass
+//! eliminates copies/moves into temporaries out of which the value is immediately moved, whereas
+//! the `SimplifyLocals`the gets rid of all the unnecessary local variable declarations.
 //!
 //! The `SimplifyLocals` pass is kinda expensive and therefore not very suitable to be run often.
 //! Most of the passes should not care or be impacted in meaningful ways due to extra locals
 //! either, so running the pass once, right before translation, should suffice.
+//!
+//! The `SimplifyTempMoves` pass is is a simple peephole optimization there only to clean up a
+//! common foible of the HIR->MIR building algorithm, reducing the number of interesting statemnts
+//! that other passes need to consider.  It's probably not ever worth running a second time.
+//! Instead, run the smarter but more expensive passes like lvalue reuse and copy propagation.
 //!
 //! On the other side of the spectrum, the `SimplifyCfg` pass is considerably cheap to run, thus
 //! one should run it after every pass which may modify CFG in significant ways. This pass must
@@ -306,6 +312,64 @@ pub fn remove_dead_blocks(mir: &mut Mir) {
     for block in basic_blocks {
         for target in block.terminator_mut().successors_mut() {
             *target = replacements[target.index()];
+        }
+    }
+}
+
+
+pub struct SimplifyTempMoves;
+
+impl MirPass for SimplifyTempMoves {
+    fn run_pass<'a, 'tcx>(&self,
+                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          _src: MirSource,
+                          mir: &mut Mir<'tcx>) {
+        let last_arg = Local::new(mir.arg_count);
+        let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
+        for block in basic_blocks {
+            for j in 1..block.statements.len() {
+                let i = j - 1;
+
+                if block.statements[i].source_info.span !=
+                    block.statements[j].source_info.span
+                { continue }
+
+                let temp_local;
+                match block.statements[i].kind {
+                    StatementKind::Assign(
+                        Place::Local(local),
+                        Rvalue::Use(_)
+                    ) if local > last_arg && !local_decls[local].is_user_variable => {
+                        temp_local = local;
+                    }
+                    _ => { continue }
+                }
+
+                match block.statements[j].kind {
+                    StatementKind::Assign(
+                        _,
+                        Rvalue::Use(Operand::Move(Place::Local(local)))
+                    ) if local == temp_local => {
+                        // yay
+                    }
+                    _ => { continue }
+                }
+
+                debug!("simplifying {:?}; {:?} // {:?}",
+                    block.statements[i], block.statements[j],
+                    block.statements[j].source_info.span);
+                let rvalue =
+                    match block.statements[i].replace_nop() {
+                        StatementKind::Assign(_, rvalue) => rvalue,
+                        _ => bug!("No longer an assignment?"),
+                    };
+                let place =
+                    match block.statements[j].replace_nop() {
+                        StatementKind::Assign(place, _) => place,
+                        _ => bug!("No longer an assignment?"),
+                    };
+                block.statements[j].kind = StatementKind::Assign(place, rvalue);
+            }
         }
     }
 }
