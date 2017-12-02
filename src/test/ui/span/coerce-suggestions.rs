@@ -23,7 +23,7 @@ fn main() {
     //~^ ERROR E0308
     //~| NOTE expected &str, found struct `std::string::String`
     //~| NOTE expected type `&str`
-    //~| HELP try with `&String::new()`
+    //~| HELP consider borrowing here
     let y = String::new();
     test(&y);
     //~^ ERROR E0308

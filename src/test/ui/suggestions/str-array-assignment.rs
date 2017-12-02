@@ -28,5 +28,5 @@ fn main() { //~ NOTE expected `()` because of default return type
   //~^ ERROR mismatched types
   //~| NOTE expected &str, found str
   //~| NOTE expected type
-  //~| HELP try with `&s[..2]`
+  //~| HELP consider borrowing here
 }
