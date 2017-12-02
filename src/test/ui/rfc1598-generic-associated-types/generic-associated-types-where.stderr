@@ -1,0 +1,8 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/generic-associated-types-where.rs:34:32
+   |
+34 |     type WithDefault<'a, T> = &'a Iterator<T>;
+   |                                ^^ undeclared lifetime
+
+error: aborting due to previous error
+

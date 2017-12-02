@@ -1294,9 +1294,9 @@ impl<'a> Parser<'a> {
         let lo = self.span;
 
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
-            let TyParam {ident, bounds, default, ..} = self.parse_ty_param(vec![])?;
-            self.expect(&token::Semi)?;
-            (ident, TraitItemKind::Type(bounds, default), ast::Generics::default())
+            let (generics, TyParam {ident, bounds, default, ..}) =
+                self.parse_trait_item_assoc_ty(vec![])?;
+            (ident, TraitItemKind::Type(bounds, default), generics)
         } else if self.is_const_item() {
             self.expect_keyword(keywords::Const)?;
             let ident = self.parse_ident()?;
@@ -4451,6 +4451,39 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses the following grammar:
+    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [TyParamBounds]] ["where" ...] ["=" Ty]
+    fn parse_trait_item_assoc_ty(&mut self, preceding_attrs: Vec<Attribute>)
+        -> PResult<'a, (ast::Generics, TyParam)> {
+        let span = self.span;
+        let ident = self.parse_ident()?;
+        let mut generics = self.parse_generics()?;
+
+        // Parse optional colon and param bounds.
+        let bounds = if self.eat(&token::Colon) {
+            self.parse_ty_param_bounds()?
+        } else {
+            Vec::new()
+        };
+        generics.where_clause = self.parse_where_clause()?;
+
+        let default = if self.eat(&token::Eq) {
+            Some(self.parse_ty()?)
+        } else {
+            None
+        };
+        self.expect(&token::Semi)?;
+
+        Ok((generics, TyParam {
+            attrs: preceding_attrs.into(),
+            ident,
+            id: ast::DUMMY_NODE_ID,
+            bounds,
+            default,
+            span,
+        }))
+    }
+
     /// Parses (possibly empty) list of lifetime and type parameters, possibly including
     /// trailing comma and erroneous trailing attributes.
     pub fn parse_generic_params(&mut self) -> PResult<'a, (Vec<LifetimeDef>, Vec<TyParam>)> {
@@ -4992,12 +5025,18 @@ impl<'a> Parser<'a> {
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness()?;
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
+            // This parses the grammar:
+            //     ImplItemAssocTy = Ident ["<"...">"] ["where" ...] "=" Ty ";"
             let name = self.parse_ident()?;
+            let mut generics = self.parse_generics()?;
+            generics.where_clause = self.parse_where_clause()?;
             self.expect(&token::Eq)?;
             let typ = self.parse_ty()?;
             self.expect(&token::Semi)?;
-            (name, ast::ImplItemKind::Type(typ), ast::Generics::default())
+            (name, ast::ImplItemKind::Type(typ), generics)
         } else if self.is_const_item() {
+            // This parses the grammar:
+            //     ImplItemConst = "const" Ident ":" Ty "=" Expr ";"
             self.expect_keyword(keywords::Const)?;
             let name = self.parse_ident()?;
             self.expect(&token::Colon)?;

@@ -734,8 +734,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
             FnKind::ItemFn(..) => {
                 ItemRibKind
             }
-            FnKind::Method(_, sig, _, _) => {
-                MethodRibKind(!sig.decl.has_self())
+            FnKind::Method(_, _, _, _) => {
+                TraitOrImplItemRibKind
             }
             FnKind::Closure(_) => ClosureRibKind(node_id),
         };
@@ -823,12 +823,10 @@ enum RibKind<'a> {
     ClosureRibKind(NodeId /* func id */),
 
     // We passed through an impl or trait and are now in one of its
-    // methods. Allow references to ty params that impl or trait
+    // methods or associated types. Allow references to ty params that impl or trait
     // binds. Disallow any other upvars (including other ty params that are
     // upvars).
-    //
-    // The boolean value represents the fact that this method is static or not.
-    MethodRibKind(bool),
+    TraitOrImplItemRibKind,
 
     // We passed through an item scope. Disallow upvars.
     ItemRibKind,
@@ -1888,34 +1886,33 @@ impl<'a> Resolver<'a> {
                         for trait_item in trait_items {
                             this.check_proc_macro_attrs(&trait_item.attrs);
 
-                            match trait_item.node {
-                                TraitItemKind::Const(ref ty, ref default) => {
-                                    this.visit_ty(ty);
+                            let type_parameters = HasTypeParameters(&trait_item.generics,
+                                                                    TraitOrImplItemRibKind);
+                            this.with_type_parameter_rib(type_parameters, |this| {
+                                match trait_item.node {
+                                    TraitItemKind::Const(ref ty, ref default) => {
+                                        this.visit_ty(ty);
 
-                                    // Only impose the restrictions of
-                                    // ConstRibKind for an actual constant
-                                    // expression in a provided default.
-                                    if let Some(ref expr) = *default{
-                                        this.with_constant_rib(|this| {
-                                            this.visit_expr(expr);
-                                        });
+                                        // Only impose the restrictions of
+                                        // ConstRibKind for an actual constant
+                                        // expression in a provided default.
+                                        if let Some(ref expr) = *default{
+                                            this.with_constant_rib(|this| {
+                                                this.visit_expr(expr);
+                                            });
+                                        }
                                     }
-                                }
-                                TraitItemKind::Method(ref sig, _) => {
-                                    let type_parameters =
-                                        HasTypeParameters(&trait_item.generics,
-                                                          MethodRibKind(!sig.decl.has_self()));
-                                    this.with_type_parameter_rib(type_parameters, |this| {
+                                    TraitItemKind::Method(_, _) => {
                                         visit::walk_trait_item(this, trait_item)
-                                    });
-                                }
-                                TraitItemKind::Type(..) => {
-                                    this.with_type_parameter_rib(NoTypeParameters, |this| {
+                                    }
+                                    TraitItemKind::Type(..) => {
                                         visit::walk_trait_item(this, trait_item)
-                                    });
-                                }
-                                TraitItemKind::Macro(_) => panic!("unexpanded macro in resolve!"),
-                            };
+                                    }
+                                    TraitItemKind::Macro(_) => {
+                                        panic!("unexpanded macro in resolve!")
+                                    }
+                                };
+                            });
                         }
                     });
                 });
@@ -2123,48 +2120,48 @@ impl<'a> Resolver<'a> {
                             for impl_item in impl_items {
                                 this.check_proc_macro_attrs(&impl_item.attrs);
                                 this.resolve_visibility(&impl_item.vis);
-                                match impl_item.node {
-                                    ImplItemKind::Const(..) => {
-                                        // If this is a trait impl, ensure the const
-                                        // exists in trait
-                                        this.check_trait_item(impl_item.ident,
-                                                            ValueNS,
-                                                            impl_item.span,
-                                            |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
-                                        this.with_constant_rib(|this|
-                                            visit::walk_impl_item(this, impl_item)
-                                        );
-                                    }
-                                    ImplItemKind::Method(ref sig, _) => {
-                                        // If this is a trait impl, ensure the method
-                                        // exists in trait
-                                        this.check_trait_item(impl_item.ident,
-                                                            ValueNS,
-                                                            impl_item.span,
-                                            |n, s| ResolutionError::MethodNotMemberOfTrait(n, s));
 
-                                        // We also need a new scope for the method-
-                                        // specific type parameters.
-                                        let type_parameters =
-                                            HasTypeParameters(&impl_item.generics,
-                                                            MethodRibKind(!sig.decl.has_self()));
-                                        this.with_type_parameter_rib(type_parameters, |this| {
+                                // We also need a new scope for the impl item type parameters.
+                                let type_parameters = HasTypeParameters(&impl_item.generics,
+                                                                        TraitOrImplItemRibKind);
+                                this.with_type_parameter_rib(type_parameters, |this| {
+                                    use self::ResolutionError::*;
+                                    match impl_item.node {
+                                        ImplItemKind::Const(..) => {
+                                            // If this is a trait impl, ensure the const
+                                            // exists in trait
+                                            this.check_trait_item(impl_item.ident,
+                                                                ValueNS,
+                                                                impl_item.span,
+                                                |n, s| ConstNotMemberOfTrait(n, s));
+                                            this.with_constant_rib(|this|
+                                                visit::walk_impl_item(this, impl_item)
+                                            );
+                                        }
+                                        ImplItemKind::Method(_, _) => {
+                                            // If this is a trait impl, ensure the method
+                                            // exists in trait
+                                            this.check_trait_item(impl_item.ident,
+                                                                ValueNS,
+                                                                impl_item.span,
+                                                |n, s| MethodNotMemberOfTrait(n, s));
+
                                             visit::walk_impl_item(this, impl_item);
-                                        });
-                                    }
-                                    ImplItemKind::Type(ref ty) => {
-                                        // If this is a trait impl, ensure the type
-                                        // exists in trait
-                                        this.check_trait_item(impl_item.ident,
-                                                            TypeNS,
-                                                            impl_item.span,
-                                            |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
+                                        }
+                                        ImplItemKind::Type(ref ty) => {
+                                            // If this is a trait impl, ensure the type
+                                            // exists in trait
+                                            this.check_trait_item(impl_item.ident,
+                                                                TypeNS,
+                                                                impl_item.span,
+                                                |n, s| TypeNotMemberOfTrait(n, s));
 
-                                        this.visit_ty(ty);
+                                            this.visit_ty(ty);
+                                        }
+                                        ImplItemKind::Macro(_) =>
+                                            panic!("unexpanded macro in resolve!"),
                                     }
-                                    ImplItemKind::Macro(_) =>
-                                        panic!("unexpanded macro in resolve!"),
-                                }
+                                });
                             }
                         });
                     });
@@ -3100,7 +3097,7 @@ impl<'a> Resolver<'a> {
                                 seen.insert(node_id, depth);
                             }
                         }
-                        ItemRibKind | MethodRibKind(_) => {
+                        ItemRibKind | TraitOrImplItemRibKind => {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
@@ -3124,7 +3121,7 @@ impl<'a> Resolver<'a> {
             Def::TyParam(..) | Def::SelfTy(..) => {
                 for rib in ribs {
                     match rib.kind {
-                        NormalRibKind | MethodRibKind(_) | ClosureRibKind(..) |
+                        NormalRibKind | TraitOrImplItemRibKind | ClosureRibKind(..) |
                         ModuleRibKind(..) | MacroDefinition(..) | ForwardTyParamBanRibKind |
                         ConstantItemRibKind => {
                             // Nothing to do. Continue.
