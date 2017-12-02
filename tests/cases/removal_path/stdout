@@ -9,7 +9,7 @@ warning: removed path (breaking)
  --> $REPO_PATH/tests/cases/removal_path/old.rs:6:13
   |
 6 |     pub use a::*;
-  |             ^^^^^
+  |             ^^^^
 warning: removed path (breaking)
  --> $REPO_PATH/tests/cases/removal_path/old.rs:10:13
   |

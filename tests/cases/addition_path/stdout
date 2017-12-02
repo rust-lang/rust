@@ -9,7 +9,7 @@ note: added path (technically breaking)
  --> $REPO_PATH/tests/cases/addition_path/new.rs:6:13
   |
 6 |     pub use a::*;
-  |             ^^^^^
+  |             ^^^^
 note: added path (technically breaking)
  --> $REPO_PATH/tests/cases/addition_path/new.rs:10:13
   |
