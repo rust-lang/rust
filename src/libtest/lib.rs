@@ -343,11 +343,11 @@ pub enum TestNamePattern {
 }
 
 impl TestNamePattern {
-    pub fn new(pattern: String, force_exact: bool, force_glob: bool) -> Self {
+    pub fn new(pattern: String, force_exact: bool) -> Self {
         if force_exact {
             return TestNamePattern::Exact(pattern);
         }
-        if force_glob || pattern.chars().any(|c| ['*', '?', '['].contains(&c)) {
+        if pattern.chars().any(|c| ['*', '?', '['].contains(&c)) {
             if let Ok(g) = glob::Pattern::new(&pattern) {
                 return TestNamePattern::Glob(g);
             }
@@ -421,7 +421,6 @@ fn optgroups() -> getopts::Options {
                                be used multiple times)","FILTER")
         .optflag("q", "quiet", "Display one character per test instead of one line")
         .optflag("", "exact", "Exactly match filters rather than by substring")
-        .optflag("g", "glob", "Use glob patterns for matching test names")
         .optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
@@ -475,10 +474,9 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         return None;
     }
 
-    let glob = matches.opt_present("glob");
     let exact = matches.opt_present("exact");
     let filter = if !matches.free.is_empty() {
-        Some(TestNamePattern::new(matches.free[0].clone(), exact, glob))
+        Some(TestNamePattern::new(matches.free[0].clone(), exact))
     } else {
         None
     };
@@ -529,7 +527,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let skip = matches
         .opt_strs("skip")
-        .into_iter().map(|s| TestNamePattern::new(s, exact, glob))
+        .into_iter().map(|s| TestNamePattern::new(s, exact))
         .collect();
 
     let test_opts = TestOpts {
@@ -2011,31 +2009,19 @@ mod tests {
         assert_eq!(exact.len(), 1);
 
         let exact = filter_tests(&TestOpts {
-                filter: Some(TestNamePattern::new("b".into(), false, true)),
-                ..TestOpts::new()
-            }, tests());
-        assert_eq!(exact.len(), 0);
-
-        let exact = filter_tests(&TestOpts {
-                filter: Some(TestNamePattern::new("base".into(), false, true)),
-                ..TestOpts::new()
-            }, tests());
-        assert_eq!(exact.len(), 1);
-
-        let exact = filter_tests(&TestOpts {
-                filter: Some(TestNamePattern::new("base*".into(), false, true)),
+                filter: Some(TestNamePattern::new("base*".into(), false)),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(exact.len(), 4);
 
         let exact = filter_tests(&TestOpts {
-                filter: Some(TestNamePattern::new("base::test?".into(), false, true)),
+                filter: Some(TestNamePattern::new("base::test?".into(), false)),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(exact.len(), 2);
 
         let exact = filter_tests(&TestOpts {
-                filter: Some(TestNamePattern::new("base::test[2-9]".into(), false, true)),
+                filter: Some(TestNamePattern::new("base::test[2-9]".into(), false)),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(exact.len(), 1);

@@ -83,7 +83,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
                  run-pass-valgrind|pretty|debug-info|incremental|mir-opt)")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "exact", "filters match exactly")
-        .optflag("", "glob", "match test names using a glob")
         .optopt("", "runtool", "supervisor program to run tests under \
                                 (eg. emulator, valgrind)", "PROGRAM")
         .optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
@@ -175,7 +174,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         run_ignored: matches.opt_present("ignored"),
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
-        filter_glob: matches.opt_present("glob"),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
@@ -229,7 +227,6 @@ pub fn log_config(config: &Config) {
                                    .as_ref()
                                    .map(|re| re.to_owned()))));
     logv(c, format!("filter_exact: {}", config.filter_exact));
-    logv(c, format!("filter_glob: {}", config.filter_glob));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(c, format!("host-rustcflags: {}",
                     opt_str(&config.host_rustcflags)));
@@ -343,7 +340,6 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         test::TestNamePattern::new(
             filter,
             config.filter_exact,
-            config.filter_glob
         )
     });
 
