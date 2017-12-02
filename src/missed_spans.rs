@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::borrow::Cow;
+use std::iter::repeat;
 
 use syntax::codemap::{BytePos, Pos, Span};
 
@@ -74,8 +75,27 @@ impl<'a> FmtVisitor<'a> {
 
         self.last_pos = end;
         let span = mk_sp(start, end);
+        let snippet = self.snippet(span);
+        if snippet.trim().is_empty() {
+            // Keep vertical spaces within range.
+            self.push_vertical_spaces(&snippet);
+            process_last_snippet(self, "", &snippet);
+        } else {
+            self.write_snippet(span, &process_last_snippet);
+        }
+    }
 
-        self.write_snippet(span, &process_last_snippet);
+    fn push_vertical_spaces(&mut self, original: &str) {
+        let mut newline_count = original.chars().filter(|&c| c == '\n').count();
+        let newline_upper_bound = self.config.blank_lines_upper_bound() + 1;
+        let newline_lower_bound = self.config.blank_lines_lower_bound() + 1;
+        if newline_count > newline_upper_bound {
+            newline_count = newline_upper_bound;
+        } else if newline_count < newline_lower_bound {
+            newline_count = newline_lower_bound;
+        }
+        let blank_lines: String = repeat('\n').take(newline_count).collect();
+        self.buffer.push_str(&blank_lines);
     }
 
     fn write_snippet<F>(&mut self, span: Span, process_last_snippet: F)
