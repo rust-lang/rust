@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // ignore-stage1
-// aux-build:issue_16723_multiple_items_syntax_ext.rs
+// aux-build:issue-16723.rs
 #![feature(plugin)]
-#![plugin(issue_16723_multiple_items_syntax_ext)]
+#![plugin(issue_16723)]
 
 multiple_items!();
 

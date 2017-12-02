@@ -383,8 +383,13 @@ top_level_options!(
         // try to not rely on this too much.
         actually_rustdoc: bool [TRACKED],
 
-        // Number of object files/codegen units to produce on the backend
+        // Specifications of codegen units / ThinLTO which are forced as a
+        // result of parsing command line options. These are not necessarily
+        // what rustc was invoked with, but massaged a bit to agree with
+        // commands like `--emit llvm-ir` which they're often incompatible with
+        // if we otherwise use the defaults of rustc.
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
+        cli_forced_thinlto: Option<bool> [UNTRACKED],
     }
 );
 
@@ -566,6 +571,7 @@ pub fn basic_options() -> Options {
         debug_assertions: true,
         actually_rustdoc: false,
         cli_forced_codegen_units: None,
+        cli_forced_thinlto: None,
     }
 }
 
@@ -1163,7 +1169,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
                  "run the non-lexical lifetimes MIR pass"),
     trans_time_graph: bool = (false, parse_bool, [UNTRACKED],
         "generate a graphical HTML report of time spent in trans and LLVM"),
-    thinlto: bool = (false, parse_bool, [TRACKED],
+    thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether #[inline] functions are in all cgus"),
@@ -1599,6 +1605,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     let mut cg = build_codegen_options(matches, error_format);
     let mut codegen_units = cg.codegen_units;
+    let mut thinlto = None;
 
     // Issue #30063: if user requests llvm-related output to one
     // particular path, disable codegen-units.
@@ -1620,9 +1627,13 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                     }
                     early_warn(error_format, "resetting to default -C codegen-units=1");
                     codegen_units = Some(1);
+                    thinlto = Some(false);
                 }
             }
-            _ => codegen_units = Some(1),
+            _ => {
+                codegen_units = Some(1);
+                thinlto = Some(false);
+            }
         }
     }
 
@@ -1832,6 +1843,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         debug_assertions,
         actually_rustdoc: false,
         cli_forced_codegen_units: codegen_units,
+        cli_forced_thinlto: thinlto,
     },
     cfg)
 }

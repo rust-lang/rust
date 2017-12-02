@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:specialization_cross_crate_defaults.rs
+// aux-build:cross_crates_defaults.rs
 
 #![feature(specialization)]
 
-extern crate specialization_cross_crate_defaults;
+extern crate cross_crates_defaults;
 
-use specialization_cross_crate_defaults::*;
+use cross_crates_defaults::*;
 
 struct LocalDefault;
 struct LocalOverride;
