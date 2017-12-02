@@ -35,26 +35,27 @@ impl LintPass for UnsafeNameRemoval {
 
 impl EarlyLintPass for UnsafeNameRemoval {
     fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
-        if let ItemKind::Use(ref item_use) = item.node {
-            match item_use.node {
-                ViewPath_::ViewPathSimple(ref name, ref path) => {
-                    unsafe_to_safe_check(
-                        path.segments
-                            .last()
-                            .expect("use paths cannot be empty")
-                            .identifier,
-                        *name,
-                        cx,
-                        &item.span,
-                    );
-                },
-                ViewPath_::ViewPathList(_, ref path_list_items) => for path_list_item in path_list_items.iter() {
-                    let plid = path_list_item.node;
-                    if let Some(rename) = plid.rename {
-                        unsafe_to_safe_check(plid.name, rename, cx, &item.span);
-                    };
-                },
-                ViewPath_::ViewPathGlob(_) => {},
+        if let ItemKind::Use(ref use_tree) = item.node {
+            check_use_tree(use_tree, cx, &item.span);
+        }
+    }
+}
+
+fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext, span: &Span) {
+    match use_tree.kind {
+        UseTreeKind::Simple(new_name) => {
+            let old_name = use_tree
+                .prefix
+                .segments
+                .last()
+                .expect("use paths cannot be empty")
+                .identifier;
+            unsafe_to_safe_check(old_name, new_name, cx, span);
+        }
+        UseTreeKind::Glob => {},
+        UseTreeKind::Nested(ref nested_use_tree) => {
+            for &(ref use_tree, _) in nested_use_tree {
+                check_use_tree(use_tree, cx, span);
             }
         }
     }
