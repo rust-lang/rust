@@ -1626,11 +1626,8 @@ impl<T> [T] {
     }
 }
 
-// FIXME(LukasKalbertodt): the `not(stage0)` constraint can be removed in the
-// future once the stage0 compiler is new enough to know about the `slice_u8`
-// lang item.
 #[lang = "slice_u8"]
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(not(test))]
 impl [u8] {
     /// Checks if all bytes in this slice are within the ASCII range.
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]

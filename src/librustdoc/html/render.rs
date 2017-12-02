@@ -34,8 +34,6 @@
 //! both occur before the crate is rendered.
 pub use self::ExternalLocation::*;
 
-#[cfg(stage0)]
-use std::ascii::AsciiExt;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::cmp::Ordering;

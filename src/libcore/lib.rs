@@ -90,7 +90,7 @@
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
-#![cfg_attr(not(stage0), feature(doc_spotlight))]
+#![feature(doc_spotlight)]
 
 #[prelude_import]
 #[allow(unused)]
