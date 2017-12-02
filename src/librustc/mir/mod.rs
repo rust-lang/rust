@@ -31,7 +31,7 @@ use std::ascii;
 use std::borrow::{Cow};
 use std::cell::Ref;
 use std::fmt::{self, Debug, Formatter, Write};
-use std::{iter, u32};
+use std::{iter, mem, u32};
 use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 use std::vec::IntoIter;
@@ -997,6 +997,10 @@ impl<'tcx> Statement<'tcx> {
     /// invalidating statement indices in `Location`s.
     pub fn make_nop(&mut self) {
         self.kind = StatementKind::Nop
+    }
+
+    pub fn replace_nop(&mut self) -> StatementKind<'tcx> {
+        mem::replace(&mut self.kind, StatementKind::Nop)
     }
 }
 
