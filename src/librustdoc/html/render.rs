@@ -2292,8 +2292,8 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                            f.generics).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
     render_attributes(w, it)?;
-    write!(w, "{vis}{constness}{unsafety}{abi}fn \
-               {name}{generics}{decl}{where_clause}</pre>",
+    write!(w,
+           "{vis}{constness}{unsafety}{abi}fn {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
            constness = ConstnessSpace(f.constness),
            unsafety = UnsafetySpace(f.unsafety),
@@ -2302,9 +2302,9 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            generics = f.generics,
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
            decl = Method {
-               decl: &f.decl,
-               name_len,
-               indent: 0,
+              decl: &f.decl,
+              name_len,
+              indent: 0,
            })?;
     document(w, cx, it)
 }
@@ -3658,6 +3658,7 @@ fn small_url_encode(s: &str) -> String {
      .replace(";", "%3B")
      .replace("[", "%5B")
      .replace("]", "%5D")
+     .replace("\"", "%22")
 }
 
 fn sidebar_assoc_items(it: &clean::Item) -> String {

@@ -81,6 +81,7 @@ fn small_url_encode(s: &str) -> String {
      .replace(";", "%3B")
      .replace("[", "%5B")
      .replace("]", "%5D")
+     .replace("\"", "%22")
 }
 
 impl FileEntry {
