@@ -319,6 +319,7 @@ fn rewrite_comment_inner(
 
     let mut result = opener.to_owned();
     let mut is_prev_line_multi_line = false;
+    let mut inside_code_block = false;
     let comment_line_separator = format!("\n{}{}", indent_str, line_start);
     for line in lines {
         if result == opener {
@@ -329,6 +330,14 @@ fn rewrite_comment_inner(
             result.push(' ')
         } else {
             result.push_str(&comment_line_separator);
+        }
+
+        if line.starts_with("```") {
+            inside_code_block = !inside_code_block;
+        }
+        if inside_code_block {
+            result.push_str(line);
+            continue;
         }
 
         if config.wrap_comments() && line.len() > fmt.shape.width && !has_url(line) {
