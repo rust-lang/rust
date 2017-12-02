@@ -18,7 +18,6 @@ use syntax::parse::parser;
 
 use utils::contains_skip;
 
-
 /// List all the files containing modules of a crate.
 /// If a file is used twice in a crate, it appears only once.
 pub fn list_files<'a>(

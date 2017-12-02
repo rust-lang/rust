@@ -824,9 +824,6 @@ impl<'a> Iterator for UngroupedCommentCodeSlices<'a> {
     }
 }
 
-
-
-
 /// Iterator over an alternating sequence of functional and commented parts of
 /// a string. The first item is always a, possibly zero length, subslice of
 /// functional text. Line style comments contain their ending newlines.
@@ -948,7 +945,6 @@ fn changed_comment_content(orig: &str, new: &str) -> bool {
     res
 }
 
-
 /// Iterator over the 'payload' characters of a comment.
 /// It skips whitespace, comment start/end marks, and '*' at the beginning of lines.
 /// The comment must be one comment, ie not more than one start mark (no multiple line comments,
@@ -993,7 +989,6 @@ impl<'a> Iterator for CommentReducer<'a> {
         }
     }
 }
-
 
 fn remove_comment_header(comment: &str) -> &str {
     if comment.starts_with("///") || comment.starts_with("//!") {

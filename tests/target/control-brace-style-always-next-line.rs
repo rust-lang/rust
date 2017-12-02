@@ -7,13 +7,11 @@ fn main() {
         ();
     }
 
-
     'label: loop
     // loop comment
     {
         ();
     }
-
 
     cond = true;
     while cond
@@ -21,13 +19,11 @@ fn main() {
         ();
     }
 
-
     'while_label: while cond
     {
         // while comment
         ();
     }
-
 
     for obj in iter
     {

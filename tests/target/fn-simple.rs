@@ -18,7 +18,6 @@ fn simple(
     "cool"
 }
 
-
 fn weird_comment(
     // /*/ double level */ comment
     x: Hello, // /*/* triple, even */*/

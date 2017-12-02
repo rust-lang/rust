@@ -10,7 +10,6 @@
 
 #![cfg(not(test))]
 
-
 extern crate env_logger;
 extern crate getopts;
 extern crate rustfmt_nightly as rustfmt;

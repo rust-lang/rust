@@ -3,7 +3,6 @@ enum TestEnum {
     Arm2,
 }
 
-
 fn foo() {
     let test = TestEnum::Arm1;
     match test {

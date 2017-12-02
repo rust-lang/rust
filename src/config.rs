@@ -21,7 +21,6 @@ use file_lines::FileLines;
 use lists::{ListTactic, SeparatorPlace, SeparatorTactic};
 use Summary;
 
-
 macro_rules! is_nightly_channel {
     () => {
     env::var("CFG_RELEASE_CHANNEL")
@@ -87,7 +86,6 @@ configuration_option_enum! { TypeDensity:
     // Spaces around " = " and " + "
     Wide,
 }
-
 
 impl Density {
     pub fn to_list_tactic(self) -> ListTactic {
@@ -578,8 +576,6 @@ pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
     }
     Ok(None)
 }
-
-
 
 create_config! {
     // Fundamental stuff
