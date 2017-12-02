@@ -638,9 +638,18 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                     self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
-                let InferOk { value, obligations: o2 } =
-                    self.coerce_from_safe_fn(a_fn_pointer, a_sig, b,
-                        simple(Adjust::ReifyFnPointer), simple(Adjust::ReifyFnPointer))?;
+                let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
+                    a_fn_pointer,
+                    a_sig,
+                    b,
+                    |unsafe_ty| {
+                        vec![
+                            Adjustment { kind: Adjust::ReifyFnPointer, target: a_fn_pointer },
+                            Adjustment { kind: Adjust::UnsafeFnPointer, target: unsafe_ty },
+                        ]
+                    },
+                    simple(Adjust::ReifyFnPointer)
+                )?;
 
                 obligations.extend(o2);
                 Ok(InferOk { value, obligations })
