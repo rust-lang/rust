@@ -10,6 +10,7 @@
 
 use io;
 use libc;
+use mem::ManuallyDrop;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
 use ffi::CStr;
@@ -40,18 +41,18 @@ impl Stdin {
         ret
     }
 
-    pub fn close() -> io::Result<()> {
-        // To close stdin, what we actually do is change its well-known
-        // file descriptor number to refer to a file open on the null
-        // device.  This protects against code (perhaps in third-party
-        // libraries) that assumes STDIN_FILENO is always open and always
-        // refers to the same thing as stdin.
-        let mut fd = FileDesc::new(libc::STDIN_FILENO);
-        // If this step succeeds, the "previous" file descriptor returned
-        // by `fd.replace` is dropped and thus closed.
+    pub fn close(&mut self) -> io::Result<()> {
+        // To close stdin, atomically replace the file underlying
+        // STDIN_FILENO with the null device.  This protects against
+        // code (perhaps in third-party libraries) that assumes
+        // STDIN_FILENO is always open and always refers to the same
+        // thing as stdin.
+        //
+        // This function does not "drain" any not-yet-read input.
+
+        // STDIN_FILENO itself should never actually be closed.
+        let mut fd = ManuallyDrop::new(FileDesc::new(libc::STDIN_FILENO));
         fd.replace(open_null_device(true)?)?;
-        // Don't close STDIN_FILENO itself, though!
-        fd.into_raw();
         Ok(())
     }
 }
@@ -70,12 +71,11 @@ impl Stdout {
         Ok(())
     }
 
-    pub fn close() -> io::Result<()> {
+    pub fn close(&mut self) -> io::Result<()> {
         // See commentary for Stdin::close.
 
-        let mut fd = FileDesc::new(libc::STDOUT_FILENO);
+        let mut fd = ManuallyDrop::new(FileDesc::new(libc::STDOUT_FILENO));
         fd.replace(open_null_device(false)?)?;
-        fd.into_raw();
         Ok(())
     }
 }
@@ -94,12 +94,11 @@ impl Stderr {
         Ok(())
     }
 
-    pub fn close() -> io::Result<()> {
+    pub fn close(&mut self) -> io::Result<()> {
         // See commentary for Stdin::close.
 
-        let mut fd = FileDesc::new(libc::STDERR_FILENO);
+        let mut fd = ManuallyDrop::new(FileDesc::new(libc::STDERR_FILENO));
         fd.replace(open_null_device(false)?)?;
-        fd.into_raw();
         Ok(())
     }
 }
