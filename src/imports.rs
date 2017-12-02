@@ -13,6 +13,7 @@ use std::cmp::Ordering;
 use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 
+
 use spanned::Spanned;
 use codemap::SpanUtils;
 use comment::combine_strs_with_missing_comments;
@@ -24,14 +25,6 @@ use shape::Shape;
 use types::{rewrite_path, PathContext};
 use utils::{format_visibility, mk_sp};
 use visitor::{rewrite_extern_crate, FmtVisitor};
-
-fn path_of(a: &ast::ViewPath_) -> &ast::Path {
-    match *a {
-        ast::ViewPath_::ViewPathSimple(_, ref p)
-        | ast::ViewPath_::ViewPathGlob(ref p)
-        | ast::ViewPath_::ViewPathList(ref p, _) => p,
-    }
-}
 
 fn compare_path_segments(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
     a.identifier.name.as_str().cmp(&b.identifier.name.as_str())
@@ -47,75 +40,76 @@ fn compare_paths(a: &ast::Path, b: &ast::Path) -> Ordering {
     a.segments.len().cmp(&b.segments.len())
 }
 
-fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Ordering {
-    let a_name_str = &*a.node.name.name.as_str();
-    let b_name_str = &*b.node.name.name.as_str();
-    let name_ordering = if a_name_str == "self" {
-        if b_name_str == "self" {
-            Ordering::Equal
-        } else {
-            Ordering::Less
-        }
-    } else if b_name_str == "self" {
-        Ordering::Greater
-    } else {
-        a_name_str.cmp(b_name_str)
-    };
-    if name_ordering == Ordering::Equal {
-        match a.node.rename {
-            Some(a_rename) => match b.node.rename {
-                Some(b_rename) => a_rename.name.as_str().cmp(&b_rename.name.as_str()),
-                None => Ordering::Greater,
-            },
-            None => Ordering::Less,
-        }
-    } else {
-        name_ordering
-    }
-}
+fn compare_use_trees(a: &ast::UseTree, b: &ast::UseTree, nested: bool) -> Ordering {
+    use ast::UseTreeKind::*;
 
-fn compare_path_list_item_lists(
-    a_items: &[ast::PathListItem],
-    b_items: &[ast::PathListItem],
-) -> Ordering {
-    let mut a = a_items.to_owned();
-    let mut b = b_items.to_owned();
-    a.sort_by(|a, b| compare_path_list_items(a, b));
-    b.sort_by(|a, b| compare_path_list_items(a, b));
-    for comparison_pair in a.iter().zip(b.iter()) {
-        let ord = compare_path_list_items(comparison_pair.0, comparison_pair.1);
-        if ord != Ordering::Equal {
-            return ord;
+    // `use_nested_groups` is not yet supported, remove the `if !nested` when support will be
+    // fully added
+    if !nested {
+        let paths_cmp = compare_paths(&a.prefix, &b.prefix);
+        if paths_cmp != Ordering::Equal {
+            return paths_cmp;
         }
     }
-    a.len().cmp(&b.len())
-}
 
-fn compare_view_path_types(a: &ast::ViewPath_, b: &ast::ViewPath_) -> Ordering {
-    use syntax::ast::ViewPath_::*;
-    match (a, b) {
-        (&ViewPathSimple(..), &ViewPathSimple(..)) | (&ViewPathGlob(_), &ViewPathGlob(_)) => {
-            Ordering::Equal
+    match (&a.kind, &b.kind) {
+        (&Simple(ident_a), &Simple(ident_b)) => {
+            let name_a = &*a.prefix.segments.last().unwrap().identifier.name.as_str();
+            let name_b = &*b.prefix.segments.last().unwrap().identifier.name.as_str();
+            let name_ordering = if name_a == "self" {
+                if name_b == "self" {
+                    Ordering::Equal
+                } else {
+                    Ordering::Less
+                }
+            } else if name_b == "self" {
+                Ordering::Greater
+            } else {
+                name_a.cmp(name_b)
+            };
+            if name_ordering == Ordering::Equal {
+                if ident_a.name.as_str() != name_a {
+                    if ident_b.name.as_str() != name_b {
+                        ident_a.name.as_str().cmp(&ident_b.name.as_str())
+                    } else {
+                        Ordering::Greater
+                    }
+                } else {
+                    Ordering::Less
+                }
+            } else {
+                name_ordering
+            }
         }
-        (&ViewPathSimple(..), _) | (&ViewPathGlob(_), &ViewPathList(..)) => Ordering::Less,
-        (&ViewPathList(_, ref a_items), &ViewPathList(_, ref b_items)) => {
-            compare_path_list_item_lists(a_items, b_items)
+        (&Glob, &Glob) => Ordering::Equal,
+        (&Simple(_), _) | (&Glob, &Nested(_)) => Ordering::Less,
+        (&Nested(ref a_items), &Nested(ref b_items)) => {
+            let mut a = a_items
+                .iter()
+                .map(|&(ref tree, _)| tree.clone())
+                .collect::<Vec<_>>();
+            let mut b = b_items
+                .iter()
+                .map(|&(ref tree, _)| tree.clone())
+                .collect::<Vec<_>>();
+            a.sort_by(|a, b| compare_use_trees(a, b, true));
+            b.sort_by(|a, b| compare_use_trees(a, b, true));
+            for comparison_pair in a.iter().zip(b.iter()) {
+                let ord = compare_use_trees(comparison_pair.0, comparison_pair.1, true);
+                if ord != Ordering::Equal {
+                    return ord;
+                }
+            }
+            a.len().cmp(&b.len())
         }
-        (&ViewPathGlob(_), &ViewPathSimple(..)) | (&ViewPathList(..), _) => Ordering::Greater,
-    }
-}
-
-fn compare_view_paths(a: &ast::ViewPath_, b: &ast::ViewPath_) -> Ordering {
-    match compare_paths(path_of(a), path_of(b)) {
-        Ordering::Equal => compare_view_path_types(a, b),
-        cmp => cmp,
+        (&Glob, &Simple(_)) | (&Nested(_), _) => Ordering::Greater,
     }
 }
 
 fn compare_use_items(context: &RewriteContext, a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
     match (&a.node, &b.node) {
-        (&ast::ItemKind::Use(ref a_vp), &ast::ItemKind::Use(ref b_vp)) => {
-            Some(compare_view_paths(&a_vp.node, &b_vp.node))
+        (&ast::ItemKind::Use(ref a_tree), &ast::ItemKind::Use(ref b_tree)) => {
+            Some(compare_use_trees(&a_tree, &b_tree, false))
         }
         (&ast::ItemKind::ExternCrate(..), &ast::ItemKind::ExternCrate(..)) => {
             Some(context.snippet(a.span).cmp(&context.snippet(b.span)))
@@ -127,11 +121,7 @@ fn compare_use_items(context: &RewriteContext, a: &ast::Item, b: &ast::Item) -> 
 // TODO (some day) remove unused imports, expand globs, compress many single
 // imports into a list import.
 
-fn rewrite_view_path_prefix(
-    path: &ast::Path,
-    context: &RewriteContext,
-    shape: Shape,
-) -> Option<String> {
+fn rewrite_prefix(path: &ast::Path, context: &RewriteContext, shape: Shape) -> Option<String> {
     let path_str = if path.segments.last().unwrap().identifier.to_string() == "self"
         && path.segments.len() > 1
     {
@@ -146,29 +136,34 @@ fn rewrite_view_path_prefix(
     Some(path_str)
 }
 
-impl Rewrite for ast::ViewPath {
+impl Rewrite for ast::UseTree {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        match self.node {
-            ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
-                rewrite_use_list(shape, path, path_list, self.span, context)
+        match self.kind {
+            ast::UseTreeKind::Nested(ref items) => {
+                rewrite_nested_use_tree(shape, &self.prefix, items, self.span, context)
             }
-            ast::ViewPath_::ViewPathGlob(ref path) => {
-                // 4 = "::*".len()
+            ast::UseTreeKind::Glob => {
                 let prefix_shape = shape.sub_width(3)?;
-                let path_str = rewrite_view_path_prefix(path, context, prefix_shape)?;
-                Some(format!("{}::*", path_str))
+
+                if self.prefix.segments.len() > 0 {
+                    let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)?;
+                    Some(format!("{}::*", path_str))
+                } else {
+                    Some("*".into())
+                }
             }
-            ast::ViewPath_::ViewPathSimple(ident, ref path) => {
+            ast::UseTreeKind::Simple(ident) => {
                 let ident_str = ident.to_string();
+
                 // 4 = " as ".len()
                 let prefix_shape = shape.sub_width(ident_str.len() + 4)?;
-                let path_str = rewrite_view_path_prefix(path, context, prefix_shape)?;
+                let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)?;
 
-                Some(if path.segments.last().unwrap().identifier == ident {
-                    path_str
+                if self.prefix.segments.last().unwrap().identifier == ident {
+                    Some(path_str)
                 } else {
-                    format!("{} as {}", path_str, ident_str)
-                })
+                    Some(format!("{} as {}", path_str, ident_str))
+                }
             }
         }
     }
@@ -178,7 +173,7 @@ impl Rewrite for ast::ViewPath {
 fn rewrite_import(
     context: &RewriteContext,
     vis: &ast::Visibility,
-    vp: &ast::ViewPath,
+    tree: &ast::UseTree,
     attrs: &[ast::Attribute],
     shape: Shape,
 ) -> Option<String> {
@@ -187,14 +182,12 @@ fn rewrite_import(
     let rw = shape
         .offset_left(vis.len() + 4)
         .and_then(|shape| shape.sub_width(1))
-        .and_then(|shape| match vp.node {
-            // If we have an empty path list with no attributes, we erase it
-            ast::ViewPath_::ViewPathList(_, ref path_list)
-                if path_list.is_empty() && attrs.is_empty() =>
-            {
+        .and_then(|shape| match tree.kind {
+            // If we have an empty nested group with no attributes, we erase it
+            ast::UseTreeKind::Nested(ref items) if items.is_empty() && attrs.is_empty() => {
                 Some("".into())
             }
-            _ => vp.rewrite(context, shape),
+            _ => tree.rewrite(context, shape),
         });
     match rw {
         Some(ref s) if !s.is_empty() => Some(format!("{}use {};", vis, s)),
@@ -225,8 +218,8 @@ fn rewrite_imports(
             };
 
             let item_str = match item.node {
-                ast::ItemKind::Use(ref vp) => {
-                    rewrite_import(context, &item.vis, vp, &item.attrs, shape)?
+                ast::ItemKind::Use(ref tree) => {
+                    rewrite_import(context, &item.vis, tree, &item.attrs, shape)?
                 }
                 ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item)?,
                 _ => return None,
@@ -276,10 +269,10 @@ impl<'a> FmtVisitor<'a> {
         self.push_rewrite(span, rw);
     }
 
-    pub fn format_import(&mut self, item: &ast::Item, vp: &ast::ViewPath) {
+    pub fn format_import(&mut self, item: &ast::Item, tree: &ast::UseTree) {
         let span = item.span;
         let shape = self.shape();
-        let rw = rewrite_import(&self.get_context(), &item.vis, vp, &item.attrs, shape);
+        let rw = rewrite_import(&self.get_context(), &item.vis, tree, &item.attrs, shape);
         match rw {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
@@ -304,34 +297,48 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-fn rewrite_single_use_list(path_str: String, vpi: &ast::PathListItem) -> String {
-    let mut item_str = vpi.node.name.to_string();
-    if item_str == "self" {
-        item_str = "".to_owned();
-    }
-    let path_item_str = if path_str.is_empty() {
-        if item_str.is_empty() {
-            "self".to_owned()
-        } else {
-            item_str
+fn rewrite_nested_use_tree_single(path_str: String, tree: &ast::UseTree) -> String {
+    if let ast::UseTreeKind::Simple(rename) = tree.kind {
+        let ident = tree.prefix.segments.last().unwrap().identifier;
+        let mut item_str = ident.name.to_string();
+        if item_str == "self" {
+            item_str = "".to_owned();
         }
-    } else if item_str.is_empty() {
-        path_str
+
+        let path_item_str = if path_str.is_empty() {
+            if item_str.is_empty() {
+                "self".to_owned()
+            } else {
+                item_str
+            }
+        } else if item_str.is_empty() {
+            path_str
+        } else {
+            format!("{}::{}", path_str, item_str)
+        };
+
+        if ident == rename {
+            path_item_str
+        } else {
+            format!("{} as {}", path_item_str, rename)
+        }
     } else {
-        format!("{}::{}", path_str, item_str)
-    };
-    append_alias(path_item_str, vpi)
-}
-
-fn rewrite_path_item(vpi: &&ast::PathListItem) -> Option<String> {
-    Some(append_alias(vpi.node.name.to_string(), vpi))
-}
-
-fn append_alias(path_item_str: String, vpi: &ast::PathListItem) -> String {
-    match vpi.node.rename {
-        Some(rename) => format!("{} as {}", path_item_str, rename),
-        None => path_item_str,
+        unimplemented!("`use_nested_groups` is not yet fully supported");
     }
+}
+
+fn rewrite_nested_use_tree_item(tree: &&ast::UseTree) -> Option<String> {
+    Some(if let ast::UseTreeKind::Simple(rename) = tree.kind {
+        let ident = tree.prefix.segments.last().unwrap().identifier;
+
+        if ident == rename {
+            ident.name.to_string()
+        } else {
+            format!("{} as {}", ident.name.to_string(), rename)
+        }
+    } else {
+        unimplemented!("`use_nested_groups` is not yet fully supported");
+    })
 }
 
 #[derive(Eq, PartialEq)]
@@ -408,22 +415,23 @@ impl<'a> Ord for ImportItem<'a> {
 
 // Pretty prints a multi-item import.
 // If the path list is empty, it leaves the braces empty.
-fn rewrite_use_list(
+fn rewrite_nested_use_tree(
     shape: Shape,
     path: &ast::Path,
-    path_list: &[ast::PathListItem],
+    trees: &[(ast::UseTree, ast::NodeId)],
     span: Span,
     context: &RewriteContext,
 ) -> Option<String> {
     // Returns a different option to distinguish `::foo` and `foo`
     let path_str = rewrite_path(context, PathContext::Import, None, path, shape)?;
 
-    match path_list.len() {
+    match trees.len() {
         0 => {
             return rewrite_path(context, PathContext::Import, None, path, shape)
                 .map(|path_str| format!("{}::{{}}", path_str));
         }
-        1 => return Some(rewrite_single_use_list(path_str, &path_list[0])),
+        // TODO: fix this
+        1 => return Some(rewrite_nested_use_tree_single(path_str, &trees[0].0)),
         _ => (),
     }
 
@@ -441,12 +449,12 @@ fn rewrite_use_list(
         let mut items = vec![ListItem::from_str("")];
         let iter = itemize_list(
             context.codemap,
-            path_list.iter(),
+            trees.iter().map(|ref tree| &tree.0),
             "}",
             ",",
-            |vpi| vpi.span.lo(),
-            |vpi| vpi.span.hi(),
-            rewrite_path_item,
+            |tree| tree.span.lo(),
+            |tree| tree.span.hi(),
+            rewrite_nested_use_tree_item,
             context.codemap.span_after(span, "{"),
             span.hi(),
             false,
