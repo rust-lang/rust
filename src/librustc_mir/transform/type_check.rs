@@ -104,12 +104,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_place(
-        &mut self,
-        place: &Place<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
+    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
         self.sanitize_place(place, location, context);
     }
 
@@ -164,11 +159,12 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn sanitize_place(&mut self,
-                       place: &Place<'tcx>,
-                       location: Location,
-                       context: PlaceContext)
-                       -> PlaceTy<'tcx> {
+    fn sanitize_place(
+        &mut self,
+        place: &Place<'tcx>,
+        location: Location,
+        context: PlaceContext,
+    ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
         let place_ty = match *place {
             Place::Local(index) => PlaceTy::Ty {
@@ -210,9 +206,11 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         };
         if let PlaceContext::Copy = context {
             let ty = place_ty.to_ty(self.tcx());
-            if self.cx.infcx.type_moves_by_default(self.cx.param_env, ty, DUMMY_SP) {
-                span_mirbug!(self, place,
-                             "attempted copy of non-Copy type ({:?})", ty);
+            if self.cx
+                .infcx
+                .type_moves_by_default(self.cx.param_env, ty, DUMMY_SP)
+            {
+                span_mirbug!(self, place, "attempted copy of non-Copy type ({:?})", ty);
             }
         }
         place_ty
@@ -312,18 +310,16 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             ProjectionElem::Field(field, fty) => {
                 let fty = self.sanitize_type(place, fty);
                 match self.field_ty(place, base, field, location) {
-                    Ok(ty) => {
-                        if let Err(terr) = self.cx.eq_types(ty, fty, location.at_self()) {
-                            span_mirbug!(
-                                self,
-                                place,
-                                "bad field access ({:?}: {:?}): {:?}",
-                                ty,
-                                fty,
-                                terr
-                            );
-                        }
-                    }
+                    Ok(ty) => if let Err(terr) = self.cx.eq_types(ty, fty, location.at_self()) {
+                        span_mirbug!(
+                            self,
+                            place,
+                            "bad field access ({:?}: {:?}): {:?}",
+                            ty,
+                            fty,
+                            terr
+                        );
+                    },
                     Err(FieldAccessError::OutOfRange { field_count }) => span_mirbug!(
                         self,
                         place,
@@ -358,9 +354,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 variant_index,
             } => (&adt_def.variants[variant_index], substs),
             PlaceTy::Ty { ty } => match ty.sty {
-                ty::TyAdt(adt_def, substs) if !adt_def.is_enum() => {
-                    (&adt_def.variants[0], substs)
-                }
+                ty::TyAdt(adt_def, substs) if !adt_def.is_enum() => (&adt_def.variants[0], substs),
                 ty::TyClosure(def_id, substs) => {
                     return match substs.upvar_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
