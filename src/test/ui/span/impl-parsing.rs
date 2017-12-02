@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,12 +10,12 @@
 
 // compile-flags: -Z parse-only -Z continue-parse-after-error
 
-trait Foo {
-}
+impl ! {} // OK
+impl ! where u8: Copy {} // OK
 
-struct Bar;
+impl Trait Type {} //~ ERROR missing `for` in a trait impl
+impl Trait .. {} //~ ERROR missing `for` in a trait impl
+impl ?Sized for Type {} //~ ERROR expected a trait, found type
+impl ?Sized for .. {} //~ ERROR expected a trait, found type
 
-impl Foo + Owned for Bar { //~ ERROR expected a trait, found type
-}
-
-fn main() { }
+default unsafe FAIL //~ ERROR expected `impl`, found `FAIL`

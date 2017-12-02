@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Paramters { type SelfRef; }
+pub trait Parameters { type SelfRef; }
 
 struct RP<'a> { _marker: std::marker::PhantomData<&'a ()> }
 struct BP;
 
-impl<'a> Paramters for RP<'a> { type SelfRef = &'a X<RP<'a>>; }
-impl Paramters for BP { type SelfRef = Box<X<BP>>; }
+impl<'a> Parameters for RP<'a> { type SelfRef = &'a X<RP<'a>>; }
+impl Parameters for BP { type SelfRef = Box<X<BP>>; }
 
 pub struct Y;
-pub enum X<P: Paramters> {
+pub enum X<P: Parameters> {
     Nothing,
     SameAgain(P::SelfRef, Y)
 }

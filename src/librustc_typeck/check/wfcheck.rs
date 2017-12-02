@@ -107,16 +107,21 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             //
             // won't be allowed unless there's an *explicit* implementation of `Send`
             // for `T`
-            hir::ItemImpl(_, hir::ImplPolarity::Positive, _, _,
-                          ref trait_ref, ref self_ty, _) => {
-                self.check_impl(item, self_ty, trait_ref);
-            }
-            hir::ItemImpl(_, hir::ImplPolarity::Negative, _, _, Some(_), ..) => {
-                // FIXME(#27579) what amount of WF checking do we need for neg impls?
-
-                let trait_ref = tcx.impl_trait_ref(tcx.hir.local_def_id(item.id)).unwrap();
-                if !tcx.trait_is_auto(trait_ref.def_id) {
-                    error_192(tcx, item.span);
+            hir::ItemImpl(_, polarity, defaultness, _, ref trait_ref, ref self_ty, _) => {
+                let is_auto = tcx.impl_trait_ref(tcx.hir.local_def_id(item.id))
+                                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
+                if let (hir::Defaultness::Default { .. }, true) = (defaultness, is_auto) {
+                    tcx.sess.span_err(item.span, "impls of auto traits cannot be default");
+                }
+                if polarity == hir::ImplPolarity::Positive {
+                    self.check_impl(item, self_ty, trait_ref);
+                } else {
+                    // FIXME(#27579) what amount of WF checking do we need for neg impls?
+                    if trait_ref.is_some() && !is_auto {
+                        span_err!(tcx.sess, item.span, E0192,
+                                  "negative impls are only allowed for \
+                                   auto traits (e.g., `Send` and `Sync`)")
+                    }
                 }
             }
             hir::ItemFn(..) => {
@@ -659,12 +664,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
     }
-}
-
-fn error_192(tcx: TyCtxt, span: Span) {
-    span_err!(tcx.sess, span, E0192,
-              "negative impls are only allowed for traits with \
-               default impls (e.g., `Send` and `Sync`)")
 }
 
 fn error_392<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span, param_name: ast::Name)

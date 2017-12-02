@@ -82,6 +82,52 @@ extern {
 ```
 "##,
 
+E0197: r##"
+Inherent implementations (one that do not implement a trait but provide
+methods associated with a type) are always safe because they are not
+implementing an unsafe trait. Removing the `unsafe` keyword from the inherent
+implementation will resolve this error.
+
+```compile_fail,E0197
+struct Foo;
+
+// this will cause this error
+unsafe impl Foo { }
+// converting it to this will fix it
+impl Foo { }
+```
+"##,
+
+E0198: r##"
+A negative implementation is one that excludes a type from implementing a
+particular trait. Not being able to use a trait is always a safe operation,
+so negative implementations are always safe and never need to be marked as
+unsafe.
+
+```compile_fail
+#![feature(optin_builtin_traits)]
+
+struct Foo;
+
+// unsafe is unnecessary
+unsafe impl !Clone for Foo { }
+```
+
+This will compile:
+
+```ignore (ignore auto_trait future compatibility warning)
+#![feature(optin_builtin_traits)]
+
+struct Foo;
+
+auto trait Enterprise {}
+
+impl !Enterprise for Foo { }
+```
+
+Please note that negative impls are only allowed for auto traits.
+"##,
+
 E0265: r##"
 This error indicates that a static or constant references itself.
 All statics and constants need to resolve to a value in an acyclic manner.

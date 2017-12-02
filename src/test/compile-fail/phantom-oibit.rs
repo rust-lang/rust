@@ -9,8 +9,7 @@
 // except according to those terms.
 
 // Ensure that OIBIT checks `T` when it encounters a `PhantomData<T>` field, instead of checking
-// the `PhantomData<T>` type itself (which almost always implements a "default" trait
-// (`impl Trait for ..`))
+// the `PhantomData<T>` type itself (which almost always implements an auto trait)
 
 #![feature(optin_builtin_traits)]
 
