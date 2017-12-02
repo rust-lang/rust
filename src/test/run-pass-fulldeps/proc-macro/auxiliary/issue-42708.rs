@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:bang_proc_macro2.rs
-// ignore-stage1
+// no-prefer-dynamic
 
+#![crate_type = "proc-macro"]
 #![feature(proc_macro)]
-#![allow(unused_macros)]
 
-extern crate bang_proc_macro2;
+extern crate proc_macro;
 
-use bang_proc_macro2::bang_proc_macro2;
+use proc_macro::TokenStream;
 
-fn main() {
-    let foobar = 42;
-    bang_proc_macro2!();
-    //~^ ERROR cannot find value `foobar2` in this scope
-    //~^^ did you mean `foobar`?
-    println!("{}", x); //~ ERROR cannot find value `x` in this scope
+#[proc_macro_derive(Test)]
+pub fn derive(_input: TokenStream) -> TokenStream {
+    "fn f(s: S) { s.x }".parse().unwrap()
+}
+
+#[proc_macro_attribute]
+pub fn attr_test(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    input
 }

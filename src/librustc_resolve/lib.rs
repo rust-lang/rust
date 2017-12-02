@@ -1558,6 +1558,15 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
+        loop {
+            match self.macro_defs.get(&ctxt.outer()) {
+                Some(&def_id) => return def_id,
+                None => ctxt.remove_mark(),
+            };
+        }
+    }
+
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
         ImportResolver { resolver: self }.finalize_imports();
@@ -1661,7 +1670,7 @@ impl<'a> Resolver<'a> {
 
             module = match self.ribs[ns][i].kind {
                 ModuleRibKind(module) => module,
-                MacroDefinition(def) if def == self.macro_defs[&ident.ctxt.outer()] => {
+                MacroDefinition(def) if def == self.macro_def(ident.ctxt) => {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
                     ident.ctxt.remove_mark();
@@ -1828,7 +1837,7 @@ impl<'a> Resolver<'a> {
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
                 MacroDefinition(def) => {
-                    if def == self.macro_defs[&ident.ctxt.outer()] {
+                    if def == self.macro_def(ident.ctxt) {
                         ident.ctxt.remove_mark();
                     }
                 }
