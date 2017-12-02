@@ -2302,9 +2302,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn item_name(self, id: DefId) -> InternedString {
-        if let Some(id) = self.hir.as_local_node_id(id) {
-            self.hir.name(id).as_str()
-        } else if id.index == CRATE_DEF_INDEX {
+        if id.index == CRATE_DEF_INDEX {
             self.original_crate_name(id.krate).as_str()
         } else {
             let def_key = self.def_key(id);
