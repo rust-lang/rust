@@ -103,7 +103,8 @@ pub fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>,
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// Adds a new field to the generated struct output.
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn field(&mut self, name: &str, value: &fmt::Debug) -> &mut DebugStruct<'a, 'b> {
+    pub fn field<V: fmt::Debug>(&mut self, name: &str, value: &V) -> &mut DebugStruct<'a, 'b>
+        where V: ?Sized {
         self.result = self.result.and_then(|_| {
             let prefix = if self.has_fields {
                 ","
@@ -195,7 +196,8 @@ pub fn debug_tuple_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> D
 impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// Adds a new field to the generated tuple struct output.
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn field(&mut self, value: &fmt::Debug) -> &mut DebugTuple<'a, 'b> {
+    pub fn field<V: fmt::Debug>(&mut self, value: &V) -> &mut DebugTuple<'a, 'b>
+        where V: ?Sized {
         self.result = self.result.and_then(|_| {
             let (prefix, space) = if self.fields > 0 {
                 (",", " ")
