@@ -88,7 +88,7 @@ impl MetadataLoader for LlvmMetadataLoader {
                                 filename.display())
                     })
             })?;
-        Ok(buf.erase_owner())
+        Ok(rustc_erase_owner!(buf))
     }
 
     fn get_dylib_metadata(&self,
@@ -106,7 +106,7 @@ impl MetadataLoader for LlvmMetadataLoader {
                 .ok_or_else(|| format!("provided path not an object file: '{}'",
                                         filename.display()))?;
             let buf = of.try_map(|of| search_meta_section(of, target, filename))?;
-            Ok(buf.erase_owner())
+            Ok(rustc_erase_owner!(buf))
         }
     }
 }
