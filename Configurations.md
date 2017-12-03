@@ -9,6 +9,12 @@ indent_style = "Block"
 reorder_imported_names = true
 ```
 
+Each configuration option is either stable or unstable.
+Stable options can be used directly, while unstable options are opt-in.
+
+To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or pass `--unstable-options` to rustfmt,
+and ensure that the environment variable `CFG_RELEASE_CHANNEL` is set to `nightly`.
+
 # Configuration Options
 
 Below you find a detailed visual guide on all the supported configuration options of rustfmt:
@@ -20,6 +26,7 @@ Indent on expressions or items.
 
 - **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
+- **Stable**: No
 
 ### Array
 
@@ -218,7 +225,7 @@ See also: [`struct_lit_single_line`](#struct_lit_single_line), [`indent_style`](
 
 ```rust
 fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
-where 
+where
     Ipsum: Eq,
     Dolor: Eq,
     Sit: Eq,
@@ -248,6 +255,7 @@ Try to put attributes on the same line as fields and variants
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `true` (default):
 
@@ -293,6 +301,7 @@ Whether to use different formatting for items and expressions if they satisfy a 
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `true` (default):
 
@@ -354,6 +363,7 @@ Where to put a binary operator when a binary expression goes multiline.
 
 - **Default value**: `"Front"`
 - **Possible values**: `"Front"`, `"Back"`
+- **Stable**: No
 
 #### `"Front"` (default):
 
@@ -391,6 +401,7 @@ Indentation of chain
 
 - **Default value**: `"Block"`
 - **Possible values**: `"Block"`, `"Visual"`
+- **Stable**: ?
 
 #### `"Block"` (default):
 
@@ -423,6 +434,7 @@ Combine control expressions with function calls.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `true` (default):
 
@@ -530,6 +542,7 @@ Maximum length of comments. No effect unless`wrap_comments = true`.
 
 - **Default value**: `80`
 - **Possible values**: any positive integer
+- **Stable**: No
 
 **Note:** A value of `0` results in [`wrap_comments`](#wrap_comments) being applied regardless of a line's width.
 
@@ -552,6 +565,7 @@ Replace strings of _ wildcards by a single .. in tuple patterns
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -571,6 +585,7 @@ Brace style for control flow constructs
 
 - **Default value**: `"AlwaysSameLine"`
 - **Possible values**: `"AlwaysNextLine"`, `"AlwaysSameLine"`, `"ClosingNextLine"`
+- **Stable**: No
 
 #### `"AlwaysSameLine"` (default):
 
@@ -612,6 +627,7 @@ Don't reformat anything
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 ## `error_on_line_overflow`
 
@@ -619,6 +635,7 @@ Error if unable to get all lines within `max_width`
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 See also [`max_width`](#max_width).
 
@@ -628,6 +645,7 @@ Error if unable to get all comment lines within `comment_width`.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 See also [`comment_width`](#comment_width).
 
@@ -637,6 +655,7 @@ Argument density in functions
 
 - **Default value**: `"Tall"`
 - **Possible values**: `"Compressed"`, `"Tall"`, `"Vertical"`
+- **Stable**: No
 
 #### `"Tall"` (default):
 
@@ -739,6 +758,7 @@ Brace style for items
 
 - **Default value**: `"SameLineWhere"`
 - **Possible values**: `"AlwaysNextLine"`, `"PreferSameLine"`, `"SameLineWhere"`
+- **Stable**: No
 
 ### Functions
 
@@ -851,6 +871,7 @@ Put empty-body functions and impls on a single line
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `true` (default):
 
@@ -879,6 +900,7 @@ Put single-expression functions on a single line
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -913,6 +935,7 @@ To force single line where layout
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -943,6 +966,7 @@ Always print the abi for extern items
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: Yes
 
 **Note:** Non-"C" ABIs are always printed. If `false` then "C" is removed.
 
@@ -968,6 +992,7 @@ Format string literals where necessary
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -991,6 +1016,7 @@ Use tab characters for indentation, spaces for alignment
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: Yes
 
 #### `false` (default):
 
@@ -1017,6 +1043,7 @@ Indent style of imports
 
 - **Default Value**: `"Visual"`
 - **Possible values**: `"Block"`, `"Visual"`
+- **Stable**: No
 
 #### `"Visual"` (default):
 
@@ -1044,6 +1071,7 @@ Item layout inside a imports block
 
 - **Default value**: "Mixed"
 - **Possible values**: "Horizontal", "HorizontalVertical", "Mixed", "Vertical"
+- **Stable**: No
 
 #### `"Mixed"` (default):
 
@@ -1099,6 +1127,7 @@ Put a trailing comma after a block based match arm (non-block arms are not affec
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -1130,6 +1159,7 @@ Maximum width of each line
 
 - **Default value**: `100`
 - **Possible values**: any positive integer
+- **Stable**: Yes
 
 See also [`error_on_line_overflow`](#error_on_line_overflow).
 
@@ -1139,6 +1169,7 @@ Merge multiple derives into a single one.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: Yes
 
 #### `true` (default):
 
@@ -1162,6 +1193,7 @@ Force multiline closure and match arm bodies to be wrapped in a block
 
 - **Default value**: `false`
 - **Possible values**: `false`, `true`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -1207,6 +1239,7 @@ Unix or Windows line endings
 
 - **Default value**: `"Unix"`
 - **Possible values**: `"Native"`, `"Unix"`, `"Windows"`
+- **Stable**: Yes
 
 ## `normalize_comments`
 
@@ -1214,6 +1247,7 @@ Convert /* */ comments to // comments where possible
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: Yes
 
 #### `false` (default):
 
@@ -1241,6 +1275,7 @@ Reorder lists of names in import statements alphabetically
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -1262,6 +1297,7 @@ Reorder import statements alphabetically
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -1289,6 +1325,7 @@ Reorder import statements in group
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 **Note:** This option takes effect only when [`reorder_imports`](#reorder_imports) is set to `true`.
 
@@ -1324,6 +1361,7 @@ Reorder `extern crate` statements alphabetically
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `true` (default):
 
@@ -1351,6 +1389,7 @@ Reorder `extern crate` statements in group
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 **Note:** This option takes effect only when [`reorder_imports`](#reorder_imports) is set to `true`.
 
@@ -1386,6 +1425,7 @@ Report `TODO` items in comments.
 
 - **Default value**: `"Never"`
 - **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
+- **Stable**: No
 
 Warns about any comments containing `TODO` in them when set to `"Always"`. If
 it contains a `#X` (with `X` being a number) in parentheses following the
@@ -1399,6 +1439,7 @@ Report `FIXME` items in comments.
 
 - **Default value**: `"Never"`
 - **Possible values**: `"Always"`, `"Unnumbered"`, `"Never"`
+- **Stable**: No
 
 Warns about any comments containing `FIXME` in them when set to `"Always"`. If
 it contains a `#X` (with `X` being a number) in parentheses following the
@@ -1413,6 +1454,7 @@ Don't reformat out of line modules
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 ## `space_after_colon`
 
@@ -1420,6 +1462,7 @@ Leave a space after the colon.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `true` (default):
 
@@ -1451,6 +1494,7 @@ Leave a space before the colon.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -1482,6 +1526,7 @@ The maximum diff of width between struct fields to be aligned with each other.
 
 - **Default value** : 0
 - **Possible values**: any positive integer
+- **Stable**: No
 
 #### `0` (default):
 
@@ -1509,6 +1554,7 @@ Put spaces around the .. and ... range operators
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -1528,6 +1574,7 @@ Put spaces within non-empty generic arguments, parentheses, and square brackets
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -1569,6 +1616,7 @@ Put small struct literals on a single line
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `true` (default):
 
@@ -1594,6 +1642,7 @@ Number of spaces per tab
 
 - **Default value**: `4`
 - **Possible values**: any positive integer
+- **Stable**: Yes
 
 #### `4` (default):
 
@@ -1626,6 +1675,7 @@ How to handle trailing commas for lists
 
 - **Default value**: `"Vertical"`
 - **Possible values**: `"Always"`, `"Never"`, `"Vertical"`
+- **Stable**: No
 
 #### `"Vertical"` (default):
 
@@ -1677,6 +1727,7 @@ Add trailing semicolon after break, continue and return
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `true` (default):
 ```rust
@@ -1698,6 +1749,7 @@ Determines if `+` or `=` are wrapped in spaces in the punctuation of types
 
 - **Default value**: `"Wide"`
 - **Possible values**: `"Compressed"`, `"Wide"`
+- **Stable**: No
 
 #### `"Wide"` (default):
 
@@ -1721,6 +1773,7 @@ Replace uses of the try! macro by the ? shorthand
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `false` (default):
 
@@ -1741,6 +1794,7 @@ Break comments to fit on the line
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
+- **Stable**: Yes
 
 #### `false` (default):
 
@@ -1764,6 +1818,7 @@ Wrap the body of arms in blocks when it does not fit on the same line with the p
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
+- **Stable**: No
 
 #### `true` (default):
 
@@ -1794,3 +1849,4 @@ What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff,
 
 - **Default value**: `"Overwrite"`
 - **Possible values**: `"Checkstyle"`, `"Coverage"`, `"Diff"`, `"Display"`, `"Overwrite"`, `"Plain"`, `"Replace"`
+- **Stable**: No
