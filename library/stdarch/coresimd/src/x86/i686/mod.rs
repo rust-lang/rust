@@ -9,6 +9,9 @@ pub use self::sse::*;
 mod sse2;
 pub use self::sse2::*;
 
+mod ssse3;
+pub use self::ssse3::*;
+
 mod sse41;
 pub use self::sse41::*;
 
