@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use borrow_check::nll::type_check;
 use build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Mir, Promoted};
@@ -30,7 +31,6 @@ pub mod simplify_branches;
 pub mod simplify;
 pub mod erase_regions;
 pub mod no_landing_pads;
-pub mod type_check;
 pub mod rustc_peek;
 pub mod elaborate_drops;
 pub mod add_call_guards;

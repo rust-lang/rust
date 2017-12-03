@@ -16,7 +16,6 @@ use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
 use std::io;
 use transform::MirSource;
-use transform::type_check;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
 use borrow_check::FlowAtLocation;
 use dataflow::MaybeInitializedLvals;
@@ -27,14 +26,15 @@ use util::pretty::{self, ALIGN};
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
+pub(crate) mod region_infer;
+mod renumber;
 mod subtype_constraint_generation;
+pub(crate) mod type_check;
 mod universal_regions;
+
+use self::region_infer::RegionInferenceContext;
 use self::universal_regions::UniversalRegions;
 
-pub(crate) mod region_infer;
-use self::region_infer::RegionInferenceContext;
-
-mod renumber;
 
 /// Rewrites the regions in the MIR to use NLL variables, also
 /// scraping out the set of universal regions (e.g., region parameters)
