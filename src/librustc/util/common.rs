@@ -10,6 +10,8 @@
 
 #![allow(non_camel_case_types)]
 
+use rustc_data_structures::sync::Lock;
+
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
 use std::ffi::CString;
@@ -35,7 +37,7 @@ pub struct ErrorReported;
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
 
 /// Initialized for -Z profile-queries
-thread_local!(static PROFQ_CHAN: RefCell<Option<Sender<ProfileQueriesMsg>>> = RefCell::new(None));
+rustc_global!(static PROFQ_CHAN: Lock<Option<Sender<ProfileQueriesMsg>>> = Lock::new(None));
 
 /// Parameters to the `Dump` variant of type `ProfileQueriesMsg`.
 #[derive(Clone,Debug)]
@@ -77,7 +79,7 @@ pub enum ProfileQueriesMsg {
 
 /// If enabled, send a message to the profile-queries thread
 pub fn profq_msg(msg: ProfileQueriesMsg) {
-    PROFQ_CHAN.with(|sender|{
+    rustc_access_global!(PROFQ_CHAN, |sender| {
         if let Some(s) = sender.borrow().as_ref() {
             s.send(msg).unwrap()
         } else {
@@ -93,7 +95,7 @@ pub fn profq_msg(msg: ProfileQueriesMsg) {
 
 /// Set channel for profile queries channel
 pub fn profq_set_chan(s: Sender<ProfileQueriesMsg>) -> bool {
-    PROFQ_CHAN.with(|chan|{
+    rustc_access_global!(PROFQ_CHAN, |chan| {
         if chan.borrow().is_none() {
             *chan.borrow_mut() = Some(s);
             true
