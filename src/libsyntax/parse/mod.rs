@@ -48,7 +48,7 @@ pub struct ParseSess {
     pub config: CrateConfig,
     pub missing_fragment_specifiers: RefCell<HashSet<Span>>,
     /// Used to determine and report recursive mod inclusions
-    included_mod_stack: RefCell<Vec<PathBuf>>,
+    included_mod_stack: Lock<Vec<PathBuf>>, // FIXME: Should be a temporary thread local thing
     code_map: Rc<CodeMap>,
 }
 
