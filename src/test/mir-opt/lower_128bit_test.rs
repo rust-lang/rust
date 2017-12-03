@@ -8,39 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// asmjs can't even pass i128 as arguments or return values, so ignore it.
+// this will hopefully be fixed by the LLVM 5 upgrade (#43370)
+// ignore-asmjs
+// ignore-emscripten
+
 // compile-flags: -Z lower_128bit_ops -C debug_assertions=no
 
 #![feature(i128_type)]
-#![feature(lang_items)]
-
-#[lang="i128_add"]
-fn i128_add(_x: i128, _y: i128) -> i128 { 0 }
-#[lang="u128_add"]
-fn u128_add(_x: u128, _y: u128) -> u128 { 0 }
-#[lang="i128_sub"]
-fn i128_sub(_x: i128, _y: i128) -> i128 { 1 }
-#[lang="u128_sub"]
-fn u128_sub(_x: u128, _y: u128) -> u128 { 1 }
-#[lang="i128_mul"]
-fn i128_mul(_x: i128, _y: i128) -> i128 { 2 }
-#[lang="u128_mul"]
-fn u128_mul(_x: u128, _y: u128) -> u128 { 2 }
-#[lang="i128_div"]
-fn i128_div(_x: i128, _y: i128) -> i128 { 3 }
-#[lang="u128_div"]
-fn u128_div(_x: u128, _y: u128) -> u128 { 4 }
-#[lang="i128_rem"]
-fn i128_rem(_x: i128, _y: i128) -> i128 { 5 }
-#[lang="u128_rem"]
-fn u128_rem(_x: u128, _y: u128) -> u128 { 6 }
-#[lang="i128_shl"]
-fn i128_shl(_x: i128, _y: u32) -> i128 { 7 }
-#[lang="u128_shl"]
-fn u128_shl(_x: u128, _y: u32) -> u128 { 7 }
-#[lang="i128_shr"]
-fn i128_shr(_x: i128, _y: u32) -> i128 { 8 }
-#[lang="u128_shr"]
-fn u128_shr(_x: u128, _y: u32) -> u128 { 9 }
 
 fn test_signed(mut x: i128) -> i128 {
     x += 1;
@@ -65,44 +40,44 @@ fn test_unsigned(mut x: u128) -> u128 {
 }
 
 fn main() {
-    test_signed(-200);
-    test_unsigned(200);
+    assert_eq!(test_signed(-222), -1);
+    assert_eq!(test_unsigned(200), 2);
 }
 
 // END RUST SOURCE
 
 // START rustc.test_signed.Lower128Bit.after.mir
-//     _1 = const i128_add(_1, const 1i128) -> bb7;
+//     _1 = const compiler_builtins::int::addsub::rust_i128_add(_1, const 1i128) -> bb7;
 //     ...
-//     _1 = const i128_div(_1, const 4i128) -> bb8;
+//     _1 = const compiler_builtins::int::sdiv::rust_i128_div(_1, const 4i128) -> bb8;
 //     ...
-//     _1 = const i128_rem(_1, const 5i128) -> bb11;
+//     _1 = const compiler_builtins::int::sdiv::rust_i128_rem(_1, const 5i128) -> bb11;
 //     ...
-//     _1 = const i128_mul(_1, const 3i128) -> bb5;
+//     _1 = const compiler_builtins::int::mul::rust_i128_mul(_1, const 3i128) -> bb5;
 //     ...
-//     _1 = const i128_sub(_1, const 2i128) -> bb6;
+//     _1 = const compiler_builtins::int::addsub::rust_i128_sub(_1, const 2i128) -> bb6;
 //     ...
 //     _11 = const 7i32 as u32 (Misc);
-//     _1 = const i128_shr(_1, move _11) -> bb9;
+//     _1 = const compiler_builtins::int::shift::rust_i128_shr(_1, move _11) -> bb9;
 //     ...
 //     _12 = const 6i32 as u32 (Misc);
-//     _1 = const i128_shl(_1, move _12) -> bb10;
+//     _1 = const compiler_builtins::int::shift::rust_i128_shl(_1, move _12) -> bb10;
 // END rustc.test_signed.Lower128Bit.after.mir
 
 // START rustc.test_unsigned.Lower128Bit.after.mir
-//     _1 = const u128_add(_1, const 1u128) -> bb5;
+//     _1 = const compiler_builtins::int::addsub::rust_u128_add(_1, const 1u128) -> bb5;
 //     ...
-//     _1 = const u128_div(_1, const 4u128) -> bb6;
+//     _1 = const compiler_builtins::int::udiv::rust_u128_div(_1, const 4u128) -> bb6;
 //     ...
-//     _1 = const u128_rem(_1, const 5u128) -> bb9;
+//     _1 = const compiler_builtins::int::udiv::rust_u128_rem(_1, const 5u128) -> bb9;
 //     ...
-//     _1 = const u128_mul(_1, const 3u128) -> bb3;
+//     _1 = const compiler_builtins::int::mul::rust_u128_mul(_1, const 3u128) -> bb3;
 //     ...
-//     _1 = const u128_sub(_1, const 2u128) -> bb4;
+//     _1 = const compiler_builtins::int::addsub::rust_u128_sub(_1, const 2u128) -> bb4;
 //     ...
 //     _5 = const 7i32 as u32 (Misc);
-//     _1 = const u128_shr(_1, move _5) -> bb7;
+//     _1 = const compiler_builtins::int::shift::rust_u128_shr(_1, move _5) -> bb7;
 //     ...
 //     _6 = const 6i32 as u32 (Misc);
-//     _1 = const u128_shl(_1, move _6) -> bb8;
+//     _1 = const compiler_builtins::int::shift::rust_u128_shl(_1, move _6) -> bb8;
 // END rustc.test_unsigned.Lower128Bit.after.mir

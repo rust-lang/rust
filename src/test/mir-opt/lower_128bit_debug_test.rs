@@ -8,40 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// asmjs can't even pass i128 as arguments or return values, so ignore it.
+// this will hopefully be fixed by the LLVM 5 upgrade (#43370)
+// ignore-asmjs
+// ignore-emscripten
+
 // compile-flags: -Z lower_128bit_ops -C debug_assertions=yes
 
 #![feature(i128_type)]
-#![feature(lang_items)]
-
-#[lang="i128_div"]
-fn i128_div(_x: i128, _y: i128) -> i128 { 3 }
-#[lang="u128_div"]
-fn u128_div(_x: u128, _y: u128) -> u128 { 4 }
-#[lang="i128_rem"]
-fn i128_rem(_x: i128, _y: i128) -> i128 { 5 }
-#[lang="u128_rem"]
-fn u128_rem(_x: u128, _y: u128) -> u128 { 6 }
-
-#[lang="i128_addo"]
-fn i128_addo(_x: i128, _y: i128) -> (i128, bool) { (0, false) }
-#[lang="u128_addo"]
-fn u128_addo(_x: u128, _y: u128) -> (u128, bool) { (1, false) }
-#[lang="i128_subo"]
-fn i128_subo(_x: i128, _y: i128) -> (i128, bool) { (2, false) }
-#[lang="u128_subo"]
-fn u128_subo(_x: u128, _y: u128) -> (u128, bool) { (3, false) }
-#[lang="i128_mulo"]
-fn i128_mulo(_x: i128, _y: i128) -> (i128, bool) { (4, false) }
-#[lang="u128_mulo"]
-fn u128_mulo(_x: u128, _y: u128) -> (u128, bool) { (5, false) }
-#[lang="i128_shlo"]
-fn i128_shlo(_x: i128, _y: u128) -> (i128, bool) { (6, false) }
-#[lang="u128_shlo"]
-fn u128_shlo(_x: u128, _y: u128) -> (u128, bool) { (6, false) }
-#[lang="i128_shro"]
-fn i128_shro(_x: i128, _y: u128) -> (i128, bool) { (7, false) }
-#[lang="u128_shro"]
-fn u128_shro(_x: u128, _y: u128) -> (u128, bool) { (8, false) }
 
 fn test_signed(mut x: i128) -> i128 {
     x += 1;
@@ -66,31 +40,31 @@ fn test_unsigned(mut x: u128) -> u128 {
 }
 
 fn main() {
-    test_signed(-200);
-    test_unsigned(200);
+    assert_eq!(test_signed(-222), -1);
+    assert_eq!(test_unsigned(200), 2);
 }
 
 // END RUST SOURCE
 
 // START rustc.test_signed.Lower128Bit.after.mir
-//     _2 = const i128_addo(_1, const 1i128) -> bb10;
+//     _2 = const compiler_builtins::int::addsub::rust_i128_addo(_1, const 1i128) -> bb10;
 //     ...
 //     _1 = move (_2.0: i128);
-//     _3 = const i128_subo(_1, const 2i128) -> bb11;
+//     _3 = const compiler_builtins::int::addsub::rust_i128_subo(_1, const 2i128) -> bb11;
 //     ...
 //     _1 = move (_3.0: i128);
-//     _4 = const i128_mulo(_1, const 3i128) -> bb12;
+//     _4 = const compiler_builtins::int::mul::rust_i128_mulo(_1, const 3i128) -> bb12;
 //     ...
 //     _1 = move (_4.0: i128);
 //     ...
-//     _1 = const i128_div(_1, const 4i128) -> bb13;
+//     _1 = const compiler_builtins::int::sdiv::rust_i128_div(_1, const 4i128) -> bb13;
 //     ...
-//     _1 = const i128_rem(_1, const 5i128) -> bb15;
+//     _1 = const compiler_builtins::int::sdiv::rust_i128_rem(_1, const 5i128) -> bb15;
 //     ...
 //     _1 = move (_13.0: i128);
 //     ...
 //     _17 = const 7i32 as u128 (Misc);
-//     _14 = const i128_shro(_1, move _17) -> bb16;
+//     _14 = const compiler_builtins::int::shift::rust_i128_shro(_1, move _17) -> bb16;
 //     ...
 //     _1 = move (_14.0: i128);
 //     ...
@@ -103,30 +77,30 @@ fn main() {
 //     assert(!move (_13.1: bool), "attempt to shift left with overflow") -> bb8;
 //     ...
 //     _16 = const 6i32 as u128 (Misc);
-//     _13 = const i128_shlo(_1, move _16) -> bb14;
+//     _13 = const compiler_builtins::int::shift::rust_i128_shlo(_1, move _16) -> bb14;
 //     ...
 //     assert(!move (_14.1: bool), "attempt to shift right with overflow") -> bb9;
 // END rustc.test_signed.Lower128Bit.after.mir
 
 // START rustc.test_unsigned.Lower128Bit.after.mir
-//     _2 = const u128_addo(_1, const 1u128) -> bb8;
+//     _2 = const compiler_builtins::int::addsub::rust_u128_addo(_1, const 1u128) -> bb8;
 //     ...
 //     _1 = move (_2.0: u128);
-//     _3 = const u128_subo(_1, const 2u128) -> bb9;
+//     _3 = const compiler_builtins::int::addsub::rust_u128_subo(_1, const 2u128) -> bb9;
 //     ...
 //     _1 = move (_3.0: u128);
-//     _4 = const u128_mulo(_1, const 3u128) -> bb10;
+//     _4 = const compiler_builtins::int::mul::rust_u128_mulo(_1, const 3u128) -> bb10;
 //     ...
 //     _1 = move (_4.0: u128);
 //     ...
-//     _1 = const u128_div(_1, const 4u128) -> bb11;
+//     _1 = const compiler_builtins::int::udiv::rust_u128_div(_1, const 4u128) -> bb11;
 //     ...
-//     _1 = const u128_rem(_1, const 5u128) -> bb13;
+//     _1 = const compiler_builtins::int::udiv::rust_u128_rem(_1, const 5u128) -> bb13;
 //     ...
 //     _1 = move (_7.0: u128);
 //     ...
 //     _11 = const 7i32 as u128 (Misc);
-//     _8 = const u128_shro(_1, move _11) -> bb14;
+//     _8 = const compiler_builtins::int::shift::rust_u128_shro(_1, move _11) -> bb14;
 //     ...
 //     _1 = move (_8.0: u128);
 //     ...
@@ -139,7 +113,7 @@ fn main() {
 //     assert(!move (_7.1: bool), "attempt to shift left with overflow") -> bb6;
 //     ...
 //     _10 = const 6i32 as u128 (Misc);
-//     _7 = const u128_shlo(_1, move _10) -> bb12;
+//     _7 = const compiler_builtins::int::shift::rust_u128_shlo(_1, move _10) -> bb12;
 //     ...
 //     assert(!move (_8.1: bool), "attempt to shift right with overflow") -> bb7;
 // END rustc.test_unsigned.Lower128Bit.after.mir
