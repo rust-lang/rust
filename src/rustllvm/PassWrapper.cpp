@@ -59,9 +59,6 @@ extern "C" void LLVMInitializePasses() {
   initializeVectorization(Registry);
   initializeIPO(Registry);
   initializeAnalysis(Registry);
-#if LLVM_VERSION_EQ(3, 7)
-  initializeIPA(Registry);
-#endif
   initializeTransformUtils(Registry);
   initializeInstCombine(Registry);
   initializeInstrumentation(Registry);
@@ -273,18 +270,10 @@ enum class LLVMRustRelocMode {
   ROPIRWPI,
 };
 
-#if LLVM_VERSION_LE(3, 8)
-static Reloc::Model fromRust(LLVMRustRelocMode RustReloc) {
-#else
 static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
-#endif
   switch (RustReloc) {
   case LLVMRustRelocMode::Default:
-#if LLVM_VERSION_LE(3, 8)
-    return Reloc::Default;
-#else
     return None;
-#endif
   case LLVMRustRelocMode::Static:
     return Reloc::Static;
   case LLVMRustRelocMode::PIC:
@@ -390,9 +379,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
 
   TargetOptions Options;
-#if LLVM_VERSION_LE(3, 8)
-  Options.PositionIndependentExecutable = PositionIndependentExecutable;
-#endif
 
   Options.FloatABIType = FloatABI::Default;
   if (UseSoftFloat) {
@@ -720,10 +706,6 @@ extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
                                            size_t Len) {
   llvm::legacy::PassManager passes;
 
-#if LLVM_VERSION_LE(3, 8)
-  ArrayRef<const char *> Ref(Symbols, Len);
-  passes.add(llvm::createInternalizePass(Ref));
-#else
   auto PreserveFunctions = [=](const GlobalValue &GV) {
     for (size_t I = 0; I < Len; I++) {
       if (GV.getName() == Symbols[I]) {
@@ -734,7 +716,6 @@ extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
   };
 
   passes.add(llvm::createInternalizePass(PreserveFunctions));
-#endif
 
   passes.run(*unwrap(M));
 }
@@ -770,9 +751,7 @@ extern "C" LLVMTargetDataRef LLVMRustGetModuleDataLayout(LLVMModuleRef M) {
 }
 
 extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(3, 9)
   unwrap(M)->setPIELevel(PIELevel::Level::Large);
-#endif
 }
 
 extern "C" bool

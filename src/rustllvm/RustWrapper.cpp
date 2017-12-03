@@ -609,9 +609,6 @@ LLVMRustDIBuilderCreateSubroutineType(LLVMRustDIBuilderRef Builder,
                                       LLVMMetadataRef File,
                                       LLVMMetadataRef ParameterTypes) {
   return wrap(Builder->createSubroutineType(
-#if LLVM_VERSION_EQ(3, 7)
-      unwrapDI<DIFile>(File),
-#endif
       DITypeRefArray(unwrap<MDTuple>(ParameterTypes))));
 }
 
@@ -621,7 +618,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     LLVMMetadataRef Ty, bool IsLocalToUnit, bool IsDefinition,
     unsigned ScopeLine, LLVMRustDIFlags Flags, bool IsOptimized,
     LLVMValueRef Fn, LLVMMetadataRef TParam, LLVMMetadataRef Decl) {
-#if LLVM_VERSION_GE(3, 8)
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
   DISubprogram *Sub = Builder->createFunction(
@@ -631,13 +627,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
       unwrapDIPtr<DISubprogram>(Decl));
   unwrap<Function>(Fn)->setSubprogram(Sub);
   return wrap(Sub);
-#else
-  return wrap(Builder->createFunction(
-      unwrapDI<DIScope>(Scope), Name, LinkageName, unwrapDI<DIFile>(File),
-      LineNo, unwrapDI<DISubroutineType>(Ty), IsLocalToUnit, IsDefinition,
-      ScopeLine, fromRust(Flags), IsOptimized, unwrap<Function>(Fn),
-      unwrapDIPtr<MDNode>(TParam), unwrapDIPtr<MDNode>(Decl)));
-#endif
 }
 
 extern "C" LLVMMetadataRef
@@ -741,7 +730,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
     const char *Name, LLVMMetadataRef File, unsigned LineNo,
     LLVMMetadataRef Ty, bool AlwaysPreserve, LLVMRustDIFlags Flags,
     unsigned ArgNo, uint32_t AlignInBits) {
-#if LLVM_VERSION_GE(3, 8)
   if (Tag == 0x100) { // DW_TAG_auto_variable
     return wrap(Builder->createAutoVariable(
         unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNo,
@@ -756,11 +744,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
         unwrapDI<DIDescriptor>(Scope), Name, ArgNo, unwrapDI<DIFile>(File),
         LineNo, unwrapDI<DIType>(Ty), AlwaysPreserve, fromRust(Flags)));
   }
-#else
-  return wrap(Builder->createLocalVariable(
-      Tag, unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNo,
-      unwrapDI<DIType>(Ty), AlwaysPreserve, fromRust(Flags), ArgNo));
-#endif
 }
 
 extern "C" LLVMMetadataRef
@@ -935,11 +918,8 @@ extern "C" bool LLVMRustLinkInExternalBitcode(LLVMModuleRef DstRef, char *BC,
   DiagnosticPrinterRawOStream DP(Stream);
 #if LLVM_VERSION_GE(4, 0)
   if (Linker::linkModules(*Dst, std::move(Src))) {
-#elif LLVM_VERSION_GE(3, 8)
-  if (Linker::linkModules(*Dst, std::move(Src.get()))) {
 #else
-  if (Linker::LinkModules(Dst, Src->get(),
-                          [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
+  if (Linker::linkModules(*Dst, std::move(Src.get()))) {
 #endif
     LLVMRustSetLastError(Err.c_str());
     return false;
@@ -1086,20 +1066,14 @@ static LLVMRustDiagnosticKind toRust(DiagnosticKind Kind) {
     return LLVMRustDiagnosticKind::OptimizationRemarkMissed;
   case DK_OptimizationRemarkAnalysis:
     return LLVMRustDiagnosticKind::OptimizationRemarkAnalysis;
-#if LLVM_VERSION_GE(3, 8)
   case DK_OptimizationRemarkAnalysisFPCommute:
     return LLVMRustDiagnosticKind::OptimizationRemarkAnalysisFPCommute;
   case DK_OptimizationRemarkAnalysisAliasing:
     return LLVMRustDiagnosticKind::OptimizationRemarkAnalysisAliasing;
-#endif
   default:
-#if LLVM_VERSION_GE(3, 9)
     return (Kind >= DK_FirstRemark && Kind <= DK_LastRemark)
                ? LLVMRustDiagnosticKind::OptimizationRemarkOther
                : LLVMRustDiagnosticKind::Other;
-#else
-    return LLVMRustDiagnosticKind::Other;
-#endif
   }
 }
 
@@ -1144,10 +1118,8 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMVectorTypeKind;
   case Type::X86_MMXTyID:
     return LLVMX86_MMXTypeKind;
-#if LLVM_VERSION_GE(3, 8)
   case Type::TokenTyID:
     return LLVMTokenTypeKind;
-#endif
   }
   report_fatal_error("Unhandled TypeID.");
 }
@@ -1184,7 +1156,6 @@ extern "C" LLVMValueRef LLVMRustBuildCleanupPad(LLVMBuilderRef B,
                                                 unsigned ArgCount,
                                                 LLVMValueRef *LLArgs,
                                                 const char *Name) {
-#if LLVM_VERSION_GE(3, 8)
   Value **Args = unwrap(LLArgs);
   if (ParentPad == nullptr) {
     Type *Ty = Type::getTokenTy(unwrap(B)->getContext());
@@ -1192,43 +1163,28 @@ extern "C" LLVMValueRef LLVMRustBuildCleanupPad(LLVMBuilderRef B,
   }
   return wrap(unwrap(B)->CreateCleanupPad(
       unwrap(ParentPad), ArrayRef<Value *>(Args, ArgCount), Name));
-#else
-  return nullptr;
-#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildCleanupRet(LLVMBuilderRef B,
                                                 LLVMValueRef CleanupPad,
                                                 LLVMBasicBlockRef UnwindBB) {
-#if LLVM_VERSION_GE(3, 8)
   CleanupPadInst *Inst = cast<CleanupPadInst>(unwrap(CleanupPad));
   return wrap(unwrap(B)->CreateCleanupRet(Inst, unwrap(UnwindBB)));
-#else
-  return nullptr;
-#endif
 }
 
 extern "C" LLVMValueRef
 LLVMRustBuildCatchPad(LLVMBuilderRef B, LLVMValueRef ParentPad,
                       unsigned ArgCount, LLVMValueRef *LLArgs, const char *Name) {
-#if LLVM_VERSION_GE(3, 8)
   Value **Args = unwrap(LLArgs);
   return wrap(unwrap(B)->CreateCatchPad(
       unwrap(ParentPad), ArrayRef<Value *>(Args, ArgCount), Name));
-#else
-  return nullptr;
-#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildCatchRet(LLVMBuilderRef B,
                                               LLVMValueRef Pad,
                                               LLVMBasicBlockRef BB) {
-#if LLVM_VERSION_GE(3, 8)
   return wrap(unwrap(B)->CreateCatchRet(cast<CatchPadInst>(unwrap(Pad)),
                                               unwrap(BB)));
-#else
-  return nullptr;
-#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildCatchSwitch(LLVMBuilderRef B,
@@ -1236,27 +1192,20 @@ extern "C" LLVMValueRef LLVMRustBuildCatchSwitch(LLVMBuilderRef B,
                                                  LLVMBasicBlockRef BB,
                                                  unsigned NumHandlers,
                                                  const char *Name) {
-#if LLVM_VERSION_GE(3, 8)
   if (ParentPad == nullptr) {
     Type *Ty = Type::getTokenTy(unwrap(B)->getContext());
     ParentPad = wrap(Constant::getNullValue(Ty));
   }
   return wrap(unwrap(B)->CreateCatchSwitch(unwrap(ParentPad), unwrap(BB),
                                                  NumHandlers, Name));
-#else
-  return nullptr;
-#endif
 }
 
 extern "C" void LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
                                    LLVMBasicBlockRef Handler) {
-#if LLVM_VERSION_GE(3, 8)
   Value *CatchSwitch = unwrap(CatchSwitchRef);
   cast<CatchSwitchInst>(CatchSwitch)->addHandler(unwrap(Handler));
-#endif
 }
 
-#if LLVM_VERSION_GE(3, 8)
 extern "C" OperandBundleDef *LLVMRustBuildOperandBundleDef(const char *Name,
                                                            LLVMValueRef *Inputs,
                                                            unsigned NumInputs) {
@@ -1288,28 +1237,6 @@ LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args,
                                       makeArrayRef(unwrap(Args), NumArgs),
                                       Bundles, Name));
 }
-#else
-extern "C" void *LLVMRustBuildOperandBundleDef(const char *Name,
-                                               LLVMValueRef *Inputs,
-                                               unsigned NumInputs) {
-  return nullptr;
-}
-
-extern "C" void LLVMRustFreeOperandBundleDef(void *Bundle) {}
-
-extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMValueRef Fn,
-                                          LLVMValueRef *Args, unsigned NumArgs,
-                                          void *Bundle, const char *Name) {
-  return LLVMBuildCall(B, Fn, Args, NumArgs, Name);
-}
-
-extern "C" LLVMValueRef
-LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args,
-                    unsigned NumArgs, LLVMBasicBlockRef Then,
-                    LLVMBasicBlockRef Catch, void *Bundle, const char *Name) {
-  return LLVMBuildInvoke(B, Fn, Args, NumArgs, Then, Catch, Name);
-}
-#endif
 
 extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
                                                LLVMBasicBlockRef BB) {
