@@ -251,24 +251,88 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
     ) -> Option<ClosureRegionRequirements> {
         assert!(self.inferred_values.is_none(), "values already inferred");
-        let tcx = infcx.tcx;
 
-        // Find the minimal regions that can solve the constraints. This is infallible.
         self.propagate_constraints(mir);
 
-        // Now, see whether any of the constraints were too strong. In
-        // particular, we want to check for a case where a universally
-        // quantified region exceeded its bounds.  Consider:
-        //
-        //     fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
-        //
-        // In this case, returning `x` requires `&'a u32 <: &'b u32`
-        // and hence we establish (transitively) a constraint that
-        // `'a: 'b`. The `propagate_constraints` code above will
-        // therefore add `end('a)` into the region for `'b` -- but we
-        // have no evidence that `'a` outlives `'b`, so we want to report
-        // an error.
+        let outlives_requirements = self.check_universal_regions(infcx, mir_def_id);
 
+        if outlives_requirements.is_empty() {
+            None
+        } else {
+            let num_external_vids = self.universal_regions.num_global_and_external_regions();
+            Some(ClosureRegionRequirements {
+                num_external_vids,
+                outlives_requirements,
+            })
+        }
+    }
+
+    /// Propagate the region constraints: this will grow the values
+    /// for each region variable until all the constraints are
+    /// satisfied. Note that some values may grow **too** large to be
+    /// feasible, but we check this later.
+    fn propagate_constraints(&mut self, mir: &Mir<'tcx>) {
+        let mut changed = true;
+
+        debug!("propagate_constraints()");
+        debug!("propagate_constraints: constraints={:#?}", {
+            let mut constraints: Vec<_> = self.constraints.iter().collect();
+            constraints.sort();
+            constraints
+        });
+
+        // The initial values for each region are derived from the liveness
+        // constraints we have accumulated.
+        let mut inferred_values = self.liveness_constraints.clone();
+
+        while changed {
+            changed = false;
+            debug!("propagate_constraints: --------------------");
+            for constraint in &self.constraints {
+                debug!("propagate_constraints: constraint={:?}", constraint);
+
+                // Grow the value as needed to accommodate the
+                // outlives constraint.
+                let Ok(made_changes) = self.dfs(
+                    mir,
+                    CopyFromSourceToTarget {
+                        source_region: constraint.sub,
+                        target_region: constraint.sup,
+                        inferred_values: &mut inferred_values,
+                        constraint_point: constraint.point,
+                    },
+                );
+
+                if made_changes {
+                    debug!("propagate_constraints:   sub={:?}", constraint.sub);
+                    debug!("propagate_constraints:   sup={:?}", constraint.sup);
+                    changed = true;
+                }
+            }
+            debug!("\n");
+        }
+
+        self.inferred_values = Some(inferred_values);
+    }
+
+    /// Once regions have been propagated, this method is used to see
+    /// whether any of the constraints were too strong. In particular,
+    /// we want to check for a case where a universally quantified
+    /// region exceeded its bounds.  Consider:
+    ///
+    ///     fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
+    ///
+    /// In this case, returning `x` requires `&'a u32 <: &'b u32`
+    /// and hence we establish (transitively) a constraint that
+    /// `'a: 'b`. The `propagate_constraints` code above will
+    /// therefore add `end('a)` into the region for `'b` -- but we
+    /// have no evidence that `'b` outlives `'a`, so we want to report
+    /// an error.
+    fn check_universal_regions(
+        &self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir_def_id: DefId,
+    ) -> Vec<ClosureOutlivesRequirement> {
         // The universal regions are always found in a prefix of the
         // full list.
         let universal_definitions = self.definitions
@@ -283,27 +347,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.check_universal_region(infcx, fr, &mut outlives_requirements);
         }
 
-        // If this is not a closure, then there is no caller to which we can
-        // "pass the buck". So if there are any outlives-requirements that were
-        // not satisfied, we just have to report a hard error here.
-        if !tcx.is_closure(mir_def_id) {
-            for outlives_requirement in outlives_requirements {
-                self.report_error(
-                    infcx,
-                    outlives_requirement.free_region,
-                    outlives_requirement.outlived_free_region,
-                    outlives_requirement.blame_span,
-                );
-            }
-            return None;
+        // If this is a closure, we can propagate unsatisfied
+        // `outlives_requirements` to our creator. Otherwise, we have
+        // to report a hard error here.
+        if infcx.tcx.is_closure(mir_def_id) {
+            return outlives_requirements;
         }
 
-        let num_external_vids = self.universal_regions.num_global_and_external_regions();
+        for outlives_requirement in outlives_requirements {
+            self.report_error(
+                infcx,
+                outlives_requirement.free_region,
+                outlives_requirement.outlived_free_region,
+                outlives_requirement.blame_span,
+            );
+        }
 
-        Some(ClosureRegionRequirements {
-            num_external_vids,
-            outlives_requirements,
-        })
+        vec![]
     }
 
     /// Check the final value for the free region `fr` to see if it
@@ -394,54 +454,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             blame_span,
             &format!("{} does not outlive {}", fr_string, outlived_fr_string,),
         );
-    }
-
-    /// Propagate the region constraints: this will grow the values
-    /// for each region variable until all the constraints are
-    /// satisfied. Note that some values may grow **too** large to be
-    /// feasible, but we check this later.
-    fn propagate_constraints(&mut self, mir: &Mir<'tcx>) {
-        let mut changed = true;
-
-        debug!("propagate_constraints()");
-        debug!("propagate_constraints: constraints={:#?}", {
-            let mut constraints: Vec<_> = self.constraints.iter().collect();
-            constraints.sort();
-            constraints
-        });
-
-        // The initial values for each region are derived from the liveness
-        // constraints we have accumulated.
-        let mut inferred_values = self.liveness_constraints.clone();
-
-        while changed {
-            changed = false;
-            debug!("propagate_constraints: --------------------");
-            for constraint in &self.constraints {
-                debug!("propagate_constraints: constraint={:?}", constraint);
-
-                // Grow the value as needed to accommodate the
-                // outlives constraint.
-                let Ok(made_changes) = self.dfs(
-                    mir,
-                    CopyFromSourceToTarget {
-                        source_region: constraint.sub,
-                        target_region: constraint.sup,
-                        inferred_values: &mut inferred_values,
-                        constraint_point: constraint.point,
-                    },
-                );
-
-                if made_changes {
-                    debug!("propagate_constraints:   sub={:?}", constraint.sub);
-                    debug!("propagate_constraints:   sup={:?}", constraint.sup);
-                    changed = true;
-                }
-            }
-            debug!("\n");
-        }
-
-        self.inferred_values = Some(inferred_values);
     }
 
     /// Tries to finds a good span to blame for the fact that `fr1`
@@ -589,4 +601,3 @@ impl ClosureRegionRequirementsExt for ClosureRegionRequirements {
         }
     }
 }
-
