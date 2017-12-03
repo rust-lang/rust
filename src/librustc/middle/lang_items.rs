@@ -338,6 +338,8 @@ language_item_table! {
     U128ShloFnLangItem,              "u128_shlo",               u128_shlo_fn;
     I128ShroFnLangItem,              "i128_shro",               i128_shro_fn;
     U128ShroFnLangItem,              "u128_shro",               u128_shro_fn;
+
+    TerminationTraitLangItem,        "termination",             termination;
 }
 
 impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {

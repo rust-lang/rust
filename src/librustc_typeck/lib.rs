@@ -115,7 +115,6 @@ use syntax::ast;
 use syntax::abi::Abi;
 use syntax_pos::Span;
 
-use std::iter;
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
 mod diagnostics;
@@ -200,21 +199,6 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
                 _ => ()
             }
-            let se_ty = tcx.mk_fn_ptr(ty::Binder(
-                tcx.mk_fn_sig(
-                    iter::empty(),
-                    tcx.mk_nil(),
-                    false,
-                    hir::Unsafety::Normal,
-                    Abi::Rust
-                )
-            ));
-
-            require_same_types(
-                tcx,
-                &ObligationCause::new(main_span, main_id, ObligationCauseCode::MainFunctionType),
-                se_ty,
-                tcx.mk_fn_ptr(tcx.fn_sig(main_def_id)));
         }
         _ => {
             span_bug!(main_span,
