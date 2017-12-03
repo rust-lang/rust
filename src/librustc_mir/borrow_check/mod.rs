@@ -22,16 +22,16 @@ use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::ClosureRegionRequirements;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_set::{IdxSetBuf};
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 
 use syntax::ast;
 use syntax_pos::Span;
 
 use dataflow::{do_dataflow, DebugFormatted};
+use dataflow::FlowAtLocation;
 use dataflow::MoveDataParamEnv;
 use dataflow::{DataflowAnalysis, DataflowResultsConsumer};
-use dataflow::{FlowAtLocation, FlowsAtLocation};
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use dataflow::{EverInitializedLvals, MovingOutStatements};
 use dataflow::{Borrows, BorrowData, ReserveOrActivateIndex};

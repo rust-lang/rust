@@ -17,7 +17,7 @@ use std::collections::BTreeSet;
 use std::io;
 use transform::MirSource;
 use util::liveness::{LivenessResults, LocalSet};
-use borrow_check::FlowAtLocation;
+use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::MoveData;
 

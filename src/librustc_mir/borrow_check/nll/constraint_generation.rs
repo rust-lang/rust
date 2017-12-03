@@ -22,7 +22,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::fx::FxHashSet;
 use syntax::codemap::DUMMY_SP;
-use borrow_check::{FlowAtLocation, FlowsAtLocation};
+use dataflow::{FlowAtLocation, FlowsAtLocation};
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::{HasMoveData, MoveData};
 
