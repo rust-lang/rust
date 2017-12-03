@@ -144,7 +144,7 @@ impl MetadataLoaderTrait for NoLlvmMetadataLoader {
                 let mut buf = Vec::new();
                 io::copy(&mut entry, &mut buf).unwrap();
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
-                return Ok(buf.map_owner_box().erase_owner());
+                return Ok(rustc_erase_owner!(buf.map_owner_box()));
             }
         }
 
