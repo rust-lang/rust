@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(trait_alias)]
+
 trait SimpleAlias = Default; //~ERROR E0645
 trait GenericAlias<T> = Iterator<Item=T>; //~ERROR E0645
 trait Partial<T> = IntoIterator<Item=T>; //~ERROR E0645

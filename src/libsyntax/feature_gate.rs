@@ -368,6 +368,8 @@ declare_features! (
     // Generators
     (active, generators, "1.21.0", None),
 
+    // Trait aliases
+    (active, trait_alias, "1.24.0", Some(41517)),
 
     // global allocators and their internals
     (active, global_allocator, "1.20.0", None),
@@ -1404,6 +1406,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         }
                     }
                 }
+            }
+
+            ast::ItemKind::TraitAlias(..) => {
+                gate_feature_post!(&self, trait_alias,
+                                   i.span,
+                                   "trait aliases are not yet fully implemented");
             }
 
             ast::ItemKind::AutoImpl(..) => {
