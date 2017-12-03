@@ -87,6 +87,7 @@ pub struct Config {
     pub rust_debuginfo_lines: bool,
     pub rust_debuginfo_only_std: bool,
     pub rust_rpath: bool,
+    pub rustc_parallel_queries: bool,
     pub rustc_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_debuginfo_tests: bool,
@@ -266,6 +267,7 @@ struct Rust {
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
     debuginfo_only_std: Option<bool>,
+    experimental_parallel_queries: Option<bool>,
     debug_jemalloc: Option<bool>,
     use_jemalloc: Option<bool>,
     backtrace: Option<bool>,
@@ -474,6 +476,7 @@ impl Config {
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.quiet_tests, rust.quiet_tests);
             set(&mut config.test_miri, rust.test_miri);
+            config.rustc_parallel_queries = rust.experimental_parallel_queries.unwrap_or(false);
             config.rustc_default_linker = rust.default_linker.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
