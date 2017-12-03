@@ -1526,7 +1526,7 @@ let lorem = 0 .. 10;
 
 ## `spaces_within_parens_and_brackets`
 
-Put spaces within non-empty generic arguments
+Put spaces within non-empty generic arguments, parentheses, and square brackets
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
@@ -1534,66 +1534,36 @@ Put spaces within non-empty generic arguments
 #### `false` (default):
 
 ```rust
+// generic arguments
 fn lorem<T: Eq>(t: T) {
     // body
 }
-```
 
-#### `true`:
-
-```rust
-fn lorem< T: Eq >(t: T) {
-    // body
-}
-```
-
-See also: [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets), [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets).
-
-## `spaces_within_parens_and_brackets`
-
-Put spaces within non-empty parentheses
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-
-#### `false` (default):
-
-```rust
+// non-empty parentheses
 fn lorem<T: Eq>(t: T) {
     let lorem = (ipsum, dolor);
 }
-```
 
-#### `true`:
-
-```rust
-fn lorem<T: Eq>( t: T ) {
-    let lorem = ( ipsum, dolor );
-}
-```
-
-See also: [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets), [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets).
-
-## `spaces_within_parens_and_brackets`
-
-Put spaces within non-empty square brackets
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-
-#### `false` (default):
-
-```rust
+// non-empty square brackets
 let lorem: [usize; 2] = [ipsum, dolor];
 ```
 
 #### `true`:
 
 ```rust
+// generic arguments
+fn lorem< T: Eq >(t: T) {
+    // body
+}
+
+// non-empty parentheses
+fn lorem<T: Eq>( t: T ) {
+    let lorem = ( ipsum, dolor );
+}
+
+// non-empty square brackets
 let lorem: [ usize; 2 ] = [ ipsum, dolor ];
 ```
-
-See also: [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets), [`spaces_within_parens_and_brackets`](#spaces_within_parens_and_brackets).
 
 ## `struct_lit_single_line`
 
