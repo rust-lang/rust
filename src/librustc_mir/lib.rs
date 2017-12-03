@@ -26,6 +26,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(i128_type)]
 #![feature(inclusive_range_syntax)]
 #![feature(match_default_bindings)]
+#![feature(never_type)]
 #![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(placement_in_syntax)]
