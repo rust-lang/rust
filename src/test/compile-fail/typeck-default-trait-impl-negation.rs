@@ -10,15 +10,9 @@
 
 #![feature(optin_builtin_traits)]
 
-trait MyTrait {}
+auto trait MyTrait {}
 
-#[allow(auto_impl)]
-impl MyTrait for .. {}
-
-unsafe trait MyUnsafeTrait {}
-
-#[allow(auto_impl)]
-unsafe impl MyUnsafeTrait for .. {}
+unsafe auto trait MyUnsafeTrait {}
 
 struct ThisImplsTrait;
 

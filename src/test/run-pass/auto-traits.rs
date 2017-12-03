@@ -11,9 +11,6 @@
 #![feature(optin_builtin_traits)]
 
 auto trait Auto {}
-// Redundant but accepted until we remove it.
-#[allow(auto_impl)]
-impl Auto for .. {}
 
 unsafe auto trait AutoUnsafe {}
 
