@@ -27,7 +27,7 @@ use middle::region;
 use ty::{self, TyCtxt, adjustment};
 
 use hir::{self, PatKind};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
@@ -279,7 +279,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
                param_env: ty::ParamEnv<'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
-               rvalue_promotable_map: Option<Rc<ItemLocalSet>>)
+               rvalue_promotable_map: Option<Lrc<ItemLocalSet>>)
                -> Self
     {
         ExprUseVisitor {

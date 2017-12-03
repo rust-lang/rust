@@ -20,7 +20,7 @@ use ty::maps::config::QueryDescription;
 use ty::item_path;
 
 use rustc_data_structures::fx::{FxHashMap};
-use std::cell::{Ref, RefMut};
+use rustc_data_structures::sync::LockGuard;
 use std::marker::PhantomData;
 use std::mem;
 use syntax_pos::Span;
@@ -57,12 +57,12 @@ impl<'tcx, M: QueryDescription<'tcx>> QueryMap<'tcx, M> {
 
 pub(super) trait GetCacheInternal<'tcx>: QueryDescription<'tcx> + Sized {
     fn get_cache_internal<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                              -> Ref<'a, QueryMap<'tcx, Self>>;
+                              -> LockGuard<'a, QueryMap<'tcx, Self>>;
 }
 
 pub(super) struct CycleError<'a, 'tcx: 'a> {
     span: Span,
-    cycle: RefMut<'a, [(Span, Query<'tcx>)]>,
+    cycle: LockGuard<'a, [(Span, Query<'tcx>)]>,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                        .find(|&(_, &(_, ref q))| *q == query) {
                 return Err(CycleError {
                     span,
-                    cycle: RefMut::map(stack, |stack| &mut stack[i..])
+                    cycle: LockGuard::map(stack, |stack| &mut stack[i..])
                 });
             }
             stack.push((span, query));
@@ -189,7 +189,7 @@ macro_rules! define_maps {
        [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
         use dep_graph::DepNodeIndex;
-        use std::cell::RefCell;
+        use rustc_data_structures::sync::{Lock, LockGuard};
 
         define_map_struct! {
             tcx: $tcx,
@@ -201,8 +201,8 @@ macro_rules! define_maps {
                        -> Self {
                 Maps {
                     providers,
-                    query_stack: RefCell::new(vec![]),
-                    $($name: RefCell::new(QueryMap::new())),*
+                    query_stack: Lock::new(vec![]),
+                    $($name: Lock::new(QueryMap::new())),*
                 }
             }
         }
@@ -250,7 +250,7 @@ macro_rules! define_maps {
 
         impl<$tcx> GetCacheInternal<$tcx> for queries::$name<$tcx> {
             fn get_cache_internal<'a>(tcx: TyCtxt<'a, $tcx, $tcx>)
-                                      -> ::std::cell::Ref<'a, QueryMap<$tcx, Self>> {
+                                      -> LockGuard<'a, QueryMap<$tcx, Self>> {
                 tcx.maps.$name.borrow()
             }
         }
@@ -586,8 +586,8 @@ macro_rules! define_map_struct {
      input: ($(([$(modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
-            query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($(#[$attr])*  $name: RefCell<QueryMap<$tcx, queries::$name<$tcx>>>,)*
+            query_stack: Lock<Vec<(Span, Query<$tcx>)>>,
+            $($(#[$attr])*  $name: Lock<QueryMap<$tcx, queries::$name<$tcx>>>,)*
         }
     };
 }

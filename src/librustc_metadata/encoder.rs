@@ -35,7 +35,7 @@ use std::hash::Hash;
 use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::Path;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
@@ -297,7 +297,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                 adapted.name.hash(&mut hasher);
                                 hasher.finish()
                             };
-                            Rc::new(adapted)
+                            Lrc::new(adapted)
                         }
                     },
                     // expanded code, not from a file

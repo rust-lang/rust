@@ -45,7 +45,7 @@ use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::{ItemLocalSet, NodeSet};
 use rustc::lint::builtin::CONST_ERR;
 use rustc::hir::{self, PatKind, RangeEnd};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -83,7 +83,7 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    def_id: DefId)
-                                   -> Rc<ItemLocalSet>
+                                   -> Lrc<ItemLocalSet>
 {
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
@@ -108,7 +108,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let body_id = tcx.hir.body_owned_by(node_id);
     visitor.visit_nested_body(body_id);
 
-    Rc::new(visitor.result)
+    Lrc::new(visitor.result)
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
