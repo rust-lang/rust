@@ -177,7 +177,7 @@ quasiquote as an ordinary plugin library.
 Plugins can extend [Rust's lint
 infrastructure](../reference/attributes.html#lint-check-attributes) with
 additional checks for code style, safety, etc. Now let's write a plugin
-[`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/run-pass-fulldeps/auxiliary/lint_plugin_test.rs)
+[`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/lint_plugin_test.rs)
 that warns about any item named `lintme`.
 
 ```rust,ignore
