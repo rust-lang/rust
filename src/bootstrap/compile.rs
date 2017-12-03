@@ -561,6 +561,9 @@ pub fn rustc_cargo(build: &Build,
     if let Some(ref s) = build.config.rustc_default_linker {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
+    if build.config.rustc_parallel_queries {
+        cargo.env("RUSTC_PARALLEL_QUERIES", "1");
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

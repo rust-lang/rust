@@ -15,7 +15,7 @@ fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
 log = "0.3"
-owning_ref = "0.3.3"
+owning_ref = { git = "https://github.com/Zoxc/owning-ref-rs.git" }
 rustc_back = { path = "../librustc_back" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
