@@ -32,6 +32,9 @@
 #![allow(deprecated)]
 
 extern crate alloc;
+extern crate rustc_data_structures;
+
+use rustc_data_structures::sync::MTLock;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -290,6 +293,8 @@ pub struct DroplessArena {
     chunks: RefCell<Vec<TypedArenaChunk<u8>>>,
 }
 
+unsafe impl Send for DroplessArena {}
+
 impl DroplessArena {
     pub fn new() -> DroplessArena {
         DroplessArena {
@@ -407,6 +412,72 @@ impl DroplessArena {
             arena_slice.copy_from_slice(slice);
             arena_slice
         }
+    }
+}
+
+pub struct SyncTypedArena<T> {
+    lock: MTLock<TypedArena<T>>,
+}
+
+impl<T> SyncTypedArena<T> {
+    #[inline(always)]
+    pub fn new() -> SyncTypedArena<T> {
+        SyncTypedArena {
+            lock: MTLock::new(TypedArena::new())
+        }
+    }
+
+    #[inline(always)]
+    pub fn alloc(&self, object: T) -> &mut T {
+        // Extend the lifetime of the result since it's limited to the lock guard
+        unsafe { &mut *(self.lock.lock().alloc(object) as *mut T) }
+    }
+
+    #[inline(always)]
+    pub fn alloc_slice(&self, slice: &[T]) -> &mut [T]
+    where
+        T: Copy,
+    {
+        // Extend the lifetime of the result since it's limited to the lock guard
+        unsafe { &mut *(self.lock.lock().alloc_slice(slice) as *mut [T]) }
+    }
+
+    #[inline(always)]
+    pub fn clear(&mut self) {
+        self.lock.get_mut().clear();
+    }
+}
+
+pub struct SyncDroplessArena {
+    lock: MTLock<DroplessArena>,
+}
+
+impl SyncDroplessArena {
+    #[inline(always)]
+    pub fn new() -> SyncDroplessArena {
+        SyncDroplessArena {
+            lock: MTLock::new(DroplessArena::new())
+        }
+    }
+
+    #[inline(always)]
+    pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
+        self.lock.lock().in_arena(ptr)
+    }
+
+    #[inline(always)]
+    pub fn alloc<T>(&self, object: T) -> &mut T {
+        // Extend the lifetime of the result since it's limited to the lock guard
+        unsafe { &mut *(self.lock.lock().alloc(object) as *mut T) }
+    }
+
+    #[inline(always)]
+    pub fn alloc_slice<T>(&self, slice: &[T]) -> &mut [T]
+    where
+        T: Copy,
+    {
+        // Extend the lifetime of the result since it's limited to the lock guard
+        unsafe { &mut *(self.lock.lock().alloc_slice(slice) as *mut [T]) }
     }
 }
 
