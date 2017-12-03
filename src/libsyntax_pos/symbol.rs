@@ -83,10 +83,6 @@ impl Decodable for Ident {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(u32);
 
-// The interner in thread-local, so `Symbol` shouldn't move between threads.
-impl !Send for Symbol { }
-impl !Sync for Symbol { }
-
 impl Symbol {
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
