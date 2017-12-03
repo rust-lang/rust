@@ -257,6 +257,20 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         })
     }
 
+    fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path> {
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
+            match p {
+                &Projection {
+                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: false}, ..
+                } => offset == index,
+                &Projection {
+                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: true}, ..
+                } => size - offset == index,
+                _ => false
+            }
+        })
+    }
+
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
             match p {

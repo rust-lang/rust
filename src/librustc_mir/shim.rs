@@ -280,6 +280,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn downcast_subpath(&self, _path: Self::Path, _variant: usize) -> Option<Self::Path> {
         Some(())
     }
+    fn array_subpath(&self, _path: Self::Path, _index: u32, _size: u32) -> Option<Self::Path> {
+        None
+    }
 }
 
 /// Build a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
