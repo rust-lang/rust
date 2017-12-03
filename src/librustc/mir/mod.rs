@@ -733,6 +733,10 @@ impl<'tcx> Terminator<'tcx> {
     pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
         self.kind.successors_mut()
     }
+
+    pub fn unwind_mut(&mut self) -> Option<&mut Option<BasicBlock>> {
+        self.kind.unwind_mut()
+    }
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
@@ -808,6 +812,27 @@ impl<'tcx> TerminatorKind<'tcx> {
                 let mut s = vec![real_target];
                 s.extend(imaginary_targets.iter_mut());
                 s
+            }
+        }
+    }
+
+    pub fn unwind_mut(&mut self) -> Option<&mut Option<BasicBlock>> {
+        match *self {
+            TerminatorKind::Goto { .. } |
+            TerminatorKind::Resume |
+            TerminatorKind::Return |
+            TerminatorKind::Unreachable |
+            TerminatorKind::GeneratorDrop |
+            TerminatorKind::Yield { .. } |
+            TerminatorKind::SwitchInt { .. } |
+            TerminatorKind::FalseEdges { .. } => {
+                None
+            },
+            TerminatorKind::Call { cleanup: ref mut unwind, .. } |
+            TerminatorKind::Assert { cleanup: ref mut unwind, .. } |
+            TerminatorKind::DropAndReplace { ref mut unwind, .. } |
+            TerminatorKind::Drop { ref mut unwind, .. } => {
+                Some(unwind)
             }
         }
     }

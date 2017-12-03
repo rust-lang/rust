@@ -36,6 +36,7 @@ pub mod elaborate_drops;
 pub mod add_call_guards;
 pub mod promote_consts;
 pub mod qualify_consts;
+pub mod remove_noop_landing_pads;
 pub mod dump_mir;
 pub mod deaggregator;
 pub mod instcombine;
@@ -226,8 +227,11 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 
     let mut mir = tcx.mir_validated(def_id).steal();
     run_passes![tcx, mir, def_id, 2;
+        // Remove all things not needed by analysis
         no_landing_pads::NoLandingPads,
         simplify_branches::SimplifyBranches::new("initial"),
+        remove_noop_landing_pads::RemoveNoopLandingPads,
+        simplify::SimplifyCfg::new("early-opt"),
 
         // These next passes must be executed together
         add_call_guards::CriticalCallEdges,
@@ -255,6 +259,8 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         instcombine::InstCombine,
         deaggregator::Deaggregator,
         copy_prop::CopyPropagation,
+        remove_noop_landing_pads::RemoveNoopLandingPads,
+        simplify::SimplifyCfg::new("final"),
         simplify::SimplifyLocals,
 
         generator::StateTransform,

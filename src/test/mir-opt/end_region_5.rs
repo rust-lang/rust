@@ -43,20 +43,20 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         _4 = &'14s _1;
 //         _3 = [closure@NodeId(18)] { d: move _4 };
 //         StorageDead(_4);
-//         _2 = const foo(move _3) -> [return: bb1, unwind: bb3];
+//         _2 = const foo(move _3) -> [return: bb2, unwind: bb3];
 //     }
 //     bb1: {
+//         resume;
+//     }
+//     bb2: {
 //         EndRegion('14s);
 //         StorageDead(_3);
 //         _0 = ();
-//         drop(_1) -> bb4;
-//     }
-//     bb2: {
-//         resume;
+//         drop(_1) -> [return: bb4, unwind: bb1];
 //     }
 //     bb3: {
 //         EndRegion('14s);
-//         drop(_1) -> bb2;
+//         drop(_1) -> bb1;
 //     }
 //     bb4: {
 //         StorageDead(_1);

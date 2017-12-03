@@ -383,7 +383,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         assert_eq!(scope.region_scope, region_scope.0);
 
         self.cfg.push_end_region(self.hir.tcx(), block, region_scope.1, scope.region_scope);
+        let resume_block = self.resume_block();
         unpack!(block = build_scope_drops(&mut self.cfg,
+                                          resume_block,
                                           &scope,
                                           &self.scopes,
                                           block,
@@ -422,6 +424,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         {
+        let resume_block = self.resume_block();
         let mut rest = &mut self.scopes[(len - scope_count)..];
         while let Some((scope, rest_)) = {rest}.split_last_mut() {
             rest = rest_;
@@ -441,6 +444,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.cfg.push_end_region(self.hir.tcx(), block, region_scope.1, scope.region_scope);
 
             unpack!(block = build_scope_drops(&mut self.cfg,
+                                              resume_block,
                                               scope,
                                               rest,
                                               block,
@@ -468,6 +472,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let src_info = self.scopes[0].source_info(self.fn_span);
         let mut block = self.cfg.start_new_block();
         let result = block;
+        let resume_block = self.resume_block();
         let mut rest = &mut self.scopes[..];
 
         while let Some((scope, rest_)) = {rest}.split_last_mut() {
@@ -491,6 +496,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.cfg.push_end_region(self.hir.tcx(), block, src_info, scope.region_scope);
 
             unpack!(block = build_scope_drops(&mut self.cfg,
+                                              resume_block,
                                               scope,
                                               rest,
                                               block,
@@ -701,18 +707,31 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// This path terminates in Resume. Returns the start of the path.
     /// See module comment for more details. None indicates there’s no
     /// cleanup to do at this point.
-    pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
+    pub fn diverge_cleanup(&mut self) -> BasicBlock {
         self.diverge_cleanup_gen(false)
     }
 
-    fn diverge_cleanup_gen(&mut self, generator_drop: bool) -> Option<BasicBlock> {
-        if !self.scopes.iter().any(|scope| scope.needs_cleanup) {
-            return None;
+    fn resume_block(&mut self) -> BasicBlock {
+        if let Some(target) = self.cached_resume_block {
+            target
+        } else {
+            let resumeblk = self.cfg.start_new_cleanup_block();
+            self.cfg.terminate(resumeblk,
+                               SourceInfo {
+                                   scope: ARGUMENT_VISIBILITY_SCOPE,
+                                   span: self.fn_span
+                               },
+                               TerminatorKind::Resume);
+            self.cached_resume_block = Some(resumeblk);
+            resumeblk
         }
-        assert!(!self.scopes.is_empty()); // or `any` above would be false
+    }
 
-        let Builder { ref mut cfg, ref mut scopes,
-                      ref mut cached_resume_block, .. } = *self;
+    fn diverge_cleanup_gen(&mut self, generator_drop: bool) -> BasicBlock {
+        // To start, create the resume terminator.
+        let mut target = self.resume_block();
+
+        let Builder { ref mut cfg, ref mut scopes, .. } = *self;
 
         // Build up the drops in **reverse** order. The end result will
         // look like:
@@ -725,23 +744,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // store caches. If everything is cached, we'll just walk right
         // to left reading the cached results but never created anything.
 
-        // To start, create the resume terminator.
-        let mut target = if let Some(target) = *cached_resume_block {
-            target
-        } else {
-            let resumeblk = cfg.start_new_cleanup_block();
-            cfg.terminate(resumeblk,
-                          scopes[0].source_info(self.fn_span),
-                          TerminatorKind::Resume);
-            *cached_resume_block = Some(resumeblk);
-            resumeblk
-        };
-
-        for scope in scopes.iter_mut() {
-            target = build_diverge_scope(self.hir.tcx(), cfg, scope.region_scope_span,
-                                         scope, target, generator_drop);
+        if scopes.iter().any(|scope| scope.needs_cleanup) {
+            for scope in scopes.iter_mut() {
+                target = build_diverge_scope(self.hir.tcx(), cfg, scope.region_scope_span,
+                                             scope, target, generator_drop);
+            }
         }
-        Some(target)
+
+        target
     }
 
     /// Utility function for *non*-scope code to build their own drops
@@ -760,7 +770,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            TerminatorKind::Drop {
                                location,
                                target: next_target,
-                               unwind: diverge_target,
+                               unwind: Some(diverge_target),
                            });
         next_target.unit()
     }
@@ -779,7 +789,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                location,
                                value,
                                target: next_target,
-                               unwind: diverge_target,
+                               unwind: Some(diverge_target),
                            });
         next_target.unit()
     }
@@ -804,7 +814,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                expected,
                                msg,
                                target: success_block,
-                               cleanup,
+                               cleanup: Some(cleanup),
                            });
 
         success_block
@@ -813,6 +823,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
 /// Builds drops for pop_scope and exit_scope.
 fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
+                           resume_block: BasicBlock,
                            scope: &Scope<'tcx>,
                            earlier_scopes: &[Scope<'tcx>],
                            mut block: BasicBlock,
@@ -868,7 +879,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                 cfg.terminate(block, source_info, TerminatorKind::Drop {
                     location: drop_data.location.clone(),
                     target: next,
-                    unwind: on_diverge
+                    unwind: Some(on_diverge.unwrap_or(resume_block))
                 });
                 block = next;
             }

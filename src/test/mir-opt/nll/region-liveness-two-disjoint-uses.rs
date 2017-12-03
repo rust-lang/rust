@@ -36,10 +36,10 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.main.nll.0.mir
-// | '_#1r: {bb1[1], bb2[0], bb2[1]}
+// | '_#1r: {bb2[1], bb3[0], bb3[1]}
 // ...
-// | '_#3r: {bb7[2], bb7[3], bb7[4]}
-// | '_#4r: {bb1[1], bb2[0], bb2[1], bb7[2], bb7[3], bb7[4]}
+// | '_#3r: {bb8[2], bb8[3], bb8[4]}
+// | '_#4r: {bb2[1], bb3[0], bb3[1], bb8[2], bb8[3], bb8[4]}
 // ...
 // let mut _2: &'_#4r usize;
 // ...

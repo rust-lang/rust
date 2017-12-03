@@ -99,10 +99,14 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         _2 = (_3.0: &'12ds S1);
 //         _1 = move _2;
 //         StorageDead(_2);
-//         drop(_3) -> bb1;
+//         drop(_3) -> [return: bb2, unwind: bb1];
 //     }
 //
 //     bb1: {
+//         resume;
+//     }
+//
+//     bb2: {
 //         StorageDead(_3);
 //         StorageDead(_8);
 //         StorageDead(_9);
@@ -146,10 +150,14 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         _2 = (_3.0: &'12ds S1);
 //         _1 = move _2;
 //         StorageDead(_2);
-//         drop(_3) -> bb1;
+//         drop(_3) -> [return: bb2, unwind: bb1];
 //     }
 //
 //     bb1: {
+//         resume;
+//     }
+//
+//     bb2: {
 //         StorageDead(_3);
 //         StorageDead(_8);
 //         StorageDead(_5);
