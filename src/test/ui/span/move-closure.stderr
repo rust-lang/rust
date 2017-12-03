@@ -5,7 +5,7 @@ error[E0308]: mismatched types
    |                 ^^^^^^^^^^ expected (), found closure
    |
    = note: expected type `()`
-              found type `move fn() -> _`
+              found type `move || -> _`
 
 error: aborting due to previous error
 
