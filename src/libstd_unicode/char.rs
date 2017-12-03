@@ -1461,7 +1461,7 @@ pub struct DecodeUtf16<I>
     buf: Option<u16>,
 }
 
-/// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
+/// An error that can be returned when decoding UTF-16 code points.
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DecodeUtf16Error {
