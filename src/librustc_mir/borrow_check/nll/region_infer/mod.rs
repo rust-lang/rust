@@ -18,12 +18,13 @@ use rustc::infer::region_constraints::VarOrigins;
 use rustc::mir::{ClosureOutlivesRequirement, ClosureRegionRequirements, Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::fx::FxHashSet;
 use std::fmt;
 use std::rc::Rc;
 use syntax_pos::Span;
 
 mod annotation;
+mod dfs;
+use self::dfs::CopyFromSourceToTarget;
 mod dump_mir;
 mod graphviz;
 mod values;
@@ -421,14 +422,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Grow the value as needed to accommodate the
                 // outlives constraint.
-
-                if self.copy(
-                    &mut inferred_values,
+                let Ok(made_changes) = self.dfs(
                     mir,
-                    constraint.sub,
-                    constraint.sup,
-                    constraint.point,
-                ) {
+                    CopyFromSourceToTarget {
+                        source_region: constraint.sub,
+                        target_region: constraint.sup,
+                        inferred_values: &mut inferred_values,
+                        constraint_point: constraint.point,
+                    },
+                );
+
+                if made_changes {
                     debug!("propagate_constraints:   sub={:?}", constraint.sub);
                     debug!("propagate_constraints:   sup={:?}", constraint.sup);
                     changed = true;
@@ -438,68 +442,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         self.inferred_values = Some(inferred_values);
-    }
-
-    fn copy(
-        &self,
-        inferred_values: &mut RegionValues,
-        mir: &Mir<'tcx>,
-        from_region: RegionVid,
-        to_region: RegionVid,
-        constraint_point: Location,
-    ) -> bool {
-        let mut changed = false;
-
-        let mut stack = vec![];
-        let mut visited = FxHashSet();
-
-        stack.push(constraint_point);
-        while let Some(p) = stack.pop() {
-            let point_index = self.elements.index(p);
-
-            if !inferred_values.contains(from_region, point_index) {
-                debug!("            not in from-region");
-                continue;
-            }
-
-            if !visited.insert(p) {
-                debug!("            already visited");
-                continue;
-            }
-
-            let new = inferred_values.add(to_region, point_index);
-            changed |= new;
-
-            let block_data = &mir[p.block];
-
-            let start_stack_len = stack.len();
-
-            if p.statement_index < block_data.statements.len() {
-                stack.push(Location {
-                    statement_index: p.statement_index + 1,
-                    ..p
-                });
-            } else {
-                stack.extend(block_data.terminator().successors().iter().map(
-                    |&basic_block| {
-                        Location {
-                            statement_index: 0,
-                            block: basic_block,
-                        }
-                    },
-                ));
-            }
-
-            if stack.len() == start_stack_len {
-                // If we reach the END point in the graph, then copy
-                // over any skolemized end points in the `from_region`
-                // and make sure they are included in the `to_region`.
-                changed |=
-                    inferred_values.add_universal_regions_outlived_by(from_region, to_region);
-            }
-        }
-
-        changed
     }
 
     /// Tries to finds a good span to blame for the fact that `fr1`
@@ -647,3 +589,4 @@ impl ClosureRegionRequirementsExt for ClosureRegionRequirements {
         }
     }
 }
+
