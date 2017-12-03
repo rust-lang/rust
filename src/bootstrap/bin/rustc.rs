@@ -265,6 +265,10 @@ fn main() {
         }
     }
 
+    if env::var_os("RUSTC_PARALLEL_QUERIES").is_some() {
+        cmd.arg("--cfg").arg("parallel_queries");
+    }
+
     let color = match env::var("RUSTC_COLOR") {
         Ok(s) => usize::from_str(&s).expect("RUSTC_COLOR should be an integer"),
         Err(_) => 0,

@@ -15,7 +15,6 @@ flate2 = "0.2"
 jobserver = "0.1.5"
 log = "0.3"
 num_cpus = "1.0"
-owning_ref = "0.3.3"
 rustc = { path = "../librustc" }
 rustc-demangle = "0.1.4"
 rustc_allocator = { path = "../librustc_allocator" }

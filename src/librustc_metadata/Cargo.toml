@@ -11,7 +11,6 @@ crate-type = ["dylib"]
 [dependencies]
 flate2 = "0.2"
 log = "0.3"
-owning_ref = "0.3.3"
 proc_macro = { path = "../libproc_macro" }
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }

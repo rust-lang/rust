@@ -243,7 +243,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use flate2::read::DeflateDecoder;
-use owning_ref::{ErasedBoxRef, OwningRef};
+use rustc_data_structures::owning_ref::{ErasedBoxRef, OwningRef};
 
 pub struct CrateMismatch {
     path: PathBuf,

@@ -77,7 +77,6 @@ extern crate getopts;
 extern crate graphviz;
 #[cfg(windows)]
 extern crate libc;
-extern crate owning_ref;
 extern crate rustc_back;
 #[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
