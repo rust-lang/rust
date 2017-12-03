@@ -49,7 +49,7 @@ fn main() {
 
 // END RUST SOURCE
 //
-// START rustc.full_tested_match.SimplifyBranches-initial.before.mir
+// START rustc.full_tested_match.QualifyAndPromoteConstants.after.mir
 //  bb0: {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
@@ -110,9 +110,9 @@ fn main() {
 //      ...
 //      return;
 //  }
-// END rustc.full_tested_match.SimplifyBranches-initial.before.mir
+// END rustc.full_tested_match.QualifyAndPromoteConstants.after.mir
 //
-// START rustc.full_tested_match2.SimplifyBranches-initial.before.mir
+// START rustc.full_tested_match2.QualifyAndPromoteConstants.before.mir
 //  bb0: {
 //      ...
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
@@ -173,9 +173,9 @@ fn main() {
 //      ...
 //      return;
 //  }
-// END rustc.full_tested_match2.SimplifyBranches-initial.before.mir
+// END rustc.full_tested_match2.QualifyAndPromoteConstants.before.mir
 //
-// START rustc.main.SimplifyBranches-initial.before.mir
+// START rustc.main.QualifyAndPromoteConstants.before.mir
 // bb0: {
 //     ...
 //     _2 = std::option::Option<i32>::Some(const 1i32,);
@@ -252,4 +252,4 @@ fn main() {
 //     ...
 //     return;
 // }
-// END rustc.main.SimplifyBranches-initial.before.mir
+// END rustc.main.QualifyAndPromoteConstants.before.mir

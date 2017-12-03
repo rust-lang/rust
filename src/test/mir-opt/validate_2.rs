@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
+// ignore-wasm32-bare unwinding being disabled causes differences in output
+// ignore-wasm64-bare unwinding being disabled causes differences in output
 // compile-flags: -Z verbose -Z mir-emit-validate=1
 
 fn main() {
