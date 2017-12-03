@@ -24,7 +24,7 @@ use util::small_vector::SmallVector;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
@@ -185,7 +185,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
             let filename = format!("{}", file.display());
             cx.codemap().new_filemap_and_lines(&filename, "");
 
-            base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Rc::new(bytes))))
+            base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
         }
     }
 }

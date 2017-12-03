@@ -22,9 +22,7 @@ use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
 
-use std::cell::{RefCell, Cell};
-use std::rc::Rc;
-use owning_ref::ErasedBoxRef;
+use rustc_data_structures::sync::{Sync, Lrc, RwLock, Lock, LockCell};
 use syntax::{ast, attr};
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
@@ -42,7 +40,9 @@ pub use cstore_impl::{provide, provide_extern};
 // own crate numbers.
 pub type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
-pub struct MetadataBlob(pub ErasedBoxRef<[u8]>);
+pub use rustc_data_structures::sync::MetadataRef;
+
+pub struct MetadataBlob(pub MetadataRef);
 
 /// Holds information about a syntax_pos::FileMap imported from another crate.
 /// See `imported_filemaps()` for more information.
@@ -52,7 +52,7 @@ pub struct ImportedFileMap {
     /// The end of this FileMap within the codemap of its original crate
     pub original_end_pos: syntax_pos::BytePos,
     /// The imported FileMap's representation within the local codemap
-    pub translated_filemap: Rc<syntax_pos::FileMap>,
+    pub translated_filemap: Lrc<syntax_pos::FileMap>,
 }
 
 pub struct CrateMetadata {
@@ -61,13 +61,13 @@ pub struct CrateMetadata {
     /// Information about the extern crate that caused this crate to
     /// be loaded. If this is `None`, then the crate was injected
     /// (e.g., by the allocator)
-    pub extern_crate: Cell<Option<ExternCrate>>,
+    pub extern_crate: LockCell<Option<ExternCrate>>,
 
     pub blob: MetadataBlob,
-    pub cnum_map: RefCell<CrateNumMap>,
+    pub cnum_map: Lock<CrateNumMap>,
     pub cnum: CrateNum,
-    pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
-    pub attribute_cache: RefCell<[Vec<Option<Rc<[ast::Attribute]>>>; 2]>,
+    pub codemap_import_info: RwLock<Vec<ImportedFileMap>>,
+    pub attribute_cache: Lock<[Vec<Option<Lrc<[ast::Attribute]>>>; 2]>,
 
     pub root: schema::CrateRoot,
 
@@ -76,32 +76,32 @@ pub struct CrateMetadata {
     /// hashmap, which gives the reverse mapping.  This allows us to
     /// quickly retrace a `DefPath`, which is needed for incremental
     /// compilation support.
-    pub def_path_table: Rc<DefPathTable>,
+    pub def_path_table: Lrc<DefPathTable>,
 
     pub exported_symbols: FxHashSet<DefIndex>,
 
     pub trait_impls: FxHashMap<(u32, DefIndex), schema::LazySeq<DefIndex>>,
 
-    pub dep_kind: Cell<DepKind>,
+    pub dep_kind: LockCell<DepKind>,
     pub source: CrateSource,
 
-    pub proc_macros: Option<Vec<(ast::Name, Rc<SyntaxExtension>)>>,
+    pub proc_macros: Option<Vec<(ast::Name, Lrc<SyntaxExtension>)>>,
     // Foreign items imported from a dylib (Windows only)
     pub dllimport_foreign_items: FxHashSet<DefIndex>,
 }
 
 pub struct CStore {
-    metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
+    metas: RwLock<FxHashMap<CrateNum, Lrc<CrateMetadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
-    extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
-    pub metadata_loader: Box<MetadataLoader>,
+    extern_mod_crate_map: Lock<NodeMap<CrateNum>>,
+    pub metadata_loader: Box<MetadataLoader + Sync>,
 }
 
 impl CStore {
-    pub fn new(metadata_loader: Box<MetadataLoader>) -> CStore {
+    pub fn new(metadata_loader: Box<MetadataLoader + Sync>) -> CStore {
         CStore {
-            metas: RefCell::new(FxHashMap()),
-            extern_mod_crate_map: RefCell::new(FxHashMap()),
+            metas: RwLock::new(FxHashMap()),
+            extern_mod_crate_map: Lock::new(FxHashMap()),
             metadata_loader,
         }
     }
@@ -110,16 +110,16 @@ impl CStore {
         CrateNum::new(self.metas.borrow().len() + 1)
     }
 
-    pub fn get_crate_data(&self, cnum: CrateNum) -> Rc<CrateMetadata> {
+    pub fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
         self.metas.borrow().get(&cnum).unwrap().clone()
     }
 
-    pub fn set_crate_data(&self, cnum: CrateNum, data: Rc<CrateMetadata>) {
+    pub fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
         self.metas.borrow_mut().insert(cnum, data);
     }
 
     pub fn iter_crate_data<I>(&self, mut i: I)
-        where I: FnMut(CrateNum, &Rc<CrateMetadata>)
+        where I: FnMut(CrateNum, &Lrc<CrateMetadata>)
     {
         for (&k, v) in self.metas.borrow().iter() {
             i(k, v);

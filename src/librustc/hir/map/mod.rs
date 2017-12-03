@@ -29,8 +29,9 @@ use hir::print::Nested;
 use util::nodemap::{DefIdMap, FxHashMap};
 
 use arena::TypedArena;
-use std::cell::RefCell;
 use std::io;
+
+use rustc_data_structures::sync::Lock;
 
 pub mod blocks;
 mod collector;
@@ -255,7 +256,7 @@ pub struct Map<'hir> {
     definitions: &'hir Definitions,
 
     /// Bodies inlined from other crates are cached here.
-    inlined_bodies: RefCell<DefIdMap<&'hir Body>>,
+    inlined_bodies: Lock<DefIdMap<&'hir Body>>,
 
     /// The reverse mapping of `node_to_hir_id`.
     hir_to_node_id: FxHashMap<HirId, NodeId>,
@@ -1090,7 +1091,7 @@ pub fn map_crate<'hir>(sess: &::session::Session,
         map,
         hir_to_node_id,
         definitions,
-        inlined_bodies: RefCell::new(DefIdMap()),
+        inlined_bodies: Lock::new(DefIdMap()),
     };
 
     hir_id_validator::check_crate(&map);

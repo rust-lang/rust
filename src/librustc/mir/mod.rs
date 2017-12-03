@@ -14,6 +14,7 @@ use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use middle::region;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
+use rustc_data_structures::sync::{Lrc};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
@@ -29,11 +30,10 @@ use std::slice;
 use hir::{self, InlineAsm};
 use std::ascii;
 use std::borrow::{Cow};
-use std::cell::Ref;
+use rustc_data_structures::sync::ReadGuard;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
-use std::rc::Rc;
 use std::vec::IntoIter;
 use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
@@ -181,13 +181,13 @@ impl<'tcx> Mir<'tcx> {
     }
 
     #[inline]
-    pub fn predecessors(&self) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(&self) -> ReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
         self.cache.predecessors(self)
     }
 
     #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> Ref<Vec<BasicBlock>> {
-        Ref::map(self.predecessors(), |p| &p[bb])
+    pub fn predecessors_for(&self, bb: BasicBlock) -> ReadGuard<Vec<BasicBlock>> {
+        ReadGuard::map(self.predecessors(), |p| &p[bb])
     }
 
     #[inline]
@@ -1777,10 +1777,10 @@ pub struct UnsafetyViolation {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UnsafetyCheckResult {
     /// Violations that are propagated *upwards* from this function
-    pub violations: Rc<[UnsafetyViolation]>,
+    pub violations: Lrc<[UnsafetyViolation]>,
     /// unsafe blocks in this function, along with whether they are used. This is
     /// used for the "unused_unsafe" lint.
-    pub unsafe_blocks: Rc<[(ast::NodeId, bool)]>,
+    pub unsafe_blocks: Lrc<[(ast::NodeId, bool)]>,
 }
 
 /// The layout of generator state

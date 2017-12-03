@@ -44,6 +44,7 @@ use rustc::util::nodemap::FxHashSet;
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
 use syntax_pos::{MultiSpan, Span};
@@ -86,7 +87,7 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
 }
 
 fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
-    -> Rc<BorrowCheckResult>
+    -> Lrc<BorrowCheckResult>
 {
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
@@ -99,7 +100,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
             // those things (notably the synthesized constructors from
             // tuple structs/variants) do not have an associated body
             // and do not need borrowchecking.
-            return Rc::new(BorrowCheckResult {
+            return Lrc::new(BorrowCheckResult {
                 used_mut_nodes: FxHashSet(),
             })
         }
@@ -127,7 +128,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
     // Note that `mir_validated` is a "stealable" result; the
     // thief, `optimized_mir()`, forces borrowck, so we know that
     // is not yet stolen.
-    tcx.mir_validated(owner_def_id).borrow();
+    let _guard = tcx.mir_validated(owner_def_id).borrow();
 
     // option dance because you can't capture an uninitialized variable
     // by mut-ref.
@@ -145,7 +146,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
     }
     unused::check(&mut bccx, body);
 
-    Rc::new(BorrowCheckResult {
+    Lrc::new(BorrowCheckResult {
         used_mut_nodes: bccx.used_mut_nodes.into_inner(),
     })
 }
@@ -243,7 +244,7 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     // Some in `borrowck_fn` and cleared later
     tables: &'a ty::TypeckTables<'tcx>,
 
-    region_scope_tree: Rc<region::ScopeTree>,
+    region_scope_tree: Lrc<region::ScopeTree>,
 
     owner_def_id: DefId,
 

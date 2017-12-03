@@ -24,10 +24,9 @@ pub use self::ExpnFormat::*;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
-use std::cell::{RefCell, Ref};
+use rustc_data_structures::sync::{Lrc, Lock, LockGuard};
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 use std::env;
 use std::fs;
@@ -125,32 +124,32 @@ impl StableFilemapId {
 //
 
 pub struct CodeMap {
-    pub(super) files: RefCell<Vec<Rc<FileMap>>>,
-    file_loader: Box<FileLoader>,
+    pub(super) files: Lock<Vec<Lrc<FileMap>>>,
+    file_loader: Box<FileLoader + Sync + Send>,
     // This is used to apply the file path remapping as specified via
     // -Zremap-path-prefix to all FileMaps allocated within this CodeMap.
     path_mapping: FilePathMapping,
-    stable_id_to_filemap: RefCell<FxHashMap<StableFilemapId, Rc<FileMap>>>,
+    stable_id_to_filemap: Lock<FxHashMap<StableFilemapId, Lrc<FileMap>>>,
 }
 
 impl CodeMap {
     pub fn new(path_mapping: FilePathMapping) -> CodeMap {
         CodeMap {
-            files: RefCell::new(Vec::new()),
+            files: Lock::new(Vec::new()),
             file_loader: Box::new(RealFileLoader),
             path_mapping,
-            stable_id_to_filemap: RefCell::new(FxHashMap()),
+            stable_id_to_filemap: Lock::new(FxHashMap()),
         }
     }
 
-    pub fn with_file_loader(file_loader: Box<FileLoader>,
+    pub fn with_file_loader(file_loader: Box<FileLoader + Sync + Send>,
                             path_mapping: FilePathMapping)
                             -> CodeMap {
         CodeMap {
-            files: RefCell::new(Vec::new()),
-            file_loader,
+            files: Lock::new(Vec::new()),
+            file_loader: file_loader,
             path_mapping,
-            stable_id_to_filemap: RefCell::new(FxHashMap()),
+            stable_id_to_filemap: Lock::new(FxHashMap()),
         }
     }
 
@@ -162,16 +161,16 @@ impl CodeMap {
         self.file_loader.file_exists(path)
     }
 
-    pub fn load_file(&self, path: &Path) -> io::Result<Rc<FileMap>> {
+    pub fn load_file(&self, path: &Path) -> io::Result<Lrc<FileMap>> {
         let src = self.file_loader.read_file(path)?;
         Ok(self.new_filemap(path.to_str().unwrap().to_string(), src))
     }
 
-    pub fn files(&self) -> Ref<Vec<Rc<FileMap>>> {
+    pub fn files(&self) -> LockGuard<Vec<Lrc<FileMap>>> {
         self.files.borrow()
     }
 
-    pub fn filemap_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Rc<FileMap>> {
+    pub fn filemap_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Lrc<FileMap>> {
         self.stable_id_to_filemap.borrow().get(&stable_id).map(|fm| fm.clone())
     }
 
@@ -187,7 +186,7 @@ impl CodeMap {
 
     /// Creates a new filemap without setting its line information. If you don't
     /// intend to set the line information yourself, you should use new_filemap_and_lines.
-    pub fn new_filemap(&self, filename: FileName, src: String) -> Rc<FileMap> {
+    pub fn new_filemap(&self, filename: FileName, src: String) -> Lrc<FileMap> {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
 
@@ -199,7 +198,7 @@ impl CodeMap {
         let unmapped_path = PathBuf::from(filename.clone());
 
         let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
-        let filemap = Rc::new(FileMap::new(
+        let filemap = Lrc::new(FileMap::new(
             filename,
             was_remapped,
             unmapped_path,
@@ -217,7 +216,7 @@ impl CodeMap {
     }
 
     /// Creates a new filemap and sets its line information.
-    pub fn new_filemap_and_lines(&self, filename: &str, src: &str) -> Rc<FileMap> {
+    pub fn new_filemap_and_lines(&self, filename: &str, src: &str) -> Lrc<FileMap> {
         let fm = self.new_filemap(filename.to_string(), src.to_owned());
         let mut byte_pos: u32 = fm.start_pos.0;
         for line in src.lines() {
@@ -244,7 +243,7 @@ impl CodeMap {
                                 mut file_local_lines: Vec<BytePos>,
                                 mut file_local_multibyte_chars: Vec<MultiByteChar>,
                                 mut file_local_non_narrow_chars: Vec<NonNarrowChar>)
-                                -> Rc<FileMap> {
+                                -> Lrc<FileMap> {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
 
@@ -263,19 +262,19 @@ impl CodeMap {
             *swc = *swc + start_pos;
         }
 
-        let filemap = Rc::new(FileMap {
+        let filemap = Lrc::new(FileMap {
             name: filename,
             name_was_remapped,
             unmapped_path: None,
             crate_of_origin,
             src: None,
             src_hash,
-            external_src: RefCell::new(ExternalSource::AbsentOk),
+            external_src: Lock::new(ExternalSource::AbsentOk),
             start_pos,
             end_pos,
-            lines: RefCell::new(file_local_lines),
-            multibyte_chars: RefCell::new(file_local_multibyte_chars),
-            non_narrow_chars: RefCell::new(file_local_non_narrow_chars),
+            lines: Lock::new(file_local_lines),
+            multibyte_chars: Lock::new(file_local_multibyte_chars),
+            non_narrow_chars: Lock::new(file_local_non_narrow_chars),
         });
 
         files.push(filemap.clone());
@@ -358,7 +357,7 @@ impl CodeMap {
     }
 
     // If the relevant filemap is empty, we don't return a line number.
-    pub fn lookup_line(&self, pos: BytePos) -> Result<FileMapAndLine, Rc<FileMap>> {
+    pub fn lookup_line(&self, pos: BytePos) -> Result<FileMapAndLine, Lrc<FileMap>> {
         let idx = self.lookup_filemap_idx(pos);
 
         let files = self.files.borrow();
@@ -561,7 +560,7 @@ impl CodeMap {
         self.span_until_char(sp, '{')
     }
 
-    pub fn get_filemap(&self, filename: &str) -> Option<Rc<FileMap>> {
+    pub fn get_filemap(&self, filename: &str) -> Option<Lrc<FileMap>> {
         for fm in self.files.borrow().iter() {
             if filename == fm.name {
                 return Some(fm.clone());
@@ -658,7 +657,7 @@ impl CodeMapper for CodeMap {
         }
         sp
     }
-    fn ensure_filemap_source_present(&self, file_map: Rc<FileMap>) -> bool {
+    fn ensure_filemap_source_present(&self, file_map: Lrc<FileMap>) -> bool {
         file_map.add_external_src(
             || self.file_loader.read_file(Path::new(&file_map.name)).ok()
         )
@@ -709,7 +708,7 @@ impl FilePathMapping {
 mod tests {
     use super::*;
     use std::borrow::Cow;
-    use std::rc::Rc;
+    use rustc_data_structures::sync::Lrc;
 
     #[test]
     fn t1 () {
@@ -930,7 +929,7 @@ mod tests {
     /// `substring` in `source_text`.
     trait CodeMapExtension {
         fn span_substr(&self,
-                    file: &Rc<FileMap>,
+                    file: &Lrc<FileMap>,
                     source_text: &str,
                     substring: &str,
                     n: usize)
@@ -939,7 +938,7 @@ mod tests {
 
     impl CodeMapExtension for CodeMap {
         fn span_substr(&self,
-                    file: &Rc<FileMap>,
+                    file: &Lrc<FileMap>,
                     source_text: &str,
                     substring: &str,
                     n: usize)
