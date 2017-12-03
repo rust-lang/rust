@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// asmjs can't even pass i128 as arguments or return values, so ignore it.
+// this will hopefully be fixed by the LLVM 5 upgrade (#43370)
+// ignore-asmjs
+
 // compile-flags: -Z lower_128bit_ops -C debug_assertions=yes
 
 #![feature(i128_type)]
