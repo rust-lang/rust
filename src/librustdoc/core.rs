@@ -14,7 +14,7 @@ use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt, GlobalArenas};
+use rustc::ty::{self, TyCtxt, AllArenas};
 use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::util::nodemap::FxHashMap;
@@ -37,7 +37,6 @@ use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
 use html::render::RenderInfo;
-use arena::DroplessArena;
 
 pub use rustc::session::config::Input;
 pub use rustc::session::search_paths::SearchPaths;
@@ -170,8 +169,7 @@ pub fn run_core(search_paths: SearchPaths,
         abort_on_err(result, &sess)
     };
 
-    let arena = DroplessArena::new();
-    let arenas = GlobalArenas::new();
+    let arenas = AllArenas::new();
     let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
     let output_filenames = driver::build_output_filenames(&input,
                                                           &None,
@@ -185,7 +183,6 @@ pub fn run_core(search_paths: SearchPaths,
                                                      hir_map,
                                                      analysis,
                                                      resolutions,
-                                                     &arena,
                                                      &arenas,
                                                      &name,
                                                      &output_filenames,

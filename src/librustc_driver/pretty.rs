@@ -17,7 +17,7 @@ use self::NodesMatchingUII::*;
 
 use {abort_on_err, driver};
 
-use rustc::ty::{self, TyCtxt, GlobalArenas, Resolutions};
+use rustc::ty::{self, TyCtxt, Resolutions, AllArenas};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
 use rustc::middle::cstore::CrateStore;
@@ -50,8 +50,6 @@ use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks;
 use rustc::hir;
 use rustc::hir::print as pprust_hir;
-
-use arena::DroplessArena;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
@@ -205,8 +203,7 @@ impl PpSourceMode {
                                                hir_map: &hir_map::Map<'tcx>,
                                                analysis: &ty::CrateAnalysis,
                                                resolutions: &Resolutions,
-                                               arena: &'tcx DroplessArena,
-                                               arenas: &'tcx GlobalArenas<'tcx>,
+                                               arenas: &'tcx AllArenas<'tcx>,
                                                output_filenames: &OutputFilenames,
                                                id: &str,
                                                f: F)
@@ -237,7 +234,6 @@ impl PpSourceMode {
                                                                  hir_map.clone(),
                                                                  analysis.clone(),
                                                                  resolutions.clone(),
-                                                                 arena,
                                                                  arenas,
                                                                  id,
                                                                  output_filenames,
@@ -912,8 +908,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 krate: &ast::Crate,
                                                 crate_name: &str,
                                                 ppm: PpMode,
-                                                arena: &'tcx DroplessArena,
-                                                arenas: &'tcx GlobalArenas<'tcx>,
+                                                arenas: &'tcx AllArenas<'tcx>,
                                                 output_filenames: &OutputFilenames,
                                                 opt_uii: Option<UserIdentifiedItem>,
                                                 ofile: Option<&Path>) {
@@ -924,7 +919,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                             analysis,
                             resolutions,
                             crate_name,
-                            arena,
                             arenas,
                             output_filenames,
                             ppm,
@@ -963,7 +957,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            hir_map,
                                            analysis,
                                            resolutions,
-                                           arena,
                                            arenas,
                                            output_filenames,
                                            crate_name,
@@ -988,7 +981,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            hir_map,
                                            analysis,
                                            resolutions,
-                                           arena,
                                            arenas,
                                            output_filenames,
                                            crate_name,
@@ -1005,7 +997,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            hir_map,
                                            analysis,
                                            resolutions,
-                                           arena,
                                            arenas,
                                            output_filenames,
                                            crate_name,
@@ -1040,7 +1031,6 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            hir_map,
                                            analysis,
                                            resolutions,
-                                           arena,
                                            arenas,
                                            output_filenames,
                                            crate_name,
@@ -1071,8 +1061,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,
                                        crate_name: &str,
-                                       arena: &'tcx DroplessArena,
-                                       arenas: &'tcx GlobalArenas<'tcx>,
+                                       arenas: &'tcx AllArenas<'tcx>,
                                        output_filenames: &OutputFilenames,
                                        ppm: PpMode,
                                        uii: Option<UserIdentifiedItem>,
@@ -1094,7 +1083,6 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      hir_map.clone(),
                                                      analysis.clone(),
                                                      resolutions.clone(),
-                                                     arena,
                                                      arenas,
                                                      crate_name,
                                                      output_filenames,
