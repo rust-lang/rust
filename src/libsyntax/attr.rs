@@ -31,7 +31,7 @@ use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::ThinVec;
 
-use std::cell::{RefCell, Cell};
+use std::cell::RefCell;
 use std::iter;
 
 thread_local! {
@@ -419,16 +419,14 @@ pub fn mk_spanned_word_item(sp: Span, name: Name) -> MetaItem {
     MetaItem { span: sp, name: name, node: MetaItemKind::Word }
 }
 
-
-
-thread_local! { static NEXT_ATTR_ID: Cell<usize> = Cell::new(0) }
-
 pub fn mk_attr_id() -> AttrId {
-    let id = NEXT_ATTR_ID.with(|slot| {
-        let r = slot.get();
-        slot.set(r + 1);
-        r
-    });
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::Ordering;
+
+    static NEXT_ATTR_ID: AtomicUsize = AtomicUsize::new(0);
+
+    let id = NEXT_ATTR_ID.fetch_add(1, Ordering::SeqCst);
+    assert!(id != ::std::usize::MAX);
     AttrId(id)
 }
 
