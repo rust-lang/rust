@@ -471,35 +471,31 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             changed |= new;
 
             let block_data = &mir[p.block];
-            let successor_points = if p.statement_index < block_data.statements.len() {
-                vec![
-                    Location {
-                        statement_index: p.statement_index + 1,
-                        ..p
-                    },
-                ]
+
+            let start_stack_len = stack.len();
+
+            if p.statement_index < block_data.statements.len() {
+                stack.push(Location {
+                    statement_index: p.statement_index + 1,
+                    ..p
+                });
             } else {
-                block_data
-                    .terminator()
-                    .successors()
-                    .iter()
-                    .map(|&basic_block| {
+                stack.extend(block_data.terminator().successors().iter().map(
+                    |&basic_block| {
                         Location {
                             statement_index: 0,
                             block: basic_block,
                         }
-                    })
-                    .collect::<Vec<_>>()
-            };
+                    },
+                ));
+            }
 
-            if successor_points.is_empty() {
+            if stack.len() == start_stack_len {
                 // If we reach the END point in the graph, then copy
                 // over any skolemized end points in the `from_region`
                 // and make sure they are included in the `to_region`.
                 changed |=
                     inferred_values.add_universal_regions_outlived_by(from_region, to_region);
-            } else {
-                stack.extend(successor_points);
             }
         }
 
