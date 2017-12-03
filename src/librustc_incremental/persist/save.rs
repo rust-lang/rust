@@ -33,14 +33,14 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             return;
         }
 
-        time(sess.time_passes(), "persist query result cache", || {
+        time(sess, "persist query result cache", || {
             save_in(sess,
                     query_cache_path(sess),
                     |e| encode_query_cache(tcx, e));
         });
 
         if tcx.sess.opts.debugging_opts.incremental_queries {
-            time(sess.time_passes(), "persist dep-graph", || {
+            time(sess, "persist dep-graph", || {
                 save_in(sess,
                         dep_graph_path(sess),
                         |e| encode_dep_graph(tcx, e));

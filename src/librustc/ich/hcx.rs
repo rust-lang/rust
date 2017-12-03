@@ -30,7 +30,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::hygiene;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHashingContextProvider,
+use rustc_data_structures::stable_hasher::{HashStable,
                                            StableHasher, StableHasherResult,
                                            ToStableHashKey};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -192,17 +192,33 @@ impl<'a> StableHashingContext<'a> {
     }
 }
 
-impl<'a, 'gcx, 'lcx> StableHashingContextProvider for TyCtxt<'a, 'gcx, 'lcx> {
-    type ContextType = StableHashingContext<'a>;
-    fn create_stable_hashing_context(&self) -> Self::ContextType {
+/// Something that can provide a stable hashing context.
+pub trait StableHashingContextProvider<'a> {
+    fn get_stable_hashing_context(&self) -> StableHashingContext<'a>;
+}
+
+impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a>
+for &'b T {
+    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
+        (**self).get_stable_hashing_context()
+    }
+}
+
+impl<'a, 'b, T: StableHashingContextProvider<'a>> StableHashingContextProvider<'a>
+for &'b mut T {
+    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
+        (**self).get_stable_hashing_context()
+    }
+}
+
+impl<'a, 'gcx, 'lcx> StableHashingContextProvider<'a> for TyCtxt<'a, 'gcx, 'lcx> {
+    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
         (*self).create_stable_hashing_context()
     }
 }
 
-
-impl<'a> StableHashingContextProvider for StableHashingContext<'a> {
-    type ContextType = StableHashingContext<'a>;
-    fn create_stable_hashing_context(&self) -> Self::ContextType {
+impl<'a> StableHashingContextProvider<'a> for StableHashingContext<'a> {
+    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
         self.clone()
     }
 }

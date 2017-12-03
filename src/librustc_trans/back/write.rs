@@ -31,7 +31,8 @@ use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKi
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
-use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
+use rustc::util::common::{time_ext, time_depth, set_time_depth, print_time_passes_entry};
+use rustc::util::common::path2cstr;
 use rustc::util::fs::{link_or_copy};
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
 use errors::emitter::{Emitter};
@@ -563,11 +564,19 @@ unsafe fn optimize(cgcx: &CodegenContext,
         diag_handler.abort_if_errors();
 
         // Finally, run the actual optimization passes
-        time(config.time_passes, &format!("llvm function passes [{}]", module_name.unwrap()), ||
-             llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
+        time_ext(config.time_passes,
+                 None,
+                 &format!("llvm function passes [{}]", module_name.unwrap()),
+                 || {
+            llvm::LLVMRustRunFunctionPassManager(fpm, llmod)
+        });
         timeline.record("fpm");
-        time(config.time_passes, &format!("llvm module passes [{}]", module_name.unwrap()), ||
-             llvm::LLVMRunPassManager(mpm, llmod));
+        time_ext(config.time_passes,
+                 None,
+                 &format!("llvm module passes [{}]", module_name.unwrap()),
+                 || {
+            llvm::LLVMRunPassManager(mpm, llmod)
+        });
 
         // Deallocate managers that we're now done with
         llvm::LLVMDisposePassManager(fpm);
@@ -682,7 +691,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
         }
     }
 
-    time(config.time_passes, &format!("codegen passes [{}]", module_name.unwrap()),
+    time_ext(config.time_passes, None, &format!("codegen passes [{}]", module_name.unwrap()),
          || -> Result<(), FatalError> {
         if config.emit_ir {
             let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);

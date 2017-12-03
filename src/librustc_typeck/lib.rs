@@ -315,41 +315,39 @@ pub fn provide(providers: &mut Providers) {
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                              -> Result<(), CompileIncomplete>
 {
-    let time_passes = tcx.sess.time_passes();
-
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     tcx.sess.track_errors(|| {
-        time(time_passes, "type collecting", ||
+        time(tcx.sess, "type collecting", ||
              collect::collect_item_types(tcx));
 
     })?;
 
     tcx.sess.track_errors(|| {
-        time(time_passes, "outlives testing", ||
+        time(tcx.sess, "outlives testing", ||
             outlives::test::test_inferred_outlives(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-        time(time_passes, "impl wf inference", ||
+        time(tcx.sess, "impl wf inference", ||
              impl_wf_check::impl_wf_check(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-      time(time_passes, "coherence checking", ||
+      time(tcx.sess, "coherence checking", ||
           coherence::check_coherence(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-        time(time_passes, "variance testing", ||
+        time(tcx.sess, "variance testing", ||
              variance::test::test_variance(tcx));
     })?;
 
-    time(time_passes, "wf checking", || check::check_wf_new(tcx))?;
+    time(tcx.sess, "wf checking", || check::check_wf_new(tcx))?;
 
-    time(time_passes, "item-types checking", || check::check_item_types(tcx))?;
+    time(tcx.sess, "item-types checking", || check::check_item_types(tcx))?;
 
-    time(time_passes, "item-bodies checking", || check::check_item_bodies(tcx))?;
+    time(tcx.sess, "item-bodies checking", || check::check_item_bodies(tcx))?;
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);

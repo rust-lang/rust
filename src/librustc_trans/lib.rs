@@ -238,7 +238,7 @@ impl TransCrate for LlvmTransCrate {
             back::write::dump_incremental_data(&trans);
         }
 
-        time(sess.time_passes(),
+        time(sess,
              "serialize work products",
              move || rustc_incremental::save_work_products(sess, &dep_graph));
 
@@ -251,7 +251,7 @@ impl TransCrate for LlvmTransCrate {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        time(sess.time_passes(), "linking", || {
+        time(sess, "linking", || {
             back::link::link_binary(sess, &trans, outputs, &trans.crate_name.as_str());
         });
 
