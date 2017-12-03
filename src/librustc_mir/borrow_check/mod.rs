@@ -548,14 +548,13 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
 
                         if self.place_is_invalidated_at_exit(&borrow.place) {
                             debug!("borrow conflicts at exit {:?}", borrow);
-                            let borrow_span = self.mir.source_info(borrow.location).span;
                             // FIXME: should be talking about the region lifetime instead
                             // of just a span here.
                             let end_span = domain.opt_region_end_span(&borrow.region);
 
                             self.report_borrowed_value_does_not_live_long_enough(
                                 ContextKind::StorageDead.new(loc),
-                                (&borrow.place, borrow_span),
+                            (&borrow.place, end_span.unwrap_or(span)),
                                 end_span,
                             )
                         }
@@ -958,7 +957,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     /// Returns whether a borrow of this place is invalidated when the function
     /// exits
-    fn place_is_invalidated_at_exit(&self, place: &Place<'tcx>) -> bool {
+    fn place_is_invalidated_at_exit(&mut self, place: &Place<'tcx>) -> bool {
         debug!("place_is_invalidated_at_exit({:?})", place);
         let root_place = self.prefixes(place, PrefixSet::All).last().unwrap();
 
@@ -967,7 +966,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // we'll have a memory leak) and assume that all statics have a destructor.
         //
         // FIXME: allow thread-locals to borrow other thread locals?x
-        let (might_be_alive, will_be_dropped) = match root_place {
+        let (might_be_alive, will_be_dropped, local) = match root_place {
             Place::Static(statik) => {
                 // Thread-locals might be dropped after the function exits, but
                 // "true" statics will never be.
@@ -976,12 +975,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     .iter()
                     .any(|attr| attr.check_name("thread_local"));
 
-                (true, is_thread_local)
+                (true, is_thread_local, None)
             }
-            Place::Local(_) => {
+            Place::Local(local) => {
                 // Locals are always dropped at function exit, and if they
                 // have a destructor it would've been called already.
-                (false, self.locals_are_invalidated_at_exit)
+                (false, self.locals_are_invalidated_at_exit, Some(*local))
             }
             Place::Projection(..) => {
                 bug!("root of {:?} is a projection ({:?})?", place, root_place)
@@ -1004,8 +1003,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             PrefixSet::Shallow
         };
 
-        self.prefixes(place, prefix_set)
-            .any(|prefix| prefix == root_place)
+        let result =
+            self.prefixes(place, prefix_set).any(|prefix| prefix == root_place);
+
+        if result {
+            if let Some(local) = local {
+                if let Some(_) = self.storage_dead_or_drop_error_reported.replace(local) {
+                    debug!("place_is_invalidated_at_exit({:?}) - suppressed", place);
+                    return false;
+                }
+            }
+        }
+
+        result
     }
 }
 
