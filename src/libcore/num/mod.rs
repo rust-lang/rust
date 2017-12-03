@@ -380,7 +380,7 @@ macro_rules! int_impl {
             if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
         }
 
-        /// Checked integer addition. Computes `self + other`, returning `None`
+        /// Checked integer addition. Computes `self + rhs`, returning `None`
         /// if overflow occurred.
         ///
         /// # Examples
@@ -393,12 +393,12 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_add(self, other: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_add(other);
+        pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_add(rhs);
             if b {None} else {Some(a)}
         }
 
-        /// Checked integer subtraction. Computes `self - other`, returning
+        /// Checked integer subtraction. Computes `self - rhs`, returning
         /// `None` if underflow occurred.
         ///
         /// # Examples
@@ -411,12 +411,12 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_sub(self, other: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_sub(other);
+        pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_sub(rhs);
             if b {None} else {Some(a)}
         }
 
-        /// Checked integer multiplication. Computes `self * other`, returning
+        /// Checked integer multiplication. Computes `self * rhs`, returning
         /// `None` if underflow or overflow occurred.
         ///
         /// # Examples
@@ -429,13 +429,13 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_mul(self, other: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_mul(other);
+        pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_mul(rhs);
             if b {None} else {Some(a)}
         }
 
-        /// Checked integer division. Computes `self / other`, returning `None`
-        /// if `other == 0` or the operation results in underflow or overflow.
+        /// Checked integer division. Computes `self / rhs`, returning `None`
+        /// if `rhs == 0` or the operation results in underflow or overflow.
         ///
         /// # Examples
         ///
@@ -448,16 +448,16 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_div(self, other: Self) -> Option<Self> {
-            if other == 0 || (self == Self::min_value() && other == -1) {
+        pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                 None
             } else {
-                Some(unsafe { intrinsics::unchecked_div(self, other) })
+                Some(unsafe { intrinsics::unchecked_div(self, rhs) })
             }
         }
 
-        /// Checked integer remainder. Computes `self % other`, returning `None`
-        /// if `other == 0` or the operation results in underflow or overflow.
+        /// Checked integer remainder. Computes `self % rhs`, returning `None`
+        /// if `rhs == 0` or the operation results in underflow or overflow.
         ///
         /// # Examples
         ///
@@ -472,11 +472,11 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
-        pub fn checked_rem(self, other: Self) -> Option<Self> {
-            if other == 0 || (self == Self::min_value() && other == -1) {
+        pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+            if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                 None
             } else {
-                Some(unsafe { intrinsics::unchecked_rem(self, other) })
+                Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
             }
         }
 
@@ -559,7 +559,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Saturating integer addition. Computes `self + other`, saturating at
+        /// Saturating integer addition. Computes `self + rhs`, saturating at
         /// the numeric bounds instead of overflowing.
         ///
         /// # Examples
@@ -572,15 +572,15 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn saturating_add(self, other: Self) -> Self {
-            match self.checked_add(other) {
+        pub fn saturating_add(self, rhs: Self) -> Self {
+            match self.checked_add(rhs) {
                 Some(x) => x,
-                None if other >= 0 => Self::max_value(),
+                None if rhs >= 0 => Self::max_value(),
                 None => Self::min_value(),
             }
         }
 
-        /// Saturating integer subtraction. Computes `self - other`, saturating
+        /// Saturating integer subtraction. Computes `self - rhs`, saturating
         /// at the numeric bounds instead of overflowing.
         ///
         /// # Examples
@@ -593,15 +593,15 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn saturating_sub(self, other: Self) -> Self {
-            match self.checked_sub(other) {
+        pub fn saturating_sub(self, rhs: Self) -> Self {
+            match self.checked_sub(rhs) {
                 Some(x) => x,
-                None if other >= 0 => Self::min_value(),
+                None if rhs >= 0 => Self::min_value(),
                 None => Self::max_value(),
             }
         }
 
-        /// Saturating integer multiplication. Computes `self * other`,
+        /// Saturating integer multiplication. Computes `self * rhs`,
         /// saturating at the numeric bounds instead of overflowing.
         ///
         /// # Examples
@@ -617,9 +617,9 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
-        pub fn saturating_mul(self, other: Self) -> Self {
-            self.checked_mul(other).unwrap_or_else(|| {
-                if (self < 0 && other < 0) || (self > 0 && other > 0) {
+        pub fn saturating_mul(self, rhs: Self) -> Self {
+            self.checked_mul(rhs).unwrap_or_else(|| {
+                if (self < 0 && rhs < 0) || (self > 0 && rhs > 0) {
                     Self::max_value()
                 } else {
                     Self::min_value()
@@ -627,7 +627,7 @@ macro_rules! int_impl {
             })
         }
 
-        /// Wrapping (modular) addition. Computes `self + other`,
+        /// Wrapping (modular) addition. Computes `self + rhs`,
         /// wrapping around at the boundary of the type.
         ///
         /// # Examples
@@ -646,7 +646,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Wrapping (modular) subtraction. Computes `self - other`,
+        /// Wrapping (modular) subtraction. Computes `self - rhs`,
         /// wrapping around at the boundary of the type.
         ///
         /// # Examples
@@ -666,7 +666,7 @@ macro_rules! int_impl {
         }
 
         /// Wrapping (modular) multiplication. Computes `self *
-        /// other`, wrapping around at the boundary of the type.
+        /// rhs`, wrapping around at the boundary of the type.
         ///
         /// # Examples
         ///
@@ -684,7 +684,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Wrapping (modular) division. Computes `self / other`,
+        /// Wrapping (modular) division. Computes `self / rhs`,
         /// wrapping around at the boundary of the type.
         ///
         /// The only case where such wrapping can occur is when one
@@ -712,7 +712,7 @@ macro_rules! int_impl {
             self.overflowing_div(rhs).0
         }
 
-        /// Wrapping (modular) remainder. Computes `self % other`,
+        /// Wrapping (modular) remainder. Computes `self % rhs`,
         /// wrapping around at the boundary of the type.
         ///
         /// Such wrap-around never actually occurs mathematically;
@@ -1573,7 +1573,7 @@ macro_rules! uint_impl {
             if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
         }
 
-        /// Checked integer addition. Computes `self + other`, returning `None`
+        /// Checked integer addition. Computes `self + rhs`, returning `None`
         /// if overflow occurred.
         ///
         /// # Examples
@@ -1586,12 +1586,12 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_add(self, other: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_add(other);
+        pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_add(rhs);
             if b {None} else {Some(a)}
         }
 
-        /// Checked integer subtraction. Computes `self - other`, returning
+        /// Checked integer subtraction. Computes `self - rhs`, returning
         /// `None` if underflow occurred.
         ///
         /// # Examples
@@ -1604,12 +1604,12 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_sub(self, other: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_sub(other);
+        pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_sub(rhs);
             if b {None} else {Some(a)}
         }
 
-        /// Checked integer multiplication. Computes `self * other`, returning
+        /// Checked integer multiplication. Computes `self * rhs`, returning
         /// `None` if underflow or overflow occurred.
         ///
         /// # Examples
@@ -1622,13 +1622,13 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_mul(self, other: Self) -> Option<Self> {
-            let (a, b) = self.overflowing_mul(other);
+        pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_mul(rhs);
             if b {None} else {Some(a)}
         }
 
-        /// Checked integer division. Computes `self / other`, returning `None`
-        /// if `other == 0` or the operation results in underflow or overflow.
+        /// Checked integer division. Computes `self / rhs`, returning `None`
+        /// if `rhs == 0` or the operation results in underflow or overflow.
         ///
         /// # Examples
         ///
@@ -1640,15 +1640,15 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn checked_div(self, other: Self) -> Option<Self> {
-            match other {
+        pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            match rhs {
                 0 => None,
-                other => Some(unsafe { intrinsics::unchecked_div(self, other) }),
+                rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
             }
         }
 
-        /// Checked integer remainder. Computes `self % other`, returning `None`
-        /// if `other == 0` or the operation results in underflow or overflow.
+        /// Checked integer remainder. Computes `self % rhs`, returning `None`
+        /// if `rhs == 0` or the operation results in underflow or overflow.
         ///
         /// # Examples
         ///
@@ -1660,11 +1660,11 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
-        pub fn checked_rem(self, other: Self) -> Option<Self> {
-            if other == 0 {
+        pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+            if rhs == 0 {
                 None
             } else {
-                Some(unsafe { intrinsics::unchecked_rem(self, other) })
+                Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
             }
         }
 
@@ -1724,7 +1724,7 @@ macro_rules! uint_impl {
             if b {None} else {Some(a)}
         }
 
-        /// Saturating integer addition. Computes `self + other`, saturating at
+        /// Saturating integer addition. Computes `self + rhs`, saturating at
         /// the numeric bounds instead of overflowing.
         ///
         /// # Examples
@@ -1737,14 +1737,14 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn saturating_add(self, other: Self) -> Self {
-            match self.checked_add(other) {
+        pub fn saturating_add(self, rhs: Self) -> Self {
+            match self.checked_add(rhs) {
                 Some(x) => x,
                 None => Self::max_value(),
             }
         }
 
-        /// Saturating integer subtraction. Computes `self - other`, saturating
+        /// Saturating integer subtraction. Computes `self - rhs`, saturating
         /// at the numeric bounds instead of overflowing.
         ///
         /// # Examples
@@ -1757,14 +1757,14 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub fn saturating_sub(self, other: Self) -> Self {
-            match self.checked_sub(other) {
+        pub fn saturating_sub(self, rhs: Self) -> Self {
+            match self.checked_sub(rhs) {
                 Some(x) => x,
                 None => Self::min_value(),
             }
         }
 
-        /// Saturating integer multiplication. Computes `self * other`,
+        /// Saturating integer multiplication. Computes `self * rhs`,
         /// saturating at the numeric bounds instead of overflowing.
         ///
         /// # Examples
@@ -1779,11 +1779,11 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
-        pub fn saturating_mul(self, other: Self) -> Self {
-            self.checked_mul(other).unwrap_or(Self::max_value())
+        pub fn saturating_mul(self, rhs: Self) -> Self {
+            self.checked_mul(rhs).unwrap_or(Self::max_value())
         }
 
-        /// Wrapping (modular) addition. Computes `self + other`,
+        /// Wrapping (modular) addition. Computes `self + rhs`,
         /// wrapping around at the boundary of the type.
         ///
         /// # Examples
@@ -1802,7 +1802,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Wrapping (modular) subtraction. Computes `self - other`,
+        /// Wrapping (modular) subtraction. Computes `self - rhs`,
         /// wrapping around at the boundary of the type.
         ///
         /// # Examples
@@ -1822,7 +1822,7 @@ macro_rules! uint_impl {
         }
 
         /// Wrapping (modular) multiplication. Computes `self *
-        /// other`, wrapping around at the boundary of the type.
+        /// rhs`, wrapping around at the boundary of the type.
         ///
         /// # Examples
         ///
@@ -1840,7 +1840,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Wrapping (modular) division. Computes `self / other`.
+        /// Wrapping (modular) division. Computes `self / rhs`.
         /// Wrapped division on unsigned types is just normal division.
         /// There's no way wrapping could ever happen.
         /// This function exists, so that all operations
@@ -1859,7 +1859,7 @@ macro_rules! uint_impl {
             self / rhs
         }
 
-        /// Wrapping (modular) remainder. Computes `self % other`.
+        /// Wrapping (modular) remainder. Computes `self % rhs`.
         /// Wrapped remainder calculation on unsigned types is
         /// just the regular remainder calculation.
         /// There's no way wrapping could ever happen.
