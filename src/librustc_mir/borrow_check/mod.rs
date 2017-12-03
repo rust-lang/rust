@@ -12,6 +12,7 @@
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 use rustc::ty::maps::Providers;
@@ -131,6 +132,12 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         move_data: move_data,
         param_env: param_env,
     };
+    let body_id = match tcx.def_key(def_id).disambiguated_data.data {
+        DefPathData::StructCtor |
+        DefPathData::EnumVariant(_) => None,
+        _ => Some(tcx.hir.body_owned_by(id))
+    };
+
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
     let mut flow_inits = FlowInProgress::new(do_dataflow(
         tcx,
@@ -206,7 +213,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         id,
         &attributes,
         &dead_unwinds,
-        Borrows::new(tcx, mir, opt_regioncx),
+        Borrows::new(tcx, mir, opt_regioncx, def_id, body_id),
         |bd, i| bd.location(i),
     ));
 

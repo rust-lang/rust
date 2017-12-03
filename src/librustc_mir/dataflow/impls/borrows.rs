@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir;
+use rustc::hir::def_id::DefId;
+use rustc::middle::region;
 use rustc::mir::{self, Location, Mir};
 use rustc::mir::visit::Visitor;
 use rustc::ty::{self, Region, TyCtxt};
@@ -27,6 +30,7 @@ use borrow_check::nll::ToRegionVid;
 use syntax_pos::Span;
 
 use std::fmt;
+use std::rc::Rc;
 
 // `Borrows` maps each dataflow bit to an `Rvalue::Ref`, which can be
 // uniquely identified in the MIR by the `Location` of the assigment
@@ -34,6 +38,8 @@ use std::fmt;
 pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
+    scope_tree: Rc<region::ScopeTree>,
+    root_scope: Option<region::Scope>,
     borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
@@ -69,8 +75,14 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
-               nonlexical_regioncx: Option<RegionInferenceContext<'tcx>>)
+               nonlexical_regioncx: Option<RegionInferenceContext<'tcx>>,
+               def_id: DefId,
+               body_id: Option<hir::BodyId>)
                -> Self {
+        let scope_tree = tcx.region_scope_tree(def_id);
+        let root_scope = body_id.map(|body_id| {
+            region::Scope::CallSite(tcx.hir.body(body_id).value.hir_id.local_id)
+        });
         let mut visitor = GatherBorrows {
             tcx,
             mir,
@@ -83,6 +95,8 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         return Borrows { tcx: tcx,
                          mir: mir,
                          borrows: visitor.idx_vec,
+                         scope_tree,
+                         root_scope,
                          location_map: visitor.location_map,
                          region_map: visitor.region_map,
                          region_span_map: visitor.region_span_map,
@@ -253,8 +267,17 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 // like unwind paths, we do not always emit `EndRegion` statements, so we
                 // add some kills here as a "backup" and to avoid spurious error messages.
                 for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
-                    if let ReScope(..) = borrow_data.region {
-                        sets.kill(&borrow_index);
+                    if let ReScope(scope) = borrow_data.region {
+                        // Check that the scope is not actually a scope from a function that is
+                        // a parent of our closure. Note that the CallSite scope itself is
+                        // *outside* of the closure, for some weird reason.
+                        if let Some(root_scope) = self.root_scope {
+                            if *scope != root_scope &&
+                                self.scope_tree.is_subscope_of(*scope, root_scope)
+                            {
+                                sets.kill(&borrow_index);
+                            }
+                        }
                     }
                 }
             }
