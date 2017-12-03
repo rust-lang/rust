@@ -287,6 +287,7 @@ impl Stdin {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(close_std_streams)]
     /// use std::io;
     ///
     /// let mut input = String::new();
@@ -506,6 +507,7 @@ impl Stdout {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(close_std_streams)]
     /// use std::io;
     ///
     /// println!("this line is printed");
@@ -682,6 +684,7 @@ impl Stderr {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(close_std_streams)]
     /// use std::io;
     ///
     /// eprintln!("this line is printed");
