@@ -14,8 +14,8 @@
 
 use hygiene::SyntaxContext;
 
+use rustc_data_structures::sync::Lock;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -326,12 +326,14 @@ declare_keywords! {
     (60, Union,          "union")
 }
 
-// If an interner exists in TLS, return it. Otherwise, prepare a fresh one.
+
+// If an interner exists, return it. Otherwise, prepare a fresh one.
+#[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    thread_local!(static INTERNER: RefCell<Interner> = {
-        RefCell::new(Interner::fresh())
+    rustc_global!(static INTERNER: Lock<Interner> = {
+        Lock::new(Interner::fresh())
     });
-    INTERNER.with(|interner| f(&mut *interner.borrow_mut()))
+    rustc_access_global!(INTERNER, |interner| f(&mut *interner.lock()))
 }
 
 /// Represents a string stored in the thread-local interner. Because the
