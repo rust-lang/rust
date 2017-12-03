@@ -22,6 +22,6 @@ fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
 struct NoClone;
 
 fn main() {
-    let (a, b) = copy(NoClone);
+    let (a, b) = copy(NoClone); //~ ERROR
     println!("{:?} {:?}", a, b);
 }

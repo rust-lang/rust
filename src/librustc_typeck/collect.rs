@@ -712,9 +712,9 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let item = tcx.hir.expect_item(node_id);
 
-    let unsafety = match item.node {
-        hir::ItemTrait(_, unsafety, ..) => unsafety,
-        hir::ItemTraitAlias(..) => hir::Unsafety::Normal,
+    let (is_auto, unsafety) = match item.node {
+        hir::ItemTrait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
+        hir::ItemTraitAlias(..) => (hir::IsAuto::No, hir::Unsafety::Normal),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -731,10 +731,6 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let def_path_hash = tcx.def_path_hash(def_id);
-    let is_auto = match item.node {
-        hir::ItemTrait(hir::IsAuto::Yes, ..) => true,
-        _ => tcx.hir.trait_is_auto(def_id),
-    };
     let def = ty::TraitDef::new(def_id,
                                 unsafety,
                                 paren_sugar,
