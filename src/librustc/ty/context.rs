@@ -75,6 +75,20 @@ use syntax_pos::Span;
 
 use hir;
 
+pub struct AllArenas<'tcx> {
+    pub global: GlobalArenas<'tcx>,
+    pub interner: DroplessArena,
+}
+
+impl<'tcx> AllArenas<'tcx> {
+    pub fn new() -> Self {
+        AllArenas {
+            global: GlobalArenas::new(),
+            interner: DroplessArena::new(),
+        }
+    }
+}
+
 /// Internal storage
 pub struct GlobalArenas<'tcx> {
     // internings
@@ -983,8 +997,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   cstore: &'tcx CrateStore,
                                   local_providers: ty::maps::Providers<'tcx>,
                                   extern_providers: ty::maps::Providers<'tcx>,
-                                  arenas: &'tcx GlobalArenas<'tcx>,
-                                  arena: &'tcx DroplessArena,
+                                  arenas: &'tcx AllArenas<'tcx>,
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   hir: hir_map::Map<'tcx>,
@@ -996,7 +1009,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   where F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'tcx>) -> R
     {
         let data_layout = TargetDataLayout::parse(s);
-        let interners = CtxtInterners::new(arena);
+        let interners = CtxtInterners::new(&arenas.interner);
         let common_types = CommonTypes::new(&interners);
         let dep_graph = hir.dep_graph.clone();
         let max_cnum = cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
@@ -1069,7 +1082,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         tls::enter_global(GlobalCtxt {
             sess: s,
             cstore,
-            global_arenas: arenas,
+            global_arenas: &arenas.global,
             global_interners: interners,
             dep_graph: dep_graph.clone(),
             on_disk_query_result_cache,
