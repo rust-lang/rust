@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait SimpleAlias = Default;
-trait GenericAlias<T> = Iterator<Item=T>;
-trait Partial<T> = IntoIterator<Item=T>;
+trait SimpleAlias = Default; //~ERROR E0645
+trait GenericAlias<T> = Iterator<Item=T>; //~ERROR E0645
+trait Partial<T> = IntoIterator<Item=T>; //~ERROR E0645
 
 trait Things<T> {}
 trait Romeo {}
@@ -19,10 +19,10 @@ struct Fore<T>(T);
 impl<T, U> Things<T> for The<U> {}
 impl<T> Romeo for Fore<T> {}
 
-trait WithWhere<Art, Thou> = Romeo + Romeo where Fore<(Art, Thou)>: Romeo;
-trait BareWhere<Wild, Are> = where The<Wild>: Things<Are>;
+trait WithWhere<Art, Thou> = Romeo + Romeo where Fore<(Art, Thou)>: Romeo; //~ERROR E0645
+trait BareWhere<Wild, Are> = where The<Wild>: Things<Are>; //~ERROR E0645
 
-trait CD = Clone + Default;
+trait CD = Clone + Default; //~ERROR E0645
 
 fn foo<T: CD>() -> (T, T) {
     let one = T::default();

@@ -442,9 +442,8 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             tcx.predicates_of(def_id);
         },
         hir::ItemTraitAlias(..) => {
-            tcx.generics_of(def_id);
-            tcx.trait_def(def_id);
-            tcx.predicates_of(def_id);
+            span_err!(tcx.sess, it.span, E0645,
+                      "trait aliases are not yet implemented (see issue #41517)");
         },
         hir::ItemStruct(ref struct_def, _) |
         hir::ItemUnion(ref struct_def, _) => {

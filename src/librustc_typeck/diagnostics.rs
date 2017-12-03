@@ -4721,4 +4721,5 @@ register_diagnostics! {
     E0632, // cannot provide explicit type parameters when `impl Trait` is used in
            // argument position.
     E0641, // cannot cast to/from a pointer with an unknown kind
+    E0645, // trait aliases not finished
 }
