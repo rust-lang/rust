@@ -25,10 +25,10 @@ environment:
     RUST_CHECK_TARGET: check-aux
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
 
-  # MSVC cargotest
+  # MSVC tools tests
   - MSYS_BITS: 64
-    SCRIPT: python x.py test src/tools/cargotest
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+    SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py toolstates.json
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=toolstates.json
 
   # 32/64-bit MinGW builds.
   #

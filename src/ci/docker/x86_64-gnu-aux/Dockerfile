@@ -12,7 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   sudo \
   xz-utils \
-  pkg-config
+  pkg-config \
+  libgl1-mesa-dev \
+  llvm-dev \
+  libfreetype6-dev \
+  libexpat1-dev
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

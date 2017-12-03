@@ -115,7 +115,19 @@ impl Step for ToolBuild {
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
-        if !build.try_run(&mut cargo, expectation) {
+        let is_expected = build.try_run(&mut cargo, expectation);
+        // If the expectation is "Failing", `try_run` returning true actually
+        // means a build-failure is successfully observed, i.e. the tool is
+        // broken. Thus the XOR here.
+        // Sorry for the complicated logic, but we can remove this expectation
+        // logic after #45861 is fully fixed.
+        build.save_toolstate(tool, if is_expected ^ (expectation == BuildExpectation::Failing) {
+            ToolState::Compiling
+        } else {
+            ToolState::Broken
+        });
+
+        if !is_expected {
             if expectation == BuildExpectation::None {
                 exit(1);
             } else {
