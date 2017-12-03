@@ -425,11 +425,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// therefore add `end('a)` into the region for `'b` -- but we
     /// have no evidence that `'b` outlives `'a`, so we want to report
     /// an error.
-    fn check_type_tests(
-        &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
-    ) {
+    fn check_type_tests(&self, infcx: &InferCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) {
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
@@ -473,13 +469,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .iter()
                 .any(|&r| self.eval_outlives(mir, r, lower_bound, point)),
 
-            RegionTest::Any(tests) => tests
-                .iter()
-                .any(|test| self.eval_region_test(mir, point, lower_bound, test)),
+            RegionTest::Any(tests) => tests.iter().any(|test| {
+                self.eval_region_test(mir, point, lower_bound, test)
+            }),
 
-            RegionTest::All(tests) => tests
-                .iter()
-                .all(|test| self.eval_region_test(mir, point, lower_bound, test)),
+            RegionTest::All(tests) => tests.iter().all(|test| {
+                self.eval_region_test(mir, point, lower_bound, test)
+            }),
         }
     }
 

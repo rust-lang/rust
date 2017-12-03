@@ -77,7 +77,16 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 ) {
     // Run the MIR type-checker.
     let mir_node_id = infcx.tcx.hir.as_local_node_id(def_id).unwrap();
-    let constraint_sets = &type_check::type_check(infcx, mir_node_id, param_env, mir);
+    let liveness = &LivenessResults::compute(mir);
+    let constraint_sets = &type_check::type_check(
+        infcx,
+        mir_node_id,
+        param_env,
+        mir,
+        &liveness,
+        flow_inits,
+        move_data,
+    );
 
     // Create the region inference context, taking ownership of the region inference
     // data that was contained in `infcx`.
@@ -85,19 +94,9 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let mut regioncx = RegionInferenceContext::new(var_origins, universal_regions, mir);
     subtype_constraint_generation::generate(&mut regioncx, mir, constraint_sets);
 
-    // Compute what is live where.
-    let liveness = &LivenessResults::compute(mir);
 
     // Generate non-subtyping constraints.
-    constraint_generation::generate_constraints(
-        infcx,
-        &mut regioncx,
-        &mir,
-        param_env,
-        liveness,
-        flow_inits,
-        move_data,
-    );
+    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir);
 
     // Solve the region constraints.
     let closure_region_requirements = regioncx.solve(infcx, &mir, def_id);
