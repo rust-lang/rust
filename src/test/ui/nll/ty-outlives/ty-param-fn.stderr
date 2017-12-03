@@ -1,0 +1,26 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-fn.rs:22:5
+   |
+22 |     x
+   |     ^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-fn.rs:38:5
+   |
+38 |     x
+   |     ^
+
+error: failed type test: TypeTest { generic_kind: T/#1, lower_bound: '_#2r, point: bb0[3], span: $DIR/ty-param-fn.rs:22:5: 22:6, test: IsOutlivedByAnyRegionIn([]) }
+  --> $DIR/ty-param-fn.rs:22:5
+   |
+22 |     x
+   |     ^
+
+error: failed type test: TypeTest { generic_kind: T/#2, lower_bound: '_#3r, point: bb0[3], span: $DIR/ty-param-fn.rs:38:5: 38:6, test: IsOutlivedByAnyRegionIn(['_#2r]) }
+  --> $DIR/ty-param-fn.rs:38:5
+   |
+38 |     x
+   |     ^
+
+error: aborting due to 2 previous errors
+
