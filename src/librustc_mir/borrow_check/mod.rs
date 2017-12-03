@@ -192,6 +192,11 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         node_id: id,
         move_data: &mdpe.move_data,
         param_env: param_env,
+        locals_are_invalidated_at_exit: match tcx.hir.body_owner_kind(id) {
+            hir::BodyOwnerKind::Const |
+            hir::BodyOwnerKind::Static(_) => false,
+            hir::BodyOwnerKind::Fn => true,
+        },
         storage_dead_or_drop_error_reported: FxHashSet(),
     };
 
@@ -223,6 +228,9 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     node_id: ast::NodeId,
     move_data: &'cx MoveData<'tcx>,
     param_env: ParamEnv<'gcx>,
+    /// This keeps track of whether local variables are free-ed when the function
+    /// exits even without a `StorageDead`.
+    locals_are_invalidated_at_exit: bool,
     /// This field keeps track of when storage dead or drop errors are reported
     /// in order to stop duplicate error reporting and identify the conditions required
     /// for a "temporary value dropped here while still borrowed" error. See #45360.
@@ -957,6 +965,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // FIXME(nll-rfc#40): do more precise destructor tracking here. For now
         // we just know that all locals are dropped at function exit (otherwise
         // we'll have a memory leak) and assume that all statics have a destructor.
+        //
+        // FIXME: allow thread-locals to borrow other thread locals?x
         let (might_be_alive, will_be_dropped) = match root_place {
             Place::Static(statik) => {
                 // Thread-locals might be dropped after the function exits, but
@@ -971,7 +981,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Local(_) => {
                 // Locals are always dropped at function exit, and if they
                 // have a destructor it would've been called already.
-                (false, true)
+                (false, self.locals_are_invalidated_at_exit)
             }
             Place::Projection(..) => {
                 bug!("root of {:?} is a projection ({:?})?", place, root_place)
@@ -1514,17 +1524,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Overlap::Disjoint
                 }
             }
-            (Place::Static(statik1), Place::Static(statik2)) => {
-                // We ignore borrows of mutable statics elsewhere, but
-                // we need to keep track of thread-locals so we can
-                // complain if they live loner than the function.
-                if statik1.def_id == statik2.def_id {
-                    debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
-                    Overlap::EqualOrDisjoint
-                } else {
-                    debug!("place_element_conflict: DISJOINT-STATIC");
-                    Overlap::Disjoint
-                }
+            (Place::Static(..), Place::Static(..)) => {
+                // Borrows of statics do not have to be tracked here.
+                debug!("place_element_conflict: IGNORED-STATIC");
+                Overlap::Disjoint
             }
             (Place::Local(_), Place::Static(_)) |
             (Place::Static(_), Place::Local(_)) => {
