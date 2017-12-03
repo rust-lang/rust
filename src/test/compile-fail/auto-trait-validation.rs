@@ -11,12 +11,9 @@
 #![feature(optin_builtin_traits)]
 
 auto trait Generic<T> {}
-//~^ ERROR auto traits cannot have generics
-//~^^ traits with auto impls (`e.g. impl Trait for ..`) can not have type parameters
+//~^ Auto traits cannot have type parameters [E0567]
 auto trait Bound : Copy {}
-//~^ ERROR auto traits cannot have super traits
-//~^^ traits with auto impls (`e.g. impl Trait for ..`) cannot have predicates
+//~^ Auto traits cannot have predicates [E0568]
 auto trait MyTrait { fn foo() {} }
-//~^ ERROR auto traits cannot contain items
-//~^^ traits with default impls (`e.g. impl Trait for ..`) must have no methods or associated items
+//~^ Auto traits cannot have methods or associated items [E0380]
 fn main() {}

@@ -22,4 +22,5 @@ fn call_method<T: Trait>(x: T) {}
 fn main() {
     // ICE
     call_method(());
+    //~^ ERROR
 }

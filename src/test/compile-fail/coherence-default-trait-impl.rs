@@ -14,13 +14,11 @@ auto trait MySafeTrait {}
 
 struct Foo;
 
-#[allow(auto_impl)]
 unsafe impl MySafeTrait for Foo {}
 //~^ ERROR implementing the trait `MySafeTrait` is not unsafe
 
 unsafe auto trait MyUnsafeTrait {}
 
-#[allow(auto_impl)]
 impl MyUnsafeTrait for Foo {}
 //~^ ERROR the trait `MyUnsafeTrait` requires an `unsafe impl` declaration
 
