@@ -22,7 +22,7 @@ use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::ClosureRegionRequirements;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_set::{self, IdxSetBuf};
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 
 use syntax::ast;
@@ -30,10 +30,11 @@ use syntax_pos::Span;
 
 use dataflow::do_dataflow;
 use dataflow::MoveDataParamEnv;
-use dataflow::{BitDenotation, BlockSets, DataflowResults, DataflowResultsConsumer};
+use dataflow::DataflowResultsConsumer;
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use dataflow::{EverInitializedLvals, MovingOutStatements};
 use dataflow::{BorrowData, BorrowIndex, Borrows};
+use dataflow::flow_in_progress::FlowInProgress;
 use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveOutIndex, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
@@ -264,16 +265,6 @@ pub struct InProgress<'b, 'gcx: 'tcx, 'tcx: 'b> {
     uninits: FlowInProgress<MaybeUninitializedLvals<'b, 'gcx, 'tcx>>,
     move_outs: FlowInProgress<MovingOutStatements<'b, 'gcx, 'tcx>>,
     ever_inits: FlowInProgress<EverInitializedLvals<'b, 'gcx, 'tcx>>,
-}
-
-struct FlowInProgress<BD>
-where
-    BD: BitDenotation,
-{
-    base_results: DataflowResults<BD>,
-    curr_state: IdxSetBuf<BD::Idx>,
-    stmt_gen: IdxSetBuf<BD::Idx>,
-    stmt_kill: IdxSetBuf<BD::Idx>,
 }
 
 // Check that:
@@ -560,7 +551,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 // Often, the storage will already have been killed by an explicit
                 // StorageDead, but we don't always emit those (notably on unwind paths),
                 // so this "extra check" serves as a kind of backup.
-                let domain = flow_state.borrows.base_results.operator();
+                let domain = flow_state.borrows.operator();
                 let data = domain.borrows();
                 flow_state.borrows.with_elems_outgoing(|borrows| {
                     for i in borrows {
@@ -749,7 +740,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         ReadKind::Borrow(bk) => {
                             let end_issued_loan_span = flow_state
                                 .borrows
-                                .base_results
                                 .operator()
                                 .opt_region_end_span(&borrow.region);
                             error_reported = true;
@@ -769,7 +759,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         WriteKind::MutableBorrow(bk) => {
                             let end_issued_loan_span = flow_state
                                 .borrows
-                                .base_results
                                 .operator()
                                 .opt_region_end_span(&borrow.region);
                             error_reported = true;
@@ -784,7 +773,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         WriteKind::StorageDeadOrDrop => {
                             let end_span = flow_state
                                 .borrows
-                                .base_results
                                 .operator()
                                 .opt_region_end_span(&borrow.region);
                             error_reported = true;
@@ -1060,7 +1048,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         match self.move_path_closest_to(place) {
             Ok(mpi) => for ii in &move_data.init_path_map[mpi] {
-                if flow_state.ever_inits.curr_state.contains(ii) {
+                if flow_state.ever_inits.curr_state().contains(ii) {
                     let first_assign_span = self.move_data.inits[*ii].span;
                     self.report_illegal_reassignment(context, (place, span), first_assign_span);
                     break;
@@ -1095,7 +1083,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let place = self.base_path(place_span.0);
 
         let maybe_uninits = &flow_state.uninits;
-        let curr_move_outs = &flow_state.move_outs.curr_state;
+        let curr_move_outs = flow_state.move_outs.curr_state();
 
         // Bad scenarios:
         //
@@ -1136,7 +1124,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         debug!("check_if_path_is_moved part1 place: {:?}", place);
         match self.move_path_closest_to(place) {
             Ok(mpi) => {
-                if maybe_uninits.curr_state.contains(&mpi) {
+                if maybe_uninits.curr_state().contains(&mpi) {
                     self.report_use_of_moved_or_uninitialized(
                         context,
                         desired_action,
@@ -1886,7 +1874,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // FIXME: analogous code in check_loans first maps `place` to
         // its base_path.
 
-        let domain = flow_state.borrows.base_results.operator();
+        let domain = flow_state.borrows.operator();
         let data = domain.borrows();
 
         // check for loan restricting path P being used. Accounts for
@@ -2736,7 +2724,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let borrow_data = &self.borrows.base_results.operator().borrows()[borrow];
+            let borrow_data = &self.borrows.operator().borrows()[borrow];
             s.push_str(&format!("{}", borrow_data));
         });
         s.push_str("] ");
@@ -2748,7 +2736,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let borrow_data = &self.borrows.base_results.operator().borrows()[borrow];
+            let borrow_data = &self.borrows.operator().borrows()[borrow];
             s.push_str(&format!("{}", borrow_data));
         });
         s.push_str("] ");
@@ -2760,7 +2748,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let move_path = &self.inits.base_results.operator().move_data().move_paths[mpi_init];
+            let move_path = &self.inits.operator().move_data().move_paths[mpi_init];
             s.push_str(&format!("{}", move_path));
         });
         s.push_str("] ");
@@ -2773,7 +2761,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
             };
             saw_one = true;
             let move_path =
-                &self.uninits.base_results.operator().move_data().move_paths[mpi_uninit];
+                &self.uninits.operator().move_data().move_paths[mpi_uninit];
             s.push_str(&format!("{}", move_path));
         });
         s.push_str("] ");
@@ -2785,7 +2773,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let move_out = &self.move_outs.base_results.operator().move_data().moves[mpi_move_out];
+            let move_out = &self.move_outs.operator().move_data().moves[mpi_move_out];
             s.push_str(&format!("{:?}", move_out));
         });
         s.push_str("] ");
@@ -2798,7 +2786,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
             };
             saw_one = true;
             let ever_init =
-                &self.ever_inits.base_results.operator().move_data().inits[mpi_ever_init];
+                &self.ever_inits.operator().move_data().inits[mpi_ever_init];
             s.push_str(&format!("{:?}", ever_init));
         });
         s.push_str("]");
@@ -2807,121 +2795,3 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
     }
 }
 
-impl<'tcx, T> FlowInProgress<T>
-where
-    T: HasMoveData<'tcx> + BitDenotation<Idx = MovePathIndex>,
-{
-    fn has_any_child_of(&self, mpi: T::Idx) -> Option<T::Idx> {
-        let move_data = self.base_results.operator().move_data();
-
-        let mut todo = vec![mpi];
-        let mut push_siblings = false; // don't look at siblings of original `mpi`.
-        while let Some(mpi) = todo.pop() {
-            if self.curr_state.contains(&mpi) {
-                return Some(mpi);
-            }
-            let move_path = &move_data.move_paths[mpi];
-            if let Some(child) = move_path.first_child {
-                todo.push(child);
-            }
-            if push_siblings {
-                if let Some(sibling) = move_path.next_sibling {
-                    todo.push(sibling);
-                }
-            } else {
-                // after we've processed the original `mpi`, we should
-                // always traverse the siblings of any of its
-                // children.
-                push_siblings = true;
-            }
-        }
-        return None;
-    }
-}
-
-impl<BD> FlowInProgress<BD>
-where
-    BD: BitDenotation,
-{
-    fn each_state_bit<F>(&self, f: F)
-    where
-        F: FnMut(BD::Idx),
-    {
-        self.curr_state
-            .each_bit(self.base_results.operator().bits_per_block(), f)
-    }
-
-    fn each_gen_bit<F>(&self, f: F)
-    where
-        F: FnMut(BD::Idx),
-    {
-        self.stmt_gen
-            .each_bit(self.base_results.operator().bits_per_block(), f)
-    }
-
-    fn new(results: DataflowResults<BD>) -> Self {
-        let bits_per_block = results.sets().bits_per_block();
-        let curr_state = IdxSetBuf::new_empty(bits_per_block);
-        let stmt_gen = IdxSetBuf::new_empty(bits_per_block);
-        let stmt_kill = IdxSetBuf::new_empty(bits_per_block);
-        FlowInProgress {
-            base_results: results,
-            curr_state: curr_state,
-            stmt_gen: stmt_gen,
-            stmt_kill: stmt_kill,
-        }
-    }
-
-    fn reset_to_entry_of(&mut self, bb: BasicBlock) {
-        (*self.curr_state).clone_from(self.base_results.sets().on_entry_set_for(bb.index()));
-    }
-
-    fn reconstruct_statement_effect(&mut self, loc: Location) {
-        self.stmt_gen.reset_to_empty();
-        self.stmt_kill.reset_to_empty();
-        let mut ignored = IdxSetBuf::new_empty(0);
-        let mut sets = BlockSets {
-            on_entry: &mut ignored,
-            gen_set: &mut self.stmt_gen,
-            kill_set: &mut self.stmt_kill,
-        };
-        self.base_results
-            .operator()
-            .statement_effect(&mut sets, loc);
-    }
-
-    fn reconstruct_terminator_effect(&mut self, loc: Location) {
-        self.stmt_gen.reset_to_empty();
-        self.stmt_kill.reset_to_empty();
-        let mut ignored = IdxSetBuf::new_empty(0);
-        let mut sets = BlockSets {
-            on_entry: &mut ignored,
-            gen_set: &mut self.stmt_gen,
-            kill_set: &mut self.stmt_kill,
-        };
-        self.base_results
-            .operator()
-            .terminator_effect(&mut sets, loc);
-    }
-
-    fn apply_local_effect(&mut self) {
-        self.curr_state.union(&self.stmt_gen);
-        self.curr_state.subtract(&self.stmt_kill);
-    }
-
-    fn elems_incoming(&self) -> indexed_set::Elems<BD::Idx> {
-        let univ = self.base_results.sets().bits_per_block();
-        self.curr_state.elems(univ)
-    }
-
-    fn with_elems_outgoing<F>(&self, f: F)
-    where
-        F: FnOnce(indexed_set::Elems<BD::Idx>),
-    {
-        let mut curr_state = self.curr_state.clone();
-        curr_state.union(&self.stmt_gen);
-        curr_state.subtract(&self.stmt_kill);
-        let univ = self.base_results.sets().bits_per_block();
-        f(curr_state.elems(univ));
-    }
-}
