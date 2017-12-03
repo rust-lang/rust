@@ -612,9 +612,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
-        /* compiler built-in */
-    }) }
+    macro_rules! format_args {
+        ($fmt:expr) => ({ /* compiler built-in */ });
+        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
+    }
 
     /// Inspect an environment variable at compile time.
     ///
@@ -624,7 +625,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! env { ($name:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! env {
+        ($name:expr) => ({ /* compiler built-in */ });
+        ($name:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Optionally inspect an environment variable at compile time.
     ///
@@ -645,7 +649,8 @@ mod builtin {
     #[macro_export]
     #[cfg(dox)]
     macro_rules! concat_idents {
-        ($($e:ident),*) => ({ /* compiler built-in */ })
+        ($($e:ident),*) => ({ /* compiler built-in */ });
+        ($($e:ident,)*) => ({ /* compiler built-in */ });
     }
 
     /// Concatenates literals into a static string slice.
@@ -656,7 +661,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! concat { ($($e:expr),*) => ({ /* compiler built-in */ }) }
+    macro_rules! concat {
+        ($($e:expr),*) => ({ /* compiler built-in */ });
+        ($($e:expr,)*) => ({ /* compiler built-in */ });
+    }
 
     /// A macro which expands to the line number on which it was invoked.
     ///
