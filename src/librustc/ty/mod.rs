@@ -77,7 +77,7 @@ pub use self::sty::TypeVariants::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 
-pub use self::context::{TyCtxt, GlobalArenas, tls, keep_local};
+pub use self::context::{TyCtxt, GlobalArenas, AllArenas, tls, keep_local};
 pub use self::context::{Lift, TypeckTables};
 
 pub use self::instance::{Instance, InstanceDef};
