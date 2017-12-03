@@ -18,6 +18,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, BasicBlock, BasicBlockData, Location, Statement, Terminator};
 use rustc::session::Session;
 
+use std::borrow::Borrow;
 use std::fmt::{self, Debug};
 use std::io;
 use std::mem;
@@ -492,9 +493,38 @@ impl<'a, E:Idx> BlockSets<'a, E> {
         self.gen_set.add(e);
         self.kill_set.remove(e);
     }
+    fn gen_all<I>(&mut self, i: I)
+        where I: IntoIterator,
+              I::Item: Borrow<E>
+    {
+        for j in i {
+            self.gen(j.borrow());
+        }
+    }
+
+    fn gen_all_and_assert_dead<I>(&mut self, i: I)
+        where I: IntoIterator,
+        I::Item: Borrow<E>
+    {
+        for j in i {
+            let j = j.borrow();
+            let retval = self.gen_set.add(j);
+            self.kill_set.remove(j);
+            assert!(retval);
+        }
+    }
+
     fn kill(&mut self, e: &E) {
         self.gen_set.remove(e);
         self.kill_set.add(e);
+    }
+    fn kill_all<I>(&mut self, i: I)
+        where I: IntoIterator,
+              I::Item: Borrow<E>
+    {
+        for j in i {
+            self.kill(j.borrow());
+        }
     }
 }
 
