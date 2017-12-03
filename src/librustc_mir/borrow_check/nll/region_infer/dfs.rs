@@ -11,11 +11,12 @@
 //! Module defining the `dfs` method on `RegionInferenceContext`, along with
 //! its associated helper traits.
 
+use borrow_check::nll::universal_regions::UniversalRegions;
+use borrow_check::nll::region_infer::RegionInferenceContext;
+use borrow_check::nll::region_infer::values::{RegionElementIndex, RegionValues, RegionValueElements};
 use rustc::mir::{Location, Mir};
 use rustc::ty::RegionVid;
 use rustc_data_structures::fx::FxHashSet;
-use super::RegionInferenceContext;
-use super::values::{RegionElementIndex, RegionValues, RegionValueElements};
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Function used to satisfy or test a `R1: R2 @ P`
@@ -165,17 +166,16 @@ impl<'v> DfsOp for CopyFromSourceToTarget<'v> {
 /// condition. Similarly, if we reach the end of the graph and find
 /// that R1 contains some universal region that R2 does not contain,
 /// we abort the walk early.
-#[allow(dead_code)] // TODO
-pub(super) struct TestTarget<'v> {
-    source_region: RegionVid,
-    target_region: RegionVid,
-    elements: &'v RegionValueElements,
-    inferred_values: &'v RegionValues,
-    constraint_point: Location,
+pub(super) struct TestTargetOutlivesSource<'v, 'tcx: 'v> {
+    pub source_region: RegionVid,
+    pub target_region: RegionVid,
+    pub elements: &'v RegionValueElements,
+    pub universal_regions: &'v UniversalRegions<'tcx>,
+    pub inferred_values: &'v RegionValues,
+    pub constraint_point: Location,
 }
 
-#[allow(dead_code)] // TODO
-impl<'v> DfsOp for TestTarget<'v> {
+impl<'v, 'tcx> DfsOp for TestTargetOutlivesSource<'v, 'tcx> {
     /// The element that was not found within R2.
     type Early = RegionElementIndex;
 
@@ -204,12 +204,32 @@ impl<'v> DfsOp for TestTarget<'v> {
     fn add_universal_regions_outlived_by_source_to_target(
         &mut self,
     ) -> Result<bool, RegionElementIndex> {
-        for ur in self.inferred_values
+        // For all `ur_in_source` in `source_region`.
+        for ur_in_source in self.inferred_values
             .universal_regions_outlived_by(self.source_region)
         {
-            if !self.inferred_values.contains(self.target_region, ur) {
-                return Err(self.elements.index(ur));
+            // Check that `target_region` outlives `ur_in_source`.
+
+            // If `ur_in_source` is a member of `target_region`, OK.
+            //
+            // (This is implied by the loop below, actually, just an
+            // irresistible micro-opt. Mm. Premature optimization. So
+            // tasty.)
+            if self.inferred_values.contains(self.target_region, ur_in_source) {
+                continue;
             }
+
+            // If there is some other element X such that `target_region: X` and
+            // `X: ur_in_source`, OK.
+            if self.inferred_values
+                   .universal_regions_outlived_by(self.target_region)
+                   .any(|ur_in_target| self.universal_regions.outlives(ur_in_target, ur_in_source))
+            {
+                continue;
+            }
+
+            // Otherwise, not known to be true.
+            return Err(self.elements.index(ur_in_source));
         }
 
         Ok(false)

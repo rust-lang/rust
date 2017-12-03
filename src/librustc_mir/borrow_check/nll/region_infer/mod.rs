@@ -14,7 +14,7 @@ use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
 use rustc::infer::RegionVariableOrigin;
 use rustc::infer::SubregionOrigin;
-use rustc::infer::region_constraints::VarOrigins;
+use rustc::infer::region_constraints::{GenericKind, VarOrigins};
 use rustc::mir::{ClosureOutlivesRequirement, ClosureRegionRequirements, Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -24,7 +24,7 @@ use syntax_pos::Span;
 
 mod annotation;
 mod dfs;
-use self::dfs::CopyFromSourceToTarget;
+use self::dfs::{CopyFromSourceToTarget, TestTargetOutlivesSource};
 mod dump_mir;
 mod graphviz;
 mod values;
@@ -52,6 +52,9 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// The constraints we have accumulated and used during solving.
     constraints: Vec<Constraint>,
+
+    /// Type constraints that we check after solving.
+    type_tests: Vec<TypeTest<'tcx>>,
 
     /// Information about the universally quantified regions in scope
     /// on this function and their (known) relations to one another.
@@ -95,6 +98,90 @@ pub struct Constraint {
     span: Span,
 }
 
+/// A "type test" corresponds to an outlives constraint between a type
+/// and a lifetime, like `T: 'x` or `<T as Foo>::Bar: 'x`.  They are
+/// translated from the `Verify` region constraints in the ordinary
+/// inference context.
+///
+/// These sorts of constraints are handled differently than ordinary
+/// constraints, at least at present. During type checking, the
+/// `InferCtxt::process_registered_region_obligations` method will
+/// attempt to convert a type test like `T: 'x` into an ordinary
+/// outlives constraint when possible (for example, `&'a T: 'b` will
+/// be converted into `'a: 'b` and registered as a `Constraint`).
+///
+/// In some cases, however, there are outlives relationships that are
+/// not converted into a region constraint, but rather into one of
+/// these "type tests".  The distinction is that a type test does not
+/// influence the inference result, but instead just examines the
+/// values that we ultimately inferred for each region variable and
+/// checks that they meet certain extra criteria.  If not, an error
+/// can be issued.
+///
+/// One reason for this is that these type tests always boil down to a
+/// check like `'a: 'x` where `'a` is a universally quantified region
+/// -- and therefore not one whose value is really meant to be
+/// *inferred*, precisely. Another reason is that these type tests can
+/// involve *disjunction* -- that is, they can be satisfied in more
+/// than one way.
+///
+/// For more information about this translation, see
+/// `InferCtxt::process_registered_region_obligations` and
+/// `InferCtxt::type_must_outlive` in `rustc::infer::outlives`.
+#[derive(Clone, Debug)]
+pub struct TypeTest<'tcx> {
+    /// The type `T` that must outlive the region.
+    pub generic_kind: GenericKind<'tcx>,
+
+    /// The region `'x` that the type must outlive.
+    pub lower_bound: RegionVid,
+
+    /// The point where the outlives relation must hold.
+    pub point: Location,
+
+    /// Where did this constraint arise?
+    pub span: Span,
+
+    /// A test which, if met by the region `'x`, proves that this type
+    /// constraint is satisfied.
+    pub test: RegionTest,
+}
+
+/// A "test" that can be applied to some "subject region" `'x`. These are used to
+/// describe type constraints. Tests do not presently affect the
+/// region values that get inferred for each variable; they only
+/// examine the results *after* inference.  This means they can
+/// conveniently include disjuction ("a or b must be true").
+#[derive(Clone, Debug)]
+pub enum RegionTest {
+    /// The subject region `'x` must by outlived by *some* region in
+    /// the given set of regions.
+    ///
+    /// This test comes from e.g. a where clause like `T: 'a + 'b`,
+    /// which implies that we know that `T: 'a` and that `T:
+    /// 'b`. Therefore, if we are trying to prove that `T: 'x`, we can
+    /// do so by showing that `'a: 'x` *or* `'b: 'x`.
+    IsOutlivedByAnyRegionIn(Vec<RegionVid>),
+
+    /// The subject region `'x` must by outlived by *all* regions in
+    /// the given set of regions.
+    ///
+    /// This test comes from e.g. a projection type like `T = <u32 as
+    /// Trait<'a, 'b>>::Foo`, which must outlive `'a` or `'b`, and
+    /// maybe both. Therefore we can prove that `T: 'x` if we know
+    /// that `'a: 'x` *and* `'b: 'x`.
+    IsOutlivedByAllRegionsIn(Vec<RegionVid>),
+
+    /// Any of the given tests are true.
+    ///
+    /// This arises from projections, for which there are multiple
+    /// ways to prove an outlives relationship.
+    Any(Vec<RegionTest>),
+
+    /// All of the given tests are true.
+    All(Vec<RegionTest>),
+}
+
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Creates a new region inference context with a total of
     /// `num_region_variables` valid inference variables; the first N
@@ -122,6 +209,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             liveness_constraints: RegionValues::new(elements, num_region_variables),
             inferred_values: None,
             constraints: Vec::new(),
+            type_tests: Vec::new(),
             universal_regions,
         };
 
@@ -243,7 +331,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         });
     }
 
-    /// Perform region inference.
+    /// Add a "type test" that must be satisfied.
+    pub(super) fn add_type_test(&mut self, type_test: TypeTest<'tcx>) {
+        self.type_tests.push(type_test);
+    }
+
+    /// Perform region inference and report errors if we see any
+    /// unsatisfiable constraints. If this is a closure, returns the
+    /// region requirements to propagate to our creator, if any.
     pub(super) fn solve(
         &mut self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
@@ -253,6 +348,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         assert!(self.inferred_values.is_none(), "values already inferred");
 
         self.propagate_constraints(mir);
+
+        self.check_type_tests(infcx, mir);
 
         let outlives_requirements = self.check_universal_regions(infcx, mir_def_id);
 
@@ -313,6 +410,123 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         self.inferred_values = Some(inferred_values);
+    }
+
+    /// Once regions have been propagated, this method is used to see
+    /// whether any of the constraints were too strong. In particular,
+    /// we want to check for a case where a universally quantified
+    /// region exceeded its bounds.  Consider:
+    ///
+    ///     fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
+    ///
+    /// In this case, returning `x` requires `&'a u32 <: &'b u32`
+    /// and hence we establish (transitively) a constraint that
+    /// `'a: 'b`. The `propagate_constraints` code above will
+    /// therefore add `end('a)` into the region for `'b` -- but we
+    /// have no evidence that `'b` outlives `'a`, so we want to report
+    /// an error.
+    fn check_type_tests(
+        &self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
+    ) {
+        for type_test in &self.type_tests {
+            debug!("check_type_test: {:?}", type_test);
+
+            if !self.eval_region_test(
+                mir,
+                type_test.point,
+                type_test.lower_bound,
+                &type_test.test,
+            ) {
+                // Oh the humanity. Obviously we will do better than this error eventually.
+                infcx.tcx.sess.span_err(
+                    type_test.span,
+                    &format!("failed type test: {:?}", type_test),
+                );
+            }
+        }
+    }
+
+    /// Test if `test` is true when applied to `lower_bound` at
+    /// `point`, and returns true or false.
+    fn eval_region_test(
+        &self,
+        mir: &Mir<'tcx>,
+        point: Location,
+        lower_bound: RegionVid,
+        test: &RegionTest,
+    ) -> bool {
+        debug!(
+            "eval_region_test(point={:?}, lower_bound={:?}, test={:?})",
+            point,
+            lower_bound,
+            test
+        );
+
+        match test {
+            RegionTest::IsOutlivedByAllRegionsIn(regions) => regions
+                .iter()
+                .all(|&r| self.eval_outlives(mir, r, lower_bound, point)),
+
+            RegionTest::IsOutlivedByAnyRegionIn(regions) => regions
+                .iter()
+                .any(|&r| self.eval_outlives(mir, r, lower_bound, point)),
+
+            RegionTest::Any(tests) => tests
+                .iter()
+                .any(|test| self.eval_region_test(mir, point, lower_bound, test)),
+
+            RegionTest::All(tests) => tests
+                .iter()
+                .all(|test| self.eval_region_test(mir, point, lower_bound, test)),
+        }
+    }
+
+    // Evaluate whether `sup_region: sub_region @ point`.
+    fn eval_outlives(
+        &self,
+        mir: &Mir<'tcx>,
+        sup_region: RegionVid,
+        sub_region: RegionVid,
+        point: Location,
+    ) -> bool {
+        debug!(
+            "eval_outlives({:?}: {:?} @ {:?})",
+            sup_region,
+            sub_region,
+            point
+        );
+
+        // Roughly speaking, do a DFS of all region elements reachable
+        // from `point` contained in `sub_region`. If any of those are
+        // *not* present in `sup_region`, the DFS will abort early and
+        // yield an `Err` result.
+        match self.dfs(
+            mir,
+            TestTargetOutlivesSource {
+                source_region: sub_region,
+                target_region: sup_region,
+                constraint_point: point,
+                elements: &self.elements,
+                universal_regions: &self.universal_regions,
+                inferred_values: self.inferred_values.as_ref().unwrap(),
+            },
+        ) {
+            Ok(_) => {
+                debug!("eval_outlives: true");
+                true
+            }
+
+            Err(elem) => {
+                debug!(
+                    "eval_outlives: false because `{:?}` is not present in `{:?}`",
+                    self.elements.to_element(elem),
+                    sup_region
+                );
+                false
+            }
+        }
     }
 
     /// Once regions have been propagated, this method is used to see
