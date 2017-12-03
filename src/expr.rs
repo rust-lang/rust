@@ -1796,6 +1796,7 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
 }
 
 const FORMAT_LIKE_WHITELIST: &[&str] = &[
+    // From the Rust Standard Library.
     "eprint!",
     "eprintln!",
     "format!",
@@ -1803,6 +1804,12 @@ const FORMAT_LIKE_WHITELIST: &[&str] = &[
     "panic!",
     "println!",
     "unreachable!",
+    // From the `log` crate.
+    "debug!",
+    "error!",
+    "info!",
+    "panic!",
+    "warn!",
 ];
 
 const WRITE_LIKE_WHITELIST: &[&str] = &["assert!", "write!", "writeln!"];
