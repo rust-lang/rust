@@ -227,7 +227,7 @@ pub fn run_compiler<'a>(args: &[String],
         },
     };
 
-    let cstore = Rc::new(CStore::new(DefaultTransCrate::metadata_loader()));
+    let cstore = CStore::new(DefaultTransCrate::metadata_loader());
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
@@ -243,7 +243,7 @@ pub fn run_compiler<'a>(args: &[String],
 
     do_or_return!(callbacks.late_callback(&matches,
                                           &sess,
-                                          &*cstore,
+                                          &cstore,
                                           &input,
                                           &odir,
                                           &ofile), Some(sess));
