@@ -30,13 +30,13 @@ use ptr::P;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::ThinVec;
+use rustc_data_structures::sync::Lock;
 
-use std::cell::{RefCell, Cell};
 use std::iter;
 
-thread_local! {
-    static USED_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new());
-    static KNOWN_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new());
+rustc_global! {
+    static USED_ATTRS: Lock<Vec<u64>> = Lock::new(Vec::new());
+    static KNOWN_ATTRS: Lock<Vec<u64>> = Lock::new(Vec::new());
 }
 
 enum AttrError {
@@ -65,22 +65,24 @@ fn handle_errors(diag: &Handler, span: Span, error: AttrError) {
 pub fn mark_used(attr: &Attribute) {
     debug!("Marking {:?} as used.", attr);
     let AttrId(id) = attr.id;
-    USED_ATTRS.with(|slot| {
+    rustc_access_global!(USED_ATTRS, |slot| {
+        let mut slot = slot.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        if slot.borrow().len() <= idx {
-            slot.borrow_mut().resize(idx + 1, 0);
+        if slot.len() <= idx {
+            slot.resize(idx + 1, 0);
         }
-        slot.borrow_mut()[idx] |= 1 << shift;
+        slot[idx] |= 1 << shift;
     });
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
     let AttrId(id) = attr.id;
-    USED_ATTRS.with(|slot| {
+    rustc_access_global!(USED_ATTRS, |slot| {
+        let slot = slot.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        slot.borrow().get(idx).map(|bits| bits & (1 << shift) != 0)
+        slot.get(idx).map(|bits| bits & (1 << shift) != 0)
             .unwrap_or(false)
     })
 }
@@ -88,22 +90,24 @@ pub fn is_used(attr: &Attribute) -> bool {
 pub fn mark_known(attr: &Attribute) {
     debug!("Marking {:?} as known.", attr);
     let AttrId(id) = attr.id;
-    KNOWN_ATTRS.with(|slot| {
+    rustc_access_global!(KNOWN_ATTRS, |slot| {
+        let mut slot = slot.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        if slot.borrow().len() <= idx {
-            slot.borrow_mut().resize(idx + 1, 0);
+        if slot.len() <= idx {
+            slot.resize(idx + 1, 0);
         }
-        slot.borrow_mut()[idx] |= 1 << shift;
+        slot[idx] |= 1 << shift;
     });
 }
 
 pub fn is_known(attr: &Attribute) -> bool {
     let AttrId(id) = attr.id;
-    KNOWN_ATTRS.with(|slot| {
+    rustc_access_global!(KNOWN_ATTRS, |slot| {
+        let slot = slot.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        slot.borrow().get(idx).map(|bits| bits & (1 << shift) != 0)
+        slot.get(idx).map(|bits| bits & (1 << shift) != 0)
             .unwrap_or(false)
     })
 }
