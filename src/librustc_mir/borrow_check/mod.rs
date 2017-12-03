@@ -36,6 +36,7 @@ use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveOutIndex, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
+use std::fmt;
 use std::iter;
 
 use self::MutateMode::{JustWrite, WriteAndRead};
@@ -308,8 +309,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
     }
 
     fn visit_block_entry(&mut self, bb: BasicBlock, flow_state: &Self::FlowState) {
-        let summary = flow_state.summary();
-        debug!("MirBorrowckCtxt::process_block({:?}): {}", bb, summary);
+        debug!("MirBorrowckCtxt::process_block({:?}): {}", bb, flow_state);
     }
 
     fn visit_statement_entry(
@@ -318,12 +318,11 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
         stmt: &Statement<'tcx>,
         flow_state: &Self::FlowState,
     ) {
-        let summary = flow_state.summary();
         debug!(
             "MirBorrowckCtxt::process_statement({:?}, {:?}): {}",
             location,
             stmt,
-            summary
+            flow_state
         );
         let span = stmt.source_info.span;
         match stmt.kind {
@@ -425,12 +424,11 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
         flow_state: &Self::FlowState,
     ) {
         let loc = location;
-        let summary = flow_state.summary();
         debug!(
             "MirBorrowckCtxt::process_terminator({:?}, {:?}): {}",
             location,
             term,
-            summary
+            flow_state
         );
         let span = term.source_info.span;
         match term.kind {
@@ -2679,8 +2677,10 @@ impl<'b, 'gcx, 'tcx> InProgress<'b, 'gcx, 'tcx> {
         xform_move_outs(&mut self.move_outs);
         xform_ever_inits(&mut self.ever_inits);
     }
+}
 
-    fn summary(&self) -> String {
+impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut s = String::new();
 
         s.push_str("borrows in effect: [");
@@ -2757,7 +2757,7 @@ impl<'b, 'gcx, 'tcx> InProgress<'b, 'gcx, 'tcx> {
         });
         s.push_str("]");
 
-        return s;
+        fmt::Display::fmt(&s, fmt)
     }
 }
 
