@@ -19,7 +19,7 @@ use Span;
 use symbol::{Ident, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
-use std::cell::RefCell;
+use rustc_data_structures::sync::Lock;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -124,10 +124,10 @@ impl HygieneData {
     }
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        thread_local! {
-            static HYGIENE_DATA: RefCell<HygieneData> = RefCell::new(HygieneData::new());
+        rustc_global! {
+            static HYGIENE_DATA: Lock<HygieneData> = Lock::new(HygieneData::new());
         }
-        HYGIENE_DATA.with(|data| f(&mut *data.borrow_mut()))
+        rustc_access_global!(HYGIENE_DATA, |data| f(&mut *data.borrow_mut()))
     }
 }
 
