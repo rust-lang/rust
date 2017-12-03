@@ -239,10 +239,13 @@ impl<'tcx> Action<'tcx> {
         //     USE(SRC);
         let src_def_count = src_use_info.def_count_not_including_drop();
         // allow function arguments to be propagated
-        if src_def_count > 1 ||
-            (src_def_count == 0 && mir.local_kind(src_local) != LocalKind::Arg) {
-            debug!("  Can't copy-propagate local: {} defs of src",
-                   src_use_info.def_count_not_including_drop());
+        let is_arg = mir.local_kind(src_local) == LocalKind::Arg;
+        if (is_arg && src_def_count != 0) || (!is_arg && src_def_count != 1) {
+            debug!(
+                "  Can't copy-propagate local: {} defs of src{}",
+                src_def_count,
+                if is_arg { " (argument)" } else { "" },
+            );
             return None
         }
 
