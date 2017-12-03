@@ -28,7 +28,7 @@ use std::fs::File;
 use std::path::Path;
 use std::sync::mpsc;
 
-use owning_ref::{ErasedBoxRef, OwningRef};
+use owning_ref::OwningRef;
 use ar::{Archive, Builder, Header};
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
@@ -39,18 +39,21 @@ use rustc::session::Session;
 use rustc::session::config::{CrateType, OutputFilenames};
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
-use rustc::middle::cstore::EncodedMetadata;
+use rustc::middle::cstore::{MetadataLoader, EncodedMetadata};
 use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
 use rustc::dep_graph::{DepGraph, DepNode, DepKind};
 use rustc_back::target::Target;
 use link::{build_link_meta, out_filename};
+use rustc_data_structures::sync::Sync;
+
+pub use rustc_data_structures::sync::MetadataRef;
 
 pub trait TransCrate {
     type MetadataLoader: MetadataLoaderTrait;
     type OngoingCrateTranslation;
     type TranslatedCrate;
 
-    fn metadata_loader() -> Box<MetadataLoaderTrait>;
+    fn metadata_loader() -> Box<MetadataLoader + Sync>;
     fn provide(_providers: &mut Providers);
     fn provide_extern(_providers: &mut Providers);
     fn trans_crate<'a, 'tcx>(
@@ -73,7 +76,7 @@ impl TransCrate for DummyTransCrate {
     type OngoingCrateTranslation = ();
     type TranslatedCrate = ();
 
-    fn metadata_loader() -> Box<MetadataLoaderTrait> {
+    fn metadata_loader() -> Box<MetadataLoader + Sync> {
         box DummyMetadataLoader(())
     }
 
@@ -116,7 +119,7 @@ impl MetadataLoaderTrait for DummyMetadataLoader {
         &self,
         _target: &Target,
         _filename: &Path
-    ) -> Result<ErasedBoxRef<[u8]>, String> {
+    ) -> Result<MetadataRef, String> {
         bug!("DummyMetadataLoader::get_rlib_metadata");
     }
 
@@ -124,7 +127,7 @@ impl MetadataLoaderTrait for DummyMetadataLoader {
         &self,
         _target: &Target,
         _filename: &Path
-    ) -> Result<ErasedBoxRef<[u8]>, String> {
+    ) -> Result<MetadataRef, String> {
         bug!("DummyMetadataLoader::get_dylib_metadata");
     }
 }
@@ -132,7 +135,7 @@ impl MetadataLoaderTrait for DummyMetadataLoader {
 pub struct NoLlvmMetadataLoader;
 
 impl MetadataLoaderTrait for NoLlvmMetadataLoader {
-    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
         let file = File::open(filename)
             .map_err(|e| format!("metadata file open err: {:?}", e))?;
         let mut archive = Archive::new(file);
@@ -155,7 +158,7 @@ impl MetadataLoaderTrait for NoLlvmMetadataLoader {
         &self,
         _target: &Target,
         _filename: &Path,
-    ) -> Result<ErasedBoxRef<[u8]>, String> {
+    ) -> Result<MetadataRef, String> {
         // FIXME: Support reading dylibs from llvm enabled rustc
         self.get_rlib_metadata(_target, _filename)
     }
@@ -181,7 +184,7 @@ impl TransCrate for MetadataOnlyTransCrate {
     type OngoingCrateTranslation = OngoingCrateTranslation;
     type TranslatedCrate = TranslatedCrate;
 
-    fn metadata_loader() -> Box<MetadataLoaderTrait> {
+    fn metadata_loader() -> Box<MetadataLoader + Sync> {
         box NoLlvmMetadataLoader
     }
 

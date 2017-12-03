@@ -17,6 +17,7 @@ use self::NodesMatchingUII::*;
 
 use {abort_on_err, driver};
 
+use rustc_data_structures::sync::Sync;
 use rustc::ty::{self, TyCtxt, Resolutions, AllArenas};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
@@ -199,7 +200,7 @@ impl PpSourceMode {
     }
     fn call_with_pp_support_hir<'tcx, A, F>(&self,
                                                sess: &'tcx Session,
-                                               cstore: &'tcx CrateStore,
+                                               cstore: &'tcx (CrateStore + Sync),
                                                hir_map: &hir_map::Map<'tcx>,
                                                analysis: &ty::CrateAnalysis,
                                                resolutions: &Resolutions,
@@ -896,7 +897,7 @@ pub fn print_after_parsing(sess: &Session,
 }
 
 pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
-                                                cstore: &'tcx CrateStore,
+                                                cstore: &'tcx (CrateStore + Sync),
                                                 hir_map: &hir_map::Map<'tcx>,
                                                 analysis: &ty::CrateAnalysis,
                                                 resolutions: &Resolutions,
@@ -1052,7 +1053,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
-                                       cstore: &'a CrateStore,
+                                       cstore: &'a (CrateStore + Sync),
                                        hir_map: &hir_map::Map<'tcx>,
                                        analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,

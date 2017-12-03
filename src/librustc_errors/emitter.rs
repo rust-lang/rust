@@ -12,14 +12,14 @@ use self::Destination::*;
 
 use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper, DiagnosticId};
+use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapperDyn, DiagnosticId};
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
+use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
-use std::rc::Rc;
 use term;
 use std::collections::HashMap;
 use std::cmp::min;
@@ -103,19 +103,19 @@ impl ColorConfig {
 
 pub struct EmitterWriter {
     dst: Destination,
-    cm: Option<Rc<CodeMapper>>,
+    cm: Option<Lrc<CodeMapperDyn>>,
     short_message: bool,
 }
 
 struct FileWithAnnotatedLines {
-    file: Rc<FileMap>,
+    file: Lrc<FileMap>,
     lines: Vec<Line>,
     multiline_depth: usize,
 }
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
-                  code_map: Option<Rc<CodeMapper>>,
+                  code_map: Option<Lrc<CodeMapperDyn>>,
                   short_message: bool)
                   -> EmitterWriter {
         if color_config.use_color() {
@@ -135,7 +135,7 @@ impl EmitterWriter {
     }
 
     pub fn new(dst: Box<Write + Send>,
-               code_map: Option<Rc<CodeMapper>>,
+               code_map: Option<Lrc<CodeMapperDyn>>,
                short_message: bool)
                -> EmitterWriter {
         EmitterWriter {
@@ -147,7 +147,7 @@ impl EmitterWriter {
 
     fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
-                                  file: Rc<FileMap>,
+                                  file: Lrc<FileMap>,
                                   line_index: usize,
                                   ann: Annotation) {
 
@@ -279,7 +279,7 @@ impl EmitterWriter {
 
     fn render_source_line(&self,
                           buffer: &mut StyledBuffer,
-                          file: Rc<FileMap>,
+                          file: Lrc<FileMap>,
                           line: &Line,
                           width_offset: usize,
                           code_offset: usize) -> Vec<(usize, Style)> {
@@ -1104,8 +1104,6 @@ impl EmitterWriter {
                                level: &Level,
                                max_line_num_len: usize)
                                -> io::Result<()> {
-        use std::borrow::Borrow;
-
         if let Some(ref cm) = self.cm {
             let mut buffer = StyledBuffer::new();
 
@@ -1119,7 +1117,7 @@ impl EmitterWriter {
                                Some(Style::HeaderMsg));
 
             // Render the replacements for each suggestion
-            let suggestions = suggestion.splice_lines(cm.borrow());
+            let suggestions = suggestion.splice_lines(&**cm);
 
             let mut row_num = 2;
             for &(ref complete, ref parts) in suggestions.iter().take(MAX_SUGGESTIONS) {

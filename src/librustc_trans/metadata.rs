@@ -15,13 +15,14 @@ use llvm;
 use llvm::{False, ObjectFile, mk_section_iter};
 use llvm::archive_ro::ArchiveRO;
 
-use owning_ref::{ErasedBoxRef, OwningRef};
+use owning_ref::{OwningRef};
 use std::path::Path;
 use std::ptr;
 use std::thread;
 use std::slice;
 use std::ops::Deref;
 
+pub use rustc_data_structures::sync::MetadataRef;
 
 pub const METADATA_FILENAME: &str = "rust.metadata.bin";
 
@@ -66,7 +67,7 @@ impl<T> Drop for SameThread<T> {
 pub struct LlvmMetadataLoader;
 
 impl MetadataLoader for LlvmMetadataLoader {
-    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
         // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
         // internally to read the file. We also avoid even using a memcpy by
         // just keeping the archive along while the metadata is in use.
@@ -94,7 +95,7 @@ impl MetadataLoader for LlvmMetadataLoader {
     fn get_dylib_metadata(&self,
                           target: &Target,
                           filename: &Path)
-                          -> Result<ErasedBoxRef<[u8]>, String> {
+                          -> Result<MetadataRef, String> {
         unsafe {
             let buf = common::path2cstr(filename);
             let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr());

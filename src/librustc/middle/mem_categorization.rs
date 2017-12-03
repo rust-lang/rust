@@ -85,6 +85,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use std::fmt;
+use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use util::nodemap::ItemLocalSet;
 
@@ -286,7 +287,7 @@ pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
-    rvalue_promotable_map: Option<Rc<ItemLocalSet>>,
+    rvalue_promotable_map: Option<Lrc<ItemLocalSet>>,
     infcx: Option<&'a InferCtxt<'a, 'gcx, 'tcx>>,
 }
 
@@ -395,7 +396,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
-               rvalue_promotable_map: Option<Rc<ItemLocalSet>>)
+               rvalue_promotable_map: Option<Lrc<ItemLocalSet>>)
                -> MemCategorizationContext<'a, 'tcx, 'tcx> {
         MemCategorizationContext {
             tcx,

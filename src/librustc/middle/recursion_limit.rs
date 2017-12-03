@@ -18,7 +18,7 @@
 use session::Session;
 use syntax::ast;
 
-use std::cell::Cell;
+use rustc_data_structures::sync::LockCell;
 
 pub fn update_limits(sess: &Session, krate: &ast::Crate) {
     update_limit(sess, krate, &sess.recursion_limit, "recursion_limit",
@@ -27,7 +27,7 @@ pub fn update_limits(sess: &Session, krate: &ast::Crate) {
                  "type length limit");
 }
 
-fn update_limit(sess: &Session, krate: &ast::Crate, limit: &Cell<usize>,
+fn update_limit(sess: &Session, krate: &ast::Crate, limit: &LockCell<usize>,
                 name: &str, description: &str) {
     for attr in &krate.attrs {
         if !attr.check_name(name) {

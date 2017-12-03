@@ -23,6 +23,8 @@ use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 
+use rustc_data_structures::sync::{self, Lrc, RwLock, Lock, LockCell, ReadGuard};
+
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
 use errors::emitter::{Emitter, EmitterWriter};
@@ -39,13 +41,11 @@ use rustc_back::target::Target;
 use rustc_data_structures::flock;
 use jobserver::Client;
 
-use std::cell::{self, Cell, RefCell};
 use std::collections::HashMap;
 use std::env;
 use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::sync::{Once, ONCE_INIT};
 use std::time::Duration;
 
@@ -62,10 +62,10 @@ pub struct Session {
     pub opts: config::Options,
     pub parse_sess: ParseSess,
     /// For a library crate, this is always none
-    pub entry_fn: RefCell<Option<(NodeId, Span)>>,
-    pub entry_type: Cell<Option<config::EntryFnType>>,
-    pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
-    pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
+    pub entry_fn: Lock<Option<(NodeId, Span)>>,
+    pub entry_type: LockCell<Option<config::EntryFnType>>,
+    pub plugin_registrar_fn: LockCell<Option<ast::NodeId>>,
+    pub derive_registrar_fn: LockCell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
@@ -73,88 +73,88 @@ pub struct Session {
     /// The directory the compiler has been executed in plus a flag indicating
     /// if the value stored here has been affected by path remapping.
     pub working_dir: (String, bool),
-    pub lint_store: RefCell<lint::LintStore>,
-    pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
+    pub lint_store: RwLock<lint::LintStore>,
+    pub buffered_lints: Lock<Option<lint::LintBuffer>>,
     /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
-    pub one_time_diagnostics: RefCell<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
-    pub plugin_llvm_passes: RefCell<Vec<String>>,
-    pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
-    pub crate_types: RefCell<Vec<config::CrateType>>,
-    pub dependency_formats: RefCell<dependency_format::Dependencies>,
+    pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
+    pub plugin_llvm_passes: Lock<Vec<String>>,
+    pub plugin_attributes: Lock<Vec<(String, AttributeType)>>,
+    pub crate_types: RwLock<Vec<config::CrateType>>,
+    pub dependency_formats: Lock<dependency_format::Dependencies>,
         /// The crate_disambiguator is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
     /// multiple crates with the same name to coexist. See the
     /// trans::back::symbol_names module for more information.
-    pub crate_disambiguator: RefCell<Option<CrateDisambiguator>>,
-    pub features: RefCell<feature_gate::Features>,
+    pub crate_disambiguator: Lock<Option<CrateDisambiguator>>,
+    pub features: RwLock<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
-    pub recursion_limit: Cell<usize>,
+    pub recursion_limit: LockCell<usize>,
 
     /// The maximum length of types during monomorphization.
-    pub type_length_limit: Cell<usize>,
+    pub type_length_limit: LockCell<usize>,
 
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
-    pub injected_allocator: Cell<Option<CrateNum>>,
-    pub allocator_kind: Cell<Option<AllocatorKind>>,
-    pub injected_panic_runtime: Cell<Option<CrateNum>>,
+    pub injected_allocator: LockCell<Option<CrateNum>>,
+    pub allocator_kind: LockCell<Option<AllocatorKind>>,
+    pub injected_panic_runtime: LockCell<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
     /// macro name and definition span in the source crate.
-    pub imported_macro_spans: RefCell<HashMap<Span, (String, Span)>>,
+    pub imported_macro_spans: Lock<HashMap<Span, (String, Span)>>,
 
-    incr_comp_session: RefCell<IncrCompSession>,
+    incr_comp_session: RwLock<IncrCompSession>,
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
 
     /// Data about code being compiled, gathered during compilation.
-    pub code_stats: RefCell<CodeStats>,
+    pub code_stats: Lock<CodeStats>,
 
-    next_node_id: Cell<ast::NodeId>,
+    next_node_id: LockCell<ast::NodeId>,
 
     /// If -zfuel=crate=n is specified, Some(crate).
     optimization_fuel_crate: Option<String>,
     /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
-    optimization_fuel_limit: Cell<u64>,
+    optimization_fuel_limit: LockCell<u64>,
     /// We're rejecting all further optimizations.
-    out_of_fuel: Cell<bool>,
+    out_of_fuel: LockCell<bool>,
 
     // The next two are public because the driver needs to read them.
 
     /// If -zprint-fuel=crate, Some(crate).
     pub print_fuel_crate: Option<String>,
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
-    pub print_fuel: Cell<u64>,
+    pub print_fuel: LockCell<u64>,
 
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
     pub jobserver_from_env: Option<Client>,
 
     /// Metadata about the allocators for the current crate being compiled
-    pub has_global_allocator: Cell<bool>,
+    pub has_global_allocator: LockCell<bool>,
 }
 
 pub struct PerfStats {
     /// The accumulated time needed for computing the SVH of the crate
-    pub svh_time: Cell<Duration>,
+    pub svh_time: LockCell<Duration>,
     /// The accumulated time spent on computing incr. comp. hashes
-    pub incr_comp_hashes_time: Cell<Duration>,
+    pub incr_comp_hashes_time: LockCell<Duration>,
     /// The number of incr. comp. hash computations performed
-    pub incr_comp_hashes_count: Cell<u64>,
+    pub incr_comp_hashes_count: LockCell<u64>,
     /// The number of bytes hashed when computing ICH values
-    pub incr_comp_bytes_hashed: Cell<u64>,
+    pub incr_comp_bytes_hashed: LockCell<u64>,
     /// The accumulated time spent on computing symbol hashes
-    pub symbol_hash_time: Cell<Duration>,
+    pub symbol_hash_time: LockCell<Duration>,
     /// The accumulated time spent decoding def path tables from metadata
-    pub decode_def_path_tables_time: Cell<Duration>,
+    pub decode_def_path_tables_time: LockCell<Duration>,
 }
 
 /// Enum to support dispatch of one-time diagnostics (in Session.diag_once)
@@ -577,9 +577,9 @@ impl Session {
         };
     }
 
-    pub fn incr_comp_session_dir(&self) -> cell::Ref<PathBuf> {
+    pub fn incr_comp_session_dir(&self) -> ReadGuard<PathBuf> {
         let incr_comp_session = self.incr_comp_session.borrow();
-        cell::Ref::map(incr_comp_session, |incr_comp_session| {
+        ReadGuard::map(incr_comp_session, |incr_comp_session| {
             match *incr_comp_session {
                 IncrCompSession::NotInitialized => {
                     bug!("Trying to get session directory from IncrCompSession `{:?}`",
@@ -594,7 +594,7 @@ impl Session {
         })
     }
 
-    pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<PathBuf>> {
+    pub fn incr_comp_session_dir_opt(&self) -> Option<ReadGuard<PathBuf>> {
         if self.opts.incremental.is_some() {
             Some(self.incr_comp_session_dir())
         } else {
@@ -760,14 +760,14 @@ pub fn build_session(sopts: config::Options,
     build_session_with_codemap(sopts,
                                local_crate_source_file,
                                registry,
-                               Rc::new(codemap::CodeMap::new(file_path_mapping)),
+                               Lrc::new(codemap::CodeMap::new(file_path_mapping)),
                                None)
 }
 
 pub fn build_session_with_codemap(sopts: config::Options,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: errors::registry::Registry,
-                                  codemap: Rc<codemap::CodeMap>,
+                                  codemap: Lrc<codemap::CodeMap>,
                                   emitter_dest: Option<Box<Write + Send>>)
                                   -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
@@ -787,7 +787,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
 
     let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
 
-    let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
+    let emitter: Box<Emitter + sync::Send> = match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(color_config), None) => {
             Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), false))
         }
@@ -827,7 +827,7 @@ pub fn build_session_with_codemap(sopts: config::Options,
 pub fn build_session_(sopts: config::Options,
                       local_crate_source_file: Option<PathBuf>,
                       span_diagnostic: errors::Handler,
-                      codemap: Rc<codemap::CodeMap>)
+                      codemap: Lrc<codemap::CodeMap>)
                       -> Session {
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,
@@ -850,10 +850,10 @@ pub fn build_session_(sopts: config::Options,
     });
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
-    let optimization_fuel_limit = Cell::new(sopts.debugging_opts.fuel.as_ref()
+    let optimization_fuel_limit = LockCell::new(sopts.debugging_opts.fuel.as_ref()
         .map(|i| i.1).unwrap_or(0));
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
-    let print_fuel = Cell::new(0);
+    let print_fuel = LockCell::new(0);
 
     let working_dir = match env::current_dir() {
         Ok(dir) => dir.to_string_lossy().into_owned(),
@@ -869,44 +869,44 @@ pub fn build_session_(sopts: config::Options,
         opts: sopts,
         parse_sess: p_s,
         // For a library crate, this is always none
-        entry_fn: RefCell::new(None),
-        entry_type: Cell::new(None),
-        plugin_registrar_fn: Cell::new(None),
-        derive_registrar_fn: Cell::new(None),
+        entry_fn: Lock::new(None),
+        entry_type: LockCell::new(None),
+        plugin_registrar_fn: LockCell::new(None),
+        derive_registrar_fn: LockCell::new(None),
         default_sysroot,
         local_crate_source_file,
         working_dir,
-        lint_store: RefCell::new(lint::LintStore::new()),
-        buffered_lints: RefCell::new(Some(lint::LintBuffer::new())),
-        one_time_diagnostics: RefCell::new(FxHashSet()),
-        plugin_llvm_passes: RefCell::new(Vec::new()),
-        plugin_attributes: RefCell::new(Vec::new()),
-        crate_types: RefCell::new(Vec::new()),
-        dependency_formats: RefCell::new(FxHashMap()),
-        crate_disambiguator: RefCell::new(None),
-        features: RefCell::new(feature_gate::Features::new()),
-        recursion_limit: Cell::new(64),
-        type_length_limit: Cell::new(1048576),
-        next_node_id: Cell::new(NodeId::new(1)),
-        injected_allocator: Cell::new(None),
-        allocator_kind: Cell::new(None),
-        injected_panic_runtime: Cell::new(None),
-        imported_macro_spans: RefCell::new(HashMap::new()),
-        incr_comp_session: RefCell::new(IncrCompSession::NotInitialized),
+        lint_store: RwLock::new(lint::LintStore::new()),
+        buffered_lints: Lock::new(Some(lint::LintBuffer::new())),
+        one_time_diagnostics: Lock::new(FxHashSet()),
+        plugin_llvm_passes: Lock::new(Vec::new()),
+        plugin_attributes: Lock::new(Vec::new()),
+        crate_types: RwLock::new(Vec::new()),
+        dependency_formats: Lock::new(FxHashMap()),
+        crate_disambiguator: Lock::new(None),
+        features: RwLock::new(feature_gate::Features::new()),
+        recursion_limit: LockCell::new(64),
+        type_length_limit: LockCell::new(1048576),
+        next_node_id: LockCell::new(NodeId::new(1)),
+        injected_allocator: LockCell::new(None),
+        allocator_kind: LockCell::new(None),
+        injected_panic_runtime: LockCell::new(None),
+        imported_macro_spans: Lock::new(HashMap::new()),
+        incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         perf_stats: PerfStats {
-            svh_time: Cell::new(Duration::from_secs(0)),
-            incr_comp_hashes_time: Cell::new(Duration::from_secs(0)),
-            incr_comp_hashes_count: Cell::new(0),
-            incr_comp_bytes_hashed: Cell::new(0),
-            symbol_hash_time: Cell::new(Duration::from_secs(0)),
-            decode_def_path_tables_time: Cell::new(Duration::from_secs(0)),
+            svh_time: LockCell::new(Duration::from_secs(0)),
+            incr_comp_hashes_time: LockCell::new(Duration::from_secs(0)),
+            incr_comp_hashes_count: LockCell::new(0),
+            incr_comp_bytes_hashed: LockCell::new(0),
+            symbol_hash_time: LockCell::new(Duration::from_secs(0)),
+            decode_def_path_tables_time: LockCell::new(Duration::from_secs(0)),
         },
-        code_stats: RefCell::new(CodeStats::new()),
+        code_stats: Lock::new(CodeStats::new()),
         optimization_fuel_crate,
         optimization_fuel_limit,
         print_fuel_crate,
         print_fuel,
-        out_of_fuel: Cell::new(false),
+        out_of_fuel: LockCell::new(false),
         // Note that this is unsafe because it may misinterpret file descriptors
         // on Unix as jobserver file descriptors. We hopefully execute this near
         // the beginning of the process though to ensure we don't get false
@@ -924,7 +924,7 @@ pub fn build_session_(sopts: config::Options,
             });
             (*GLOBAL_JOBSERVER).clone()
         },
-        has_global_allocator: Cell::new(false),
+        has_global_allocator: LockCell::new(false),
     };
 
     sess
@@ -977,7 +977,7 @@ pub enum IncrCompSession {
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
-    let emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false))
         }
@@ -992,7 +992,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
-    let emitter: Box<Emitter> = match output {
+    let emitter: Box<Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false))
         }
