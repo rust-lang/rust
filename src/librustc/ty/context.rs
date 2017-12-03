@@ -1079,6 +1079,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Rc::get_mut(map).unwrap().insert(hir_id.local_id, Rc::new(v));
         }
 
+        ::rustc_data_structures::sync::assert_sync::<GlobalCtxt>();
+
         tls::enter_global(GlobalCtxt {
             sess: s,
             cstore,
