@@ -93,8 +93,7 @@ impl fmt::Display for ErrorKind {
             ErrorKind::LineOverflow(found, maximum) => write!(
                 fmt,
                 "line exceeded maximum width (maximum: {}, found: {})",
-                maximum,
-                found
+                maximum, found
             ),
             ErrorKind::TrailingWhitespace => write!(fmt, "left behind trailing whitespace"),
             ErrorKind::BadIssue(issue) => write!(fmt, "found {}", issue),

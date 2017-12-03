@@ -48,9 +48,7 @@ impl Rewrite for ast::Local {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!(
             "Local::rewrite {:?} {} {:?}",
-            self,
-            shape.width,
-            shape.indent
+            self, shape.width, shape.indent
         );
 
         skip_out_of_file_lines_range!(context, self.span);
@@ -844,9 +842,7 @@ fn rewrite_trait_ref(
         if !(retry && trait_ref_str.contains('\n')) {
             return Some(format!(
                 "{} {}{}",
-                generics_str,
-                polarity_str,
-                &trait_ref_str
+                generics_str, polarity_str, &trait_ref_str
             ));
         }
     }
@@ -1842,9 +1838,7 @@ fn rewrite_fn_base(
 
     debug!(
         "rewrite_fn_base: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
-        one_line_budget,
-        multi_line_budget,
-        arg_indent
+        one_line_budget, multi_line_budget, arg_indent
     );
 
     // Check if vertical layout was forced.

@@ -160,6 +160,10 @@ pub enum DefinitiveListTactic {
     Vertical,
     Horizontal,
     Mixed,
+    // Special case tactic for `format!()` variants.
+    FormatCall,
+    // Special case tactic for `write!()` varianta.
+    WriteCall,
 }
 
 impl DefinitiveListTactic {
@@ -267,7 +271,7 @@ where
     I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
 {
-    let tactic = formatting.tactic;
+    let mut tactic = formatting.tactic;
     let sep_len = formatting.separator.len();
 
     // Now that we know how we will layout, we can decide for sure if there
@@ -308,6 +312,28 @@ where
         match tactic {
             DefinitiveListTactic::Horizontal if !first => {
                 result.push(' ');
+            }
+            DefinitiveListTactic::FormatCall if !first => {
+                result.push('\n');
+                result.push_str(indent_str);
+                tactic = DefinitiveListTactic::Horizontal;
+            }
+            DefinitiveListTactic::WriteCall => {
+                let second = i == 1;
+                let third = i == 2;
+
+                if first {
+                    // Nothing
+                } else if second {
+                    result.push('\n');
+                    result.push_str(indent_str);
+                } else if third {
+                    result.push('\n');
+                    result.push_str(indent_str);
+                    tactic = DefinitiveListTactic::Horizontal;
+                } else {
+                    unreachable!();
+                }
             }
             DefinitiveListTactic::Vertical if !first => {
                 result.push('\n');

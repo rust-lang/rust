@@ -136,8 +136,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     };
     debug!(
         "child_shapes {:?} {:?}",
-        first_child_shape,
-        other_child_shape
+        first_child_shape, other_child_shape
     );
 
     let child_shape_iter = Some(first_child_shape)

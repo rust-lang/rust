@@ -442,10 +442,7 @@ impl Rewrite for ast::WherePredicate {
                     {
                         format!(
                             "for< {} > {}{}{}",
-                            lifetime_str,
-                            type_str,
-                            colon,
-                            bounds_str
+                            lifetime_str, type_str, colon, bounds_str
                         )
                     } else {
                         format!("for<{}> {}{}{}", lifetime_str, type_str, colon, bounds_str)

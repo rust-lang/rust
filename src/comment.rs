@@ -205,11 +205,7 @@ pub fn combine_strs_with_missing_comments(
     };
     Some(format!(
         "{}{}{}{}{}",
-        prev_str,
-        first_sep,
-        missing_comment,
-        second_sep,
-        next_str,
+        prev_str, first_sep, missing_comment, second_sep, next_str,
     ))
 }
 

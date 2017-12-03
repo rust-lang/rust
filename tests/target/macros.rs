@@ -135,8 +135,7 @@ fn issue_1279() {
 fn issue_1555() {
     let hello = &format!(
         "HTTP/1.1 200 OK\r\nServer: {}\r\n\r\n{}",
-        "65454654654654654654654655464",
-        "4"
+        "65454654654654654654654655464", "4"
     );
 }
 
@@ -268,5 +267,20 @@ fn issue2214() {
             Match(4, 6),
             Reject(6, 7),
         ]
+    );
+}
+
+fn special_case_macros() {
+    // format!
+    let s = format!(
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
+        result, input, expected
+    );
+
+    // assert!
+    assert!(
+        result,
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
+        result, input, expected
     );
 }
