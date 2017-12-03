@@ -16,7 +16,7 @@ use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
 use std::io;
 use transform::MirSource;
-use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
+use util::liveness::{LivenessResults, LocalSet};
 use borrow_check::FlowAtLocation;
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::MoveData;
@@ -86,23 +86,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     subtype_constraint_generation::generate(&mut regioncx, mir, constraint_sets);
 
     // Compute what is live where.
-    let liveness = &LivenessResults {
-        regular: liveness::liveness_of_locals(
-            &mir,
-            LivenessMode {
-                include_regular_use: true,
-                include_drops: false,
-            },
-        ),
-
-        drop: liveness::liveness_of_locals(
-            &mir,
-            LivenessMode {
-                include_regular_use: false,
-                include_drops: true,
-            },
-        ),
-    };
+    let liveness = &LivenessResults::compute(mir);
 
     // Generate non-subtyping constraints.
     constraint_generation::generate_constraints(
@@ -134,11 +118,6 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     dump_annotation(infcx, &mir, def_id, &regioncx, &closure_region_requirements);
 
     (regioncx, closure_region_requirements)
-}
-
-struct LivenessResults {
-    regular: LivenessResult,
-    drop: LivenessResult,
 }
 
 fn dump_mir_results<'a, 'gcx, 'tcx>(
