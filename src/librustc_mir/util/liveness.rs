@@ -80,6 +80,39 @@ pub struct LivenessMode {
     pub include_drops: bool,
 }
 
+/// A combination of liveness results, used in NLL.
+pub struct LivenessResults {
+    /// Liveness results where a regular use makes a variable X live,
+    /// but not a drop.
+    pub regular: LivenessResult,
+
+    /// Liveness results where a drop makes a variable X live,
+    /// but not a regular use.
+    pub drop: LivenessResult,
+}
+
+impl LivenessResults {
+    pub fn compute<'tcx>(mir: &Mir<'tcx>) -> LivenessResults {
+        LivenessResults {
+            regular: liveness_of_locals(
+                &mir,
+                LivenessMode {
+                    include_regular_use: true,
+                    include_drops: false,
+                },
+            ),
+
+            drop: liveness_of_locals(
+                &mir,
+                LivenessMode {
+                    include_regular_use: false,
+                    include_drops: true,
+                },
+            ),
+        }
+    }
+}
+
 /// Compute which local variables are live within the given function
 /// `mir`. The liveness mode `mode` determines what sorts of uses are
 /// considered to make a variable live (e.g., do drops count?).
