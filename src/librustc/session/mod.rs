@@ -14,6 +14,7 @@ pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 use hir::def_id::CrateNum;
 use ich::Fingerprint;
 
+use ich;
 use lint;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
@@ -28,6 +29,7 @@ use errors::{self, DiagnosticBuilder, DiagnosticId};
 use errors::emitter::{Emitter, EmitterWriter};
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
+use syntax::symbol::Symbol;
 use syntax::parse;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
@@ -111,6 +113,9 @@ pub struct Session {
     pub imported_macro_spans: RefCell<HashMap<Span, (String, Span)>>,
 
     incr_comp_session: RefCell<IncrCompSession>,
+
+    /// A cache of attributes ignored by StableHashingContext
+    pub ignored_attr_names: FxHashSet<Symbol>,
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
@@ -975,6 +980,7 @@ pub fn build_session_(sopts: config::Options,
         injected_panic_runtime: Cell::new(None),
         imported_macro_spans: RefCell::new(HashMap::new()),
         incr_comp_session: RefCell::new(IncrCompSession::NotInitialized),
+        ignored_attr_names: ich::compute_ignored_attr_names(),
         perf_stats: PerfStats {
             svh_time: Cell::new(Duration::from_secs(0)),
             incr_comp_hashes_time: Cell::new(Duration::from_secs(0)),
