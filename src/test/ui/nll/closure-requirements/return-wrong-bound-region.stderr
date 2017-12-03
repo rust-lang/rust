@@ -10,7 +10,7 @@ error: free region `'_#3r` does not outlive free region `'_#2r`
 21 |     expect_sig(|a, b| b); // ought to return `a`
    |                       ^
 
-note: External requirements
+note: No external requirements
   --> $DIR/return-wrong-bound-region.rs:21:16
    |
 21 |     expect_sig(|a, b| b); // ought to return `a`
@@ -20,7 +20,6 @@ note: External requirements
                i16,
                for<'r, 's> extern "rust-call" fn((&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) i32, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) i32)) -> &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) i32
            ]
-   = note: number of external vids: 1
 
 note: No external requirements
   --> $DIR/return-wrong-bound-region.rs:20:1

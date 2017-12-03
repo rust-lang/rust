@@ -1,4 +1,4 @@
-note: External requirements
+note: No external requirements
   --> $DIR/escape-argument.rs:36:38
    |
 36 |         let mut closure = expect_sig(|p, y| *p = y);
@@ -8,7 +8,6 @@ note: External requirements
                i16,
                for<'r, 's> extern "rust-call" fn((&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) mut &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) i32, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) i32))
            ]
-   = note: number of external vids: 1
 
 note: No external requirements
   --> $DIR/escape-argument.rs:30:1
