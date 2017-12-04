@@ -248,6 +248,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
                 hir::ItemTrait(..) |
+                hir::ItemTraitAlias(..) |
                 hir::ItemImpl(..) |
                 hir::ItemAutoImpl(..) => None,
 
