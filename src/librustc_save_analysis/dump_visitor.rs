@@ -1234,10 +1234,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     fn process_use_tree(&mut self,
                          use_tree: &'l ast::UseTree,
                          id: NodeId,
-                         parent_item: &'l ast::Item,
+                         root_item: &'l ast::Item,
                          prefix: &ast::Path) {
         let path = &use_tree.prefix;
-        let access = access_from!(self.save_ctxt, parent_item);
+        let access = access_from!(self.save_ctxt, root_item);
+        let parent = self.save_ctxt.tcx.hir.opt_local_def_id(id)
+            .and_then(|id| self.save_ctxt.tcx.parent_def_id(id))
+            .map(::id_from_def_id);
 
         match use_tree.kind {
             ast::UseTreeKind::Simple(ident) => {
@@ -1276,6 +1279,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         span,
                         name: ident.to_string(),
                         value: String::new(),
+                        parent,
                     });
                 }
                 self.write_sub_paths_truncated(&path);
@@ -1311,6 +1315,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         span,
                         name: "*".to_owned(),
                         value: names.join(", "),
+                        parent,
                     });
                 }
                 self.write_sub_paths(&path);
@@ -1325,7 +1330,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     span: path.span,
                 };
                 for &(ref tree, id) in nested_items {
-                    self.process_use_tree(tree, id, parent_item, &prefix);
+                    self.process_use_tree(tree, id, root_item, &prefix);
                 }
             }
         }
@@ -1400,6 +1405,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                             span,
                             name: item.ident.to_string(),
                             value: String::new(),
+                            parent: None,
                         },
                     );
                 }
