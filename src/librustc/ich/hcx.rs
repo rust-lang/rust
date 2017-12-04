@@ -14,7 +14,6 @@ use hir::map::DefPathHash;
 use hir::map::definitions::Definitions;
 use ich::{self, CachingCodemapView};
 use middle::cstore::CrateStore;
-use session::config::DebugInfoLevel::NoDebugInfo;
 use ty::{TyCtxt, fast_reject};
 use session::Session;
 
@@ -24,7 +23,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use syntax::ast;
-use syntax::attr;
+
 use syntax::codemap::CodeMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
@@ -51,7 +50,6 @@ pub struct StableHashingContext<'gcx> {
     body_resolver: BodyResolver<'gcx>,
     hash_spans: bool,
     hash_bodies: bool,
-    overflow_checks_enabled: bool,
     node_id_hashing_mode: NodeIdHashingMode,
 
     // Very often, we are hashing something that does not need the
@@ -89,8 +87,7 @@ impl<'gcx> StableHashingContext<'gcx> {
                definitions: &'gcx Definitions,
                cstore: &'gcx CrateStore)
                -> Self {
-        let hash_spans_initial = sess.opts.debuginfo != NoDebugInfo;
-        let check_overflow_initial = sess.overflow_checks();
+        let hash_spans_initial = !sess.opts.debugging_opts.incremental_ignore_spans;
 
         debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
         IGNORED_ATTR_NAMES.with(|names| {
@@ -110,7 +107,6 @@ impl<'gcx> StableHashingContext<'gcx> {
             raw_codemap: sess.codemap(),
             hash_spans: hash_spans_initial,
             hash_bodies: true,
-            overflow_checks_enabled: check_overflow_initial,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
         }
     }
@@ -118,11 +114,6 @@ impl<'gcx> StableHashingContext<'gcx> {
     #[inline]
     pub fn sess(&self) -> &'gcx Session {
         self.sess
-    }
-
-    pub fn force_span_hashing(mut self) -> Self {
-        self.hash_spans = true;
-        self
     }
 
     #[inline]
@@ -175,11 +166,6 @@ impl<'gcx> StableHashingContext<'gcx> {
     }
 
     #[inline]
-    pub fn hash_spans(&self) -> bool {
-        self.hash_spans
-    }
-
-    #[inline]
     pub fn hash_bodies(&self) -> bool {
         self.hash_bodies
     }
@@ -204,58 +190,13 @@ impl<'gcx> StableHashingContext<'gcx> {
         })
     }
 
-    pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self,
-                                                    item_attrs: &[ast::Attribute],
-                                                    is_const: bool,
-                                                    f: F) {
-        let prev_overflow_checks = self.overflow_checks_enabled;
-        if is_const || attr::contains_name(item_attrs, "rustc_inherit_overflow_checks") {
-            self.overflow_checks_enabled = true;
-        }
+    pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {
         let prev_hash_node_ids = self.node_id_hashing_mode;
         self.node_id_hashing_mode = NodeIdHashingMode::Ignore;
 
         f(self);
 
         self.node_id_hashing_mode = prev_hash_node_ids;
-        self.overflow_checks_enabled = prev_overflow_checks;
-    }
-
-    #[inline]
-    pub fn binop_can_panic_at_runtime(&self, binop: hir::BinOp_) -> bool
-    {
-        match binop {
-            hir::BiAdd |
-            hir::BiSub |
-            hir::BiShl |
-            hir::BiShr |
-            hir::BiMul => self.overflow_checks_enabled,
-
-            hir::BiDiv |
-            hir::BiRem => true,
-
-            hir::BiAnd |
-            hir::BiOr |
-            hir::BiBitXor |
-            hir::BiBitAnd |
-            hir::BiBitOr |
-            hir::BiEq |
-            hir::BiLt |
-            hir::BiLe |
-            hir::BiNe |
-            hir::BiGe |
-            hir::BiGt => false
-        }
-    }
-
-    #[inline]
-    pub fn unop_can_panic_at_runtime(&self, unop: hir::UnOp) -> bool
-    {
-        match unop {
-            hir::UnDeref |
-            hir::UnNot => false,
-            hir::UnNeg => self.overflow_checks_enabled,
-        }
     }
 }
 
