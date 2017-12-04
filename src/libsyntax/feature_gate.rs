@@ -362,9 +362,6 @@ declare_features! (
     // rustc internal
     (active, abi_thiscall, "1.19.0", None),
 
-    // Allows a test to fail without failing the whole suite
-    (active, allow_fail, "1.19.0", Some(42219)),
-
     // Allows unsized tuple coercion.
     (active, unsized_tuple_coercion, "1.20.0", Some(42877)),
 
@@ -542,6 +539,8 @@ declare_features! (
     // Allows the sysV64 ABI to be specified on all platforms
     // instead of just the platforms on which it is the C ABI
     (accepted, abi_sysv64, "1.24.0", Some(36167)),
+    // Allows a test to fail without failing the whole suite
+    (accepted, allow_fail, "1.25.0", Some(42219)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -958,10 +957,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                              "used internally by rustc",
                                              cfg_fn!(rustc_attrs))),
 
-    ("allow_fail", Normal, Gated(Stability::Unstable,
-                                 "allow_fail",
-                                 "allow_fail attribute is currently unstable",
-                                 cfg_fn!(allow_fail))),
+    ("allow_fail", Normal, Ungated),
 
     ("rustc_std_internal_symbol", Whitelisted, Gated(Stability::Unstable,
                                      "rustc_attrs",
