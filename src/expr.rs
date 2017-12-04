@@ -501,7 +501,7 @@ fn array_tactic<T: Rewrite + Spanned + ToExpr>(
 
     match context.config.indent_style() {
         IndentStyle::Block => {
-            match shape.width.checked_sub(2 * bracket_size) {
+            let tactic = match shape.width.checked_sub(2 * bracket_size) {
                 Some(width) => {
                     let tactic = ListTactic::LimitedHorizontalVertical(
                         context.config.width_heuristics().array_width,
@@ -509,6 +509,13 @@ fn array_tactic<T: Rewrite + Spanned + ToExpr>(
                     definitive_tactic(items, tactic, Separator::Comma, width)
                 }
                 None => DefinitiveListTactic::Vertical,
+            };
+            if tactic == DefinitiveListTactic::Vertical && !has_long_item
+                && is_every_args_simple(exprs)
+            {
+                DefinitiveListTactic::Mixed
+            } else {
+                tactic
             }
         }
         IndentStyle::Visual => {
