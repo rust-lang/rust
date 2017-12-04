@@ -22,7 +22,13 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Target/TargetMachine.h"
+
+#if LLVM_VERSION_GE(5, 0)
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
+#else
 #include "llvm/Target/TargetSubtargetInfo.h"
+#endif
+
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 #if LLVM_VERSION_GE(4, 0)
