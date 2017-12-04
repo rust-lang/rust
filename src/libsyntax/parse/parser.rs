@@ -6370,8 +6370,8 @@ impl<'a> Parser<'a> {
             let is_auto = if self.eat_keyword(keywords::Trait) {
                 IsAuto::No
             } else {
-                self.eat_keyword(keywords::Auto);
-                self.eat_keyword(keywords::Trait);
+                self.expect_keyword(keywords::Auto)?;
+                self.expect_keyword(keywords::Trait)?;
                 IsAuto::Yes
             };
             let (ident, item_, extra_attrs) =
@@ -6485,8 +6485,8 @@ impl<'a> Parser<'a> {
             let is_auto = if self.eat_keyword(keywords::Trait) {
                 IsAuto::No
             } else {
-                self.eat_keyword(keywords::Auto);
-                self.eat_keyword(keywords::Trait);
+                self.expect_keyword(keywords::Auto)?;
+                self.expect_keyword(keywords::Trait)?;
                 IsAuto::Yes
             };
             // TRAIT ITEM

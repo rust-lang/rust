@@ -714,7 +714,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let (is_auto, unsafety) = match item.node {
         hir::ItemTrait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
-        hir::ItemTraitAlias(..) => (hir::IsAuto::No, hir::Unsafety::Normal),
+        hir::ItemTraitAlias(..) => (false, hir::Unsafety::Normal),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -1713,55 +1713,4 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some(_) => false,
         _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id)
     }
-}
-
-struct ImplTraitUniversalInfo<'hir> {
-    id: ast::NodeId,
-    def_id: DefId,
-    span: Span,
-    bounds: &'hir [hir::TyParamBound],
-}
-
-/// Take some possible list of arguments and return the DefIds of the ImplTraitUniversal
-/// arguments
-fn extract_universal_impl_trait_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               opt_inputs: Option<&'tcx [P<hir::Ty>]>)
-                                               -> Vec<ImplTraitUniversalInfo<'tcx>>
-{
-    // A visitor for simply collecting Universally quantified impl Trait arguments
-    struct ImplTraitUniversalVisitor<'tcx> {
-        items: Vec<&'tcx hir::Ty>
-    }
-
-    impl<'tcx> Visitor<'tcx> for ImplTraitUniversalVisitor<'tcx> {
-        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-            NestedVisitorMap::None
-        }
-
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-            if let hir::TyImplTraitUniversal(..) = ty.node {
-                self.items.push(ty);
-            }
-            intravisit::walk_ty(self, ty);
-        }
-    }
-
-    let mut visitor = ImplTraitUniversalVisitor { items: Vec::new() };
-
-    if let Some(inputs) = opt_inputs {
-        for t in inputs.iter() {
-            visitor.visit_ty(t);
-        }
-    }
-
-    visitor.items.into_iter().map(|ty| if let hir::TyImplTraitUniversal(_, ref bounds) = ty.node {
-        ImplTraitUniversalInfo {
-            id: ty.id,
-            def_id: tcx.hir.local_def_id(ty.id),
-            span: ty.span,
-            bounds: bounds
-        }
-    } else {
-        span_bug!(ty.span, "this type should be a universally quantified impl trait. this is a bug")
-    }).collect()
 }

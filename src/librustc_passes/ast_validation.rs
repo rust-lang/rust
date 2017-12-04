@@ -248,15 +248,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     // Auto traits cannot have generics, super traits nor contain items.
                     if generics.is_parameterized() {
                         struct_span_err!(self.session, item.span, E0567,
-                                        "Auto traits cannot have generic parameters").emit();
+                                        "auto traits cannot have generic parameters").emit();
                     }
                     if !bounds.is_empty() {
                         struct_span_err!(self.session, item.span, E0568,
-                                        "Auto traits cannot have predicates").emit();
+                                        "auto traits cannot have super traits").emit();
                     }
                     if !trait_items.is_empty() {
                         struct_span_err!(self.session, item.span, E0380,
-                                "Auto traits cannot have methods or associated items").emit();
+                                "auto traits cannot have methods or associated items").emit();
                     }
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
