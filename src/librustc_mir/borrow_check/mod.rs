@@ -655,8 +655,9 @@ enum WriteKind {
 /// - Take flow state into consideration in `is_assignable()` for local variables
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum LocalMutationIsAllowed {
+    Move,
     Yes,
-    No,
+    No
 }
 
 #[derive(Copy, Clone)]
@@ -946,7 +947,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     context,
                     (place, span),
                     (Deep, Write(WriteKind::Move)),
-                    LocalMutationIsAllowed::Yes,
+                    LocalMutationIsAllowed::Move,
                     flow_state,
                 );
 
@@ -1368,7 +1369,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let local = &self.mir.local_decls[local];
                 match local.mutability {
                     Mutability::Not => match is_local_mutation_allowed {
-                        LocalMutationIsAllowed::Yes => Ok(()),
+                        LocalMutationIsAllowed::Yes |
+                        LocalMutationIsAllowed::Move => Ok(()),
                         LocalMutationIsAllowed::No => Err(place),
                     },
                     Mutability::Mut => Ok(()),
@@ -1393,10 +1395,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
                                     hir::MutMutable => {
-                                        if self.is_upvar_field_projection(&proj.base).is_some() {
-                                            self.is_mutable(&proj.base, is_local_mutation_allowed)
-                                        } else {
-                                            self.is_unique(&proj.base)
+                                        match self.is_upvar_field_projection(&proj.base) {
+                                            Some(field) if {
+                                                self.mir.upvar_decls[field.index()].by_ref
+                                            } => {
+                                                self.is_mutable(&proj.base,
+                                                                is_local_mutation_allowed)
+                                            }
+                                            _ => self.is_unique(&proj.base)
                                         }
                                     }
                                 }
@@ -1412,7 +1418,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             }
                             // `Box<T>` owns its content, so mutable if its location is mutable
                             _ if base_ty.is_box() => {
-                                self.is_mutable(&proj.base, LocalMutationIsAllowed::No)
+                                self.is_mutable(&proj.base, is_local_mutation_allowed)
                             }
                             // Deref should only be for reference, pointers or boxes
                             _ => bug!("Deref of unexpected type: {:?}", base_ty),
@@ -1429,14 +1435,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                         if let Some(field) = field_projection {
                             let decl = &self.mir.upvar_decls[field.index()];
-
-                            return match decl.mutability {
-                                Mutability::Mut => self.is_unique(&proj.base),
-                                Mutability::Not => Err(place),
+                            debug!("decl.mutability={:?} local_mutation_is_allowed={:?} place={:?}",
+                                   decl, is_local_mutation_allowed, place);
+                            return match (decl.mutability, is_local_mutation_allowed) {
+                                (Mutability::Not, LocalMutationIsAllowed::No) |
+                                (Mutability::Not, LocalMutationIsAllowed::Yes) => Err(place),
+                                (Mutability::Not, LocalMutationIsAllowed::Move) |
+                                (Mutability::Mut, _) => self.is_unique(&proj.base),
                             };
                         }
 
-                        self.is_mutable(&proj.base, LocalMutationIsAllowed::No)
+                        self.is_mutable(&proj.base, is_local_mutation_allowed)
                     }
                 }
             }
@@ -1450,9 +1459,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // Local variables are unique
                 Ok(())
             }
-            Place::Static(..) => {
-                // Static variables are not
-                Err(place)
+            Place::Static(ref static_) => {
+                if !self.tcx.is_static_mut(static_.def_id) {
+                    Err(place)
+                } else {
+                    Ok(())
+                }
             }
             Place::Projection(ref proj) => {
                 match proj.elem {
