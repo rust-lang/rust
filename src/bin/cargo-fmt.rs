@@ -134,7 +134,12 @@ fn format_crate(
     verbosity: Verbosity,
     strategy: &CargoFmtStrategy,
 ) -> Result<ExitStatus, io::Error> {
-    let targets = get_targets(strategy)?;
+    let rustfmt_args = get_fmt_args();
+    let targets = if rustfmt_args.iter().any(|s| s == "--dump-default-config") {
+        HashSet::new()
+    } else {
+        get_targets(strategy)?
+    };
 
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets
@@ -147,7 +152,7 @@ fn format_crate(
         .map(|t| t.path)
         .collect();
 
-    format_files(&files, &get_fmt_args(), verbosity)
+    format_files(&files, &rustfmt_args, verbosity)
 }
 
 fn get_fmt_args() -> Vec<String> {
