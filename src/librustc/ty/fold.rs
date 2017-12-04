@@ -40,6 +40,7 @@
 //! and does not need to visit anything else.
 
 use middle::const_val::ConstVal;
+use hir::def_id::DefId;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 use std::fmt;
@@ -246,7 +247,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
                 match *r {
-                    ty::ReLateBound(debruijn, _) if debruijn.depth < self.current_depth => {
+                    ty::ReLateBound(debruijn, _) if debruijn.depth <= self.current_depth => {
                         /* ignore bound regions */
                     }
                     _ => (self.callback)(r),
@@ -329,6 +330,14 @@ struct RegionReplacer<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    /// Replace all regions bound by the given `Binder` with the
+    /// results returned by the closure; the closure is expected to
+    /// return a free region (relative to this binder), and hence the
+    /// binder is removed in the return type. The closure is invoked
+    /// once for each unique `BoundRegion`; multiple references to the
+    /// same `BoundRegion` will reuse the previous result.  A map is
+    /// returned at the end with each bound region and the free region
+    /// that replaced it.
     pub fn replace_late_bound_regions<T,F>(self,
         value: &Binder<T>,
         mut f: F)
@@ -339,6 +348,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let mut replacer = RegionReplacer::new(self, &mut f);
         let result = value.skip_binder().fold_with(&mut replacer);
         (result, replacer.map)
+    }
+
+    /// Replace any late-bound regions bound in `value` with
+    /// free variants attached to `all_outlive_scope`.
+    pub fn liberate_late_bound_regions<T>(
+        &self,
+        all_outlive_scope: DefId,
+        value: &ty::Binder<T>
+    ) -> T
+    where T: TypeFoldable<'tcx> {
+        self.replace_late_bound_regions(value, |br| {
+            self.mk_region(ty::ReFree(ty::FreeRegion {
+                scope: all_outlive_scope,
+                bound_region: br
+            }))
+        }).0
     }
 
     /// Flattens two binding levels into one. So `for<'a> for<'b> Foo`
@@ -362,16 +387,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         });
         Binder(value)
-    }
-
-    pub fn no_late_bound_regions<T>(self, value: &Binder<T>) -> Option<T>
-        where T : TypeFoldable<'tcx>
-    {
-        if value.0.has_escaping_regions() {
-            None
-        } else {
-            Some(value.0.clone())
-        }
     }
 
     /// Returns a set of all late-bound regions that are constrained

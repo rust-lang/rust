@@ -270,7 +270,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let impl_fty = tcx.mk_fn_ptr(ty::Binder(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
-        let trait_sig = inh.liberate_late_bound_regions(
+        let trait_sig = tcx.liberate_late_bound_regions(
             impl_m.def_id,
             &tcx.fn_sig(trait_m.def_id));
         let trait_sig =

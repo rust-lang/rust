@@ -18,7 +18,7 @@ pub use ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
 
 use hir::def_id::DefId;
-use middle::free_region::{FreeRegionMap, RegionRelations};
+use middle::free_region::RegionRelations;
 use middle::region;
 use middle::lang_items;
 use mir::tcx::PlaceTy;
@@ -44,6 +44,7 @@ use self::higher_ranked::HrMatchResult;
 use self::region_constraints::{RegionConstraintCollector, RegionSnapshot};
 use self::region_constraints::{GenericKind, VerifyBound, RegionConstraintData, VarOrigins};
 use self::lexical_region_resolve::LexicalRegionResolutions;
+use self::outlives::env::OutlivesEnvironment;
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
@@ -58,14 +59,12 @@ pub mod lattice;
 mod lub;
 pub mod region_constraints;
 mod lexical_region_resolve;
-mod outlives;
+pub mod outlives;
 pub mod resolve;
 mod freshen;
 mod sub;
 pub mod type_variable;
 pub mod unify_key;
-
-pub use self::outlives::env::OutlivesEnvironment;
 
 #[must_use]
 pub struct InferOk<'tcx, T> {
@@ -1157,7 +1156,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn resolve_regions_and_report_errors(&self,
                                              region_context: DefId,
                                              region_map: &region::ScopeTree,
-                                             free_regions: &FreeRegionMap<'tcx>) {
+                                             outlives_env: &OutlivesEnvironment<'tcx>) {
         assert!(self.is_tainted_by_errors() || self.region_obligations.borrow().is_empty(),
                 "region_obligations not empty: {:#?}",
                 self.region_obligations.borrow());
@@ -1165,7 +1164,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let region_rels = &RegionRelations::new(self.tcx,
                                                 region_context,
                                                 region_map,
-                                                free_regions);
+                                                outlives_env.free_region_map());
         let (var_origins, data) = self.region_constraints.borrow_mut()
                                                          .take()
                                                          .expect("regions already resolved")

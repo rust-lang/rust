@@ -395,15 +395,9 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let tcx = ccx.tcx();
             let sig = tcx.fn_sig(def_id).subst(tcx, substs.substs);
 
-            let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
-            let env_ty = match substs.closure_kind(def_id, tcx) {
-                ty::ClosureKind::Fn => tcx.mk_imm_ref(tcx.mk_region(env_region), ty),
-                ty::ClosureKind::FnMut => tcx.mk_mut_ref(tcx.mk_region(env_region), ty),
-                ty::ClosureKind::FnOnce => ty,
-            };
-
+            let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
             sig.map_bound(|sig| tcx.mk_fn_sig(
-                iter::once(env_ty).chain(sig.inputs().iter().cloned()),
+                iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
                 sig.output(),
                 sig.variadic,
                 sig.unsafety,

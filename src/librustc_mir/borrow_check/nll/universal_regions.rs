@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Code to extract the free regions declared on a function and the
-//! relationships between them. For example:
+//! Code to extract the universally quantified regions declared on a
+//! function and the relationships between them. For example:
 //!
 //! ```
 //! fn foo<'a, 'b, 'c: 'b>() { }
@@ -24,29 +24,29 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::middle::free_region::FreeRegionMap;
+use rustc::infer::outlives::free_region_map::FreeRegionMap;
 use rustc::ty::{self, RegionVid};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
 #[derive(Debug)]
-pub struct FreeRegions<'tcx> {
-    /// Given a free region defined on this function (either early- or
-    /// late-bound), this maps it to its internal region index. When
-    /// the region context is created, the first N variables will be
-    /// created based on these indices.
+pub struct UniversalRegions<'tcx> {
+    /// Given a universally quantified region defined on this function
+    /// (either early- or late-bound), this maps it to its internal
+    /// region index. When the region context is created, the first N
+    /// variables will be created based on these indices.
     pub indices: FxHashMap<ty::Region<'tcx>, RegionVid>,
 
-    /// The map from the typeck tables telling us how to relate free regions.
+    /// The map from the typeck tables telling us how to relate universal regions.
     pub free_region_map: &'tcx FreeRegionMap<'tcx>,
 }
 
-pub fn free_regions<'a, 'gcx, 'tcx>(
+pub fn universal_regions<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     item_def_id: DefId,
-) -> FreeRegions<'tcx> {
-    debug!("free_regions(item_def_id={:?})", item_def_id);
+) -> UniversalRegions<'tcx> {
+    debug!("universal_regions(item_def_id={:?})", item_def_id);
 
     let mut indices = FxHashMap();
 
@@ -76,15 +76,15 @@ pub fn free_regions<'a, 'gcx, 'tcx>(
             }
         });
 
-    debug!("free_regions: indices={:#?}", indices);
+    debug!("universal_regions: indices={:#?}", indices);
 
-    FreeRegions { indices, free_region_map: &tables.free_region_map }
+    UniversalRegions { indices, free_region_map: &tables.free_region_map }
 }
 
 fn insert_free_region<'tcx>(
-    free_regions: &mut FxHashMap<ty::Region<'tcx>, RegionVid>,
+    universal_regions: &mut FxHashMap<ty::Region<'tcx>, RegionVid>,
     region: ty::Region<'tcx>,
 ) {
-    let next = RegionVid::new(free_regions.len());
-    free_regions.entry(region).or_insert(next);
+    let next = RegionVid::new(universal_regions.len());
+    universal_regions.entry(region).or_insert(next);
 }

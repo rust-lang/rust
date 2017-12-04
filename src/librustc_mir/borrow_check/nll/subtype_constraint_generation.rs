@@ -15,7 +15,7 @@ use rustc::ty;
 use transform::type_check::MirTypeckRegionConstraints;
 use transform::type_check::OutlivesSet;
 
-use super::free_regions::FreeRegions;
+use super::universal_regions::UniversalRegions;
 use super::region_infer::RegionInferenceContext;
 
 /// When the MIR type-checker executes, it validates all the types in
@@ -25,20 +25,20 @@ use super::region_infer::RegionInferenceContext;
 /// them into the NLL `RegionInferenceContext`.
 pub(super) fn generate<'tcx>(
     regioncx: &mut RegionInferenceContext<'tcx>,
-    free_regions: &FreeRegions<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
     mir: &Mir<'tcx>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
 ) {
     SubtypeConstraintGenerator {
         regioncx,
-        free_regions,
+        universal_regions,
         mir,
     }.generate(constraints);
 }
 
 struct SubtypeConstraintGenerator<'cx, 'tcx: 'cx> {
     regioncx: &'cx mut RegionInferenceContext<'tcx>,
-    free_regions: &'cx FreeRegions<'tcx>,
+    universal_regions: &'cx UniversalRegions<'tcx>,
     mir: &'cx Mir<'tcx>,
 }
 
@@ -102,11 +102,11 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
         // Every region that we see in the constraints came from the
         // MIR or from the parameter environment. If the former, it
         // will be a region variable.  If the latter, it will be in
-        // the set of free regions *somewhere*.
+        // the set of universal regions *somewhere*.
         if let ty::ReVar(vid) = r {
             *vid
         } else {
-            self.free_regions.indices[&r]
+            self.universal_regions.indices[&r]
         }
     }
 }

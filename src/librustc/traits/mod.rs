@@ -17,9 +17,9 @@ pub use self::ObligationCauseCode::*;
 
 use hir;
 use hir::def_id::DefId;
+use infer::outlives::env::OutlivesEnvironment;
 use middle::const_val::ConstEvalErr;
 use middle::region;
-use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
 use ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
@@ -554,9 +554,13 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             predicates);
 
         let region_scope_tree = region::ScopeTree::default();
-        let free_regions = FreeRegionMap::new();
 
-        infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &free_regions);
+        // We can use the `elaborated_env` here; the region code only
+        // cares about declarations like `'a: 'b`.
+        let outlives_env = OutlivesEnvironment::new(elaborated_env);
+
+        infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &outlives_env);
+
         let predicates = match infcx.fully_resolve(&predicates) {
             Ok(predicates) => predicates,
             Err(fixup_err) => {

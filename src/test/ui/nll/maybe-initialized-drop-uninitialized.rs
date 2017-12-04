@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Various code related to computing outlives relations.
+//compile-flags: -Z emit-end-regions -Zborrowck=mir -Z nll
 
-pub mod env;
-pub mod free_region_map;
-pub mod bounds;
-mod obligations;
+#![allow(warnings)]
+
+struct Wrap<'p> { p: &'p mut i32 }
+
+impl<'p> Drop for Wrap<'p> {
+    fn drop(&mut self) {
+        *self.p += 1;
+    }
+}
+
+fn main() {
+    let mut x = 0;
+    let wrap = Wrap { p: &mut x };
+    std::mem::drop(wrap);
+    x = 1; // OK, drop is inert
+}

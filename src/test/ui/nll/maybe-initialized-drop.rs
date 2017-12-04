@@ -8,17 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod borrowck_errors;
-pub mod elaborate_drops;
-pub mod def_use;
-pub mod patch;
+//compile-flags: -Z emit-end-regions -Zborrowck=mir -Z nll
 
-mod alignment;
-mod graphviz;
-pub(crate) mod pretty;
-pub mod liveness;
+#![allow(warnings)]
 
-pub use self::alignment::is_disaligned;
-pub use self::pretty::{dump_enabled, dump_mir, write_mir_pretty, PassWhere};
-pub use self::graphviz::{write_mir_graphviz};
-pub use self::graphviz::write_node_label as write_graphviz_node_label;
+struct Wrap<'p> { p: &'p mut i32 }
+
+impl<'p> Drop for Wrap<'p> {
+    fn drop(&mut self) {
+        *self.p += 1;
+    }
+}
+
+fn main() {
+    let mut x = 0;
+    let wrap = Wrap { p: &mut x };
+    x = 1; //~ ERROR cannot assign to `x` because it is borrowed [E0506]
+}

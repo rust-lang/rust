@@ -21,8 +21,8 @@ use rustc_data_structures::indexed_vec::{IndexVec};
 
 use dataflow::{BitDenotation, BlockSets, DataflowOperator};
 pub use dataflow::indexes::BorrowIndex;
-use transform::nll::region_infer::RegionInferenceContext;
-use transform::nll::ToRegionVid;
+use borrow_check::nll::region_infer::RegionInferenceContext;
+use borrow_check::nll::ToRegionVid;
 
 use syntax_pos::Span;
 
@@ -38,7 +38,7 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     location_map: FxHashMap<Location, BorrowIndex>,
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
     region_span_map: FxHashMap<RegionKind, Span>,
-    nonlexical_regioncx: Option<&'a RegionInferenceContext<'tcx>>,
+    nonlexical_regioncx: Option<RegionInferenceContext<'tcx>>,
 }
 
 // temporarily allow some dead fields: `kind` and `region` will be
@@ -69,7 +69,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
-               nonlexical_regioncx: Option<&'a RegionInferenceContext<'tcx>>)
+               nonlexical_regioncx: Option<RegionInferenceContext<'tcx>>)
                -> Self {
         let mut visitor = GatherBorrows {
             tcx,
@@ -132,10 +132,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         &self.borrows[idx].location
     }
 
-    pub fn nonlexical_regioncx(&self) -> Option<&'a RegionInferenceContext<'tcx>> {
-        self.nonlexical_regioncx
-    }
-
     /// Returns the span for the "end point" given region. This will
     /// return `None` if NLL is enabled, since that concept has no
     /// meaning there.  Otherwise, return region span if it exists and
@@ -156,7 +152,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     fn kill_loans_out_of_scope_at_location(&self,
                                            sets: &mut BlockSets<BorrowIndex>,
                                            location: Location) {
-        if let Some(regioncx) = self.nonlexical_regioncx {
+        if let Some(ref regioncx) = self.nonlexical_regioncx {
             for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
                 let borrow_region = borrow_data.region.to_region_vid();
                 if !regioncx.region_contains_point(borrow_region, location) {

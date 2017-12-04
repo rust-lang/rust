@@ -17,34 +17,53 @@ use std::collections::BTreeSet;
 use transform::MirSource;
 use transform::type_check;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
+use borrow_check::FlowInProgress;
+use dataflow::MaybeInitializedLvals;
+use dataflow::move_paths::MoveData;
 
 use util as mir_util;
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
 mod subtype_constraint_generation;
-mod free_regions;
+mod universal_regions;
+use self::universal_regions::UniversalRegions;
 
 pub(crate) mod region_infer;
 use self::region_infer::RegionInferenceContext;
 
 mod renumber;
 
+/// Rewrites the regions in the MIR to use NLL variables, also
+/// scraping out the set of free regions (e.g., region parameters)
+/// declared on the function. That set will need to be given to
+/// `compute_regions`.
+pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
+    def_id: DefId,
+    mir: &mut Mir<'tcx>,
+) -> UniversalRegions<'tcx> {
+    // Compute named region information.
+    let universal_regions = universal_regions::universal_regions(infcx, def_id);
+
+    // Replace all regions with fresh inference variables.
+    renumber::renumber_mir(infcx, &universal_regions, mir);
+
+    universal_regions
+}
+
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
-pub fn compute_regions<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
+    universal_regions: UniversalRegions<'tcx>,
+    mir: &Mir<'tcx>,
     param_env: ty::ParamEnv<'gcx>,
-    mir: &mut Mir<'tcx>,
+    flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    move_data: &MoveData<'tcx>,
 ) -> RegionInferenceContext<'tcx> {
-    // Compute named region information.
-    let free_regions = &free_regions::free_regions(infcx, def_id);
-
-    // Replace all regions with fresh inference variables.
-    renumber::renumber_mir(infcx, free_regions, mir);
-
     // Run the MIR type-checker.
     let mir_node_id = infcx.tcx.hir.as_local_node_id(def_id).unwrap();
     let constraint_sets = &type_check::type_check(infcx, mir_node_id, param_env, mir);
@@ -52,8 +71,13 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
     // Create the region inference context, taking ownership of the region inference
     // data that was contained in `infcx`.
     let var_origins = infcx.take_region_var_origins();
-    let mut regioncx = RegionInferenceContext::new(var_origins, free_regions, mir);
-    subtype_constraint_generation::generate(&mut regioncx, free_regions, mir, constraint_sets);
+    let mut regioncx = RegionInferenceContext::new(var_origins, &universal_regions, mir);
+    subtype_constraint_generation::generate(
+        &mut regioncx,
+        &universal_regions,
+        mir,
+        constraint_sets,
+    );
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -75,7 +99,15 @@ pub fn compute_regions<'a, 'gcx, 'tcx>(
     };
 
     // Generate non-subtyping constraints.
-    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir, param_env, liveness);
+    constraint_generation::generate_constraints(
+        infcx,
+        &mut regioncx,
+        &mir,
+        param_env,
+        liveness,
+        flow_inits,
+        move_data,
+    );
 
     // Solve the region constraints.
     regioncx.solve(infcx, &mir);
@@ -133,7 +165,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => for region in regioncx.regions() {
-                writeln!(out, "| {:?}: {:?}", region, regioncx.region_value(region))?;
+                writeln!(out, "| {:?}: {}", region, regioncx.region_value_str(region))?;
             },
 
             // Before each basic block, dump out the values
@@ -143,7 +175,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                 writeln!(out, "    | Live variables on entry to {:?}: {}", bb, s)?;
             }
 
-            PassWhere::InCFG(location) => {
+            PassWhere::BeforeLocation(location) => {
                 let s = live_variable_set(
                     &regular_liveness_per_location[&location],
                     &drop_liveness_per_location[&location],
@@ -151,7 +183,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                 writeln!(out, "            | Live variables at {:?}: {}", location, s)?;
             }
 
-            PassWhere::AfterCFG => {}
+            PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
         }
         Ok(())
     });

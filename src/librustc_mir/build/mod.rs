@@ -100,7 +100,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
-                    Some((closure_self_ty(tcx, id, body_id), None))
+                    Some((liberated_closure_env_ty(tcx, id, body_id), None))
                 }
                 ty::TyGenerator(..) => {
                     let gen_ty = tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
@@ -246,10 +246,10 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
-pub fn closure_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                       closure_expr_id: ast::NodeId,
-                                       body_id: hir::BodyId)
-                                       -> Ty<'tcx> {
+fn liberated_closure_env_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                            closure_expr_id: ast::NodeId,
+                                            body_id: hir::BodyId)
+                                            -> Ty<'tcx> {
     let closure_expr_hir_id = tcx.hir.node_to_hir_id(closure_expr_id);
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
 
@@ -258,24 +258,8 @@ pub fn closure_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         _ => bug!("closure expr does not have closure type: {:?}", closure_ty)
     };
 
-    let region = ty::ReFree(ty::FreeRegion {
-        scope: closure_def_id,
-        bound_region: ty::BoundRegion::BrEnv,
-    });
-    let region = tcx.mk_region(region);
-
-    match closure_substs.closure_kind_ty(closure_def_id, tcx).to_opt_closure_kind().unwrap() {
-        ty::ClosureKind::Fn =>
-            tcx.mk_ref(region,
-                       ty::TypeAndMut { ty: closure_ty,
-                                        mutbl: hir::MutImmutable }),
-        ty::ClosureKind::FnMut =>
-            tcx.mk_ref(region,
-                       ty::TypeAndMut { ty: closure_ty,
-                                        mutbl: hir::MutMutable }),
-        ty::ClosureKind::FnOnce =>
-            closure_ty
-    }
+    let closure_env_ty = tcx.closure_env_ty(closure_def_id, closure_substs).unwrap();
+    tcx.liberate_late_bound_regions(closure_def_id, &closure_env_ty)
 }
 
 struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {

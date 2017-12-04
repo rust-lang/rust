@@ -604,7 +604,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         predicates
             .into_iter()
             .filter_map(|p| p.as_ref().to_opt_type_outlives())
-            .filter_map(|p| self.tcx().no_late_bound_regions(&p))
+            .filter_map(|p| p.no_late_bound_regions())
             .filter(|p| p.0 == ty)
             .map(|p| p.1)
             .collect()
