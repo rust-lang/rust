@@ -1184,18 +1184,29 @@ impl RegionKind {
 
         match *self {
             ty::ReVar(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
                 flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::ReSkolemized(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
                 flags = flags | TypeFlags::HAS_RE_SKOL;
                 flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::ReLateBound(..) => { }
-            ty::ReEarlyBound(..) => { flags = flags | TypeFlags::HAS_RE_EARLY_BOUND; }
-            ty::ReStatic | ty::ReErased => { }
-            _ => { flags = flags | TypeFlags::HAS_FREE_REGIONS; }
+            ty::ReEarlyBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_RE_EARLY_BOUND;
+            }
+            ty::ReEmpty |
+            ty::ReStatic |
+            ty::ReFree { .. } |
+            ty::ReScope { .. } => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+            }
+            ty::ReErased => {
+            }
         }
 
         match *self {

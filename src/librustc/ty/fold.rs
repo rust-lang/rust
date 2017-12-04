@@ -97,14 +97,19 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_closure_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
     }
-    fn has_erasable_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_EARLY_BOUND |
-                            TypeFlags::HAS_RE_INFER |
-                            TypeFlags::HAS_FREE_REGIONS)
+    /// "Free" regions in this context means that it has any region
+    /// that is not (a) erased or (b) late-bound.
+    fn has_free_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
+
+    /// True if there any any un-erased free regions.
+    fn has_erasable_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+    }
+
     fn is_normalized_for_trans(&self) -> bool {
-        !self.has_type_flags(TypeFlags::HAS_RE_EARLY_BOUND |
-                             TypeFlags::HAS_RE_INFER |
+        !self.has_type_flags(TypeFlags::HAS_RE_INFER |
                              TypeFlags::HAS_FREE_REGIONS |
                              TypeFlags::HAS_TY_INFER |
                              TypeFlags::HAS_PARAMS |
