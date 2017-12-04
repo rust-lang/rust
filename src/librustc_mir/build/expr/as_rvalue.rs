@@ -87,7 +87,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let is_min = this.temp(bool_ty, expr_span);
 
                     this.cfg.push_assign(block, source_info, &is_min,
-                                         Rvalue::BinaryOp(BinOp::Eq, arg.clone(), minval));
+                                         Rvalue::BinaryOp(BinOp::Eq, arg.to_copy(), minval));
 
                     let err = ConstMathErr::Overflow(Op::Neg);
                     block = this.assert(block, Operand::Move(is_min), false,
@@ -346,7 +346,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let is_zero = self.temp(bool_ty, span);
                 let zero = self.zero_literal(span, ty);
                 self.cfg.push_assign(block, source_info, &is_zero,
-                                     Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), zero));
+                                     Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), zero));
 
                 block = self.assert(block, Operand::Move(is_zero), false,
                                     AssertMessage::Math(zero_err), span);
@@ -364,9 +364,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // this does (rhs == -1) & (lhs == MIN). It could short-circuit instead
 
                     self.cfg.push_assign(block, source_info, &is_neg_1,
-                                         Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), neg_1));
+                                         Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), neg_1));
                     self.cfg.push_assign(block, source_info, &is_min,
-                                         Rvalue::BinaryOp(BinOp::Eq, lhs.clone(), min));
+                                         Rvalue::BinaryOp(BinOp::Eq, lhs.to_copy(), min));
 
                     let is_neg_1 = Operand::Move(is_neg_1);
                     let is_min = Operand::Move(is_min);
