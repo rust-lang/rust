@@ -43,6 +43,7 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+    local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
     region_span_map: FxHashMap<RegionKind, Span>,
     nonlexical_regioncx: Option<RegionInferenceContext<'tcx>>,
 }
@@ -89,6 +90,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             idx_vec: IndexVec::new(),
             location_map: FxHashMap(),
             region_map: FxHashMap(),
+            local_map: FxHashMap(),
             region_span_map: FxHashMap()
         };
         visitor.visit_mir(mir);
@@ -99,6 +101,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                          root_scope,
                          location_map: visitor.location_map,
                          region_map: visitor.region_map,
+                         local_map: visitor.local_map,
                          region_span_map: visitor.region_span_map,
                          nonlexical_regioncx };
 
@@ -108,6 +111,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
             location_map: FxHashMap<Location, BorrowIndex>,
             region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+            local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
             region_span_map: FxHashMap<RegionKind, Span>,
         }
 
@@ -115,6 +119,14 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             fn visit_rvalue(&mut self,
                             rvalue: &mir::Rvalue<'tcx>,
                             location: mir::Location) {
+                fn root_local(mut p: &mir::Place<'_>) -> Option<mir::Local> {
+                    loop { match p {
+                        mir::Place::Projection(pi) => p = &pi.base,
+                        mir::Place::Static(_) => return None,
+                        mir::Place::Local(l) => return Some(*l)
+                    }}
+                }
+
                 if let mir::Rvalue::Ref(region, kind, ref place) = *rvalue {
                     if is_unsafe_place(self.tcx, self.mir, place) { return; }
 
@@ -123,8 +135,14 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     };
                     let idx = self.idx_vec.push(borrow);
                     self.location_map.insert(location, idx);
+
                     let borrows = self.region_map.entry(region).or_insert(FxHashSet());
                     borrows.insert(idx);
+
+                    if let Some(local) = root_local(place) {
+                        let borrows = self.local_map.entry(local).or_insert(FxHashSet());
+                        borrows.insert(idx);
+                    }
                 }
             }
 
@@ -213,7 +231,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::EndRegion(region_scope) => {
                 if let Some(borrow_indexes) = self.region_map.get(&ReScope(region_scope)) {
                     assert!(self.nonlexical_regioncx.is_none());
-                    for idx in borrow_indexes { sets.kill(&idx); }
+                    sets.kill_all(borrow_indexes);
                 } else {
                     // (if there is no entry, then there are no borrows to be tracked)
                 }
@@ -238,10 +256,19 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 }
             }
 
+            mir::StatementKind::StorageDead(local) => {
+                // Make sure there are no remaining borrows for locals that
+                // are gone out of scope.
+                //
+                // FIXME: expand this to variables that are assigned over.
+                if let Some(borrow_indexes) = self.local_map.get(&local) {
+                    sets.kill_all(borrow_indexes);
+                }
+            }
+
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::SetDiscriminant { .. } |
             mir::StatementKind::StorageLive(..) |
-            mir::StatementKind::StorageDead(..) |
             mir::StatementKind::Validate(..) |
             mir::StatementKind::Nop => {}
 
