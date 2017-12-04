@@ -79,7 +79,7 @@ error[E0597]: `a` does not live long enough
 49 | }
    | - borrowed value only lives until here
    |
-   = note: borrowed value must be valid for lifetime '_#1r...
+   = note: borrowed value must be valid for lifetime '_#2r...
 
 error: aborting due to 2 previous errors
 

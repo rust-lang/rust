@@ -51,13 +51,19 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     body_id: ast::NodeId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
+    implicit_region_bound: ty::Region<'tcx>,
     liveness: &LivenessResults,
     flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> MirTypeckRegionConstraints<'tcx> {
-    type_check_internal(infcx, body_id, param_env, mir, &mut |cx| {
-        liveness::generate(cx, mir, liveness, flow_inits, move_data)
-    })
+    type_check_internal(
+        infcx,
+        body_id,
+        param_env,
+        mir,
+        Some(implicit_region_bound),
+        &mut |cx| liveness::generate(cx, mir, liveness, flow_inits, move_data),
+    )
 }
 
 fn type_check_internal<'gcx, 'tcx>(
@@ -65,9 +71,10 @@ fn type_check_internal<'gcx, 'tcx>(
     body_id: ast::NodeId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
+    implicit_region_bound: Option<ty::Region<'tcx>>,
     extra: &mut FnMut(&mut TypeChecker<'_, 'gcx, 'tcx>),
 ) -> MirTypeckRegionConstraints<'tcx> {
-    let mut checker = TypeChecker::new(infcx, body_id, param_env);
+    let mut checker = TypeChecker::new(infcx, body_id, param_env, implicit_region_bound);
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, mir);
         verifier.visit_mir(mir);
@@ -535,6 +542,7 @@ struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     param_env: ty::ParamEnv<'gcx>,
     last_span: Span,
     body_id: ast::NodeId,
+    implicit_region_bound: Option<ty::Region<'tcx>>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     constraints: MirTypeckRegionConstraints<'tcx>,
 }
@@ -588,12 +596,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
         body_id: ast::NodeId,
         param_env: ty::ParamEnv<'gcx>,
+        implicit_region_bound: Option<ty::Region<'tcx>>,
     ) -> Self {
         TypeChecker {
             infcx,
             last_span: DUMMY_SP,
             body_id,
             param_env,
+            implicit_region_bound,
             reported_errors: FxHashSet(),
             constraints: MirTypeckRegionConstraints::default(),
         }
@@ -618,8 +628,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
         }
 
-        self.infcx
-            .process_registered_region_obligations(&[], None, self.param_env, self.body_id);
+        self.infcx.process_registered_region_obligations(
+            &[],
+            self.implicit_region_bound,
+            self.param_env,
+            self.body_id,
+        );
 
         let data = self.infcx.take_and_reset_region_constraints();
         if !data.is_empty() {
@@ -1501,7 +1515,7 @@ impl MirPass for TypeckMir {
         }
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let _ = type_check_internal(&infcx, id, param_env, mir, &mut |_| ());
+            let _ = type_check_internal(&infcx, id, param_env, mir, None, &mut |_| ());
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)

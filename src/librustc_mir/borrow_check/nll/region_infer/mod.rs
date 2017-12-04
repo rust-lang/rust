@@ -439,6 +439,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// have no evidence that `'b` outlives `'a`, so we want to report
     /// an error.
     fn check_type_tests(&self, infcx: &InferCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) {
+        let tcx = infcx.tcx;
+
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
@@ -452,7 +454,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             // Oh the humanity. Obviously we will do better than this error eventually.
-            infcx.tcx.sess.span_err(
+            tcx.sess.span_err(
                 type_test.span,
                 &format!("failed type test: {:?}", type_test),
             );

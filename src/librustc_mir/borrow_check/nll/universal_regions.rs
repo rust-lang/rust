@@ -45,6 +45,11 @@ pub struct UniversalRegions<'tcx> {
     /// The vid assigned to `'static`
     pub fr_static: RegionVid,
 
+    /// A special region vid created to represent the current MIR fn
+    /// body.  It will outlive the entire CFG but it will not outlive
+    /// any other universal regions.
+    pub fr_fn_body: RegionVid,
+
     /// We create region variables such that they are ordered by their
     /// `RegionClassification`. The first block are globals, then
     /// externals, then locals. So things from:
@@ -408,6 +413,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         let first_local_index = self.infcx.num_region_vars();
         let inputs_and_output = self.infcx
             .replace_bound_regions_with_nll_infer_vars(FR, &bound_inputs_and_output);
+        let fr_fn_body = self.infcx.next_nll_region_var(FR).to_region_vid();
         let num_universals = self.infcx.num_region_vars();
 
         // Insert the facts we know from the predicates. Why? Why not.
@@ -419,12 +425,16 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             self.add_implied_bounds(&indices, ty);
         }
 
-        // Finally, outlives is reflexive, and static outlives every
-        // other free region.
+        // Finally:
+        // - outlives is reflexive, so `'r: 'r` for every region `'r`
+        // - `'static: 'r` for every region `'r`
+        // - `'r: 'fn_body` for every (other) universally quantified
+        //   region `'r`, all of which are provided by our caller
         for fr in (FIRST_GLOBAL_INDEX..num_universals).map(RegionVid::new) {
             debug!("build: relating free region {:?} to itself and to 'static", fr);
             self.relations.relate_universal_regions(fr, fr);
             self.relations.relate_universal_regions(fr_static, fr);
+            self.relations.relate_universal_regions(fr, fr_fn_body);
         }
 
         let (output_ty, input_tys) = inputs_and_output.split_last().unwrap();
@@ -445,6 +455,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         UniversalRegions {
             indices,
             fr_static,
+            fr_fn_body,
             first_extern_index,
             first_local_index,
             num_universals,
