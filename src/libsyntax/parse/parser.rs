@@ -4037,14 +4037,14 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(keywords::Crate) && self.look_ahead(1, |t| t != &token::ModSep)
     }
 
-    fn eat_auto_trait(&mut self) -> bool {
-        if self.token.is_keyword(keywords::Auto)
-            && self.look_ahead(1, |t| t.is_keyword(keywords::Trait))
-        {
-            self.eat_keyword(keywords::Auto) && self.eat_keyword(keywords::Trait)
-        } else {
-            false
-        }
+    fn is_auto_trait_item(&mut self) -> bool {
+        // auto trait
+        (self.token.is_keyword(keywords::Auto)
+            && self.look_ahead(1, |t| t.is_keyword(keywords::Trait)))
+        || // unsafe auto trait
+        (self.token.is_keyword(keywords::Unsafe) &&
+         self.look_ahead(1, |t| t.is_keyword(keywords::Auto)) &&
+         self.look_ahead(2, |t| t.is_keyword(keywords::Trait)))
     }
 
     fn is_defaultness(&self) -> bool {
@@ -4147,7 +4147,8 @@ impl<'a> Parser<'a> {
                 node: StmtKind::Item(macro_def),
                 span: lo.to(self.prev_span),
             }
-        // Starts like a simple path, but not a union item or item with `crate` visibility.
+        // Starts like a simple path, being careful to avoid contextual keywords
+        // such as a union items, item with `crate` visibility or auto trait items.
         // Our goal here is to parse an arbitrary path `a::b::c` but not something that starts
         // like a path (1 token), but it fact not a path.
         // `union::b::c` - path, `union U { ... }` - not a path.
@@ -4155,7 +4156,8 @@ impl<'a> Parser<'a> {
         } else if self.token.is_path_start() &&
                   !self.token.is_qpath_start() &&
                   !self.is_union_item() &&
-                  !self.is_crate_vis() {
+                  !self.is_crate_vis() &&
+                  !self.is_auto_trait_item() {
             let pth = self.parse_path(PathStyle::Expr)?;
 
             if !self.eat(&token::Not) {
@@ -6314,7 +6316,8 @@ impl<'a> Parser<'a> {
             let is_auto = if self.eat_keyword(keywords::Trait) {
                 IsAuto::No
             } else {
-                self.eat_auto_trait();
+                self.eat_keyword(keywords::Auto);
+                self.eat_keyword(keywords::Trait);
                 IsAuto::Yes
             };
             let (ident, item_, extra_attrs) =
@@ -6428,7 +6431,8 @@ impl<'a> Parser<'a> {
             let is_auto = if self.eat_keyword(keywords::Trait) {
                 IsAuto::No
             } else {
-                self.eat_auto_trait();
+                self.eat_keyword(keywords::Auto);
+                self.eat_keyword(keywords::Trait);
                 IsAuto::Yes
             };
             // TRAIT ITEM
