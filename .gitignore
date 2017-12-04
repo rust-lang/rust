@@ -106,3 +106,5 @@ version.texi
 
 no_llvm_build
 
+/git/
+/registry/
