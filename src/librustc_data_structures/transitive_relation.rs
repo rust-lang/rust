@@ -303,7 +303,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     /// Given an element A, returns the maximal set {B} of elements B
     /// such that
     ///
-    /// - A != A
+    /// - A != B
     /// - A R B is true
     /// - for each i, j: B[i] R B[j] does not hold
     ///
