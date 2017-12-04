@@ -11,9 +11,9 @@
 #![feature(optin_builtin_traits)]
 
 auto trait Generic<T> {}
-//~^ Auto traits cannot have type parameters [E0567]
+//~^ auto traits cannot have generic parameters [E0567]
 auto trait Bound : Copy {}
-//~^ Auto traits cannot have predicates [E0568]
+//~^ auto traits cannot have super traits [E0568]
 auto trait MyTrait { fn foo() {} }
-//~^ Auto traits cannot have methods or associated items [E0380]
+//~^ auto traits cannot have methods or associated items [E0380]
 fn main() {}
