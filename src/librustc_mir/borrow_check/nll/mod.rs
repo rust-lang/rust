@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::{ClosureRegionRequirements, Mir};
+use rustc::mir::{ClosureRegionRequirements, ClosureOutlivesSubject, Mir};
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
+use std::fmt::Debug;
 use std::io;
 use transform::MirSource;
 use util::liveness::{LivenessResults, LocalSet};
@@ -73,7 +74,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     move_data: &MoveData<'tcx>,
 ) -> (
     RegionInferenceContext<'tcx>,
-    Option<ClosureRegionRequirements>,
+    Option<ClosureRegionRequirements<'gcx>>,
 ) {
     // Run the MIR type-checker.
     let mir_node_id = infcx.tcx.hir.as_local_node_id(def_id).unwrap();
@@ -263,9 +264,13 @@ fn for_each_region_constraint(
     with_msg: &mut FnMut(&str) -> io::Result<()>,
 ) -> io::Result<()> {
     for req in &closure_region_requirements.outlives_requirements {
+        let subject: &Debug = match &req.subject {
+            ClosureOutlivesSubject::Region(subject) => subject,
+            ClosureOutlivesSubject::Ty(ty) => ty,
+        };
         with_msg(&format!(
             "where {:?}: {:?}",
-            req.free_region,
+            subject,
             req.outlived_free_region,
         ))?;
     }
