@@ -512,6 +512,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.traits.push(t);
             },
+            hir::ItemTraitAlias(..) => {
+                unimplemented!("trait objects are not yet implemented")
+            },
 
             hir::ItemImpl(unsafety,
                           polarity,
