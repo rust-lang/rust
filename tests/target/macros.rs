@@ -121,7 +121,7 @@ fn main() {
         20, 21, 22);
 
     // #1092
-    chain!(input, a:take!(max_size), || []);
+    chain!(input, a: take!(max_size), || []);
 }
 
 impl X {
