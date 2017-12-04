@@ -24,9 +24,9 @@ use Summary;
 
 macro_rules! is_nightly_channel {
     () => {
-    env::var("CFG_RELEASE_CHANNEL")
-        .map(|c| c == "nightly")
-        .unwrap_or(false)
+        option_env!("CFG_RELEASE_CHANNEL")
+            .map(|c| c == "nightly")
+            .unwrap_or(false)
     }
 }
 
