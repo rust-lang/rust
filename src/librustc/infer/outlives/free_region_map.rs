@@ -38,7 +38,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
         }
     }
 
-    /// Tests whether `r_a <= sup`. Both must be free regions or
+    /// Tests whether `r_a <= r_b`. Both must be free regions or
     /// `'static`.
     pub fn sub_free_regions<'a, 'gcx>(&self,
                                       r_a: Region<'tcx>,
