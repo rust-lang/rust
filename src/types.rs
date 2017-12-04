@@ -23,6 +23,7 @@ use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_par
 use items::{format_generics_item_list, generics_shape_from_config};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator,
             SeparatorPlace, SeparatorTactic};
+use macros::{rewrite_macro, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use utils::{colon_spaces, extra_offset, first_line_width, format_abi, format_mutability,
@@ -726,7 +727,9 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::BareFn(ref bare_fn) => rewrite_bare_fn(bare_fn, self.span, context, shape),
             ast::TyKind::Never => Some(String::from("!")),
-            ast::TyKind::Mac(..) => None,
+            ast::TyKind::Mac(ref mac) => {
+                rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
+            }
             ast::TyKind::ImplicitSelf => Some(String::from("")),
             ast::TyKind::ImplTrait(ref it) => it.rewrite(context, shape)
                 .map(|it_str| format!("impl {}", it_str)),
