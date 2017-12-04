@@ -72,7 +72,6 @@ impl Module {
             constants  : Vec::new(),
             traits     : Vec::new(),
             impls      : Vec::new(),
-            def_traits : Vec::new(),
             foreigns   : Vec::new(),
             macros     : Vec::new(),
             is_crate   : false,
