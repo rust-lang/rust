@@ -25,7 +25,9 @@ impl MirPass for Lower128Bit {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource,
                           mir: &mut Mir<'tcx>) {
-        if !tcx.sess.opts.debugging_opts.lower_128bit_ops {
+        let debugging_override = tcx.sess.opts.debugging_opts.lower_128bit_ops;
+        let target_default = tcx.sess.host.options.i128_lowering;
+        if !debugging_override.unwrap_or(target_default) {
             return
         }
 
