@@ -349,9 +349,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         self.propagate_constraints(mir);
 
+        // If this is a closure, we can propagate unsatisfied
+        // `outlives_requirements` to our creator, so create a vector
+        // to store those. Otherwise, we'll pass in `None` to the
+        // functions below, which will trigger them to report errors
+        // eagerly.
+        let mut outlives_requirements = if infcx.tcx.is_closure(mir_def_id) {
+            Some(vec![])
+        } else {
+            None
+        };
+
         self.check_type_tests(infcx, mir);
 
-        let outlives_requirements = self.check_universal_regions(infcx, mir_def_id);
+        self.check_universal_regions(infcx, outlives_requirements.as_mut());
+
+        let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
 
         if outlives_requirements.is_empty() {
             None
@@ -429,18 +442,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
-            if !self.eval_region_test(
+            if self.eval_region_test(
                 mir,
                 type_test.point,
                 type_test.lower_bound,
                 &type_test.test,
             ) {
-                // Oh the humanity. Obviously we will do better than this error eventually.
-                infcx.tcx.sess.span_err(
-                    type_test.span,
-                    &format!("failed type test: {:?}", type_test),
-                );
+                continue;
             }
+
+            // Oh the humanity. Obviously we will do better than this error eventually.
+            infcx.tcx.sess.span_err(
+                type_test.span,
+                &format!("failed type test: {:?}", type_test),
+            );
         }
     }
 
@@ -538,11 +553,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// therefore add `end('a)` into the region for `'b` -- but we
     /// have no evidence that `'b` outlives `'a`, so we want to report
     /// an error.
+    ///
+    /// If `propagated_outlives_requirements` is `Some`, then we will
+    /// push unsatisfied obligations into there. Otherwise, we'll
+    /// report them as errors.
     fn check_universal_regions(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir_def_id: DefId,
-    ) -> Vec<ClosureOutlivesRequirement> {
+        mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement>>,
+    ) {
         // The universal regions are always found in a prefix of the
         // full list.
         let universal_definitions = self.definitions
@@ -555,25 +574,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut outlives_requirements = vec![];
         for (fr, _) in universal_definitions {
             self.check_universal_region(infcx, fr, &mut outlives_requirements);
-        }
 
-        // If this is a closure, we can propagate unsatisfied
-        // `outlives_requirements` to our creator. Otherwise, we have
-        // to report a hard error here.
-        if infcx.tcx.is_closure(mir_def_id) {
-            return outlives_requirements;
+            // Propagate unsatisfied requirements if possible, else
+            // report them.
+            if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
+                propagated_outlives_requirements.extend(outlives_requirements.drain(..));
+            } else {
+                for outlives_requirement in outlives_requirements.drain(..) {
+                    self.report_error(
+                        infcx,
+                        outlives_requirement.free_region,
+                        outlives_requirement.outlived_free_region,
+                        outlives_requirement.blame_span,
+                    );
+                }
+            }
         }
-
-        for outlives_requirement in outlives_requirements {
-            self.report_error(
-                infcx,
-                outlives_requirement.free_region,
-                outlives_requirement.outlived_free_region,
-                outlives_requirement.blame_span,
-            );
-        }
-
-        vec![]
     }
 
     /// Check the final value for the free region `fr` to see if it
@@ -588,7 +604,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
         longer_fr: RegionVid,
-        outlives_requirements: &mut Vec<ClosureOutlivesRequirement>,
+        propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement>,
     ) {
         let inferred_values = self.inferred_values.as_ref().unwrap();
 
@@ -626,7 +642,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 );
 
                 // Push the constraint `fr-: shorter_fr+`
-                outlives_requirements.push(ClosureOutlivesRequirement {
+                propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                     free_region: fr_minus,
                     outlived_free_region: shorter_fr_plus,
                     blame_span: blame_span,
