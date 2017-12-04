@@ -453,6 +453,10 @@ pub struct TargetOptions {
     /// Whether library functions call lowering/optimization is disabled in LLVM
     /// for this target unconditionally.
     pub no_builtins: bool,
+
+    /// Whether to lower 128-bit operations to compiler_builtins calls.  Use if
+    /// your backend only supports 64-bit and smaller math.
+    pub i128_lowering: bool,
 }
 
 impl Default for TargetOptions {
@@ -521,6 +525,7 @@ impl Default for TargetOptions {
             requires_lto: false,
             singlethread: false,
             no_builtins: false,
+            i128_lowering: false,
         }
     }
 }

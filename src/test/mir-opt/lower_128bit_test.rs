@@ -13,7 +13,7 @@
 // ignore-asmjs
 // ignore-emscripten
 
-// compile-flags: -Z lower_128bit_ops -C debug_assertions=no
+// compile-flags: -Z lower_128bit_ops=yes -C debug_assertions=no
 
 #![feature(i128_type)]
 
