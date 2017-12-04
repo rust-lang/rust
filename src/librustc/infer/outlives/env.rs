@@ -152,7 +152,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     /// Processes outlives bounds that are known to hold, whether from implied or other sources.
     ///
     /// The `infcx` parameter is optional; if the implied bounds may
-    /// contain inference variables, it should be supplied, in which
+    /// contain inference variables, it must be supplied, in which
     /// case we will register "givens" on the inference context. (See
     /// `RegionConstraintData`.)
     fn add_outlives_bounds<I>(
