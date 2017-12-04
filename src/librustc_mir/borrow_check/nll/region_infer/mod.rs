@@ -305,7 +305,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // and hence we establish (transitively) a constraint that
         // `'a: 'b`. The `propagate_constraints` code above will
         // therefore add `end('a)` into the region for `'b` -- but we
-        // have no evidence that `'b` outlives `'a`, so we want to report
+        // have no evidence that `'a` outlives `'b`, so we want to report
         // an error.
 
         // The universal regions are always found in a prefix of the
