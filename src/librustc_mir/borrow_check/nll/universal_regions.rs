@@ -267,6 +267,20 @@ impl<'tcx> UniversalRegions<'tcx> {
         self.num_universals
     }
 
+    /// Given two universal regions, returns the postdominating
+    /// upper-bound (effectively the least upper bound).
+    ///
+    /// (See `TransitiveRelation::postdom_upper_bound` for details on
+    /// the postdominating upper bound in general.)
+    pub fn postdom_upper_bound(&self, fr1: RegionVid, fr2: RegionVid) -> RegionVid {
+        assert!(self.is_universal_region(fr1));
+        assert!(self.is_universal_region(fr2));
+        *self.relations
+            .inverse_outlives
+            .postdom_upper_bound(&fr1, &fr2)
+            .unwrap_or(&self.fr_static)
+    }
+
     /// Finds an "upper bound" for `fr` that is not local. In other
     /// words, returns the smallest (*) known region `fr1` that (a)
     /// outlives `fr` and (b) is not local. This cannot fail, because
@@ -431,7 +445,10 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         // - `'r: 'fn_body` for every (other) universally quantified
         //   region `'r`, all of which are provided by our caller
         for fr in (FIRST_GLOBAL_INDEX..num_universals).map(RegionVid::new) {
-            debug!("build: relating free region {:?} to itself and to 'static", fr);
+            debug!(
+                "build: relating free region {:?} to itself and to 'static",
+                fr
+            );
             self.relations.relate_universal_regions(fr, fr);
             self.relations.relate_universal_regions(fr_static, fr);
             self.relations.relate_universal_regions(fr, fr_fn_body);
@@ -442,15 +459,21 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         // we should not have created any more variables
         assert_eq!(self.infcx.num_region_vars(), num_universals);
 
-        debug!("build: global regions = {}..{}",
-               FIRST_GLOBAL_INDEX,
-               first_extern_index);
-        debug!("build: extern regions = {}..{}",
-               first_extern_index,
-               first_local_index);
-        debug!("build: local regions  = {}..{}",
-               first_local_index,
-               num_universals);
+        debug!(
+            "build: global regions = {}..{}",
+            FIRST_GLOBAL_INDEX,
+            first_extern_index
+        );
+        debug!(
+            "build: extern regions = {}..{}",
+            first_extern_index,
+            first_local_index
+        );
+        debug!(
+            "build: local regions  = {}..{}",
+            first_local_index,
+            num_universals
+        );
 
         UniversalRegions {
             indices,

@@ -12,15 +12,18 @@ use super::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
+use rustc::infer::RegionObligation;
 use rustc::infer::RegionVariableOrigin;
 use rustc::infer::SubregionOrigin;
 use rustc::infer::region_constraints::{GenericKind, VarOrigins};
 use rustc::mir::{ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
                  Location, Mir};
-use rustc::ty::{self, RegionVid};
+use rustc::traits::ObligationCause;
+use rustc::ty::{self, RegionVid, TypeFoldable};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt;
 use std::rc::Rc;
+use syntax::ast;
 use syntax_pos::Span;
 
 mod annotation;
@@ -361,7 +364,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             None
         };
 
-        self.check_type_tests(infcx, mir);
+        self.check_type_tests(infcx, mir, outlives_requirements.as_mut());
 
         self.check_universal_regions(infcx, outlives_requirements.as_mut());
 
@@ -439,19 +442,25 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// therefore add `end('a)` into the region for `'b` -- but we
     /// have no evidence that `'b` outlives `'a`, so we want to report
     /// an error.
-    fn check_type_tests(&self, infcx: &InferCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) {
+    fn check_type_tests<'gcx>(
+        &self,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        mir: &Mir<'tcx>,
+        mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
+    ) {
         let tcx = infcx.tcx;
 
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
-            if self.eval_region_test(
-                mir,
-                type_test.point,
-                type_test.lower_bound,
-                &type_test.test,
-            ) {
+            if self.eval_region_test(mir, type_test.point, type_test.lower_bound, &type_test.test) {
                 continue;
+            }
+
+            if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
+                if self.try_promote_type_test(infcx, type_test, propagated_outlives_requirements) {
+                    continue;
+                }
             }
 
             // Oh the humanity. Obviously we will do better than this error eventually.
@@ -460,6 +469,103 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 &format!("failed type test: {:?}", type_test),
             );
         }
+    }
+
+    fn try_promote_type_test<'gcx>(
+        &self,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        type_test: &TypeTest<'tcx>,
+        propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'gcx>>,
+    ) -> bool {
+        let tcx = infcx.tcx;
+        let gcx = tcx.global_tcx();
+
+        let TypeTest {
+            generic_kind,
+            lower_bound,
+            point: _,
+            span,
+            test: _,
+        } = type_test;
+
+        // TODO. For now, just fail to promote anything with a
+        // region. This is obviously too strict: we will for example
+        // fail to promote `<T as Foo<'static>>::Bar` to our
+        // caller. But it is always sound not to promote, that just
+        // means more errors, and ignoring regions is a convenient
+        // starting point. This is because we would want to promote to
+        // a type that references the region-vids of the closure, for
+        // which we have no global representation just now.
+        let generic_ty = generic_kind.to_ty(tcx);
+        if generic_ty.has_free_regions() {
+            return false;
+        }
+        let generic_ty = gcx.lift(&generic_ty).unwrap();
+
+        // Find some bounding subject-region R+ that is a super-region
+        // of the existing subject-region R. This should be a non-local, universal
+        // region, which ensures it can be encoded in a `ClosureOutlivesRequirement`.
+        let lower_bound_plus = self.promoted_type_test_bound(*lower_bound);
+        assert!(self.universal_regions.is_universal_region(lower_bound_plus));
+        assert!(!self.universal_regions
+            .is_local_free_region(lower_bound_plus));
+
+        propagated_outlives_requirements.push(ClosureOutlivesRequirement {
+            subject: ClosureOutlivesSubject::Ty(generic_ty),
+            outlived_free_region: lower_bound_plus,
+            blame_span: *span,
+        });
+        true
+    }
+
+    /// Here, `lower_bound` (henceforth, `'r`) represents the bound from
+    /// some type-test `T: 'r`. We are a closure and have found that
+    /// `T: 'r` is not locally satisfiable, so we want to propagate
+    /// this constraint to our creator. It is sound for us to do so
+    /// with some `'r+` known to our creator, where `'r+: 'r`.
+    ///
+    /// The tricky bit here: this region `'r` may contain (a) any
+    /// number of points in the CFG and (b) any number of `end('x)`
+    /// elements of universally quantified regions. To communicate with
+    /// our creator, however, we have to pick exactly one universally
+    /// quantified region -- in other words, exactly one `end('x)`
+    /// element -- that they understand and which will be `'r+`.
+    ///
+    /// We do this as follows:
+    ///
+    /// - Ignore the CFG points in `'r`. All universally quantified regions
+    ///   include the CFG anyhow.
+    /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
+    ///   a result `'y`.
+    /// - Finally, we take the non-local upper bound of `'y`.
+    fn promoted_type_test_bound(&self, lower_bound: RegionVid) -> RegionVid {
+        let inferred_values = self.inferred_values.as_ref().unwrap();
+
+        debug!(
+            "promoted_type_test_bound(lower_bound={:?}={})",
+            lower_bound,
+            inferred_values.region_value_str(lower_bound)
+        );
+
+        // Find the smallest universal region that contains all other
+        // universal regions within `region`.
+        let mut lub = self.universal_regions.fr_fn_body;
+        for ur in inferred_values.universal_regions_outlived_by(lower_bound) {
+            lub = self.universal_regions.postdom_upper_bound(lub, ur);
+        }
+
+        debug!("promoted_type_test_bound: lub={:?}", lub);
+
+        // Grow further to get smallest universal region known to
+        // creator.
+        let non_local_lub = self.universal_regions.non_local_upper_bound(lub);
+
+        debug!(
+            "promoted_type_test_bound: non_local_lub={:?}",
+            non_local_lub
+        );
+
+        non_local_lub
     }
 
     /// Test if `test` is true when applied to `lower_bound` at
@@ -487,13 +593,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .iter()
                 .any(|&r| self.eval_outlives(mir, r, lower_bound, point)),
 
-            RegionTest::Any(tests) => tests.iter().any(|test| {
-                self.eval_region_test(mir, point, lower_bound, test)
-            }),
+            RegionTest::Any(tests) => tests
+                .iter()
+                .any(|test| self.eval_region_test(mir, point, lower_bound, test)),
 
-            RegionTest::All(tests) => tests.iter().all(|test| {
-                self.eval_region_test(mir, point, lower_bound, test)
-            }),
+            RegionTest::All(tests) => tests
+                .iter()
+                .all(|test| self.eval_region_test(mir, point, lower_bound, test)),
         }
     }
 
@@ -772,17 +878,18 @@ impl fmt::Debug for Constraint {
     }
 }
 
-pub trait ClosureRegionRequirementsExt {
+pub trait ClosureRegionRequirementsExt<'gcx> {
     fn apply_requirements<'tcx>(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        body_id: ast::NodeId,
         location: Location,
         closure_def_id: DefId,
         closure_substs: ty::ClosureSubsts<'tcx>,
     );
 }
 
-impl<'gcx> ClosureRegionRequirementsExt for ClosureRegionRequirements<'gcx> {
+impl<'gcx> ClosureRegionRequirementsExt<'gcx> for ClosureRegionRequirements<'gcx> {
     /// Given an instance T of the closure type, this method
     /// instantiates the "extra" requirements that we computed for the
     /// closure into the inference context. This has the effect of
@@ -797,7 +904,8 @@ impl<'gcx> ClosureRegionRequirementsExt for ClosureRegionRequirements<'gcx> {
     /// requirements.
     fn apply_requirements<'tcx>(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        body_id: ast::NodeId,
         location: Location,
         closure_def_id: DefId,
         closure_substs: ty::ClosureSubsts<'tcx>,
@@ -843,8 +951,15 @@ impl<'gcx> ClosureRegionRequirementsExt for ClosureRegionRequirements<'gcx> {
                     infcx.sub_regions(origin, outlived_region, region);
                 }
 
-                ClosureOutlivesSubject::Ty(_ty) => {
-                    bug!("TODO not yet implemented -- closure outlives subject of a type");
+                ClosureOutlivesSubject::Ty(ty) => {
+                    infcx.register_region_obligation(
+                        body_id,
+                        RegionObligation {
+                            sup_type: ty,
+                            sub_region: outlived_region,
+                            cause: ObligationCause::misc(outlives_requirement.blame_span, body_id),
+                        },
+                    );
                 }
             }
         }

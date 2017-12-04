@@ -1409,6 +1409,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 if let Some(closure_region_requirements) = tcx.mir_borrowck(*def_id) {
                     closure_region_requirements.apply_requirements(
                         self.infcx,
+                        self.body_id,
                         location,
                         *def_id,
                         *substs,
