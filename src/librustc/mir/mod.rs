@@ -1832,7 +1832,7 @@ pub struct GeneratorLayout<'tcx> {
 /// can be extracted from its type and constrained to have the given
 /// outlives relationship.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct ClosureRegionRequirements {
+pub struct ClosureRegionRequirements<'gcx> {
     /// The number of external regions defined on the closure.  In our
     /// example above, it would be 3 -- one for `'static`, then `'1`
     /// and `'2`. This is just used for a sanity check later on, to
@@ -1842,21 +1842,38 @@ pub struct ClosureRegionRequirements {
 
     /// Requirements between the various free regions defined in
     /// indices.
-    pub outlives_requirements: Vec<ClosureOutlivesRequirement>,
+    pub outlives_requirements: Vec<ClosureOutlivesRequirement<'gcx>>,
 }
 
-/// Indicates an outlives constraint between two free-regions declared
-/// on the closure.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct ClosureOutlivesRequirement {
-    // This region ...
-    pub free_region: ty::RegionVid,
+/// Indicates an outlives constraint between a type or between two
+/// free-regions declared on the closure.
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct ClosureOutlivesRequirement<'tcx> {
+    // This region or type ...
+    pub subject: ClosureOutlivesSubject<'tcx>,
 
     // .. must outlive this one.
     pub outlived_free_region: ty::RegionVid,
 
     // If not, report an error here.
     pub blame_span: Span,
+}
+
+/// The subject of a ClosureOutlivesRequirement -- that is, the thing
+/// that must outlive some region.
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+pub enum ClosureOutlivesSubject<'tcx> {
+    /// Subject is a type, typically a type parameter, but could also
+    /// be a projection. Indicates a requirement like `T: 'a` being
+    /// passed to the caller, where the type here is `T`.
+    ///
+    /// The type here is guaranteed not to contain any free regions at
+    /// present.
+    Ty(Ty<'tcx>),
+
+    /// Subject is a free region from the closure. Indicates a requirement
+    /// like `'a: 'b` being passed to the caller; the region here is `'a`.
+    Region(ty::RegionVid),
 }
 
 /*

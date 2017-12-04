@@ -65,7 +65,7 @@ pub fn provide(providers: &mut Providers) {
 fn mir_borrowck<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> Option<ClosureRegionRequirements> {
+) -> Option<ClosureRegionRequirements<'tcx>> {
     let input_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
@@ -89,7 +89,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     input_mir: &Mir<'gcx>,
     def_id: DefId,
-) -> Option<ClosureRegionRequirements> {
+) -> Option<ClosureRegionRequirements<'gcx>> {
     let tcx = infcx.tcx;
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);

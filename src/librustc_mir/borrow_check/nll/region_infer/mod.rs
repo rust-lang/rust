@@ -15,7 +15,8 @@ use rustc::infer::NLLRegionVariableOrigin;
 use rustc::infer::RegionVariableOrigin;
 use rustc::infer::SubregionOrigin;
 use rustc::infer::region_constraints::{GenericKind, VarOrigins};
-use rustc::mir::{ClosureOutlivesRequirement, ClosureRegionRequirements, Location, Mir};
+use rustc::mir::{ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
+                 Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt;
@@ -339,12 +340,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Perform region inference and report errors if we see any
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
-    pub(super) fn solve(
+    pub(super) fn solve<'gcx>(
         &mut self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
-    ) -> Option<ClosureRegionRequirements> {
+    ) -> Option<ClosureRegionRequirements<'gcx>> {
         assert!(self.inferred_values.is_none(), "values already inferred");
 
         self.propagate_constraints(mir);
@@ -559,10 +560,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// If `propagated_outlives_requirements` is `Some`, then we will
     /// push unsatisfied obligations into there. Otherwise, we'll
     /// report them as errors.
-    fn check_universal_regions(
+    fn check_universal_regions<'gcx>(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
-        mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement>>,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
     ) {
         // The universal regions are always found in a prefix of the
         // full list.
@@ -583,9 +584,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 propagated_outlives_requirements.extend(outlives_requirements.drain(..));
             } else {
                 for outlives_requirement in outlives_requirements.drain(..) {
+                    let fr = match outlives_requirement.subject {
+                        ClosureOutlivesSubject::Region(fr) => fr,
+                        _ => span_bug!(
+                            outlives_requirement.blame_span,
+                            "check_universal_region() produced requirement w/ non-region subject"
+                        ),
+                    };
+
                     self.report_error(
                         infcx,
-                        outlives_requirement.free_region,
+                        fr,
                         outlives_requirement.outlived_free_region,
                         outlives_requirement.blame_span,
                     );
@@ -602,11 +611,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Things that are to be propagated are accumulated into the
     /// `outlives_requirements` vector.
-    fn check_universal_region(
+    fn check_universal_region<'gcx>(
         &self,
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         longer_fr: RegionVid,
-        propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement>,
+        propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'gcx>>,
     ) {
         let inferred_values = self.inferred_values.as_ref().unwrap();
 
@@ -645,7 +654,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 // Push the constraint `fr-: shorter_fr+`
                 propagated_outlives_requirements.push(ClosureOutlivesRequirement {
-                    free_region: fr_minus,
+                    subject: ClosureOutlivesSubject::Region(fr_minus),
                     outlived_free_region: shorter_fr_plus,
                     blame_span: blame_span,
                 });
@@ -773,7 +782,7 @@ pub trait ClosureRegionRequirementsExt {
     );
 }
 
-impl ClosureRegionRequirementsExt for ClosureRegionRequirements {
+impl<'gcx> ClosureRegionRequirementsExt for ClosureRegionRequirements<'gcx> {
     /// Given an instance T of the closure type, this method
     /// instantiates the "extra" requirements that we computed for the
     /// closure into the inference context. This has the effect of
@@ -815,17 +824,29 @@ impl ClosureRegionRequirementsExt for ClosureRegionRequirements {
 
         // Create the predicates.
         for outlives_requirement in &self.outlives_requirements {
-            let region = closure_mapping[outlives_requirement.free_region];
             let outlived_region = closure_mapping[outlives_requirement.outlived_free_region];
-            debug!(
-                "apply_requirements: region={:?} outlived_region={:?} outlives_requirements={:?}",
-                region,
-                outlived_region,
-                outlives_requirement
-            );
+
             // FIXME, this origin is not entirely suitable.
             let origin = SubregionOrigin::CallRcvr(outlives_requirement.blame_span);
-            infcx.sub_regions(origin, outlived_region, region);
+
+            match outlives_requirement.subject {
+                ClosureOutlivesSubject::Region(region) => {
+                    let region = closure_mapping[region];
+                    debug!(
+                        "apply_requirements: region={:?} \
+                         outlived_region={:?} \
+                         outlives_requirements={:?}",
+                        region,
+                        outlived_region,
+                        outlives_requirement
+                    );
+                    infcx.sub_regions(origin, outlived_region, region);
+                }
+
+                ClosureOutlivesSubject::Ty(_ty) => {
+                    bug!("TODO not yet implemented -- closure outlives subject of a type");
+                }
+            }
         }
     }
 }
