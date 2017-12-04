@@ -284,3 +284,9 @@ fn special_case_macros() {
         result, input, expected
     );
 }
+
+// #1209
+impl Foo {
+    /// foo
+    pub fn foo(&self) -> Bar<foo!()> {}
+}
