@@ -395,39 +395,6 @@ let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..
     bbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
 ```
 
-## `chain_indent`
-
-Indentation of chain
-
-- **Default value**: `"Block"`
-- **Possible values**: `"Block"`, `"Visual"`
-- **Stable**: ?
-
-#### `"Block"` (default):
-
-```rust
-let lorem = ipsum
-    .dolor()
-    .sit()
-    .amet()
-    .consectetur()
-    .adipiscing()
-    .elit();
-```
-
-#### `"Visual"`:
-
-```rust
-let lorem = ipsum.dolor()
-                 .sit()
-                 .amet()
-                 .consectetur()
-                 .adipiscing()
-                 .elit();
-```
-
-
-
 ## `combine_control_expr`
 
 Combine control expressions with function calls.
