@@ -322,37 +322,39 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_free_region(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        fr: RegionVid,
-        fr_definition: &RegionDefinition<'tcx>,
+        longer_fr: RegionVid,
+        longer_definition: &RegionDefinition<'tcx>,
     ) {
         let inferred_values = self.inferred_values.as_ref().unwrap();
-        let fr_name = fr_definition.name.unwrap();
-        let fr_value = inferred_values.iter(fr.index());
+        let longer_name = longer_definition.name.unwrap();
+        let longer_value = inferred_values.iter(longer_fr.index());
 
-        // Find every region `o` such that `fr: o`
-        // (because `fr` includes `end(o)`).
-        for outlived_fr in fr_value.take_while(|&i| i < self.num_universal_regions) {
+        // Find every region `shorter` such that `longer: shorter`
+        // (because `longer` includes `end(shorter)`).
+        for shorter_fr in longer_value.take_while(|&i| i < self.num_universal_regions) {
+            let shorter_fr = RegionVid::new(shorter_fr);
+
             // `fr` includes `end(fr)`, that's not especially
             // interesting.
-            if fr.index() == outlived_fr {
+            if longer_fr == shorter_fr {
                 continue;
             }
 
-            let outlived_fr_definition = &self.definitions[RegionVid::new(outlived_fr)];
-            let outlived_fr_name = outlived_fr_definition.name.unwrap();
+            let shorter_definition = &self.definitions[shorter_fr];
+            let shorter_name = shorter_definition.name.unwrap();
 
             // Check that `o <= fr`. If not, report an error.
             if !self.free_region_map
-                .sub_free_regions(outlived_fr_name, fr_name)
+                .sub_free_regions(shorter_name, longer_name)
             {
                 // FIXME: worst error msg ever
-                let blame_span = self.blame_span(fr, RegionVid::new(outlived_fr));
+                let blame_span = self.blame_span(longer_fr, shorter_fr);
                 infcx.tcx.sess.span_err(
                     blame_span,
                     &format!(
                         "free region `{}` does not outlive `{}`",
-                        fr_name,
-                        outlived_fr_name
+                        longer_name,
+                        shorter_name
                     ),
                 );
             }
