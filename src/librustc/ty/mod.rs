@@ -421,8 +421,18 @@ bitflags! {
         const HAS_TY_INFER       = 1 << 2;
         const HAS_RE_INFER       = 1 << 3;
         const HAS_RE_SKOL        = 1 << 4;
+
+        /// Does this have any `ReEarlyBound` regions? Used to
+        /// determine whether substitition is required, since those
+        /// represent regions that are bound in a `ty::Generics` and
+        /// hence may be substituted.
         const HAS_RE_EARLY_BOUND = 1 << 5;
+
+        /// Does this have any region that "appears free" in the type?
+        /// Basically anything but `ReLateBound` and `ReErased`.
         const HAS_FREE_REGIONS   = 1 << 6;
+
+        /// Is an error type reachable?
         const HAS_TY_ERR         = 1 << 7;
         const HAS_PROJECTION     = 1 << 8;
 
