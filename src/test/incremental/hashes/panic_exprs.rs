@@ -28,155 +28,134 @@
 
 
 // Indexing expression ---------------------------------------------------------
-#[cfg(cfail1)]
-pub fn indexing(slice: &[u8]) -> u8 {
-    slice[100]
-}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn indexing(slice: &[u8]) -> u8 {
-    slice[100]
+    #[cfg(cfail1)]
+    {
+        slice[100]
+    }
+    #[cfg(not(cfail1))]
+    {
+        slice[100]
+    }
 }
 
 
 // Arithmetic overflow plus ----------------------------------------------------
-#[cfg(cfail1)]
-pub fn arithmetic_overflow_plus(val: i32) -> i32 {
-    val + 1
-}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn arithmetic_overflow_plus(val: i32) -> i32 {
-    val + 1
+    #[cfg(cfail1)]
+    {
+        val + 1
+    }
+    #[cfg(not(cfail1))]
+    {
+        val + 1
+    }
 }
 
 
 // Arithmetic overflow minus ----------------------------------------------------
-#[cfg(cfail1)]
-pub fn arithmetic_overflow_minus(val: i32) -> i32 {
-    val - 1
-}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn arithmetic_overflow_minus(val: i32) -> i32 {
-    val - 1
+    #[cfg(cfail1)]
+    {
+        val - 1
+    }
+    #[cfg(not(cfail1))]
+    {
+        val - 1
+    }
 }
 
 
 // Arithmetic overflow mult ----------------------------------------------------
-#[cfg(cfail1)]
-pub fn arithmetic_overflow_mult(val: i32) -> i32 {
-    val * 2
-}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn arithmetic_overflow_mult(val: i32) -> i32 {
-    val * 2
+    #[cfg(cfail1)]
+    {
+        val * 2
+    }
+    #[cfg(not(cfail1))]
+    {
+        val * 2
+    }
 }
 
 
 // Arithmetic overflow negation ------------------------------------------------
-#[cfg(cfail1)]
-pub fn arithmetic_overflow_negation(val: i32) -> i32 {
-    -val
-}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn arithmetic_overflow_negation(val: i32) -> i32 {
-    -val
+    #[cfg(cfail1)]
+    {
+        -val
+    }
+    #[cfg(not(cfail1))]
+    {
+        -val
+    }
 }
 
 
 // Division by zero ------------------------------------------------------------
-#[cfg(cfail1)]
-pub fn division_by_zero(val: i32) -> i32 {
-    2 / val
-}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn division_by_zero(val: i32) -> i32 {
-    2 / val
+    #[cfg(cfail1)]
+    {
+        2 / val
+    }
+    #[cfg(not(cfail1))]
+    {
+        2 / val
+    }
 }
 
 // Division by zero ------------------------------------------------------------
-#[cfg(cfail1)]
-pub fn mod_by_zero(val: i32) -> i32 {
-    2 % val
-}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn mod_by_zero(val: i32) -> i32 {
-    2 % val
+    #[cfg(cfail1)]
+    {
+        2 % val
+    }
+    #[cfg(not(cfail1))]
+    {
+        2 % val
+    }
 }
 
 
 // shift left ------------------------------------------------------------------
-#[cfg(cfail1)]
-pub fn shift_left(val: i32, shift: usize) -> i32 {
-    val << shift
-}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn shift_left(val: i32, shift: usize) -> i32 {
-    val << shift
+    #[cfg(cfail1)]
+    {
+        val << shift
+    }
+    #[cfg(not(cfail1))]
+    {
+        val << shift
+    }
 }
 
 
 // shift right ------------------------------------------------------------------
-#[cfg(cfail1)]
-pub fn shift_right(val: i32, shift: usize) -> i32 {
-    val >> shift
-}
-
-#[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,MirValidated,MirOptimized")]
 #[rustc_clean(cfg="cfail3")]
 pub fn shift_right(val: i32, shift: usize) -> i32 {
-    val >> shift
-}
-
-
-// THE FOLLOWING ITEMS SHOULD NOT BE INFLUENCED BY THEIR SOURCE LOCATION
-
-// bitwise ---------------------------------------------------------------------
-#[cfg(cfail1)]
-pub fn bitwise(val: i32) -> i32 {
-    !val & 0x101010101 | 0x45689 ^ 0x2372382
-}
-
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-pub fn bitwise(val: i32) -> i32 {
-    !val & 0x101010101 | 0x45689 ^ 0x2372382
-}
-
-
-// logical ---------------------------------------------------------------------
-#[cfg(cfail1)]
-pub fn logical(val1: bool, val2: bool, val3: bool) -> bool {
-    val1 && val2 || val3
-}
-
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2")]
-#[rustc_clean(cfg="cfail3")]
-pub fn logical(val1: bool, val2: bool, val3: bool) -> bool {
-    val1 && val2 || val3
+    #[cfg(cfail1)]
+    {
+        val >> shift
+    }
+    #[cfg(not(cfail1))]
+    {
+        val >> shift
+    }
 }

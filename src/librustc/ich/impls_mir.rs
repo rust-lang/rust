@@ -55,48 +55,11 @@ for mir::UnsafetyViolationKind {
         }
     }
 }
-impl<'gcx> HashStable<StableHashingContext<'gcx>>
-for mir::Terminator<'gcx> {
-    #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
-                                          hasher: &mut StableHasher<W>) {
-        let mir::Terminator {
-            ref kind,
-            ref source_info,
-        } = *self;
 
-        let hash_spans_unconditionally = match *kind {
-            mir::TerminatorKind::Assert { .. } => {
-                // Assert terminators generate a panic message that contains the
-                // source location, so we always have to feed its span into the
-                // ICH.
-                true
-            }
-            mir::TerminatorKind::Goto { .. } |
-            mir::TerminatorKind::SwitchInt { .. } |
-            mir::TerminatorKind::Resume |
-            mir::TerminatorKind::Return |
-            mir::TerminatorKind::GeneratorDrop |
-            mir::TerminatorKind::Unreachable |
-            mir::TerminatorKind::Drop { .. } |
-            mir::TerminatorKind::DropAndReplace { .. } |
-            mir::TerminatorKind::Yield { .. } |
-            mir::TerminatorKind::Call { .. } |
-            mir::TerminatorKind::FalseEdges { .. } => false,
-        };
-
-        if hash_spans_unconditionally {
-            hcx.while_hashing_spans(true, |hcx| {
-                source_info.hash_stable(hcx, hasher);
-            })
-        } else {
-            source_info.hash_stable(hcx, hasher);
-        }
-
-        kind.hash_stable(hcx, hasher);
-    }
-}
+impl_stable_hash_for!(struct mir::Terminator<'tcx> {
+    kind,
+    source_info
+});
 
 impl<'gcx, T> HashStable<StableHashingContext<'gcx>> for mir::ClearCrossCrate<T>
     where T: HashStable<StableHashingContext<'gcx>>
