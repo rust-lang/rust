@@ -24,19 +24,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /tmp
 
-COPY cross/build-rumprun.sh /tmp/
+COPY dist-various-1/build-rumprun.sh /tmp/
 RUN ./build-rumprun.sh
 
-COPY cross/build-arm-musl.sh /tmp/
+COPY dist-various-1/build-arm-musl.sh /tmp/
 RUN ./build-arm-musl.sh
 
-COPY cross/install-mips-musl.sh /tmp/
+COPY dist-various-1/install-mips-musl.sh /tmp/
 RUN ./install-mips-musl.sh
 
-COPY cross/install-mipsel-musl.sh /tmp/
+COPY dist-various-1/install-mipsel-musl.sh /tmp/
 RUN ./install-mipsel-musl.sh
 
-COPY cross/install-x86_64-redox.sh /tmp/
+COPY dist-various-1/install-x86_64-redox.sh /tmp/
 RUN ./install-x86_64-redox.sh
 
 ENV TARGETS=asmjs-unknown-emscripten

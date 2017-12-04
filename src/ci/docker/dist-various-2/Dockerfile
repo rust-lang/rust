@@ -21,8 +21,8 @@ RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7
 RUN add-apt-repository -y 'deb http://apt.dilos.org/dilos dilos2-testing main'
 
 WORKDIR /tmp
-COPY cross2/shared.sh cross2/build-fuchsia-toolchain.sh /tmp/
-COPY cross2/build-solaris-toolchain.sh /tmp/
+COPY dist-various-2/shared.sh dist-various-2/build-fuchsia-toolchain.sh /tmp/
+COPY dist-various-2/build-solaris-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
 RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386
 RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc
