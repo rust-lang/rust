@@ -436,38 +436,7 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
         }
     }
 
-    let has_long_item = items
-        .iter()
-        .any(|li| li.item.as_ref().map(|s| s.len() > 10).unwrap_or(false));
-
-    let tactic = match context.config.indent_style() {
-        IndentStyle::Block => {
-            // FIXME wrong shape in one-line case
-            match shape.width.checked_sub(2 * bracket_size) {
-                Some(width) => {
-                    let tactic = ListTactic::LimitedHorizontalVertical(
-                        context.config.width_heuristics().array_width,
-                    );
-                    definitive_tactic(&items, tactic, Separator::Comma, width)
-                }
-                None => DefinitiveListTactic::Vertical,
-            }
-        }
-        IndentStyle::Visual => {
-            if has_long_item || items.iter().any(ListItem::is_multiline) {
-                definitive_tactic(
-                    &items,
-                    ListTactic::LimitedHorizontalVertical(
-                        context.config.width_heuristics().array_width,
-                    ),
-                    Separator::Comma,
-                    nested_shape.width,
-                )
-            } else {
-                DefinitiveListTactic::Mixed
-            }
-        }
-    };
+    let tactic = array_tactic(context, shape, nested_shape, exprs, &items, bracket_size);
     let ends_with_newline = tactic.ends_with_newline(context.config.indent_style());
 
     let fmt = ListFormatting {
@@ -516,6 +485,47 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
     };
 
     Some(result)
+}
+
+fn array_tactic<T: Rewrite + Spanned + ToExpr>(
+    context: &RewriteContext,
+    shape: Shape,
+    nested_shape: Shape,
+    exprs: &[&T],
+    items: &[ListItem],
+    bracket_size: usize,
+) -> DefinitiveListTactic {
+    let has_long_item = items
+        .iter()
+        .any(|li| li.item.as_ref().map(|s| s.len() > 10).unwrap_or(false));
+
+    match context.config.indent_style() {
+        IndentStyle::Block => {
+            match shape.width.checked_sub(2 * bracket_size) {
+                Some(width) => {
+                    let tactic = ListTactic::LimitedHorizontalVertical(
+                        context.config.width_heuristics().array_width,
+                    );
+                    definitive_tactic(items, tactic, Separator::Comma, width)
+                }
+                None => DefinitiveListTactic::Vertical,
+            }
+        }
+        IndentStyle::Visual => {
+            if has_long_item || items.iter().any(ListItem::is_multiline) {
+                definitive_tactic(
+                    items,
+                    ListTactic::LimitedHorizontalVertical(
+                        context.config.width_heuristics().array_width,
+                    ),
+                    Separator::Comma,
+                    nested_shape.width,
+                )
+            } else {
+                DefinitiveListTactic::Mixed
+            }
+        }
+    }
 }
 
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
