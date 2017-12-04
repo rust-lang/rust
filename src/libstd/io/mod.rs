@@ -366,7 +366,17 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
-    let ret;
+
+    let size_hint = r.size_hint()?;
+    if size_hint > 0 {
+        unsafe {
+            g.buf.reserve(size_hint.saturating_add(1));
+            let capacity = g.buf.capacity();
+            g.buf.set_len(capacity);
+            r.initializer().initialize(&mut g.buf[g.len..]);
+        }
+    }
+
     loop {
         if g.len == g.buf.len() {
             unsafe {
@@ -378,20 +388,12 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
         }
 
         match r.read(&mut g.buf[g.len..]) {
-            Ok(0) => {
-                ret = Ok(g.len - start_len);
-                break;
-            }
+            Ok(0) => return Ok(g.len - start_len),
             Ok(n) => g.len += n,
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            Err(e) => {
-                ret = Err(e);
-                break;
-            }
+            Err(e) => return Err(e),
         }
     }
-
-    ret
 }
 
 /// The `Read` trait allows for reading bytes from a source.
@@ -551,6 +553,19 @@ pub trait Read {
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::zeroing()
+    }
+
+    /// Return an estimate of how many bytes would be read from this source until EOF,
+    /// or zero if that is unknown.
+    ///
+    /// This is used by [`read_to_end`] and [`read_to_string`] to pre-allocate a memory buffer.
+    ///
+    /// [`read_to_end`]: #method.read_to_end
+    /// [`read_to_string`]: #method.read_to_string
+    #[unstable(feature = "read_size_hint", issue = /* FIXME */ "0")]
+    #[inline]
+    fn size_hint(&self) -> Result<usize> {
+        Ok(0)
     }
 
     /// Read all bytes until EOF in this source, placing them into `buf`.
@@ -1729,6 +1744,14 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         self.second.read(buf)
     }
 
+    fn size_hint(&self) -> Result<usize> {
+        if self.done_first {
+            self.second.size_hint()
+        } else {
+            Ok(self.first.size_hint()?.saturating_add(self.second.size_hint()?))
+        }
+    }
+
     unsafe fn initializer(&self) -> Initializer {
         let initializer = self.first.initializer();
         if initializer.should_initialize() {
@@ -1925,6 +1948,14 @@ impl<T: Read> Read for Take<T> {
         let n = self.inner.read(&mut buf[..max])?;
         self.limit -= n as u64;
         Ok(n)
+    }
+
+    fn size_hint(&self) -> Result<usize> {
+        if self.limit == 0 {
+            Ok(0)
+        } else {
+            Ok(cmp::min(self.limit, self.inner.size_hint()? as u64) as usize)
+        }
     }
 
     unsafe fn initializer(&self) -> Initializer {
