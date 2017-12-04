@@ -3,37 +3,38 @@ Version 1.23.0 (2018-01-04)
 
 Language
 --------
-- [Fixed displaying duplicate errors on some trait bounds.][45772]
+- [Arbitrary `auto` traits are now permitted in trait objects.][45772]
+- [rustc now uses subtyping on the left hand side of binary operations.][45435]
+  Which should fix some confusing errors in some operations.
 
 Compiler
 --------
-- [Enabled `TrapUnreachable` in LLVM which should prevent some cases of
+- [Enabled `TrapUnreachable` in LLVM which should mitigate the impact of
   undefined behaviour.][45920]
 - [rustc now suggests renaming import if names clash.][45660]
 - [Display errors/warnings correctly when there are zero-width or
   wide characters.][45711]
-- [rustc now uses subtyping on the left hand side of binary operations.][45435]
-  Which should fix some confusing errors in some operations.
-- [Bumped the minimum LLVM to 3.9][45326]
 - [rustc now avoids unnecessary copies of arguments that are
   simple bindings][45380] This should improve memory usage on average by 5-10%.
 - [Updated musl used to build musl rustc to 1.1.17][45393]
+- [Refactored type memory layouts and ABIs.][45225] This will reduce
+  memory size for some types. Eg. `io::Result<()>` is now 16 bytes
+  where it was previously 24.
 
 Libraries
 ---------
-- [impl `From<T>` for `Mutex<T>` and `RwLock<T>`][46082]
-- [Allow a trailling comma in `assert_eq/ne` macro][45887]
+- [Allow a trailing comma in `assert_eq/ne` macro][45887]
 - [Implement Hash for raw pointers to unsized types][45483]
 - [impl `From<*mut T>` for `AtomicPtr<T>`][45610]
-- [impl `From<{number_size}>` for `Atomic{number_size}`][45610] eg. `From<u8>`
-  for `AtomicU8`.
+- [impl `From<usize/isize>` for `AtomicUsize/AtomicIsize`.][45610]
 - [Removed the `T: Sync` requirement for `RwLock<T>: Send`][45267]
-- [Removed `T: Sized` requirement for `<*const T>::as_ref`
-  and `<*const T>::as_mut`][44932]
+- [Removed `T: Sized` requirement for `{<*const T>, <*mut T>}::as_ref`
+  and `<*mut T>::as_mut`][44932]
 - [Optimized `Thread::{park, unpark}` implementation][45524]
 - [Improved `SliceExt::binary_search` performance.][45333]
-- [Optimized `Read::read_to_end`.][46050] This increase file read speed and for
-  small files reduce the number of syscalls.
+- [impl `FromIterator<()>` for `()`][45379]
+- [Copied `AsciiExt` trait methods to primitive types.][44042] Use of `AsciiExt`
+  is now deprecated.
 
 Stabilized APIs
 ---------------
@@ -55,25 +56,22 @@ Misc
 
 Compatibility Notes
 -------------------
-- [`fmt::Arguments` can no longer be shared across threads.][45198]
 - [Changes have been made to type equality to make it more correct,
   in rare cases this could break some code.][45853] [Tracking issue for
   further information][45852]
-- [Changed how closures are stored, as a result of this change you can no longer
-  have a situation where a closure directly calls itself.][45879]
 - [`char::escape_debug` now uses Unicode 10 over 9.][45571]
 - [Upgraded Android SDK to 27, and NDK to r15c.][45580] This drops support for
   Android 9, the minimum supported version is Android 14.
-- [Refactored type memory layouts and ABIs.][45225] This reduce code generated
-  for a lot of types.
-  
+- [Bumped the minimum LLVM to 3.9][45326]
+
+[44042]: https://github.com/rust-lang/rust/pull/44042
 [44932]: https://github.com/rust-lang/rust/pull/44932
-[45198]: https://github.com/rust-lang/rust/pull/45198
 [45225]: https://github.com/rust-lang/rust/pull/45225
 [45267]: https://github.com/rust-lang/rust/pull/45267
 [45324]: https://github.com/rust-lang/rust/pull/45324
 [45326]: https://github.com/rust-lang/rust/pull/45326
 [45333]: https://github.com/rust-lang/rust/pull/45333
+[45379]: https://github.com/rust-lang/rust/pull/45379
 [45380]: https://github.com/rust-lang/rust/pull/45380
 [45393]: https://github.com/rust-lang/rust/pull/45393
 [45435]: https://github.com/rust-lang/rust/pull/45435
@@ -88,12 +86,9 @@ Compatibility Notes
 [45772]: https://github.com/rust-lang/rust/pull/45772
 [45852]: https://github.com/rust-lang/rust/issues/45852
 [45853]: https://github.com/rust-lang/rust/pull/45853
-[45879]: https://github.com/rust-lang/rust/pull/45879
 [45887]: https://github.com/rust-lang/rust/pull/45887
 [45903]: https://github.com/rust-lang/rust/pull/45903
 [45920]: https://github.com/rust-lang/rust/pull/45920
-[46050]: https://github.com/rust-lang/rust/pull/46050
-[46082]: https://github.com/rust-lang/rust/pull/46082
 [cargo/4506]: https://github.com/rust-lang/cargo/pull/4506
 [cargo/4561]: https://github.com/rust-lang/cargo/pull/4561
 [cargo/4592]: https://github.com/rust-lang/cargo/pull/4592
