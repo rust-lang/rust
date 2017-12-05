@@ -28,7 +28,7 @@ use build_helper::output;
 
 use {Build, Compiler, Mode};
 use channel;
-use util::{cp_r, libdir, is_dylib, cp_filtered, copy};
+use util::{cp_r, libdir, is_dylib, cp_filtered, copy, replace_in_file};
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
 use tool::{self, Tool};
@@ -434,7 +434,22 @@ impl Step for Rustc {
 
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));
-            cp_r(&build.src.join("src/doc/man"), &image.join("share/man/man1"));
+            let man_src = build.src.join("src/doc/man");
+            let man_dst = image.join("share/man/man1");
+            let date_output = output(Command::new("date").arg("+%B %Y"));
+            let month_year = date_output.trim();
+            // don't use our `bootstrap::util::{copy, cp_r}`, because those try
+            // to hardlink, and we don't want to edit the source templates
+            for entry_result in t!(fs::read_dir(man_src)) {
+                let file_entry = t!(entry_result);
+                let page_src = file_entry.path();
+                let page_dst = man_dst.join(file_entry.file_name());
+                t!(fs::copy(&page_src, &page_dst));
+                // template in month/year and version number
+                replace_in_file(&page_dst,
+                                &[("<INSERT DATE HERE>", month_year),
+                                  ("<INSERT VERSION HERE>", channel::CFG_RELEASE_NUM)]);
+            }
 
             // Debugger scripts
             builder.ensure(DebuggerScripts {

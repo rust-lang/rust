@@ -15,8 +15,8 @@
 
 use std::env;
 use std::str;
-use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, Read, Write, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, Instant};
@@ -49,6 +49,20 @@ pub fn copy(src: &Path, dst: &Path) {
     let atime = FileTime::from_last_access_time(&metadata);
     let mtime = FileTime::from_last_modification_time(&metadata);
     t!(filetime::set_file_times(dst, atime, mtime));
+}
+
+/// Search-and-replaces within a file. (Not maximally efficiently: allocates a
+/// new string for each replacement.)
+pub fn replace_in_file(path: &Path, replacements: &[(&str, &str)]) {
+    let mut contents = String::new();
+    let mut file = t!(OpenOptions::new().read(true).write(true).open(path));
+    t!(file.read_to_string(&mut contents));
+    for &(target, replacement) in replacements {
+        contents = contents.replace(target, replacement);
+    }
+    t!(file.seek(SeekFrom::Start(0)));
+    t!(file.set_len(0));
+    t!(file.write_all(contents.as_bytes()));
 }
 
 pub fn read_stamp_file(stamp: &Path) -> Vec<PathBuf> {
