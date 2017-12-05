@@ -866,6 +866,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         def: def,
                         span: binding.span,
                         vis: binding.vis,
+                        is_import: true,
                     });
                 }
             }
