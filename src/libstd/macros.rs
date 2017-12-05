@@ -288,7 +288,7 @@ pub mod builtin {
     /// # Examples
     /// Two such examples are macros and `#[cfg]` environments.
     ///
-    /// ```
+    /// ```compile_fail
     /// macro_rules! give_me_foo_or_bar {
     ///     (foo) => {};
     ///     (bar) => {};
@@ -296,6 +296,9 @@ pub mod builtin {
     ///         compile_error!("This macro only accepts `foo` or `bar`");
     ///     }
     /// }
+    ///
+    /// give_me_foo_or_bar!(neither);
+    /// // ^ will fail at compile time with message "This macro only accepts `foo` or `bar`"
     /// ```
     ///
     /// ```compile_fail
