@@ -4,7 +4,6 @@
 // Test of lots of random stuff.
 // FIXME split this into multiple, self-contained tests.
 
-
 #[attr1]
 extern crate foo;
 #[attr2]
@@ -23,7 +22,6 @@ use std::{self, any, ascii, borrow, borrow, borrow, borrow, borrow, borrow, borr
 
 mod doc;
 mod other;
-
 
 // sfdgfffffffffffffffffffffffffffffffffffffffffffffffffffffff
 // ffffffffffffffffffffffffffffffffffffffffff
