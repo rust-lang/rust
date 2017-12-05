@@ -13,7 +13,8 @@
 
 use borrow_check::nll::universal_regions::UniversalRegions;
 use borrow_check::nll::region_infer::RegionInferenceContext;
-use borrow_check::nll::region_infer::values::{RegionElementIndex, RegionValues, RegionValueElements};
+use borrow_check::nll::region_infer::values::{RegionElementIndex, RegionValueElements,
+                                              RegionValues};
 use rustc::mir::{Location, Mir};
 use rustc::ty::RegionVid;
 use rustc_data_structures::fx::FxHashSet;
@@ -112,9 +113,7 @@ pub(super) trait DfsOp {
 
     /// Adds all universal regions in the source region to the target region, returning
     /// true if something has changed.
-    fn add_universal_regions_outlived_by_source_to_target(
-        &mut self,
-    ) -> Result<bool, Self::Early>;
+    fn add_universal_regions_outlived_by_source_to_target(&mut self) -> Result<bool, Self::Early>;
 }
 
 /// Used during inference to enforce a `R1: R2 @ P` constraint.  For
@@ -143,16 +142,11 @@ impl<'v> DfsOp for CopyFromSourceToTarget<'v> {
             .contains(self.source_region, point_index)
     }
 
-    fn add_to_target_region(
-        &mut self,
-        point_index: RegionElementIndex,
-    ) -> Result<bool, !> {
+    fn add_to_target_region(&mut self, point_index: RegionElementIndex) -> Result<bool, !> {
         Ok(self.inferred_values.add(self.target_region, point_index))
     }
 
-    fn add_universal_regions_outlived_by_source_to_target(
-        &mut self,
-    ) -> Result<bool, !> {
+    fn add_universal_regions_outlived_by_source_to_target(&mut self) -> Result<bool, !> {
         Ok(
             self.inferred_values
                 .add_universal_regions_outlived_by(self.source_region, self.target_region),
@@ -215,16 +209,19 @@ impl<'v, 'tcx> DfsOp for TestTargetOutlivesSource<'v, 'tcx> {
             // (This is implied by the loop below, actually, just an
             // irresistible micro-opt. Mm. Premature optimization. So
             // tasty.)
-            if self.inferred_values.contains(self.target_region, ur_in_source) {
+            if self.inferred_values
+                .contains(self.target_region, ur_in_source)
+            {
                 continue;
             }
 
             // If there is some other element X such that `target_region: X` and
             // `X: ur_in_source`, OK.
             if self.inferred_values
-                   .universal_regions_outlived_by(self.target_region)
-                   .any(|ur_in_target| self.universal_regions.outlives(ur_in_target, ur_in_source))
-            {
+                .universal_regions_outlived_by(self.target_region)
+                .any(|ur_in_target| {
+                    self.universal_regions.outlives(ur_in_target, ur_in_source)
+                }) {
                 continue;
             }
 
