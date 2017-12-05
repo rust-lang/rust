@@ -1196,13 +1196,6 @@ impl RegionKind {
 
 /// Type utilities
 impl<'a, 'gcx, 'tcx> TyS<'tcx> {
-    pub fn as_opt_param_ty(&self) -> Option<ty::ParamTy> {
-        match self.sty {
-            ty::TyParam(ref d) => Some(d.clone()),
-            _ => None,
-        }
-    }
-
     pub fn is_nil(&self) -> bool {
         match self.sty {
             TyTuple(ref tys, _) => tys.is_empty(),
