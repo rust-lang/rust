@@ -100,12 +100,12 @@
 ///
 /// Instead, `get` relies on `Q`’s implementation of `Hash` and uses `Borrow`
 /// to indicate that `K`’s implementation of `Hash` must produce the same
-/// result as `Q`’s by demanding that `K: Borrow<Q>`. 
+/// result as `Q`’s by demanding that `K: Borrow<Q>`.
 ///
 /// As a consequence, the hash map breaks if a `K` wrapping a `Q` value
 /// produces a different hash than `Q`. For instance, image you have a
 /// type that wraps a string but compares ASCII letters case-insensitive:
-/// 
+///
 /// ```
 /// use std::ascii::AsciiExt;
 ///
@@ -148,7 +148,7 @@
 /// [`HashMap`]: ../collections/struct.HashMap.html
 /// [`String`]: ../string/struct.String.html
 /// [`str`]: ../primitive.str.html
-/// 
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.
