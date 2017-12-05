@@ -277,7 +277,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///    impl<T> IntoIterator for Vec<T>
 ///    impl<T: Iterator> IntoIterator for T
 ///    ```
-///    We need to be able to prove that `Option<$0>: !Iterator` for every type $0.
+///    We need to be able to prove that `Vec<$0>: !Iterator` for every type $0.
 ///    We can observe that this holds in the current crate, but we need to make
 ///    sure this will also hold in all unknown crates (both "independent" crates,
 ///    which we need for link-safety, and also child crates, because we don't want

@@ -11,8 +11,6 @@
 // Check that the code for issue #43355 can run without an ICE, please remove
 // this test when it becomes an hard error.
 
-#![allow(incoherent_fundamental_impls)]
-
 pub trait Trait1<X> {
     type Output;
 }

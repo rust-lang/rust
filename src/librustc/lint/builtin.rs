@@ -206,7 +206,7 @@ declare_lint! {
 
 declare_lint! {
     pub INCOHERENT_FUNDAMENTAL_IMPLS,
-    Deny,
+    Warn,
     "potentially-conflicting impls were erroneously allowed"
 }
 
