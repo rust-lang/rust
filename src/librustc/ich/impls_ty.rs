@@ -75,6 +75,9 @@ for ty::RegionKind {
             ty::ReFree(ref free_region) => {
                 free_region.hash_stable(hcx, hasher);
             }
+            ty::ReClosureBound(vid) => {
+                vid.hash_stable(hcx, hasher);
+            }
             ty::ReLateBound(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) => {

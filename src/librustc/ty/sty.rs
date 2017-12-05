@@ -1036,6 +1036,12 @@ pub enum RegionKind {
 
     /// Erased region, used by trait selection, in MIR and during trans.
     ReErased,
+
+    /// These are regions bound in the "defining type" for a
+    /// closure. They are used ONLY as part of the
+    /// `ClosureRegionRequirements` that are produced by MIR borrowck.
+    /// See `ClosureRegionRequirements` for more details.
+    ReClosureBound(RegionVid),
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1206,6 +1212,9 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReErased => {
+            }
+            ty::ReClosureBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
         }
 

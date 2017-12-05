@@ -1831,6 +1831,15 @@ pub struct GeneratorLayout<'tcx> {
 /// instance of the closure is created, the corresponding free regions
 /// can be extracted from its type and constrained to have the given
 /// outlives relationship.
+///
+/// In some cases, we have to record outlives requirements between
+/// types and regions as well. In that case, if those types include
+/// any regions, those regions are recorded as `ReClosureBound`
+/// instances assigned one of these same indices. Those regions will
+/// be substituted away by the creator. We use `ReClosureBound` in
+/// that case because the regions must be allocated in the global
+/// TyCtxt, and hence we cannot use `ReVar` (which is what we use
+/// internally within the rest of the NLL code).
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ClosureRegionRequirements<'gcx> {
     /// The number of external regions defined on the closure.  In our

@@ -113,6 +113,13 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 // replace all free regions with 'erased
                 self.tcx().types.re_erased
             }
+
+            ty::ReClosureBound(..) => {
+                bug!(
+                    "encountered unexpected ReClosureBound: {:?}",
+                    r,
+                );
+            }
         }
     }
 

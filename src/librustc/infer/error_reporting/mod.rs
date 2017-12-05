@@ -240,6 +240,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::ReErased => {
                 (format!("lifetime {:?}", region), None)
             }
+
+            // We shouldn't encounter an error message with ReClosureBound.
+            ty::ReClosureBound(..) => {
+                bug!(
+                    "encountered unexpected ReClosureBound: {:?}",
+                    region,
+                );
+            }
         };
         let message = format!("{}{}{}", prefix, description, suffix);
         if let Some(span) = span {
