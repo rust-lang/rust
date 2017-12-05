@@ -13,6 +13,7 @@ use std::iter::repeat;
 
 use syntax::codemap::{BytePos, Pos, Span};
 
+use codemap::LineRangeUtils;
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
 use config::WriteMode;
 use shape::{Indent, Shape};
@@ -76,7 +77,7 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = end;
         let span = mk_sp(start, end);
         let snippet = self.snippet(span);
-        if snippet.trim().is_empty() {
+        if snippet.trim().is_empty() && !out_of_file_lines_range!(self, span) {
             // Keep vertical spaces within range.
             self.push_vertical_spaces(count_newlines(&snippet));
             process_last_snippet(self, "", &snippet);
