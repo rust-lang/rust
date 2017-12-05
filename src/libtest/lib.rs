@@ -1452,7 +1452,6 @@ pub fn run_test(opts: &TestOpts,
 }
 
 /// Clean the backtrace by using std::rt::mark_backtrace_start
-#[inline(always)]
 fn begin_short_backtrace<F: FnOnce()>(f: F) {
     let mut f = Some(f);
     let mut r = None;
