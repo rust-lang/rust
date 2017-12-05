@@ -150,7 +150,11 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         .collect::<Option<Vec<_>>>()?;
 
     // Total of all items excluding the last.
-    let extend_last_subexpr = last_line_extendable(&parent_rewrite) && rewrites.is_empty();
+    let extend_last_subexpr = if is_small_parent {
+        rewrites.len() == 1 && last_line_extendable(&rewrites[0])
+    } else {
+        rewrites.is_empty() && last_line_extendable(&parent_rewrite)
+    };
     let almost_total = if extend_last_subexpr {
         last_line_width(&parent_rewrite)
     } else {
