@@ -87,6 +87,10 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn push_vertical_spaces(&mut self, mut newline_count: usize) {
+        // The buffer already has a trailing newline.
+        if self.buffer.cur_offset() == 0 {
+            newline_count = newline_count.checked_sub(1).unwrap_or(0);
+        }
         let newline_upper_bound = self.config.blank_lines_upper_bound() + 1;
         let newline_lower_bound = self.config.blank_lines_lower_bound() + 1;
         if newline_count > newline_upper_bound {
