@@ -36,6 +36,8 @@ use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveOutIndex, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
+use std::iter;
+
 use self::MutateMode::{JustWrite, WriteAndRead};
 
 pub(crate) mod nll;
@@ -710,7 +712,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             context,
             (sd, place_span.0),
             flow_state,
-            |this, _index, borrow, common_prefix| match (rw, borrow.kind) {
+            |this, _index, borrow| match (rw, borrow.kind) {
                 (Read(_), BorrowKind::Shared) => Control::Continue,
                 (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut) => {
                     match kind {
@@ -727,7 +729,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             error_reported = true;
                             this.report_conflicting_borrow(
                                 context,
-                                common_prefix,
                                 place_span,
                                 bk,
                                 &borrow,
@@ -748,7 +749,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             error_reported = true;
                             this.report_conflicting_borrow(
                                 context,
-                                common_prefix,
                                 place_span,
                                 bk,
                                 &borrow,
@@ -1478,7 +1478,356 @@ enum NoMovePathFound {
     ReachedStatic,
 }
 
+/// The degree of overlap between 2 places for borrow-checking.
+enum Overlap {
+    /// The places might partially overlap - in this case, we give
+    /// up and say that they might conflict. This occurs when
+    /// different fields of a union are borrowed. For example,
+    /// if `u` is a union, we have no way of telling how disjoint
+    /// `u.a.x` and `a.b.y` are.
+    Arbitrary,
+    /// The places are either completely disjoint or equal - this
+    /// is the "base case" on which we recur for extensions of
+    /// the place.
+    EqualOrDisjoint,
+    /// The places are disjoint, so we know all extensions of them
+    /// will also be disjoint.
+    Disjoint,
+}
+
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+    // Given that the bases of `elem1` and `elem2` are always either equal
+    // or disjoint (and have the same type!), return the overlap situation
+    // between `elem1` and `elem2`.
+    fn place_element_conflict(&self,
+                               elem1: &Place<'tcx>,
+                               elem2: &Place<'tcx>)
+                               -> Overlap
+    {
+        match (elem1, elem2) {
+            (Place::Local(l1), Place::Local(l2)) => {
+                if l1 == l2 {
+                    // the same local - base case, equal
+                    debug!("place_element_conflict: DISJOINT-OR-EQ-LOCAL");
+                    Overlap::EqualOrDisjoint
+                } else {
+                    // different locals - base case, disjoint
+                    debug!("place_element_conflict: DISJOINT-LOCAL");
+                    Overlap::Disjoint
+                }
+            }
+            (Place::Static(statik1), Place::Static(statik2)) => {
+                // We ignore borrows of mutable statics elsewhere, but
+                // we need to keep track of thread-locals so we can
+                // complain if they live loner than the function.
+                if statik1.def_id == statik2.def_id {
+                    debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
+                    Overlap::EqualOrDisjoint
+                } else {
+                    debug!("place_element_conflict: DISJOINT-STATIC");
+                    Overlap::Disjoint
+                }
+            }
+            (Place::Local(_), Place::Static(_)) |
+            (Place::Static(_), Place::Local(_)) => {
+                debug!("place_element_conflict: DISJOINT-STATIC-LOCAL");
+                Overlap::Disjoint
+            }
+            (Place::Projection(pi1), Place::Projection(pi2)) => {
+                match (&pi1.elem, &pi2.elem) {
+                    (ProjectionElem::Deref, ProjectionElem::Deref) => {
+                        // derefs (e.g. `*x` vs. `*x`) - recur.
+                        debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
+                        Overlap::EqualOrDisjoint
+                    }
+                    (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
+                        if f1 == f2 {
+                            // same field (e.g. `a.y` vs. `a.y`) - recur.
+                            debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");
+                            Overlap::EqualOrDisjoint
+                        } else {
+                            let ty = pi1.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                            match ty.sty {
+                                ty::TyAdt(def, _) if def.is_union() => {
+                                    // Different fields of a union, we are basically stuck.
+                                    debug!("place_element_conflict: STUCK-UNION");
+                                    Overlap::Arbitrary
+                                }
+                                _ => {
+                                    // Different fields of a struct (`a.x` vs. `a.y`). Disjoint!
+                                    debug!("place_element_conflict: DISJOINT-FIELD");
+                                    Overlap::Disjoint
+                                }
+                            }
+                        }
+                    }
+                    (ProjectionElem::Downcast(_, v1), ProjectionElem::Downcast(_, v2)) => {
+                        // different variants are treated as having disjoint fields,
+                        // even if they occupy the same "space", because it's
+                        // impossible for 2 variants of the same enum to exist
+                        // (and therefore, to be borrowed) at the same time.
+                        //
+                        // Note that this is different from unions - we *do* allow
+                        // this code to compile:
+                        //
+                        // ```
+                        // fn foo(x: &mut Result<i32, i32>) {
+                        //     let mut v = None;
+                        //     if let Ok(ref mut a) = *x {
+                        //         v = Some(a);
+                        //     }
+                        //     // here, you would *think* that the
+                        //     // *entirety* of `x` would be borrowed,
+                        //     // but in fact only the `Ok` variant is,
+                        //     // so the `Err` variant is *entirely free*:
+                        //     if let Err(ref mut a) = *x {
+                        //         v = Some(a);
+                        //     }
+                        //     drop(v);
+                        // }
+                        // ```
+                        if v1 == v2 {
+                            debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");
+                            Overlap::EqualOrDisjoint
+                        } else {
+                            debug!("place_element_conflict: DISJOINT-FIELD");
+                            Overlap::Disjoint
+                        }
+                    }
+                    (ProjectionElem::Index(..), ProjectionElem::Index(..)) |
+                    (ProjectionElem::Index(..), ProjectionElem::ConstantIndex { .. }) |
+                    (ProjectionElem::Index(..), ProjectionElem::Subslice { .. }) |
+                    (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Index(..)) |
+                    (ProjectionElem::ConstantIndex { .. }, ProjectionElem::ConstantIndex { .. }) |
+                    (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Subslice { .. }) |
+                    (ProjectionElem::Subslice { .. }, ProjectionElem::Index(..)) |
+                    (ProjectionElem::Subslice { .. }, ProjectionElem::ConstantIndex { .. }) |
+                    (ProjectionElem::Subslice { .. }, ProjectionElem::Subslice { .. }) => {
+                        // Array indexes (`a[0]` vs. `a[i]`). These can either be disjoint
+                        // (if the indexes differ) or equal (if they are the same), so this
+                        // is the recursive case that gives "equal *or* disjoint" its meaning.
+                        //
+                        // Note that by construction, MIR at borrowck can't subdivide
+                        // `Subslice` accesses (e.g. `a[2..3][i]` will never be present) - they
+                        // are only present in slice patterns, and we "merge together" nested
+                        // slice patterns. That means we don't have to think about these. It's
+                        // probably a good idea to assert this somewhere, but I'm too lazy.
+                        //
+                        // FIXME(#8636) we might want to return Disjoint if
+                        // both projections are constant and disjoint.
+                        debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY");
+                        Overlap::EqualOrDisjoint
+                    }
+
+                    (ProjectionElem::Deref, _) |
+                    (ProjectionElem::Field(..), _) |
+                    (ProjectionElem::Index(..), _) |
+                    (ProjectionElem::ConstantIndex { .. }, _) |
+                    (ProjectionElem::Subslice { .. }, _) |
+                    (ProjectionElem::Downcast(..), _) => {
+                        bug!("mismatched projections in place_element_conflict: {:?} and {:?}",
+
+                             elem1, elem2)
+                    }
+                }
+            }
+            (Place::Projection(_), _) |
+            (_, Place::Projection(_)) => {
+                bug!("unexpected elements in place_element_conflict: {:?} and {:?}",
+                     elem1, elem2)
+            }
+        }
+    }
+    fn borrow_conflicts_with_place(&mut self,
+                                    borrow: &BorrowData<'tcx>,
+                                    place: &Place<'tcx>,
+                                    access: ShallowOrDeep)
+                                    -> bool
+    {
+        debug!("borrow_conflicts_with_place({:?},{:?},{:?})", borrow, place, access);
+
+        // Return all the prefixes of `place` in reverse order, including
+        // downcasts.
+        fn place_elements<'a, 'tcx>(place: &'a Place<'tcx>) -> Vec<&'a Place<'tcx>>
+        {
+            let mut result = vec![];
+            let mut place = place;
+            loop {
+                result.push(place);
+                match place {
+                    Place::Projection(interior) => {
+                        place = &interior.base;
+                    }
+                    _ => {
+                        result.reverse();
+                        return result;
+                    }
+                }
+            }
+        }
+
+        let borrow_components = place_elements(&borrow.place);
+        let access_components = place_elements(place);
+        debug!("borrow_conflicts_with_place: components {:?} / {:?}",
+               borrow_components, access_components);
+
+        let borrow_components = borrow_components.into_iter()
+             .map(Some).chain(iter::repeat(None));
+        let access_components = access_components.into_iter()
+             .map(Some).chain(iter::repeat(None));
+        // The borrowck rules for proving disjointness are applied from the "root" of the
+        // borrow forwards, iterating over "similar" projections in lockstep until
+        // we can prove overlap one way or another. Essentially, we treat `Overlap` as
+        // a monoid and report a conflict if the product ends up not being `Disjoint`.
+        //
+        // At each step, if we didn't run out of borrow or place, we know that our elements
+        // have the same type, and that they only overlap if they are the identical.
+        //
+        // For example, if we are comparing these:
+        // BORROW:  (*x1[2].y).z.a
+        // ACCESS:  (*x1[i].y).w.b
+        //
+        // Then our steps are:
+        //       x1         |   x1          -- places are the same
+        //       x1[2]      |   x1[i]       -- equal or disjoint (disjoint if indexes differ)
+        //       x1[2].y    |   x1[i].y     -- equal or disjoint
+        //      *x1[2].y    |  *x1[i].y     -- equal or disjoint
+        //     (*x1[2].y).z | (*x1[i].y).w  -- we are disjoint and don't need to check more!
+        //
+        // Because `zip` does potentially bad things to the iterator inside, this loop
+        // also handles the case where the access might be a *prefix* of the borrow, e.g.
+        //
+        // BORROW:  (*x1[2].y).z.a
+        // ACCESS:  x1[i].y
+        //
+        // Then our steps are:
+        //       x1         |   x1          -- places are the same
+        //       x1[2]      |   x1[i]       -- equal or disjoint (disjoint if indexes differ)
+        //       x1[2].y    |   x1[i].y     -- equal or disjoint
+        //
+        // -- here we run out of access - the borrow can access a part of it. If this
+        // is a full deep access, then we *know* the borrow conflicts with it. However,
+        // if the access is shallow, then we can proceed:
+        //
+        //       x1[2].y    | (*x1[i].y)    -- a deref! the access can't get past this, so we
+        //                                     are disjoint
+        //
+        // Our invariant is, that at each step of the iteration:
+        //  - If we didn't run out of access to match, our borrow and access are comparable
+        //    and either equal or disjoint.
+        //  - If we did run out of accesss, the borrow can access a part of it.
+        for (borrow_c, access_c) in borrow_components.zip(access_components) {
+            // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
+            debug!("borrow_conflicts_with_place: {:?} vs. {:?}", borrow_c, access_c);
+            match (borrow_c, access_c) {
+                (None, _) => {
+                    // If we didn't run out of access, the borrow can access all of our
+                    // place (e.g. a borrow of `a.b` with an access to `a.b.c`),
+                    // so we have a conflict.
+                    //
+                    // If we did, then we still know that the borrow can access a *part*
+                    // of our place that our access cares about (a borrow of `a.b.c`
+                    // with an access to `a.b`), so we still have a conflict.
+                    //
+                    // FIXME: Differs from AST-borrowck; includes drive-by fix
+                    // to #38899. Will probably need back-compat mode flag.
+                    debug!("borrow_conflict_with_place: full borrow, CONFLICT");
+                    return true;
+                }
+                (Some(borrow_c), None) => {
+                    // We know that the borrow can access a part of our place. This
+                    // is a conflict if that is a part our access cares about.
+
+                    let (base, elem) = match borrow_c {
+                        Place::Projection(box Projection { base, elem }) => (base, elem),
+                        _ => bug!("place has no base?")
+                    };
+                    let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
+
+                    match (elem, &base_ty.sty, access) {
+                        (_, _, Shallow(Some(ArtificialField::Discriminant))) |
+                        (_, _, Shallow(Some(ArtificialField::ArrayLength))) => {
+                            // The discriminant and array length are like
+                            // additional fields on the type; they do not
+                            // overlap any existing data there. Furthermore,
+                            // they cannot actually be a prefix of any
+                            // borrowed place (at least in MIR as it is
+                            // currently.)
+                            //
+                            // e.g. a (mutable) borrow of `a[5]` while we read the
+                            // array length of `a`.
+                            debug!("borrow_conflicts_with_place: implicit field");
+                            return false;
+                        }
+
+                        (ProjectionElem::Deref, _, Shallow(None)) => {
+                            // e.g. a borrow of `*x.y` while we shallowly access `x.y` or some
+                            // prefix thereof - the shallow access can't touch anything behind
+                            // the pointer.
+                            debug!("borrow_conflicts_with_place: shallow access behind ptr");
+                            return false;
+                        }
+                        (ProjectionElem::Deref, ty::TyRef(_, ty::TypeAndMut {
+                            ty: _, mutbl: hir::MutImmutable
+                        }), _) => {
+                            // the borrow goes through a dereference of a shared reference.
+                            //
+                            // I'm not sure why we are tracking these borrows - shared
+                            // references can *always* be aliased, which means the
+                            // permission check already account for this borrow.
+                            debug!("borrow_conflicts_with_place: behind a shared ref");
+                            return false;
+                        }
+
+                        (ProjectionElem::Deref, _, Deep) |
+                        (ProjectionElem::Field { .. }, _, _) |
+                        (ProjectionElem::Index { ..}, _, _) |
+                        (ProjectionElem::ConstantIndex { .. }, _, _) |
+                        (ProjectionElem::Subslice { .. }, _, _) |
+                        (ProjectionElem::Downcast { .. }, _, _) => {
+                            // Recursive case. This can still be disjoint on a
+                            // further iteration if this a shallow access and
+                            // there's a deref later on, e.g. a borrow
+                            // of `*x.y` while accessing `x`.
+                        }
+                    }
+                }
+                (Some(borrow_c), Some(access_c)) => {
+                    match self.place_element_conflict(&borrow_c, access_c) {
+                        Overlap::Arbitrary => {
+                            // We have encountered different fields of potentially
+                            // the same union - the borrow now partially overlaps.
+                            //
+                            // There is no *easy* way of comparing the fields
+                            // further on, because they might have different types
+                            // (e.g. borrows of `u.a.0` and `u.b.y` where `.0` and
+                            // `.y` come from different structs).
+                            //
+                            // We could try to do some things here - e.g. count
+                            // dereferences - but that's probably not a good
+                            // idea, at least for now, so just give up and
+                            // report a conflict. This is unsafe code anyway so
+                            // the user could always use raw pointers.
+                            debug!("borrow_conflicts_with_place: arbitrary -> conflict");
+                            return true;
+                        }
+                        Overlap::EqualOrDisjoint => {
+                            // This is the recursive case - proceed to the next element.
+                        }
+                        Overlap::Disjoint => {
+                            // We have proven the borrow disjoint - further
+                            // projections will remain disjoint.
+                            debug!("borrow_conflicts_with_place: disjoint");
+                            return false;
+                        }
+                    }
+
+                }
+            }
+        }
+        unreachable!("iter::repeat returned None")
+    }
+
     fn each_borrow_involving_path<F>(
         &mut self,
         _context: Context,
@@ -1486,7 +1835,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         flow_state: &InProgress<'cx, 'gcx, 'tcx>,
         mut op: F,
     ) where
-        F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>, &Place<'tcx>) -> Control,
+        F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>) -> Control,
     {
         let (access, place) = access_place;
 
@@ -1501,47 +1850,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         'next_borrow: for i in flow_state.borrows.elems_incoming() {
             let borrowed = &data[i];
 
-            // Is `place` (or a prefix of it) already borrowed? If
-            // so, that's relevant.
-            //
-            // FIXME: Differs from AST-borrowck; includes drive-by fix
-            // to #38899. Will probably need back-compat mode flag.
-            for accessed_prefix in self.prefixes(place, PrefixSet::All) {
-                if *accessed_prefix == borrowed.place {
-                    // FIXME: pass in enum describing case we are in?
-                    let ctrl = op(self, i, borrowed, accessed_prefix);
-                    if ctrl == Control::Break {
-                        return;
-                    }
-                }
-            }
-
-            // Is `place` a prefix (modulo access type) of the
-            // `borrowed.place`? If so, that's relevant.
-
-            let prefix_kind = match access {
-                Shallow(Some(ArtificialField::Discriminant)) |
-                Shallow(Some(ArtificialField::ArrayLength)) => {
-                    // The discriminant and array length are like
-                    // additional fields on the type; they do not
-                    // overlap any existing data there. Furthermore,
-                    // they cannot actually be a prefix of any
-                    // borrowed place (at least in MIR as it is
-                    // currently.)
-                    continue 'next_borrow;
-                }
-                Shallow(None) => PrefixSet::Shallow,
-                Deep => PrefixSet::Supporting,
-            };
-
-            for borrowed_prefix in self.prefixes(&borrowed.place, prefix_kind) {
-                if borrowed_prefix == place {
-                    // FIXME: pass in enum describing case we are in?
-                    let ctrl = op(self, i, borrowed, borrowed_prefix);
-                    if ctrl == Control::Break {
-                        return;
-                    }
-                }
+            if self.borrow_conflicts_with_place(borrowed, place, access) {
+                let ctrl = op(self, i, borrowed);
+                if ctrl == Control::Break { return; }
             }
         }
     }
@@ -1595,6 +1906,7 @@ mod prefixes {
     }
 
     #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    #[allow(dead_code)]
     pub(super) enum PrefixSet {
         /// Doesn't stop until it returns the base case (a Local or
         /// Static prefix).
@@ -1907,17 +2219,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn report_conflicting_borrow(
         &mut self,
         context: Context,
-        common_prefix: &Place<'tcx>,
         (place, span): (&Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData,
         end_issued_loan_span: Option<Span>,
     ) {
-        use self::prefixes::IsPrefixOf;
-
-        assert!(common_prefix.is_prefix_of(place));
-        assert!(common_prefix.is_prefix_of(&issued_borrow.place));
-
         let issued_span = self.retrieve_borrow_span(issued_borrow);
 
         let new_closure_span = self.find_closure_span(span, context.loc);

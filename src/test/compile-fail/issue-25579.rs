@@ -24,8 +24,8 @@ fn causes_ice(mut l: &mut Sexpression) {
                                                   //[mir]~| ERROR [E0499]
             l = &mut **expr; //[ast]~ ERROR [E0506]
                              //[mir]~^ ERROR [E0506]
-                             //[mir]~| ERROR [E0506]
                              //[mir]~| ERROR [E0499]
+                             //[mir]~| ERROR [E0506]
                              //[mir]~| ERROR [E0499]
         }
     }}

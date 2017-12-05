@@ -52,12 +52,12 @@ fn main() {
         {
             let ra = &u.a;
             let rmb = &mut u.b; //[ast]~ ERROR cannot borrow `u` (via `u.b`) as mutable because `u` is also borrowed as immutable (via `u.a`)
-                                // FIXME Error for MIR (needs support for union)
+                                //[mir]~^ ERROR cannot borrow `u.b` as mutable because it is also borrowed as immutable
         }
         {
             let ra = &u.a;
             u.b = 1; //[ast]~ ERROR cannot assign to `u.b` because it is borrowed
-                     // FIXME Error for MIR (needs support for union)
+                     //[mir]~^ ERROR cannot assign to `u.b` because it is borrowed
         }
         // Mut borrow, same field
         {
@@ -84,22 +84,23 @@ fn main() {
         {
             let rma = &mut u.a;
             let rb = &u.b; //[ast]~ ERROR cannot borrow `u` (via `u.b`) as immutable because `u` is also borrowed as mutable (via `u.a`)
-                           // FIXME Error for MIR (needs support for union)
+                           //[mir]~^ ERROR cannot borrow `u.b` as immutable because it is also borrowed as mutable
         }
         {
             let ra = &mut u.a;
             let b = u.b; //[ast]~ ERROR cannot use `u.b` because it was mutably borrowed
-                         // FIXME Error for MIR (needs support for union)
+                         //[mir]~^ ERROR cannot use `u.b` because it was mutably borrowed
+
         }
         {
             let rma = &mut u.a;
             let rmb2 = &mut u.b; //[ast]~ ERROR cannot borrow `u` (via `u.b`) as mutable more than once at a time
-                                 // FIXME Error for MIR (needs support for union)
+                                 //[mir]~^ ERROR cannot borrow `u.b` as mutable more than once at a time
         }
         {
             let rma = &mut u.a;
             u.b = 1; //[ast]~ ERROR cannot assign to `u.b` because it is borrowed
-                     // FIXME Error for MIR (needs support for union)
+                     //[mir]~^ ERROR cannot assign to `u.b` because it is borrowed
         }
     }
 }
