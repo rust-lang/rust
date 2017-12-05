@@ -616,7 +616,7 @@ impl<T> RefCell<T> {
     /// assert_eq!(cell, RefCell::new(6));
     /// ```
     #[inline]
-    #[unstable(feature = "refcell_replace_swap", issue="43570")]
+    #[unstable(feature = "refcell_replace_with", issue="43570")]
     pub fn replace_with<F: FnOnce(&mut T) -> T>(&self, f: F) -> T {
         let mut_borrow = &mut *self.borrow_mut();
         let replacement = f(mut_borrow);
