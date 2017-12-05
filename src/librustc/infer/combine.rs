@@ -475,6 +475,14 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                     ty::Bivariant | ty::Covariant | ty::Contravariant => (),
                 }
             }
+
+            ty::ReClosureBound(..) => {
+                span_bug!(
+                    self.span,
+                    "encountered unexpected ReClosureBound: {:?}",
+                    r,
+                );
+            }
         }
 
         // FIXME: This is non-ideal because we don't give a
