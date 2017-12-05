@@ -368,7 +368,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let instance = Instance::mono(tcx, def_id);
 
             // Sanity check whether this ended up being collected accidentally
-            debug_assert!(should_trans_locally(tcx, &instance));
+            debug_assert!(should_monomorphize_locally(tcx, &instance));
 
             let ty = instance.ty(tcx);
             visit_drop_use(tcx, ty, true, &mut neighbors);
@@ -379,7 +379,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         MonoItem::Fn(instance) => {
             // Sanity check whether this ended up being collected accidentally
-            debug_assert!(should_trans_locally(tcx, &instance));
+            debug_assert!(should_monomorphize_locally(tcx, &instance));
 
             // Keep track of the monomorphization recursion depth
             recursion_depth_reset = Some(check_recursion_limit(tcx,
@@ -411,13 +411,13 @@ fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              caller: MonoItem<'tcx>,
                              callees: &[MonoItem<'tcx>],
                              inlining_map: &mut InliningMap<'tcx>) {
-    let is_inlining_candidate = |trans_item: &MonoItem<'tcx>| {
-        trans_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
+    let is_inlining_candidate = |mono_item: &MonoItem<'tcx>| {
+        mono_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
     };
 
     let accesses = callees.into_iter()
-                          .map(|trans_item| {
-                             (*trans_item, is_inlining_candidate(trans_item))
+                          .map(|mono_item| {
+                             (*mono_item, is_inlining_candidate(mono_item))
                           });
 
     inlining_map.record_accesses(caller, accesses);
@@ -541,7 +541,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::TyClosure(def_id, substs) => {
                         let instance = monomorphize::resolve_closure(
                             self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
-                        self.output.push(create_fn_trans_item(instance));
+                        self.output.push(create_fn_mono_item(instance));
                     }
                     _ => bug!(),
                 }
@@ -553,8 +553,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     .require(ExchangeMallocFnLangItem)
                     .unwrap_or_else(|e| tcx.sess.fatal(&e));
                 let instance = Instance::mono(tcx, exchange_malloc_fn_def_id);
-                if should_trans_locally(tcx, &instance) {
-                    self.output.push(create_fn_trans_item(instance));
+                if should_monomorphize_locally(tcx, &instance) {
+                    self.output.push(create_fn_mono_item(instance));
                 }
             }
             _ => { /* not interesting */ }
@@ -644,7 +644,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
         let tcx = self.tcx;
         let instance = Instance::mono(tcx, static_.def_id);
-        if should_trans_locally(tcx, &instance) {
+        if should_monomorphize_locally(tcx, &instance) {
             let node_id = tcx.hir.as_local_node_id(static_.def_id).unwrap();
             self.output.push(MonoItem::Static(node_id));
         }
@@ -682,7 +682,7 @@ fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 output: &mut Vec<MonoItem<'tcx>>)
 {
     debug!("visit_item_use({:?}, is_direct_call={:?})", instance, is_direct_call);
-    if !should_trans_locally(tcx, &instance) {
+    if !should_monomorphize_locally(tcx, &instance) {
         return
     }
 
@@ -696,26 +696,26 @@ fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::InstanceDef::DropGlue(_, None) => {
             // don't need to emit shim if we are calling directly.
             if !is_direct_call {
-                output.push(create_fn_trans_item(instance));
+                output.push(create_fn_mono_item(instance));
             }
         }
         ty::InstanceDef::DropGlue(_, Some(_)) => {
-            output.push(create_fn_trans_item(instance));
+            output.push(create_fn_mono_item(instance));
         }
         ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Item(..) |
         ty::InstanceDef::FnPtrShim(..) |
         ty::InstanceDef::CloneShim(..) => {
-            output.push(create_fn_trans_item(instance));
+            output.push(create_fn_mono_item(instance));
         }
     }
 }
 
 // Returns true if we should translate an instance in the local crate.
 // Returns false if we can just link to the upstream crate and therefore don't
-// need a translation item.
-fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instance<'tcx>)
-                                  -> bool {
+// need a mono item.
+fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instance<'tcx>)
+                                         -> bool {
     let def_id = match instance.def {
         ty::InstanceDef::Item(def_id) => def_id,
         ty::InstanceDef::ClosureOnceShim { .. } |
@@ -739,7 +739,7 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instan
                 false
             } else {
                 if !tcx.is_mir_available(def_id) {
-                    bug!("Cannot create local trans-item for {:?}", def_id)
+                    bug!("Cannot create local mono-item for {:?}", def_id)
                 }
                 true
             }
@@ -834,8 +834,8 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn create_fn_trans_item<'a, 'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
-    debug!("create_fn_trans_item(instance={})", instance);
+fn create_fn_mono_item<'a, 'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
+    debug!("create_fn_mono_item(instance={})", instance);
     MonoItem::Fn(instance)
 }
 
@@ -861,8 +861,8 @@ fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         ty::ParamEnv::empty(traits::Reveal::All),
                         def_id,
                         substs).unwrap())
-                .filter(|&instance| should_trans_locally(tcx, &instance))
-                .map(|instance| create_fn_trans_item(instance));
+                .filter(|&instance| should_monomorphize_locally(tcx, &instance))
+                .map(|instance| create_fn_mono_item(instance));
             output.extend(methods);
         }
         // Also add the destructor
@@ -1009,7 +1009,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             let impl_def_id = tcx.hir.local_def_id(item.id);
 
-            debug!("create_trans_items_for_default_impls(item={})",
+            debug!("create_mono_items_for_default_impls(item={})",
                    def_id_to_string(tcx, impl_def_id));
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
@@ -1032,9 +1032,10 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                          method.def_id,
                                                          callee_substs).unwrap();
 
-                    let trans_item = create_fn_trans_item(instance);
-                    if trans_item.is_instantiable(tcx) && should_trans_locally(tcx, &instance) {
-                        output.push(trans_item);
+                    let mono_item = create_fn_mono_item(instance);
+                    if mono_item.is_instantiable(tcx)
+                        && should_monomorphize_locally(tcx, &instance) {
+                        output.push(mono_item);
                     }
                 }
             }
