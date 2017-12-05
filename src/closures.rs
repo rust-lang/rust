@@ -31,7 +31,6 @@ use utils::{last_line_width, left_most_sub_expr, stmt_expr};
 //     statement without needing a semi-colon), then adding or removing braces
 //     can change whether it is treated as an expression or statement.
 
-
 pub fn rewrite_closure(
     capture: ast::CaptureBy,
     fn_decl: &ast::FnDecl,
