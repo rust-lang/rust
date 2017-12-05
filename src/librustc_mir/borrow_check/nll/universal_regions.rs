@@ -247,17 +247,24 @@ impl<'tcx> UniversalRegions<'tcx> {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::new)
     }
 
-    /// True if `r` is classied as a global region.
+    /// True if `r` is classified as a global region.
     pub fn is_global_free_region(&self, r: RegionVid) -> bool {
         self.region_classification(r) == Some(RegionClassification::Global)
     }
 
-    /// True if `r` is classied as an external region.
+    /// True if `r` is classified as an external region.
     pub fn is_extern_free_region(&self, r: RegionVid) -> bool {
         self.region_classification(r) == Some(RegionClassification::External)
     }
 
-    /// True if `r` is classied as an local region.
+    /// True if `r` is a free region that is classified as global or
+    /// extern.  This is an important category, because these regions
+    /// can be referenced in `ClosureRegionRequirements`.
+    pub fn is_non_local_free_region(&self, r: RegionVid) -> bool {
+        self.region_classification(r) == Some(RegionClassification::Local)
+    }
+
+    /// True if `r` is classified as an local region.
     pub fn is_local_free_region(&self, r: RegionVid) -> bool {
         self.region_classification(r) == Some(RegionClassification::Local)
     }
@@ -324,6 +331,10 @@ impl<'tcx> UniversalRegions<'tcx> {
         relation: &TransitiveRelation<RegionVid>,
         fr0: RegionVid,
     ) -> Option<RegionVid> {
+        // This method assumes that `fr0` is one of the universally
+        // quantified region variables.
+        assert!(self.is_universal_region(fr0));
+
         let mut external_parents = vec![];
         let mut queue = vec![&fr0];
 
