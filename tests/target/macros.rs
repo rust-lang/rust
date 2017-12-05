@@ -121,7 +121,7 @@ fn main() {
         20, 21, 22);
 
     // #1092
-    chain!(input, a:take!(max_size), || []);
+    chain!(input, a: take!(max_size), || []);
 }
 
 impl X {
@@ -283,4 +283,10 @@ fn special_case_macros() {
         "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
         result, input, expected
     );
+}
+
+// #1209
+impl Foo {
+    /// foo
+    pub fn foo(&self) -> Bar<foo!()> {}
 }

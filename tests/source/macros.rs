@@ -224,3 +224,9 @@ fn special_case_macros() {
     // assert!
     assert!(result, "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')", result, input, expected);
 }
+
+// #1209
+impl Foo {
+    /// foo
+    pub fn foo(&self) -> Bar<foo!(   )> {}
+}
