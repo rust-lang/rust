@@ -112,9 +112,9 @@ matrix:
       if: branch = auto
     - env: IMAGE=armhf-gnu
       if: branch = auto
-    - env: IMAGE=cross DEPLOY=1
+    - env: IMAGE=dist-various-1 DEPLOY=1
       if: branch = auto
-    - env: IMAGE=cross2 DEPLOY=1
+    - env: IMAGE=dist-various-2 DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
       if: branch = auto
