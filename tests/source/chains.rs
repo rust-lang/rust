@@ -53,6 +53,14 @@ fn main() {
         .map(|x| x / 2)
         .fold(0, |acc, x| acc + x);
 
+    body.fold(Body::new(), |mut body, chunk| {
+        body.extend(chunk);
+        Ok(body)
+    }).and_then(move |body| {
+            let req = Request::from_parts(parts, body);
+            f(req).map_err(|_| io::Error::new(io::ErrorKind::Other, ""))
+        });
+
     aaaaaaaaaaaaaaaa.map(|x| {
                          x += 1;
                          x
