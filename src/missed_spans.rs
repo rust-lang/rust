@@ -119,6 +119,85 @@ impl<'a> FmtVisitor<'a> {
         self.write_snippet_inner(big_snippet, big_diff, &snippet, span, process_last_snippet);
     }
 
+    fn process_comment(
+        &mut self,
+        status: &mut SnippetStatus,
+        snippet: &str,
+        big_snippet: &str,
+        offset: usize,
+        big_diff: usize,
+        subslice: &str,
+        file_name: &str,
+    ) -> bool {
+        let last_char = big_snippet[..(offset + big_diff)]
+            .chars()
+            .rev()
+            .skip_while(|rev_c| [' ', '\t'].contains(rev_c))
+            .next();
+
+        let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
+
+        let subslice_num_lines = count_newlines(subslice);
+        let skip_this_range = !self.config.file_lines().intersects_range(
+            file_name,
+            status.cur_line,
+            status.cur_line + subslice_num_lines,
+        );
+
+        if status.rewrite_next_comment && skip_this_range {
+            status.rewrite_next_comment = false;
+        }
+
+        if status.rewrite_next_comment {
+            if fix_indent {
+                if let Some('{') = last_char {
+                    self.buffer.push_str("\n");
+                }
+                self.buffer
+                    .push_str(&self.block_indent.to_string(self.config));
+            } else {
+                self.buffer.push_str(" ");
+            }
+
+            let comment_width = ::std::cmp::min(
+                self.config.comment_width(),
+                self.config.max_width() - self.block_indent.width(),
+            );
+            let comment_indent = Indent::from_width(self.config, self.buffer.cur_offset());
+            let comment_shape = Shape::legacy(comment_width, comment_indent);
+            let comment_str = rewrite_comment(subslice, false, comment_shape, self.config)
+                .unwrap_or_else(|| String::from(subslice));
+            self.buffer.push_str(&comment_str);
+
+            status.last_wspace = None;
+            status.line_start = offset + subslice.len();
+
+            if let Some('/') = subslice.chars().nth(1) {
+                // check that there are no contained block comments
+                if !subslice
+                    .split('\n')
+                    .map(|s| s.trim_left())
+                    .any(|s| s.len() >= 2 && &s[0..2] == "/*")
+                {
+                    // Add a newline after line comments
+                    self.buffer.push_str("\n");
+                }
+            } else if status.line_start <= snippet.len() {
+                // For other comments add a newline if there isn't one at the end already
+                match snippet[status.line_start..].chars().next() {
+                    Some('\n') | Some('\r') => (),
+                    _ => self.buffer.push_str("\n"),
+                }
+            }
+
+            status.cur_line += subslice_num_lines;
+            true
+        } else {
+            status.rewrite_next_comment = false;
+            false
+        }
+    }
+
     fn write_snippet_inner<F>(
         &mut self,
         big_snippet: &str,
@@ -132,13 +211,9 @@ impl<'a> FmtVisitor<'a> {
         // Trim whitespace from the right hand side of each line.
         // Annoyingly, the library functions for splitting by lines etc. are not
         // quite right, so we must do it ourselves.
-        let mut line_start = 0;
-        let mut last_wspace = None;
-        let mut rewrite_next_comment = true;
-
         let char_pos = self.codemap.lookup_char_pos(span.lo());
         let file_name = &char_pos.file.name;
-        let mut cur_line = char_pos.line;
+        let mut status = SnippetStatus::new(char_pos.line);
 
         fn replace_chars<'a>(string: &'a str) -> Cow<'a, str> {
             if string.contains(char::is_whitespace) {
@@ -162,121 +237,87 @@ impl<'a> FmtVisitor<'a> {
             debug!("{:?}: {:?}", kind, subslice);
 
             if let CodeCharKind::Comment = kind {
-                let last_char = big_snippet[..(offset + big_diff)]
-                    .chars()
-                    .rev()
-                    .skip_while(|rev_c| [' ', '\t'].contains(rev_c))
-                    .next();
-
-                let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
-
-                let subslice_num_lines = count_newlines(subslice);
-
-                if rewrite_next_comment
-                    && !self.config.file_lines().intersects_range(
-                        file_name,
-                        cur_line,
-                        cur_line + subslice_num_lines,
-                    ) {
-                    rewrite_next_comment = false;
-                }
-
-                if rewrite_next_comment {
-                    if fix_indent {
-                        if let Some('{') = last_char {
-                            self.buffer.push_str("\n");
-                        }
-                        self.buffer
-                            .push_str(&self.block_indent.to_string(self.config));
-                    } else {
-                        self.buffer.push_str(" ");
-                    }
-
-                    let comment_width = ::std::cmp::min(
-                        self.config.comment_width(),
-                        self.config.max_width() - self.block_indent.width(),
-                    );
-                    let comment_indent = Indent::from_width(self.config, self.buffer.cur_offset());
-
-                    self.buffer.push_str(&rewrite_comment(
-                        subslice,
-                        false,
-                        Shape::legacy(comment_width, comment_indent),
-                        self.config,
-                    ).unwrap());
-
-                    last_wspace = None;
-                    line_start = offset + subslice.len();
-
-                    if let Some('/') = subslice.chars().nth(1) {
-                        // check that there are no contained block comments
-                        if !subslice
-                            .split('\n')
-                            .map(|s| s.trim_left())
-                            .any(|s| s.len() >= 2 && &s[0..2] == "/*")
-                        {
-                            // Add a newline after line comments
-                            self.buffer.push_str("\n");
-                        }
-                    } else if line_start <= snippet.len() {
-                        // For other comments add a newline if there isn't one at the end already
-                        match snippet[line_start..].chars().next() {
-                            Some('\n') | Some('\r') => (),
-                            _ => self.buffer.push_str("\n"),
-                        }
-                    }
-
-                    cur_line += subslice_num_lines;
+                if self.process_comment(
+                    &mut status,
+                    snippet,
+                    big_snippet,
+                    offset,
+                    big_diff,
+                    subslice,
+                    file_name,
+                ) {
                     continue;
-                } else {
-                    rewrite_next_comment = false;
                 }
             }
+
+            // cur_line += newline_count;
+            // rewirte_next_comment = true;
 
             for (mut i, c) in subslice.char_indices() {
                 i += offset;
 
                 if c == '\n' {
-                    if !self.config.file_lines().contains_line(file_name, cur_line) {
-                        last_wspace = None;
+                    if !self.config
+                        .file_lines()
+                        .contains_line(file_name, status.cur_line)
+                    {
+                        status.last_wspace = None;
                     }
 
-                    if let Some(lw) = last_wspace {
-                        self.buffer.push_str(&snippet[line_start..lw]);
+                    if let Some(lw) = status.last_wspace {
+                        self.buffer.push_str(&snippet[status.line_start..lw]);
                         self.buffer.push_str("\n");
                     } else {
-                        self.buffer.push_str(&snippet[line_start..i + 1]);
+                        self.buffer.push_str(&snippet[status.line_start..i + 1]);
                     }
 
-                    cur_line += 1;
-                    line_start = i + 1;
-                    last_wspace = None;
-                    rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
+                    status.cur_line += 1;
+                    status.line_start = i + 1;
+                    status.last_wspace = None;
+                    status.rewrite_next_comment = true;
                 } else if c.is_whitespace() {
-                    if last_wspace.is_none() {
-                        last_wspace = Some(i);
+                    if status.last_wspace.is_none() {
+                        status.last_wspace = Some(i);
                     }
                 } else if c == ';' {
-                    if last_wspace.is_some() {
-                        line_start = i;
+                    if status.last_wspace.is_some() {
+                        status.line_start = i;
                     }
 
-                    rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
-                    last_wspace = None;
+                    status.rewrite_next_comment = true;
+                    status.last_wspace = None;
                 } else {
-                    rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
-                    last_wspace = None;
+                    status.rewrite_next_comment = true;
+                    status.last_wspace = None;
                 }
             }
 
-            let remaining = snippet[line_start..subslice.len() + offset].trim();
+            let remaining = snippet[status.line_start..subslice.len() + offset].trim();
             if !remaining.is_empty() {
                 self.buffer.push_str(remaining);
-                line_start = subslice.len() + offset;
-                rewrite_next_comment = rewrite_next_comment || kind == CodeCharKind::Normal;
+                status.line_start = subslice.len() + offset;
+                status.rewrite_next_comment = true;
             }
         }
 
-        process_last_snippet(self, &snippet[line_start..], snippet);
+        process_last_snippet(self, &snippet[status.line_start..], snippet);
+    }
+}
+
+struct SnippetStatus {
+    line_start: usize,
+    last_wspace: Option<usize>,
+    rewrite_next_comment: bool,
+    cur_line: usize,
+}
+
+impl SnippetStatus {
+    fn new(cur_line: usize) -> Self {
+        SnippetStatus {
+            line_start: 0,
+            last_wspace: None,
+            rewrite_next_comment: true,
+            cur_line,
+        }
     }
 }
