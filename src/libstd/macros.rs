@@ -286,7 +286,10 @@ pub mod builtin {
     /// better error messages for errornous conditions.
     ///
     /// # Examples
+    ///
     /// Two such examples are macros and `#[cfg]` environments.
+    ///
+    /// Emit better compiler error if a macro is passed invalid values.
     ///
     /// ```compile_fail
     /// macro_rules! give_me_foo_or_bar {
@@ -300,6 +303,8 @@ pub mod builtin {
     /// give_me_foo_or_bar!(neither);
     /// // ^ will fail at compile time with message "This macro only accepts `foo` or `bar`"
     /// ```
+    ///
+    /// Emit compiler error if one of a number of features isn't available.
     ///
     /// ```compile_fail
     /// #[cfg(not(any(feature = "foo", feature = "bar")))]
