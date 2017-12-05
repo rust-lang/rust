@@ -187,7 +187,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                             .to_owned(),
                     ),
                 )?;
-                let arg_dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                let arg_dest = self.eval_lvalue(&mir::Place::Local(arg_local))?;
                 self.write_ptr(arg_dest, data, u8_ptr_ty)?;
 
                 assert!(args.next().is_none(), "__rust_maybe_catch_panic argument has more arguments than expected");
