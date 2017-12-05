@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++-arm-linux-gnueabi \
   g++-arm-linux-gnueabihf \
   g++-aarch64-linux-gnu \
+  g++-powerpc-linux-gnu \
   gcc-sparc64-linux-gnu \
   libc6-dev-sparc64-cross \
   bzip2 \
@@ -48,6 +49,7 @@ ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
+ENV TARGETS=$TARGETS,powerpc-unknown-linux-musl
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
 ENV TARGETS=$TARGETS,x86_64-unknown-redox
 
@@ -65,7 +67,8 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-arm=/usr/local/arm-linux-musleabi \
       --musl-root-armhf=/usr/local/arm-linux-musleabihf \
       --musl-root-armv7=/usr/local/armv7-linux-musleabihf \
-      --musl-root-aarch64=/usr/local/aarch64-linux-musl
+      --musl-root-aarch64=/usr/local/aarch64-linux-musl \
+      --musl-root-ppc=/usr/local/ppc-linux-musl
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 
 # sccache
