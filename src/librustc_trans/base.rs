@@ -563,7 +563,7 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = ccx.tcx().no_late_bound_regions(&main_ret_ty).unwrap();
+        let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
 
         if declare::get_defined_value(ccx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.

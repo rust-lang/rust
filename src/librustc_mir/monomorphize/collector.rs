@@ -1032,7 +1032,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = self.tcx.no_late_bound_regions(&main_ret_ty).unwrap();
+        let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
 
         let start_instance = Instance::resolve(
             self.tcx,
