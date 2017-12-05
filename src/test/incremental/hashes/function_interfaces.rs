@@ -26,7 +26,7 @@
 #![feature(intrinsics)]
 #![feature(linkage)]
 #![feature(rustc_attrs)]
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 
 // Add Parameter ---------------------------------------------------------------
@@ -35,8 +35,9 @@
 pub fn add_parameter() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn add_parameter(p: i32) {}
 
 
@@ -46,8 +47,8 @@ pub fn add_parameter(p: i32) {}
 pub fn add_return_type() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn add_return_type() -> () {}
 
 
@@ -57,8 +58,9 @@ pub fn add_return_type() -> () {}
 pub fn type_of_parameter(p: i32) {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn type_of_parameter(p: i64) {}
 
 
@@ -68,8 +70,9 @@ pub fn type_of_parameter(p: i64) {}
 pub fn type_of_parameter_ref(p: &i32) {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn type_of_parameter_ref(p: &mut i32) {}
 
 
@@ -79,8 +82,9 @@ pub fn type_of_parameter_ref(p: &mut i32) {}
 pub fn order_of_parameters(p1: i32, p2: i64) {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn order_of_parameters(p2: i64, p1: i32) {}
 
 
@@ -90,8 +94,9 @@ pub fn order_of_parameters(p2: i64, p1: i32) {}
 pub fn make_unsafe() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
 pub unsafe fn make_unsafe() {}
 
 
@@ -101,9 +106,9 @@ pub unsafe fn make_unsafe() {}
 pub fn make_extern() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, TypeckTables, FnSignature")]
-#[rustc_clean(cfg="cfail3")]
-pub extern fn make_extern() {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
+pub extern "C" fn make_extern() {}
 
 
 // Extern C Extern Rust-Intrinsic ----------------------------------------------
@@ -112,8 +117,8 @@ pub extern fn make_extern() {}
 pub extern "C" fn make_intrinsic() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, TypeckTables, FnSignature")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
 pub extern "rust-intrinsic" fn make_intrinsic() {}
 
 
@@ -123,8 +128,9 @@ pub extern "rust-intrinsic" fn make_intrinsic() {}
 pub fn type_parameter() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn type_parameter<T>() {}
 
 
@@ -134,8 +140,8 @@ pub fn type_parameter<T>() {}
 pub fn lifetime_parameter() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, GenericsOfItem")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, GenericsOfItem")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn lifetime_parameter<'a>() {}
 
 
@@ -145,8 +151,8 @@ pub fn lifetime_parameter<'a>() {}
 pub fn trait_bound<T>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, PredicatesOfItem")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn trait_bound<T: Eq>() {}
 
 
@@ -156,8 +162,8 @@ pub fn trait_bound<T: Eq>() {}
 pub fn builtin_bound<T>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, PredicatesOfItem")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn builtin_bound<T: Send>() {}
 
 
@@ -167,8 +173,9 @@ pub fn builtin_bound<T: Send>() {}
 pub fn lifetime_bound<'a, T>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn lifetime_bound<'a, T: 'a>() {}
 
 
@@ -178,8 +185,8 @@ pub fn lifetime_bound<'a, T: 'a>() {}
 pub fn second_trait_bound<T: Eq>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, PredicatesOfItem")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn second_trait_bound<T: Eq + Clone>() {}
 
 
@@ -189,8 +196,8 @@ pub fn second_trait_bound<T: Eq + Clone>() {}
 pub fn second_builtin_bound<T: Send>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, PredicatesOfItem")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn second_builtin_bound<T: Send + Sized>() {}
 
 
@@ -200,8 +207,9 @@ pub fn second_builtin_bound<T: Send + Sized>() {}
 pub fn second_lifetime_bound<'a, 'b, T: 'a>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
 
 
@@ -211,8 +219,8 @@ pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
 pub fn inline() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
 #[inline]
 pub fn inline() {}
 
@@ -224,8 +232,8 @@ pub fn inline() {}
 pub fn inline_never() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
 #[inline(never)]
 pub fn inline_never() {}
 
@@ -236,8 +244,8 @@ pub fn inline_never() {}
 pub fn no_mangle() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
 #[no_mangle]
 pub fn no_mangle() {}
 
@@ -248,9 +256,9 @@ pub fn no_mangle() {}
 pub fn linkage() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody")]
-#[rustc_clean(cfg="cfail3")]
-#[linkage="weak_odr"]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
+#[linkage = "weak_odr"]
 pub fn linkage() {}
 
 
@@ -262,8 +270,8 @@ pub fn return_impl_trait() -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody, TypeckTables, FnSignature")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn return_impl_trait() -> impl Clone {
     0
 }
@@ -277,8 +285,8 @@ pub fn change_return_impl_trait() -> impl Clone {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir, HirBody")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
 pub fn change_return_impl_trait() -> impl Copy {
     0u32
 }
@@ -295,8 +303,9 @@ pub mod change_return_type_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as ReturnType;
 
-    #[rustc_clean(cfg="cfail2", except="Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
-    #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg = "cfail2",
+                  except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+    #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_return_type() -> ReturnType {
         ReturnType {}
     }
@@ -311,8 +320,9 @@ pub mod change_parameter_type_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as ParameterType;
 
-    #[rustc_clean(cfg="cfail2", except="Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
-    #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg = "cfail2",
+                  except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+    #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_parameter_type(p: ParameterType) {}
 }
 
@@ -328,8 +338,8 @@ pub mod change_trait_bound_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="cfail2", except="Hir, HirBody, PredicatesOfItem")]
-    #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+    #[rustc_clean(cfg = "cfail3")]
     pub fn indirect_trait_bound<T: Trait>(p: T) {}
 }
 
@@ -342,7 +352,11 @@ pub mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg="cfail2", except="Hir, HirBody, PredicatesOfItem")]
-    #[rustc_clean(cfg="cfail3")]
-    pub fn indirect_trait_bound_where<T>(p: T) where T: Trait {}
+    #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+    #[rustc_clean(cfg = "cfail3")]
+    pub fn indirect_trait_bound_where<T>(p: T)
+    where
+        T: Trait,
+    {
+    }
 }
