@@ -556,7 +556,7 @@ impl<'a> CrateLoader<'a> {
         use std::{env, mem};
         use proc_macro::TokenStream;
         use proc_macro::__internal::Registry;
-        use rustc_back::dynamic_lib::DynamicLibrary;
+        use dynamic_lib::DynamicLibrary;
         use syntax_ext::deriving::custom::ProcMacroDerive;
         use syntax_ext::proc_macro_impl::{AttrProcMacro, BangProcMacro};
 

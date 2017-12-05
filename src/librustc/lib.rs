@@ -46,6 +46,7 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
+#![feature(from_ref)]
 #![feature(i128)]
 #![feature(i128_type)]
 #![feature(inclusive_range)]

@@ -115,7 +115,7 @@ impl<'a> PluginLoader<'a> {
                         span: Span,
                         path: PathBuf,
                         symbol: String) -> PluginRegistrarFun {
-        use rustc_back::dynamic_lib::DynamicLibrary;
+        use rustc_metadata::dynamic_lib::DynamicLibrary;
 
         // Make sure the path contains a / or the linker will search for it.
         let path = env::current_dir().unwrap().join(&path);

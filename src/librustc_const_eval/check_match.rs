@@ -31,7 +31,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind};
 
-use rustc_back::slice;
+use std::slice;
 
 use syntax::ast;
 use syntax::ptr::P;
@@ -114,7 +114,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
         });
 
         // Check legality of move bindings and `@` patterns.
-        self.check_patterns(false, slice::ref_slice(&loc.pat));
+        self.check_patterns(false, slice::from_ref(&loc.pat));
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
@@ -122,7 +122,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
 
         for arg in &body.arguments {
             self.check_irrefutable(&arg.pat, "function argument");
-            self.check_patterns(false, slice::ref_slice(&arg.pat));
+            self.check_patterns(false, slice::from_ref(&arg.pat));
         }
     }
 }

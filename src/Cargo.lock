@@ -1687,7 +1687,6 @@ dependencies = [
  "graphviz 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_back 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_mir 0.0.0",
  "syntax 0.0.0",
@@ -1701,7 +1700,6 @@ dependencies = [
  "arena 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_back 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -1891,7 +1889,6 @@ name = "rustc_plugin"
 version = "0.0.0"
 dependencies = [
  "rustc 0.0.0",
- "rustc_back 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_metadata 0.0.0",
  "syntax 0.0.0",
@@ -1963,6 +1960,7 @@ dependencies = [
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
+ "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1999,7 +1997,6 @@ dependencies = [
  "fmt_macros 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_back 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -2017,6 +2014,7 @@ dependencies = [
  "html-diff 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

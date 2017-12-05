@@ -25,7 +25,7 @@ use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use util::ppaux;
-use rustc_back::slice;
+use std::slice;
 use hir::{self, InlineAsm};
 use std::ascii;
 use std::borrow::{Cow};
@@ -754,28 +754,28 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn successors(&self) -> Cow<[BasicBlock]> {
         use self::TerminatorKind::*;
         match *self {
-            Goto { target: ref b } => slice::ref_slice(b).into_cow(),
+            Goto { target: ref b } => slice::from_ref(b).into_cow(),
             SwitchInt { targets: ref b, .. } => b[..].into_cow(),
             Resume | GeneratorDrop => (&[]).into_cow(),
             Return => (&[]).into_cow(),
             Unreachable => (&[]).into_cow(),
             Call { destination: Some((_, t)), cleanup: Some(c), .. } => vec![t, c].into_cow(),
             Call { destination: Some((_, ref t)), cleanup: None, .. } =>
-                slice::ref_slice(t).into_cow(),
-            Call { destination: None, cleanup: Some(ref c), .. } => slice::ref_slice(c).into_cow(),
+                slice::from_ref(t).into_cow(),
+            Call { destination: None, cleanup: Some(ref c), .. } => slice::from_ref(c).into_cow(),
             Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
             Yield { resume: t, drop: Some(c), .. } => vec![t, c].into_cow(),
-            Yield { resume: ref t, drop: None, .. } => slice::ref_slice(t).into_cow(),
+            Yield { resume: ref t, drop: None, .. } => slice::from_ref(t).into_cow(),
             DropAndReplace { target, unwind: Some(unwind), .. } |
             Drop { target, unwind: Some(unwind), .. } => {
                 vec![target, unwind].into_cow()
             }
             DropAndReplace { ref target, unwind: None, .. } |
             Drop { ref target, unwind: None, .. } => {
-                slice::ref_slice(target).into_cow()
+                slice::from_ref(target).into_cow()
             }
             Assert { target, cleanup: Some(unwind), .. } => vec![target, unwind].into_cow(),
-            Assert { ref target, .. } => slice::ref_slice(target).into_cow(),
+            Assert { ref target, .. } => slice::from_ref(target).into_cow(),
             FalseEdges { ref real_target, ref imaginary_targets } => {
                 let mut s = vec![*real_target];
                 s.extend_from_slice(imaginary_targets);

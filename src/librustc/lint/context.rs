@@ -26,7 +26,7 @@
 
 use self::TargetLint::*;
 
-use rustc_back::slice;
+use std::slice;
 use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Level, Lint, LintId, LintPass, LintBuffer};
 use lint::levels::{LintLevelSets, LintLevelsBuilder};
@@ -308,7 +308,7 @@ impl LintStore {
                     Some(ids) => CheckLintNameResult::Ok(&ids.0),
                 }
             }
-            Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::ref_slice(id)),
+            Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
         }
     }
 }

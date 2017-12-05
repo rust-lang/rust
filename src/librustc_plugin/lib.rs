@@ -71,7 +71,6 @@
 #[macro_use] extern crate syntax;
 
 extern crate rustc;
-extern crate rustc_back;
 extern crate rustc_metadata;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
