@@ -236,7 +236,11 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     move_data: &'cx MoveData<'tcx>,
     param_env: ParamEnv<'gcx>,
     /// This keeps track of whether local variables are free-ed when the function
-    /// exits even without a `StorageDead`.
+    /// exits even without a `StorageDead`, which appears to be the case for
+    /// constants.
+    ///
+    /// I'm not sure this is the right approach - @eddyb could you try and
+    /// figure this out?
     locals_are_invalidated_at_exit: bool,
     /// This field keeps track of when storage dead or drop errors are reported
     /// in order to stop duplicate error reporting and identify the conditions required
@@ -973,7 +977,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // we just know that all locals are dropped at function exit (otherwise
         // we'll have a memory leak) and assume that all statics have a destructor.
         //
-        // FIXME: allow thread-locals to borrow other thread locals?x
+        // FIXME: allow thread-locals to borrow other thread locals?
         let (might_be_alive, will_be_dropped, local) = match root_place {
             Place::Static(statik) => {
                 // Thread-locals might be dropped after the function exits, but
@@ -1523,9 +1527,10 @@ enum Overlap {
     /// if `u` is a union, we have no way of telling how disjoint
     /// `u.a.x` and `a.b.y` are.
     Arbitrary,
-    /// The places are either completely disjoint or equal - this
-    /// is the "base case" on which we recur for extensions of
-    /// the place.
+    /// The places have the same type, and are either completely disjoint
+    /// or equal - i.e. they can't "partially" overlap as can occur with
+    /// unions. This is the "base case" on which we recur for extensions
+    /// of the place.
     EqualOrDisjoint,
     /// The places are disjoint, so we know all extensions of them
     /// will also be disjoint.
@@ -1688,7 +1693,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Place::Projection(interior) => {
                         place = &interior.base;
                     }
-                    _ => {
+                    Place::Local(_) | Place::Static(_) => {
                         result.reverse();
                         return result;
                     }
