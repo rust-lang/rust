@@ -253,7 +253,7 @@ fn foo() -> Foo {
 
 In the example above, `Foo` refers to `i32`, similar to a type alias.
 However, unlike a normal type alias, the concrete type of `Foo` is
-hidden outside of the module. Outside the module, the only think that
+hidden outside of the module. Outside the module, the only thing that
 is known about `Foo` is that it implements the traits that appear in
 its declaration (e.g. `Debug` in `existential type Foo: Debug;`).
 If a user outside the module tries to use a `Foo` as an `i32`, they
