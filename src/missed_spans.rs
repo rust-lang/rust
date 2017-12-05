@@ -250,53 +250,63 @@ impl<'a> FmtVisitor<'a> {
                 }
             }
 
-            // cur_line += newline_count;
-            // rewirte_next_comment = true;
+            let newline_count = count_newlines(&subslice);
+            if subslice.trim().is_empty() && newline_count > 0
+                && self.config.file_lines().intersects_range(
+                    file_name,
+                    status.cur_line,
+                    status.cur_line + newline_count,
+                ) {
+                self.push_vertical_spaces(newline_count);
+                status.cur_line += newline_count;
+                status.rewrite_next_comment = true;
+                status.line_start = offset + newline_count;
+            } else {
+                for (mut i, c) in subslice.char_indices() {
+                    i += offset;
 
-            for (mut i, c) in subslice.char_indices() {
-                i += offset;
+                    if c == '\n' {
+                        if !self.config
+                            .file_lines()
+                            .contains_line(file_name, status.cur_line)
+                        {
+                            status.last_wspace = None;
+                        }
 
-                if c == '\n' {
-                    if !self.config
-                        .file_lines()
-                        .contains_line(file_name, status.cur_line)
-                    {
+                        if let Some(lw) = status.last_wspace {
+                            self.buffer.push_str(&snippet[status.line_start..lw]);
+                            self.buffer.push_str("\n");
+                        } else {
+                            self.buffer.push_str(&snippet[status.line_start..i + 1]);
+                        }
+
+                        status.cur_line += 1;
+                        status.line_start = i + 1;
+                        status.last_wspace = None;
+                        status.rewrite_next_comment = true;
+                    } else if c.is_whitespace() {
+                        if status.last_wspace.is_none() {
+                            status.last_wspace = Some(i);
+                        }
+                    } else if c == ';' {
+                        if status.last_wspace.is_some() {
+                            status.line_start = i;
+                        }
+
+                        status.rewrite_next_comment = true;
+                        status.last_wspace = None;
+                    } else {
+                        status.rewrite_next_comment = true;
                         status.last_wspace = None;
                     }
-
-                    if let Some(lw) = status.last_wspace {
-                        self.buffer.push_str(&snippet[status.line_start..lw]);
-                        self.buffer.push_str("\n");
-                    } else {
-                        self.buffer.push_str(&snippet[status.line_start..i + 1]);
-                    }
-
-                    status.cur_line += 1;
-                    status.line_start = i + 1;
-                    status.last_wspace = None;
-                    status.rewrite_next_comment = true;
-                } else if c.is_whitespace() {
-                    if status.last_wspace.is_none() {
-                        status.last_wspace = Some(i);
-                    }
-                } else if c == ';' {
-                    if status.last_wspace.is_some() {
-                        status.line_start = i;
-                    }
-
-                    status.rewrite_next_comment = true;
-                    status.last_wspace = None;
-                } else {
-                    status.rewrite_next_comment = true;
-                    status.last_wspace = None;
                 }
-            }
 
-            let remaining = snippet[status.line_start..subslice.len() + offset].trim();
-            if !remaining.is_empty() {
-                self.buffer.push_str(remaining);
-                status.line_start = subslice.len() + offset;
-                status.rewrite_next_comment = true;
+                let remaining = snippet[status.line_start..subslice.len() + offset].trim();
+                if !remaining.is_empty() {
+                    self.buffer.push_str(remaining);
+                    status.line_start = subslice.len() + offset;
+                    status.rewrite_next_comment = true;
+                }
             }
         }
 
