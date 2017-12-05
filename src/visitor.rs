@@ -31,7 +31,7 @@ use macros::{rewrite_macro, MacroPosition};
 use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
-use utils::{self, contains_skip, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
+use utils::{self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
 
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
@@ -833,7 +833,7 @@ where
             // Extract comments between two attributes.
             let span_between_attr = mk_sp(attr.span.hi(), next_attr.span.lo());
             let snippet = context.snippet(span_between_attr);
-            if snippet.chars().filter(|c| *c == '\n').count() >= 2 || snippet.contains('/') {
+            if count_newlines(&snippet) >= 2 || snippet.contains('/') {
                 break;
             }
         }
@@ -886,7 +886,7 @@ fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
     // Look at before and after comment and see if there are any empty lines.
     let comment_begin = comment.chars().position(|c| c == '/');
     let len = comment_begin.unwrap_or_else(|| comment.len());
-    let mlb = comment.chars().take(len).filter(|c| *c == '\n').count() > 1;
+    let mlb = count_newlines(&comment[..len]) > 1;
     let mla = if comment_begin.is_none() {
         mlb
     } else {

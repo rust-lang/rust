@@ -2712,12 +2712,8 @@ pub fn choose_rhs<R: Rewrite>(
 }
 
 fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str) -> bool {
-    fn count_line_breaks(src: &str) -> usize {
-        src.chars().filter(|&x| x == '\n').count()
-    }
-
-    !next_line_rhs.contains('\n')
-        || count_line_breaks(orig_rhs) > count_line_breaks(next_line_rhs) + 1
+    use utils::count_newlines;
+    !next_line_rhs.contains('\n') || count_newlines(orig_rhs) > count_newlines(next_line_rhs) + 1
 }
 
 fn rewrite_expr_addrof(

@@ -16,7 +16,7 @@ use syntax::codemap::{BytePos, Pos, Span};
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
 use config::WriteMode;
 use shape::{Indent, Shape};
-use utils::mk_sp;
+use utils::{count_newlines, mk_sp};
 use visitor::FmtVisitor;
 
 impl<'a> FmtVisitor<'a> {
@@ -86,7 +86,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn push_vertical_spaces(&mut self, original: &str) {
-        let mut newline_count = original.chars().filter(|&c| c == '\n').count();
+        let mut newline_count = count_newlines(original);
         let newline_upper_bound = self.config.blank_lines_upper_bound() + 1;
         let newline_lower_bound = self.config.blank_lines_lower_bound() + 1;
         if newline_count > newline_upper_bound {
@@ -171,7 +171,7 @@ impl<'a> FmtVisitor<'a> {
 
                 let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
 
-                let subslice_num_lines = subslice.chars().filter(|c| *c == '\n').count();
+                let subslice_num_lines = count_newlines(subslice);
 
                 if rewrite_next_comment
                     && !self.config.file_lines().intersects_range(

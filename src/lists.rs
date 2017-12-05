@@ -17,7 +17,7 @@ use comment::{find_comment_end, rewrite_comment, FindUncommented};
 use config::{Config, IndentStyle};
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
-use utils::{first_line_width, last_line_width, mk_sp, starts_with_newline};
+use utils::{count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline};
 
 /// Formatting tactic for lists. This will be cast down to a
 /// `DefinitiveListTactic` depending on the number and length of the items and
@@ -651,7 +651,7 @@ where
                 // From the end of the first line of comments to the next non-whitespace char.
                 let test_snippet = &test_snippet[..first];
 
-                if test_snippet.chars().filter(|c| c == &'\n').count() > 1 {
+                if count_newlines(test_snippet) > 1 {
                     // There were multiple line breaks which got trimmed to nothing.
                     new_lines = true;
                 }

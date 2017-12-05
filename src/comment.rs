@@ -18,7 +18,7 @@ use config::Config;
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
 use string::{rewrite_string, StringFormat};
-use utils::{first_line_width, last_line_width};
+use utils::{count_newlines, first_line_width, last_line_width};
 
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
@@ -296,7 +296,7 @@ fn rewrite_comment_inner(
         config: config,
     };
 
-    let line_breaks = orig.trim_right().chars().filter(|&c| c == '\n').count();
+    let line_breaks = count_newlines(orig.trim_right());
     let lines = orig.lines()
         .enumerate()
         .map(|(i, mut line)| {
