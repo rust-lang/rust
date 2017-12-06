@@ -172,7 +172,6 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
                         "add_liveness_constraints: location={:?} initialized={:?}",
                         location,
                         &self.flow_inits
-                            .base_results
                             .operator()
                             .move_data()
                             .move_paths[mpi_init]
