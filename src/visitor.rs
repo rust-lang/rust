@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::rc::Rc;
 use std::cmp;
+use std::mem;
 
 use strings::string_buffer::StringBuffer;
 use syntax::{ast, visit};
@@ -44,6 +46,32 @@ fn is_extern_crate(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::ExternCrate(..) => true,
         _ => false,
+    }
+}
+
+/// Creates a string slice corresponding to the specified span.
+pub struct SnippetProvider {
+    /// A pointer to the content of the file we are formatting.
+    big_snippet: *const Rc<String>,
+    /// A position of the start of `big_snippet`, used as an offset.
+    start_pos: usize,
+}
+
+impl SnippetProvider {
+    pub fn span_to_snippet(&self, span: Span) -> Option<&str> {
+        let start_index = span.lo().to_usize().checked_sub(self.start_pos)?;
+        let end_index = span.hi().to_usize().checked_sub(self.start_pos)?;
+        unsafe { Some(&(*self.big_snippet)[start_index..end_index]) }
+    }
+
+    pub fn from_codemap(codemap: &CodeMap, span: Span) -> Self {
+        let filemap = codemap.lookup_char_pos(span.lo()).file;
+        let big_snippet = unsafe { mem::transmute(&filemap.src) };
+        let start_pos = filemap.start_pos.to_usize();
+        SnippetProvider {
+            big_snippet,
+            start_pos,
+        }
     }
 }
 
