@@ -215,8 +215,11 @@ impl RegionValues {
         // FIXME. We could optimize this by improving
         // `BitMatrix::merge` so it does not always merge an entire
         // row.
-        debug!("add_universal_regions_outlived_by(from_region={:?}, to_region={:?})",
-               from_region, to_region);
+        debug!(
+            "add_universal_regions_outlived_by(from_region={:?}, to_region={:?})",
+            from_region,
+            to_region
+        );
         let mut changed = false;
         for elem in self.elements.all_universal_region_indices() {
             if self.contains(from_region, elem) {
@@ -269,24 +272,70 @@ impl RegionValues {
         let mut result = String::new();
         result.push_str("{");
 
-        for (index, element) in self.elements_contained_in(r).enumerate() {
-            if index > 0 {
-                result.push_str(", ");
-            }
+        // Set to Some(l1, l2) when we have observed all the locations
+        // from l1..=l2 (inclusive) but not yet printed them. This
+        // gets extended if we then see l3 where l3 is the successor
+        // to l2.
+        let mut open_location: Option<(Location, Location)> = None;
 
+        let mut sep = "";
+        let mut push_sep = |s: &mut String| {
+            s.push_str(sep);
+            sep = ", ";
+        };
+
+        for element in self.elements_contained_in(r) {
             match element {
                 RegionElement::Location(l) => {
-                    result.push_str(&format!("{:?}", l));
+                    if let Some((location1, location2)) = open_location {
+                        if location2.block == l.block
+                            && location2.statement_index == l.statement_index - 1
+                        {
+                            open_location = Some((location1, l));
+                            continue;
+                        }
+
+                        push_sep(&mut result);
+                        Self::push_location_range(&mut result, location1, location2);
+                    }
+
+                    open_location = Some((l, l));
                 }
 
                 RegionElement::UniversalRegion(fr) => {
+                    if let Some((location1, location2)) = open_location {
+                        push_sep(&mut result);
+                        Self::push_location_range(&mut result, location1, location2);
+                        open_location = None;
+                    }
+
+                    push_sep(&mut result);
                     result.push_str(&format!("{:?}", fr));
                 }
             }
         }
 
+        if let Some((location1, location2)) = open_location {
+            push_sep(&mut result);
+            Self::push_location_range(&mut result, location1, location2);
+        }
+
         result.push_str("}");
 
         result
+    }
+
+    fn push_location_range(str: &mut String, location1: Location, location2: Location) {
+        if location1 == location2 {
+            str.push_str(&format!("{:?}", location1));
+        } else {
+            assert_eq!(location1.block, location2.block);
+            str.push_str(&format!(
+                "{:?}[{}..={}]",
+                location1.block,
+                location1.statement_index,
+                location2.statement_index
+            ));
+        }
     }
 }
