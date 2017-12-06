@@ -53,7 +53,7 @@ pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
     let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
 
     // Replace all remaining regions with fresh inference variables.
-    renumber::renumber_mir(infcx, &universal_regions, mir);
+    renumber::renumber_mir(infcx, mir);
 
     let source = MirSource::item(def_id);
     mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, mir, |_, _| Ok(()));
@@ -86,6 +86,8 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         param_env,
         mir,
         fr_fn_body,
+        universal_regions.input_tys,
+        universal_regions.output_ty,
         &liveness,
         flow_inits,
         move_data,
