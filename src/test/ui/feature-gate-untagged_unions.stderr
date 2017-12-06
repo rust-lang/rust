@@ -1,0 +1,32 @@
+error: unions with non-`Copy` fields are unstable (see issue #32836)
+  --> $DIR/feature-gate-untagged_unions.rs:19:1
+   |
+19 | / union U3 { //~ ERROR unions with non-`Copy` fields are unstable
+20 | |     a: String,
+21 | | }
+   | |_^
+   |
+   = help: add #![feature(untagged_unions)] to the crate attributes to enable
+
+error: unions with non-`Copy` fields are unstable (see issue #32836)
+  --> $DIR/feature-gate-untagged_unions.rs:23:1
+   |
+23 | / union U4<T> { //~ ERROR unions with non-`Copy` fields are unstable
+24 | |     a: T,
+25 | | }
+   | |_^
+   |
+   = help: add #![feature(untagged_unions)] to the crate attributes to enable
+
+error: unions with `Drop` implementations are unstable (see issue #32836)
+  --> $DIR/feature-gate-untagged_unions.rs:27:1
+   |
+27 | / union U5 { //~ ERROR unions with `Drop` implementations are unstable
+28 | |     a: u8,
+29 | | }
+   | |_^
+   |
+   = help: add #![feature(untagged_unions)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
