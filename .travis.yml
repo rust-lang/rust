@@ -27,8 +27,8 @@ before_script:
     pip install 'travis-cargo<0.2'
   else
     pip install 'travis-cargo<0.2' --user
+    export PATH="$(python -m site --user-base)/bin:$PATH"
   fi
-- export PATH="$(python -m site --user-base)/bin:$PATH"
 
 script:
 - |
