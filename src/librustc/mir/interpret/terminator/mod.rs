@@ -1,5 +1,6 @@
 use mir;
 use ty::{self, TypeVariants};
+use ty::layout::LayoutOf;
 use syntax::codemap::Span;
 use syntax::abi::Abi;
 
@@ -64,13 +65,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     None => None,
                 };
 
-                let func_ty = self.operand_ty(func);
-                let (fn_def, sig) = match func_ty.sty {
+                let func = self.eval_operand(func)?;
+                let (fn_def, sig) = match func.ty.sty {
                     ty::TyFnPtr(sig) => {
-                        let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
+                        let fn_ptr = self.value_to_primval(func)?.to_ptr()?;
                         let instance = self.memory.get_fn(fn_ptr)?;
-                        let instance_ty = instance.def.def_ty(self.tcx);
-                        let instance_ty = self.monomorphize(instance_ty, instance.substs);
+                        // FIXME(eddyb) use `Instance::ty` when it becomes available.
+                        let instance_ty =
+                            self.monomorphize(instance.def.def_ty(self.tcx), instance.substs);
                         match instance_ty.sty {
                             ty::TyFnDef(..) => {
                                 let real_sig = instance_ty.fn_sig(self.tcx);
@@ -86,10 +88,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     }
                     ty::TyFnDef(def_id, substs) => (
                         self.resolve(def_id, substs)?,
-                        func_ty.fn_sig(self.tcx),
+                        func.ty.fn_sig(self.tcx),
                     ),
                     _ => {
-                        let msg = format!("can't handle callee of type {:?}", func_ty);
+                        let msg = format!("can't handle callee of type {:?}", func.ty);
                         return err!(Unimplemented(msg));
                     }
                 };
@@ -214,7 +216,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 if check_ty_compat(sig.output(), real_sig.output()) && real_sig.inputs_and_output.len() == 3 => {
                 // First argument of real_sig must be a ZST
                 let fst_ty = real_sig.inputs_and_output[0];
-                if self.type_layout(fst_ty)?.is_zst() {
+                if self.layout_of(fst_ty)?.is_zst() {
                     // Second argument must be a tuple matching the argument list of sig
                     let snd_ty = real_sig.inputs_and_output[1];
                     match snd_ty.sty {
@@ -249,7 +251,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     _ => return err!(Unreachable),
                 };
                 let ty = sig.output();
-                let layout = self.type_layout(ty)?;
+                let layout = self.layout_of(ty)?;
                 M::call_intrinsic(self, instance, args, ret, layout, target)?;
                 self.dump_local(ret);
                 Ok(())
@@ -319,7 +321,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         }
 
                         // unpack and write all other args
-                        let layout = self.type_layout(args[1].ty)?;
+                        let layout = self.layout_of(args[1].ty)?;
                         if let ty::TyTuple(..) = args[1].ty.sty {
                             if self.frame().mir.args_iter().count() == layout.fields.count() + 1 {
                                 match args[1].value {
@@ -405,7 +407,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 )?.to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
                 let mut args = args.to_vec();
-                let ty = self.get_field_ty(args[0].ty, 0)?.ty; // TODO: packed flag is ignored
+                let ty = self.layout_of(args[0].ty)?.field(&self, 0)?.ty;
                 args[0].ty = ty;
                 args[0].value = ptr.to_value();
                 // recurse with concrete function

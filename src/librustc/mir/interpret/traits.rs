@@ -1,5 +1,5 @@
 use ty::{self, Ty};
-use ty::layout::{Size, Align};
+use ty::layout::{Size, Align, LayoutOf};
 use syntax::ast::Mutability;
 
 use super::{EvalResult, EvalContext, eval_context, MemoryPointer, Value, PrimVal,
@@ -19,10 +19,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     ) -> EvalResult<'tcx, MemoryPointer> {
         debug!("get_vtable(trait_ref={:?})", trait_ref);
 
-        let size = self.type_size(trait_ref.self_ty())?.expect(
-            "can't create a vtable for an unsized type",
-        );
-        let align = self.type_align(trait_ref.self_ty())?;
+        let layout = self.layout_of(trait_ref.self_ty())?;
+        assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
+        let size = layout.size.bytes();
+        let align = layout.align.abi();
 
         let ptr_size = self.memory.pointer_size();
         let methods = self.tcx.vtable_methods(trait_ref);

@@ -1,6 +1,6 @@
 use mir;
 use ty::{self, Ty};
-use ty::layout::TyLayout;
+use ty::layout::{LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::{EvalResult, EvalContext, MemoryPointer, PrimVal, Value, Pointer, Machine, PtrAndAlign, ValTy};
@@ -134,7 +134,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let base_ty = self.place_ty(&proj.base);
         match proj.elem {
             Field(field, _) => {
-                let base_layout = self.type_layout(base_ty)?;
+                let base_layout = self.layout_of(base_ty)?;
                 let field_index = field.index();
                 let field = base_layout.field(&self, field_index)?;
                 let offset = base_layout.fields.offset(field_index);
@@ -317,9 +317,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let (base_ptr, _) = base.to_ptr_extra_aligned();
 
         let (elem_ty, len) = base.elem_ty_and_len(outer_ty);
-        let elem_size = self.type_size(elem_ty)?.expect(
-            "slice element must be sized",
-        );
+        let elem_size = self.layout_of(elem_ty)?.size.bytes();
         assert!(
             n < len,
             "Tried to access element {} of array/slice with length {}",
@@ -354,7 +352,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         use mir::ProjectionElem::*;
         let (ptr, extra) = match *proj_elem {
             Field(field, _) => {
-                let layout = self.type_layout(base_ty)?;
+                let layout = self.layout_of(base_ty)?;
                 return Ok(self.place_field(base, field, layout)?.0);
             }
 
@@ -394,9 +392,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let (base_ptr, _) = base.to_ptr_extra_aligned();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty)?.expect(
-                    "sequence element must be sized",
-                );
+                let elem_size = self.layout_of(elem_ty)?.size.bytes();
                 assert!(n >= min_length as u64);
 
                 let index = if from_end {
@@ -415,9 +411,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let (base_ptr, _) = base.to_ptr_extra_aligned();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty)?.expect(
-                    "slice element must be sized",
-                );
+                let elem_size = self.layout_of(elem_ty)?.size.bytes();
                 assert!(u64::from(from) <= n - u64::from(to));
                 let ptr = base_ptr.offset(u64::from(from) * elem_size, &self)?;
                 // sublicing arrays produces arrays

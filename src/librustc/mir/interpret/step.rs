@@ -6,7 +6,7 @@ use hir;
 use mir::visit::{Visitor, PlaceContext};
 use mir;
 use ty::{self, Instance};
-use ty::subst::Substs;
+use ty::layout::LayoutOf;
 use middle::const_val::ConstVal;
 
 use super::{EvalResult, EvalContext, StackPopCleanup, PtrAndAlign, GlobalId, Place,
@@ -158,7 +158,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         instance: Instance<'tcx>,
         span: Span,
         mutability: Mutability,
-        orig_substs: &'tcx Substs<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         debug!("global_item: {:?}", instance);
         let cid = GlobalId {
@@ -172,8 +171,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             M::global_item_with_linkage(self, cid.instance, mutability)?;
             return Ok(false);
         }
-        let mir = self.load_mir(instance.def)?;
-        let layout = self.type_layout_with_substs(mir.return_ty(), orig_substs)?;
+        // FIXME(eddyb) use `Instance::ty` when it becomes available.
+        let instance_ty =
+            self.monomorphize(instance.def.def_ty(self.tcx), instance.substs);
+        let layout = self.layout_of(instance_ty)?;
         assert!(!layout.is_unsized());
         let ptr = self.memory.allocate(
             layout.size.bytes(),
@@ -200,6 +201,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let cleanup = StackPopCleanup::MarkStatic(mutability);
         let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
         trace!("pushing stack frame for global: {}", name);
+        let mir = self.load_mir(instance.def)?;
         self.push_stack_frame(
             instance,
             span,
@@ -254,7 +256,6 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                         instance,
                         constant.span,
                         Mutability::Immutable,
-                        this.instance.substs,
                     )
                 }
                 mir::Literal::Value { .. } => Ok(false),
@@ -267,9 +268,8 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                         return Ok(false);
                     }
                     let mir = &this.mir.promoted[index];
-                    let layout = this.ecx.type_layout_with_substs(
-                        mir.return_ty(),
-                        this.instance.substs)?;
+                    let ty = this.ecx.monomorphize(mir.return_ty(), this.instance.substs);
+                    let layout = this.ecx.layout_of(ty)?;
                     assert!(!layout.is_unsized());
                     let ptr = this.ecx.memory.allocate(
                         layout.size.bytes(),
@@ -320,7 +320,6 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                                 } else {
                                     Mutability::Immutable
                                 },
-                                this.instance.substs,
                             )
                         } else {
                             bug!("static def id doesn't point to static");
@@ -340,7 +339,6 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                             } else {
                                 Mutability::Immutable
                             },
-                            this.instance.substs,
                         )
                     } else {
                         bug!("static found but isn't a static: {:?}", def);

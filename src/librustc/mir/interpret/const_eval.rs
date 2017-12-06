@@ -1,4 +1,5 @@
-use ty::{self, TyCtxt, Ty, Instance, layout};
+use ty::{self, TyCtxt, Ty, Instance};
+use ty::layout::{self, LayoutOf};
 use mir;
 
 use syntax::ast::Mutability;
@@ -29,9 +30,12 @@ pub fn eval_body<'a, 'tcx>(
         if ecx.tcx.has_attr(instance.def_id(), "linkage") {
             return Err(ConstEvalError::NotConst("extern global".to_string()).into());
         }
-        let mir = ecx.load_mir(instance.def)?;
+        // FIXME(eddyb) use `Instance::ty` when it becomes available.
+        let instance_ty =
+            ecx.monomorphize(instance.def.def_ty(tcx), instance.substs);
         if tcx.interpret_interner.borrow().get_cached(cid).is_none() {
-            let layout = ecx.type_layout_with_substs(mir.return_ty(), instance.substs)?;
+            let mir = ecx.load_mir(instance.def)?;
+            let layout = ecx.layout_of(instance_ty)?;
             assert!(!layout.is_unsized());
             let ptr = ecx.memory.allocate(
                 layout.size.bytes(),
@@ -68,8 +72,7 @@ pub fn eval_body<'a, 'tcx>(
             )?;
         }
         let value = tcx.interpret_interner.borrow().get_cached(cid).expect("global not cached");
-        let ret_ty = ecx.monomorphize(mir.return_ty(), instance.substs);
-        Ok((value, ret_ty))
+        Ok((value, instance_ty))
     })();
     (try, ecx)
 }
@@ -226,16 +229,14 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
         match intrinsic_name {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
-                let elem_align = ecx.type_align(elem_ty)?;
+                let elem_align = ecx.layout_of(elem_ty)?.align.abi();
                 let align_val = PrimVal::from_u128(elem_align as u128);
                 ecx.write_primval(dest, align_val, dest_layout.ty)?;
             }
 
             "size_of" => {
                 let ty = substs.type_at(0);
-                let size = ecx.type_size(ty)?.expect(
-                    "size_of intrinsic called on unsized value",
-                ) as u128;
+                let size = ecx.layout_of(ty)?.size.bytes() as u128;
                 ecx.write_primval(dest, PrimVal::from_u128(size), dest_layout.ty)?;
             }
 

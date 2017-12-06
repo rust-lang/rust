@@ -228,19 +228,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn alloc_ptr(&mut self, ty: Ty<'tcx>) -> EvalResult<'tcx, MemoryPointer> {
-        let substs = self.substs();
-        self.alloc_ptr_with_substs(ty, substs)
-    }
+        let layout = self.layout_of(ty)?;
+        assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
 
-    pub fn alloc_ptr_with_substs(
-        &mut self,
-        ty: Ty<'tcx>,
-        substs: &'tcx Substs<'tcx>,
-    ) -> EvalResult<'tcx, MemoryPointer> {
-        let size = self.type_size_with_substs(ty, substs)?.expect(
-            "cannot alloc memory for unsized type",
-        );
-        let align = self.type_align_with_substs(ty, substs)?;
+        let size = layout.size.bytes();
+        let align = layout.align.abi();
         self.memory.allocate(size, align, Some(MemoryKind::Stack))
     }
 
@@ -357,7 +349,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         ty: ty::Ty<'tcx>,
         value: Value,
     ) -> EvalResult<'tcx, (Size, Align)> {
-        let layout = self.type_layout(ty)?;
+        let layout = self.layout_of(ty)?;
         if !layout.is_unsized() {
             Ok(layout.size_and_align())
         } else {
@@ -381,19 +373,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                     // Recurse to get the size of the dynamically sized field (must be
                     // the last field).
-                    let (unsized_size, unsized_align) = match ty.sty {
-                        ty::TyAdt(def, substs) => {
-                            let last_field = def.struct_variant().fields.last().unwrap();
-                            let field_ty = self.field_ty(substs, last_field);
-                            self.size_and_align_of_dst(field_ty, value)?
-                        }
-                        ty::TyTuple(ref types, _) => {
-                            let field_ty = types.last().unwrap();
-                            let field_ty = self.tcx.fully_normalize_monormophic_ty(field_ty);
-                            self.size_and_align_of_dst(field_ty, value)?
-                        }
-                        _ => bug!("We already checked that we know this type"),
-                    };
+                    let field_ty = layout.field(&self, layout.fields.count() - 1)?.ty;
+                    let (unsized_size, unsized_align) =
+                        self.size_and_align_of_dst(field_ty, value)?;
 
                     // FIXME (#26403, #27023): We should be adding padding
                     // to `sized_size` (to accommodate the `unsized_align`
@@ -437,59 +419,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 _ => bug!("size_of_val::<{:?}>", ty),
             }
         }
-    }
-
-    /// Returns the normalized type of a struct field
-    fn field_ty(&self, param_substs: &Substs<'tcx>, f: &ty::FieldDef) -> ty::Ty<'tcx> {
-        self.tcx.fully_normalize_monormophic_ty(
-            &f.ty(self.tcx, param_substs),
-        )
-    }
-
-    pub fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
-        self.type_size_with_substs(ty, self.substs())
-    }
-
-    pub fn type_align(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
-        self.type_align_with_substs(ty, self.substs())
-    }
-
-    pub(super) fn type_size_with_substs(
-        &self,
-        ty: Ty<'tcx>,
-        substs: &'tcx Substs<'tcx>,
-    ) -> EvalResult<'tcx, Option<u64>> {
-        let layout = self.type_layout_with_substs(ty, substs)?;
-        if layout.is_unsized() {
-            Ok(None)
-        } else {
-            Ok(Some(layout.size.bytes()))
-        }
-    }
-
-    pub(super) fn type_align_with_substs(
-        &self,
-        ty: Ty<'tcx>,
-        substs: &'tcx Substs<'tcx>,
-    ) -> EvalResult<'tcx, u64> {
-        self.type_layout_with_substs(ty, substs).map(|layout| {
-            layout.align.abi()
-        })
-    }
-
-    pub fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, TyLayout<'tcx>> {
-        self.type_layout_with_substs(ty, self.substs())
-    }
-
-    pub(super) fn type_layout_with_substs(
-        &self,
-        ty: Ty<'tcx>,
-        substs: &'tcx Substs<'tcx>,
-    ) -> EvalResult<'tcx, TyLayout<'tcx>> {
-        // TODO(solson): Is this inefficient? Needs investigation.
-        let ty = self.monomorphize(ty, substs);
-
-        self.layout_of(ty)
     }
 
     pub fn push_stack_frame(
@@ -680,11 +609,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     _ => (dest, None)
                 };
 
-                let layout = self.type_layout(dest_ty)?;
+                let layout = self.layout_of(dest_ty)?;
                 for (i, operand) in operands.iter().enumerate() {
                     let value = self.eval_operand(operand)?;
                     // Ignore zero-sized fields.
-                    if !self.type_layout(value.ty)?.is_zst() {
+                    if !self.layout_of(value.ty)?.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
                         let (field_dest, _) = self.place_field(dest, mir::Field::new(field_index), layout)?;
                         self.write_value(value, field_dest)?;
@@ -702,9 +631,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         )
                     }
                 };
-                let elem_size = self.type_size(elem_ty)?.expect(
-                    "repeat element type must be sized",
-                );
+                let elem_size = self.layout_of(elem_ty)?.size.bytes();
                 let value = self.eval_operand(operand)?.value;
 
                 let dest = Pointer::from(self.force_allocation(dest)?.to_ptr()?);
@@ -750,16 +677,18 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::Box, ty) => {
+                let ty = self.monomorphize(ty, self.substs());
                 M::box_alloc(self, ty, dest)?;
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                let size = self.type_size(ty)?.expect(
-                    "SizeOf nullary MIR operator called for unsized type",
-                );
+                let ty = self.monomorphize(ty, self.substs());
+                let layout = self.layout_of(ty)?;
+                assert!(!layout.is_unsized(),
+                        "SizeOf nullary MIR operator called for unsized type");
                 self.write_primval(
                     dest,
-                    PrimVal::from_u128(size as u128),
+                    PrimVal::from_u128(layout.size.bytes() as u128),
                     dest_ty,
                 )?;
             }
@@ -806,7 +735,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     }
 
                     ReifyFnPointer => {
-                        match self.operand_ty(operand).sty {
+                        match self.eval_operand(operand)?.ty.sty {
                             ty::TyFnDef(def_id, substs) => {
                                 let instance = self.resolve(def_id, substs)?;
                                 let fn_ptr = self.memory.create_fn_alloc(instance);
@@ -832,7 +761,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     }
 
                     ClosureFnPointer => {
-                        match self.operand_ty(operand).sty {
+                        match self.eval_operand(operand)?.ty.sty {
                             ty::TyClosure(def_id, substs) => {
                                 let substs = self.tcx.trans_apply_param_substs(self.substs(), &substs);
                                 let instance = ty::Instance::resolve_closure(
@@ -889,27 +818,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    /// Returns the field type and whether the field is packed
-    pub fn get_field_ty(
-        &self,
-        ty: Ty<'tcx>,
-        field_index: usize,
-    ) -> EvalResult<'tcx, TyAndPacked<'tcx>> {
-        let layout = self.type_layout(ty)?.field(self, field_index)?;
-        Ok(TyAndPacked {
-            ty: layout.ty,
-            packed: layout.is_packed()
-        })
-    }
-
-    pub fn get_field_offset(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Size> {
-        Ok(self.type_layout(ty)?.fields.offset(field_index))
-    }
-
-    pub fn get_field_count(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
-        Ok(self.type_layout(ty)?.fields.count() as u64)
-    }
-
     pub(super) fn eval_operand_to_primval(
         &mut self,
         op: &mir::Operand<'tcx>,
@@ -929,13 +837,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, ValTy<'tcx>> {
         use mir::Operand::*;
+        let ty = self.monomorphize(op.ty(self.mir(), self.tcx), self.substs());
         match *op {
             // FIXME: do some more logic on `move` to invalidate the old location
             Copy(ref place) |
             Move(ref place) => {
                 Ok(ValTy {
                     value: self.eval_and_read_place(place)?,
-                    ty: self.operand_ty(op),
+                    ty
                 })
             },
 
@@ -956,7 +865,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                 Ok(ValTy {
                     value,
-                    ty: self.operand_ty(op),
+                    ty,
                 })
             }
         }
@@ -967,7 +876,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         place: Place,
         ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, u128> {
-        let layout = self.type_layout(ty)?;
+        let layout = self.layout_of(ty)?;
         //trace!("read_discriminant_value {:#?}", layout);
 
         match layout.variants {
@@ -1024,7 +933,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         dest: Place,
         variant_index: usize,
     ) -> EvalResult<'tcx> {
-        let layout = self.type_layout(dest_ty)?;
+        let layout = self.layout_of(dest_ty)?;
 
         match layout.variants {
             layout::Variants::Single { index } => {
@@ -1066,15 +975,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Value::ByRef(self.tcx.interpret_interner.borrow().get_cached(gid).expect("global not cached"))
     }
 
-    pub fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(operand.ty(self.mir(), self.tcx), self.substs())
-    }
-
     fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx> {
-        let size = self.type_size(ty)?.expect(
-            "cannot copy from an unsized type",
-        );
-        let align = self.type_align(ty)?;
+        let layout = self.layout_of(ty)?;
+        assert!(!layout.is_unsized(), "cannot copy from an unsized type");
+        let size = layout.size.bytes();
+        let align = layout.align.abi();
         self.memory.copy(src, dest, size, align, false)?;
         Ok(())
     }
@@ -1094,8 +999,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Some(val) => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
                         let ty = self.monomorphize(ty, self.stack[frame].instance.substs);
-                        let substs = self.stack[frame].instance.substs;
-                        let ptr = self.alloc_ptr_with_substs(ty, substs)?;
+                        let ptr = self.alloc_ptr(ty)?;
                         self.stack[frame].locals[local.index() - 1] =
                             Some(Value::by_ref(ptr.into())); // it stays live
                         self.write_value_to_ptr(val, ptr.into(), ty)?;
@@ -1265,7 +1169,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 self.read_maybe_aligned_mut(aligned, |ectx| ectx.copy(ptr, dest, dest_ty))
             }
             Value::ByVal(primval) => {
-                let layout = self.type_layout(dest_ty)?;
+                let layout = self.layout_of(dest_ty)?;
                 if layout.is_zst() {
                     assert!(primval.is_undef());
                     Ok(())
@@ -1278,7 +1182,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
             Value::ByValPair(a, b) => {
                 let ptr = dest.to_ptr()?;
-                let mut layout = self.type_layout(dest_ty)?;
+                let mut layout = self.layout_of(dest_ty)?;
                 trace!("write_value_to_ptr valpair: {:#?}", layout);
                 let mut packed = layout.is_packed();
                 'outer: loop {
@@ -1360,7 +1264,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             ty::TyAdt(def, _) if def.is_box() => PrimValKind::Ptr,
 
             ty::TyAdt(..) => {
-                match self.type_layout(ty)?.abi {
+                match self.layout_of(ty)?.abi {
                     layout::Abi::Scalar(ref scalar) => {
                         use ty::layout::Primitive::*;
                         match scalar.value {
@@ -1487,7 +1391,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     return self.read_ptr(ptr, ty.boxed_ty()).map(Some);
                 }
 
-                if let layout::Abi::Scalar(ref scalar) = self.type_layout(ty)?.abi {
+                if let layout::Abi::Scalar(ref scalar) = self.layout_of(ty)?.abi {
                     let mut signed = false;
                     if let layout::Int(_, s) = scalar.value {
                         signed = s;
@@ -1580,34 +1484,36 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         src: Value,
         src_ty: Ty<'tcx>,
-        dest: Place,
-        dest_ty: Ty<'tcx>,
+        dst: Place,
+        dst_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
-        match (&src_ty.sty, &dest_ty.sty) {
+        let src_layout = self.layout_of(src_ty)?;
+        let dst_layout = self.layout_of(dst_ty)?;
+        match (&src_ty.sty, &dst_ty.sty) {
             (&ty::TyRef(_, ref s), &ty::TyRef(_, ref d)) |
             (&ty::TyRef(_, ref s), &ty::TyRawPtr(ref d)) |
             (&ty::TyRawPtr(ref s), &ty::TyRawPtr(ref d)) => {
-                self.unsize_into_ptr(src, src_ty, dest, dest_ty, s.ty, d.ty)
+                self.unsize_into_ptr(src, src_ty, dst, dst_ty, s.ty, d.ty)
             }
-            (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
+            (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
                 if def_a.is_box() || def_b.is_box() {
                     if !def_a.is_box() || !def_b.is_box() {
-                        panic!("invalid unsizing between {:?} -> {:?}", src_ty, dest_ty);
+                        panic!("invalid unsizing between {:?} -> {:?}", src_ty, dst_ty);
                     }
                     return self.unsize_into_ptr(
                         src,
                         src_ty,
-                        dest,
-                        dest_ty,
+                        dst,
+                        dst_ty,
                         src_ty.boxed_ty(),
-                        dest_ty.boxed_ty(),
+                        dst_ty.boxed_ty(),
                     );
                 }
                 if self.ty_to_primval_kind(src_ty).is_ok() {
                     // TODO: We ignore the packed flag here
-                    let sty = self.get_field_ty(src_ty, 0)?.ty;
-                    let dty = self.get_field_ty(dest_ty, 0)?.ty;
-                    return self.unsize_into(src, sty, dest, dty);
+                    let sty = src_layout.field(&self, 0)?.ty;
+                    let dty = dst_layout.field(&self, 0)?.ty;
+                    return self.unsize_into(src, sty, dst, dty);
                 }
                 // unsizing of generic struct with pointer fields
                 // Example: `Arc<T>` -> `Arc<Trait>`
@@ -1615,34 +1521,25 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                 assert_eq!(def_a, def_b);
 
-                let src_fields = def_a.variants[0].fields.iter();
-                let dst_fields = def_b.variants[0].fields.iter();
-                let iter = src_fields.zip(dst_fields).enumerate();
-
-                //let src = adt::MaybeSizedValue::sized(src);
-                //let dst = adt::MaybeSizedValue::sized(dst);
-
                 let src_ptr = match src {
                     Value::ByRef(PtrAndAlign { ptr, aligned: true }) => ptr,
                     // the entire struct is just a pointer
                     Value::ByVal(_) => {
-                        for (i, (src_f, dst_f)) in iter {
-                            let src_fty = self.field_ty(substs_a, src_f);
-                            let dst_fty = self.field_ty(substs_b, dst_f);
-                            if self.type_size(dst_fty)? == Some(0) {
+                        for i in 0..src_layout.fields.count() {
+                            let src_field = src_layout.field(&self, i)?;
+                            let dst_field = dst_layout.field(&self, i)?;
+                            if dst_layout.is_zst() {
                                 continue;
                             }
-                            let src_field_offset = self.get_field_offset(src_ty, i)?.bytes();
-                            let dst_field_offset = self.get_field_offset(dest_ty, i)?.bytes();
-                            assert_eq!(src_field_offset, 0);
-                            assert_eq!(dst_field_offset, 0);
-                            assert_eq!(self.type_size(src_fty)?, self.type_size(src_ty)?);
-                            assert_eq!(self.type_size(dst_fty)?, self.type_size(dest_ty)?);
+                            assert_eq!(src_layout.fields.offset(i).bytes(), 0);
+                            assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
+                            assert_eq!(src_field.size, src_layout.size);
+                            assert_eq!(dst_field.size, dst_layout.size);
                             return self.unsize_into(
                                 src,
-                                src_fty,
-                                dest,
-                                dst_fty,
+                                src_field.ty,
+                                dst,
+                                dst_field.ty,
                             );
                         }
                         bug!("by val unsize into where the value doesn't cover the entire type")
@@ -1652,25 +1549,25 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 };
 
                 // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr()?;
-                for (i, (src_f, dst_f)) in iter {
-                    let src_fty = self.field_ty(substs_a, src_f);
-                    let dst_fty = self.field_ty(substs_b, dst_f);
-                    if self.type_size(dst_fty)? == Some(0) {
+                let dst = self.force_allocation(dst)?.to_ptr()?;
+                for i in 0..src_layout.fields.count() {
+                    let src_field = src_layout.field(&self, i)?;
+                    let dst_field = dst_layout.field(&self, i)?;
+                    if dst_field.is_zst() {
                         continue;
                     }
-                    let src_field_offset = self.get_field_offset(src_ty, i)?.bytes();
-                    let dst_field_offset = self.get_field_offset(dest_ty, i)?.bytes();
+                    let src_field_offset = src_layout.fields.offset(i).bytes();
+                    let dst_field_offset = dst_layout.fields.offset(i).bytes();
                     let src_f_ptr = src_ptr.offset(src_field_offset, &self)?;
-                    let dst_f_ptr = dest.offset(dst_field_offset, &self)?;
-                    if src_fty == dst_fty {
-                        self.copy(src_f_ptr, dst_f_ptr.into(), src_fty)?;
+                    let dst_f_ptr = dst.offset(dst_field_offset, &self)?;
+                    if src_field.ty == dst_field.ty {
+                        self.copy(src_f_ptr, dst_f_ptr.into(), src_field.ty)?;
                     } else {
                         self.unsize_into(
                             Value::by_ref(src_f_ptr),
-                            src_fty,
+                            src_field.ty,
                             Place::from_ptr(dst_f_ptr),
-                            dst_fty,
+                            dst_field.ty,
                         )?;
                     }
                 }
@@ -1680,7 +1577,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 bug!(
                     "unsize_into: invalid conversion: {:?} -> {:?}",
                     src_ty,
-                    dest_ty
+                    dst_ty
                 )
             }
         }

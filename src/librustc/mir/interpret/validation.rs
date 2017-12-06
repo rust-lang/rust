@@ -2,6 +2,7 @@ use hir::{self, Mutability};
 use hir::Mutability::*;
 use mir::{self, ValidationOp, ValidationOperand};
 use ty::{self, Ty, TypeFoldable, TyCtxt};
+use ty::layout::LayoutOf;
 use ty::subst::{Substs, Subst};
 use traits;
 use infer::InferCtxt;
@@ -433,7 +434,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         query: ValidationQuery<'tcx>,
         mode: ValidationMode,
     ) -> EvalResult<'tcx> {
-        let mut layout = self.type_layout(query.ty)?;
+        let mut layout = self.layout_of(query.ty)?;
         layout.ty = query.ty;
 
         // TODO: Maybe take visibility/privacy into account.
@@ -530,23 +531,21 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             let (ptr, extra) = self.force_allocation(query.place.1)?.to_ptr_extra_aligned();
             // Determine the size
             // FIXME: Can we reuse size_and_align_of_dst for Places?
-            let len = match self.type_size(query.ty)? {
-                Some(size) => {
-                    assert_eq!(extra, PlaceExtra::None, "Got a fat ptr to a sized type");
-                    size
-                }
-                None => {
-                    // The only unsized typ we concider "owning" is TyStr.
-                    assert_eq!(
-                        query.ty.sty,
-                        TyStr,
-                        "Found a surprising unsized owning type"
-                    );
-                    // The extra must be the length, in bytes.
-                    match extra {
-                        PlaceExtra::Length(len) => len,
-                        _ => bug!("TyStr must have a length as extra"),
-                    }
+            let layout = self.layout_of(query.ty)?;
+            let len = if !layout.is_unsized() {
+                assert_eq!(extra, PlaceExtra::None, "Got a fat ptr to a sized type");
+                layout.size.bytes()
+            } else {
+                // The only unsized typ we concider "owning" is TyStr.
+                assert_eq!(
+                    query.ty.sty,
+                    TyStr,
+                    "Found a surprising unsized owning type"
+                );
+                // The extra must be the length, in bytes.
+                match extra {
+                    PlaceExtra::Length(len) => len,
+                    _ => bug!("TyStr must have a length as extra"),
                 }
             };
             // Handle locking

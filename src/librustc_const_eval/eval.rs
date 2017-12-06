@@ -844,7 +844,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
         },
         TyArray(elem_ty, n) => {
             let n = n.val.to_const_int().unwrap().to_u64().unwrap();
-            let size = ecx.type_size(elem_ty).unwrap().unwrap();
+            let size = ecx.layout_of(elem_ty).unwrap().size.bytes();
             let vec: Vec<(ConstVal, Ty<'tcx>)> = match ctfe {
                 ConstVal::ByteStr(arr) => arr.data.iter().map(|&b| {
                     (ConstVal::Integral(ConstInt::U8(b)), ecx.tcx.types.u8)
@@ -868,8 +868,9 @@ fn check_ctfe_against_miri<'a, 'tcx>(
                 ConstVal::Aggregate(Tuple(v)) => v,
                 _ => bug!("miri produced {:?}, but ctfe yielded {:?}", miri_ty, ctfe),
             };
+            let layout = ecx.layout_of(miri_ty).unwrap();
             for (i, elem) in vec.into_iter().enumerate() {
-                let offset = ecx.get_field_offset(miri_ty, i).unwrap();
+                let offset = layout.fields.offset(i);
                 let ptr = miri_val.offset(offset.bytes(), &ecx).unwrap();
                 check_ctfe_against_miri(ecx, ptr, elem.ty, elem.val);
             }
@@ -895,7 +896,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
                 },
                 ctfe => bug!("miri produced {:?}, but ctfe yielded {:?}", miri_ty, ctfe),
             };
-            let layout = ecx.type_layout(miri_ty).unwrap();
+            let layout = ecx.layout_of(miri_ty).unwrap();
             for &(name, elem) in vec.into_iter() {
                 let field = struct_variant.fields.iter().position(|f| f.name == name).unwrap();
                 let (place, _) = ecx.place_field(
