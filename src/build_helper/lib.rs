@@ -35,97 +35,55 @@ macro_rules! t {
     })
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum BuildExpectation {
-    Succeeding,
-    Failing,
-    None,
-}
-
-pub fn run(cmd: &mut Command, expect: BuildExpectation) {
+pub fn run(cmd: &mut Command) {
     println!("running: {:?}", cmd);
-    run_silent(cmd, expect);
+    run_silent(cmd);
 }
 
-pub fn run_silent(cmd: &mut Command, expect: BuildExpectation) {
-    if !try_run_silent(cmd, expect) {
+pub fn run_silent(cmd: &mut Command) {
+    if !try_run_silent(cmd) {
         std::process::exit(1);
     }
 }
 
-pub fn try_run_silent(cmd: &mut Command, expect: BuildExpectation) -> bool {
+pub fn try_run_silent(cmd: &mut Command) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}",
                                 cmd, e)),
     };
-    process_status(
-        cmd,
-        status.success(),
-        expect,
-        || println!("\n\ncommand did not execute successfully: {:?}\n\
-                    expected success, got: {}\n\n",
-                    cmd,
-                    status))
-}
-
-fn process_status<F: FnOnce()>(
-    cmd: &Command,
-    success: bool,
-    expect: BuildExpectation,
-    f: F,
-) -> bool {
-    use BuildExpectation::*;
-    match (expect, success) {
-        (None, false) => { f(); false },
-        // Non-tool build succeeds, everything is good
-        (None, true) => true,
-        // Tool expected to work and is working
-        (Succeeding, true) => true,
-        // Tool expected to fail and is failing
-        (Failing, false) => {
-            println!("This failure is expected (see `src/tools/toolstate.toml`)");
-            true
-        },
-        // Tool expected to work, but is failing
-        (Succeeding, false) => {
-            f();
-            println!("You can disable the tool in `src/tools/toolstate.toml`");
-            false
-        },
-        // Tool expected to fail, but is working
-        (Failing, true) => {
-            println!("Expected `{:?}` to fail, but it succeeded.\n\
-                     Please adjust `src/tools/toolstate.toml` accordingly", cmd);
-            false
-        }
+    if !status.success() {
+        println!("\n\ncommand did not execute successfully: {:?}\n\
+                  expected success, got: {}\n\n",
+                 cmd,
+                 status);
     }
+    status.success()
 }
 
-pub fn run_suppressed(cmd: &mut Command, expect: BuildExpectation) {
-    if !try_run_suppressed(cmd, expect) {
+pub fn run_suppressed(cmd: &mut Command) {
+    if !try_run_suppressed(cmd) {
         std::process::exit(1);
     }
 }
 
-pub fn try_run_suppressed(cmd: &mut Command, expect: BuildExpectation) -> bool {
+pub fn try_run_suppressed(cmd: &mut Command) -> bool {
     let output = match cmd.output() {
         Ok(status) => status,
         Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}",
                                 cmd, e)),
     };
-    process_status(
-        cmd,
-        output.status.success(),
-        expect,
-        || println!("\n\ncommand did not execute successfully: {:?}\n\
+    if !output.status.success() {
+        println!("\n\ncommand did not execute successfully: {:?}\n\
                   expected success, got: {}\n\n\
                   stdout ----\n{}\n\
                   stderr ----\n{}\n\n",
                  cmd,
                  output.status,
                  String::from_utf8_lossy(&output.stdout),
-                 String::from_utf8_lossy(&output.stderr)))
+                 String::from_utf8_lossy(&output.stderr));
+    }
+    output.status.success()
 }
 
 pub fn gnu_target(target: &str) -> String {

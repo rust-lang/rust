@@ -143,8 +143,7 @@ use std::path::{PathBuf, Path};
 use std::process::{self, Command};
 use std::slice;
 
-use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime,
-                   BuildExpectation};
+use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
 
 use util::{exe, libdir, OutputFolder, CiEnv};
 
@@ -569,31 +568,24 @@ impl Build {
             .join(libdir(&self.config.build))
     }
 
-    /// Runs a command, printing out nice contextual information if its build
-    /// status is not the expected one
-    fn run_expecting(&self, cmd: &mut Command, expect: BuildExpectation) {
-        self.verbose(&format!("running: {:?}", cmd));
-        run_silent(cmd, expect)
-    }
-
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
-        self.run_expecting(cmd, BuildExpectation::None)
+        self.verbose(&format!("running: {:?}", cmd));
+        run_silent(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
         self.verbose(&format!("running: {:?}", cmd));
-        run_suppressed(cmd, BuildExpectation::None)
+        run_suppressed(cmd)
     }
 
-    /// Runs a command, printing out nice contextual information if its build
-    /// status is not the expected one.
-    /// Exits if the command failed to execute at all, otherwise returns whether
-    /// the expectation was met
-    fn try_run(&self, cmd: &mut Command, expect: BuildExpectation) -> bool {
+    /// Runs a command, printing out nice contextual information if it fails.
+    /// Exits if the command failed to execute at all, otherwise returns its
+    /// `status.success()`.
+    fn try_run(&self, cmd: &mut Command) -> bool {
         self.verbose(&format!("running: {:?}", cmd));
-        try_run_silent(cmd, expect)
+        try_run_silent(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -601,7 +593,7 @@ impl Build {
     /// `status.success()`.
     fn try_run_quiet(&self, cmd: &mut Command) -> bool {
         self.verbose(&format!("running: {:?}", cmd));
-        try_run_suppressed(cmd, BuildExpectation::None)
+        try_run_suppressed(cmd)
     }
 
     pub fn is_verbose(&self) -> bool {
