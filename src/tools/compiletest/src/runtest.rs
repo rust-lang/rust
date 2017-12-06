@@ -1073,7 +1073,8 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
-        let file_name = format!("{}", self.testpaths.file.display()).replace(r"\", "/"); // on windows, translate all '\' path separators to '/'
+        // on windows, translate all '\' path separators to '/'
+        let file_name = format!("{}", self.testpaths.file.display()).replace(r"\", "/");
 
         // If the testcase being checked contains at least one expected "help"
         // message, then we'll ensure that all "help" messages are expected.
