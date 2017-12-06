@@ -22,7 +22,7 @@
 // Note: the use of `Cell` here is to introduce invariance. One less
 // variable.
 //
-// FIXME: The `supply` function *ought* to generate an error, but it
+// FIXME(#45827): The `supply` function *ought* to generate an error, but it
 // currently does not. This is I believe a shortcoming of the MIR type
 // checker: the closure inference is expressing the correct
 // requirement, as you can see from the `#[rustc_regions]` output.
