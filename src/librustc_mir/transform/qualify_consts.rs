@@ -41,6 +41,9 @@ use transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
 bitflags! {
+    // Borrows of temporaries can be promoted only if
+    // they have none of these qualifications, with
+    // the exception of `STATIC_REF` (in statics only).
     struct Qualif: u8 {
         // Constant containing interior mutability (UnsafeCell).
         const MUTABLE_INTERIOR  = 1 << 0;
@@ -64,10 +67,6 @@ bitflags! {
         // Refers to temporaries which cannot be promoted as
         // promote_consts decided they weren't simple enough.
         const NOT_PROMOTABLE    = 1 << 6;
-
-        // Borrows of temporaries can be promoted only
-        // if they have none of the above qualifications.
-        const NEVER_PROMOTE     = 0b111_1111;
 
         // Const items can only have MUTABLE_INTERIOR
         // and NOT_PROMOTABLE without producing an error.
@@ -197,7 +196,17 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         self.add(original);
     }
 
-    /// Check if an Place with the current qualifications could
+    /// Check if a Local with the current qualifications is promotable.
+    fn can_promote(&mut self) -> bool {
+        // References to statics are allowed, but only in other statics.
+        if self.mode == Mode::Static || self.mode == Mode::StaticMut {
+            (self.qualif - Qualif::STATIC_REF).is_empty()
+        } else {
+            self.qualif.is_empty()
+        }
+    }
+
+    /// Check if a Place with the current qualifications could
     /// be consumed, by either an operand or a Deref projection.
     fn try_consume(&mut self) -> bool {
         if self.qualif.intersects(Qualif::STATIC) && self.mode != Mode::Fn {
@@ -633,7 +642,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 // We might have a candidate for promotion.
                 let candidate = Candidate::Ref(location);
-                if !self.qualif.intersects(Qualif::NEVER_PROMOTE) {
+                if self.can_promote() {
                     // We can only promote direct borrows of temps.
                     if let Place::Local(local) = *place {
                         if self.mir.local_kind(local) == LocalKind::Temp {
@@ -745,7 +754,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     this.visit_operand(arg, location);
                     if is_shuffle && i == 2 && this.mode == Mode::Fn {
                         let candidate = Candidate::ShuffleIndices(bb);
-                        if !this.qualif.intersects(Qualif::NEVER_PROMOTE) {
+                        if this.can_promote() {
                             this.promotion_candidates.push(candidate);
                         } else {
                             span_err!(this.tcx.sess, this.span, E0526,
