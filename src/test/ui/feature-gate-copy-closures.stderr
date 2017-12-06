@@ -1,0 +1,12 @@
+error[E0382]: use of moved value: `hello`
+  --> $DIR/feature-gate-copy-closures.rs:18:9
+   |
+17 |     let b = hello;
+   |         - value moved here
+18 |     let c = hello; //~ ERROR use of moved value: `hello` [E0382]
+   |         ^ value used here after move
+   |
+   = note: move occurs because `hello` has type `[closure@$DIR/feature-gate-copy-closures.rs:13:17: 15:6 a:&i32]`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+

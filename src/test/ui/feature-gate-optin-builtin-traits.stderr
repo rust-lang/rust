@@ -1,0 +1,26 @@
+error: auto traits are experimental and possibly buggy (see issue #13231)
+  --> $DIR/feature-gate-optin-builtin-traits.rs:20:1
+   |
+20 | auto trait AutoDummyTrait {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
+
+error: auto trait implementations are experimental and possibly buggy (see issue #13231)
+  --> $DIR/feature-gate-optin-builtin-traits.rs:24:1
+   |
+24 | impl DummyTrait for .. {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
+
+error: negative trait bounds are not yet fully implemented; use marker types for now (see issue #13231)
+  --> $DIR/feature-gate-optin-builtin-traits.rs:27:1
+   |
+27 | impl !DummyTrait for DummyStruct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+

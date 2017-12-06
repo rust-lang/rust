@@ -1,0 +1,10 @@
+error: extern types are experimental (see issue #43467)
+  --> $DIR/feature-gate-extern_types.rs:12:5
+   |
+12 |     type T; //~ ERROR extern types are experimental
+   |     ^^^^^^^
+   |
+   = help: add #![feature(extern_types)] to the crate attributes to enable
+
+error: aborting due to previous error
+

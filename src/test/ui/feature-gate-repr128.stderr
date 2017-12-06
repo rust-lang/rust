@@ -1,0 +1,13 @@
+error: repr with 128-bit type is unstable (see issue #35118)
+  --> $DIR/feature-gate-repr128.rs:12:1
+   |
+12 | / enum A { //~ ERROR repr with 128-bit type is unstable
+13 | |     //~| HELP: add #![feature(repr128)]
+14 | |     A(u64)
+15 | | }
+   | |_^
+   |
+   = help: add #![feature(repr128)] to the crate attributes to enable
+
+error: aborting due to previous error
+

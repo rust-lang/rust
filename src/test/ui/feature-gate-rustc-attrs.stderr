@@ -1,0 +1,26 @@
+error: the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable (see issue #29642)
+  --> $DIR/feature-gate-rustc-attrs.rs:15:1
+   |
+15 | #[rustc_variance] //~ ERROR the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+
+error: the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable (see issue #29642)
+  --> $DIR/feature-gate-rustc-attrs.rs:16:1
+   |
+16 | #[rustc_error] //~ ERROR the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
+   | ^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+
+error: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics (see issue #29642)
+  --> $DIR/feature-gate-rustc-attrs.rs:17:1
+   |
+17 | #[rustc_foo]
+   | ^^^^^^^^^^^^
+   |
+   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
