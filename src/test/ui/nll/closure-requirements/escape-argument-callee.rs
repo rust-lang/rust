@@ -10,12 +10,17 @@
 
 // Test closure that:
 //
-// - takes an argument `y`
-// - stores `y` into another, longer-lived spot
+// - takes an argument `y` with lifetime `'a` (in the code, it's anonymous)
+// - stores `y` into another, longer-lived spot with lifetime `'b`
 //
-// *but* the signature of the closure doesn't indicate that `y` lives
-// long enough for that. The closure reports the error (and hence we
-// see it before the closure's "external requirements" report).
+// Because `'a` and `'b` are two different, unrelated higher-ranked
+// regions with no relationship to one another, this is an error. This
+// error is reported by the closure itself and is not propagated to
+// its creator: this is because `'a` and `'b` are higher-ranked
+// (late-bound) regions and the closure is not allowed to propagate
+// additional where clauses between higher-ranked regions, only those
+// that appear free in its type (hence, we see it before the closure's
+// "external requirements" report).
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
 
