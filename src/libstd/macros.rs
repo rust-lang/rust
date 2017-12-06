@@ -282,9 +282,34 @@ pub mod builtin {
 
     /// Unconditionally causes compilation to fail with the given error message when encountered.
     ///
-    /// For more information, see the [RFC].
+    /// This macro should be used when a crate uses a conditional compilation strategy to provide
+    /// better error messages for errornous conditions.
     ///
-    /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
+    /// # Examples
+    ///
+    /// Two such examples are macros and `#[cfg]` environments.
+    ///
+    /// Emit better compiler error if a macro is passed invalid values.
+    ///
+    /// ```compile_fail
+    /// macro_rules! give_me_foo_or_bar {
+    ///     (foo) => {};
+    ///     (bar) => {};
+    ///     ($x:ident) => {
+    ///         compile_error!("This macro only accepts `foo` or `bar`");
+    ///     }
+    /// }
+    ///
+    /// give_me_foo_or_bar!(neither);
+    /// // ^ will fail at compile time with message "This macro only accepts `foo` or `bar`"
+    /// ```
+    ///
+    /// Emit compiler error if one of a number of features isn't available.
+    ///
+    /// ```compile_fail
+    /// #[cfg(not(any(feature = "foo", feature = "bar")))]
+    /// compile_error!("Either feature \"foo\" or \"bar\" must be enabled for this crate.")
+    /// ```
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
     macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }

@@ -12,7 +12,7 @@
 use std::iter::Iterator;
 use std::vec::Vec;
 use std::collections::BTreeMap;
-use std::__rand::{Rng, thread_rng};
+use rand::{Rng, thread_rng};
 use test::{Bencher, black_box};
 
 macro_rules! map_insert_rand_bench {

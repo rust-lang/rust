@@ -91,8 +91,12 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Swaps the values at two mutable locations of the same type, without
-/// deinitializing either. They may overlap, unlike `mem::swap` which is
-/// otherwise equivalent.
+/// deinitializing either.
+///
+/// The values pointed at by `x` and `y` may overlap, unlike `mem::swap` which
+/// is otherwise equivalent. If the values do overlap, then the overlapping
+/// region of memory from `x` will be used. This is demonstrated in the
+/// examples section below.
 ///
 /// # Safety
 ///
@@ -100,6 +104,40 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 /// as arguments.
 ///
 /// Ensure that these pointers are valid before calling `swap`.
+///
+/// # Examples
+///
+/// Swapping two non-overlapping regions:
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut array = [0, 1, 2, 3];
+///
+/// let x = array[0..].as_mut_ptr() as *mut [u32; 2];
+/// let y = array[2..].as_mut_ptr() as *mut [u32; 2];
+///
+/// unsafe {
+///     ptr::swap(x, y);
+///     assert_eq!([2, 3, 0, 1], array);
+/// }
+/// ```
+///
+/// Swapping two overlapping regions:
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut array = [0, 1, 2, 3];
+///
+/// let x = array[0..].as_mut_ptr() as *mut [u32; 3];
+/// let y = array[1..].as_mut_ptr() as *mut [u32; 3];
+///
+/// unsafe {
+///     ptr::swap(x, y);
+///     assert_eq!([1, 0, 1, 2], array);
+/// }
+/// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
