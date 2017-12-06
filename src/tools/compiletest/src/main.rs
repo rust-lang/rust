@@ -34,6 +34,7 @@ use filetime::FileTime;
 use getopts::Options;
 use common::Config;
 use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
+use common::{expected_output_path, UI_EXTENSIONS};
 use test::{ColorConfig, TestPaths};
 use util::logv;
 
@@ -673,6 +674,20 @@ fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> boo
         inputs.push(mtime(&rustdoc_path));
         inputs.push(mtime(&rust_src_dir.join("src/etc/htmldocck.py")));
     }
+
+    // UI test files.
+    for extension in UI_EXTENSIONS {
+        for revision in &props.revisions {
+            let path = &expected_output_path(testpaths, Some(revision), extension);
+            inputs.push(mtime(path));
+        }
+
+        if props.revisions.is_empty() {
+            let path = &expected_output_path(testpaths, None, extension);
+            inputs.push(mtime(path));
+        }
+    }
+
     inputs.iter().any(|input| *input > stamp)
 }
 

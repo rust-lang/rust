@@ -12,6 +12,7 @@ use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use common::{Incremental, MirOpt, RunMake, Ui};
+use common::{expected_output_path, UI_STDERR, UI_STDOUT};
 use diff;
 use errors::{self, Error, ErrorKind};
 use filetime::FileTime;
@@ -2387,10 +2388,10 @@ impl<'test> TestCx<'test> {
 
         let proc_res = self.compile_test();
 
-        let expected_stderr_path = self.expected_output_path("stderr");
+        let expected_stderr_path = self.expected_output_path(UI_STDERR);
         let expected_stderr = self.load_expected_output(&expected_stderr_path);
 
-        let expected_stdout_path = self.expected_output_path("stdout");
+        let expected_stdout_path = self.expected_output_path(UI_STDOUT);
         let expected_stdout = self.load_expected_output(&expected_stdout_path);
 
         let normalized_stdout =
@@ -2672,11 +2673,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn expected_output_path(&self, kind: &str) -> PathBuf {
-        let extension = match self.revision {
-            Some(r) => format!("{}.{}", r, kind),
-            None => kind.to_string(),
-        };
-        self.testpaths.file.with_extension(extension)
+        expected_output_path(&self.testpaths, self.revision, kind)
     }
 
     fn load_expected_output(&self, path: &Path) -> String {
