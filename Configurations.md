@@ -1503,8 +1503,6 @@ struct Foo {
 }
 ```
 
-```
-
 ## `spaces_around_ranges`
 
 Put spaces around the .. and ... range operators
