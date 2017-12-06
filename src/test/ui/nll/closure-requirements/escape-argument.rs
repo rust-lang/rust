@@ -17,8 +17,10 @@
 // enough to store `y`.
 //
 // The error is reported in the caller: invoking the closure links the
-// lifetime of the borrow that is given as `y` and forces it to live
-// too long.
+// lifetime of the variable that is given as `y` (via subtyping) and
+// thus forces the corresponding borrow to live too long. This is
+// basically checking that the MIR type checker correctly enforces the
+// closure signature.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
 

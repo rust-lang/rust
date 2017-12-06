@@ -1,7 +1,7 @@
 note: External requirements
-  --> $DIR/escape-argument.rs:34:38
+  --> $DIR/escape-argument.rs:36:38
    |
-34 |         let mut closure = expect_sig(|p, y| *p = y);
+36 |         let mut closure = expect_sig(|p, y| *p = y);
    |                                      ^^^^^^^^^^^^^
    |
    = note: defining type: DefId(0/1:9 ~ escape_argument[317d]::test[0]::{{closure}}[0]) with closure substs [
@@ -11,26 +11,26 @@ note: External requirements
    = note: number of external vids: 1
 
 note: No external requirements
-  --> $DIR/escape-argument.rs:28:1
+  --> $DIR/escape-argument.rs:30:1
    |
-28 | / fn test() {
-29 | |     let x = 44;
-30 | |     let mut p = &x;
-31 | |
+30 | / fn test() {
+31 | |     let x = 44;
+32 | |     let mut p = &x;
+33 | |
 ...  |
-39 | |     deref(p);
-40 | | }
+41 | |     deref(p);
+42 | | }
    | |_^
    |
    = note: defining type: DefId(0/0:3 ~ escape_argument[317d]::test[0]) with substs []
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/escape-argument.rs:36:6
+  --> $DIR/escape-argument.rs:38:6
    |
-33 |         let y = 22;
+35 |         let y = 22;
    |             - temporary value created here
 ...
-36 |     }
+38 |     }
    |      ^ temporary value dropped here while still borrowed
    |
    = note: consider using a `let` binding to increase its lifetime
