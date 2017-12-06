@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test a case where we fail to approximate one of the regions and
-// hence report an error while checking the closure.
+// Similarly to escape-argument-callee, a test case where the closure
+// requires a relationship between 2 unrelated higher-ranked regions,
+// with no helpful relations between the HRRs and free regions.
+//
+// In this case, the error is reported by the closure itself. This is
+// because it is unable to approximate the higher-ranked region `'x`,
+// as it knows of no relationships between `'x` and any
+// non-higher-ranked regions.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
 
