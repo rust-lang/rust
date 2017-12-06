@@ -1269,14 +1269,14 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
-            // In order to property accommodate regions during NLL
-            // inference, `fn_sig` query only works for top-level
-            // functions. This is because closures often contain erased regions
-            // in their signatures that are understood by NLL inference but not other
-            // parts of the system -- these do not appear in the generics and hence
-            // are not properly substituted away without some care.
+            // Closure signatures are not like other function
+            // signatures and cannot be accessed through `fn_sig`. For
+            // example, a closure signature excludes the `self`
+            // argument. In any case they are embedded within the
+            // closure type as part of the `ClosureSubsts`.
             //
-            // To get the signature of a closure, you should use the
+            // To get
+            // the signature of a closure, you should use the
             // `closure_sig` method on the `ClosureSubsts`:
             //
             //    closure_substs.closure_sig(def_id, tcx)
