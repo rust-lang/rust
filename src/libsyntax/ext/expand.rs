@@ -25,7 +25,6 @@ use parse::{DirectoryOwnership, PResult};
 use parse::token::{self, Token};
 use parse::parser::Parser;
 use ptr::P;
-use std_inject;
 use symbol::Symbol;
 use symbol::keywords;
 use syntax_pos::{Span, DUMMY_SP};
@@ -219,7 +218,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
-        self.cx.crate_root = std_inject::injected_crate_name(&krate);
         let mut module = ModuleData {
             mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
             directory: self.cx.codemap().span_to_unmapped_path(krate.span),

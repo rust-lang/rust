@@ -21,10 +21,11 @@ use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
 use parse::token;
 use ptr::P;
-use symbol::Symbol;
+use symbol::{keywords, Ident, Symbol};
 use util::small_vector::SmallVector;
 
 use std::collections::HashMap;
+use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::default::Default;
@@ -664,7 +665,6 @@ pub struct ExpansionData {
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
-    pub crate_root: Option<&'static str>,
     pub root_path: PathBuf,
     pub resolver: &'a mut Resolver,
     pub resolve_err_count: usize,
@@ -680,7 +680,6 @@ impl<'a> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess,
             ecfg,
-            crate_root: None,
             root_path: PathBuf::new(),
             resolver,
             resolve_err_count: 0,
@@ -822,12 +821,10 @@ impl<'a> ExtCtxt<'a> {
         ast::Ident::from_str(st)
     }
     pub fn std_path(&self, components: &[&str]) -> Vec<ast::Ident> {
-        let mut v = Vec::new();
-        if let Some(s) = self.crate_root {
-            v.push(self.ident_of(s));
-        }
-        v.extend(components.iter().map(|s| self.ident_of(s)));
-        v
+        let def_site = SyntaxContext::empty().apply_mark(self.current_expansion.mark);
+        iter::once(Ident { ctxt: def_site, ..keywords::DollarCrate.ident() })
+            .chain(components.iter().map(|s| self.ident_of(s)))
+            .collect()
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         Symbol::intern(st)

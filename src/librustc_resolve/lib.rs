@@ -58,6 +58,7 @@ use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
+use syntax::std_inject::injected_crate_name;
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -1333,6 +1334,9 @@ pub struct Resolver<'a> {
 
     // Only used for better errors on `fn(): fn()`
     current_type_ascription: Vec<Span>,
+
+    injected_crate_name: Option<&'static str>,
+    injected_crate: Option<Module<'a>>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1532,6 +1536,8 @@ impl<'a> Resolver<'a> {
             found_unresolved_macro: false,
             unused_macros: FxHashSet(),
             current_type_ascription: Vec::new(),
+            injected_crate_name: injected_crate_name(krate),
+            injected_crate: None,
         }
     }
 

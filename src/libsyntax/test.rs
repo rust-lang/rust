@@ -272,7 +272,7 @@ fn generate_test_harness(sess: &ParseSess,
 
     let mark = Mark::fresh(Mark::root());
 
-    let mut cx: TestCtxt = TestCtxt {
+    let cx = TestCtxt {
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, ExpansionConfig::default("test".to_string()), resolver),
         path: Vec::new(),
@@ -283,7 +283,6 @@ fn generate_test_harness(sess: &ParseSess,
         toplevel_reexport: None,
         ctxt: SyntaxContext::empty().apply_mark(mark),
     };
-    cx.ext_cx.crate_root = Some("std");
 
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,

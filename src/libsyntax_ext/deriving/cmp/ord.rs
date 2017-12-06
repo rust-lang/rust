@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
@@ -28,7 +29,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, core::cmp::Ord),
+        path: path_std!(cx, cmp::Ord),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
@@ -38,7 +39,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                           generics: LifetimeBounds::empty(),
                           explicit_self: borrowed_explicit_self(),
                           args: vec![borrowed_self()],
-                          ret_ty: Literal(path_std!(cx, core::cmp::Ordering)),
+                          ret_ty: Literal(path_std!(cx, cmp::Ordering)),
                           attributes: attrs,
                           is_unsafe: false,
                           unify_fieldless_variants: true,
