@@ -1,5 +1,5 @@
 use mir;
-use ty::{self, TypeVariants};
+use ty::{self, Ty};
 use ty::layout::LayoutOf;
 use syntax::codemap::Span;
 use syntax::abi::Abi;
@@ -177,7 +177,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         sig: ty::FnSig<'tcx>,
         real_sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
-        fn check_ty_compat<'tcx>(ty: ty::Ty<'tcx>, real_ty: ty::Ty<'tcx>) -> bool {
+        fn check_ty_compat<'tcx>(ty: Ty<'tcx>, real_ty: Ty<'tcx>) -> bool {
             if ty == real_ty {
                 return true;
             } // This is actually a fast pointer comparison
@@ -185,8 +185,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // Permit changing the pointer type of raw pointers and references as well as
                 // mutability of raw pointers.
                 // TODO: Should not be allowed when fat pointers are involved.
-                (&TypeVariants::TyRawPtr(_), &TypeVariants::TyRawPtr(_)) => true,
-                (&TypeVariants::TyRef(_, _), &TypeVariants::TyRef(_, _)) => {
+                (&ty::TyRawPtr(_), &ty::TyRawPtr(_)) => true,
+                (&ty::TyRef(_, _), &ty::TyRef(_, _)) => {
                     ty.is_mutable_pointer() == real_ty.is_mutable_pointer()
                 }
                 // rule out everything else
@@ -220,7 +220,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     // Second argument must be a tuple matching the argument list of sig
                     let snd_ty = real_sig.inputs_and_output[1];
                     match snd_ty.sty {
-                        TypeVariants::TyTuple(tys, _) if sig.inputs().len() == tys.len() =>
+                        ty::TyTuple(tys, _) if sig.inputs().len() == tys.len() =>
                             if sig.inputs().iter().zip(tys).all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
                                 return Ok(true)
                             },

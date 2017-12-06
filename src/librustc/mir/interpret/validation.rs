@@ -337,7 +337,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         base: Place,
         mut layout: ty::layout::TyLayout<'tcx>,
         i: usize,
-    ) -> EvalResult<'tcx, ty::Ty<'tcx>> {
+    ) -> EvalResult<'tcx, Ty<'tcx>> {
         match base {
             Place::Ptr { extra: PlaceExtra::DowncastVariant(variant_index), .. } => {
                 layout = layout.for_variant(&self, variant_index);

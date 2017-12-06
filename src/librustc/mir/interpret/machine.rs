@@ -4,7 +4,8 @@
 
 use super::{EvalResult, EvalContext, Place, PrimVal, ValTy};
 
-use {mir, ty};
+use mir;
+use ty::{self, Ty};
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
 
@@ -60,9 +61,9 @@ pub trait Machine<'tcx>: Sized {
         ecx: &EvalContext<'a, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: PrimVal,
-        left_ty: ty::Ty<'tcx>,
+        left_ty: Ty<'tcx>,
         right: PrimVal,
-        right_ty: ty::Ty<'tcx>,
+        right_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>>;
 
     /// Called when trying to mark machine defined `MemoryKinds` as static
@@ -73,7 +74,7 @@ pub trait Machine<'tcx>: Sized {
     /// Returns a pointer to the allocated memory
     fn box_alloc<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
-        ty: ty::Ty<'tcx>,
+        ty: Ty<'tcx>,
         dest: Place,
     ) -> EvalResult<'tcx>;
 

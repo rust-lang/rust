@@ -346,7 +346,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     /// the value has to be a fat pointer, and we only care about the "extra" data in it.
     pub fn size_and_align_of_dst(
         &mut self,
-        ty: ty::Ty<'tcx>,
+        ty: Ty<'tcx>,
         value: Value,
     ) -> EvalResult<'tcx, (Size, Align)> {
         let layout = self.layout_of(ty)?;

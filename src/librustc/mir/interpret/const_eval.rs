@@ -274,7 +274,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
 
     fn box_alloc<'a>(
         _ecx: &mut EvalContext<'a, 'tcx, Self>,
-        _ty: ty::Ty<'tcx>,
+        _ty: Ty<'tcx>,
         _dest: Place,
     ) -> EvalResult<'tcx> {
         Err(

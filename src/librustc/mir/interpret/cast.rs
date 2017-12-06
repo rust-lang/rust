@@ -1,4 +1,4 @@
-use ty::{self, Ty};
+use ty::Ty;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use rustc_const_math::ConstFloat;
@@ -37,7 +37,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    fn cast_from_signed_int(&self, val: i128, ty: ty::Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    fn cast_from_signed_int(&self, val: i128, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         self.cast_from_int(val as u128, ty, val < 0)
     }
 
@@ -71,7 +71,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn cast_from_int(
         &self,
         v: u128,
-        ty: ty::Ty<'tcx>,
+        ty: Ty<'tcx>,
         negative: bool,
     ) -> EvalResult<'tcx, PrimVal> {
         trace!("cast_from_int: {}, {}, {}", v, ty, negative);
