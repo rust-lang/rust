@@ -1818,7 +1818,7 @@ const FORMAT_LIKE_WHITELIST: &[&str] = &[
     "eprintln!",
     "format!",
     "format_args!",
-    "panic!",
+    "print!",
     "println!",
     "unreachable!",
     // From the `log` crate.
