@@ -982,7 +982,7 @@ Available lint options:
     println!("Lint groups provided by rustc:\n");
     println!("    {}  {}", padded("name"), "sub-lints");
     println!("    {}  {}", padded("----"), "---------");
-    println!("    {}  {}", padded("warnings"), "all built-in lints");
+    println!("    {}  {}", padded("warnings"), "all lints that are set to issue warnings");
 
     let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
         for (name, to) in lints {
