@@ -317,7 +317,7 @@ where
         if config.verbose() {
             println!("Formatting {}", path_str);
         }
-        let mut visitor = FmtVisitor::from_codemap(parse_session, config);
+        let mut visitor = FmtVisitor::from_codemap(parse_session, config, module.inner);
         let filemap = visitor.codemap.lookup_char_pos(module.inner.lo()).file;
         // Format inner attributes if available.
         if !krate.attrs.is_empty() && path == main_file {

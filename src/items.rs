@@ -657,7 +657,8 @@ pub fn format_impl(
         let open_pos = snippet.find_uncommented("{")? + 1;
 
         if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
-            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
+            let mut visitor =
+                FmtVisitor::from_codemap(context.parse_session, context.config, item.span);
             visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = item.span.lo() + BytePos(open_pos as u32);
 
@@ -1055,7 +1056,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let open_pos = snippet.find_uncommented("{")? + 1;
 
         if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
-            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
+            let mut visitor =
+                FmtVisitor::from_codemap(context.parse_session, context.config, item.span);
             visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = item.span.lo() + BytePos(open_pos as u32);
 

@@ -530,7 +530,11 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = source!(self, span).hi();
     }
 
-    pub fn from_codemap(parse_session: &'a ParseSess, config: &'a Config) -> FmtVisitor<'a> {
+    pub fn from_codemap(
+        parse_session: &'a ParseSess,
+        config: &'a Config,
+        span: Span,
+    ) -> FmtVisitor<'a> {
         FmtVisitor {
             parse_session: parse_session,
             codemap: parse_session.codemap(),
