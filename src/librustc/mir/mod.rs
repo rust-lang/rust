@@ -1348,6 +1348,12 @@ impl<'tcx> Operand<'tcx> {
         })
     }
 
+    pub fn to_copy(&self) -> Self {
+        match *self {
+            Operand::Copy(_) | Operand::Constant(_) => self.clone(),
+            Operand::Move(ref place) => Operand::Copy(place.clone())
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
