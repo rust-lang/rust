@@ -35,8 +35,16 @@ impl Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
     }
 
+    pub fn without_first_quote(&self) -> Ident {
+        Ident { name: self.name.without_first_quote(), ctxt: self.ctxt }
+    }
+
     pub fn modern(self) -> Ident {
         Ident { name: self.name, ctxt: self.ctxt.modern() }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        !self.name.is_used_keyword() && !self.name.is_unused_keyword()
     }
 }
 
@@ -112,6 +120,24 @@ impl Symbol {
 
     pub fn as_u32(self) -> u32 {
         self.0
+    }
+
+    /// Returns `true` if the token is a keyword used in the language.
+    pub fn is_used_keyword(&self) -> bool {
+        self >= &keywords::As.name() && self <= &keywords::While.name()
+    }
+
+    /// Returns `true` if the token is a keyword reserved for possible future use.
+    pub fn is_unused_keyword(&self) -> bool {
+        self >= &keywords::Abstract.name() && self <= &keywords::Yield.name()
+    }
+
+    pub fn is_static_keyword(&self) -> bool {
+        self == &keywords::StaticLifetime.name()
+    }
+
+    pub fn without_first_quote(&self) -> Symbol {
+        Symbol::from(self.as_str().trim_left_matches('\''))
     }
 }
 
@@ -427,5 +453,31 @@ mod tests {
         assert_eq!(i.gensym("zebra"), Symbol(4294967294));
         // gensym of *existing* string gets new number:
         assert_eq!(i.gensym("dog"), Symbol(4294967293));
+    }
+
+    #[test]
+    fn is_used_keyword_test() {
+        let s = Symbol(5);
+        assert_eq!(s.is_used_keyword(), true);
+    }
+
+    #[test]
+    fn is_unused_keyword_test() {
+        let s = Symbol(40);
+        assert_eq!(s.is_unused_keyword(), true);
+    }
+
+    #[test]
+    fn is_valid_test() {
+        let i = Ident { name: Symbol(40), ctxt: SyntaxContext(0) };
+        assert_eq!(i.is_valid(), false);
+        let i = Ident { name: Symbol(61), ctxt: SyntaxContext(0) };
+        assert_eq!(i.is_valid(), true);
+    }
+
+    #[test]
+    fn without_first_quote_test() {
+        let i = Ident::from_str("'break");
+        assert_eq!(i.without_first_quote().name, keywords::Break.name());
     }
 }
