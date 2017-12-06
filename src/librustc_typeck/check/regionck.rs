@@ -451,7 +451,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             // If there are required region bounds, we can just skip
             // ahead.  There will already be a registered region
             // obligation related `concrete_ty` to those regions.
-            if anon_defn.required_region_bounds.len() != 0 {
+            if anon_defn.has_required_region_bounds {
                 continue;
             }
 
