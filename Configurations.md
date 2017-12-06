@@ -11,9 +11,7 @@ reorder_imported_names = true
 
 Each configuration option is either stable or unstable.
 Stable options can be used directly, while unstable options are opt-in.
-
-To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or pass `--unstable-options` to rustfmt,
-and ensure that the environment variable `CFG_RELEASE_CHANNEL` is set to `nightly`.
+To enable unstable options, set `unstable_features = true` in `rustfmt.toml` or pass `--unstable-options` to rustfmt.
 
 # Configuration Options
 
