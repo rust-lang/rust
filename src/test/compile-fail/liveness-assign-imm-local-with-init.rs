@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Zborrowck=mir
+
 fn test() {
-    let v: isize = 1; //~ NOTE first assignment
+    let v: isize = 1; //[ast]~ NOTE first assignment
+                      //[mir]~^ NOTE first assignment
     v.clone();
-    v = 2; //~ ERROR re-assignment of immutable variable
-           //~| NOTE re-assignment of immutable
+    v = 2; //[ast]~ ERROR cannot assign twice to immutable variable
+           //[mir]~^ ERROR cannot assign twice to immutable variable `v`
+           //[ast]~| NOTE cannot assign twice to immutable
+           //[mir]~| NOTE cannot assign twice to immutable
     v.clone();
 }
 

@@ -15,6 +15,7 @@ use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId};
 use hir::svh::Svh;
 use lint;
+use middle::borrowck::BorrowCheckResult;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
                      ExternBodyNestedBodies};
@@ -28,22 +29,21 @@ use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::SymbolExportLevel;
 use middle::trans::{CodegenUnit, Stats};
 use mir;
-use session::CompileResult;
+use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
+use traits::Vtable;
 use traits::specialization_graph;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
-use ty::layout::{Layout, LayoutError};
 use ty::steal::Steal;
 use ty::subst::Substs;
-use util::nodemap::{DefIdSet, DefIdMap};
-use util::common::{profq_msg, ProfileQueriesMsg};
+use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
+use util::common::{profq_msg, ErrorReported, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;
-use std::cell::{RefCell, Cell};
 
 use std::ops::Deref;
 use std::rc::Rc;
@@ -57,6 +57,7 @@ use syntax::symbol::Symbol;
 #[macro_use]
 mod plumbing;
 use self::plumbing::*;
+pub use self::plumbing::force_from_dep_node;
 
 mod keys;
 pub use self::keys::Key;
@@ -67,6 +68,9 @@ use self::values::Value;
 mod config;
 pub use self::config::QueryConfig;
 use self::config::QueryDescription;
+
+mod on_disk_cache;
+pub use self::on_disk_cache::OnDiskCache;
 
 // Each of these maps also corresponds to a method on a
 // `Provider` trait for requesting a value of that type,
@@ -108,8 +112,8 @@ define_maps! { <'tcx>
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     [] fn is_foreign_item: IsForeignItem(DefId) -> bool,
 
-    /// True if this is a default impl (aka impl Foo for ..)
-    [] fn is_default_impl: IsDefaultImpl(DefId) -> bool,
+    /// True if this is an auto impl (aka impl Foo for ..)
+    [] fn is_auto_impl: IsAutoImpl(DefId) -> bool,
 
     /// Get a map with the variance of every item; use `item_variance`
     /// instead.
@@ -118,6 +122,9 @@ define_maps! { <'tcx>
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
     [] fn variances_of: ItemVariances(DefId) -> Rc<Vec<ty::Variance>>,
+
+    /// Maps from def-id of a type to its (inferred) outlives.
+    [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Vec<ty::Predicate<'tcx>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
     [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
@@ -143,6 +150,10 @@ define_maps! { <'tcx>
     /// the value isn't known except to the pass itself.
     [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Rc<IdxSetBuf<mir::Local>>),
 
+    /// Fetch the MIR for a given def-id right after it's built - this includes
+    /// unreachable code.
+    [] fn mir_built: MirBuilt(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+
     /// Fetch the MIR for a given def-id up till the point where it is
     /// ready for const evaluation.
     ///
@@ -155,20 +166,14 @@ define_maps! { <'tcx>
     /// for trans. This is also the only query that can fetch non-local MIR, at present.
     [] fn optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
 
-    /// Type of each closure. The def ID is the ID of the
-    /// expression defining the closure.
-    [] fn closure_kind: ClosureKind(DefId) -> ty::ClosureKind,
+    /// The result of unsafety-checking this def-id.
+    [] fn unsafety_check_result: UnsafetyCheckResult(DefId) -> mir::UnsafetyCheckResult,
 
-    /// Unsafety violations for this def ID.
-    [] fn unsafety_violations: UnsafetyViolations(DefId)
-        -> Rc<[mir::UnsafetyViolation]>,
+    /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error
+    [] fn unsafe_derive_on_repr_packed: UnsafeDeriveOnReprPacked(DefId) -> (),
 
     /// The signature of functions and closures.
     [] fn fn_sig: FnSignature(DefId) -> ty::PolyFnSig<'tcx>,
-
-    /// Records the signature of each generator. The def ID is the ID of the
-    /// expression defining the closure.
-    [] fn generator_sig: GenSignature(DefId) -> Option<ty::PolyGenSig<'tcx>>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
     [] fn coerce_unsized_info: CoerceUnsizedInfo(DefId)
@@ -178,11 +183,13 @@ define_maps! { <'tcx>
 
     [] fn typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
+    [] fn used_trait_imports: UsedTraitImports(DefId) -> Rc<DefIdSet>,
+
     [] fn has_typeck_tables: HasTypeckTables(DefId) -> bool,
 
     [] fn coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
-    [] fn borrowck: BorrowCheck(DefId) -> (),
+    [] fn borrowck: BorrowCheck(DefId) -> Rc<BorrowCheckResult>,
     // FIXME: shouldn't this return a `Result<(), BorrowckErrors>` instead?
     [] fn mir_borrowck: MirBorrowCheck(DefId) -> (),
 
@@ -200,6 +207,9 @@ define_maps! { <'tcx>
     /// other items (such as enum variant explicit discriminants).
     [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
         -> const_val::EvalResult<'tcx>,
+
+    [] fn check_match: CheckMatch(DefId)
+        -> Result<(), ErrorReported>,
 
     /// Performs the privacy check and computes "access levels".
     [] fn privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
@@ -226,8 +236,13 @@ define_maps! { <'tcx>
     [] fn is_exported_symbol: IsExportedSymbol(DefId) -> bool,
     [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> ExternBodyNestedBodies,
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
+    [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Rc<ItemLocalSet>,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
+    [] fn vtable_methods: vtable_methods_node(ty::PolyTraitRef<'tcx>)
+                          -> Rc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>,
 
+    [] fn trans_fulfill_obligation: fulfill_obligation_dep_node(
+        (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> Vtable<'tcx, ()>,
     [] fn trait_impls_of: TraitImpls(DefId) -> Rc<ty::trait_def::TraitImpls>,
     [] fn specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
     [] fn is_object_safe: ObjectSafety(DefId) -> bool,
@@ -247,7 +262,8 @@ define_maps! { <'tcx>
     [] fn is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                                  -> Result<&'tcx Layout, LayoutError<'tcx>>,
+                                  -> Result<&'tcx ty::layout::LayoutDetails,
+                                            ty::layout::LayoutError<'tcx>>,
 
     [] fn dylib_dependency_formats: DylibDepFormats(CrateNum)
                                     -> Rc<Vec<(CrateNum, LinkagePreference)>>,
@@ -273,7 +289,7 @@ define_maps! { <'tcx>
     [] fn native_libraries: NativeLibraries(CrateNum) -> Rc<Vec<NativeLibrary>>,
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
-    [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> Symbol,
+    [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
     [] fn crate_hash: CrateHash(CrateNum) -> Svh,
     [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
 
@@ -334,16 +350,34 @@ define_maps! { <'tcx>
 
     [] fn has_copy_closures: HasCopyClosures(CrateNum) -> bool,
     [] fn has_clone_closures: HasCloneClosures(CrateNum) -> bool,
+
+    // Erases regions from `ty` to yield a new type.
+    // Normally you would just use `tcx.erase_regions(&value)`,
+    // however, which uses this query as a kind of cache.
+    [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
+    [] fn fully_normalize_monormophic_ty: normalize_ty_node(Ty<'tcx>) -> Ty<'tcx>,
 }
 
 //////////////////////////////////////////////////////////////////////
 // These functions are little shims used to find the dep-node for a
 // given query when there is not a *direct* mapping:
 
+fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::EraseRegionsTy { ty }
+}
+
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
     DepConstructor::TypeParamPredicates {
         item_id,
         param_id
+    }
+}
+
+fn fulfill_obligation_dep_node<'tcx>((param_env, trait_ref):
+    (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> DepConstructor<'tcx> {
+    DepConstructor::FulfillObligation {
+        param_env,
+        trait_ref
     }
 }
 
@@ -377,9 +411,9 @@ fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::TypeckBodiesKrate
 }
 
-fn const_eval_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
+fn const_eval_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
                              -> DepConstructor<'tcx> {
-    DepConstructor::ConstEval
+    DepConstructor::ConstEval { param_env }
 }
 
 fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
@@ -390,24 +424,24 @@ fn crate_variances<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::CrateVariances
 }
 
-fn is_copy_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::IsCopy
+fn is_copy_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsCopy { param_env }
 }
 
-fn is_sized_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::IsSized
+fn is_sized_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsSized { param_env }
 }
 
-fn is_freeze_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::IsFreeze
+fn is_freeze_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsFreeze { param_env }
 }
 
-fn needs_drop_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::NeedsDrop
+fn needs_drop_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::NeedsDrop { param_env }
 }
 
-fn layout_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
-    DepConstructor::Layout
+fn layout_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::Layout { param_env }
 }
 
 fn lint_levels_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
@@ -458,4 +492,11 @@ fn collect_and_partition_translation_items_node<'tcx>(_: CrateNum) -> DepConstru
 
 fn output_filenames_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::OutputFilenames
+}
+
+fn vtable_methods_node<'tcx>(trait_ref: ty::PolyTraitRef<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::VtableMethods{ trait_ref }
+}
+fn normalize_ty_node<'tcx>(_: Ty<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::NormalizeTy
 }

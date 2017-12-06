@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::dep_graph::{DepGraph, DepNode};
-use rustc::hir::def_id::DefId;
-use rustc::hir::svh::Svh;
-use rustc::ich::Fingerprint;
-use rustc::middle::cstore::EncodedMetadataHashes;
+use rustc::dep_graph::{DepGraph, DepKind};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::common::time;
-use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph;
-use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
 use std::io::{self, Cursor, Write};
@@ -27,17 +20,12 @@ use std::fs::{self, File};
 use std::path::PathBuf;
 
 use super::data::*;
-use super::preds::*;
 use super::fs::*;
 use super::dirty_clean;
 use super::file_format;
 use super::work_product;
 
-use super::load::load_prev_metadata_hashes;
-
-pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                metadata_hashes: &EncodedMetadataHashes,
-                                svh: Svh) {
+pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     debug!("save_dep_graph()");
     let _ignore = tcx.dep_graph.in_ignore();
     let sess = tcx.sess;
@@ -45,54 +33,21 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     }
 
-    // We load the previous metadata hashes now before overwriting the file
-    // (if we need them for testing).
-    let prev_metadata_hashes = if tcx.sess.opts.debugging_opts.query_dep_graph {
-        load_prev_metadata_hashes(tcx)
-    } else {
-        DefIdMap()
-    };
-
-    let mut current_metadata_hashes = FxHashMap();
-
-    // IMPORTANT: We are saving the metadata hashes *before* the dep-graph,
-    //            since metadata-encoding might add new entries to the
-    //            DefIdDirectory (which is saved in the dep-graph file).
-    if sess.opts.debugging_opts.incremental_cc ||
-       sess.opts.debugging_opts.query_dep_graph {
+    time(sess.time_passes(), "persist query result cache", || {
         save_in(sess,
-                metadata_hash_export_path(sess),
-                |e| encode_metadata_hashes(tcx,
-                                           svh,
-                                           metadata_hashes,
-                                           &mut current_metadata_hashes,
-                                           e));
+                query_cache_path(sess),
+                |e| encode_query_cache(tcx, e));
+    });
+
+    if tcx.sess.opts.debugging_opts.incremental_queries {
+        time(sess.time_passes(), "persist dep-graph", || {
+            save_in(sess,
+                    dep_graph_path(sess),
+                    |e| encode_dep_graph(tcx, e));
+        });
     }
 
-    time(sess.time_passes(), "persist dep-graph (old)", || {
-        let query = tcx.dep_graph.query();
-
-        if tcx.sess.opts.debugging_opts.incremental_info {
-            eprintln!("incremental: {} nodes in dep-graph", query.graph.len_nodes());
-            eprintln!("incremental: {} edges in dep-graph", query.graph.len_edges());
-        }
-
-        let preds = Predecessors::new(tcx, &query);
-        save_in(sess,
-                dep_graph_path(sess),
-                |e| encode_dep_graph(tcx, &preds, e));
-    });
-
-    time(sess.time_passes(), "persist dep-graph (new)", || {
-        save_in(sess,
-                dep_graph_path_new(sess),
-                |e| encode_dep_graph_new(tcx, e));
-    });
-
     dirty_clean::check_dirty_clean_annotations(tcx);
-    dirty_clean::check_dirty_clean_metadata(tcx,
-                                            &prev_metadata_hashes,
-                                            &current_metadata_hashes);
 }
 
 pub fn save_work_products(sess: &Session, dep_graph: &DepGraph) {
@@ -182,164 +137,96 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 }
 
-fn encode_dep_graph_new(tcx: TyCtxt,
-                        encoder: &mut Encoder)
-                        -> io::Result<()> {
+fn encode_dep_graph(tcx: TyCtxt,
+                    encoder: &mut Encoder)
+                    -> io::Result<()> {
     // First encode the commandline arguments hash
     tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
 
     // Encode the graph data.
     let serialized_graph = tcx.dep_graph.serialize();
+
+    if tcx.sess.opts.debugging_opts.incremental_info {
+        #[derive(Clone)]
+        struct Stat {
+            kind: DepKind,
+            node_counter: u64,
+            edge_counter: u64,
+        }
+
+        let total_node_count = serialized_graph.nodes.len();
+        let total_edge_count = serialized_graph.edge_list_data.len();
+        let (total_edge_reads, total_duplicate_edge_reads) =
+            tcx.dep_graph.edge_deduplication_data();
+
+        let mut counts: FxHashMap<_, Stat> = FxHashMap();
+
+        for (i, &(node, _)) in serialized_graph.nodes.iter_enumerated() {
+            let stat = counts.entry(node.kind).or_insert(Stat {
+                kind: node.kind,
+                node_counter: 0,
+                edge_counter: 0,
+            });
+
+            stat.node_counter += 1;
+            let (edge_start, edge_end) = serialized_graph.edge_list_indices[i];
+            stat.edge_counter += (edge_end - edge_start) as u64;
+        }
+
+        let mut counts: Vec<_> = counts.values().cloned().collect();
+        counts.sort_by_key(|s| -(s.node_counter as i64));
+
+        let percentage_of_all_nodes: Vec<f64> = counts.iter().map(|s| {
+            (100.0 * (s.node_counter as f64)) / (total_node_count as f64)
+        }).collect();
+
+        let average_edges_per_kind: Vec<f64> = counts.iter().map(|s| {
+            (s.edge_counter as f64) / (s.node_counter as f64)
+        }).collect();
+
+        println!("[incremental]");
+        println!("[incremental] DepGraph Statistics");
+
+        const SEPARATOR: &str = "[incremental] --------------------------------\
+                                 ----------------------------------------------\
+                                 ------------";
+
+        println!("{}", SEPARATOR);
+        println!("[incremental]");
+        println!("[incremental] Total Node Count: {}", total_node_count);
+        println!("[incremental] Total Edge Count: {}", total_edge_count);
+        println!("[incremental] Total Edge Reads: {}", total_edge_reads);
+        println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
+        println!("[incremental]");
+        println!("[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
+                 "Node Kind",
+                 "Node Frequency",
+                 "Node Count",
+                 "Avg. Edge Count");
+        println!("[incremental] -------------------------------------\
+                  |------------------\
+                  |-------------\
+                  |------------------|");
+
+        for (i, stat) in counts.iter().enumerate() {
+            println!("[incremental]  {:<36}|{:>16.1}% |{:>12} |{:>17.1} |",
+                format!("{:?}", stat.kind),
+                percentage_of_all_nodes[i],
+                stat.node_counter,
+                average_edges_per_kind[i]);
+        }
+
+        println!("{}", SEPARATOR);
+        println!("[incremental]");
+    }
+
     serialized_graph.encode(encoder)?;
 
     Ok(())
 }
 
-pub fn encode_dep_graph(tcx: TyCtxt,
-                        preds: &Predecessors,
-                        encoder: &mut Encoder)
-                        -> io::Result<()> {
-    // First encode the commandline arguments hash
-    tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
-
-    // NB: We rely on this Vec being indexable by reduced_graph's NodeIndex.
-    let mut nodes: IndexVec<DepNodeIndex, DepNode> = preds
-        .reduced_graph
-        .all_nodes()
-        .iter()
-        .map(|node| node.data.clone())
-        .collect();
-
-    let mut edge_list_indices = IndexVec::with_capacity(nodes.len());
-    let mut edge_list_data = Vec::with_capacity(preds.reduced_graph.len_edges());
-
-    for node_index in 0 .. nodes.len() {
-        let start = edge_list_data.len() as u32;
-
-        for target in preds.reduced_graph.successor_nodes(graph::NodeIndex(node_index)) {
-            edge_list_data.push(DepNodeIndex::new(target.node_id()));
-        }
-
-        let end = edge_list_data.len() as u32;
-        debug_assert_eq!(node_index, edge_list_indices.len());
-        edge_list_indices.push((start, end));
-    }
-
-    // Let's make sure we had no overflow there.
-    assert!(edge_list_data.len() <= ::std::u32::MAX as usize);
-    // Check that we have a consistent number of edges.
-    assert_eq!(edge_list_data.len(), preds.reduced_graph.len_edges());
-
-    let bootstrap_outputs = preds.bootstrap_outputs
-                                 .iter()
-                                 .map(|dep_node| (**dep_node).clone())
-                                 .collect();
-
-    // Next, build the map of content hashes. To this end, we need to transform
-    // the (DepNode -> Fingerprint) map that we have into a
-    // (DepNodeIndex -> Fingerprint) map. This may necessitate adding nodes back
-    // to the dep-graph that have been filtered out during reduction.
-    let content_hashes = {
-        // We have to build a (DepNode -> DepNodeIndex) map. We over-allocate a
-        // little because we expect some more nodes to be added.
-        let capacity = (nodes.len() * 120) / 100;
-        let mut node_to_index = FxHashMap::with_capacity_and_hasher(capacity,
-                                                                    Default::default());
-        // Add the nodes we already have in the graph.
-        node_to_index.extend(nodes.iter_enumerated()
-                                  .map(|(index, &node)| (node, index)));
-
-        let mut content_hashes = Vec::with_capacity(preds.hashes.len());
-
-        for (&&dep_node, &hash) in preds.hashes.iter() {
-            let dep_node_index = *node_to_index
-                .entry(dep_node)
-                .or_insert_with(|| {
-                    // There is no DepNodeIndex for this DepNode yet. This
-                    // happens when the DepNode got filtered out during graph
-                    // reduction. Since we have a content hash for the DepNode,
-                    // we add it back to the graph.
-                    let next_index = nodes.len();
-                    nodes.push(dep_node);
-
-                    debug_assert_eq!(next_index, edge_list_indices.len());
-                    // Push an empty list of edges
-                    edge_list_indices.push((0,0));
-
-                    DepNodeIndex::new(next_index)
-                });
-
-            content_hashes.push((dep_node_index, hash));
-        }
-
-        content_hashes
-    };
-
-    let graph = SerializedDepGraph {
-        nodes,
-        edge_list_indices,
-        edge_list_data,
-        bootstrap_outputs,
-        hashes: content_hashes,
-    };
-
-    // Encode the graph data.
-    graph.encode(encoder)?;
-
-    if tcx.sess.opts.debugging_opts.incremental_info {
-        eprintln!("incremental: {} nodes in reduced dep-graph", graph.nodes.len());
-        eprintln!("incremental: {} edges in serialized dep-graph", graph.edge_list_data.len());
-        eprintln!("incremental: {} hashes in serialized dep-graph", graph.hashes.len());
-    }
-
-    if tcx.sess.opts.debugging_opts.incremental_dump_hash {
-        for (dep_node, hash) in &preds.hashes {
-            println!("ICH for {:?} is {}", dep_node, hash);
-        }
-    }
-
-    Ok(())
-}
-
-pub fn encode_metadata_hashes(tcx: TyCtxt,
-                              svh: Svh,
-                              metadata_hashes: &EncodedMetadataHashes,
-                              current_metadata_hashes: &mut FxHashMap<DefId, Fingerprint>,
-                              encoder: &mut Encoder)
-                              -> io::Result<()> {
-    assert_eq!(metadata_hashes.hashes.len(),
-        metadata_hashes.hashes.iter().map(|x| (x.def_index, ())).collect::<FxHashMap<_,_>>().len());
-
-    let mut serialized_hashes = SerializedMetadataHashes {
-        entry_hashes: metadata_hashes.hashes.to_vec(),
-        index_map: FxHashMap()
-    };
-
-    if tcx.sess.opts.debugging_opts.query_dep_graph {
-        for serialized_hash in &serialized_hashes.entry_hashes {
-            let def_id = DefId::local(serialized_hash.def_index);
-
-            // Store entry in the index_map
-            let def_path_hash = tcx.def_path_hash(def_id);
-            serialized_hashes.index_map.insert(def_id.index, def_path_hash);
-
-            // Record hash in current_metadata_hashes
-            current_metadata_hashes.insert(def_id, serialized_hash.hash);
-        }
-
-        debug!("save: stored index_map (len={}) for serialized hashes",
-               serialized_hashes.index_map.len());
-    }
-
-    // Encode everything.
-    svh.encode(encoder)?;
-    serialized_hashes.encode(encoder)?;
-
-    Ok(())
-}
-
-pub fn encode_work_products(dep_graph: &DepGraph,
-                            encoder: &mut Encoder) -> io::Result<()> {
+fn encode_work_products(dep_graph: &DepGraph,
+                        encoder: &mut Encoder) -> io::Result<()> {
     let work_products: Vec<_> = dep_graph
         .work_products()
         .iter()
@@ -352,4 +239,10 @@ pub fn encode_work_products(dep_graph: &DepGraph,
         .collect();
 
     work_products.encode(encoder)
+}
+
+fn encode_query_cache(tcx: TyCtxt,
+                      encoder: &mut Encoder)
+                      -> io::Result<()> {
+    tcx.serialize_query_result_cache(encoder)
 }

@@ -15,4 +15,5 @@
 pub fn main() {
     struct Foo { x: isize }
     let mut Foo { x: x } = Foo { x: 3 }; //~ ERROR: expected one of `:`, `;`, `=`, or `@`, found `{`
+    //~^ ERROR expected item, found `=`
 }

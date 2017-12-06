@@ -11,6 +11,7 @@
 
 # ignore-tidy-linelength
 
+from __future__ import absolute_import, division, print_function
 import sys
 import os
 rust_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,20 +20,25 @@ rust_dir = os.path.dirname(rust_dir)
 sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
 import bootstrap
 
-class Option:
+
+class Option(object):
     def __init__(self, name, rustbuild, desc, value):
         self.name = name
         self.rustbuild = rustbuild
         self.desc = desc
         self.value = value
 
+
 options = []
+
 
 def o(*args):
     options.append(Option(*args, value=False))
 
+
 def v(*args):
     options.append(Option(*args, value=True))
+
 
 o("debug", "rust.debug", "debug mode; disables optimization unless `--enable-optimize` given")
 o("docs", "build.docs", "build standard library documentation")
@@ -71,6 +77,7 @@ o("debuginfo", "rust.debuginfo", "build with debugger metadata")
 o("debuginfo-lines", "rust.debuginfo-lines", "build with line number debugger metadata")
 o("debuginfo-only-std", "rust.debuginfo-only-std", "build only libstd with debugging information")
 o("debug-jemalloc", "rust.debug-jemalloc", "build jemalloc with --enable-debug --enable-fill")
+v("save-toolstates", "rust.save-toolstates", "save build and test status of external tools into this file")
 
 v("prefix", "install.prefix", "set installation prefix")
 v("localstatedir", "install.localstatedir", "local state directory")
@@ -119,9 +126,8 @@ v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")
 v("release-channel", "rust.channel", "the name of the release channel to build")
 
-# Used on systems where "cc" and "ar" are unavailable
+# Used on systems where "cc" is unavailable
 v("default-linker", "rust.default-linker", "the default linker")
-v("default-ar", "rust.default-ar", "the default ar")
 
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).
@@ -136,12 +142,15 @@ v("target", None, "GNUs ./configure syntax LLVM target triples")
 
 v("set", None, "set arbitrary key/value pairs in TOML configuration")
 
+
 def p(msg):
     print("configure: " + msg)
+
 
 def err(msg):
     print("configure: error: " + msg)
     sys.exit(1)
+
 
 if '--help' in sys.argv or '-h' in sys.argv:
     print('Usage: ./configure [options]')
@@ -208,7 +217,7 @@ while i < len(sys.argv):
                 continue
 
         found = True
-        if not option.name in known_args:
+        if option.name not in known_args:
             known_args[option.name] = []
         known_args[option.name].append((option, value))
         break
@@ -217,7 +226,12 @@ while i < len(sys.argv):
         unknown_args.append(arg)
 p("")
 
-if 'option-checking' not in known_args or known_args['option-checking'][1]:
+# Note: here and a few other places, we use [-1] to apply the *last* value
+# passed.  But if option-checking is enabled, then the known_args loop will
+# also assert that options are only passed once.
+option_checking = ('option-checking' not in known_args
+                   or known_args['option-checking'][-1][1])
+if option_checking:
     if len(unknown_args) > 0:
         err("Option '" + unknown_args[0] + "' is not recognized")
     if len(need_value_args) > 0:
@@ -227,27 +241,30 @@ if 'option-checking' not in known_args or known_args['option-checking'][1]:
 # TOML we're going to write out
 config = {}
 
+
 def build():
     if 'build' in known_args:
-        return known_args['build'][0][1]
+        return known_args['build'][-1][1]
     return bootstrap.default_build_triple()
 
-def set(key, value):
-      s = "{:20} := {}".format(key, value)
-      if len(s) < 70:
-          p(s)
-      else:
-          p(s[:70] + " ...")
 
-      arr = config
-      parts = key.split('.')
-      for i, part in enumerate(parts):
-          if i == len(parts) - 1:
-              arr[part] = value
-          else:
-              if not part in arr:
-                  arr[part] = {}
-              arr = arr[part]
+def set(key, value):
+    s = "{:20} := {}".format(key, value)
+    if len(s) < 70:
+        p(s)
+    else:
+        p(s[:70] + " ...")
+
+    arr = config
+    parts = key.split('.')
+    for i, part in enumerate(parts):
+        if i == len(parts) - 1:
+            arr[part] = value
+        else:
+            if part not in arr:
+                arr[part] = {}
+            arr = arr[part]
+
 
 for key in known_args:
     # The `set` option is special and can be passed a bunch of times
@@ -265,9 +282,9 @@ for key in known_args:
 
     # Ensure each option is only passed once
     arr = known_args[key]
-    if len(arr) > 1:
+    if option_checking and len(arr) > 1:
         err("Option '{}' provided more than once".format(key))
-    option, value = arr[0]
+    option, value = arr[-1]
 
     # If we have a clear avenue to set our value in rustbuild, do so
     if option.rustbuild is not None:
@@ -345,8 +362,9 @@ for target in configured_targets:
     targets[target] = sections['target'][:]
     targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", target)
 
+
 # Here we walk through the constructed configuration we have from the parsed
-# command line arguemnts. We then apply each piece of configuration by
+# command line arguments. We then apply each piece of configuration by
 # basically just doing a `sed` to change the various configuration line to what
 # we've got configure.
 def to_toml(value):
@@ -360,7 +378,8 @@ def to_toml(value):
     elif isinstance(value, str):
         return "'" + value + "'"
     else:
-        raise 'no toml'
+        raise RuntimeError('no toml')
+
 
 def configure_section(lines, config):
     for key in config:
@@ -375,10 +394,11 @@ def configure_section(lines, config):
         if not found:
             raise RuntimeError("failed to find config line for {}".format(key))
 
+
 for section_key in config:
     section_config = config[section_key]
-    if not section_key in sections:
-        raise RuntimeError("config key {} not in sections".format(key))
+    if section_key not in sections:
+        raise RuntimeError("config key {} not in sections".format(section_key))
 
     if section_key == 'target':
         for target in section_config:
@@ -407,11 +427,6 @@ with open('Makefile', 'w') as f:
     contents = contents.replace("$(CFG_PYTHON)", sys.executable)
     f.write(contents)
 
-# Finally, clean up with a bit of a help message
-relpath = os.path.dirname(__file__)
-if relpath == '':
-    relpath = '.'
-
 p("")
-p("run `python {}/x.py --help`".format(relpath))
+p("run `python {}/x.py --help`".format(rust_dir))
 p("")

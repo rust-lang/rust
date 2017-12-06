@@ -1,12 +1,11 @@
-use traits::Reveal;
 use ty::{self, TyCtxt, Ty, Instance, layout};
 use mir;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
-use super::{EvalResult, EvalError, EvalErrorKind, GlobalId, Lvalue, Value, PrimVal, EvalContext,
-            StackPopCleanup, PtrAndAlign, MemoryKind, ValTy};
+use super::{EvalResult, EvalError, EvalErrorKind, GlobalId, Place, Value, PrimVal, EvalContext,
+            StackPopCleanup, PtrAndAlign, ValTy, HasMemory};
 
 use rustc_const_math::ConstInt;
 
@@ -16,73 +15,76 @@ use std::error::Error;
 pub fn eval_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
-) -> EvalResult<'tcx, (Value, Ty<'tcx>)> {
+    param_env: ty::ParamEnv<'tcx>,
+) -> (EvalResult<'tcx, (PtrAndAlign, Ty<'tcx>)>, EvalContext<'a, 'tcx, CompileTimeFunctionEvaluator>) {
+    debug!("eval_body: {:?}, {:?}", instance, param_env);
     let limits = super::ResourceLimits::default();
-    let mut ecx = EvalContext::<CompileTimeFunctionEvaluator>::new(tcx, limits, (), ());
+    let mut ecx = EvalContext::<CompileTimeFunctionEvaluator>::new(tcx, limits, param_env, ());
     let cid = GlobalId {
         instance,
         promoted: None,
     };
-    if ecx.tcx.has_attr(instance.def_id(), "linkage") {
-        return Err(ConstEvalError::NotConst("extern global".to_string()).into());
-    }
 
-    let mir = ecx.load_mir(instance.def)?;
-    if !ecx.globals.contains_key(&cid) {
-        let size = ecx.type_size_with_substs(mir.return_ty, instance.substs)?
-            .expect("unsized global");
-        let align = ecx.type_align_with_substs(mir.return_ty, instance.substs)?;
-        let ptr = ecx.memory.allocate(
-            size,
-            align,
-            MemoryKind::UninitializedStatic,
-        )?;
-        let aligned = !ecx.is_packed(mir.return_ty)?;
-        ecx.globals.insert(
-            cid,
-            PtrAndAlign {
-                ptr: ptr.into(),
-                aligned,
-            },
-        );
-        let mutable = !mir.return_ty.is_freeze(
-            ecx.tcx,
-            ty::ParamEnv::empty(Reveal::All),
-            mir.span,
-        );
-        let mutability = if mutable {
-            Mutability::Mutable
-        } else {
-            Mutability::Immutable
-        };
-        let cleanup = StackPopCleanup::MarkStatic(mutability);
-        let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
-        trace!("const_eval: pushing stack frame for global: {}", name);
-        ecx.push_stack_frame(
-            instance,
-            mir.span,
-            mir,
-            Lvalue::from_ptr(ptr),
-            cleanup,
-        )?;
+    let try = (|| {
+        if ecx.tcx.has_attr(instance.def_id(), "linkage") {
+            return Err(ConstEvalError::NotConst("extern global".to_string()).into());
+        }
+        let mir = ecx.load_mir(instance.def)?;
+        if tcx.interpret_interner.borrow().get_cached(cid).is_none() {
+            let layout = ecx.type_layout_with_substs(mir.return_ty(), instance.substs)?;
+            assert!(!layout.is_unsized());
+            let ptr = ecx.memory.allocate(
+                layout.size.bytes(),
+                layout.align.abi(),
+                None,
+            )?;
+            tcx.interpret_interner.borrow_mut().cache(
+                cid,
+                PtrAndAlign {
+                    ptr: ptr.into(),
+                    aligned: !layout.is_packed(),
+                },
+            );
+            let cleanup = StackPopCleanup::MarkStatic(Mutability::Immutable);
+            let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
+            trace!("const_eval: pushing stack frame for global: {}", name);
+            ecx.push_stack_frame(
+                instance,
+                mir.span,
+                mir,
+                Place::from_ptr(ptr),
+                cleanup.clone(),
+            )?;
 
-        while ecx.step()? {}
-    }
-    let value = Value::ByRef(*ecx.globals.get(&cid).expect("global not cached"));
-    let valty = ValTy {
-        value,
-        ty: mir.return_ty,
-    };
-    // FIXME: store cached value in TyCtxt
-    Ok(value, mir.return_ty))
+            while ecx.step()? {}
+
+            // reinsert the stack frame so any future queries have the correct substs
+            ecx.push_stack_frame(
+                instance,
+                mir.span,
+                mir,
+                Place::from_ptr(ptr),
+                cleanup,
+            )?;
+        }
+        let value = tcx.interpret_interner.borrow().get_cached(cid).expect("global not cached");
+        let ret_ty = ecx.monomorphize(mir.return_ty(), instance.substs);
+        Ok((value, ret_ty))
+    })();
+    (try, ecx)
 }
 
 pub fn eval_body_as_integer<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     instance: Instance<'tcx>,
 ) -> EvalResult<'tcx, ConstInt> {
-    let (prim, ty) = eval_body_as_primval(tcx, instance)?;
-    let prim = prim.to_bytes()?;
+    let (ptr_ty, ecx) = eval_body(tcx, instance, param_env);
+    let (ptr, ty) = ptr_ty?;
+    let prim = match ecx.read_maybe_aligned(ptr.aligned, |ectx| ectx.try_read_value(ptr.ptr, ty))? {
+        Some(Value::ByVal(prim)) => prim.to_bytes()?,
+        _ => return err!(TypeNotPrimitive(ty)),
+    };
     use syntax::ast::{IntTy, UintTy};
     use ty::TypeVariants::*;
     use rustc_const_math::{ConstIsize, ConstUsize};
@@ -115,7 +117,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
     })
 }
 
-struct CompileTimeFunctionEvaluator;
+pub struct CompileTimeFunctionEvaluator;
 
 impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
     fn into(self) -> EvalError<'tcx> {
@@ -160,17 +162,23 @@ impl Error for ConstEvalError {
 }
 
 impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
-    type Data = ();
+    type Data = ty::ParamEnv<'tcx>;
     type MemoryData = ();
     type MemoryKinds = !;
+    fn param_env<'a>(
+        ecx: &EvalContext<'a, 'tcx, Self>,
+    ) -> ty::ParamEnv<'tcx> {
+        ecx.machine_data
+    }
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         _args: &[ValTy<'tcx>],
         span: Span,
         _sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
+        debug!("eval_fn_call: {:?}", instance);
         if !ecx.tcx.is_const_fn(instance.def_id()) {
             return Err(
                 ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into(),
@@ -187,34 +195,59 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
             }
             Err(other) => return Err(other),
         };
-        let (return_lvalue, return_to_block) = match destination {
-            Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
-            None => (Lvalue::undef(), StackPopCleanup::None),
+        let (return_place, return_to_block) = match destination {
+            Some((place, block)) => (place, StackPopCleanup::Goto(block)),
+            None => (Place::undef(), StackPopCleanup::None),
         };
 
         ecx.push_stack_frame(
             instance,
             span,
             mir,
-            return_lvalue,
+            return_place,
             return_to_block,
         )?;
 
         Ok(false)
     }
 
+
     fn call_intrinsic<'a>(
-        _ecx: &mut EvalContext<'a, 'tcx, Self>,
-        _instance: ty::Instance<'tcx>,
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        instance: ty::Instance<'tcx>,
         _args: &[ValTy<'tcx>],
-        _dest: Lvalue,
-        _dest_ty: Ty<'tcx>,
-        _dest_layout: &'tcx layout::Layout,
-        _target: mir::BasicBlock,
+        dest: Place,
+        dest_layout: layout::TyLayout<'tcx>,
+        target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
-        Err(
-            ConstEvalError::NeedsRfc("calling intrinsics".to_string()).into(),
-        )
+        let substs = instance.substs;
+
+        let intrinsic_name = &ecx.tcx.item_name(instance.def_id())[..];
+        match intrinsic_name {
+            "min_align_of" => {
+                let elem_ty = substs.type_at(0);
+                let elem_align = ecx.type_align(elem_ty)?;
+                let align_val = PrimVal::from_u128(elem_align as u128);
+                ecx.write_primval(dest, align_val, dest_layout.ty)?;
+            }
+
+            "size_of" => {
+                let ty = substs.type_at(0);
+                let size = ecx.type_size(ty)?.expect(
+                    "size_of intrinsic called on unsized value",
+                ) as u128;
+                ecx.write_primval(dest, PrimVal::from_u128(size), dest_layout.ty)?;
+            }
+
+            name => return Err(ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", name)).into()),
+        }
+
+        ecx.goto_block(target);
+
+        // Since we pushed no stack frame, the main loop will act
+        // as if the call just completed and it's returning to the
+        // current frame.
+        Ok(())
     }
 
     fn try_ptr_op<'a>(
@@ -241,7 +274,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
     fn box_alloc<'a>(
         _ecx: &mut EvalContext<'a, 'tcx, Self>,
         _ty: ty::Ty<'tcx>,
-        _dest: Lvalue,
+        _dest: Place,
     ) -> EvalResult<'tcx> {
         Err(
             ConstEvalError::NeedsRfc("Heap allocations via `box` keyword".to_string()).into(),

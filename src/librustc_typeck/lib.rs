@@ -50,6 +50,8 @@ independently:
 
 - variance: variance inference
 
+- outlives: outlives inference
+
 - check: walks over function bodies and type checks them, inferring types for
   local variables, type parameters, etc as necessary.
 
@@ -73,7 +75,10 @@ This API is completely unstable and subject to change.
 #![feature(advanced_slice_patterns)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(crate_visibility_modifier)]
 #![feature(conservative_impl_trait)]
+#![feature(from_ref)]
+#![feature(match_default_bindings)]
 #![feature(never_type)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -86,7 +91,6 @@ extern crate syntax_pos;
 extern crate arena;
 #[macro_use] extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
-extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
@@ -122,7 +126,9 @@ mod collect;
 mod constrained_type_params;
 mod impl_wf_check;
 mod coherence;
+mod outlives;
 mod variance;
+mod namespace;
 
 pub struct TypeAndSubsts<'tcx> {
     substs: &'tcx Substs<'tcx>,
@@ -285,6 +291,7 @@ pub fn provide(providers: &mut Providers) {
     coherence::provide(providers);
     check::provide(providers);
     variance::provide(providers);
+    outlives::provide(providers);
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -298,6 +305,11 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         time(time_passes, "type collecting", ||
              collect::collect_item_types(tcx));
 
+    })?;
+
+    tcx.sess.track_errors(|| {
+        time(time_passes, "outlives testing", ||
+            outlives::test::test_inferred_outlives(tcx));
     })?;
 
     tcx.sess.track_errors(|| {

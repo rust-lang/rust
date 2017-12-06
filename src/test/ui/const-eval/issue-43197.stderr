@@ -1,27 +1,27 @@
-warning: constant evaluation error: attempt to subtract with overflow. This will become a HARD ERROR in the future
+warning: constant evaluation error: attempt to subtract with overflow
   --> $DIR/issue-43197.rs:18:20
    |
-18 |     const X: u32 = 0-1;
+18 |     const X: u32 = 0-1; //~ ERROR constant evaluation error
    |                    ^^^
    |
    = note: #[warn(const_err)] on by default
 
-warning: constant evaluation error: attempt to subtract with overflow. This will become a HARD ERROR in the future
-  --> $DIR/issue-43197.rs:19:20
+warning: constant evaluation error: attempt to subtract with overflow
+  --> $DIR/issue-43197.rs:20:20
    |
-19 |     const Y: u32 = foo(0-1);
+20 |     const Y: u32 = foo(0-1); //~ ERROR constant evaluation error
    |                    ^^^^^^^^
 
 error[E0080]: constant evaluation error
   --> $DIR/issue-43197.rs:18:20
    |
-18 |     const X: u32 = 0-1;
+18 |     const X: u32 = 0-1; //~ ERROR constant evaluation error
    |                    ^^^ attempt to subtract with overflow
 
 error[E0080]: constant evaluation error
-  --> $DIR/issue-43197.rs:19:24
+  --> $DIR/issue-43197.rs:20:24
    |
-19 |     const Y: u32 = foo(0-1);
+20 |     const Y: u32 = foo(0-1); //~ ERROR constant evaluation error
    |                        ^^^ attempt to subtract with overflow
 
 error: aborting due to 2 previous errors

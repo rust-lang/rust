@@ -18,7 +18,7 @@
 /// Implementing `Deref` for smart pointers makes accessing the data behind them
 /// convenient, which is why they implement `Deref`. On the other hand, the
 /// rules regarding `Deref` and [`DerefMut`] were designed specifically to
-/// accomodate smart pointers. Because of this, **`Deref` should only be
+/// accommodate smart pointers. Because of this, **`Deref` should only be
 /// implemented for smart pointers** to avoid confusion.
 ///
 /// For similar reasons, **this trait should never fail**. Failure during
@@ -40,7 +40,7 @@
 /// [book]: ../../book/second-edition/ch15-02-deref.html
 /// [`DerefMut`]: trait.DerefMut.html
 /// [more]: #more-on-deref-coercion
-/// [ref-deref-op]: ../../reference/expressions.html#the-dereference-operator
+/// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
 /// [ref-deref-trait]: ../../reference/the-deref-trait.html
 /// [type coercions]: ../../reference/type-coercions.html
 ///
@@ -103,7 +103,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// Implementing `DerefMut` for smart pointers makes mutating the data behind
 /// them convenient, which is why they implement `DerefMut`. On the other hand,
 /// the rules regarding [`Deref`] and `DerefMut` were designed specifically to
-/// accomodate smart pointers. Because of this, **`DerefMut` should only be
+/// accommodate smart pointers. Because of this, **`DerefMut` should only be
 /// implemented for smart pointers** to avoid confusion.
 ///
 /// For similar reasons, **this trait should never fail**. Failure during
@@ -127,7 +127,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// [book]: ../../book/second-edition/ch15-02-deref.html
 /// [`Deref`]: trait.Deref.html
 /// [more]: #more-on-deref-coercion
-/// [ref-deref-op]: ../../reference/expressions.html#the-dereference-operator
+/// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
 /// [ref-deref-trait]: ../../reference/the-deref-trait.html
 /// [type coercions]: ../../reference/type-coercions.html
 ///

@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg_attr(target_os = "nacl", allow(dead_code))]
-
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
 
 use env;
 use io::prelude::*;
 use io;
-use libc;
 use str;
 use sync::atomic::{self, Ordering};
 use path::{self, Path};
@@ -41,9 +38,9 @@ pub const HEX_WIDTH: usize = 10;
 #[derive(Debug, Copy, Clone)]
 pub struct Frame {
     /// Exact address of the call that failed.
-    pub exact_position: *const libc::c_void,
+    pub exact_position: *const u8,
     /// Address of the enclosing function.
-    pub symbol_addr: *const libc::c_void,
+    pub symbol_addr: *const u8,
 }
 
 /// Max number of frames to print.
@@ -203,8 +200,10 @@ fn output(w: &mut Write, idx: usize, frame: Frame,
 ///
 /// See also `output`.
 #[allow(dead_code)]
-fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
-                       format: PrintFormat) -> io::Result<()> {
+fn output_fileline(w: &mut Write,
+                   file: &[u8],
+                   line: u32,
+                   format: PrintFormat) -> io::Result<()> {
     // prior line: "  ##: {:2$} - func"
     w.write_all(b"")?;
     match format {
@@ -253,8 +252,26 @@ fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
 // Note that this demangler isn't quite as fancy as it could be. We have lots
 // of other information in our symbols like hashes, version, type information,
 // etc. Additionally, this doesn't handle glue symbols at all.
-pub fn demangle(writer: &mut Write, s: &str, format: PrintFormat) -> io::Result<()> {
-    // First validate the symbol. If it doesn't look like anything we're
+pub fn demangle(writer: &mut Write, mut s: &str, format: PrintFormat) -> io::Result<()> {
+    // During ThinLTO LLVM may import and rename internal symbols, so strip out
+    // those endings first as they're one of the last manglings applied to
+    // symbol names.
+    let llvm = ".llvm.";
+    if let Some(i) = s.find(llvm) {
+        let candidate = &s[i + llvm.len()..];
+        let all_hex = candidate.chars().all(|c| {
+            match c {
+                'A' ... 'F' | '0' ... '9' => true,
+                _ => false,
+            }
+        });
+
+        if all_hex {
+            s = &s[..i];
+        }
+    }
+
+    // Validate the symbol. If it doesn't look like anything we're
     // expecting, we just print it literally. Note that we must handle non-rust
     // symbols because we could have any function in the backtrace.
     let mut valid = true;

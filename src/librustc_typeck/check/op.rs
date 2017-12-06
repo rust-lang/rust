@@ -12,7 +12,7 @@
 
 use super::FnCtxt;
 use super::method::MethodCallee;
-use rustc::ty::{self, Ty, TypeFoldable, PreferMutLvalue, TypeVariants};
+use rustc::ty::{self, Ty, TypeFoldable, NoPreference, PreferMutLvalue, TypeVariants};
 use rustc::ty::TypeVariants::{TyStr, TyRef};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::infer::type_variable::TypeVariableOrigin;
@@ -29,12 +29,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               lhs_expr: &'gcx hir::Expr,
                               rhs_expr: &'gcx hir::Expr) -> Ty<'tcx>
     {
-        let lhs_ty = self.check_expr_with_lvalue_pref(lhs_expr, PreferMutLvalue);
-
-        let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
-        let (rhs_ty, return_ty) =
-            self.check_overloaded_binop(expr, lhs_expr, lhs_ty, rhs_expr, op, IsAssign::Yes);
-        let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
+        let (lhs_ty, rhs_ty, return_ty) =
+            self.check_overloaded_binop(expr, lhs_expr, rhs_expr, op, IsAssign::Yes);
 
         let ty = if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var()
                     && is_builtin_binop(lhs_ty, rhs_ty, op) {
@@ -73,27 +69,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                lhs_expr,
                rhs_expr);
 
-        let lhs_ty = self.check_expr(lhs_expr);
-        let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
-
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
                 // && and || are a simple case.
+                self.check_expr_coercable_to_type(lhs_expr, tcx.types.bool);
                 let lhs_diverges = self.diverges.get();
-                self.demand_suptype(lhs_expr.span, tcx.mk_bool(), lhs_ty);
-                self.check_expr_coercable_to_type(rhs_expr, tcx.mk_bool());
+                self.check_expr_coercable_to_type(rhs_expr, tcx.types.bool);
 
                 // Depending on the LHS' value, the RHS can never execute.
                 self.diverges.set(lhs_diverges);
 
-                tcx.mk_bool()
+                tcx.types.bool
             }
             _ => {
                 // Otherwise, we always treat operators as if they are
                 // overloaded. This is the way to be most flexible w/r/t
                 // types that get inferred.
-                let (rhs_ty, return_ty) =
-                    self.check_overloaded_binop(expr, lhs_expr, lhs_ty,
+                let (lhs_ty, rhs_ty, return_ty) =
+                    self.check_overloaded_binop(expr, lhs_expr,
                                                 rhs_expr, op, IsAssign::No);
 
                 // Supply type inference hints if relevant. Probably these
@@ -108,7 +101,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // deduce that the result type should be `u32`, even
                 // though we don't know yet what type 2 has and hence
                 // can't pin this down to a specific impl.
-                let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
                 if
                     !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() &&
                     is_builtin_binop(lhs_ty, rhs_ty, op)
@@ -164,16 +156,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_overloaded_binop(&self,
                               expr: &'gcx hir::Expr,
                               lhs_expr: &'gcx hir::Expr,
-                              lhs_ty: Ty<'tcx>,
                               rhs_expr: &'gcx hir::Expr,
                               op: hir::BinOp,
                               is_assign: IsAssign)
-                              -> (Ty<'tcx>, Ty<'tcx>)
+                              -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)
     {
-        debug!("check_overloaded_binop(expr.id={}, lhs_ty={:?}, is_assign={:?})",
+        debug!("check_overloaded_binop(expr.id={}, op={:?}, is_assign={:?})",
                expr.id,
-               lhs_ty,
+               op,
                is_assign);
+
+        let lhs_pref = match is_assign {
+            IsAssign::Yes => PreferMutLvalue,
+            IsAssign::No => NoPreference
+        };
+        // Find a suitable supertype of the LHS expression's type, by coercing to
+        // a type variable, to pass as the `Self` to the trait, avoiding invariant
+        // trait matching creating lifetime constraints that are too strict.
+        // E.g. adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
+        // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
+        let lhs_ty = self.check_expr_coercable_to_type_with_lvalue_pref(lhs_expr,
+            self.next_ty_var(TypeVariableOrigin::MiscVariable(lhs_expr.span)),
+            lhs_pref);
+        let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
 
         // NB: As we have not yet type-checked the RHS, we don't have the
         // type at hand. Make a variable to represent it. The whole reason
@@ -187,6 +192,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var);
+        let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {
             Ok(method) => {
@@ -283,6 +289,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 // This has nothing here because it means we did string
                                 // concatenation (e.g. "Hello " + "World!"). This means
                                 // we don't want the note in the else clause to be emitted
+                            } else if let ty::TyParam(_) = lhs_ty.sty {
+                                // FIXME: point to span of param
+                                err.note(
+                                    &format!("`{}` might need a bound for `{}`",
+                                             lhs_ty, missing_trait));
                             } else {
                                 err.note(
                                     &format!("an implementation of `{}` might be missing for `{}`",
@@ -296,7 +307,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        (rhs_ty_var, return_ty)
+        (lhs_ty, rhs_ty, return_ty)
     }
 
     fn check_str_addition(&self,

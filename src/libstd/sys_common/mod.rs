@@ -44,11 +44,15 @@ pub mod thread_local;
 pub mod util;
 pub mod wtf8;
 
-#[cfg(any(target_os = "redox", target_os = "l4re"))]
-pub use sys::net;
-
-#[cfg(not(any(target_os = "redox", target_os = "l4re")))]
-pub mod net;
+cfg_if! {
+    if #[cfg(any(target_os = "redox", target_os = "l4re"))] {
+        pub use sys::net;
+    } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
+        pub use sys::net;
+    } else {
+        pub mod net;
+    }
+}
 
 #[cfg(feature = "backtrace")]
 #[cfg(any(all(unix, not(target_os = "emscripten")),

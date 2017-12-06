@@ -1,10 +1,10 @@
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/unboxed-closures-vtable-mismatch.rs:25:13
+  --> $DIR/unboxed-closures-vtable-mismatch.rs:24:13
    |
 22 |     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
    |                       -------------------------------------------------- found signature of `fn(usize, isize) -> _`
-...
-25 |     let z = call_it(3, f);
+23 |     //~^ NOTE found signature of `fn(usize, isize)
+24 |     let z = call_it(3, f);
    |             ^^^^^^^ expected signature of `fn(isize, isize) -> _`
    |
    = note: required by `call_it`

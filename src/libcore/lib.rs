@@ -85,29 +85,12 @@
 #![feature(prelude_import)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
-#![cfg_attr(not(stage0), feature(rustc_const_unstable))]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
-
-#![cfg_attr(not(stage0), feature(const_min_value))]
-#![cfg_attr(not(stage0), feature(const_max_value))]
-#![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_isize_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_usize_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_i8_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_u8_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_i16_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_u16_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_i32_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_u32_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_i64_new))]
-#![cfg_attr(not(stage0), feature(const_atomic_u64_new))]
-#![cfg_attr(not(stage0), feature(const_unsafe_cell_new))]
-#![cfg_attr(not(stage0), feature(const_cell_new))]
-#![cfg_attr(not(stage0), feature(const_nonzero_new))]
+#![feature(doc_spotlight)]
 
 #[prelude_import]
 #[allow(unused)]
@@ -190,3 +173,4 @@ pub mod fmt;
 mod char_private;
 mod iter_private;
 mod tuple;
+mod unit;

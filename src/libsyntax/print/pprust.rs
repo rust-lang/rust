@@ -1049,8 +1049,9 @@ impl<'a> State<'a> {
             ast::TyKind::Path(Some(ref qself), ref path) => {
                 self.print_qpath(path, qself, false)?
             }
-            ast::TyKind::TraitObject(ref bounds) => {
-                self.print_bounds("", &bounds[..])?;
+            ast::TyKind::TraitObject(ref bounds, syntax) => {
+                let prefix = if syntax == ast::TraitObjectSyntax::Dyn { "dyn " } else { "" };
+                self.print_bounds(prefix, &bounds[..])?;
             }
             ast::TyKind::ImplTrait(ref bounds) => {
                 self.print_bounds("impl ", &bounds[..])?;
@@ -1107,6 +1108,13 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident)?;
                 self.word_space(":")?;
                 self.print_type(t)?;
+                self.s.word(";")?;
+                self.end()?; // end the head-ibox
+                self.end() // end the outer cbox
+            }
+            ast::ForeignItemKind::Ty => {
+                self.head(&visibility_qualified(&item.vis, "type"))?;
+                self.print_ident(item.ident)?;
                 self.s.word(";")?;
                 self.end()?; // end the head-ibox
                 self.end() // end the outer cbox
@@ -1177,9 +1185,9 @@ impl<'a> State<'a> {
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
-            ast::ItemKind::Use(ref vp) => {
+            ast::ItemKind::Use(ref tree) => {
                 self.head(&visibility_qualified(&item.vis, "use"))?;
-                self.print_view_path(vp)?;
+                self.print_use_tree(tree)?;
                 self.s.word(";")?;
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
@@ -1279,7 +1287,7 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
                 self.print_struct(struct_def, generics, item.ident, item.span, true)?;
             }
-            ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+            ast::ItemKind::AutoImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
@@ -1330,10 +1338,11 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
-            ast::ItemKind::Trait(unsafety, ref generics, ref bounds, ref trait_items) => {
+            ast::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
+                self.print_is_auto(is_auto)?;
                 self.word_nbsp("trait")?;
                 self.print_ident(item.ident)?;
                 self.print_generics(generics)?;
@@ -1439,7 +1448,10 @@ impl<'a> State<'a> {
     pub fn print_visibility(&mut self, vis: &ast::Visibility) -> io::Result<()> {
         match *vis {
             ast::Visibility::Public => self.word_nbsp("pub"),
-            ast::Visibility::Crate(_) => self.word_nbsp("pub(crate)"),
+            ast::Visibility::Crate(_, sugar) => match sugar {
+                ast::CrateSugar::PubCrate => self.word_nbsp("pub(crate)"),
+                ast::CrateSugar::JustCrate => self.word_nbsp("crate")
+            }
             ast::Visibility::Restricted { ref path, .. } => {
                 let path = to_string(|s| s.print_path(path, false, 0, true));
                 if path == "self" || path == "super" {
@@ -1524,6 +1536,7 @@ impl<'a> State<'a> {
 
     pub fn print_method_sig(&mut self,
                             ident: ast::Ident,
+                            generics: &ast::Generics,
                             m: &ast::MethodSig,
                             vis: &ast::Visibility)
                             -> io::Result<()> {
@@ -1532,7 +1545,7 @@ impl<'a> State<'a> {
                       m.constness.node,
                       m.abi,
                       Some(ident),
-                      &m.generics,
+                      &generics,
                       vis)
     }
 
@@ -1552,7 +1565,7 @@ impl<'a> State<'a> {
                 if body.is_some() {
                     self.head("")?;
                 }
-                self.print_method_sig(ti.ident, sig, &ast::Visibility::Inherited)?;
+                self.print_method_sig(ti.ident, &ti.generics, sig, &ast::Visibility::Inherited)?;
                 if let Some(ref body) = *body {
                     self.nbsp()?;
                     self.print_block_with_attrs(body, &ti.attrs)?;
@@ -1591,7 +1604,7 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.head("")?;
-                self.print_method_sig(ii.ident, sig, &ii.vis)?;
+                self.print_method_sig(ii.ident, &ii.generics, sig, &ii.vis)?;
                 self.nbsp()?;
                 self.print_block_with_attrs(body, &ii.attrs)?;
             }
@@ -1974,6 +1987,15 @@ impl<'a> State<'a> {
             Fixity::None => (prec + 1, prec + 1),
         };
 
+        let left_prec = match (&lhs.node, op.node) {
+            // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
+            // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
+            // of `(x as i32) < ...`. We need to convince it _not_ to do that.
+            (&ast::ExprKind::Cast { .. }, ast::BinOpKind::Lt) |
+            (&ast::ExprKind::Cast { .. }, ast::BinOpKind::Shl) => parser::PREC_FORCE_PAREN,
+            _ => left_prec,
+        };
+
         self.print_expr_maybe_paren(lhs, left_prec)?;
         self.s.space()?;
         self.word_space(op.node.to_string())?;
@@ -2191,7 +2213,7 @@ impl<'a> State<'a> {
                 if limits == ast::RangeLimits::HalfOpen {
                     self.s.word("..")?;
                 } else {
-                    self.s.word("...")?;
+                    self.s.word("..=")?;
                 }
                 if let Some(ref e) = *end {
                     self.print_expr_maybe_paren(e, fake_prec)?;
@@ -2896,45 +2918,39 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_view_path(&mut self, vp: &ast::ViewPath) -> io::Result<()> {
-        match vp.node {
-            ast::ViewPathSimple(ident, ref path) => {
-                self.print_path(path, false, 0, true)?;
+    pub fn print_use_tree(&mut self, tree: &ast::UseTree) -> io::Result<()> {
+        match tree.kind {
+            ast::UseTreeKind::Simple(ref ident) => {
+                self.print_path(&tree.prefix, false, 0, true)?;
 
-                if path.segments.last().unwrap().identifier.name !=
-                        ident.name {
+                if tree.prefix.segments.last().unwrap().identifier.name != ident.name {
                     self.s.space()?;
                     self.word_space("as")?;
-                    self.print_ident(ident)?;
+                    self.print_ident(*ident)?;
                 }
-
-                Ok(())
             }
-
-            ast::ViewPathGlob(ref path) => {
-                self.print_path(path, false, 0, true)?;
-                self.s.word("::*")
+            ast::UseTreeKind::Glob => {
+                if !tree.prefix.segments.is_empty() {
+                    self.print_path(&tree.prefix, false, 0, true)?;
+                    self.s.word("::")?;
+                }
+                self.s.word("*")?;
             }
-
-            ast::ViewPathList(ref path, ref idents) => {
-                if path.segments.is_empty() {
+            ast::UseTreeKind::Nested(ref items) => {
+                if tree.prefix.segments.is_empty() {
                     self.s.word("{")?;
                 } else {
-                    self.print_path(path, false, 0, true)?;
+                    self.print_path(&tree.prefix, false, 0, true)?;
                     self.s.word("::{")?;
                 }
-                self.commasep(Inconsistent, &idents[..], |s, w| {
-                    s.print_ident(w.node.name)?;
-                    if let Some(ident) = w.node.rename {
-                        s.s.space()?;
-                        s.word_space("as")?;
-                        s.print_ident(ident)?;
-                    }
-                    Ok(())
+                self.commasep(Inconsistent, &items[..], |this, &(ref tree, _)| {
+                    this.print_use_tree(tree)
                 })?;
-                self.s.word("}")
+                self.s.word("}")?;
             }
         }
+
+        Ok(())
     }
 
     pub fn print_mutability(&mut self,
@@ -3109,6 +3125,13 @@ impl<'a> State<'a> {
         match s {
             ast::Unsafety::Normal => Ok(()),
             ast::Unsafety::Unsafe => self.word_nbsp("unsafe"),
+        }
+    }
+
+    pub fn print_is_auto(&mut self, s: ast::IsAuto) -> io::Result<()> {
+        match s {
+            ast::IsAuto::Yes => self.word_nbsp("auto"),
+            ast::IsAuto::No => Ok(()),
         }
     }
 }

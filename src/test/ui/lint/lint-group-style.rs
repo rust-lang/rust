@@ -11,7 +11,7 @@
 #![deny(bad_style)]
 #![allow(dead_code)]
 
-fn CamelCase() {}
+fn CamelCase() {} //~ ERROR should have a snake
 
 #[allow(bad_style)]
 mod test {
@@ -19,17 +19,17 @@ mod test {
 
     #[forbid(bad_style)]
     mod bad {
-        fn CamelCase() {}
+        fn CamelCase() {} //~ ERROR should have a snake
 
-        static bad: isize = 1;
+        static bad: isize = 1; //~ ERROR should have an upper
     }
 
     mod warn {
         #![warn(bad_style)]
 
-        fn CamelCase() {}
+        fn CamelCase() {} //~ WARN should have a snake
 
-        struct snake_case;
+        struct snake_case; //~ WARN should have a camel
     }
 }
 

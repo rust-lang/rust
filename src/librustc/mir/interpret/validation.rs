@@ -10,9 +10,9 @@ use middle::region;
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::{EvalError, EvalResult, EvalErrorKind, EvalContext, DynamicLifetime, AccessKind, Value,
-            Lvalue, LvalueExtra, Machine, ValTy};
+            Place, PlaceExtra, Machine, ValTy};
 
-pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, (AbsLvalue<'tcx>, Lvalue)>;
+pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, (AbsPlace<'tcx>, Place)>;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum ValidationMode {
@@ -32,36 +32,36 @@ impl ValidationMode {
     }
 }
 
-// Abstract lvalues
+// Abstract places
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum AbsLvalue<'tcx> {
+pub enum AbsPlace<'tcx> {
     Local(mir::Local),
     Static(hir::def_id::DefId),
-    Projection(Box<AbsLvalueProjection<'tcx>>),
+    Projection(Box<AbsPlaceProjection<'tcx>>),
 }
 
-type AbsLvalueProjection<'tcx> = mir::Projection<'tcx, AbsLvalue<'tcx>, u64, ()>;
-type AbsLvalueElem<'tcx> = mir::ProjectionElem<'tcx, u64, ()>;
+type AbsPlaceProjection<'tcx> = mir::Projection<'tcx, AbsPlace<'tcx>, u64, ()>;
+type AbsPlaceElem<'tcx> = mir::ProjectionElem<'tcx, u64, ()>;
 
-impl<'tcx> AbsLvalue<'tcx> {
-    pub fn field(self, f: mir::Field) -> AbsLvalue<'tcx> {
+impl<'tcx> AbsPlace<'tcx> {
+    pub fn field(self, f: mir::Field) -> AbsPlace<'tcx> {
         self.elem(mir::ProjectionElem::Field(f, ()))
     }
 
-    pub fn deref(self) -> AbsLvalue<'tcx> {
+    pub fn deref(self) -> AbsPlace<'tcx> {
         self.elem(mir::ProjectionElem::Deref)
     }
 
-    pub fn downcast(self, adt_def: &'tcx ty::AdtDef, variant_index: usize) -> AbsLvalue<'tcx> {
+    pub fn downcast(self, adt_def: &'tcx ty::AdtDef, variant_index: usize) -> AbsPlace<'tcx> {
         self.elem(mir::ProjectionElem::Downcast(adt_def, variant_index))
     }
 
-    pub fn index(self, index: u64) -> AbsLvalue<'tcx> {
+    pub fn index(self, index: u64) -> AbsPlace<'tcx> {
         self.elem(mir::ProjectionElem::Index(index))
     }
 
-    fn elem(self, elem: AbsLvalueElem<'tcx>) -> AbsLvalue<'tcx> {
-        AbsLvalue::Projection(Box::new(AbsLvalueProjection {
+    fn elem(self, elem: AbsPlaceElem<'tcx>) -> AbsPlace<'tcx> {
+        AbsPlace::Projection(Box::new(AbsPlaceProjection {
             base: self,
             elem,
         }))
@@ -69,7 +69,7 @@ impl<'tcx> AbsLvalue<'tcx> {
 }
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
-    fn abstract_lvalue_projection(&self, proj: &mir::LvalueProjection<'tcx>) -> EvalResult<'tcx, AbsLvalueProjection<'tcx>> {
+    fn abstract_place_projection(&self, proj: &mir::PlaceProjection<'tcx>) -> EvalResult<'tcx, AbsPlaceProjection<'tcx>> {
         use self::mir::ProjectionElem::*;
 
         let elem = match proj.elem {
@@ -87,18 +87,18 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 Subslice { from, to },
             Downcast(adt, sz) => Downcast(adt, sz),
         };
-        Ok(AbsLvalueProjection {
-            base: self.abstract_lvalue(&proj.base)?,
+        Ok(AbsPlaceProjection {
+            base: self.abstract_place(&proj.base)?,
             elem
         })
     }
 
-    fn abstract_lvalue(&self, lval: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, AbsLvalue<'tcx>> {
-        Ok(match lval {
-            &mir::Lvalue::Local(l) => AbsLvalue::Local(l),
-            &mir::Lvalue::Static(ref s) => AbsLvalue::Static(s.def_id),
-            &mir::Lvalue::Projection(ref p) =>
-                AbsLvalue::Projection(Box::new(self.abstract_lvalue_projection(&*p)?)),
+    fn abstract_place(&self, place: &mir::Place<'tcx>) -> EvalResult<'tcx, AbsPlace<'tcx>> {
+        Ok(match place {
+            &mir::Place::Local(l) => AbsPlace::Local(l),
+            &mir::Place::Static(ref s) => AbsPlace::Static(s.def_id),
+            &mir::Place::Projection(ref p) =>
+                AbsPlace::Projection(Box::new(self.abstract_place_projection(&*p)?)),
         })
     }
 
@@ -106,7 +106,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn validation_op(
         &mut self,
         op: ValidationOp,
-        operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>,
+        operand: &ValidationOperand<'tcx, mir::Place<'tcx>>,
     ) -> EvalResult<'tcx> {
         // If mir-emit-validate is set to 0 (i.e., disabled), we may still see validation commands
         // because other crates may have been compiled with mir-emit-validate > 0.  Ignore those
@@ -146,11 +146,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
 
         // We need to monomorphize ty *without* erasing lifetimes
+        trace!("validation_op1: {:?}", operand.ty.sty);
         let ty = operand.ty.subst(self.tcx, self.substs());
-        let lval = self.eval_lvalue(&operand.lval)?;
-        let abs_lval = self.abstract_lvalue(&operand.lval)?;
+        trace!("validation_op2: {:?}", operand.ty.sty);
+        let place = self.eval_place(&operand.place)?;
+        let abs_place = self.abstract_place(&operand.place)?;
         let query = ValidationQuery {
-            lval: (abs_lval, lval),
+            place: (abs_place, place),
             ty,
             re: operand.re,
             mutbl: operand.mutbl,
@@ -184,7 +186,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.memory.locks_lifetime_ended(scope);
         match scope {
             Some(scope) => {
-                // Recover suspended lvals
+                // Recover suspended places
                 let lft = DynamicLifetime {
                     frame: self.cur_frame(),
                     region: Some(scope),
@@ -326,34 +328,139 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    fn validate_variant(
+    // This is a copy of `Layout::field`
+    //
+    // FIXME: remove once validation does not depend on lifetimes
+    fn field_with_lifetimes(
+        &mut self,
+        base: Place,
+        mut layout: ty::layout::TyLayout<'tcx>,
+        i: usize,
+    ) -> EvalResult<'tcx, ty::Ty<'tcx>> {
+        match base {
+            Place::Ptr { extra: PlaceExtra::DowncastVariant(variant_index), .. } => {
+                layout = layout.for_variant(&self, variant_index);
+            }
+            _ => {}
+        }
+        let tcx = self.tcx;
+        Ok(match layout.ty.sty {
+            ty::TyBool |
+            ty::TyChar |
+            ty::TyInt(_) |
+            ty::TyUint(_) |
+            ty::TyFloat(_) |
+            ty::TyFnPtr(_) |
+            ty::TyNever |
+            ty::TyFnDef(..) |
+            ty::TyDynamic(..) |
+            ty::TyForeign(..) => {
+                bug!("TyLayout::field_type({:?}): not applicable", layout)
+            }
+
+            // Potentially-fat pointers.
+            ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+                assert!(i < 2);
+
+                // Reuse the fat *T type as its own thin pointer data field.
+                // This provides information about e.g. DST struct pointees
+                // (which may have no non-DST form), and will work as long
+                // as the `Abi` or `FieldPlacement` is checked by users.
+                if i == 0 {
+                    return Ok(layout.ty);
+                }
+
+                match tcx.struct_tail(pointee).sty {
+                    ty::TySlice(_) |
+                    ty::TyStr => tcx.types.usize,
+                    ty::TyDynamic(..) => {
+                        // FIXME(eddyb) use an usize/fn() array with
+                        // the correct number of vtables slots.
+                        tcx.mk_imm_ref(tcx.types.re_static, tcx.mk_nil())
+                    }
+                    _ => bug!("TyLayout::field_type({:?}): not applicable", layout)
+                }
+            }
+
+            // Arrays and slices.
+            ty::TyArray(element, _) |
+            ty::TySlice(element) => element,
+            ty::TyStr => tcx.types.u8,
+
+            // Tuples, generators and closures.
+            ty::TyClosure(def_id, ref substs) => {
+                substs.upvar_tys(def_id, tcx).nth(i).unwrap()
+            }
+
+            ty::TyGenerator(def_id, ref substs, _) => {
+                substs.field_tys(def_id, tcx).nth(i).unwrap()
+            }
+
+            ty::TyTuple(tys, _) => tys[i],
+
+            // SIMD vector types.
+            ty::TyAdt(def, ..) if def.repr.simd() => {
+                layout.ty.simd_type(tcx)
+            }
+
+            // ADTs.
+            ty::TyAdt(def, substs) => {
+                use ty::layout::Variants;
+                match layout.variants {
+                    Variants::Single { index } => {
+                        def.variants[index].fields[i].ty(tcx, substs)
+                    }
+
+                    // Discriminant field for enums (where applicable).
+                    Variants::Tagged { ref discr, .. } |
+                    Variants::NicheFilling { niche: ref discr, .. } => {
+                        assert_eq!(i, 0);
+                        return Ok(discr.value.to_ty(tcx))
+                    }
+                }
+            }
+
+            ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
+            ty::TyInfer(_) | ty::TyError => {
+                bug!("TyLayout::field_type: unexpected type `{}`", layout.ty)
+            }
+        })
+    }
+
+    fn validate_fields(
         &mut self,
         query: ValidationQuery<'tcx>,
-        variant: &ty::VariantDef,
-        subst: &ty::subst::Substs<'tcx>,
         mode: ValidationMode,
     ) -> EvalResult<'tcx> {
+        let mut layout = self.type_layout(query.ty)?;
+        layout.ty = query.ty;
+
         // TODO: Maybe take visibility/privacy into account.
-        for (idx, field_def) in variant.fields.iter().enumerate() {
-            let field_ty = field_def.ty(self.tcx, subst);
+        for idx in 0..layout.fields.count() {
             let field = mir::Field::new(idx);
-            let field_lvalue = self.lvalue_field(query.lval.1, field, query.ty, field_ty)?;
+            let (field_place, field_layout) =
+                self.place_field(query.place.1, field, layout)?;
+            // layout stuff erases lifetimes, get the field ourselves
+            let field_ty = self.field_with_lifetimes(query.place.1, layout, idx)?;
+            trace!("assuming \n{:?}\n == \n{:?}\n except for lifetimes", field_layout.ty, field_ty);
             self.validate(
                 ValidationQuery {
-                    lval: (query.lval.0.clone().field(field), field_lvalue),
+                    place: (query.place.0.clone().field(field), field_place),
                     ty: field_ty,
                     ..query
                 },
                 mode,
             )?;
         }
+
         Ok(())
     }
 
     fn validate_ptr(
         &mut self,
         val: Value,
-        abs_lval: AbsLvalue<'tcx>,
+        abs_place: AbsPlace<'tcx>,
         pointee_ty: Ty<'tcx>,
         re: Option<region::Scope>,
         mutbl: Mutability,
@@ -362,13 +469,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
         let ptr = val.into_ptr(&self.memory)?;
-        self.memory.check_align(ptr, align, None)?;
+        self.memory.check_align(ptr, align.abi(), None)?;
 
         // Recurse
-        let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
+        let pointee_place = self.val_to_place(val, pointee_ty)?;
         self.validate(
             ValidationQuery {
-                lval: (abs_lval.deref(), pointee_lvalue),
+                place: (abs_place.deref(), pointee_place),
                 ty: pointee_ty,
                 re,
                 mutbl,
@@ -377,7 +484,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         )
     }
 
-    /// Validate the lvalue at the given type. If `acquire` is false, just do a release of all write locks
+    /// Validate the place at the given type. If `acquire` is false, just do a release of all write locks
     fn validate(
         &mut self,
         mut query: ValidationQuery<'tcx>,
@@ -399,7 +506,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
 
         query.ty = self.normalize_type_unerased(&query.ty);
-        trace!("{:?} on {:?}", mode, query);
+        trace!("{:?} on {:#?}", mode, query);
+        trace!("{:#?}", query.ty.sty);
 
         // Decide whether this type *owns* the memory it covers (like integers), or whether it
         // just assembles pieces (that each own their memory) together to a larger whole.
@@ -409,7 +517,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             TyRef(..) | TyFnPtr(..) | TyFnDef(..) | TyNever => true,
             TyAdt(adt, _) if adt.is_box() => true,
             TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) |
-            TyDynamic(..) | TyGenerator(..) => false,
+            TyDynamic(..) | TyGenerator(..) | TyForeign(_) => false,
             TyParam(_) | TyInfer(_) | TyProjection(_) | TyAnon(..) | TyError => {
                 bug!("I got an incomplete/unnormalized type for validation")
             }
@@ -419,12 +527,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // Tracking the same state for locals not backed by memory would just duplicate too
             // much machinery.
             // FIXME: We ignore alignment.
-            let (ptr, extra) = self.force_allocation(query.lval.1)?.to_ptr_extra_aligned();
+            let (ptr, extra) = self.force_allocation(query.place.1)?.to_ptr_extra_aligned();
             // Determine the size
-            // FIXME: Can we reuse size_and_align_of_dst for Lvalues?
+            // FIXME: Can we reuse size_and_align_of_dst for Places?
             let len = match self.type_size(query.ty)? {
                 Some(size) => {
-                    assert_eq!(extra, LvalueExtra::None, "Got a fat ptr to a sized type");
+                    assert_eq!(extra, PlaceExtra::None, "Got a fat ptr to a sized type");
                     size
                 }
                 None => {
@@ -436,7 +544,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     );
                     // The extra must be the length, in bytes.
                     match extra {
-                        LvalueExtra::Length(len) => len,
+                        PlaceExtra::Length(len) => len,
                         _ => bug!("TyStr must have a length as extra"),
                     }
                 }
@@ -470,7 +578,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 self.memory.recover_write_lock(
                                     ptr,
                                     len,
-                                    &query.lval.0,
+                                    &query.place.0,
                                     query.re,
                                     ending_ce,
                                 )?
@@ -479,7 +587,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 self.memory.suspend_write_lock(
                                     ptr,
                                     len,
-                                    &query.lval.0,
+                                    &query.place.0,
                                     suspended_ce,
                                 )?
                             }
@@ -494,7 +602,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 TyInt(_) | TyUint(_) | TyRawPtr(_) => {
                     if mode.acquiring() {
                         // Make sure we can read this.
-                        let val = self.read_lvalue(query.lval.1)?;
+                        let val = self.read_place(query.place.1)?;
                         self.follow_by_ref_value(val, query.ty)?;
                         // FIXME: It would be great to rule out Undef here, but that doesn't actually work.
                         // Passing around undef data is a thing that e.g. Vec::extend_with does.
@@ -503,7 +611,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
                 TyBool | TyFloat(_) | TyChar => {
                     if mode.acquiring() {
-                        let val = self.read_lvalue(query.lval.1)?;
+                        let val = self.read_place(query.place.1)?;
                         let val = self.value_to_primval(ValTy { value: val, ty: query.ty })?;
                         val.to_bytes()?;
                         // TODO: Check if these are valid bool/float/codepoint/UTF-8
@@ -516,7 +624,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         ty: pointee_ty,
                         mutbl,
                     }) => {
-                    let val = self.read_lvalue(query.lval.1)?;
+                    let val = self.read_place(query.place.1)?;
                     // Sharing restricts our context
                     if mutbl == MutImmutable {
                         query.mutbl = MutImmutable;
@@ -531,14 +639,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             _ => {}
                         }
                     }
-                    self.validate_ptr(val, query.lval.0, pointee_ty, query.re, query.mutbl, mode)
+                    self.validate_ptr(val, query.place.0, pointee_ty, query.re, query.mutbl, mode)
                 }
                 TyAdt(adt, _) if adt.is_box() => {
-                    let val = self.read_lvalue(query.lval.1)?;
-                    self.validate_ptr(val, query.lval.0, query.ty.boxed_ty(), query.re, query.mutbl, mode)
+                    let val = self.read_place(query.place.1)?;
+                    self.validate_ptr(val, query.place.0, query.ty.boxed_ty(), query.re, query.mutbl, mode)
                 }
                 TyFnPtr(_sig) => {
-                    let ptr = self.read_lvalue(query.lval.1)?
+                    let ptr = self.read_place(query.place.1)?
                         .into_ptr(&self.memory)?
                         .to_ptr()?;
                     self.memory.get_fn(ptr)?;
@@ -557,20 +665,20 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Ok(())
                 }
                 TySlice(elem_ty) => {
-                    let len = match query.lval.1 {
-                        Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => len,
+                    let len = match query.place.1 {
+                        Place::Ptr { extra: PlaceExtra::Length(len), .. } => len,
                         _ => {
                             bug!(
-                                "acquire_valid of a TySlice given non-slice lvalue: {:?}",
-                                query.lval
+                                "acquire_valid of a TySlice given non-slice place: {:?}",
+                                query.place
                             )
                         }
                     };
                     for i in 0..len {
-                        let inner_lvalue = self.lvalue_index(query.lval.1, query.ty, i)?;
+                        let inner_place = self.place_index(query.place.1, query.ty, i)?;
                         self.validate(
                             ValidationQuery {
-                                lval: (query.lval.0.clone().index(i), inner_lvalue),
+                                place: (query.place.0.clone().index(i), inner_place),
                                 ty: elem_ty,
                                 ..query
                             },
@@ -582,10 +690,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 TyArray(elem_ty, len) => {
                     let len = len.val.to_const_int().unwrap().to_u64().unwrap();
                     for i in 0..len {
-                        let inner_lvalue = self.lvalue_index(query.lval.1, query.ty, i as u64)?;
+                        let inner_place = self.place_index(query.place.1, query.ty, i as u64)?;
                         self.validate(
                             ValidationQuery {
-                                lval: (query.lval.0.clone().index(i as u64), inner_lvalue),
+                                place: (query.place.0.clone().index(i as u64), inner_place),
                                 ty: elem_ty,
                                 ..query
                             },
@@ -596,12 +704,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
                 TyDynamic(_data, _region) => {
                     // Check that this is a valid vtable
-                    let vtable = match query.lval.1 {
-                        Lvalue::Ptr { extra: LvalueExtra::Vtable(vtable), .. } => vtable,
+                    let vtable = match query.place.1 {
+                        Place::Ptr { extra: PlaceExtra::Vtable(vtable), .. } => vtable,
                         _ => {
                             bug!(
-                                "acquire_valid of a TyDynamic given non-trait-object lvalue: {:?}",
-                                query.lval
+                                "acquire_valid of a TyDynamic given non-trait-object place: {:?}",
+                                query.place
                             )
                         }
                     };
@@ -613,7 +721,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     // their return values.  So, it doesn't seem like there's anything else to do.
                     Ok(())
                 }
-                TyAdt(adt, subst) => {
+                TyAdt(adt, _) => {
                     if Some(adt.did) == self.tcx.lang_items().unsafe_cell_type() &&
                         query.mutbl == MutImmutable
                     {
@@ -623,9 +731,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                     match adt.adt_kind() {
                         AdtKind::Enum => {
-                            // TODO: Can we get the discriminant without forcing an allocation?
-                            let ptr = self.force_allocation(query.lval.1)?.to_ptr()?;
-                            let discr = self.read_discriminant_value(ptr, query.ty)?;
+                            let discr = self.read_discriminant_value(query.place.1, query.ty)?;
 
                             // Get variant index for discriminant
                             let variant_idx = adt.discriminants(self.tcx).position(|variant_discr| {
@@ -639,24 +745,22 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                             if variant.fields.len() > 0 {
                                 // Downcast to this variant, if needed
-                                let lval = if adt.variants.len() > 1 {
+                                let place = if adt.is_enum() {
                                     (
-                                        query.lval.0.downcast(adt, variant_idx),
-                                        self.eval_lvalue_projection(
-                                            query.lval.1,
+                                        query.place.0.downcast(adt, variant_idx),
+                                        self.eval_place_projection(
+                                            query.place.1,
                                             query.ty,
                                             &mir::ProjectionElem::Downcast(adt, variant_idx),
                                         )?,
                                     )
                                 } else {
-                                    query.lval
+                                    query.place
                                 };
 
                                 // Recursively validate the fields
-                                self.validate_variant(
-                                    ValidationQuery { lval, ..query },
-                                    variant,
-                                    subst,
+                                self.validate_fields(
+                                    ValidationQuery { place, ..query },
                                     mode,
                                 )
                             } else {
@@ -665,7 +769,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             }
                         }
                         AdtKind::Struct => {
-                            self.validate_variant(query, adt.struct_variant(), subst, mode)
+                            self.validate_fields(query, mode)
                         }
                         AdtKind::Union => {
                             // No guarantees are provided for union types.
@@ -674,37 +778,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         }
                     }
                 }
-                TyTuple(ref types, _) => {
-                    for (idx, field_ty) in types.iter().enumerate() {
-                        let field = mir::Field::new(idx);
-                        let field_lvalue = self.lvalue_field(query.lval.1, field, query.ty, field_ty)?;
-                        self.validate(
-                            ValidationQuery {
-                                lval: (query.lval.0.clone().field(field), field_lvalue),
-                                ty: field_ty,
-                                ..query
-                            },
-                            mode,
-                        )?;
-                    }
-                    Ok(())
-                }
-                TyClosure(def_id, ref closure_substs) => {
-                    for (idx, field_ty) in closure_substs.upvar_tys(def_id, self.tcx).enumerate() {
-                        let field = mir::Field::new(idx);
-                        let field_lvalue = self.lvalue_field(query.lval.1, field, query.ty, field_ty)?;
-                        self.validate(
-                            ValidationQuery {
-                                lval: (query.lval.0.clone().field(field), field_lvalue),
-                                ty: field_ty,
-                                ..query
-                            },
-                            mode,
-                        )?;
-                    }
-                    // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
+                TyTuple(..) |
+                TyClosure(..) => {
+                    // TODO: Check if the signature matches for `TyClosure`
+                    // (should be the same check as what terminator/mod.rs already does on call?).
                     // Is there other things we can/should check?  Like vtable pointers?
-                    Ok(())
+                    self.validate_fields(query, mode)
                 }
                 // FIXME: generators aren't validated right now
                 TyGenerator(..) => Ok(()),

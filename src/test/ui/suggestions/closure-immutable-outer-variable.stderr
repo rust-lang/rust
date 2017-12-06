@@ -1,0 +1,10 @@
+error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
+  --> $DIR/closure-immutable-outer-variable.rs:19:26
+   |
+18 |     let y = true;
+   |         - help: consider making `y` mutable: `mut y`
+19 |     foo(Box::new(move || y = false) as Box<_>); //~ ERROR cannot assign to captured outer variable
+   |                          ^^^^^^^^^
+
+error: aborting due to previous error
+

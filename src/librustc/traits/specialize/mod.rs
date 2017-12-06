@@ -20,7 +20,7 @@
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use ty::subst::{Subst, Substs};
@@ -125,7 +125,7 @@ pub fn find_associated_item<'a, 'tcx>(
     let trait_def = tcx.trait_def(trait_def_id);
 
     let ancestors = trait_def.ancestors(tcx, impl_data.impl_def_id);
-    match ancestors.defs(tcx, item.name, item.kind).next() {
+    match ancestors.defs(tcx, item.name, item.kind, trait_def_id).next() {
         Some(node_item) => {
             let substs = tcx.infer_ctxt().enter(|infcx| {
                 let param_env = ty::ParamEnv::empty(Reveal::All);
@@ -241,7 +241,18 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     // (which are packed up in penv)
 
     infcx.save_and_restore_in_snapshot_flag(|infcx| {
-        let mut fulfill_cx = FulfillmentContext::new();
+        // If we came from `translate_substs`, we already know that the
+        // predicates for our impl hold (after all, we know that a more
+        // specialized impl holds, so our impl must hold too), and
+        // we only want to process the projections to determine the
+        // the types in our substs using RFC 447, so we can safely
+        // ignore region obligations, which allows us to avoid threading
+        // a node-id to assign them with.
+        //
+        // If we came from specialization graph construction, then
+        // we already make a mockery out of the region system, so
+        // why not ignore them a bit earlier?
+        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
         for oblig in obligations.into_iter() {
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }
@@ -335,7 +346,12 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                                                             |ty| format!(" for `{}`", ty))));
                     }
                     Err(cname) => {
-                        err.note(&format!("conflicting implementation in crate `{}`", cname));
+                        let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
+                            Some(s) => format!(
+                                "conflicting implementation in crate `{}`:\n- {}", cname, s),
+                            None => format!("conflicting implementation in crate `{}`", cname),
+                        };
+                        err.note(&msg);
                     }
                 }
 
@@ -352,4 +368,57 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
     }
 
     Rc::new(sg)
+}
+
+/// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a
+/// string.
+fn to_pretty_impl_header(tcx: TyCtxt, impl_def_id: DefId) -> Option<String> {
+    use std::fmt::Write;
+
+    let trait_ref = if let Some(tr) = tcx.impl_trait_ref(impl_def_id) {
+        tr
+    } else {
+        return None;
+    };
+
+    let mut w = "impl".to_owned();
+
+    let substs = Substs::identity_for_item(tcx, impl_def_id);
+
+    // FIXME: Currently only handles ?Sized.
+    //        Needs to support ?Move and ?DynSized when they are implemented.
+    let mut types_without_default_bounds = FxHashSet::default();
+    let sized_trait = tcx.lang_items().sized_trait();
+
+    if !substs.is_noop() {
+        types_without_default_bounds.extend(substs.types());
+        w.push('<');
+        w.push_str(&substs.iter().map(|k| k.to_string()).collect::<Vec<_>>().join(", "));
+        w.push('>');
+    }
+
+    write!(w, " {} for {}", trait_ref, tcx.type_of(impl_def_id)).unwrap();
+
+    // The predicates will contain default bounds like `T: Sized`. We need to
+    // remove these bounds, and add `T: ?Sized` to any untouched type parameters.
+    let predicates = tcx.predicates_of(impl_def_id).predicates;
+    let mut pretty_predicates = Vec::with_capacity(predicates.len());
+    for p in predicates {
+        if let Some(poly_trait_ref) = p.to_opt_poly_trait_ref() {
+            if Some(poly_trait_ref.def_id()) == sized_trait {
+                types_without_default_bounds.remove(poly_trait_ref.self_ty());
+                continue;
+            }
+        }
+        pretty_predicates.push(p.to_string());
+    }
+    for ty in types_without_default_bounds {
+        pretty_predicates.push(format!("{}: ?Sized", ty));
+    }
+    if !pretty_predicates.is_empty() {
+        write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();
+    }
+
+    w.push(';');
+    Some(w)
 }

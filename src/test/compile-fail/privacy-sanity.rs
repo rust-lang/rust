@@ -21,6 +21,7 @@ pub struct S {
 }
 struct Ts(pub u8);
 
+#[allow(auto_impl)]
 pub impl MarkerTr for .. {} //~ ERROR unnecessary visibility qualifier
 pub impl Tr for S {  //~ ERROR unnecessary visibility qualifier
     pub fn f() {} //~ ERROR unnecessary visibility qualifier
@@ -49,6 +50,7 @@ const MAIN: u8 = {
     }
     struct Ts(pub u8);
 
+    #[allow(auto_impl)]
     pub impl MarkerTr for .. {} //~ ERROR unnecessary visibility qualifier
     pub impl Tr for S {  //~ ERROR unnecessary visibility qualifier
         pub fn f() {} //~ ERROR unnecessary visibility qualifier
@@ -80,6 +82,7 @@ fn main() {
     }
     struct Ts(pub u8);
 
+    #[allow(auto_impl)]
     pub impl MarkerTr for .. {} //~ ERROR unnecessary visibility qualifier
     pub impl Tr for S {  //~ ERROR unnecessary visibility qualifier
         pub fn f() {} //~ ERROR unnecessary visibility qualifier

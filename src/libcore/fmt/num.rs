@@ -12,7 +12,6 @@
 
 #![allow(deprecated)]
 
-// FIXME: #6220 Implement floating point formatting
 
 use fmt;
 use ops::{Div, Rem, Sub};
@@ -135,7 +134,7 @@ macro_rules! radix {
     }
 }
 
-radix! { Binary,    2, "0b", x @  0 ...  2 => b'0' + x }
+radix! { Binary,    2, "0b", x @  0 ...  1 => b'0' + x }
 radix! { Octal,     8, "0o", x @  0 ...  7 => b'0' + x }
 radix! { Decimal,  10, "",   x @  0 ...  9 => b'0' + x }
 radix! { LowerHex, 16, "0x", x @  0 ...  9 => b'0' + x,

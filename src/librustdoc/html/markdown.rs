@@ -30,7 +30,6 @@
 use libc;
 use std::slice;
 
-use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::default::Default;
@@ -228,9 +227,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 ))
             });
             let tooltip = if ignore {
-                Some(("Be careful when using this code, it's not being tested!", "ignore"))
+                Some(("This example is not tested", "ignore"))
             } else if compile_fail {
-                Some(("This code doesn't compile so be extra careful!", "compile_fail"))
+                Some(("This example deliberately fails to compile", "compile_fail"))
             } else {
                 None
             };
@@ -371,7 +370,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
             match self.inner.next() {
                 Some(Event::FootnoteReference(ref reference)) => {
                     let entry = self.get_entry(&reference);
-                    let reference = format!("<sup id=\"supref{0}\"><a href=\"#ref{0}\">{0}\
+                    let reference = format!("<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{0}\
                                              </a></sup>",
                                             (*entry).1);
                     return Some(Event::Html(reference.into()));
@@ -394,7 +393,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
                         v.sort_by(|a, b| a.1.cmp(&b.1));
                         let mut ret = String::from("<div class=\"footnotes\"><hr><ol>");
                         for (mut content, id) in v {
-                            write!(ret, "<li id=\"ref{}\">", id).unwrap();
+                            write!(ret, "<li id=\"fn{}\">", id).unwrap();
                             let mut is_paragraph = false;
                             if let Some(&Event::End(Tag::Paragraph)) = content.last() {
                                 content.pop();
@@ -402,7 +401,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
                             }
                             html::push_html(&mut ret, content.into_iter());
                             write!(ret,
-                                   "&nbsp;<a href=\"#supref{}\" rev=\"footnote\">↩</a>",
+                                   "&nbsp;<a href=\"#fnref{}\" rev=\"footnote\">↩</a>",
                                    id).unwrap();
                             if is_paragraph {
                                 ret.push_str("</p>");
@@ -639,9 +638,9 @@ pub fn render(w: &mut fmt::Formatter,
                     ))
                 });
                 let tooltip = if ignore {
-                    Some(("Be careful when using this code, it's not being tested!", "ignore"))
+                    Some(("This example is not tested", "ignore"))
                 } else if compile_fail {
-                    Some(("This code doesn't compile so be extra careful!", "compile_fail"))
+                    Some(("This example deliberately fails to compile", "compile_fail"))
                 } else {
                     None
                 };

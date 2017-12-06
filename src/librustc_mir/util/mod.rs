@@ -13,10 +13,12 @@ pub mod elaborate_drops;
 pub mod def_use;
 pub mod patch;
 
+mod alignment;
 mod graphviz;
-mod pretty;
+pub(crate) mod pretty;
 pub mod liveness;
 
-pub use self::pretty::{dump_enabled, dump_mir, write_mir_pretty};
+pub use self::alignment::is_disaligned;
+pub use self::pretty::{dump_enabled, dump_mir, write_mir_pretty, PassWhere};
 pub use self::graphviz::{write_mir_graphviz};
 pub use self::graphviz::write_node_label as write_graphviz_node_label;

@@ -12,7 +12,6 @@
 
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
-pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
 pub use symbol::{Ident, Symbol as Name};
 pub use util::ThinVec;
@@ -96,10 +95,15 @@ impl Path {
         }
     }
 
+    // Add starting "crate root" segment to all paths except those that
+    // already have it or start with `self`, `super`, `Self` or `$crate`.
     pub fn default_to_global(mut self) -> Path {
-        if !self.is_global() &&
-           !::parse::token::Ident(self.segments[0].identifier).is_path_segment_keyword() {
-            self.segments.insert(0, PathSegment::crate_root(self.span));
+        if !self.is_global() {
+            let ident = self.segments[0].identifier;
+            if !::parse::token::Ident(ident).is_path_segment_keyword() ||
+               ident.name == keywords::Crate.name() {
+                self.segments.insert(0, PathSegment::crate_root(self.span));
+            }
         }
         self
     }
@@ -786,8 +790,6 @@ pub enum MacStmtStyle {
     NoBraces,
 }
 
-// FIXME (pending discussion of #1697, #2178...): local should really be
-// a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Local {
@@ -903,7 +905,9 @@ pub enum ExprKind {
     /// A function call
     ///
     /// The first field resolves to the function itself,
-    /// and the second field is the list of arguments
+    /// and the second field is the list of arguments.
+    /// This also represents calling the constructor of
+    /// tuple-like ADTs such as tuple structs and enum variants.
     Call(P<Expr>, Vec<P<Expr>>),
     /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///
@@ -1180,7 +1184,6 @@ pub struct MethodSig {
     pub constness: Spanned<Constness>,
     pub abi: Abi,
     pub decl: P<FnDecl>,
-    pub generics: Generics,
 }
 
 /// Represents an item declaration within a trait declaration,
@@ -1192,6 +1195,7 @@ pub struct TraitItem {
     pub id: NodeId,
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
+    pub generics: Generics,
     pub node: TraitItemKind,
     pub span: Span,
     /// See `Item::tokens` for what this is
@@ -1213,6 +1217,7 @@ pub struct ImplItem {
     pub vis: Visibility,
     pub defaultness: Defaultness,
     pub attrs: Vec<Attribute>,
+    pub generics: Generics,
     pub node: ImplItemKind,
     pub span: Span,
     /// See `Item::tokens` for what this is
@@ -1421,7 +1426,7 @@ pub enum TyKind {
     Path(Option<QSelf>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(TyParamBounds),
+    TraitObject(TyParamBounds, TraitObjectSyntax),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
     ImplTrait(TyParamBounds),
@@ -1438,6 +1443,13 @@ pub enum TyKind {
     Mac(Mac),
     /// Placeholder for a kind that has failed to be defined.
     Err,
+}
+
+/// Syntax used to declare a trait object.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum TraitObjectSyntax {
+    Dyn,
+    None,
 }
 
 /// Inline assembly dialect.
@@ -1573,6 +1585,13 @@ impl FnDecl {
     }
 }
 
+/// Is the trait definition an auto trait?
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum IsAuto {
+    Yes,
+    No
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Unsafety {
     Unsafe,
@@ -1685,45 +1704,19 @@ pub struct Variant_ {
 
 pub type Variant = Spanned<Variant_>;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct PathListItem_ {
-    pub name: Ident,
-    /// renamed in list, e.g. `use foo::{bar as baz};`
-    pub rename: Option<Ident>,
-    pub id: NodeId,
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum UseTreeKind {
+    Simple(Ident),
+    Glob,
+    Nested(Vec<(UseTree, NodeId)>),
 }
-
-pub type PathListItem = Spanned<PathListItem_>;
-
-pub type ViewPath = Spanned<ViewPath_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ViewPath_ {
-
-    /// `foo::bar::baz as quux`
-    ///
-    /// or just
-    ///
-    /// `foo::bar::baz` (with `as baz` implicitly on the right)
-    ViewPathSimple(Ident, Path),
-
-    /// `foo::bar::*`
-    ViewPathGlob(Path),
-
-    /// `foo::bar::{a,b,c}`
-    ViewPathList(Path, Vec<PathListItem>)
+pub struct UseTree {
+    pub kind: UseTreeKind,
+    pub prefix: Path,
+    pub span: Span,
 }
-
-impl ViewPath_ {
-    pub fn path(&self) -> &Path {
-        match *self {
-            ViewPathSimple(_, ref path) |
-            ViewPathGlob (ref path) |
-            ViewPathList(ref path, _) => path
-        }
-    }
-}
-
 
 /// Distinguishes between Attributes that decorate items and Attributes that
 /// are contained as statements within items. These two cases need to be
@@ -1782,10 +1775,19 @@ impl PolyTraitRef {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum CrateSugar {
+    /// Source is `pub(crate)`
+    PubCrate,
+
+    /// Source is (just) `crate`
+    JustCrate,
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Visibility {
     Public,
-    Crate(Span),
+    Crate(Span, CrateSugar),
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }
@@ -1884,7 +1886,7 @@ pub enum ItemKind {
     /// A use declaration (`use` or `pub use`) item.
     ///
     /// E.g. `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`
-    Use(P<ViewPath>),
+    Use(P<UseTree>),
     /// A static item (`static` or `pub static`).
     ///
     /// E.g. `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`
@@ -1925,12 +1927,12 @@ pub enum ItemKind {
     Union(VariantData, Generics),
     /// A Trait declaration (`trait` or `pub trait`).
     ///
-    /// E.g. `trait Foo { .. }` or `trait Foo<T> { .. }`
-    Trait(Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
-    // Default trait implementation.
+    /// E.g. `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`
+    Trait(IsAuto, Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
+    /// Auto trait implementation.
     ///
     /// E.g. `impl Trait for .. {}` or `impl<T> Trait<T> for .. {}`
-    DefaultImpl(Unsafety, TraitRef),
+    AutoImpl(Unsafety, TraitRef),
     /// An implementation.
     ///
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`
@@ -1969,7 +1971,7 @@ impl ItemKind {
             ItemKind::Mac(..) |
             ItemKind::MacroDef(..) |
             ItemKind::Impl(..) |
-            ItemKind::DefaultImpl(..) => "item"
+            ItemKind::AutoImpl(..) => "item"
         }
     }
 }
@@ -1992,13 +1994,16 @@ pub enum ForeignItemKind {
     /// A foreign static item (`static ext: u8`), with optional mutability
     /// (the boolean is true when mutable)
     Static(P<Ty>, bool),
+    /// A foreign type
+    Ty,
 }
 
 impl ForeignItemKind {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ForeignItemKind::Fn(..) => "foreign function",
-            ForeignItemKind::Static(..) => "foreign static item"
+            ForeignItemKind::Static(..) => "foreign static item",
+            ForeignItemKind::Ty => "foreign type",
         }
     }
 }

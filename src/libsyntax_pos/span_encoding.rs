@@ -59,9 +59,11 @@ const LEN_INDEX: usize = 1;
 const CTXT_INDEX: usize = 2;
 
 // Tag = 0, inline format.
-// -----------------------------------
-// | base 31:8  | len 7:1  | tag 0:0 |
-// -----------------------------------
+// -------------------------------------------------------------
+// | base 31:8  | len 7:1  | ctxt (currently 0 bits) | tag 0:0 |
+// -------------------------------------------------------------
+// Since there are zero bits for ctxt, only SpanData with a 0 SyntaxContext
+// can be inline.
 const INLINE_SIZES: [u32; 3] = [24, 7, 0];
 const INLINE_OFFSETS: [u32; 3] = [8, 1, 1];
 

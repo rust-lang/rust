@@ -18,7 +18,6 @@ fn main() {
                                   //~| ERROR E0308
                                   //~| NOTE expected &{integer}, found integral variable
                                   //~| NOTE expected type `&{integer}`
-                                  //~| NOTE    found type `{integer}`
         _ => ()
     }
 }

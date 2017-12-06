@@ -20,5 +20,7 @@ fn main() {
         let a: [u8; C.a]; // OK
         let b: [u8; C.b]; //~ ERROR constant evaluation error
                           //~^ NOTE nonexistent struct field
+                          //~| WARNING constant evaluation error
+                          //~| NOTE on by default
     }
 }

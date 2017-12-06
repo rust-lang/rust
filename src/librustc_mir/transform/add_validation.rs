@@ -17,22 +17,22 @@
 use rustc::ty::{self, TyCtxt, RegionKind};
 use rustc::hir;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::middle::region;
+use transform::{MirPass, MirSource};
 
 pub struct AddValidation;
 
-/// Determine the "context" of the lval: Mutability and region.
-fn lval_context<'a, 'tcx, D>(
-    lval: &Lvalue<'tcx>,
+/// Determine the "context" of the place: Mutability and region.
+fn place_context<'a, 'tcx, D>(
+    place: &Place<'tcx>,
     local_decls: &D,
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 ) -> (Option<region::Scope>, hir::Mutability)
     where D: HasLocalDecls<'tcx>
 {
-    use rustc::mir::Lvalue::*;
+    use rustc::mir::Place::*;
 
-    match *lval {
+    match *place {
         Local { .. } => (None, hir::MutMutable),
         Static(_) => (None, hir::MutImmutable),
         Projection(ref proj) => {
@@ -66,7 +66,7 @@ fn lval_context<'a, 'tcx, D>(
                         // This is already as restricted as it gets, no need to even recurse
                         context
                     } else {
-                        let base_context = lval_context(&proj.base, local_decls, tcx);
+                        let base_context = place_context(&proj.base, local_decls, tcx);
                         // The region of the outermost Deref is always most restrictive.
                         let re = context.0.or(base_context.0);
                         let mutbl = context.1.and(base_context.1);
@@ -74,7 +74,7 @@ fn lval_context<'a, 'tcx, D>(
                     }
 
                 }
-                _ => lval_context(&proj.base, local_decls, tcx),
+                _ => place_context(&proj.base, local_decls, tcx),
             }
         }
     }
@@ -106,8 +106,9 @@ fn fn_contains_unsafe<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource) -> 
         }
     }
 
-    let fn_like = match src {
-        MirSource::Fn(node_id) => {
+    let node_id = tcx.hir.as_local_node_id(src.def_id).unwrap();
+    let fn_like = match tcx.hir.body_owner_kind(node_id) {
+        hir::BodyOwnerKind::Fn => {
             match FnLikeNode::from_node(tcx.hir.get(node_id)) {
                 Some(fn_like) => fn_like,
                 None => return false, // e.g. struct ctor shims -- such auto-generated code cannot
@@ -197,11 +198,11 @@ impl MirPass for AddValidation {
         let restricted_validation = emit_validate == 1 && fn_contains_unsafe(tcx, src);
         let local_decls = mir.local_decls.clone(); // FIXME: Find a way to get rid of this clone.
 
-        // Convert an lvalue to a validation operand.
-        let lval_to_operand = |lval: Lvalue<'tcx>| -> ValidationOperand<'tcx, Lvalue<'tcx>> {
-            let (re, mutbl) = lval_context(&lval, &local_decls, tcx);
-            let ty = lval.ty(&local_decls, tcx).to_ty(tcx);
-            ValidationOperand { lval, ty, re, mutbl }
+        // Convert a place to a validation operand.
+        let place_to_operand = |place: Place<'tcx>| -> ValidationOperand<'tcx, Place<'tcx>> {
+            let (re, mutbl) = place_context(&place, &local_decls, tcx);
+            let ty = place.ty(&local_decls, tcx).to_ty(tcx);
+            ValidationOperand { place, ty, re, mutbl }
         };
 
         // Emit an Acquire at the beginning of the given block.  If we are in restricted emission
@@ -236,14 +237,14 @@ impl MirPass for AddValidation {
             };
             // Gather all arguments, skip return value.
             let operands = mir.local_decls.iter_enumerated().skip(1).take(mir.arg_count)
-                    .map(|(local, _)| lval_to_operand(Lvalue::Local(local))).collect();
+                    .map(|(local, _)| place_to_operand(Place::Local(local))).collect();
             emit_acquire(&mut mir.basic_blocks_mut()[START_BLOCK], source_info, operands);
         }
 
         // PART 2
         // Add ReleaseValid/AcquireValid around function call terminators.  We don't use a visitor
         // because we need to access the block that a Call jumps to.
-        let mut returns : Vec<(SourceInfo, Lvalue<'tcx>, BasicBlock)> = Vec::new();
+        let mut returns : Vec<(SourceInfo, Place<'tcx>, BasicBlock)> = Vec::new();
         for block_data in mir.basic_blocks_mut() {
             match block_data.terminator {
                 Some(Terminator { kind: TerminatorKind::Call { ref args, ref destination, .. },
@@ -255,12 +256,13 @@ impl MirPass for AddValidation {
                         let release_stmt = Statement {
                             source_info,
                             kind: StatementKind::Validate(ValidationOp::Release,
-                                destination.iter().map(|dest| lval_to_operand(dest.0.clone()))
+                                destination.iter().map(|dest| place_to_operand(dest.0.clone()))
                                 .chain(
                                     args.iter().filter_map(|op| {
                                         match op {
-                                            &Operand::Consume(ref lval) =>
-                                                Some(lval_to_operand(lval.clone())),
+                                            &Operand::Copy(ref place) |
+                                            &Operand::Move(ref place) =>
+                                                Some(place_to_operand(place.clone())),
                                             &Operand::Constant(..) => { None },
                                         }
                                     })
@@ -273,16 +275,16 @@ impl MirPass for AddValidation {
                         returns.push((source_info, destination.0.clone(), destination.1));
                     }
                 }
-                Some(Terminator { kind: TerminatorKind::Drop { location: ref lval, .. },
+                Some(Terminator { kind: TerminatorKind::Drop { location: ref place, .. },
                                   source_info }) |
-                Some(Terminator { kind: TerminatorKind::DropAndReplace { location: ref lval, .. },
+                Some(Terminator { kind: TerminatorKind::DropAndReplace { location: ref place, .. },
                                   source_info }) => {
                     // Before the call: Release all arguments
                     if !restricted_validation {
                         let release_stmt = Statement {
                             source_info,
                             kind: StatementKind::Validate(ValidationOp::Release,
-                                    vec![lval_to_operand(lval.clone())]),
+                                    vec![place_to_operand(place.clone())]),
                         };
                         block_data.statements.push(release_stmt);
                     }
@@ -294,11 +296,11 @@ impl MirPass for AddValidation {
             }
         }
         // Now we go over the returns we collected to acquire the return values.
-        for (source_info, dest_lval, dest_block) in returns {
+        for (source_info, dest_place, dest_block) in returns {
             emit_acquire(
                 &mut mir.basic_blocks_mut()[dest_block],
                 source_info,
-                vec![lval_to_operand(dest_lval)]
+                vec![place_to_operand(dest_place)]
             );
         }
 
@@ -319,22 +321,20 @@ impl MirPass for AddValidation {
                     StatementKind::Assign(_, Rvalue::Ref(_, _, _)) => {
                         // Due to a lack of NLL; we can't capture anything directly here.
                         // Instead, we have to re-match and clone there.
-                        let (dest_lval, re, src_lval) = match block_data.statements[i].kind {
-                            StatementKind::Assign(ref dest_lval,
-                                                  Rvalue::Ref(re, _, ref src_lval)) => {
-                                (dest_lval.clone(), re, src_lval.clone())
+                        let (dest_place, re, src_place) = match block_data.statements[i].kind {
+                            StatementKind::Assign(ref dest_place,
+                                                  Rvalue::Ref(re, _, ref src_place)) => {
+                                (dest_place.clone(), re, src_place.clone())
                             },
                             _ => bug!("We already matched this."),
                         };
                         // So this is a ref, and we got all the data we wanted.
                         // Do an acquire of the result -- but only what it points to, so add a Deref
                         // projection.
-                        let dest_lval = Projection { base: dest_lval, elem: ProjectionElem::Deref };
-                        let dest_lval = Lvalue::Projection(Box::new(dest_lval));
                         let acquire_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
                             kind: StatementKind::Validate(ValidationOp::Acquire,
-                                    vec![lval_to_operand(dest_lval)]),
+                                    vec![place_to_operand(dest_place.deref())]),
                         };
                         block_data.statements.insert(i+1, acquire_stmt);
 
@@ -347,21 +347,24 @@ impl MirPass for AddValidation {
                         };
                         let release_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
-                            kind: StatementKind::Validate(op, vec![lval_to_operand(src_lval)]),
+                            kind: StatementKind::Validate(op, vec![place_to_operand(src_place)]),
                         };
                         block_data.statements.insert(i, release_stmt);
                     }
                     // Casts can change what validation does (e.g. unsizing)
-                    StatementKind::Assign(_, Rvalue::Cast(kind, Operand::Consume(_), _))
+                    StatementKind::Assign(_, Rvalue::Cast(kind, Operand::Copy(_), _)) |
+                    StatementKind::Assign(_, Rvalue::Cast(kind, Operand::Move(_), _))
                         if kind != CastKind::Misc =>
                     {
                         // Due to a lack of NLL; we can't capture anything directly here.
                         // Instead, we have to re-match and clone there.
-                        let (dest_lval, src_lval) = match block_data.statements[i].kind {
-                            StatementKind::Assign(ref dest_lval,
-                                    Rvalue::Cast(_, Operand::Consume(ref src_lval), _)) =>
+                        let (dest_place, src_place) = match block_data.statements[i].kind {
+                            StatementKind::Assign(ref dest_place,
+                                    Rvalue::Cast(_, Operand::Copy(ref src_place), _)) |
+                            StatementKind::Assign(ref dest_place,
+                                    Rvalue::Cast(_, Operand::Move(ref src_place), _)) =>
                             {
-                                (dest_lval.clone(), src_lval.clone())
+                                (dest_place.clone(), src_place.clone())
                             },
                             _ => bug!("We already matched this."),
                         };
@@ -370,7 +373,7 @@ impl MirPass for AddValidation {
                         let acquire_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
                             kind: StatementKind::Validate(ValidationOp::Acquire,
-                                    vec![lval_to_operand(dest_lval)]),
+                                    vec![place_to_operand(dest_place)]),
                         };
                         block_data.statements.insert(i+1, acquire_stmt);
 
@@ -378,7 +381,7 @@ impl MirPass for AddValidation {
                         let release_stmt = Statement {
                             source_info: block_data.statements[i].source_info,
                             kind: StatementKind::Validate(ValidationOp::Release,
-                                                            vec![lval_to_operand(src_lval)]),
+                                                            vec![place_to_operand(src_place)]),
                         };
                         block_data.statements.insert(i, release_stmt);
                     }

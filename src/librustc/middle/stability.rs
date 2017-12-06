@@ -18,8 +18,9 @@ use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
+use session::DiagnosticMessageId;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
@@ -429,7 +430,7 @@ impl<'a, 'tcx> Index<'tcx> {
             // while maintaining the invariant that all sysroot crates are unstable
             // by default and are unable to be used.
             if tcx.sess.opts.debugging_opts.force_unstable_if_unmarked {
-                let reason = "this crate is being loaded from the sysroot, and \
+                let reason = "this crate is being loaded from the sysroot, an \
                               unstable location; did you mean to load this crate \
                               from crates.io via `Cargo.toml` instead?";
                 let stability = tcx.intern_stability(Stability {
@@ -515,11 +516,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        let lint_deprecated = |note: Option<Symbol>| {
+        let lint_deprecated = |def_id: DefId, note: Option<Symbol>| {
+            let path = self.item_path_str(def_id);
+
             let msg = if let Some(note) = note {
-                format!("use of deprecated item: {}", note)
+                format!("use of deprecated item '{}': {}", path, note)
             } else {
-                format!("use of deprecated item")
+                format!("use of deprecated item '{}'", path)
             };
 
             self.lint_node(lint::builtin::DEPRECATED, id, span, &msg);
@@ -537,7 +540,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             };
 
             if !skip {
-                lint_deprecated(depr_entry.attr.note);
+                lint_deprecated(def_id, depr_entry.attr.note);
             }
         }
 
@@ -556,7 +559,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, .. }), ..})
                 = stability {
             if id != ast::DUMMY_NODE_ID {
-                lint_deprecated(Some(reason));
+                lint_deprecated(def_id, Some(reason));
             }
         }
 
@@ -597,8 +600,29 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                            feature.as_str(), &r),
                     None => format!("use of unstable library feature '{}'", &feature)
                 };
-                emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
-                                 GateIssue::Library(Some(issue)), &msg);
+
+
+                let msp: MultiSpan = span.into();
+                let cm = &self.sess.parse_sess.codemap();
+                let span_key = msp.primary_span().and_then(|sp: Span|
+                    if sp != DUMMY_SP {
+                        let file = cm.lookup_char_pos(sp.lo()).file;
+                        if file.name.starts_with("<") && file.name.ends_with(" macros>") {
+                            None
+                        } else {
+                            Some(span)
+                        }
+                    } else {
+                        None
+                    }
+                );
+
+                let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
+                let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(error_id);
+                if fresh {
+                    emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
+                                     GateIssue::Library(Some(issue)), &msg);
+                }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are

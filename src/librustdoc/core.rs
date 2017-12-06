@@ -10,7 +10,6 @@
 
 use rustc_lint;
 use rustc_driver::{driver, target_features, abort_on_err};
-use rustc_driver::pretty::ReplaceBodyWithLoop;
 use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
@@ -26,7 +25,6 @@ use rustc_metadata::cstore::CStore;
 
 use syntax::codemap;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::fold::Folder;
 use errors;
 use errors::emitter::ColorConfig;
 
@@ -154,10 +152,9 @@ pub fn run_core(search_paths: SearchPaths,
     target_features::add_configuration(&mut cfg, &sess);
     sess.parse_sess.config = cfg;
 
-    let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
-                                                      &sess,
-                                                      &input));
-    let krate = ReplaceBodyWithLoop::new().fold_crate(krate);
+    let control = &driver::CompileController::basic();
+
+    let krate = panictry!(driver::phase_1_parse_input(control, &sess, &input));
 
     let name = link::find_crate_name(Some(&sess), &krate.attrs, &input);
 
@@ -182,7 +179,8 @@ pub fn run_core(search_paths: SearchPaths,
                                                           &[],
                                                           &sess);
 
-    abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+    abort_on_err(driver::phase_3_run_analysis_passes(control,
+                                                     &sess,
                                                      &*cstore,
                                                      hir_map,
                                                      analysis,

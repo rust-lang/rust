@@ -23,7 +23,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::def::*;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
-use syntax::ast::{Ident, SpannedIdent, NodeId};
+use syntax::ast::{Ident, Name, SpannedIdent, NodeId};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
 use syntax::parse::token;
@@ -48,7 +48,7 @@ pub enum ImportDirectiveSubclass<'a> {
         max_vis: Cell<ty::Visibility>, // The visibility of the greatest reexport.
         // n.b. `max_vis` is only used in `finalize_import` to check for reexport errors.
     },
-    ExternCrate,
+    ExternCrate(Option<Name>),
     MacroUse,
 }
 
@@ -606,10 +606,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let module_result = self.resolve_path(&module_path, None, true, span);
         let module = match module_result {
             PathResult::Module(module) => module,
-            PathResult::Failed(span, msg, _) => {
+            PathResult::Failed(span, msg, false) => {
+                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                return None;
+            }
+            PathResult::Failed(span, msg, true) => {
                 let (mut self_path, mut self_result) = (module_path.clone(), None);
                 if !self_path.is_empty() &&
-                    !token::Ident(self_path[0].node).is_path_segment_keyword()
+                    !token::Ident(self_path[0].node).is_path_segment_keyword() &&
+                    !(self_path.len() > 1 &&
+                      token::Ident(self_path[1].node).is_path_segment_keyword())
                 {
                     self_path[0].node.name = keywords::SelfValue.name();
                     self_result = Some(self.resolve_path(&self_path, None, false, span));
@@ -923,7 +929,7 @@ fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> St
     match *subclass {
         SingleImport { source, .. } => source.to_string(),
         GlobImport { .. } => "*".to_string(),
-        ExternCrate => "<extern crate>".to_string(),
+        ExternCrate(_) => "<extern crate>".to_string(),
         MacroUse => "#[macro_use]".to_string(),
     }
 }

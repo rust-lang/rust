@@ -329,7 +329,6 @@ impl<T> Cell<T> {
     /// let c = Cell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_cell_new"))]
     #[inline]
     pub const fn new(value: T) -> Cell<T> {
         Cell {
@@ -544,7 +543,6 @@ impl<T> RefCell<T> {
     /// let c = RefCell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_refcell_new"))]
     #[inline]
     pub const fn new(value: T) -> RefCell<T> {
         RefCell {
@@ -579,31 +577,61 @@ impl<T> RefCell<T> {
     ///
     /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
     ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently borrowed.
+    ///
     /// # Examples
     ///
     /// ```
     /// #![feature(refcell_replace_swap)]
     /// use std::cell::RefCell;
-    /// let c = RefCell::new(5);
-    /// let u = c.replace(6);
-    /// assert_eq!(u, 5);
-    /// assert_eq!(c, RefCell::new(6));
+    /// let cell = RefCell::new(5);
+    /// let old_value = cell.replace(6);
+    /// assert_eq!(old_value, 5);
+    /// assert_eq!(cell, RefCell::new(6));
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the `RefCell` has any outstanding borrows,
-    /// whether or not they are full mutable borrows.
     #[inline]
     #[unstable(feature = "refcell_replace_swap", issue="43570")]
     pub fn replace(&self, t: T) -> T {
         mem::replace(&mut *self.borrow_mut(), t)
     }
 
+    /// Replaces the wrapped value with a new one computed from `f`, returning
+    /// the old value, without deinitializing either one.
+    ///
+    /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently borrowed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_replace_swap)]
+    /// use std::cell::RefCell;
+    /// let cell = RefCell::new(5);
+    /// let old_value = cell.replace_with(|&mut old| old + 1);
+    /// assert_eq!(old_value, 5);
+    /// assert_eq!(cell, RefCell::new(6));
+    /// ```
+    #[inline]
+    #[unstable(feature = "refcell_replace_swap", issue="43570")]
+    pub fn replace_with<F: FnOnce(&mut T) -> T>(&self, f: F) -> T {
+        let mut_borrow = &mut *self.borrow_mut();
+        let replacement = f(mut_borrow);
+        mem::replace(mut_borrow, replacement)
+    }
+
     /// Swaps the wrapped value of `self` with the wrapped value of `other`,
     /// without deinitializing either one.
     ///
     /// This function corresponds to [`std::mem::swap`](../mem/fn.swap.html).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value in either `RefCell` is currently borrowed.
     ///
     /// # Examples
     ///
@@ -616,11 +644,6 @@ impl<T> RefCell<T> {
     /// assert_eq!(c, RefCell::new(6));
     /// assert_eq!(d, RefCell::new(5));
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if either `RefCell` has any outstanding borrows,
-    /// whether or not they are full mutable borrows.
     #[inline]
     #[unstable(feature = "refcell_replace_swap", issue="43570")]
     pub fn swap(&self, other: &Self) {
@@ -1190,7 +1213,6 @@ impl<T> UnsafeCell<T> {
     /// let uc = UnsafeCell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_unsafe_cell_new"))]
     #[inline]
     pub const fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value: value }

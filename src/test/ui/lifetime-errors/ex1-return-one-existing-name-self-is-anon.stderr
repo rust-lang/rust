@@ -1,27 +1,13 @@
-error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+error[E0623]: lifetime mismatch
   --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:18:30
    |
-18 |         if true { x } else { self }
-   |                              ^^^^
-   |
-note: ...the reference is valid for the lifetime 'a as defined on the method body at 16:5...
-  --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:16:5
-   |
-16 | /     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
-17 | |
-18 | |         if true { x } else { self }
-19 | |
-20 | |     }
-   | |_____^
-note: ...but the borrowed content is only valid for the anonymous lifetime #1 defined on the method body at 16:5
-  --> $DIR/ex1-return-one-existing-name-self-is-anon.rs:16:5
-   |
-16 | /     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
-17 | |
-18 | |         if true { x } else { self }
-19 | |
-20 | |     }
-   | |_____^
+16 |     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
+   |                -----                 -------
+   |                |
+   |                this parameter and the return type are declared with different lifetimes...
+17 | 
+18 |         if true { x } else { self } //~ ERROR lifetime mismatch
+   |                              ^^^^ ...but data from `self` is returned here
 
 error: aborting due to previous error
 

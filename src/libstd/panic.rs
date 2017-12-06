@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Panic support in the standard library
+//! Panic support in the standard library.
 
 #![stable(feature = "std_panic", since = "1.9.0")]
 
@@ -188,6 +188,8 @@ pub struct AssertUnwindSafe<T>(
 // * Types like Mutex/RwLock which are explicilty poisoned are unwind safe
 // * Our custom AssertUnwindSafe wrapper is indeed unwind safe
 #[stable(feature = "catch_unwind", since = "1.9.0")]
+#[allow(unknown_lints)]
+#[allow(auto_impl)]
 impl UnwindSafe for .. {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<'a, T: ?Sized> !UnwindSafe for &'a mut T {}
@@ -221,6 +223,8 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Arc<T> {}
 // only thing which doesn't implement it (which then transitively applies to
 // everything else).
 #[stable(feature = "catch_unwind", since = "1.9.0")]
+#[allow(unknown_lints)]
+#[allow(auto_impl)]
 impl RefUnwindSafe for .. {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: ?Sized> !RefUnwindSafe for UnsafeCell<T> {}

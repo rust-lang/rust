@@ -105,11 +105,10 @@ impl<'a> Parser<'a> {
                         let span = self.span;
                         self.diagnostic()
                             .struct_span_err(span, reason)
-                            .note("inner attributes and doc comments, like `#![no_std]` or \
-                                   `//! My crate`, annotate the item enclosing them, and are \
-                                   usually found at the beginning of source files. Outer \
-                                   attributes and doc comments, like `#[test]` and
-                                   `/// My function`, annotate the item following them.")
+                            .note("inner attributes, like `#![no_std]`, annotate the item \
+                                   enclosing them, and are usually found at the beginning of \
+                                   source files. Outer attributes, like `#[test]`, annotate the \
+                                   item following them.")
                             .emit()
                     }
                     ast::AttrStyle::Inner

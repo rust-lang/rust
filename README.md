@@ -6,6 +6,7 @@ standard library, and documentation.
 [Rust]: https://www.rust-lang.org
 
 ## Quick Start
+[quick-start]: #quick-start
 
 Read ["Installation"] from [The Book].
 
@@ -13,7 +14,9 @@ Read ["Installation"] from [The Book].
 [The Book]: https://doc.rust-lang.org/book/index.html
 
 ## Building from Source
+[building-from-source]: #building-from-source
 
+### Building on *nix
 1. Make sure you have installed the dependencies:
 
    * `g++` 4.7 or later or `clang++` 3.x or later
@@ -52,6 +55,7 @@ Read ["Installation"] from [The Book].
 [Cargo]: https://github.com/rust-lang/cargo
 
 ### Building on Windows
+[building-on-windows]: #building-on-windows
 
 There are two prominent ABIs in use on Windows: the native (MSVC) ABI used by
 Visual Studio, and the GNU ABI used by the GCC toolchain. Which version of Rust
@@ -61,6 +65,7 @@ for interop with GNU software built using the MinGW/MSYS2 toolchain use the GNU
 build.
 
 #### MinGW
+[windows-mingw]: #windows-mingw
 
 [MSYS2][msys2] can be used to easily build Rust on Windows:
 
@@ -101,6 +106,7 @@ build.
    ```
 
 #### MSVC
+[windows-msvc]: #windows-msvc
 
 MSVC builds of Rust additionally require an installation of Visual Studio 2013
 (or later) so `rustc` can use its linker. Make sure to check the “C++ tools”
@@ -123,7 +129,11 @@ CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.
 python x.py build
 ```
 
+If you are seeing build failure when compiling `rustc_binaryen`, make sure the path
+length of the rust folder is not longer than 22 characters.
+
 #### Specifying an ABI
+[specifying-an-abi]: #specifying-an-abi
 
 Each specific ABI can also be used from either environment (for example, using
 the GNU ABI in powershell) by using an explicit build triple. The available
@@ -141,6 +151,7 @@ in Building From Source), and modifying the `build` option under the `[build]`
 section.
 
 ### Configure and Make
+[configure-and-make]: #configure-and-make
 
 While it's not the recommended build system, this project also provides a
 configure script and makefile (the latter of which just invokes `x.py`).
@@ -155,6 +166,7 @@ When using the configure script, the generated `config.mk` file may override the
 `config.mk` file.
 
 ## Building Documentation
+[building-documentation]: #building-documentation
 
 If you’d like to build the documentation, it’s almost the same:
 
@@ -167,6 +179,7 @@ the ABI used. I.e., if the ABI was `x86_64-pc-windows-msvc`, the directory will 
 `build\x86_64-pc-windows-msvc\doc`.
 
 ## Notes
+[notes]: #notes
 
 Since the Rust compiler is written in Rust, it must be built by a
 precompiled "snapshot" version of itself (made in an earlier state of
@@ -184,7 +197,7 @@ Snapshot binaries are currently built and tested on several platforms:
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
 
-Rust currently needs between 600MiB and 1.5GiB to build, depending on platform.
+Rust currently needs between 600MiB and 1.5GiB of RAM to build, depending on platform.
 If it hits swap, it will take a very long time to build.
 
 There is more advice about hacking on Rust in [CONTRIBUTING.md].
@@ -192,6 +205,7 @@ There is more advice about hacking on Rust in [CONTRIBUTING.md].
 [CONTRIBUTING.md]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md
 
 ## Getting Help
+[getting-help]: #getting-help
 
 The Rust community congregates in a few places:
 
@@ -204,6 +218,7 @@ The Rust community congregates in a few places:
 [users.rust-lang.org]: https://users.rust-lang.org/
 
 ## Contributing
+[contributing]: #contributing
 
 To contribute to Rust, please see [CONTRIBUTING](CONTRIBUTING.md).
 
@@ -217,6 +232,7 @@ Rust. And a good place to ask for help would be [#rust-beginners].
 [#rust-beginners]: irc://irc.mozilla.org/rust-beginners
 
 ## License
+[license]: #license
 
 Rust is primarily distributed under the terms of both the MIT license
 and the Apache License (Version 2.0), with portions covered by various

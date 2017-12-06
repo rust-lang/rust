@@ -119,6 +119,8 @@ pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
 pub use core::slice::{RSplit, RSplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
+#[unstable(feature = "from_ref", issue = "45703")]
+pub use core::slice::{from_ref, from_ref_mut};
 #[unstable(feature = "slice_get_slice", issue = "35729")]
 pub use core::slice::SliceIndex;
 
@@ -1426,15 +1428,45 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```
-    /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2, 3];
+    /// Cloning two elements from a slice into another:
     ///
-    /// dst.clone_from_slice(&src);
-    /// assert!(dst == [1, 2, 3]);
+    /// ```
+    /// let src = [1, 2, 3, 4];
+    /// let mut dst = [0, 0];
+    ///
+    /// dst.clone_from_slice(&src[2..]);
+    ///
+    /// assert_eq!(src, [1, 2, 3, 4]);
+    /// assert_eq!(dst, [3, 4]);
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `clone_from_slice` on a
+    /// single slice will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// slice[..2].clone_from_slice(&slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a slice:
+    ///
+    /// ```
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.clone_from_slice(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
     /// [`copy_from_slice`]: #method.copy_from_slice
+    /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     pub fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
@@ -1452,23 +1484,53 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// ```
-    /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2, 3];
+    /// Copying two elements from a slice into another:
     ///
-    /// dst.copy_from_slice(&src);
-    /// assert_eq!(src, dst);
+    /// ```
+    /// let src = [1, 2, 3, 4];
+    /// let mut dst = [0, 0];
+    ///
+    /// dst.copy_from_slice(&src[2..]);
+    ///
+    /// assert_eq!(src, [1, 2, 3, 4]);
+    /// assert_eq!(dst, [3, 4]);
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `copy_from_slice` on a
+    /// single slice will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// slice[..2].copy_from_slice(&slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a slice:
+    ///
+    /// ```
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.copy_from_slice(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
     /// [`clone_from_slice`]: #method.clone_from_slice
+    /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
     }
 
-    /// Swaps all elements in `self` with those in `src`.
+    /// Swaps all elements in `self` with those in `other`.
     ///
-    /// The length of `src` must be the same as `self`.
+    /// The length of `other` must be the same as `self`.
     ///
     /// # Panics
     ///
@@ -1476,19 +1538,52 @@ impl<T> [T] {
     ///
     /// # Example
     ///
+    /// Swapping two elements across slices:
+    ///
     /// ```
     /// #![feature(swap_with_slice)]
     ///
-    /// let mut src = [1, 2, 3];
-    /// let mut dst = [7, 8, 9];
+    /// let mut slice1 = [0, 0];
+    /// let mut slice2 = [1, 2, 3, 4];
     ///
-    /// src.swap_with_slice(&mut dst);
-    /// assert_eq!(src, [7, 8, 9]);
-    /// assert_eq!(dst, [1, 2, 3]);
+    /// slice1.swap_with_slice(&mut slice2[2..]);
+    ///
+    /// assert_eq!(slice1, [3, 4]);
+    /// assert_eq!(slice2, [1, 2, 0, 0]);
     /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference to a
+    /// particular piece of data in a particular scope. Because of this,
+    /// attempting to use `swap_with_slice` on a single slice will result in
+    /// a compile failure:
+    ///
+    /// ```compile_fail
+    /// #![feature(swap_with_slice)]
+    ///
+    /// let mut slice = [1, 2, 3, 4, 5];
+    /// slice[..2].swap_with_slice(&mut slice[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// mutable sub-slices from a slice:
+    ///
+    /// ```
+    /// #![feature(swap_with_slice)]
+    ///
+    /// let mut slice = [1, 2, 3, 4, 5];
+    ///
+    /// {
+    ///     let (left, right) = slice.split_at_mut(2);
+    ///     left.swap_with_slice(&mut right[1..]);
+    /// }
+    ///
+    /// assert_eq!(slice, [4, 5, 3, 1, 2]);
+    /// ```
+    ///
+    /// [`split_at_mut`]: #method.split_at_mut
     #[unstable(feature = "swap_with_slice", issue = "44030")]
-    pub fn swap_with_slice(&mut self, src: &mut [T]) {
-        core_slice::SliceExt::swap_with_slice(self, src)
+    pub fn swap_with_slice(&mut self, other: &mut [T]) {
+        core_slice::SliceExt::swap_with_slice(self, other)
     }
 
     /// Copies `self` into a new `Vec`.
@@ -1528,6 +1623,98 @@ impl<T> [T] {
     pub fn into_vec(self: Box<Self>) -> Vec<T> {
         // NB see hack module in this file
         hack::into_vec(self)
+    }
+}
+
+#[lang = "slice_u8"]
+#[cfg(not(test))]
+impl [u8] {
+    /// Checks if all bytes in this slice are within the ASCII range.
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn is_ascii(&self) -> bool {
+        self.iter().all(|b| b.is_ascii())
+    }
+
+    /// Returns a vector containing a copy of this slice where each byte
+    /// is mapped to its ASCII upper case equivalent.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
+    ///
+    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn to_ascii_uppercase(&self) -> Vec<u8> {
+        let mut me = self.to_vec();
+        me.make_ascii_uppercase();
+        me
+    }
+
+    /// Returns a vector containing a copy of this slice where each byte
+    /// is mapped to its ASCII lower case equivalent.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To lowercase the value in-place, use [`make_ascii_lowercase`].
+    ///
+    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn to_ascii_lowercase(&self) -> Vec<u8> {
+        let mut me = self.to_vec();
+        me.make_ascii_lowercase();
+        me
+    }
+
+    /// Checks that two slices are an ASCII case-insensitive match.
+    ///
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
+    /// but without allocating and copying temporaries.
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
+        self.len() == other.len() &&
+            self.iter().zip(other).all(|(a, b)| {
+                a.eq_ignore_ascii_case(b)
+            })
+    }
+
+    /// Converts this slice to its ASCII upper case equivalent in-place.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new uppercased value without modifying the existing one, use
+    /// [`to_ascii_uppercase`].
+    ///
+    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn make_ascii_uppercase(&mut self) {
+        for byte in self {
+            byte.make_ascii_uppercase();
+        }
+    }
+
+    /// Converts this slice to its ASCII lower case equivalent in-place.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new lowercased value without modifying the existing one, use
+    /// [`to_ascii_lowercase`].
+    ///
+    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn make_ascii_lowercase(&mut self) {
+        for byte in self {
+            byte.make_ascii_lowercase();
+        }
     }
 }
 

@@ -12,18 +12,22 @@
 
 trait MyTrait { fn foo() {} }
 
+#[allow(auto_impl)]
 impl MyTrait for .. {}
-//~^ ERROR redundant default implementations of trait `MyTrait`
+//~^ ERROR redundant auto implementations of trait `MyTrait`
 
+#[allow(auto_impl)]
 impl MyTrait for .. {}
 
 trait MySafeTrait {}
 
+#[allow(auto_impl)]
 unsafe impl MySafeTrait for .. {}
 //~^ ERROR implementing the trait `MySafeTrait` is not unsafe
 
 unsafe trait MyUnsafeTrait {}
 
+#[allow(auto_impl)]
 impl MyUnsafeTrait for .. {}
 //~^ ERROR the trait `MyUnsafeTrait` requires an `unsafe impl` declaration
 

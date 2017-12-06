@@ -20,8 +20,8 @@ use hash::{Hash, Hasher, BuildHasher, SipHasher13};
 use iter::{FromIterator, FusedIterator};
 use mem::{self, replace};
 use ops::{Deref, Index, InPlace, Place, Placer};
-use rand::{self, Rng};
 use ptr;
+use sys;
 
 use super::table::{self, Bucket, EmptyBucket, FullBucket, FullBucketMut, RawTable, SafeHash};
 use super::table::BucketState::{Empty, Full};
@@ -691,6 +691,17 @@ impl<K, V, S> HashMap<K, V, S>
     /// Returns a reference to the map's [`BuildHasher`].
     ///
     /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::collections::hash_map::RandomState;
+    ///
+    /// let hasher = RandomState::new();
+    /// let map: HashMap<isize, isize> = HashMap::with_hasher(hasher);
+    /// let hasher: &RandomState = map.hasher();
+    /// ```
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         &self.hash_builder
@@ -1102,6 +1113,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
         where K: Borrow<Q>,
               Q: Hash + Eq
@@ -1350,7 +1362,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     inner: table::Iter<'a, K, V>,
 }
 
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Clone for Iter<'a, K, V> {
     fn clone(&self) -> Iter<'a, K, V> {
@@ -1403,7 +1415,7 @@ pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
 }
 
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Clone for Keys<'a, K, V> {
     fn clone(&self) -> Keys<'a, K, V> {
@@ -1432,7 +1444,7 @@ pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
 }
 
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Clone for Values<'a, K, V> {
     fn clone(&self) -> Values<'a, K, V> {
@@ -2002,6 +2014,41 @@ impl<'a, K, V> Entry<'a, K, V> {
             Vacant(ref entry) => entry.key(),
         }
     }
+
+    /// Provides in-place mutable access to an occupied entry before any
+    /// potential inserts into the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(entry_and_modify)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<&str, u32> = HashMap::new();
+    ///
+    /// map.entry("poneyland")
+    ///    .and_modify(|e| { *e += 1 })
+    ///    .or_insert(42);
+    /// assert_eq!(map["poneyland"], 42);
+    ///
+    /// map.entry("poneyland")
+    ///    .and_modify(|e| { *e += 1 })
+    ///    .or_insert(42);
+    /// assert_eq!(map["poneyland"], 43);
+    /// ```
+    #[unstable(feature = "entry_and_modify", issue = "44733")]
+    pub fn and_modify<F>(self, mut f: F) -> Self
+        where F: FnMut(&mut V)
+    {
+        match self {
+            Occupied(mut entry) => {
+                f(entry.get_mut());
+                Occupied(entry)
+            },
+            Vacant(entry) => Vacant(entry),
+        }
+    }
+
 }
 
 impl<'a, K, V: Default> Entry<'a, K, V> {
@@ -2192,34 +2239,66 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         self.key.take()
     }
 
-    /// Replaces the entry, returning the old key and value.
+    /// Replaces the entry, returning the old key and value. The new key in the hash map will be
+    /// the key used to create this entry.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(map_entry_replace)]
-    /// use std::collections::HashMap;
-    /// use std::collections::hash_map::Entry;
+    /// use std::collections::hash_map::{Entry, HashMap};
+    /// use std::rc::Rc;
     ///
-    /// let mut map: HashMap<String, u32> = HashMap::new();
-    /// map.insert("poneyland".to_string(), 15);
+    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
+    /// map.insert(Rc::new("Stringthing".to_string()), 15);
     ///
-    /// if let Entry::Occupied(entry) = map.entry("poneyland".to_string()) {
-    ///     let (old_key, old_value): (String, u32) = entry.replace(16);
-    ///     assert_eq!(old_key, "poneyland");
-    ///     assert_eq!(old_value, 15);
+    /// let my_key = Rc::new("Stringthing".to_string());
+    ///
+    /// if let Entry::Occupied(entry) = map.entry(my_key) {
+    ///     // Also replace the key with a handle to our other key.
+    ///     let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
     /// }
     ///
-    /// assert_eq!(map.get("poneyland"), Some(&16));
     /// ```
     #[unstable(feature = "map_entry_replace", issue = "44286")]
-    pub fn replace(mut self, value: V) -> (K, V) {
+    pub fn replace_entry(mut self, value: V) -> (K, V) {
         let (old_key, old_value) = self.elem.read_mut();
 
         let old_key = mem::replace(old_key, self.key.unwrap());
         let old_value = mem::replace(old_value, value);
 
         (old_key, old_value)
+    }
+
+    /// Replaces the key in the hash map with the key used to create this entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_entry_replace)]
+    /// use std::collections::hash_map::{Entry, HashMap};
+    /// use std::rc::Rc;
+    ///
+    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
+    /// let mut known_strings: Vec<Rc<String>> = Vec::new();
+    ///
+    /// // Initialise known strings, run program, etc.
+    ///
+    /// reclaim_memory(&mut map, &known_strings);
+    ///
+    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>] ) {
+    ///     for s in known_strings {
+    ///         if let Entry::Occupied(entry) = map.entry(s.clone()) {
+    ///             // Replaces the entry's key with our version of it in `known_strings`.
+    ///             entry.replace_key();
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "map_entry_replace", issue = "44286")]
+    pub fn replace_key(mut self) -> K {
+        let (old_key, _) = self.elem.read_mut();
+        mem::replace(old_key, self.key.unwrap())
     }
 }
 
@@ -2414,9 +2493,7 @@ impl RandomState {
         // increment one of the seeds on every RandomState creation, giving
         // every corresponding HashMap a different iteration order.
         thread_local!(static KEYS: Cell<(u64, u64)> = {
-            let r = rand::OsRng::new();
-            let mut r = r.expect("failed to create an OS RNG");
-            Cell::new((r.gen(), r.gen()))
+            Cell::new(sys::hashmap_random_keys())
         });
 
         KEYS.with(|keys| {
@@ -2508,6 +2585,7 @@ impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
 {
     type Key = K;
 
+    #[inline]
     fn get(&self, key: &Q) -> Option<&K> {
         self.search(key).into_occupied_bucket().map(|bucket| bucket.into_refs().0)
     }
@@ -2520,6 +2598,7 @@ impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
         self.search_mut(key).into_occupied_bucket().map(|bucket| pop_internal(bucket).0)
     }
 
+    #[inline]
     fn replace(&mut self, key: K) -> Option<K> {
         self.reserve(1);
 

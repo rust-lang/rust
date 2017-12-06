@@ -291,7 +291,7 @@ pub trait AstBuilder {
                        -> ast::MetaItem;
 
     fn item_use(&self, sp: Span,
-                vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item>;
+                vis: ast::Visibility, vp: P<ast::UseTree>) -> P<ast::Item>;
     fn item_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> P<ast::Item>;
     fn item_use_simple_(&self, sp: Span, vis: ast::Visibility,
                         ident: ast::Ident, path: ast::Path) -> P<ast::Item>;
@@ -1142,7 +1142,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item_use(&self, sp: Span,
-                vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item> {
+                vis: ast::Visibility, vp: P<ast::UseTree>) -> P<ast::Item> {
         P(ast::Item {
             id: ast::DUMMY_NODE_ID,
             ident: keywords::Invalid.ident(),
@@ -1161,33 +1161,36 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn item_use_simple_(&self, sp: Span, vis: ast::Visibility,
                         ident: ast::Ident, path: ast::Path) -> P<ast::Item> {
-        self.item_use(sp, vis,
-                      P(respan(sp,
-                               ast::ViewPathSimple(ident,
-                                                   path))))
+        self.item_use(sp, vis, P(ast::UseTree {
+            span: sp,
+            prefix: path,
+            kind: ast::UseTreeKind::Simple(ident),
+        }))
     }
 
     fn item_use_list(&self, sp: Span, vis: ast::Visibility,
                      path: Vec<ast::Ident>, imports: &[ast::Ident]) -> P<ast::Item> {
         let imports = imports.iter().map(|id| {
-            let item = ast::PathListItem_ {
-                name: *id,
-                rename: None,
-                id: ast::DUMMY_NODE_ID,
-            };
-            respan(sp, item)
+            (ast::UseTree {
+                span: sp,
+                prefix: self.path(sp, vec![*id]),
+                kind: ast::UseTreeKind::Simple(*id),
+            }, ast::DUMMY_NODE_ID)
         }).collect();
 
-        self.item_use(sp, vis,
-                      P(respan(sp,
-                               ast::ViewPathList(self.path(sp, path),
-                                                 imports))))
+        self.item_use(sp, vis, P(ast::UseTree {
+            span: sp,
+            prefix: self.path(sp, path),
+            kind: ast::UseTreeKind::Nested(imports),
+        }))
     }
 
     fn item_use_glob(&self, sp: Span,
                      vis: ast::Visibility, path: Vec<ast::Ident>) -> P<ast::Item> {
-        self.item_use(sp, vis,
-                      P(respan(sp,
-                               ast::ViewPathGlob(self.path(sp, path)))))
+        self.item_use(sp, vis, P(ast::UseTree {
+            span: sp,
+            prefix: self.path(sp, path),
+            kind: ast::UseTreeKind::Glob,
+        }))
     }
 }

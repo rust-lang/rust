@@ -1,7 +1,7 @@
 error[E0034]: multiple applicable items in scope
   --> $DIR/issue-37767.rs:20:7
    |
-20 |     a.foo()
+20 |     a.foo() //~ ERROR multiple applicable items
    |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `A`
@@ -20,7 +20,7 @@ note: candidate #2 is defined in the trait `B`
 error[E0034]: multiple applicable items in scope
   --> $DIR/issue-37767.rs:32:7
    |
-32 |     a.foo()
+32 |     a.foo() //~ ERROR multiple applicable items
    |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `C`
@@ -39,7 +39,7 @@ note: candidate #2 is defined in the trait `D`
 error[E0034]: multiple applicable items in scope
   --> $DIR/issue-37767.rs:44:7
    |
-44 |     a.foo()
+44 |     a.foo() //~ ERROR multiple applicable items
    |       ^^^ multiple `foo` found
    |
 note: candidate #1 is defined in the trait `E`

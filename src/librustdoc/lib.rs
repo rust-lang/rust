@@ -14,6 +14,7 @@
        html_playground_url = "https://play.rust-lang.org/")]
 #![deny(warnings)]
 
+#![feature(ascii_ctype)]
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
@@ -23,7 +24,6 @@
 #![feature(test)]
 #![feature(unicode)]
 #![feature(vec_remove_item)]
-#![feature(ascii_ctype)]
 
 extern crate arena;
 extern crate getopts;
@@ -48,6 +48,7 @@ extern crate std_unicode;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
 extern crate pulldown_cmark;
+extern crate tempdir;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -170,6 +171,9 @@ pub fn opts() -> Vec<RustcOptGroup> {
         stable("no-default", |o| {
             o.optflag("", "no-defaults", "don't run the default passes")
         }),
+        stable("document-private-items", |o| {
+            o.optflag("", "document-private-items", "document private items")
+        }),
         stable("test", |o| o.optflag("", "test", "run code examples as tests")),
         stable("test-args", |o| {
             o.optmulti("", "test-args", "arguments to pass to the test runner",
@@ -243,6 +247,12 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable("display-warnings", |o| {
             o.optflag("", "display-warnings", "to print code warnings when testing doc")
         }),
+        unstable("crate-version", |o| {
+            o.optopt("", "crate-version", "crate version to print into documentation", "VERSION")
+        }),
+        unstable("linker", |o| {
+            o.optopt("", "linker", "linker used for building executable test code", "PATH")
+        }),
     ]
 }
 
@@ -268,6 +278,9 @@ pub fn main_args(args: &[String]) -> isize {
     };
     // Check for unstable options.
     nightly_options::check_nightly_options(&matches, &opts());
+
+    // check for deprecated options
+    check_deprecated_options(&matches);
 
     if matches.opt_present("h") || matches.opt_present("help") {
         usage("rustdoc");
@@ -354,15 +367,16 @@ pub fn main_args(args: &[String]) -> isize {
     let playground_url = matches.opt_str("playground-url");
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
     let display_warnings = matches.opt_present("display-warnings");
+    let linker = matches.opt_str("linker");
 
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot, render_type,
-                                  display_warnings)
+                                  display_warnings, linker)
         }
         (true, false) => {
             return test::run(input, cfgs, libs, externs, test_args, crate_name, maybe_sysroot,
-                             render_type, display_warnings)
+                             render_type, display_warnings, linker)
         }
         (false, true) => return markdown::render(input,
                                                  output.unwrap_or(PathBuf::from("doc")),
@@ -451,6 +465,17 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
 
+    // We hardcode in the passes here, as this is a new flag and we
+    // are generally deprecating passes.
+    if matches.opt_present("document-private-items") {
+        default_passes = false;
+
+        passes = vec![
+            String::from("collapse-docs"),
+            String::from("unindent-comments"),
+        ];
+    }
+
     // First, parse the crate and extract all relevant information.
     let mut paths = SearchPaths::new();
     for s in &matches.opt_strs("L") {
@@ -460,6 +485,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let triple = matches.opt_str("target");
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
     let crate_name = matches.opt_str("crate-name");
+    let crate_version = matches.opt_str("crate-version");
     let plugin_path = matches.opt_str("plugin-path");
 
     let cr = PathBuf::from(cratefile);
@@ -483,6 +509,8 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         if let Some(name) = crate_name {
             krate.name = name
         }
+
+        krate.version = crate_version;
 
         // Process all of the crate attributes, extracting plugin metadata along
         // with the passes which we are supposed to run.
@@ -539,4 +567,27 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
     });
     rx.recv().unwrap()
+}
+
+/// Prints deprecation warnings for deprecated options
+fn check_deprecated_options(matches: &getopts::Matches) {
+    let deprecated_flags = [
+       "input-format",
+       "output-format",
+       "plugin-path",
+       "plugins",
+       "no-defaults",
+       "passes",
+    ];
+
+    for flag in deprecated_flags.into_iter() {
+        if matches.opt_present(flag) {
+            eprintln!("WARNING: the '{}' flag is considered deprecated", flag);
+            eprintln!("WARNING: please see https://github.com/rust-lang/rust/issues/44136");
+        }
+    }
+
+    if matches.opt_present("no-defaults") {
+        eprintln!("WARNING: (you may want to use --document-private-items)");
+    }
 }

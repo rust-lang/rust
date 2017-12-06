@@ -29,7 +29,7 @@ use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 use serde_json;
 
-use util::{exe, libdir, is_dylib, copy};
+use util::{exe, libdir, is_dylib, copy, read_stamp_file, CiEnv};
 use {Build, Compiler, Mode};
 use native;
 use tool;
@@ -102,13 +102,13 @@ impl Step for Std {
             copy_musl_third_party_objects(build, target, &libdir);
         }
 
-        let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
+        let out_dir = build.stage_out(compiler, Mode::Libstd);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
         std_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
-                &mut cargo,
-                &libstd_stamp(build, compiler, target));
+                  &mut cargo,
+                  &libstd_stamp(build, compiler, target));
 
         builder.ensure(StdLink {
             compiler: builder.compiler(compiler.stage, build.build),
@@ -354,13 +354,13 @@ impl Step for Test {
         let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
         println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target);
-        let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
+        let out_dir = build.stage_out(compiler, Mode::Libtest);
         build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
         test_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
-                &mut cargo,
-                &libtest_stamp(build, compiler, target));
+                  &mut cargo,
+                  &libtest_stamp(build, compiler, target));
 
         builder.ensure(TestLink {
             compiler: builder.compiler(compiler.stage, build.build),
@@ -480,8 +480,9 @@ impl Step for Rustc {
         println!("Building stage{} compiler artifacts ({} -> {})",
                  compiler.stage, &compiler.host, target);
 
-        let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
-        build.clear_if_dirty(&out_dir, &libtest_stamp(build, compiler, target));
+        let stage_out = builder.stage_out(compiler, Mode::Librustc);
+        build.clear_if_dirty(&stage_out, &libstd_stamp(build, compiler, target));
+        build.clear_if_dirty(&stage_out, &libtest_stamp(build, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
         rustc_cargo(build, &compiler, target, &mut cargo);
@@ -559,9 +560,6 @@ pub fn rustc_cargo(build: &Build,
     }
     if let Some(ref s) = build.config.rustc_default_linker {
         cargo.env("CFG_DEFAULT_LINKER", s);
-    }
-    if let Some(ref s) = build.config.rustc_default_ar {
-        cargo.env("CFG_DEFAULT_AR", s);
     }
 }
 
@@ -760,15 +758,7 @@ impl Step for Assemble {
 /// `sysroot_dst` provided.
 fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
     t!(fs::create_dir_all(&sysroot_dst));
-    let mut contents = Vec::new();
-    t!(t!(File::open(stamp)).read_to_end(&mut contents));
-    // This is the method we use for extracting paths from the stamp file passed to us. See
-    // run_cargo for more information (in this file).
-    for part in contents.split(|b| *b == 0) {
-        if part.is_empty() {
-            continue
-        }
-        let path = Path::new(t!(str::from_utf8(part)));
+    for path in read_stamp_file(stamp) {
         copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
     }
 }
@@ -802,7 +792,7 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
     cargo.arg("--message-format").arg("json")
          .stdout(Stdio::piped());
 
-    if stderr_isatty() {
+    if stderr_isatty() && build.ci_env == CiEnv::None {
         // since we pass message-format=json to cargo, we need to tell the rustc
         // wrapper to give us colored output if necessary. This is because we
         // only want Cargo's JSON output, not rustcs.
@@ -870,10 +860,19 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
             // have a hash in the name, but there's a version of this file in
             // the `deps` folder which *does* have a hash in the name. That's
             // the one we'll want to we'll probe for it later.
-            toplevel.push((filename.file_stem().unwrap()
-                                    .to_str().unwrap().to_string(),
-                            filename.extension().unwrap().to_owned()
-                                    .to_str().unwrap().to_string()));
+            //
+            // We do not use `Path::file_stem` or `Path::extension` here,
+            // because some generated files may have multiple extensions e.g.
+            // `std-<hash>.dll.lib` on Windows. The aforementioned methods only
+            // split the file name by the last extension (`.lib`) while we need
+            // to split by all extensions (`.dll.lib`).
+            let expected_len = t!(filename.metadata()).len();
+            let filename = filename.file_name().unwrap().to_str().unwrap();
+            let mut parts = filename.splitn(2, '.');
+            let file_stem = parts.next().unwrap().to_owned();
+            let extension = parts.next().unwrap().to_owned();
+
+            toplevel.push((file_stem, extension, expected_len));
         }
     }
 
@@ -893,11 +892,12 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
         .map(|e| t!(e))
         .map(|e| (e.path(), e.file_name().into_string().unwrap(), t!(e.metadata())))
         .collect::<Vec<_>>();
-    for (prefix, extension) in toplevel {
-        let candidates = contents.iter().filter(|&&(_, ref filename, _)| {
+    for (prefix, extension, expected_len) in toplevel {
+        let candidates = contents.iter().filter(|&&(_, ref filename, ref meta)| {
             filename.starts_with(&prefix[..]) &&
                 filename[prefix.len()..].starts_with("-") &&
-                filename.ends_with(&extension[..])
+                filename.ends_with(&extension[..]) &&
+                meta.len() == expected_len
         });
         let max = candidates.max_by_key(|&&(_, _, ref metadata)| {
             FileTime::from_last_modification_time(metadata)
@@ -941,6 +941,8 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
     let max = max.unwrap();
     let max_path = max_path.unwrap();
     if stamp_contents == new_contents && max <= stamp_mtime {
+        build.verbose(&format!("not updating {:?}; contents equal and {} <= {}",
+                stamp, max, stamp_mtime));
         return
     }
     if max > stamp_mtime {

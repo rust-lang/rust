@@ -47,27 +47,27 @@ struct CheckAttrVisitor<'a> {
 
 impl<'a> CheckAttrVisitor<'a> {
     /// Check any attribute.
-    fn check_attribute(&self, attr: &ast::Attribute, target: Target) {
+    fn check_attribute(&self, attr: &ast::Attribute, item: &ast::Item, target: Target) {
         if let Some(name) = attr.name() {
             match &*name.as_str() {
-                "inline" => self.check_inline(attr, target),
-                "repr" => self.check_repr(attr, target),
+                "inline" => self.check_inline(attr, item, target),
+                "repr" => self.check_repr(attr, item, target),
                 _ => (),
             }
         }
     }
 
     /// Check if an `#[inline]` is applied to a function.
-    fn check_inline(&self, attr: &ast::Attribute, target: Target) {
+    fn check_inline(&self, attr: &ast::Attribute, item: &ast::Item, target: Target) {
         if target != Target::Fn {
             struct_span_err!(self.sess, attr.span, E0518, "attribute should be applied to function")
-                .span_label(attr.span, "requires a function")
+                .span_label(item.span, "not a function")
                 .emit();
         }
     }
 
     /// Check if an `#[repr]` attr is valid.
-    fn check_repr(&self, attr: &ast::Attribute, target: Target) {
+    fn check_repr(&self, attr: &ast::Attribute, item: &ast::Item, target: Target) {
         let words = match attr.meta_item_list() {
             Some(words) => words,
             None => {
@@ -75,7 +75,9 @@ impl<'a> CheckAttrVisitor<'a> {
             }
         };
 
-        let mut conflicting_reprs = 0;
+        let mut int_reprs = 0;
+        let mut is_c = false;
+        let mut is_simd = false;
 
         for word in words {
 
@@ -86,7 +88,7 @@ impl<'a> CheckAttrVisitor<'a> {
 
             let (message, label) = match &*name.as_str() {
                 "C" => {
-                    conflicting_reprs += 1;
+                    is_c = true;
                     if target != Target::Struct &&
                             target != Target::Union &&
                             target != Target::Enum {
@@ -108,7 +110,7 @@ impl<'a> CheckAttrVisitor<'a> {
                     }
                 }
                 "simd" => {
-                    conflicting_reprs += 1;
+                    is_simd = true;
                     if target != Target::Struct {
                         ("attribute should be applied to struct",
                          "a struct")
@@ -128,7 +130,7 @@ impl<'a> CheckAttrVisitor<'a> {
                 "i8" | "u8" | "i16" | "u16" |
                 "i32" | "u32" | "i64" | "u64" |
                 "isize" | "usize" => {
-                    conflicting_reprs += 1;
+                    int_reprs += 1;
                     if target != Target::Enum {
                         ("attribute should be applied to enum",
                          "an enum")
@@ -139,10 +141,14 @@ impl<'a> CheckAttrVisitor<'a> {
                 _ => continue,
             };
             struct_span_err!(self.sess, attr.span, E0517, "{}", message)
-                .span_label(attr.span, format!("requires {}", label))
+                .span_label(item.span, format!("not {}", label))
                 .emit();
         }
-        if conflicting_reprs > 1 {
+
+        // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
+        if (int_reprs > 1)
+           || (is_simd && is_c)
+           || (int_reprs == 1 && is_c && is_c_like_enum(item)) {
             span_warn!(self.sess, attr.span, E0566,
                        "conflicting representation hints");
         }
@@ -153,7 +159,7 @@ impl<'a> Visitor<'a> for CheckAttrVisitor<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         let target = Target::from_item(item);
         for attr in &item.attrs {
-            self.check_attribute(attr, target);
+            self.check_attribute(attr, item, target);
         }
         visit::walk_item(self, item);
     }
@@ -161,4 +167,18 @@ impl<'a> Visitor<'a> for CheckAttrVisitor<'a> {
 
 pub fn check_crate(sess: &Session, krate: &ast::Crate) {
     visit::walk_crate(&mut CheckAttrVisitor { sess: sess }, krate);
+}
+
+fn is_c_like_enum(item: &ast::Item) -> bool {
+    if let ast::ItemKind::Enum(ref def, _) = item.node {
+        for variant in &def.variants {
+            match variant.node.data {
+                ast::VariantData::Unit(_) => { /* continue */ }
+                _ => { return false; }
+            }
+        }
+        true
+    } else {
+        false
+    }
 }

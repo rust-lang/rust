@@ -17,27 +17,14 @@ use std::path::{PathBuf, Path};
 
 use build_helper::output;
 
-fn detect_llvm_link(major: u32, minor: u32, llvm_config: &Path)
-    -> (&'static str, Option<&'static str>) {
-    if major > 3 || (major == 3 && minor >= 9) {
-        // Force the link mode we want, preferring static by default, but
-        // possibly overridden by `configure --enable-llvm-link-shared`.
-        if env::var_os("LLVM_LINK_SHARED").is_some() {
-            return ("dylib", Some("--link-shared"));
-        } else {
-            return ("static", Some("--link-static"));
-        }
-    } else if major == 3 && minor == 8 {
-        // Find out LLVM's default linking mode.
-        let mut mode_cmd = Command::new(llvm_config);
-        mode_cmd.arg("--shared-mode");
-        if output(&mut mode_cmd).trim() == "shared" {
-            return ("dylib", None);
-        } else {
-            return ("static", None);
-        }
+fn detect_llvm_link() -> (&'static str, &'static str) {
+    // Force the link mode we want, preferring static by default, but
+    // possibly overridden by `configure --enable-llvm-link-shared`.
+    if env::var_os("LLVM_LINK_SHARED").is_some() {
+        ("dylib", "--link-shared")
+    } else {
+        ("static", "--link-static")
     }
-    ("static", None)
 }
 
 fn main() {
@@ -88,7 +75,7 @@ fn main() {
     let is_crossed = target != host;
 
     let mut optional_components =
-        vec!["x86", "arm", "aarch64", "mips", "powerpc", "pnacl",
+        vec!["x86", "arm", "aarch64", "mips", "powerpc",
              "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx"];
 
     let mut version_cmd = Command::new(&llvm_config);
@@ -96,11 +83,11 @@ fn main() {
     let version_output = output(&mut version_cmd);
     let mut parts = version_output.split('.').take(2)
         .filter_map(|s| s.parse::<u32>().ok());
-    let (major, minor) =
+    let (major, _minor) =
         if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
             (major, minor)
         } else {
-            (3, 7)
+            (3, 9)
         };
 
     if major > 3 {
@@ -115,6 +102,7 @@ fn main() {
                                 "linker",
                                 "asmparser",
                                 "mcjit",
+                                "lto",
                                 "interpreter",
                                 "instrumentation"];
 
@@ -153,13 +141,13 @@ fn main() {
     }
 
     for component in &components {
-        let mut flag = String::from("-DLLVM_COMPONENT_");
+        let mut flag = String::from("LLVM_COMPONENT_");
         flag.push_str(&component.to_uppercase());
-        cfg.flag(&flag);
+        cfg.define(&flag, None);
     }
 
     if env::var_os("LLVM_RUSTLLVM").is_some() {
-        cfg.flag("-DLLVM_RUSTLLVM");
+        cfg.define("LLVM_RUSTLLVM", None);
     }
 
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
@@ -168,19 +156,15 @@ fn main() {
        .file("../rustllvm/ArchiveWrapper.cpp")
        .cpp(true)
        .cpp_link_stdlib(None) // we handle this below
-       .compile("librustllvm.a");
+       .compile("rustllvm");
 
-    let (llvm_kind, llvm_link_arg) = detect_llvm_link(major, minor, &llvm_config);
+    let (llvm_kind, llvm_link_arg) = detect_llvm_link();
 
     // Link in all LLVM libraries, if we're uwring the "wrong" llvm-config then
     // we don't pick up system libs because unfortunately they're for the host
     // of llvm-config, not the target that we're attempting to link.
     let mut cmd = Command::new(&llvm_config);
-    cmd.arg("--libs");
-
-    if let Some(link_arg) = llvm_link_arg {
-        cmd.arg(link_arg);
-    }
+    cmd.arg(llvm_link_arg).arg("--libs");
 
     if !is_crossed {
         cmd.arg("--system-libs");
@@ -229,10 +213,7 @@ fn main() {
     // hack around this by replacing the host triple with the target and pray
     // that those -L directories are the same!
     let mut cmd = Command::new(&llvm_config);
-    if let Some(link_arg) = llvm_link_arg {
-        cmd.arg(link_arg);
-    }
-    cmd.arg("--ldflags");
+    cmd.arg(llvm_link_arg).arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
         if lib.starts_with("-LIBPATH:") {
             println!("cargo:rustc-link-search=native={}", &lib[9..]);
@@ -251,8 +232,8 @@ fn main() {
     let llvm_static_stdcpp = env::var_os("LLVM_STATIC_STDCPP");
 
     let stdcppname = if target.contains("openbsd") {
-        // OpenBSD has a particular C++ runtime library name
-        "estdc++"
+        // llvm-config on OpenBSD doesn't mention stdlib=libc++
+        "c++"
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required
         "stdc++_pic"

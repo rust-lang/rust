@@ -12,6 +12,5 @@
 
 static TEST: &'static mut [isize] = &mut [];
 //~^ ERROR references in statics may only refer to immutable values
-//~^^ ERROR references in statics may only refer to immutable values
 
 pub fn main() { }

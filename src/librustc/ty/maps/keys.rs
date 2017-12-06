@@ -11,7 +11,6 @@
 //! Defines the set of legal keys that can be used in queries.
 
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
-use mir::transform::{MirSuite, MirPassIndex};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
@@ -116,21 +115,21 @@ impl<'tcx> Key for (DefId, &'tcx Substs<'tcx>) {
     }
 }
 
-impl Key for (MirSuite, DefId) {
+impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
     fn map_crate(&self) -> CrateNum {
-        self.1.map_crate()
+        self.1.def_id().krate
     }
     fn default_span(&self, tcx: TyCtxt) -> Span {
-        self.1.default_span(tcx)
+        tcx.def_span(self.1.def_id())
     }
 }
 
-impl Key for (MirSuite, MirPassIndex, DefId) {
+impl<'tcx> Key for ty::PolyTraitRef<'tcx>{
     fn map_crate(&self) -> CrateNum {
-        self.2.map_crate()
+        self.def_id().krate
     }
     fn default_span(&self, tcx: TyCtxt) -> Span {
-        self.2.default_span(tcx)
+        tcx.def_span(self.def_id())
     }
 }
 

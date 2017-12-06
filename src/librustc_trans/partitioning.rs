@@ -104,21 +104,17 @@
 
 use collector::InliningMap;
 use common;
-use rustc::dep_graph::{DepNode, WorkProductId};
+use rustc::dep_graph::WorkProductId;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::middle::trans::{Linkage, Visibility};
-use rustc::ich::Fingerprint;
-use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::StableHasher;
 use std::collections::hash_map::Entry;
-use std::hash::Hash;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
-use trans_item::{TransItem, TransItemExt, InstantiationMode};
+use trans_item::{TransItem, BaseTransItemExt, TransItemExt, InstantiationMode};
 
 pub use rustc::middle::trans::CodegenUnit;
 
@@ -151,23 +147,6 @@ pub trait CodegenUnitExt<'tcx> {
         WorkProductId::from_cgu_name(self.name())
     }
 
-    fn work_product_dep_node(&self) -> DepNode {
-        self.work_product_id().to_dep_node()
-    }
-
-    fn compute_symbol_name_hash<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> u64 {
-        let mut state: StableHasher<Fingerprint> = StableHasher::new();
-        let all_items = self.items_in_deterministic_order(tcx);
-        for (item, (linkage, visibility)) in all_items {
-            let symbol_name = item.symbol_name(tcx);
-            symbol_name.len().hash(&mut state);
-            symbol_name.hash(&mut state);
-            linkage.hash(&mut state);
-            visibility.hash(&mut state);
-        }
-        state.finish().to_smaller_hash()
-    }
-
     fn items_in_deterministic_order<'a>(&self,
                                         tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                         -> Vec<(TransItem<'tcx>,
@@ -180,10 +159,27 @@ pub trait CodegenUnitExt<'tcx> {
         fn item_sort_key<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    item: TransItem<'tcx>) -> ItemSortKey {
             ItemSortKey(match item {
-                TransItem::Fn(instance) => {
-                    tcx.hir.as_local_node_id(instance.def_id())
+                TransItem::Fn(ref instance) => {
+                    match instance.def {
+                        // We only want to take NodeIds of user-defined
+                        // instances into account. The others don't matter for
+                        // the codegen tests and can even make item order
+                        // unstable.
+                        InstanceDef::Item(def_id) => {
+                            tcx.hir.as_local_node_id(def_id)
+                        }
+                        InstanceDef::Intrinsic(..) |
+                        InstanceDef::FnPtrShim(..) |
+                        InstanceDef::Virtual(..) |
+                        InstanceDef::ClosureOnceShim { .. } |
+                        InstanceDef::DropGlue(..) |
+                        InstanceDef::CloneShim(..) => {
+                            None
+                        }
+                    }
                 }
-                TransItem::Static(node_id) | TransItem::GlobalAsm(node_id) => {
+                TransItem::Static(node_id) |
+                TransItem::GlobalAsm(node_id) => {
                     Some(node_id)
                 }
             }, item.symbol_name(tcx))
@@ -253,14 +249,6 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         cgu1.name().cmp(cgu2.name())
     });
 
-    if tcx.sess.opts.enable_dep_node_debug_strs() {
-        for cgu in &result {
-            let dep_node = cgu.work_product_dep_node();
-            tcx.dep_graph.register_dep_node_debug_str(dep_node,
-                                                            || cgu.name().to_string());
-        }
-    }
-
     result
 }
 
@@ -296,75 +284,74 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut internalization_candidates = FxHashSet();
 
     for trans_item in trans_items {
-        let is_root = trans_item.instantiation_mode(tcx) == InstantiationMode::GloballyShared;
+        match trans_item.instantiation_mode(tcx) {
+            InstantiationMode::GloballyShared { .. } => {}
+            InstantiationMode::LocalCopy => continue,
+        }
 
-        if is_root {
-            let characteristic_def_id = characteristic_def_id_of_trans_item(tcx, trans_item);
-            let is_volatile = is_incremental_build &&
-                              trans_item.is_generic_fn();
+        let characteristic_def_id = characteristic_def_id_of_trans_item(tcx, trans_item);
+        let is_volatile = is_incremental_build &&
+                          trans_item.is_generic_fn();
 
-            let codegen_unit_name = match characteristic_def_id {
-                Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
-                None => Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str(),
-            };
+        let codegen_unit_name = match characteristic_def_id {
+            Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
+            None => Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str(),
+        };
 
-            let make_codegen_unit = || {
-                CodegenUnit::new(codegen_unit_name.clone())
-            };
+        let make_codegen_unit = || {
+            CodegenUnit::new(codegen_unit_name.clone())
+        };
 
-            let codegen_unit = codegen_units.entry(codegen_unit_name.clone())
-                                                .or_insert_with(make_codegen_unit);
+        let codegen_unit = codegen_units.entry(codegen_unit_name.clone())
+                                            .or_insert_with(make_codegen_unit);
 
-            let (linkage, visibility) = match trans_item.explicit_linkage(tcx) {
-                Some(explicit_linkage) => (explicit_linkage, Visibility::Default),
-                None => {
-                    match trans_item {
-                        TransItem::Fn(ref instance) => {
-                            let visibility = match instance.def {
-                                InstanceDef::Item(def_id) => {
-                                    if def_id.is_local() {
-                                        if tcx.is_exported_symbol(def_id) {
-                                            Visibility::Default
-                                        } else {
-                                            internalization_candidates.insert(trans_item);
-                                            Visibility::Hidden
-                                        }
+        let (linkage, visibility) = match trans_item.explicit_linkage(tcx) {
+            Some(explicit_linkage) => (explicit_linkage, Visibility::Default),
+            None => {
+                match trans_item {
+                    TransItem::Fn(ref instance) => {
+                        let visibility = match instance.def {
+                            InstanceDef::Item(def_id) => {
+                                if def_id.is_local() {
+                                    if tcx.is_exported_symbol(def_id) {
+                                        Visibility::Default
                                     } else {
-                                        internalization_candidates.insert(trans_item);
                                         Visibility::Hidden
                                     }
+                                } else {
+                                    Visibility::Hidden
                                 }
-                                InstanceDef::FnPtrShim(..) |
-                                InstanceDef::Virtual(..) |
-                                InstanceDef::Intrinsic(..) |
-                                InstanceDef::ClosureOnceShim { .. } |
-                                InstanceDef::DropGlue(..) |
-                                InstanceDef::CloneShim(..) => {
-                                    bug!("partitioning: Encountered unexpected
-                                          root translation item: {:?}",
-                                          trans_item)
-                                }
-                            };
-                            (Linkage::External, visibility)
-                        }
-                        TransItem::Static(node_id) |
-                        TransItem::GlobalAsm(node_id) => {
-                            let def_id = tcx.hir.local_def_id(node_id);
-                            let visibility = if tcx.is_exported_symbol(def_id) {
-                                Visibility::Default
-                            } else {
-                                internalization_candidates.insert(trans_item);
+                            }
+                            InstanceDef::FnPtrShim(..) |
+                            InstanceDef::Virtual(..) |
+                            InstanceDef::Intrinsic(..) |
+                            InstanceDef::ClosureOnceShim { .. } |
+                            InstanceDef::DropGlue(..) |
+                            InstanceDef::CloneShim(..) => {
                                 Visibility::Hidden
-                            };
-                            (Linkage::External, visibility)
-                        }
+                            }
+                        };
+                        (Linkage::External, visibility)
+                    }
+                    TransItem::Static(node_id) |
+                    TransItem::GlobalAsm(node_id) => {
+                        let def_id = tcx.hir.local_def_id(node_id);
+                        let visibility = if tcx.is_exported_symbol(def_id) {
+                            Visibility::Default
+                        } else {
+                            Visibility::Hidden
+                        };
+                        (Linkage::External, visibility)
                     }
                 }
-            };
-
-            codegen_unit.items_mut().insert(trans_item, (linkage, visibility));
-            roots.insert(trans_item);
+            }
+        };
+        if visibility == Visibility::Hidden {
+            internalization_candidates.insert(trans_item);
         }
+
+        codegen_unit.items_mut().insert(trans_item, (linkage, visibility));
+        roots.insert(trans_item);
     }
 
     // always ensure we have at least one CGU; otherwise, if we have a
@@ -406,15 +393,6 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
 
     for (index, cgu) in codegen_units.iter_mut().enumerate() {
         cgu.set_name(numbered_codegen_unit_name(crate_name, index));
-    }
-
-    // If the initial partitioning contained less than target_cgu_count to begin
-    // with, we won't have enough codegen units here, so add a empty units until
-    // we reach the target count
-    while codegen_units.len() < target_cgu_count {
-        let index = codegen_units.len();
-        let name = numbered_codegen_unit_name(crate_name, index);
-        codegen_units.push(CodegenUnit::new(name));
     }
 }
 
@@ -643,7 +621,7 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
-    Symbol::intern(&format!("{}{}{}", crate_name, NUMBERED_CODEGEN_UNIT_MARKER, index)).as_str()
+    Symbol::intern(&format!("{}{}", crate_name, index)).as_str()
 }
 
 fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

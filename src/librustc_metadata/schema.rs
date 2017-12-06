@@ -18,6 +18,7 @@ use rustc::ich::StableHashingContext;
 use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary};
 use rustc::middle::lang_items;
 use rustc::mir;
+use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_back::PanicStrategy;
 
@@ -52,11 +53,6 @@ pub const METADATA_VERSION: u8 = 4;
 /// and further followed by the rustc version string.
 pub const METADATA_HEADER: &'static [u8; 12] =
     &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
-
-/// The shorthand encoding uses an enum's variant index `usize`
-/// and is offset by this value so it never matches a real variant.
-/// This offset is also chosen so that the first byte is never < 0x80.
-pub const SHORTHAND_OFFSET: usize = 0x80;
 
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
@@ -191,7 +187,7 @@ pub struct CrateRoot {
     pub name: Symbol,
     pub triple: String,
     pub hash: hir::svh::Svh,
-    pub disambiguator: Symbol,
+    pub disambiguator: CrateDisambiguator,
     pub panic_strategy: PanicStrategy,
     pub has_global_allocator: bool,
     pub has_default_lib_allocator: bool,
@@ -291,6 +287,7 @@ pub enum EntryKind<'tcx> {
     ForeignImmStatic,
     ForeignMutStatic,
     ForeignMod,
+    ForeignType,
     GlobalAsm,
     Type,
     Enum(ReprOptions),
@@ -306,7 +303,7 @@ pub enum EntryKind<'tcx> {
     Generator(Lazy<GeneratorData<'tcx>>),
     Trait(Lazy<TraitData<'tcx>>),
     Impl(Lazy<ImplData<'tcx>>),
-    DefaultImpl(Lazy<ImplData<'tcx>>),
+    AutoImpl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
     AssociatedConst(AssociatedContainer, u8),
@@ -324,6 +321,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for EntryKind<'gcx> {
             EntryKind::ForeignMutStatic |
             EntryKind::ForeignMod       |
             EntryKind::GlobalAsm        |
+            EntryKind::ForeignType      |
             EntryKind::Field |
             EntryKind::Type => {
                 // Nothing else to hash here.
@@ -361,7 +359,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for EntryKind<'gcx> {
             EntryKind::Trait(ref trait_data) => {
                 trait_data.hash_stable(hcx, hasher);
             }
-            EntryKind::DefaultImpl(ref impl_data) |
+            EntryKind::AutoImpl(ref impl_data) |
             EntryKind::Impl(ref impl_data) => {
                 impl_data.hash_stable(hcx, hasher);
             }
@@ -428,14 +426,14 @@ impl_stable_hash_for!(struct VariantData<'tcx> {
 pub struct TraitData<'tcx> {
     pub unsafety: hir::Unsafety,
     pub paren_sugar: bool,
-    pub has_default_impl: bool,
+    pub has_auto_impl: bool,
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
 
 impl_stable_hash_for!(struct TraitData<'tcx> {
     unsafety,
     paren_sugar,
-    has_default_impl,
+    has_auto_impl,
     super_predicates
 });
 
@@ -514,14 +512,12 @@ impl_stable_hash_for!(struct MethodData<'tcx> { fn_data, container, has_self });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ClosureData<'tcx> {
-    pub kind: ty::ClosureKind,
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
-impl_stable_hash_for!(struct ClosureData<'tcx> { kind, sig });
+impl_stable_hash_for!(struct ClosureData<'tcx> { sig });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct GeneratorData<'tcx> {
-    pub sig: ty::PolyGenSig<'tcx>,
     pub layout: mir::GeneratorLayout<'tcx>,
 }
-impl_stable_hash_for!(struct GeneratorData<'tcx> { sig, layout });
+impl_stable_hash_for!(struct GeneratorData<'tcx> { layout });

@@ -1,0 +1,34 @@
+error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync` is not satisfied in `[std::fmt::ArgumentV1<'_>]`
+  --> $DIR/send-sync.rs:18:5
+   |
+18 |     send(format_args!("{:?}", c)); //~ ERROR Sync` is not satisfied
+   |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
+   |
+   = help: within `[std::fmt::ArgumentV1<'_>]`, the trait `std::marker::Sync` is not implemented for `*mut std::ops::Fn() + 'static`
+   = note: required because it appears within the type `std::marker::PhantomData<*mut std::ops::Fn() + 'static>`
+   = note: required because it appears within the type `core::fmt::Void`
+   = note: required because it appears within the type `&core::fmt::Void`
+   = note: required because it appears within the type `std::fmt::ArgumentV1<'_>`
+   = note: required because it appears within the type `[std::fmt::ArgumentV1<'_>]`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `&[std::fmt::ArgumentV1<'_>]`
+   = note: required because it appears within the type `std::fmt::Arguments<'_>`
+   = note: required by `send`
+
+error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync` is not satisfied in `std::fmt::Arguments<'_>`
+  --> $DIR/send-sync.rs:19:5
+   |
+19 |     sync(format_args!("{:?}", c)); //~ ERROR Sync` is not satisfied
+   |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
+   |
+   = help: within `std::fmt::Arguments<'_>`, the trait `std::marker::Sync` is not implemented for `*mut std::ops::Fn() + 'static`
+   = note: required because it appears within the type `std::marker::PhantomData<*mut std::ops::Fn() + 'static>`
+   = note: required because it appears within the type `core::fmt::Void`
+   = note: required because it appears within the type `&core::fmt::Void`
+   = note: required because it appears within the type `std::fmt::ArgumentV1<'_>`
+   = note: required because it appears within the type `[std::fmt::ArgumentV1<'_>]`
+   = note: required because it appears within the type `&[std::fmt::ArgumentV1<'_>]`
+   = note: required because it appears within the type `std::fmt::Arguments<'_>`
+   = note: required by `sync`
+
+error: aborting due to 2 previous errors
+

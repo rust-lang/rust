@@ -107,12 +107,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub FAT_PTR_TRANSMUTES,
-    Allow,
-    "detects transmutes of fat pointers"
-}
-
-declare_lint! {
     pub TRIVIAL_CASTS,
     Allow,
     "detects trivial casts which could be removed"
@@ -162,15 +156,15 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub PATTERNS_IN_FNS_WITHOUT_BODY,
+    pub SAFE_PACKED_BORROWS,
     Warn,
-    "patterns in functions without body were erroneously allowed"
+    "safe borrows of fields of packed structs were was erroneously allowed"
 }
 
 declare_lint! {
-    pub EXTRA_REQUIREMENT_IN_IMPL,
-    Deny,
-    "detects extra requirements in impls that were erroneously allowed"
+    pub PATTERNS_IN_FNS_WITHOUT_BODY,
+    Warn,
+    "patterns in functions without body were erroneously allowed"
 }
 
 declare_lint! {
@@ -222,6 +216,18 @@ declare_lint! {
     "unnecessary use of an `unsafe` block"
 }
 
+declare_lint! {
+    pub UNUSED_MUT,
+    Warn,
+    "detect mut variables which don't need to be mutable"
+}
+
+declare_lint! {
+    pub COERCE_NEVER,
+    Deny,
+    "detect coercion to !"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -244,7 +250,6 @@ impl LintPass for HardwiredLints {
             UNUSED_FEATURES,
             STABLE_FEATURES,
             UNKNOWN_CRATE_TYPES,
-            FAT_PTR_TRANSMUTES,
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
@@ -254,8 +259,8 @@ impl LintPass for HardwiredLints {
             RENAMED_AND_REMOVED_LINTS,
             RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
             SAFE_EXTERN_STATICS,
+            SAFE_PACKED_BORROWS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
-            EXTRA_REQUIREMENT_IN_IMPL,
             LEGACY_DIRECTORY_OWNERSHIP,
             LEGACY_IMPORTS,
             LEGACY_CONSTRUCTOR_VISIBILITY,
@@ -263,7 +268,9 @@ impl LintPass for HardwiredLints {
             PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
             LATE_BOUND_LIFETIME_ARGUMENTS,
             DEPRECATED,
-            UNUSED_UNSAFE
+            UNUSED_UNSAFE,
+            UNUSED_MUT,
+            COERCE_NEVER
         )
     }
 }

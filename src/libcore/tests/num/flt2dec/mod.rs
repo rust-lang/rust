@@ -9,10 +9,7 @@
 // except according to those terms.
 
 use std::prelude::v1::*;
-use std::{str, mem, i16, f32, f64, fmt};
-use std::__rand as rand;
-use rand::{Rand, XorShiftRng};
-use rand::distributions::{IndependentSample, Range};
+use std::{str, i16, f32, f64, fmt};
 
 use core::num::flt2dec::{decode, DecodableFloat, FullDecoded, Decoded};
 use core::num::flt2dec::{MAX_SIG_DIGITS, round_up, Part, Formatted, Sign};
@@ -462,87 +459,6 @@ pub fn more_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8]
                       exp: 0, inclusive: true} => b"1", 18);
     check_shortest!(f{mant: 99_999_999_999_999_999, minus: 1, plus: 1,
                       exp: 0, inclusive: false} => b"99999999999999999", 17);
-}
-
-fn iterate<F, G, V>(func: &str, k: usize, n: usize, mut f: F, mut g: G, mut v: V) -> (usize, usize)
-        where F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
-              G: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
-              V: FnMut(usize) -> Decoded {
-    assert!(k <= 1024);
-
-    let mut npassed = 0; // f(x) = Some(g(x))
-    let mut nignored = 0; // f(x) = None
-
-    for i in 0..n {
-        if (i & 0xfffff) == 0 {
-            println!("in progress, {:x}/{:x} (ignored={} passed={} failed={})",
-                     i, n, nignored, npassed, i - nignored - npassed);
-        }
-
-        let decoded = v(i);
-        let mut buf1 = [0; 1024];
-        if let Some((len1, e1)) = f(&decoded, &mut buf1[..k]) {
-            let mut buf2 = [0; 1024];
-            let (len2, e2) = g(&decoded, &mut buf2[..k]);
-            if e1 == e2 && &buf1[..len1] == &buf2[..len2] {
-                npassed += 1;
-            } else {
-                println!("equivalence test failed, {:x}/{:x}: {:?} f(i)={}e{} g(i)={}e{}",
-                         i, n, decoded, str::from_utf8(&buf1[..len1]).unwrap(), e1,
-                                        str::from_utf8(&buf2[..len2]).unwrap(), e2);
-            }
-        } else {
-            nignored += 1;
-        }
-    }
-    println!("{}({}): done, ignored={} passed={} failed={}",
-             func, k, nignored, npassed, n - nignored - npassed);
-    assert!(nignored + npassed == n,
-            "{}({}): {} out of {} values returns an incorrect value!",
-            func, k, n - nignored - npassed, n);
-    (npassed, nignored)
-}
-
-pub fn f32_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
-        where F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
-              G: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
-    let mut rng: XorShiftRng = Rand::rand(&mut rand::thread_rng());
-    let f32_range = Range::new(0x0000_0001u32, 0x7f80_0000);
-    iterate("f32_random_equivalence_test", k, n, f, g, |_| {
-        let i: u32 = f32_range.ind_sample(&mut rng);
-        let x: f32 = unsafe {mem::transmute(i)};
-        decode_finite(x)
-    });
-}
-
-pub fn f64_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
-        where F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
-              G: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
-    let mut rng: XorShiftRng = Rand::rand(&mut rand::thread_rng());
-    let f64_range = Range::new(0x0000_0000_0000_0001u64, 0x7ff0_0000_0000_0000);
-    iterate("f64_random_equivalence_test", k, n, f, g, |_| {
-        let i: u64 = f64_range.ind_sample(&mut rng);
-        let x: f64 = unsafe {mem::transmute(i)};
-        decode_finite(x)
-    });
-}
-
-pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
-        where F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
-              G: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
-    // we have only 2^23 * (2^8 - 1) - 1 = 2,139,095,039 positive finite f32 values,
-    // so why not simply testing all of them?
-    //
-    // this is of course very stressful (and thus should be behind an `#[ignore]` attribute),
-    // but with `-C opt-level=3 -C lto` this only takes about an hour or so.
-
-    // iterate from 0x0000_0001 to 0x7f7f_ffff, i.e. all finite ranges
-    let (npassed, nignored) = iterate("f32_exhaustive_equivalence_test",
-                                      k, 0x7f7f_ffff, f, g, |i: usize| {
-        let x: f32 = unsafe {mem::transmute(i as u32 + 1)};
-        decode_finite(x)
-    });
-    assert_eq!((npassed, nignored), (2121451881, 17643158));
 }
 
 fn to_string_with_parts<F>(mut f: F) -> String

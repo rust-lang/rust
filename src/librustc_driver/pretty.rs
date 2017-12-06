@@ -77,6 +77,7 @@ pub enum PpFlowGraphMode {
 pub enum PpMode {
     PpmSource(PpSourceMode),
     PpmHir(PpSourceMode),
+    PpmHirTree(PpSourceMode),
     PpmFlowGraph(PpFlowGraphMode),
     PpmMir,
     PpmMirCFG,
@@ -93,6 +94,7 @@ impl PpMode {
             PpmSource(PpmExpandedIdentified) |
             PpmSource(PpmExpandedHygiene) |
             PpmHir(_) |
+            PpmHirTree(_) |
             PpmMir |
             PpmMirCFG |
             PpmFlowGraph(_) => true,
@@ -125,6 +127,7 @@ pub fn parse_pretty(sess: &Session,
         ("hir", true) => PpmHir(PpmNormal),
         ("hir,identified", true) => PpmHir(PpmIdentified),
         ("hir,typed", true) => PpmHir(PpmTyped),
+        ("hir-tree", true) => PpmHirTree(PpmNormal),
         ("mir", true) => PpmMir,
         ("mir-cfg", true) => PpmMirCFG,
         ("flowgraph", true) => PpmFlowGraph(PpFlowGraphMode::Default),
@@ -227,7 +230,9 @@ impl PpSourceMode {
                 f(&annotation, hir_map.forest.krate())
             }
             PpmTyped => {
-                abort_on_err(driver::phase_3_run_analysis_passes(sess,
+                let control = &driver::CompileController::basic();
+                abort_on_err(driver::phase_3_run_analysis_passes(control,
+                                                                 sess,
                                                                  cstore,
                                                                  hir_map.clone(),
                                                                  analysis.clone(),
@@ -633,13 +638,14 @@ impl UserIdentifiedItem {
 //    ambitious form of the closed RFC #1637. See also [#34511].
 //
 // [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
-pub struct ReplaceBodyWithLoop {
+pub struct ReplaceBodyWithLoop<'a> {
     within_static_or_const: bool,
+    sess: &'a Session,
 }
 
-impl ReplaceBodyWithLoop {
-    pub fn new() -> ReplaceBodyWithLoop {
-        ReplaceBodyWithLoop { within_static_or_const: false }
+impl<'a> ReplaceBodyWithLoop<'a> {
+    pub fn new(sess: &'a Session) -> ReplaceBodyWithLoop<'a> {
+        ReplaceBodyWithLoop { within_static_or_const: false, sess }
     }
 
     fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
@@ -659,10 +665,26 @@ impl ReplaceBodyWithLoop {
                     ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. }) |
                     ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. }) |
                     ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
-                    ast::TyKind::Tup(ref tys) => tys.iter().any(|subty| involves_impl_trait(subty)),
+                    ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
+                    ast::TyKind::Path(_, ref path) => path.segments.iter().any(|seg| {
+                        match seg.parameters.as_ref().map(|p| &**p) {
+                            None => false,
+                            Some(&ast::PathParameters::AngleBracketed(ref data)) =>
+                                any_involves_impl_trait(data.types.iter()) ||
+                                any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty)),
+                            Some(&ast::PathParameters::Parenthesized(ref data)) =>
+                                any_involves_impl_trait(data.inputs.iter()) ||
+                                any_involves_impl_trait(data.output.iter()),
+                        }
+                    }),
                     _ => false,
                 }
             }
+
+            fn any_involves_impl_trait<'a, I: Iterator<Item = &'a P<ast::Ty>>>(mut it: I) -> bool {
+                it.any(|subty| involves_impl_trait(subty))
+            }
+
             involves_impl_trait(ty)
         } else {
             false
@@ -670,7 +692,7 @@ impl ReplaceBodyWithLoop {
     }
 }
 
-impl fold::Folder for ReplaceBodyWithLoop {
+impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
     fn fold_item_kind(&mut self, i: ast::ItemKind) -> ast::ItemKind {
         let is_const = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
@@ -702,11 +724,13 @@ impl fold::Folder for ReplaceBodyWithLoop {
     }
 
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
-        fn expr_to_block(rules: ast::BlockCheckMode, e: Option<P<ast::Expr>>) -> P<ast::Block> {
+        fn expr_to_block(rules: ast::BlockCheckMode,
+                         e: Option<P<ast::Expr>>,
+                         sess: &Session) -> P<ast::Block> {
             P(ast::Block {
                 stmts: e.map(|e| {
                         ast::Stmt {
-                            id: ast::DUMMY_NODE_ID,
+                            id: sess.next_node_id(),
                             span: e.span,
                             node: ast::StmtKind::Expr(e),
                         }
@@ -714,22 +738,22 @@ impl fold::Folder for ReplaceBodyWithLoop {
                     .into_iter()
                     .collect(),
                 rules,
-                id: ast::DUMMY_NODE_ID,
+                id: sess.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
             })
         }
 
         if !self.within_static_or_const {
 
-            let empty_block = expr_to_block(BlockCheckMode::Default, None);
+            let empty_block = expr_to_block(BlockCheckMode::Default, None, self.sess);
             let loop_expr = P(ast::Expr {
                 node: ast::ExprKind::Loop(empty_block, None),
-                id: ast::DUMMY_NODE_ID,
+                id: self.sess.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
                 attrs: ast::ThinVec::new(),
             });
 
-            expr_to_block(b.rules, Some(loop_expr))
+            expr_to_block(b.rules, Some(loop_expr), self.sess)
 
         } else {
             fold::noop_fold_block(b, self)
@@ -808,9 +832,9 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     }
 }
 
-pub fn fold_crate(krate: ast::Crate, ppm: PpMode) -> ast::Crate {
+pub fn fold_crate(sess: &Session, krate: ast::Crate, ppm: PpMode) -> ast::Crate {
     if let PpmSource(PpmEveryBodyLoops) = ppm {
-        let mut fold = ReplaceBodyWithLoop::new();
+        let mut fold = ReplaceBodyWithLoop::new(sess);
         fold.fold_crate(krate)
     } else {
         krate
@@ -953,6 +977,23 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                 })
             }
 
+            (PpmHirTree(s), None) => {
+                let out: &mut Write = &mut out;
+                s.call_with_pp_support_hir(sess,
+                                           cstore,
+                                           hir_map,
+                                           analysis,
+                                           resolutions,
+                                           arena,
+                                           arenas,
+                                           output_filenames,
+                                           crate_name,
+                                           move |_annotation, krate| {
+                    debug!("pretty printing source code {:?}", s);
+                    write!(out, "{:#?}", krate)
+                })
+            }
+
             (PpmHir(s), Some(uii)) => {
                 let out: &mut Write = &mut out;
                 s.call_with_pp_support_hir(sess,
@@ -987,6 +1028,28 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     pp_state.s.eof()
                 })
             }
+
+            (PpmHirTree(s), Some(uii)) => {
+                let out: &mut Write = &mut out;
+                s.call_with_pp_support_hir(sess,
+                                           cstore,
+                                           hir_map,
+                                           analysis,
+                                           resolutions,
+                                           arena,
+                                           arenas,
+                                           output_filenames,
+                                           crate_name,
+                                           move |_annotation, _krate| {
+                    debug!("pretty printing source code {:?}", s);
+                    for node_id in uii.all_matching_node_ids(hir_map) {
+                        let node = hir_map.get(node_id);
+                        write!(out, "{:#?}", node)?;
+                    }
+                    Ok(())
+                })
+            }
+
             _ => unreachable!(),
         }
         .unwrap();
@@ -1020,7 +1083,9 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
 
     let mut out = Vec::new();
 
-    abort_on_err(driver::phase_3_run_analysis_passes(sess,
+    let control = &driver::CompileController::basic();
+    abort_on_err(driver::phase_3_run_analysis_passes(control,
+                                                     sess,
                                                      cstore,
                                                      hir_map.clone(),
                                                      analysis.clone(),

@@ -17,8 +17,12 @@ trait DummyTrait {
     fn dummy(&self) {}
 }
 
+auto trait AutoDummyTrait {}
+//~^ ERROR auto traits are experimental and possibly buggy
+
+#[allow(auto_impl)]
 impl DummyTrait for .. {}
-//~^ ERROR default trait implementations are experimental and possibly buggy
+//~^ ERROR auto trait implementations are experimental and possibly buggy
 
 impl !DummyTrait for DummyStruct {}
 //~^ ERROR negative trait bounds are not yet fully implemented; use marker types for now

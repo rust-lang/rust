@@ -10,4 +10,10 @@ filetime = "0.1"
 getopts = "0.2"
 log = "0.3"
 rustc-serialize = "0.3"
+
+[target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+miow = "0.2"
+winapi = "0.2"

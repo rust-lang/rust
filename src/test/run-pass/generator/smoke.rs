@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-emscripten
+// ignore-emscripten no threads support
 // compile-flags: --test
 
 #![feature(generators, generator_trait)]

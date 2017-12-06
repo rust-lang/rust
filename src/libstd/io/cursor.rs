@@ -230,6 +230,13 @@ impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
         Ok(n)
     }
 
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        let n = buf.len();
+        Read::read_exact(&mut self.fill_buf()?, buf)?;
+        self.pos += n as u64;
+        Ok(())
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -473,6 +480,24 @@ mod tests {
         let b: &[_] = &[5, 6, 7];
         assert_eq!(&buf[..3], b);
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_read_exact() {
+        let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        let reader = &mut &in_buf[..];
+        let mut buf = [];
+        assert!(reader.read_exact(&mut buf).is_ok());
+        let mut buf = [8];
+        assert!(reader.read_exact(&mut buf).is_ok());
+        assert_eq!(buf[0], 0);
+        assert_eq!(reader.len(), 7);
+        let mut buf = [0, 0, 0, 0, 0, 0, 0];
+        assert!(reader.read_exact(&mut buf).is_ok());
+        assert_eq!(buf, [1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(reader.len(), 0);
+        let mut buf = [0];
+        assert!(reader.read_exact(&mut buf).is_err());
     }
 
     #[test]

@@ -12,10 +12,12 @@
 
 trait MyTrait {}
 
+#[allow(auto_impl)]
 impl MyTrait for .. {}
 
 unsafe trait MyUnsafeTrait {}
 
+#[allow(auto_impl)]
 unsafe impl MyUnsafeTrait for .. {}
 
 struct ThisImplsTrait;

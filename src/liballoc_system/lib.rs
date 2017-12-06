@@ -14,7 +14,7 @@
 #![unstable(feature = "alloc_system",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
-            issue = "27783")]
+            issue = "32838")]
 #![feature(global_allocator)]
 #![feature(allocator_api)]
 #![feature(alloc)]
@@ -25,8 +25,7 @@
 #![rustc_alloc_kind = "lib"]
 
 // The minimum alignment guaranteed by the architecture. This value is used to
-// add fast paths for low alignment values. In practice, the alignment is a
-// constant at the call site and the branch will be optimized out.
+// add fast paths for low alignment values.
 #[cfg(all(any(target_arch = "x86",
               target_arch = "arm",
               target_arch = "mips",
@@ -34,12 +33,14 @@
               target_arch = "powerpc64",
               target_arch = "asmjs",
               target_arch = "wasm32")))]
+#[allow(dead_code)]
 const MIN_ALIGN: usize = 8;
 #[cfg(all(any(target_arch = "x86_64",
               target_arch = "aarch64",
               target_arch = "mips64",
               target_arch = "s390x",
               target_arch = "sparc64")))]
+#[allow(dead_code)]
 const MIN_ALIGN: usize = 16;
 
 extern crate alloc;
@@ -130,7 +131,7 @@ mod platform {
     unsafe impl<'a> Alloc for &'a System {
         #[inline]
         unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-            let ptr = if layout.align() <= MIN_ALIGN {
+            let ptr = if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
                 libc::malloc(layout.size()) as *mut u8
             } else {
                 aligned_malloc(&layout)
@@ -146,7 +147,7 @@ mod platform {
         unsafe fn alloc_zeroed(&mut self, layout: Layout)
             -> Result<*mut u8, AllocErr>
         {
-            if layout.align() <= MIN_ALIGN {
+            if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
                 let ptr = libc::calloc(layout.size(), 1) as *mut u8;
                 if !ptr.is_null() {
                     Ok(ptr)
@@ -178,7 +179,7 @@ mod platform {
                 })
             }
 
-            if new_layout.align() <= MIN_ALIGN {
+            if new_layout.align() <= MIN_ALIGN  && new_layout.align() <= new_layout.size(){
                 let ptr = libc::realloc(ptr as *mut libc::c_void, new_layout.size());
                 if !ptr.is_null() {
                     Ok(ptr as *mut u8)
@@ -455,6 +456,94 @@ mod platform {
                     Ok(())
                 }
             }
+        }
+    }
+}
+
+// This is an implementation of a global allocator on the wasm32 platform when
+// emscripten is not in use. In that situation there's no actual runtime for us
+// to lean on for allocation, so instead we provide our own!
+//
+// The wasm32 instruction set has two instructions for getting the current
+// amount of memory and growing the amount of memory. These instructions are the
+// foundation on which we're able to build an allocator, so we do so! Note that
+// the instructions are also pretty "global" and this is the "global" allocator
+// after all!
+//
+// The current allocator here is the `dlmalloc` crate which we've got included
+// in the rust-lang/rust repository as a submodule. The crate is a port of
+// dlmalloc.c from C to Rust and is basically just so we can have "pure Rust"
+// for now which is currently technically required (can't link with C yet).
+//
+// The crate itself provides a global allocator which on wasm has no
+// synchronization as there are no threads!
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+mod platform {
+    extern crate dlmalloc;
+
+    use alloc::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
+    use System;
+    use self::dlmalloc::GlobalDlmalloc;
+
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    unsafe impl<'a> Alloc for &'a System {
+        #[inline]
+        unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+            GlobalDlmalloc.alloc(layout)
+        }
+
+        #[inline]
+        unsafe fn alloc_zeroed(&mut self, layout: Layout)
+            -> Result<*mut u8, AllocErr>
+        {
+            GlobalDlmalloc.alloc_zeroed(layout)
+        }
+
+        #[inline]
+        unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+            GlobalDlmalloc.dealloc(ptr, layout)
+        }
+
+        #[inline]
+        unsafe fn realloc(&mut self,
+                          ptr: *mut u8,
+                          old_layout: Layout,
+                          new_layout: Layout) -> Result<*mut u8, AllocErr> {
+            GlobalDlmalloc.realloc(ptr, old_layout, new_layout)
+        }
+
+        #[inline]
+        fn usable_size(&self, layout: &Layout) -> (usize, usize) {
+            GlobalDlmalloc.usable_size(layout)
+        }
+
+        #[inline]
+        unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
+            GlobalDlmalloc.alloc_excess(layout)
+        }
+
+        #[inline]
+        unsafe fn realloc_excess(&mut self,
+                                 ptr: *mut u8,
+                                 layout: Layout,
+                                 new_layout: Layout) -> Result<Excess, AllocErr> {
+            GlobalDlmalloc.realloc_excess(ptr, layout, new_layout)
+        }
+
+        #[inline]
+        unsafe fn grow_in_place(&mut self,
+                                ptr: *mut u8,
+                                layout: Layout,
+                                new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+            GlobalDlmalloc.grow_in_place(ptr, layout, new_layout)
+        }
+
+        #[inline]
+        unsafe fn shrink_in_place(&mut self,
+                                  ptr: *mut u8,
+                                  layout: Layout,
+                                  new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+            GlobalDlmalloc.shrink_in_place(ptr, layout, new_layout)
         }
     }
 }

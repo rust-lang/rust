@@ -37,10 +37,4 @@ fn main() {
 
     f1.foo(1usize);
     //~^ error: the trait bound `Bar: Foo<usize>` is not satisfied
-    //~| help: the following implementations were found:
-    //~| help:   <Bar as Foo<i8>>
-    //~| help:   <Bar as Foo<i16>>
-    //~| help:   <Bar as Foo<i32>>
-    //~| help:   <Bar as Foo<u8>>
-    //~| help: and 2 others
 }

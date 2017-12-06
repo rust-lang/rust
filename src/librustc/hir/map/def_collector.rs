@@ -10,12 +10,14 @@
 
 use hir::map::definitions::*;
 use hir::def_id::{CRATE_DEF_INDEX, DefIndex, DefIndexAddressSpace};
+use session::CrateDisambiguator;
 
 use syntax::ast::*;
 use syntax::ext::hygiene::Mark;
 use syntax::visit;
 use syntax::symbol::keywords;
 use syntax::symbol::Symbol;
+use syntax::parse::token::{self, Token};
 
 use hir::map::{ITEM_LIKE_SPACE, REGULAR_SPACE};
 
@@ -43,7 +45,9 @@ impl<'a> DefCollector<'a> {
         }
     }
 
-    pub fn collect_root(&mut self, crate_name: &str, crate_disambiguator: &str) {
+    pub fn collect_root(&mut self,
+                        crate_name: &str,
+                        crate_disambiguator: CrateDisambiguator) {
         let root = self.definitions.create_root_def(crate_name,
                                                     crate_disambiguator);
         assert_eq!(root, CRATE_DEF_INDEX);
@@ -100,7 +104,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into
         let def_data = match i.node {
-            ItemKind::DefaultImpl(..) | ItemKind::Impl(..) =>
+            ItemKind::AutoImpl(..) | ItemKind::Impl(..) =>
                 DefPathData::Impl,
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) | ItemKind::Trait(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
@@ -114,21 +118,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.name.as_str()),
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
             ItemKind::GlobalAsm(..) => DefPathData::Misc,
-            ItemKind::Use(ref view_path) => {
-                match view_path.node {
-                    ViewPathGlob(..) => {}
-
-                    // FIXME(eddyb) Should use the real name. Which namespace?
-                    ViewPathSimple(..) => {}
-                    ViewPathList(_, ref imports) => {
-                        for import in imports {
-                            self.create_def(import.node.id,
-                                            DefPathData::Misc,
-                                            ITEM_LIKE_SPACE);
-                        }
-                    }
-                }
-                DefPathData::Misc
+            ItemKind::Use(..) => {
+                return visit::walk_item(self, i);
             }
         };
         let def = self.create_def(i.id, def_data, ITEM_LIKE_SPACE);
@@ -174,6 +165,11 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             }
             visit::walk_item(this, i);
         });
+    }
+
+    fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
+        self.create_def(id, DefPathData::Misc, ITEM_LIKE_SPACE);
+        visit::walk_use_tree(self, use_tree, id);
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
@@ -281,6 +277,19 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         match stmt.node {
             StmtKind::Mac(..) => self.visit_macro_invoc(stmt.id, false),
             _ => visit::walk_stmt(self, stmt),
+        }
+    }
+
+    fn visit_token(&mut self, t: Token) {
+        if let Token::Interpolated(nt) = t {
+            match nt.0 {
+                token::NtExpr(ref expr) => {
+                    if let ExprKind::Mac(..) = expr.node {
+                        self.visit_macro_invoc(expr.id, false);
+                    }
+                }
+                _ => {}
+            }
         }
     }
 }

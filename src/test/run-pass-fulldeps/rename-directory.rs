@@ -15,11 +15,11 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc_back;
+extern crate tempdir;
 
 use std::ffi::CString;
 use std::fs::{self, File};
-use rustc_back::tempdir::TempDir;
+use tempdir::TempDir;
 
 fn rename_directory() {
     let tmpdir = TempDir::new("rename_directory").ok().expect("rename_directory failed");

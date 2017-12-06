@@ -219,6 +219,76 @@
             "llvm": "vsumsws",
             "ret": "s32",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "madd",
+            "width": [128],
+            "llvm": "vmaddfp",
+            "ret": "f32",
+            "args": ["0", "0", "0"]
+        },
+        {
+            "intrinsic": "nmsub",
+            "width": [128],
+            "llvm": "vnmsubfp",
+            "ret": "f32",
+            "args": ["0", "0", "0"]
+        },
+        {
+            "intrinsic": "expte",
+            "width": [128],
+            "llvm": "vexptefp",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
+            "intrinsic": "floor",
+            "width": [128],
+            "llvm": "vrfim",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
+            "intrinsic": "ceil",
+            "width": [128],
+            "llvm": "vrfip",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
+            "intrinsic": "round",
+            "width": [128],
+            "llvm": "vrfin",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
+            "intrinsic": "trunc",
+            "width": [128],
+            "llvm": "vrfiz",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
+            "intrinsic": "loge",
+            "width": [128],
+            "llvm": "vlogefp",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
+            "intrinsic": "re",
+            "width": [128],
+            "llvm": "vrefp",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
+            "intrinsic": "rsqrte",
+            "width": [128],
+            "llvm": "vrsqrtefp",
+            "ret": "f32",
+            "args": ["0"]
         }
     ]
 }

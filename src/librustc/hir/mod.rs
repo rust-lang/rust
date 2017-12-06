@@ -45,6 +45,7 @@ use ty::AdtKind;
 
 use rustc_data_structures::indexed_vec;
 
+use serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -85,12 +86,36 @@ pub mod svh;
 /// the local_id part of the HirId changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
-         RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct HirId {
     pub owner: DefIndex,
     pub local_id: ItemLocalId,
 }
+
+impl serialize::UseSpecializedEncodable for HirId {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        let HirId {
+            owner,
+            local_id,
+        } = *self;
+
+        owner.encode(s)?;
+        local_id.encode(s)
+    }
+}
+
+impl serialize::UseSpecializedDecodable for HirId {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<HirId, D::Error> {
+        let owner = DefIndex::decode(d)?;
+        let local_id = ItemLocalId::decode(d)?;
+
+        Ok(HirId {
+            owner,
+            local_id
+        })
+    }
+}
+
 
 /// An `ItemLocalId` uniquely identifies something within a given "item-like",
 /// that is within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no
@@ -197,6 +222,10 @@ pub struct LifetimeDef {
     pub lifetime: Lifetime,
     pub bounds: HirVec<Lifetime>,
     pub pure_wrt_drop: bool,
+    // Indicates that the lifetime definition was synthetically added
+    // as a result of an in-band lifetime usage like
+    // `fn foo(x: &'a u8) -> &'a u8 { x }`
+    pub in_band: bool,
 }
 
 /// A "Path" is essentially Rust's notion of a name; for instance:
@@ -351,6 +380,7 @@ pub struct TyParam {
     pub default: Option<P<Ty>>,
     pub span: Span,
     pub pure_wrt_drop: bool,
+    pub synthetic: Option<SyntheticTyParamKind>,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -417,6 +447,13 @@ impl Generics {
         }
         return None;
     }
+}
+
+/// Synthetic Type Parameters are converted to an other form during lowering, this allows
+/// to track the original form they had. Usefull for error messages.
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum SyntheticTyParamKind {
+    ImplTrait
 }
 
 /// A `where` clause in a definition
@@ -491,7 +528,7 @@ pub struct Crate {
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
     pub bodies: BTreeMap<BodyId, Body>,
     pub trait_impls: BTreeMap<DefId, Vec<NodeId>>,
-    pub trait_default_impl: BTreeMap<DefId, NodeId>,
+    pub trait_auto_impl: BTreeMap<DefId, NodeId>,
 
     /// A list of the body ids written out in the order in which they
     /// appear in the crate. If you're going to process all the bodies
@@ -908,8 +945,6 @@ impl Stmt_ {
     }
 }
 
-// FIXME (pending discussion of #1697, #2178...): local should really be
-// a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Local {
@@ -1022,6 +1057,18 @@ impl Body {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum BodyOwnerKind {
+    /// Functions and methods.
+    Fn,
+
+    /// Constants and associated constants.
+    Const,
+
+    /// Initializer of a `static` item.
+    Static(Mutability),
+}
+
 /// An expression
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Expr {
@@ -1048,7 +1095,9 @@ pub enum Expr_ {
     /// A function call
     ///
     /// The first field resolves to the function itself (usually an `ExprPath`),
-    /// and the second field is the list of arguments
+    /// and the second field is the list of arguments.
+    /// This also represents calling the constructor of
+    /// tuple-like ADTs such as tuple structs and enum variants.
     ExprCall(P<Expr>, HirVec<Expr>),
     /// A method call (`x.foo::<'static, Bar, Baz>(a, b, c, d)`)
     ///
@@ -1289,7 +1338,6 @@ pub struct MethodSig {
     pub constness: Constness,
     pub abi: Abi,
     pub decl: P<FnDecl>,
-    pub generics: Generics,
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -1310,6 +1358,7 @@ pub struct TraitItem {
     pub name: Name,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
+    pub generics: Generics,
     pub node: TraitItemKind,
     pub span: Span,
 }
@@ -1354,6 +1403,7 @@ pub struct ImplItem {
     pub vis: Visibility,
     pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
+    pub generics: Generics,
     pub node: ImplItemKind,
     pub span: Span,
 }
@@ -1412,6 +1462,13 @@ pub struct BareFnTy {
     pub abi: Abi,
     pub lifetimes: HirVec<LifetimeDef>,
     pub decl: P<FnDecl>,
+    pub arg_names: HirVec<Spanned<Name>>,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct ExistTy {
+    pub generics: Generics,
+    pub bounds: TyParamBounds,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1439,9 +1496,21 @@ pub enum Ty_ {
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TyTraitObject(HirVec<PolyTraitRef>, Lifetime),
-    /// An `impl Bound1 + Bound2 + Bound3` type
-    /// where `Bound` is a trait or a lifetime.
-    TyImplTrait(TyParamBounds),
+    /// An exsitentially quantified (there exists a type satisfying) `impl
+    /// Bound1 + Bound2 + Bound3` type where `Bound` is a trait or a lifetime.
+    ///
+    /// The `ExistTy` structure emulates an
+    /// `abstract type Foo<'a, 'b>: MyTrait<'a, 'b>;`.
+    ///
+    /// The `HirVec<Lifetime>` is the list of lifetimes applied as parameters
+    /// to the `abstract type`, e.g. the `'c` and `'d` in `-> Foo<'c, 'd>`.
+    /// This list is only a list of lifetimes and not type parameters
+    /// because all in-scope type parameters are captured by `impl Trait`,
+    /// so they are resolved directly through the parent `Generics`.
+    TyImplTraitExistential(ExistTy, HirVec<Lifetime>),
+    /// An universally quantified (for all types satisfying) `impl
+    /// Bound1 + Bound2 + Bound3` type where `Bound` is a trait or a lifetime.
+    TyImplTraitUniversal(DefId, TyParamBounds),
     /// Unused for now
     TyTypeof(BodyId),
     /// TyInfer means the type should be inferred instead of it having been
@@ -1488,6 +1557,13 @@ pub struct FnDecl {
     /// True if this function has an `self`, `&self` or `&mut self` receiver
     /// (but not a `self: Xxx` one).
     pub has_implicit_self: bool,
+}
+
+/// Is the trait definition an auto trait?
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum IsAuto {
+    Yes,
+    No
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1801,12 +1877,12 @@ pub enum Item_ {
     /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
     ItemUnion(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Unsafety, Generics, TyParamBounds, HirVec<TraitItemRef>),
+    ItemTrait(IsAuto, Unsafety, Generics, TyParamBounds, HirVec<TraitItemRef>),
 
-    // Default trait implementations
+    /// Auto trait implementations
     ///
     /// `impl Trait for .. {}`
-    ItemDefaultImpl(Unsafety, TraitRef),
+    ItemAutoImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
              ImplPolarity,
@@ -1834,7 +1910,7 @@ impl Item_ {
             ItemUnion(..) => "union",
             ItemTrait(..) => "trait",
             ItemImpl(..) |
-            ItemDefaultImpl(..) => "item",
+            ItemAutoImpl(..) => "item",
         }
     }
 
@@ -1845,6 +1921,19 @@ impl Item_ {
             ItemEnum(..) => Some(AdtKind::Enum),
             _ => None,
         }
+    }
+
+    pub fn generics(&self) -> Option<&Generics> {
+        Some(match *self {
+            ItemFn(_, _, _, _, ref generics, _) |
+            ItemTy(_, ref generics) |
+            ItemEnum(_, ref generics) |
+            ItemStruct(_, ref generics) |
+            ItemUnion(_, ref generics) |
+            ItemTrait(_, _, ref generics, _, _) |
+            ItemImpl(_, _, _, ref generics, _, _, _)=> generics,
+            _ => return None
+        })
     }
 }
 
@@ -1904,6 +1993,8 @@ pub enum ForeignItem_ {
     /// A foreign static item (`static ext: u8`), with optional mutability
     /// (the boolean is true when mutable)
     ForeignItemStatic(P<Ty>, bool),
+    /// A foreign type
+    ForeignItemType,
 }
 
 impl ForeignItem_ {
@@ -1911,12 +2002,13 @@ impl ForeignItem_ {
         match *self {
             ForeignItemFn(..) => "foreign function",
             ForeignItemStatic(..) => "foreign static item",
+            ForeignItemType => "foreign type",
         }
     }
 }
 
 /// A free variable referred to in a function.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct Freevar {
     /// The variable being accessed free.
     pub def: Def,

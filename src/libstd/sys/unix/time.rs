@@ -60,7 +60,7 @@ impl Timespec {
         Timespec {
             t: libc::timespec {
                 tv_sec: secs,
-                tv_nsec: nsec as libc::c_long,
+                tv_nsec: nsec as _,
             },
         }
     }
@@ -83,7 +83,7 @@ impl Timespec {
         Timespec {
             t: libc::timespec {
                 tv_sec: secs,
-                tv_nsec: nsec as libc::c_long,
+                tv_nsec: nsec as _,
             },
         }
     }

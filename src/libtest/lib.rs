@@ -71,6 +71,7 @@ use std::thread;
 use std::time::{Instant, Duration};
 
 const TEST_WARN_TIMEOUT_S: u64 = 60;
+const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
@@ -433,7 +434,8 @@ Test Attributes:
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let opts = optgroups();
-    let matches = match opts.parse(&args[1..]) {
+    let args = args.get(1..).unwrap_or(args);
+    let matches = match opts.parse(args) {
         Ok(m) => m,
         Err(f) => return Some(Err(f.to_string())),
     };
@@ -614,7 +616,14 @@ impl<T: Write> ConsoleTestState<T> {
     pub fn write_short_result(&mut self, verbose: &str, quiet: &str, color: term::color::Color)
                               -> io::Result<()> {
         if self.quiet {
-            self.write_pretty(quiet, color)
+            self.write_pretty(quiet, color)?;
+            if self.current_test_count() % QUIET_MODE_MAX_COLUMN == QUIET_MODE_MAX_COLUMN - 1 {
+                // we insert a new line every 100 dots in order to flush the
+                // screen when dealing with line-buffered output (e.g. piping to
+                // `stamp` in the rust CI).
+                self.write_plain("\n")?;
+            }
+            Ok(())
         } else {
             self.write_pretty(verbose, color)?;
             self.write_plain("\n")
@@ -771,9 +780,12 @@ impl<T: Write> ConsoleTestState<T> {
         Ok(())
     }
 
+    fn current_test_count(&self) -> usize {
+        self.passed + self.failed + self.ignored + self.measured + self.allowed_fail
+    }
+
     pub fn write_run_finish(&mut self) -> io::Result<bool> {
-        assert!(self.passed + self.failed + self.ignored + self.measured +
-                    self.allowed_fail == self.total);
+        assert!(self.current_test_count() == self.total);
 
         if self.options.display_output {
             self.write_outputs()?;
@@ -1023,6 +1035,10 @@ fn stdout_isatty() -> bool {
     // FIXME: Implement isatty on Redox
     false
 }
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+fn stdout_isatty() -> bool {
+    false
+}
 #[cfg(unix)]
 fn stdout_isatty() -> bool {
     unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
@@ -1121,45 +1137,47 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
             }})
     };
 
-    while pending > 0 || !remaining.is_empty() {
-        while pending < concurrency && !remaining.is_empty() {
+    if concurrency == 1 {
+        while !remaining.is_empty() {
             let test = remaining.pop().unwrap();
-            if concurrency == 1 {
-                // We are doing one test at a time so we can print the name
-                // of the test before we run it. Useful for debugging tests
-                // that hang forever.
-                callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
-            }
-            let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
-            running_tests.insert(test.desc.clone(), timeout);
+            callback(TeWait(test.desc.clone(), test.testfn.padding()))?;
             run_test(opts, !opts.run_tests, test, tx.clone());
-            pending += 1;
+            let (test, result, stdout) = rx.recv().unwrap();
+            callback(TeResult(test, result, stdout))?;
         }
+    } else {
+        while pending > 0 || !remaining.is_empty() {
+            while pending < concurrency && !remaining.is_empty() {
+                let test = remaining.pop().unwrap();
+                let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
+                running_tests.insert(test.desc.clone(), timeout);
+                run_test(opts, !opts.run_tests, test, tx.clone());
+                pending += 1;
+            }
 
-        let mut res;
-        loop {
-            if let Some(timeout) = calc_timeout(&running_tests) {
-                res = rx.recv_timeout(timeout);
-                for test in get_timed_out_tests(&mut running_tests) {
-                    callback(TeTimeout(test))?;
-                }
-                if res != Err(RecvTimeoutError::Timeout) {
+            let mut res;
+            loop {
+                if let Some(timeout) = calc_timeout(&running_tests) {
+                    res = rx.recv_timeout(timeout);
+                    for test in get_timed_out_tests(&mut running_tests) {
+                        callback(TeTimeout(test))?;
+                    }
+                    if res != Err(RecvTimeoutError::Timeout) {
+                        break;
+                    }
+                } else {
+                    res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
                     break;
                 }
-            } else {
-                res = rx.recv().map_err(|_| RecvTimeoutError::Disconnected);
-                break;
             }
-        }
 
-        let (desc, result, stdout) = res.unwrap();
-        running_tests.remove(&desc);
+            let (desc, result, stdout) = res.unwrap();
+            running_tests.remove(&desc);
 
-        if concurrency != 1 {
             callback(TeWait(desc.clone(), PadNone))?;
+            callback(TeResult(desc, result, stdout))?;
+            pending -= 1;
         }
-        callback(TeResult(desc, result, stdout))?;
-        pending -= 1;
     }
 
     if opts.bench_benchmarks {
@@ -1221,6 +1239,11 @@ fn get_concurrency() -> usize {
     #[cfg(target_os = "redox")]
     fn num_cpus() -> usize {
         // FIXME: Implement num_cpus on Redox
+        1
+    }
+
+    #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+    fn num_cpus() -> usize {
         1
     }
 
@@ -1382,7 +1405,12 @@ pub fn run_test(opts: &TestOpts,
 
     let TestDescAndFn {desc, testfn} = test;
 
-    if force_ignore || desc.ignore {
+    let ignore_because_panic_abort =
+        cfg!(target_arch = "wasm32") &&
+        !cfg!(target_os = "emscripten") &&
+        desc.should_panic != ShouldPanic::No;
+
+    if force_ignore || desc.ignore || ignore_because_panic_abort {
         monitor_ch.send((desc, TrIgnored, Vec::new())).unwrap();
         return;
     }
@@ -1434,7 +1462,9 @@ pub fn run_test(opts: &TestOpts,
         // If the platform is single-threaded we're just going to run
         // the test synchronously, regardless of the concurrency
         // level.
-        let supports_threads = !cfg!(target_os = "emscripten");
+        let supports_threads =
+            !cfg!(target_os = "emscripten") &&
+            !cfg!(target_arch = "wasm32");
         if supports_threads {
             let cfg = thread::Builder::new().name(match name {
                 DynTestName(ref name) => name.clone(),
@@ -1554,16 +1584,14 @@ impl MetricMap {
 /// elimination.
 ///
 /// This function is a no-op, and does not even read from `dummy`.
-#[cfg(not(any(all(target_os = "nacl", target_arch = "le32"),
-              target_arch = "asmjs", target_arch = "wasm32")))]
+#[cfg(not(any(target_arch = "asmjs", target_arch = "wasm32")))]
 pub fn black_box<T>(dummy: T) -> T {
     // we need to "use" the argument in some way LLVM can't
     // introspect.
     unsafe { asm!("" : : "r"(&dummy)) }
     dummy
 }
-#[cfg(any(all(target_os = "nacl", target_arch = "le32"),
-          target_arch = "asmjs", target_arch = "wasm32"))]
+#[cfg(any(target_arch = "asmjs", target_arch = "wasm32"))]
 #[inline(never)]
 pub fn black_box<T>(dummy: T) -> T {
     dummy

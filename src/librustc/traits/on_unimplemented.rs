@@ -254,7 +254,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                         }
                     },
                     // `{:1}` and `{}` are not to be used
-                    Position::ArgumentIs(_) => {
+                    Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
                         span_err!(tcx.sess, span, E0231,
                                   "only named substitution \
                                    parameters are allowed");

@@ -12,11 +12,11 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc_back;
+extern crate tempdir;
 
 use std::env;
 use std::fs;
-use rustc_back::tempdir::TempDir;
+use tempdir::TempDir;
 
 fn main() {
     let td = TempDir::new("create-dir-all-bare").unwrap();

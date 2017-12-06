@@ -1,0 +1,16 @@
+error[E0252]: the name `ConstructorExtension` is defined multiple times
+  --> $DIR/issue-32354-suggest-import-rename.rs:20:5
+   |
+19 | use extension1::ConstructorExtension;
+   |     -------------------------------- previous import of the trait `ConstructorExtension` here
+20 | use extension2::ConstructorExtension; //~ ERROR is defined multiple times
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ConstructorExtension` reimported here
+   |
+   = note: `ConstructorExtension` must be defined only once in the type namespace of this module
+help: You can use `as` to change the binding name of the import
+   |
+20 | use extension2::ConstructorExtension as OtherConstructorExtension; //~ ERROR is defined multiple times
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

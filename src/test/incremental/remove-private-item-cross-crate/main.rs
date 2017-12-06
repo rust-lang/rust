@@ -17,8 +17,7 @@
 #![feature(rustc_attrs)]
 #![crate_type = "bin"]
 
-// FIXME(#42293) this regressed in #44142 but should get fixed with red/green
-// #![rustc_partition_reused(module="main", cfg="rpass2")]
+#![rustc_partition_reused(module="main", cfg="rpass2")]
 
 extern crate a;
 

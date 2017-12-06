@@ -1,7 +1,7 @@
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
   --> $DIR/issue-22644.rs:16:31
    |
-16 |     println!("{}", a as usize < long_name);
+16 |     println!("{}", a as usize < long_name); //~ ERROR `<` is interpreted as a start of generic
    |                    ---------- ^ --------- interpreted as generic arguments
    |                    |          |
    |                    |          not interpreted as comparison
@@ -17,68 +17,75 @@ error: `<` is interpreted as a start of generic arguments for `usize`, not a com
    |                      help: try comparing the casted value: `(a as usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:18:31
+  --> $DIR/issue-22644.rs:19:31
    |
-18 |     println!("{}", a as usize < 4);
+19 |     println!("{}", a as usize < 4); //~ ERROR `<` is interpreted as a start of generic
    |                    ---------- ^ - interpreted as generic arguments
    |                    |          |
    |                    |          not interpreted as comparison
    |                    help: try comparing the casted value: `(a as usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:20:31
+  --> $DIR/issue-22644.rs:21:31
    |
-20 |     println!("{}{}", a: usize < long_name, long_name);
+21 |     println!("{}{}", a: usize < long_name, long_name);
    |                      -------- ^ -------------------- interpreted as generic arguments
    |                      |        |
    |                      |        not interpreted as comparison
    |                      help: try comparing the casted value: `(a: usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:21:29
+  --> $DIR/issue-22644.rs:23:29
    |
-21 |     println!("{}", a: usize < 4);
+23 |     println!("{}", a: usize < 4); //~ ERROR `<` is interpreted as a start of generic
    |                    -------- ^ - interpreted as generic arguments
    |                    |        |
    |                    |        not interpreted as comparison
    |                    help: try comparing the casted value: `(a: usize)`
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:26:20
+  --> $DIR/issue-22644.rs:28:20
    |
-26 |                    <
+28 |                    < //~ ERROR `<` is interpreted as a start of generic
    |                    ^ not interpreted as comparison
-27 |                    4);
+29 |                    4);
    |                    - interpreted as generic arguments
-   |
 help: try comparing the casted value
    |
-23 |     println!("{}", (a
-24 |                    as
-25 |                    usize)
+25 |     println!("{}", (a
+26 |                    as
+27 |                    usize)
    |
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:35:20
+  --> $DIR/issue-22644.rs:37:20
    |
-35 |                    <
+37 |                    < //~ ERROR `<` is interpreted as a start of generic
    |                    ^ not interpreted as comparison
-36 |                    5);
+38 |                    5);
    |                    - interpreted as generic arguments
-   |
 help: try comparing the casted value
    |
-28 |     println!("{}", (a
-29 | 
-30 | 
-31 |                    as
+30 |     println!("{}", (a
+31 | 
 32 | 
-33 | 
+33 |                    as
+34 | 
+35 | 
  ...
 
-error: expected type, found `4`
-  --> $DIR/issue-22644.rs:38:28
+error: `<` is interpreted as a start of generic arguments for `usize`, not a shift
+  --> $DIR/issue-22644.rs:40:31
    |
-38 |     println!("{}", a: &mut 4);
+40 |     println!("{}", a as usize << long_name); //~ ERROR `<` is interpreted as a start of generic
+   |                    ---------- ^^ --------- interpreted as generic arguments
+   |                    |          |
+   |                    |          not interpreted as shift
+   |                    help: try shifting the casted value: `(a as usize)`
+
+error: expected type, found `4`
+  --> $DIR/issue-22644.rs:42:28
+   |
+42 |     println!("{}", a: &mut 4); //~ ERROR expected type, found `4`
    |                            ^ expecting a type here because of type ascription
 

@@ -90,7 +90,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::VariantItem(..) | clean::MethodItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
             clean::ConstantItem(..) | clean::UnionItem(..) |
-            clean::AssociatedConstItem(..) => {
+            clean::AssociatedConstItem(..) | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
                         return None;
@@ -116,7 +116,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             // handled in the `strip-priv-imports` pass
             clean::ExternCrateItem(..) | clean::ImportItem(..) => {}
 
-            clean::DefaultImplItem(..) | clean::ImplItem(..) => {}
+            clean::AutoImplItem(..) | clean::ImplItem(..) => {}
 
             // tymethods/macros have no control over privacy
             clean::MacroItem(..) | clean::TyMethodItem(..) => {}
@@ -182,6 +182,15 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
             if let Some(did) = imp.trait_.def_id() {
                 if did.is_local() && !self.retained.contains(&did) {
                     return None;
+                }
+            }
+            if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
+                for typaram in generics {
+                    if let Some(did) = typaram.def_id() {
+                        if did.is_local() && !self.retained.contains(&did) {
+                            return None;
+                        }
+                    }
                 }
             }
         }

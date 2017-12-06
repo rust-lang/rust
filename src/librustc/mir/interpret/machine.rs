@@ -2,7 +2,7 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use super::{EvalResult, EvalContext, Lvalue, PrimVal, ValTy};
+use super::{EvalResult, EvalContext, Place, PrimVal, ValTy};
 
 use {mir, ty};
 use syntax::codemap::Span;
@@ -20,6 +20,11 @@ pub trait Machine<'tcx>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKinds: ::std::fmt::Debug + PartialEq + Copy + Clone;
 
+    /// Produces the param env for this computation.
+    fn param_env<'a>(
+        ecx: &EvalContext<'a, 'tcx, Self>,
+    ) -> ty::ParamEnv<'tcx>;
+
     /// Entry point to all function calls.
     ///
     /// Returns Ok(true) when the function was handled completely
@@ -29,7 +34,7 @@ pub trait Machine<'tcx>: Sized {
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
@@ -40,9 +45,8 @@ pub trait Machine<'tcx>: Sized {
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
-        dest: Lvalue,
-        dest_ty: ty::Ty<'tcx>,
-        dest_layout: &'tcx ty::layout::Layout,
+        dest: Place,
+        dest_layout: ty::layout::TyLayout<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
 
@@ -70,7 +74,7 @@ pub trait Machine<'tcx>: Sized {
     fn box_alloc<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         ty: ty::Ty<'tcx>,
-        dest: Lvalue,
+        dest: Place,
     ) -> EvalResult<'tcx>;
 
     /// Called when trying to access a global declared with a `linkage` attribute

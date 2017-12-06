@@ -1,0 +1,398 @@
+{
+  "message": "cannot find type `Iter` in this scope",
+  "code": {
+    "code": "E0412",
+    "explanation": "
+The type name used is not in scope.
+
+Erroneous code examples:
+
+```compile_fail,E0412
+impl Something {} // error: type name `Something` is not in scope
+
+// or:
+
+trait Foo {
+    fn bar(N); // error: type name `N` is not in scope
+}
+
+// or:
+
+fn foo(x: T) {} // type name `T` is not in scope
+```
+
+To fix this error, please verify you didn't misspell the type name, you did
+declare it or imported it into the scope. Examples:
+
+```
+struct Something;
+
+impl Something {} // ok!
+
+// or:
+
+trait Foo {
+    type N;
+
+    fn bar(_: Self::N); // ok!
+}
+
+// or:
+
+fn foo<T>(x: T) {} // ok!
+```
+
+Another case that causes this error is when a type is imported into a parent
+module. To fix this, you can follow the suggestion and use File directly or
+`use super::File;` which will import the types from the parent namespace. An
+example that causes this error is below:
+
+```compile_fail,E0412
+use std::fs::File;
+
+mod foo {
+    fn some_function(f: File) {}
+}
+```
+
+```
+use std::fs::File;
+
+mod foo {
+    // either
+    use super::File;
+    // or
+    // use std::fs::File;
+    fn foo(f: File) {}
+}
+# fn main() {} // don't insert it for us; that'll break imports
+```
+"
+  },
+  "level": "error",
+  "spans": [
+    {
+      "file_name": "$DIR/use_suggestion_json.rs",
+      "byte_start": 888,
+      "byte_end": 892,
+      "line_start": 20,
+      "line_end": 20,
+      "column_start": 12,
+      "column_end": 16,
+      "is_primary": true,
+      "text": [
+        {
+          "text": "    let x: Iter;",
+          "highlight_start": 12,
+          "highlight_end": 16
+        }
+      ],
+      "label": "not found in this scope",
+      "suggested_replacement": null,
+      "expansion": null
+    }
+  ],
+  "children": [
+    {
+      "message": "possible candidates are found in other modules, you can import them into scope",
+      "code": null,
+      "level": "help",
+      "spans": [
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::collections::binary_heap::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::collections::btree_map::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::collections::btree_set::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::collections::hash_map::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::collections::hash_set::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::collections::linked_list::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::collections::vec_deque::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::option::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::path::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::result::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::slice::Iter;
+
+",
+          "expansion": null
+        },
+        {
+          "file_name": "$DIR/use_suggestion_json.rs",
+          "byte_start": 865,
+          "byte_end": 865,
+          "line_start": 19,
+          "line_end": 19,
+          "column_start": 1,
+          "column_end": 1,
+          "is_primary": true,
+          "text": [
+            {
+              "text": "fn main() {",
+              "highlight_start": 1,
+              "highlight_end": 1
+            }
+          ],
+          "label": null,
+          "suggested_replacement": "use std::sync::mpsc::Iter;
+
+",
+          "expansion": null
+        }
+      ],
+      "children": [],
+      "rendered": null
+    }
+  ],
+  "rendered": "error[E0412]: cannot find type `Iter` in this scope
+  --> $DIR/use_suggestion_json.rs:20:12
+   |
+20 |     let x: Iter;
+   |            ^^^^ not found in this scope
+help: possible candidates are found in other modules, you can import them into scope
+   |
+19 | use std::collections::binary_heap::Iter;
+   |
+19 | use std::collections::btree_map::Iter;
+   |
+19 | use std::collections::btree_set::Iter;
+   |
+19 | use std::collections::hash_map::Iter;
+   |
+and 8 other candidates
+
+"
+}
+{
+  "message": "aborting due to previous error",
+  "code": null,
+  "level": "error",
+  "spans": [],
+  "children": [],
+  "rendered": "error: aborting due to previous error
+
+"
+}

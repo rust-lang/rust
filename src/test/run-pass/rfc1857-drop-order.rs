@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled with panic=abort by default
+
 #![allow(dead_code, unreachable_code)]
 
 use std::cell::RefCell;

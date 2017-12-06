@@ -26,7 +26,7 @@
 
 use self::TargetLint::*;
 
-use rustc_back::slice;
+use std::slice;
 use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Level, Lint, LintId, LintPass, LintBuffer};
 use lint::levels::{LintLevelSets, LintLevelsBuilder};
@@ -34,7 +34,8 @@ use middle::privacy::AccessLevels;
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use session::{config, early_error, Session};
 use traits::Reveal;
-use ty::{self, TyCtxt};
+use ty::{self, TyCtxt, Ty};
+use ty::layout::{LayoutError, LayoutOf, TyLayout};
 use util::nodemap::FxHashMap;
 
 use std::default::Default as StdDefault;
@@ -307,7 +308,7 @@ impl LintStore {
                     Some(ids) => CheckLintNameResult::Ok(&ids.0),
                 }
             }
-            Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::ref_slice(id)),
+            Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
         }
     }
 }
@@ -352,6 +353,9 @@ pub struct LateContext<'a, 'tcx: 'a> {
     lint_sess: LintSession<'tcx, LateLintPassObject>,
 
     last_ast_node_with_lint_attrs: ast::NodeId,
+
+    /// Generic type parameters in scope for the item we are in.
+    pub generics: Option<&'tcx hir::Generics>,
 }
 
 /// Context for lint checking of the AST, after expansion, before lowering to
@@ -623,6 +627,14 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a LateContext<'a, 'tcx> {
+    type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+        (self.tcx, self.param_env.reveal_all()).layout_of(ty)
+    }
+}
+
 impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
@@ -646,13 +658,16 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item) {
+        let generics = self.generics.take();
+        self.generics = it.node.generics();
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
             cx.with_param_env(it.id, |cx| {
                 run_lints!(cx, check_item, late_passes, it);
                 hir_visit::walk_item(cx, it);
                 run_lints!(cx, check_item_post, late_passes, it);
             });
-        })
+        });
+        self.generics = generics;
     }
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem) {
@@ -774,6 +789,8 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+        let generics = self.generics.take();
+        self.generics = Some(&trait_item.generics);
         self.with_lint_attrs(trait_item.id, &trait_item.attrs, |cx| {
             cx.with_param_env(trait_item.id, |cx| {
                 run_lints!(cx, check_trait_item, late_passes, trait_item);
@@ -781,9 +798,12 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
                 run_lints!(cx, check_trait_item_post, late_passes, trait_item);
             });
         });
+        self.generics = generics;
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        let generics = self.generics.take();
+        self.generics = Some(&impl_item.generics);
         self.with_lint_attrs(impl_item.id, &impl_item.attrs, |cx| {
             cx.with_param_env(impl_item.id, |cx| {
                 run_lints!(cx, check_impl_item, late_passes, impl_item);
@@ -791,6 +811,7 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
                 run_lints!(cx, check_impl_item_post, late_passes, impl_item);
             });
         });
+        self.generics = generics;
     }
 
     fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
@@ -960,12 +981,6 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         ast_visit::walk_path(self, p);
     }
 
-    fn visit_path_list_item(&mut self, prefix: &'a ast::Path, item: &'a ast::PathListItem) {
-        run_lints!(self, check_path_list_item, early_passes, item);
-        self.check_id(item.node.id);
-        ast_visit::walk_path_list_item(self, prefix, item);
-    }
-
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         run_lints!(self, check_attribute, early_passes, attr);
     }
@@ -991,6 +1006,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
         last_ast_node_with_lint_attrs: ast::CRATE_NODE_ID,
+        generics: None,
     };
 
     // Visit the whole crate.

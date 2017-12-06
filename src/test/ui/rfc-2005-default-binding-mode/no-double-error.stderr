@@ -1,0 +1,8 @@
+error[E0599]: no associated item named `XXX` found for type `u32` in the current scope
+  --> $DIR/no-double-error.rs:18:9
+   |
+18 |         u32::XXX => { } //~ ERROR no associated item named
+   |         ^^^^^^^^ associated item not found in `u32`
+
+error: aborting due to previous error
+

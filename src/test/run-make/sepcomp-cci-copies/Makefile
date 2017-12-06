@@ -5,5 +5,6 @@
 
 all:
 	$(RUSTC) cci_lib.rs
-	$(RUSTC) foo.rs --emit=llvm-ir -C codegen-units=3
-	[ "$$(cat "$(TMPDIR)"/foo.?.ll | grep -c define\ .*cci_fn)" -eq "2" ]
+	$(RUSTC) foo.rs --emit=llvm-ir -C codegen-units=3 \
+		-Z inline-in-all-cgus
+	[ "$$(cat "$(TMPDIR)"/foo.*.ll | grep -c define\ .*cci_fn)" -eq "2" ]

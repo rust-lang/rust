@@ -16,9 +16,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-// FIXME: after next stage0, change RangeInclusive { ... } back to ..=
-use ops::RangeInclusive;
-
 // How this module is organized.
 //
 // The library infrastructure for slices is fairly messy. There's
@@ -43,7 +40,7 @@ use cmp;
 use fmt;
 use intrinsics::assume;
 use iter::*;
-use ops::{FnMut, self};
+use ops::{FnMut, Try, self};
 use option::Option;
 use option::Option::{None, Some};
 use result::Result;
@@ -394,23 +391,25 @@ impl<T> SliceExt for [T] {
     fn binary_search_by<'a, F>(&'a self, mut f: F) -> Result<usize, usize>
         where F: FnMut(&'a T) -> Ordering
     {
-        let mut base = 0usize;
-        let mut s = self;
-
-        loop {
-            let (head, tail) = s.split_at(s.len() >> 1);
-            if tail.is_empty() {
-                return Err(base)
-            }
-            match f(&tail[0]) {
-                Less => {
-                    base += head.len() + 1;
-                    s = &tail[1..];
-                }
-                Greater => s = head,
-                Equal => return Ok(base + head.len()),
-            }
+        let s = self;
+        let mut size = s.len();
+        if size == 0 {
+            return Err(0);
         }
+        let mut base = 0usize;
+        while size > 1 {
+            let half = size / 2;
+            let mid = base + half;
+            // mid is always in [0, size).
+            // mid >= 0: by definition
+            // mid < size: mid = size / 2 + size / 4 + size / 8 ...
+            let cmp = f(unsafe { s.get_unchecked(mid) });
+            base = if cmp == Greater { base } else { mid };
+            size -= half;
+        }
+        // base is always in [0, size) because base <= mid.
+        let cmp = f(unsafe { s.get_unchecked(base) });
+        if cmp == Equal { Ok(base) } else { Err(base + (cmp == Less) as usize) }
     }
 
     #[inline]
@@ -1047,32 +1046,32 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        (RangeInclusive { start: 0, end: self.end }).get(slice)
+        (0..=self.end).get(slice)
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        (RangeInclusive { start: 0, end: self.end }).get_mut(slice)
+        (0..=self.end).get_mut(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
-        (RangeInclusive { start: 0, end: self.end }).get_unchecked(slice)
+        (0..=self.end).get_unchecked(slice)
     }
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
-        (RangeInclusive { start: 0, end: self.end }).get_unchecked_mut(slice)
+        (0..=self.end).get_unchecked_mut(slice)
     }
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        (RangeInclusive { start: 0, end: self.end }).index(slice)
+        (0..=self.end).index(slice)
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        (RangeInclusive { start: 0, end: self.end }).index_mut(slice)
+        (0..=self.end).index_mut(slice)
     }
 }
 
@@ -1166,62 +1165,37 @@ macro_rules! iterator {
                 self.next_back()
             }
 
-            fn all<F>(&mut self, mut predicate: F) -> bool
-                where F: FnMut(Self::Item) -> bool,
+            #[inline]
+            fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
             {
-                self.search_while(true, move |elt| {
-                    if predicate(elt) {
-                        SearchWhile::Continue
-                    } else {
-                        SearchWhile::Done(false)
+                // manual unrolling is needed when there are conditional exits from the loop
+                let mut accum = init;
+                unsafe {
+                    while ptrdistance(self.ptr, self.end) >= 4 {
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
                     }
-                })
+                    while self.ptr != self.end {
+                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                    }
+                }
+                Try::from_ok(accum)
             }
 
-            fn any<F>(&mut self, mut predicate: F) -> bool
-                where F: FnMut(Self::Item) -> bool,
+            #[inline]
+            fn fold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
+                where Fold: FnMut(Acc, Self::Item) -> Acc,
             {
-                !self.all(move |elt| !predicate(elt))
-            }
-
-            fn find<F>(&mut self, mut predicate: F) -> Option<Self::Item>
-                where F: FnMut(&Self::Item) -> bool,
-            {
-                self.search_while(None, move |elt| {
-                    if predicate(&elt) {
-                        SearchWhile::Done(Some(elt))
-                    } else {
-                        SearchWhile::Continue
-                    }
-                })
-            }
-
-            fn position<F>(&mut self, mut predicate: F) -> Option<usize>
-                where F: FnMut(Self::Item) -> bool,
-            {
-                let mut index = 0;
-                self.search_while(None, move |elt| {
-                    if predicate(elt) {
-                        SearchWhile::Done(Some(index))
-                    } else {
-                        index += 1;
-                        SearchWhile::Continue
-                    }
-                })
-            }
-
-            fn rposition<F>(&mut self, mut predicate: F) -> Option<usize>
-                where F: FnMut(Self::Item) -> bool,
-            {
-                let mut index = self.len();
-                self.rsearch_while(None, move |elt| {
-                    index -= 1;
-                    if predicate(elt) {
-                        SearchWhile::Done(Some(index))
-                    } else {
-                        SearchWhile::Continue
-                    }
-                })
+                // Let LLVM unroll this, rather than using the default
+                // impl that would force the manual unrolling above
+                let mut accum = init;
+                while let Some(x) = self.next() {
+                    accum = f(accum, x);
+                }
+                accum
             }
         }
 
@@ -1243,59 +1217,37 @@ macro_rules! iterator {
                 }
             }
 
-            fn rfind<F>(&mut self, mut predicate: F) -> Option<Self::Item>
-                where F: FnMut(&Self::Item) -> bool,
-            {
-                self.rsearch_while(None, move |elt| {
-                    if predicate(&elt) {
-                        SearchWhile::Done(Some(elt))
-                    } else {
-                        SearchWhile::Continue
-                    }
-                })
-            }
-
-        }
-
-        // search_while is a generalization of the internal iteration methods.
-        impl<'a, T> $name<'a, T> {
-            // search through the iterator's element using the closure `g`.
-            // if no element was found, return `default`.
-            fn search_while<Acc, G>(&mut self, default: Acc, mut g: G) -> Acc
-                where Self: Sized,
-                      G: FnMut($elem) -> SearchWhile<Acc>
+            #[inline]
+            fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+                Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
             {
                 // manual unrolling is needed when there are conditional exits from the loop
+                let mut accum = init;
                 unsafe {
                     while ptrdistance(self.ptr, self.end) >= 4 {
-                        search_while!(g($mkref!(self.ptr.post_inc())));
-                        search_while!(g($mkref!(self.ptr.post_inc())));
-                        search_while!(g($mkref!(self.ptr.post_inc())));
-                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
                     }
                     while self.ptr != self.end {
-                        search_while!(g($mkref!(self.ptr.post_inc())));
+                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
                     }
                 }
-                default
+                Try::from_ok(accum)
             }
 
-            fn rsearch_while<Acc, G>(&mut self, default: Acc, mut g: G) -> Acc
-                where Self: Sized,
-                      G: FnMut($elem) -> SearchWhile<Acc>
+            #[inline]
+            fn rfold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
+                where Fold: FnMut(Acc, Self::Item) -> Acc,
             {
-                unsafe {
-                    while ptrdistance(self.ptr, self.end) >= 4 {
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                    }
-                    while self.ptr != self.end {
-                        search_while!(g($mkref!(self.end.pre_dec())));
-                    }
+                // Let LLVM unroll this, rather than using the default
+                // impl that would force the manual unrolling above
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x);
                 }
-                default
+                accum
             }
         }
     }
@@ -1327,24 +1279,6 @@ macro_rules! make_mut_slice {
             unsafe { from_raw_parts_mut(start, len) }
         }
     }}
-}
-
-// An enum used for controlling the execution of `.search_while()`.
-enum SearchWhile<T> {
-    // Continue searching
-    Continue,
-    // Fold is complete and will return this value
-    Done(T),
-}
-
-// helper macro for search while's control flow
-macro_rules! search_while {
-    ($e:expr) => {
-        match $e {
-            SearchWhile::Continue => { }
-            SearchWhile::Done(done) => return done,
-        }
-    }
 }
 
 /// Immutable slice iterator
@@ -1654,7 +1588,7 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for Split<'a, T, P> where P: FnMut(&T
     }
 }
 
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     fn clone(&self) -> Split<'a, T, P> {
@@ -2093,7 +2027,7 @@ pub struct Windows<'a, T:'a> {
     size: usize
 }
 
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Windows<'a, T> {
     fn clone(&self) -> Windows<'a, T> {
@@ -2195,7 +2129,7 @@ pub struct Chunks<'a, T:'a> {
     size: usize
 }
 
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Chunks<'a, T> {
     fn clone(&self) -> Chunks<'a, T> {
@@ -2448,6 +2382,22 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
     mem::transmute(Repr { data: p, len: len })
+}
+
+/// Converts a reference to T into a slice of length 1 (without copying).
+#[unstable(feature = "from_ref", issue = "45703")]
+pub fn from_ref<T>(s: &T) -> &[T] {
+    unsafe {
+        from_raw_parts(s, 1)
+    }
+}
+
+/// Converts a reference to T into a slice of length 1 (without copying).
+#[unstable(feature = "from_ref", issue = "45703")]
+pub fn from_ref_mut<T>(s: &mut T) -> &mut [T] {
+    unsafe {
+        from_raw_parts_mut(s, 1)
+    }
 }
 
 // This function is public only because there is no other way to unit test heapsort.

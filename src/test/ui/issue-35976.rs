@@ -23,7 +23,6 @@ mod private {
 fn bar(arg: Box<private::Future>) {
     arg.wait();
     //~^ ERROR the `wait` method cannot be invoked on a trait object
-    //~| another candidate was found in the following trait, perhaps add a `use` for it:
 }
 
 fn main() {

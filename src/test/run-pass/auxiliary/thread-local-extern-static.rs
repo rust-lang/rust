@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(cfg_target_thread_local, const_fn, thread_local)]
-#![feature(const_cell_new)]
 #![crate_type = "lib"]
 
 #[cfg(target_thread_local)]

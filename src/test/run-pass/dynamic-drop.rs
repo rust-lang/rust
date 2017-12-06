@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(untagged_unions)]
+// ignore-wasm32-bare compiled with panic=abort by default
+
+#![feature(generators, generator_trait, untagged_unions, slice_patterns, advanced_slice_patterns)]
 
 use std::cell::{Cell, RefCell};
+use std::ops::Generator;
 use std::panic;
 use std::usize;
 
@@ -161,9 +164,62 @@ fn vec_simple(a: &Allocator) {
     let _x = vec![a.alloc(), a.alloc(), a.alloc(), a.alloc()];
 }
 
+fn generator(a: &Allocator, run_count: usize) {
+    assert!(run_count < 4);
+
+    let mut gen = || {
+        (a.alloc(),
+         yield a.alloc(),
+         a.alloc(),
+         yield a.alloc()
+         );
+    };
+    for _ in 0..run_count {
+        gen.resume();
+    }
+}
+
+fn mixed_drop_and_nondrop(a: &Allocator) {
+    // check that destructor panics handle drop
+    // and non-drop blocks in the same scope correctly.
+    //
+    // Surprisingly enough, this used to not work.
+    let (x, y, z);
+    x = a.alloc();
+    y = 5;
+    z = a.alloc();
+}
+
 #[allow(unreachable_code)]
 fn vec_unreachable(a: &Allocator) {
     let _x = vec![a.alloc(), a.alloc(), a.alloc(), return];
+}
+
+fn slice_pattern_first(a: &Allocator) {
+    let[_x, ..] = [a.alloc(), a.alloc(), a.alloc()];
+}
+
+fn slice_pattern_middle(a: &Allocator) {
+    let[_, _x, _] = [a.alloc(), a.alloc(), a.alloc()];
+}
+
+fn slice_pattern_two(a: &Allocator) {
+    let[_x, _, _y, _] = [a.alloc(), a.alloc(), a.alloc(), a.alloc()];
+}
+
+fn slice_pattern_last(a: &Allocator) {
+    let[.., _y] = [a.alloc(), a.alloc(), a.alloc(), a.alloc()];
+}
+
+fn slice_pattern_one_of(a: &Allocator, i: usize) {
+    let array = [a.alloc(), a.alloc(), a.alloc(), a.alloc()];
+    let _x = match i {
+        0 => { let [a, ..] = array; a }
+        1 => { let [_, a, ..] = array; a }
+        2 => { let [_, _, a, _] = array; a }
+        3 => { let [_, _, _, a] = array; a }
+        _ => panic!("unmatched"),
+    };
 }
 
 fn run_test<F>(mut f: F)
@@ -227,6 +283,22 @@ fn main() {
 
     run_test(|a| field_assignment(a, false));
     run_test(|a| field_assignment(a, true));
+
+    run_test(|a| generator(a, 0));
+    run_test(|a| generator(a, 1));
+    run_test(|a| generator(a, 2));
+    run_test(|a| generator(a, 3));
+
+    run_test(|a| mixed_drop_and_nondrop(a));
+
+    run_test(|a| slice_pattern_first(a));
+    run_test(|a| slice_pattern_middle(a));
+    run_test(|a| slice_pattern_two(a));
+    run_test(|a| slice_pattern_last(a));
+    run_test(|a| slice_pattern_one_of(a, 0));
+    run_test(|a| slice_pattern_one_of(a, 1));
+    run_test(|a| slice_pattern_one_of(a, 2));
+    run_test(|a| slice_pattern_one_of(a, 3));
 
     run_test_nopanic(|a| union1(a));
 }

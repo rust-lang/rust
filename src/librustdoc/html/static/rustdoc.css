@@ -89,7 +89,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -111,7 +111,10 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 h3.impl, h3.method, h3.type {
 	margin-top: 15px;
 }
-h1, h2, h3, h4, .sidebar, a.source, .search-input, .content table :not(code)>a, .collapse-toggle {
+
+h1, h2, h3, h4,
+.sidebar, a.source, .search-input, .content table :not(code)>a,
+.collapse-toggle, ul.item-list > li > .out-of-band {
 	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -138,8 +141,11 @@ code, pre {
 	border-radius: 3px;
 	padding: 0 0.2em;
 }
-.docblock pre code, .docblock-short pre code {
+.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;
+}
+.docblock code.spotlight :last-child {
+	padding-bottom: 0.6em;
 }
 pre {
 	padding: 14px;
@@ -168,10 +174,12 @@ nav.sub {
 
 .sidebar {
 	width: 200px;
-	position: absolute;
+	position: fixed;
 	left: 0;
 	top: 0;
-	min-height: 100%;
+	height: 100vh;
+	overflow: auto;
+	z-index: 1;
 }
 
 .sidebar .current {
@@ -184,20 +192,27 @@ nav.sub {
 
 .js-only, .hidden { display: none !important; }
 
-.sidebar {
-	padding: 10px;
-}
 .sidebar img {
 	margin: 20px auto;
 	display: block;
+	margin-top: 10px;
 }
 
 .sidebar .location {
 	border: 1px solid;
 	font-size: 17px;
-	margin: 30px 0 20px 0;
+	margin: 30px 10px 20px 10px;
 	text-align: center;
 	word-wrap: break-word;
+}
+
+.sidebar .version {
+	font-size: 15px;
+	text-align: center;
+	border-bottom: #DDDDDD 1px solid;
+	overflow-wrap: break-word;
+	word-wrap: break-word; /* deprecated */
+	word-break: break-word; /* Chrome, non-standard */
 }
 
 .location:empty {
@@ -207,7 +222,7 @@ nav.sub {
 .location a:first-child { font-weight: 500; }
 
 .block {
-	padding: 0 10px;
+	padding: 0;
 	margin-bottom: 14px;
 }
 .block h2, .block h3 {
@@ -216,7 +231,7 @@ nav.sub {
 	text-align: center;
 }
 .block ul, .block li {
-	margin: 0;
+	margin: 0 10px;
 	padding: 0;
 	list-style: none;
 }
@@ -230,6 +245,23 @@ nav.sub {
 	font-size: 14px;
 	font-weight: 300;
 	transition: border 500ms ease-out;
+}
+
+.sidebar-title {
+	border-top: 1px solid #777;
+	border-bottom: 1px solid #777;
+	text-align: center;
+	font-size: 17px;
+	margin-bottom: 5px;
+}
+
+.sidebar-links {
+	margin-bottom: 15px;
+}
+
+.sidebar-links > a {
+	padding-left: 10px;
+	width: 100%;
 }
 
 .content {
@@ -310,6 +342,10 @@ h4.method > .out-of-band {
 	font-size: 19px;
 }
 
+ul.item-list > li > .out-of-band {
+	font-size: 19px;
+}
+
 h4 > code, h3 > code, .invisible > code {
 	position: inherit;
 }
@@ -378,7 +414,7 @@ h4 > code, h3 > code, .invisible > code {
 	padding: 0;
 }
 
-.content .item-list li { margin-bottom: 3px; }
+.content .item-list li { margin-bottom: 1em; }
 
 .content .multi-column {
 	-moz-column-count: 5;
@@ -403,10 +439,11 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div { margin-left: 40px; }
+.content .methods > div:not(.important-traits) { margin-left: 40px; }
 
 .content .impl-items .docblock, .content .impl-items .stability {
 	margin-left: 40px;
+	margin-bottom: .6em;
 }
 .content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 	margin-left: 20px;
@@ -513,7 +550,8 @@ a {
 .content .search-results td:first-child { padding-right: 0; }
 .content .search-results td:first-child a { padding-right: 10px; }
 
-tr.result span.primitive::after { content: ' (primitive type)'; font-style: italic; color: black;
+tr.result span.primitive::after {
+	content: ' (primitive type)'; font-style: italic; color: black;
 }
 
 body.blur > :not(#help) {
@@ -536,7 +574,7 @@ body.blur > :not(#help) {
 	flex: 0 0 auto;
 	box-shadow: 0 0 6px rgba(0,0,0,.2);
 	width: 550px;
-	height: 330px;
+	height: 354px;
 	border: 1px solid;
 }
 #help dt {
@@ -549,13 +587,14 @@ body.blur > :not(#help) {
 	display: block;
 	margin-top: -1px;
 }
-#help dd { margin: 5px 33px; }
+#help dd { margin: 5px 35px; }
 #help .infos { padding-left: 0; }
 #help h1, #help h2 { margin-top: 0; }
 #help > div div {
 	width: 50%;
 	float: left;
 	padding: 20px;
+	padding-left: 17px;
 }
 
 .stab {
@@ -729,6 +768,15 @@ span.since {
 	margin-top: 5px;
 }
 
+.docblock > .section-header:first-child {
+	margin-left: 15px;
+	margin-top: 0;
+}
+
+.docblock > .section-header:first-child:hover > a:before {
+	left: -10px;
+}
+
 .enum > .collapsed, .struct > .collapsed {
 	margin-bottom: 25px;
 }
@@ -757,17 +805,19 @@ span.since {
 	}
 
 	.sidebar {
-		height: 40px;
+		height: 45px;
 		min-height: 40px;
-		width: 100%;
-		margin: 0px;
-		padding: 0px;
+		width: calc(100% + 30px);
+		margin: 0;
+		margin-left: -15px;
+		padding: 0 15px;
 		position: static;
 	}
 
 	.sidebar .location {
 		float: right;
 		margin: 0px;
+		margin-top: 2px;
 		padding: 3px 10px 1px 10px;
 		min-height: 39px;
 		background: inherit;
@@ -782,7 +832,7 @@ span.since {
 	.sidebar img {
 		width: 35px;
 		margin-top: 5px;
-		margin-bottom: 0px;
+		margin-bottom: 5px;
 		float: left;
 	}
 
@@ -802,8 +852,8 @@ span.since {
 		width: 100%;
 	}
 
-	.content .out-of-band {
-		display: none;
+	.content h4 > .out-of-band {
+		position: inherit;
 	}
 
 	.toggle-wrapper > .collapse-toggle {
@@ -812,6 +862,14 @@ span.since {
 
 	.toggle-wrapper {
 		height: 1.5em;
+	}
+
+	#search {
+		margin-left: 0;
+	}
+
+	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+		display: flex;
 	}
 }
 
@@ -863,6 +921,143 @@ span.since {
 	border-color: transparent black transparent transparent;
 }
 
+.important-traits .tooltip .tooltiptext {
+	background-color: white;
+	color: black;
+	border: 1px solid #000;
+}
+
 pre.rust {
 	position: relative;
+}
+
+.search-failed {
+	text-align: center;
+	margin-top: 20px;
+}
+
+#titles {
+	height: 35px;
+}
+
+#titles > div {
+	float: left;
+	width: 33.3%;
+	text-align: center;
+	border-bottom: 1px solid #ccc;
+	font-size: 18px;
+	cursor: pointer;
+}
+
+#titles > div.selected {
+	border-bottom: 3px solid #0078ee;
+}
+
+#titles > div:hover {
+	border-bottom: 3px solid #0089ff;
+}
+
+#titles > div > div.count {
+	display: inline-block;
+	color: #888;
+	font-size: 16px;
+}
+
+.important-traits {
+	cursor: pointer;
+	z-index: 2;
+}
+
+h4 > .important-traits {
+	position: absolute;
+	left: -44px;
+	top: 2px;
+}
+
+.modal {
+	position: fixed;
+	width: 100vw;
+	height: 100vh;
+	background-color: rgba(0,0,0,0.3);
+	z-index: 10000;
+	top: 0;
+	left: 0;
+}
+
+.modal-content {
+	display: block;
+	max-width: 60%;
+	min-width: 200px;
+	background-color: #eee;
+	padding: 8px;
+	top: 40%;
+	position: absolute;
+	left: 50%;
+	transform: translate(-50%, -40%);
+	border: 1px solid #999;
+	border-radius: 4px;
+	border-top-right-radius: 0;
+}
+
+.modal-content > .docblock {
+	margin: 0;
+}
+
+h3.important {
+	margin: 0;
+	margin-bottom: 13px;
+	font-size: 19px;
+}
+
+.modal-content > .docblock > code.content {
+	margin: 0;
+	padding: 0;
+	font-size: 20px;
+}
+
+.modal-content > .close {
+	position: absolute;
+	font-weight: 900;
+	right: -25px;
+	top: -1px;
+	font-size: 18px;
+	background-color: #eee;
+	width: 25px;
+	padding-right: 2px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+	text-align: center;
+	border: 1px solid #999;
+	border-right: 0;
+	cursor: pointer;
+}
+
+.modal-content > .close:hover {
+	background-color: #ff1f1f;
+	color: white;
+}
+
+.modal-content > .whiter {
+	height: 25px;
+	position: absolute;
+	width: 3px;
+	background-color: #eee;
+	right: -2px;
+	top: 0px;
+}
+
+.modal-content > .close:hover + .whiter {
+	background-color: #ff1f1f;
+}
+
+#main > div.important-traits {
+	position: absolute;
+	left: -24px;
+	margin-top: 16px;
+}
+
+.content > .methods > div.important-traits {
+	position: absolute;
+	left: -42px;
+	margin-top: 2px;
 }

@@ -10,8 +10,14 @@
 
 //! Experimental extensions to `std` for Unix platforms.
 //!
-//! For now, this module is limited to extracting file descriptors,
-//! but its functionality will grow over time.
+//! Provides access to platform-level information on Unix platforms, and
+//! exposes Unix-specific functions that would otherwise be inappropriate as
+//! part of the core `std` library.
+//!
+//! It exposes more ways to deal with platform-specific strings (`OsStr`,
+//! `OsString`), allows to set permissions more granularly, extract low-level
+//! file descriptors from files and sockets, and has platform-specific helpers
+//! for spawning processes.
 //!
 //! # Examples
 //!

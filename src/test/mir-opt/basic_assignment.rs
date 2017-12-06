@@ -36,30 +36,30 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.node4.SimplifyCfg-initial.after.mir
+// START rustc.main.SimplifyCfg-initial.after.mir
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = const false;
 //         StorageLive(_2);
 //         StorageLive(_3);
 //         _3 = _1;
-//         _2 = _3;
+//         _2 = move _3;
 //         StorageDead(_3);
 //         StorageLive(_4);
 //         _4 = std::option::Option<std::boxed::Box<u32>>::None;
 //         StorageLive(_5);
 //         StorageLive(_6);
-//         _6 = _4;
-//         replace(_5 <- _6) -> [return: bb1, unwind: bb5];
+//         _6 = move _4;
+//         replace(_5 <-move _6) -> [return: bb2, unwind: bb5];
 //     }
 //     bb1: {
-//         drop(_6) -> [return: bb6, unwind: bb4];
-//     }
-//     bb2: {
 //         resume;
 //     }
+//     bb2: {
+//         drop(_6) -> [return: bb6, unwind: bb4];
+//     }
 //     bb3: {
-//         drop(_4) -> bb2;
+//         drop(_4) -> bb1;
 //     }
 //     bb4: {
 //         drop(_5) -> bb3;
@@ -74,7 +74,7 @@ fn main() {
 //     }
 //     bb7: {
 //         StorageDead(_5);
-//         drop(_4) -> bb8;
+//         drop(_4) -> [return: bb8, unwind: bb1];
 //     }
 //     bb8: {
 //         StorageDead(_4);
@@ -82,4 +82,4 @@ fn main() {
 //         StorageDead(_1);
 //         return;
 //     }
-// END rustc.node4.SimplifyCfg-initial.after.mir
+// END rustc.main.SimplifyCfg-initial.after.mir

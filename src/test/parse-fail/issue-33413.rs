@@ -12,5 +12,4 @@
 
 impl S {
     fn f(*, a: u8) -> u8 {} //~ ERROR expected pattern, found `*`
-    //~^ ERROR expected one of `)`, `-`, `box`, `false`, `mut`, `ref`, or `true`, found `*`
 }

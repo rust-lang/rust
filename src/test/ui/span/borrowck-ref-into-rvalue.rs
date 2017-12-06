@@ -11,10 +11,10 @@
 fn main() {
     let msg;
     match Some("Hello".to_string()) {
-        Some(ref m) => { //~ ERROR borrowed value does not live long enough
+        Some(ref m) => {
             msg = m;
         },
         None => { panic!() }
-    }
+    } //~ ERROR borrowed value does not live long enough
     println!("{}", *msg);
 }

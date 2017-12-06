@@ -40,10 +40,12 @@
 //! and does not need to visit anything else.
 
 use middle::const_val::ConstVal;
+use hir::def_id::DefId;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 use std::fmt;
-use util::nodemap::{FxHashMap, FxHashSet};
+use std::collections::BTreeMap;
+use util::nodemap::FxHashSet;
 
 /// The TypeFoldable trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in TypeFolder.
@@ -218,6 +220,43 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         value.fold_with(&mut RegionFolder::new(self, skipped_regions, &mut f))
     }
+
+    pub fn for_each_free_region<T,F>(self,
+                                     value: &T,
+                                     callback: F)
+        where F: FnMut(ty::Region<'tcx>),
+              T: TypeFoldable<'tcx>,
+    {
+        value.visit_with(&mut RegionVisitor { current_depth: 0, callback });
+
+        struct RegionVisitor<F> {
+            current_depth: u32,
+            callback: F,
+        }
+
+        impl<'tcx, F> TypeVisitor<'tcx> for RegionVisitor<F>
+            where F : FnMut(ty::Region<'tcx>)
+        {
+            fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
+                self.current_depth += 1;
+                t.skip_binder().visit_with(self);
+                self.current_depth -= 1;
+
+                false // keep visiting
+            }
+
+            fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+                match *r {
+                    ty::ReLateBound(debruijn, _) if debruijn.depth <= self.current_depth => {
+                        /* ignore bound regions */
+                    }
+                    _ => (self.callback)(r),
+                }
+
+                false // keep visiting
+            }
+        }
+    }
 }
 
 /// Folds over the substructure of a type, visiting its component
@@ -287,20 +326,44 @@ struct RegionReplacer<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     current_depth: u32,
     fld_r: &'a mut (FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
-    map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>
+    map: BTreeMap<ty::BoundRegion, ty::Region<'tcx>>
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    /// Replace all regions bound by the given `Binder` with the
+    /// results returned by the closure; the closure is expected to
+    /// return a free region (relative to this binder), and hence the
+    /// binder is removed in the return type. The closure is invoked
+    /// once for each unique `BoundRegion`; multiple references to the
+    /// same `BoundRegion` will reuse the previous result.  A map is
+    /// returned at the end with each bound region and the free region
+    /// that replaced it.
     pub fn replace_late_bound_regions<T,F>(self,
         value: &Binder<T>,
         mut f: F)
-        -> (T, FxHashMap<ty::BoundRegion, ty::Region<'tcx>>)
+        -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F : FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               T : TypeFoldable<'tcx>,
     {
         let mut replacer = RegionReplacer::new(self, &mut f);
         let result = value.skip_binder().fold_with(&mut replacer);
         (result, replacer.map)
+    }
+
+    /// Replace any late-bound regions bound in `value` with
+    /// free variants attached to `all_outlive_scope`.
+    pub fn liberate_late_bound_regions<T>(
+        &self,
+        all_outlive_scope: DefId,
+        value: &ty::Binder<T>
+    ) -> T
+    where T: TypeFoldable<'tcx> {
+        self.replace_late_bound_regions(value, |br| {
+            self.mk_region(ty::ReFree(ty::FreeRegion {
+                scope: all_outlive_scope,
+                bound_region: br
+            }))
+        }).0
     }
 
     /// Flattens two binding levels into one. So `for<'a> for<'b> Foo`
@@ -324,16 +387,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         });
         Binder(value)
-    }
-
-    pub fn no_late_bound_regions<T>(self, value: &Binder<T>) -> Option<T>
-        where T : TypeFoldable<'tcx>
-    {
-        if value.0.has_escaping_regions() {
-            None
-        } else {
-            Some(value.0.clone())
-        }
     }
 
     /// Returns a set of all late-bound regions that are constrained
@@ -401,7 +454,7 @@ impl<'a, 'gcx, 'tcx> RegionReplacer<'a, 'gcx, 'tcx> {
             tcx,
             current_depth: 1,
             fld_r,
-            map: FxHashMap()
+            map: BTreeMap::default()
         }
     }
 }
@@ -440,67 +493,6 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
                 }
             }
             _ => r
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Region eraser
-
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Returns an equivalent value with all free regions removed (note
-    /// that late-bound regions remain, because they are important for
-    /// subtyping, but they are anonymized and normalized as well)..
-    pub fn erase_regions<T>(self, value: &T) -> T
-        where T : TypeFoldable<'tcx>
-    {
-        let value1 = value.fold_with(&mut RegionEraser(self));
-        debug!("erase_regions({:?}) = {:?}",
-               value, value1);
-        return value1;
-
-        struct RegionEraser<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(TyCtxt<'a, 'gcx, 'tcx>);
-
-        impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionEraser<'a, 'gcx, 'tcx> {
-            fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.0 }
-
-            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-                if let Some(u) = self.tcx().normalized_cache.borrow().get(&ty).cloned() {
-                    return u;
-                }
-
-                // FIXME(eddyb) should local contexts have a cache too?
-                if let Some(ty_lifted) = self.tcx().lift_to_global(&ty) {
-                    let tcx = self.tcx().global_tcx();
-                    let t_norm = ty_lifted.super_fold_with(&mut RegionEraser(tcx));
-                    tcx.normalized_cache.borrow_mut().insert(ty_lifted, t_norm);
-                    t_norm
-                } else {
-                    ty.super_fold_with(self)
-                }
-            }
-
-            fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
-                where T : TypeFoldable<'tcx>
-            {
-                let u = self.tcx().anonymize_late_bound_regions(t);
-                u.super_fold_with(self)
-            }
-
-            fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-                // because late-bound regions affect subtyping, we can't
-                // erase the bound/free distinction, but we can replace
-                // all free regions with 'erased.
-                //
-                // Note that we *CAN* replace early-bound regions -- the
-                // type system never "sees" those, they get substituted
-                // away. In trans, they will always be erased to 'erased
-                // whenever a substitution occurs.
-                match *r {
-                    ty::ReLateBound(..) => r,
-                    _ => self.tcx().types.re_erased
-                }
-            }
         }
     }
 }

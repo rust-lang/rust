@@ -14,25 +14,22 @@ use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
-                            EncodedMetadata, EncodedMetadataHashes,
-                            EncodedMetadataHash};
+                            EncodedMetadata};
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE};
-use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
-use rustc::ich::Fingerprint;
+use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
+use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::{FxHashMap, NodeSet};
 
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
 
-use std::hash::Hash;
-use std::intrinsics;
 use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::Path;
@@ -58,9 +55,6 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
-
-    pub metadata_hashes: EncodedMetadataHashes,
-    pub compute_ich: bool,
 }
 
 macro_rules! encoder_methods {
@@ -117,9 +111,36 @@ impl<'a, 'tcx, T> SpecializedEncoder<LazySeq<T>> for EncodeContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_encode(&mut self, cnum: &CrateNum) -> Result<(), Self::Error> {
+        self.emit_u32(cnum.as_u32())
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<DefId> for EncodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_encode(&mut self, def_id: &DefId) -> Result<(), Self::Error> {
+        let DefId {
+            krate,
+            index,
+        } = *def_id;
+
+        krate.encode(self)?;
+        index.encode(self)
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_encode(&mut self, def_index: &DefIndex) -> Result<(), Self::Error> {
+        self.emit_u32(def_index.as_u32())
+    }
+}
+
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
-        self.encode_with_shorthand(ty, &ty.sty, |ecx| &mut ecx.type_shorthands)
+        ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
     }
 }
 
@@ -127,20 +148,26 @@ impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext
     fn specialized_encode(&mut self,
                           predicates: &ty::GenericPredicates<'tcx>)
                           -> Result<(), Self::Error> {
-        predicates.parent.encode(self)?;
-        predicates.predicates.len().encode(self)?;
-        for predicate in &predicates.predicates {
-            self.encode_with_shorthand(predicate, predicate, |ecx| &mut ecx.predicate_shorthands)?
-        }
+        ty_codec::encode_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
+    }
+}
+
+impl<'a, 'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>>
+for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self,
+                          _: &mir::ClearCrossCrate<T>)
+                          -> Result<(), Self::Error> {
         Ok(())
     }
 }
 
-impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-
-    pub fn position(&self) -> usize {
+impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
+    fn position(&self) -> usize {
         self.opaque.position()
     }
+}
+
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn emit_node<F: FnOnce(&mut Self, usize) -> R, R>(&mut self, f: F) -> R {
         assert_eq!(self.lazy_state, LazyState::NoNode);
@@ -204,63 +231,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         })
     }
 
-    /// Encode the given value or a previously cached shorthand.
-    fn encode_with_shorthand<T, U, M>(&mut self,
-                                      value: &T,
-                                      variant: &U,
-                                      map: M)
-                                      -> Result<(), <Self as Encoder>::Error>
-        where M: for<'b> Fn(&'b mut Self) -> &'b mut FxHashMap<T, usize>,
-              T: Clone + Eq + Hash,
-              U: Encodable
-    {
-        let existing_shorthand = map(self).get(value).cloned();
-        if let Some(shorthand) = existing_shorthand {
-            return self.emit_usize(shorthand);
-        }
-
-        let start = self.position();
-        variant.encode(self)?;
-        let len = self.position() - start;
-
-        // The shorthand encoding uses the same usize as the
-        // discriminant, with an offset so they can't conflict.
-        let discriminant = unsafe { intrinsics::discriminant_value(variant) };
-        assert!(discriminant < SHORTHAND_OFFSET as u64);
-        let shorthand = start + SHORTHAND_OFFSET;
-
-        // Get the number of bits that leb128 could fit
-        // in the same space as the fully encoded type.
-        let leb128_bits = len * 7;
-
-        // Check that the shorthand is a not longer than the
-        // full encoding itself, i.e. it's an obvious win.
-        if leb128_bits >= 64 || (shorthand as u64) < (1 << leb128_bits) {
-            map(self).insert(value.clone(), shorthand);
-        }
-
-        Ok(())
-    }
-
     // Encodes something that corresponds to a single DepNode::GlobalMetaData
     // and registers the Fingerprint in the `metadata_hashes` map.
     pub fn tracked<'x, DATA, R>(&'x mut self,
-                                def_index: DefIndex,
                                 op: fn(&mut IsolatedEncoder<'x, 'a, 'tcx>, DATA) -> R,
                                 data: DATA)
                                 -> R {
-        let mut entry_builder = IsolatedEncoder::new(self);
-        let ret = op(&mut entry_builder, data);
-        let (fingerprint, this) = entry_builder.finish();
-
-        if let Some(fingerprint) = fingerprint {
-            this.metadata_hashes.hashes.push(EncodedMetadataHash {
-                def_index,
-                hash: fingerprint,
-            })
-        }
-
-        ret
+        op(&mut IsolatedEncoder::new(self), data)
     }
 
     fn encode_info_for_items(&mut self) -> Index {
@@ -326,30 +303,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot> {
         let mut i = self.position();
 
-        let tcx = self.tcx;
-        let global_metadata_def_index = move |kind: GlobalMetaDataKind| {
-            kind.def_index(tcx.hir.definitions().def_path_table())
-        };
-
-        let crate_deps = self.tracked(
-            global_metadata_def_index(GlobalMetaDataKind::CrateDeps),
-            IsolatedEncoder::encode_crate_deps,
-            ());
+        let crate_deps = self.tracked(IsolatedEncoder::encode_crate_deps, ());
         let dylib_dependency_formats = self.tracked(
-            global_metadata_def_index(GlobalMetaDataKind::DylibDependencyFormats),
             IsolatedEncoder::encode_dylib_dependency_formats,
             ());
         let dep_bytes = self.position() - i;
 
         // Encode the language items.
         i = self.position();
-        let lang_items = self.tracked(
-            global_metadata_def_index(GlobalMetaDataKind::LangItems),
-            IsolatedEncoder::encode_lang_items,
-            ());
-
+        let lang_items = self.tracked(IsolatedEncoder::encode_lang_items, ());
         let lang_items_missing = self.tracked(
-            global_metadata_def_index(GlobalMetaDataKind::LangItemsMissing),
             IsolatedEncoder::encode_lang_items_missing,
             ());
         let lang_item_bytes = self.position() - i;
@@ -357,7 +320,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode the native libraries used
         i = self.position();
         let native_libraries = self.tracked(
-            global_metadata_def_index(GlobalMetaDataKind::NativeLibraries),
             IsolatedEncoder::encode_native_libraries,
             ());
         let native_lib_bytes = self.position() - i;
@@ -374,16 +336,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode the def IDs of impls, for coherence checking.
         i = self.position();
-        let impls = self.tracked(
-            global_metadata_def_index(GlobalMetaDataKind::Impls),
-            IsolatedEncoder::encode_impls,
-            ());
+        let impls = self.tracked(IsolatedEncoder::encode_impls, ());
         let impl_bytes = self.position() - i;
 
         // Encode exported symbols info.
         i = self.position();
         let exported_symbols = self.tracked(
-            global_metadata_def_index(GlobalMetaDataKind::ExportedSymbols),
             IsolatedEncoder::encode_exported_symbols,
             self.exported_symbols);
         let exported_symbols_bytes = self.position() - i;
@@ -435,11 +393,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         });
 
         let total_bytes = self.position();
-
-        self.metadata_hashes.hashes.push(EncodedMetadataHash {
-            def_index: global_metadata_def_index(GlobalMetaDataKind::Krate),
-            hash: Fingerprint::from_smaller_hash(link_meta.crate_hash.as_u64())
-        });
 
         if self.tcx.sess.meta_stats() {
             let mut zero_bytes = 0;
@@ -626,7 +579,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId)) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_struct_ctor({:?})", def_id);
         let tcx = self.tcx;
-        let variant = tcx.adt_def(adt_def_id).struct_variant();
+        let adt_def = tcx.adt_def(adt_def_id);
+        let variant = adt_def.struct_variant();
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
@@ -646,6 +600,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             if ctor_vis.is_at_least(field.vis, tcx) {
                 ctor_vis = field.vis;
             }
+        }
+
+        // If the structure is marked as non_exhaustive then lower the visibility
+        // to within the crate.
+        if adt_def.is_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+            ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }
 
         let repr_options = get_repr_options(&tcx, adt_def_id);
@@ -961,7 +921,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_sig: None,
                 }), repr_options)
             }
-            hir::ItemDefaultImpl(..) => {
+            hir::ItemAutoImpl(..) => {
                 let data = ImplData {
                     polarity: hir::ImplPolarity::Positive,
                     defaultness: hir::Defaultness::Final,
@@ -970,7 +930,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     trait_ref: tcx.impl_trait_ref(def_id).map(|trait_ref| self.lazy(&trait_ref)),
                 };
 
-                EntryKind::DefaultImpl(self.lazy(&data))
+                EntryKind::AutoImpl(self.lazy(&data))
             }
             hir::ItemImpl(_, polarity, defaultness, ..) => {
                 let trait_ref = tcx.impl_trait_ref(def_id);
@@ -1012,7 +972,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let data = TraitData {
                     unsafety: trait_def.unsafety,
                     paren_sugar: trait_def.paren_sugar,
-                    has_default_impl: tcx.trait_has_default_impl(def_id),
+                    has_auto_impl: tcx.trait_is_auto(def_id),
                     super_predicates: self.lazy(&tcx.super_predicates_of(def_id)),
                 };
 
@@ -1213,19 +1173,25 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         debug!("IsolatedEncoder::encode_info_for_closure({:?})", def_id);
         let tcx = self.tcx;
 
-        let kind = if let Some(sig) = self.tcx.generator_sig(def_id) {
-            let layout = self.tcx.generator_layout(def_id);
-            let data = GeneratorData {
-                sig,
-                layout: layout.clone(),
-            };
-            EntryKind::Generator(self.lazy(&data))
-        } else {
-            let data = ClosureData {
-                kind: tcx.closure_kind(def_id),
-                sig: self.lazy(&tcx.fn_sig(def_id)),
-            };
-            EntryKind::Closure(self.lazy(&data))
+        let tables = self.tcx.typeck_tables_of(def_id);
+        let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
+        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+        let kind = match tables.node_id_to_type(hir_id).sty {
+            ty::TyGenerator(def_id, ..) => {
+                let layout = self.tcx.generator_layout(def_id);
+                let data = GeneratorData {
+                    layout: layout.clone(),
+                };
+                EntryKind::Generator(self.lazy(&data))
+            }
+
+            ty::TyClosure(def_id, substs) => {
+                let sig = substs.closure_sig(def_id, self.tcx);
+                let data = ClosureData { sig: self.lazy(&sig) };
+                EntryKind::Closure(self.lazy(&data))
+            }
+
+            _ => bug!("closure that is neither generator nor closure")
         };
 
         Entry {
@@ -1419,6 +1385,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             }
             hir::ForeignItemStatic(_, true) => EntryKind::ForeignMutStatic,
             hir::ForeignItemStatic(_, false) => EntryKind::ForeignImmStatic,
+            hir::ForeignItemType => EntryKind::ForeignType,
         };
 
         Entry {
@@ -1521,7 +1488,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
         match ty.node {
-            hir::TyImplTrait(_) => {
+            hir::TyImplTraitExistential(..) => {
                 let def_id = self.tcx.hir.local_def_id(ty.id);
                 self.record(def_id, IsolatedEncoder::encode_info_for_anon_ty, def_id);
             }
@@ -1558,7 +1525,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemGlobalAsm(..) |
             hir::ItemExternCrate(..) |
             hir::ItemUse(..) |
-            hir::ItemDefaultImpl(..) |
+            hir::ItemAutoImpl(..) |
             hir::ItemTy(..) => {
                 // no sub-item recording needed in these cases
             }
@@ -1655,7 +1622,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
 pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  exported_symbols: &NodeSet)
-                                 -> (EncodedMetadata, EncodedMetadataHashes)
+                                 -> EncodedMetadata
 {
     let mut cursor = Cursor::new(vec![]);
     cursor.write_all(METADATA_HEADER).unwrap();
@@ -1663,11 +1630,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Will be filled with the root position after encoding everything.
     cursor.write_all(&[0, 0, 0, 0]).unwrap();
 
-     let compute_ich = (tcx.sess.opts.debugging_opts.query_dep_graph ||
-                        tcx.sess.opts.debugging_opts.incremental_cc) &&
-                        tcx.sess.opts.build_dep_graph();
-
-    let (root, metadata_hashes) = {
+    let root = {
         let mut ecx = EncodeContext {
             opaque: opaque::Encoder::new(&mut cursor),
             tcx,
@@ -1676,8 +1639,6 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
-            metadata_hashes: EncodedMetadataHashes::new(),
-            compute_ich,
         };
 
         // Encode the rustc version string in a predictable location.
@@ -1685,8 +1646,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Encode all the entries and extra information in the crate,
         // culminating in the `CrateRoot` which points to all of it.
-        let root = ecx.encode_crate_root();
-        (root, ecx.metadata_hashes)
+        ecx.encode_crate_root()
     };
     let mut result = cursor.into_inner();
 
@@ -1698,7 +1658,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result[header + 2] = (pos >> 8) as u8;
     result[header + 3] = (pos >> 0) as u8;
 
-    (EncodedMetadata { raw_data: result }, metadata_hashes)
+    EncodedMetadata { raw_data: result }
 }
 
 pub fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {

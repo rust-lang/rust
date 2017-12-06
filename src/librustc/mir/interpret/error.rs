@@ -113,7 +113,7 @@ pub enum EvalErrorKind<'tcx> {
     DeallocatedWrongMemoryKind(String, String),
     ReallocateNonBasePtr,
     DeallocateNonBasePtr,
-    IncorrectAllocationInformation,
+    IncorrectAllocationInformation(u64, usize, u64, u64),
     Layout(layout::LayoutError<'tcx>),
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
@@ -121,6 +121,9 @@ pub enum EvalErrorKind<'tcx> {
     Panic,
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
+    UnimplementedTraitSelection,
+    /// Abort in case type errors are reached
+    TypeckError,
 }
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
@@ -220,7 +223,7 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to reallocate with a pointer not to the beginning of an existing object",
             DeallocateNonBasePtr =>
                 "tried to deallocate with a pointer not to the beginning of an existing object",
-            IncorrectAllocationInformation =>
+            IncorrectAllocationInformation(..) =>
                 "tried to deallocate or reallocate using incorrect alignment or size",
             Layout(_) =>
                 "rustc layout computation failed",
@@ -238,6 +241,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to read from the return pointer",
             EvalErrorKind::PathNotFound(_) =>
                 "a path could not be resolved, maybe the crate is not loaded",
+            UnimplementedTraitSelection =>
+                "there were unresolved type arguments during trait selection",
+            TypeckError =>
+                "encountered constants with type errors, stopping evaluation",
         }
     }
 
@@ -307,6 +314,8 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "Cannot find path {:?}", path),
             MachineError(ref inner) =>
                 write!(f, "machine error: {}", inner),
+            IncorrectAllocationInformation(size, size2, align, align2) =>
+                write!(f, "incorrect alloc info: expected size {} and align {}, got size {} and align {}", size, align, size2, align2),
             _ => write!(f, "{}", self.description()),
         }
     }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 fn main() {
     let a0 = 0;
@@ -18,8 +18,7 @@ fn main() {
     match (&a1,) {
         (&ref b0,) => {
             a1 = &f; //[ast]~ ERROR cannot assign
-                     //[mir]~^ ERROR cannot assign to `a1` because it is borrowed (Ast)
-                     //[mir]~| ERROR cannot assign to `a1` because it is borrowed (Mir)
+                     //[mir]~^ ERROR cannot assign to `a1` because it is borrowed
         }
     }
 }

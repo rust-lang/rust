@@ -1,7 +1,7 @@
 error[E0283]: type annotations required: cannot resolve `&'a T: Foo`
   --> $DIR/issue-40294.rs:15:1
    |
-15 | / fn foo<'a,'b,T>(x: &'a T, y: &'b T)
+15 | / fn foo<'a,'b,T>(x: &'a T, y: &'b T) //~ ERROR type annotations required
 16 | |     where &'a T : Foo,
 17 | |           &'b T : Foo
 18 | | {

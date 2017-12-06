@@ -107,6 +107,19 @@ impl<'tcx> fmt::Debug for Kind<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Display for Kind<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(ty) = self.as_type() {
+            write!(f, "{}", ty)
+        } else if let Some(r) = self.as_region() {
+            write!(f, "{}", r)
+        } else {
+            // FIXME(RFC 2000): extend this if/else chain when we support const generic.
+            unimplemented!();
+        }
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         if let Some(ty) = self.as_type() {
@@ -207,11 +220,11 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         tcx.intern_substs(&result)
     }
 
-    fn fill_item<FR, FT>(substs: &mut Vec<Kind<'tcx>>,
-                         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                         defs: &ty::Generics,
-                         mk_region: &mut FR,
-                         mk_type: &mut FT)
+    pub fn fill_item<FR, FT>(substs: &mut Vec<Kind<'tcx>>,
+                             tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                             defs: &ty::Generics,
+                             mk_region: &mut FR,
+                             mk_type: &mut FT)
     where FR: FnMut(&ty::RegionParameterDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
           FT: FnMut(&ty::TypeParameterDef, &[Kind<'tcx>]) -> Ty<'tcx> {
 

@@ -56,7 +56,10 @@ pub enum TypeVariableOrigin {
     NormalizeProjectionType(Span),
     TypeInference(Span),
     TypeParameterDefinition(Span, ast::Name),
-    TransformedUpvar(Span),
+
+    /// one of the upvars or closure kind parameters in a `ClosureSubsts`
+    /// (before it has been determined)
+    ClosureSynthetic(Span),
     SubstitutionPlaceholder(Span),
     AutoDeref(Span),
     AdjustmentType(Span),

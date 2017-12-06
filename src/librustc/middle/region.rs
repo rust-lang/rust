@@ -12,7 +12,7 @@
 //! the parent links in the region hierarchy.
 //!
 //! Most of the documentation on regions can be found in
-//! `middle/infer/region_inference/README.md`
+//! `middle/infer/region_constraints/README.md`
 
 use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -31,7 +31,6 @@ use hir;
 use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
-use mir::transform::MirSource;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
@@ -156,26 +155,11 @@ pub struct BlockRemainder {
     pub first_statement_index: FirstStatementIndex,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
-         RustcDecodable, Copy)]
-pub struct FirstStatementIndex { pub idx: u32 }
-
-impl Idx for FirstStatementIndex {
-    fn new(idx: usize) -> Self {
-        assert!(idx <= SCOPE_DATA_REMAINDER_MAX as usize);
-        FirstStatementIndex { idx: idx as u32 }
-    }
-
-    fn index(self) -> usize {
-        self.idx as usize
-    }
-}
-
-impl fmt::Debug for FirstStatementIndex {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.index(), formatter)
-    }
-}
+newtype_index!(FirstStatementIndex
+    {
+        pub idx
+        MAX = SCOPE_DATA_REMAINDER_MAX
+    });
 
 impl From<ScopeData> for Scope {
     #[inline]
@@ -208,7 +192,7 @@ impl Scope {
             SCOPE_DATA_DESTRUCTION => ScopeData::Destruction(self.id),
             idx => ScopeData::Remainder(BlockRemainder {
                 block: self.id,
-                first_statement_index: FirstStatementIndex { idx }
+                first_statement_index: FirstStatementIndex::new(idx as usize)
             })
         }
     }
@@ -336,7 +320,7 @@ pub struct ScopeTree {
     /// hierarchy based on their lexical mapping. This is used to
     /// handle the relationships between regions in a fn and in a
     /// closure defined by that fn. See the "Modeling closures"
-    /// section of the README in infer::region_inference for
+    /// section of the README in infer::region_constraints for
     /// more details.
     closure_tree: FxHashMap<hir::ItemLocalId, hir::ItemLocalId>,
 
@@ -413,7 +397,7 @@ pub struct ScopeTree {
 
     /// The number of visit_expr and visit_pat calls done in the body.
     /// Used to sanity check visit_expr/visit_pat call count when
-    /// calculating geneartor interiors.
+    /// calculating generator interiors.
     body_expr_count: FxHashMap<hir::BodyId, usize>,
 }
 
@@ -423,7 +407,7 @@ pub struct Context {
     /// of the innermost fn body. Each fn forms its own disjoint tree
     /// in the region hierarchy. These fn bodies are themselves
     /// arranged into a tree. See the "Modeling closures" section of
-    /// the README in infer::region_inference for more
+    /// the README in infer::region_constraints for more
     /// details.
     root_id: Option<hir::ItemLocalId>,
 
@@ -662,7 +646,7 @@ impl<'tcx> ScopeTree {
             // different functions.  Compare those fn for lexical
             // nesting. The reasoning behind this is subtle.  See the
             // "Modeling closures" section of the README in
-            // infer::region_inference for more details.
+            // infer::region_constraints for more details.
             let a_root_scope = a_ancestors[a_index];
             let b_root_scope = a_ancestors[a_index];
             return match (a_root_scope.data(), b_root_scope.data()) {
@@ -785,7 +769,7 @@ impl<'tcx> ScopeTree {
 
     /// Gives the number of expressions visited in a body.
     /// Used to sanity check visit_expr call count when
-    /// calculating geneartor interiors.
+    /// calculating generator interiors.
     pub fn body_expr_count(&self, body_id: hir::BodyId) -> Option<usize> {
         self.body_expr_count.get(&body_id).map(|r| *r)
     }
@@ -960,7 +944,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
 
             hir::ExprAssignOp(..) | hir::ExprIndex(..) |
             hir::ExprUnary(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) => {
-                // FIXME(#6268) Nested method calls
+                // FIXME(https://github.com/rust-lang/rfcs/issues/811) Nested method calls
                 //
                 // The lifetimes for a call or method call look as follows:
                 //
@@ -1081,8 +1065,6 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     // Here, the expression `[...]` has an extended lifetime due to rule
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
-    //
-    // FIXME(#6308) -- Note that `[]` patterns work more smoothly post-DST.
 
     if let Some(expr) = init {
         record_rvalue_scope_if_borrow_expr(visitor, &expr, blk_scope);
@@ -1315,7 +1297,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
-        if let MirSource::Fn(_) = MirSource::from_node(self.tcx, owner_id) {
+        if let hir::BodyOwnerKind::Fn = self.tcx.hir.body_owner_kind(owner_id) {
             self.visit_expr(&body.value);
         } else {
             // Only functions have an outer terminating (drop) scope, while

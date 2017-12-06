@@ -11,6 +11,6 @@
 // gate-test-conservative_impl_trait
 
 fn foo() -> impl Fn() { || {} }
-//~^ ERROR `impl Trait` is experimental
+//~^ ERROR `impl Trait` in return position is experimental
 
 fn main() {}

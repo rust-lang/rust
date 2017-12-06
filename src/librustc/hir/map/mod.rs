@@ -17,7 +17,7 @@ pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
 
 use dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
 
-use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndexAddressSpace};
+use hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
@@ -359,6 +359,16 @@ impl<'hir> Map<'hir> {
         self.definitions.as_local_node_id(DefId::local(def_index)).unwrap()
     }
 
+    #[inline]
+    pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
+        self.definitions.def_index_to_hir_id(def_id.to_def_id().index)
+    }
+
+    #[inline]
+    pub fn local_def_id_to_node_id(&self, def_id: LocalDefId) -> NodeId {
+        self.definitions.as_local_node_id(def_id.to_def_id()).unwrap()
+    }
+
     fn entry_count(&self) -> usize {
         self.map.len()
     }
@@ -416,6 +426,12 @@ impl<'hir> Map<'hir> {
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(&self, id: NodeId) -> Option<BodyId> {
         if let Some(entry) = self.find_entry(id) {
+            if self.dep_graph.is_fully_enabled() {
+                let hir_id_owner = self.node_to_hir_id(id).owner;
+                let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
+                self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
+            }
+
             if let Some(body_id) = entry.associated_body() {
                 // For item-like things and closures, the associated
                 // body has its own distinct id, and that is returned
@@ -440,6 +456,28 @@ impl<'hir> Map<'hir> {
             span_bug!(self.span(id), "body_owned_by: {} has no associated body",
                       self.node_to_string(id));
         })
+    }
+
+    pub fn body_owner_kind(&self, id: NodeId) -> BodyOwnerKind {
+        // Handle constants in enum discriminants, types, and repeat expressions.
+        let def_id = self.local_def_id(id);
+        let def_key = self.def_key(def_id);
+        if def_key.disambiguated_data.data == DefPathData::Initializer {
+            return BodyOwnerKind::Const;
+        }
+
+        match self.get(id) {
+            NodeItem(&Item { node: ItemConst(..), .. }) |
+            NodeTraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
+            NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) => {
+                BodyOwnerKind::Const
+            }
+            NodeItem(&Item { node: ItemStatic(_, m, _), .. }) => {
+                BodyOwnerKind::Static(m)
+            }
+            // Default to function if it's not a constant or static.
+            _ => BodyOwnerKind::Fn
+        }
     }
 
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
@@ -474,16 +512,16 @@ impl<'hir> Map<'hir> {
         self.forest.krate.trait_impls.get(&trait_did).map_or(&[], |xs| &xs[..])
     }
 
-    pub fn trait_default_impl(&self, trait_did: DefId) -> Option<NodeId> {
+    pub fn trait_auto_impl(&self, trait_did: DefId) -> Option<NodeId> {
         self.dep_graph.read(DepNode::new_no_params(DepKind::AllLocalTraitImpls));
 
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
-        self.forest.krate.trait_default_impl.get(&trait_did).cloned()
+        self.forest.krate.trait_auto_impl.get(&trait_did).cloned()
     }
 
     pub fn trait_is_auto(&self, trait_did: DefId) -> bool {
-        self.trait_default_impl(trait_did).is_some()
+        self.trait_auto_impl(trait_did).is_some()
     }
 
     /// Get the attributes on the krate. This is preferable to
@@ -530,6 +568,12 @@ impl<'hir> Map<'hir> {
     /// from a node to the root of the ast (unless you get the same id back here
     /// that can happen if the id is not in the map itself or is just weird).
     pub fn get_parent_node(&self, id: NodeId) -> NodeId {
+        if self.dep_graph.is_fully_enabled() {
+            let hir_id_owner = self.node_to_hir_id(id).owner;
+            let def_path_hash = self.definitions.def_path_hash(hir_id_owner);
+            self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
+        }
+
         self.find_entry(id).and_then(|x| x.parent_node()).unwrap_or(id)
     }
 
@@ -1014,8 +1058,11 @@ pub fn map_crate<'hir>(sess: &::session::Session,
                                                 hcx);
         intravisit::walk_crate(&mut collector, &forest.krate);
 
-        let crate_disambiguator = sess.local_crate_disambiguator().as_str();
-        collector.finalize_and_compute_crate_hash(&crate_disambiguator)
+        let crate_disambiguator = sess.local_crate_disambiguator();
+        let cmdline_args = sess.opts.dep_tracking_hash();
+        collector.finalize_and_compute_crate_hash(crate_disambiguator,
+                                                  cstore,
+                                                  cmdline_args)
     };
 
     if log_enabled!(::log::LogLevel::Debug) {
@@ -1140,7 +1187,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemUnion(..) => "union",
                 ItemTrait(..) => "trait",
                 ItemImpl(..) => "impl",
-                ItemDefaultImpl(..) => "default impl",
+                ItemAutoImpl(..) => "default impl",
             };
             format!("{} {}{}", item_str, path_str(), id_str)
         }

@@ -14,7 +14,7 @@ struct Qux<'a> {
 
 impl<'a> Qux<'a> {
     fn f(&self) {
-        self.s.push('x');
+        self.s.push('x'); //~ ERROR cannot borrow immutable borrowed
     }
 }
 

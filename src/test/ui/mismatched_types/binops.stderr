@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `{integer}: std::ops::Add<std::option::Option<{integer}>>` is not satisfied
   --> $DIR/binops.rs:12:7
    |
-12 |     1 + Some(1);
+12 |     1 + Some(1); //~ ERROR is not satisfied
    |       ^ no implementation for `{integer} + std::option::Option<{integer}>`
    |
    = help: the trait `std::ops::Add<std::option::Option<{integer}>>` is not implemented for `{integer}`
@@ -9,7 +9,7 @@ error[E0277]: the trait bound `{integer}: std::ops::Add<std::option::Option<{int
 error[E0277]: the trait bound `usize: std::ops::Sub<std::option::Option<{integer}>>` is not satisfied
   --> $DIR/binops.rs:13:16
    |
-13 |     2 as usize - Some(1);
+13 |     2 as usize - Some(1); //~ ERROR is not satisfied
    |                ^ no implementation for `usize - std::option::Option<{integer}>`
    |
    = help: the trait `std::ops::Sub<std::option::Option<{integer}>>` is not implemented for `usize`
@@ -17,7 +17,7 @@ error[E0277]: the trait bound `usize: std::ops::Sub<std::option::Option<{integer
 error[E0277]: the trait bound `{integer}: std::ops::Mul<()>` is not satisfied
   --> $DIR/binops.rs:14:7
    |
-14 |     3 * ();
+14 |     3 * (); //~ ERROR is not satisfied
    |       ^ no implementation for `{integer} * ()`
    |
    = help: the trait `std::ops::Mul<()>` is not implemented for `{integer}`
@@ -25,7 +25,7 @@ error[E0277]: the trait bound `{integer}: std::ops::Mul<()>` is not satisfied
 error[E0277]: the trait bound `{integer}: std::ops::Div<&str>` is not satisfied
   --> $DIR/binops.rs:15:7
    |
-15 |     4 / "";
+15 |     4 / ""; //~ ERROR is not satisfied
    |       ^ no implementation for `{integer} / &str`
    |
    = help: the trait `std::ops::Div<&str>` is not implemented for `{integer}`
@@ -33,7 +33,7 @@ error[E0277]: the trait bound `{integer}: std::ops::Div<&str>` is not satisfied
 error[E0277]: the trait bound `{integer}: std::cmp::PartialOrd<std::string::String>` is not satisfied
   --> $DIR/binops.rs:16:7
    |
-16 |     5 < String::new();
+16 |     5 < String::new(); //~ ERROR is not satisfied
    |       ^ can't compare `{integer}` with `std::string::String`
    |
    = help: the trait `std::cmp::PartialOrd<std::string::String>` is not implemented for `{integer}`
@@ -41,7 +41,7 @@ error[E0277]: the trait bound `{integer}: std::cmp::PartialOrd<std::string::Stri
 error[E0277]: the trait bound `{integer}: std::cmp::PartialEq<std::result::Result<{integer}, _>>` is not satisfied
   --> $DIR/binops.rs:17:7
    |
-17 |     6 == Ok(1);
+17 |     6 == Ok(1); //~ ERROR is not satisfied
    |       ^^ can't compare `{integer}` with `std::result::Result<{integer}, _>`
    |
    = help: the trait `std::cmp::PartialEq<std::result::Result<{integer}, _>>` is not implemented for `{integer}`

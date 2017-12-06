@@ -177,9 +177,13 @@ impl<'a> AllocFnFactory<'a> {
 
         let no_mangle = Symbol::intern("no_mangle");
         let no_mangle = self.cx.meta_word(self.span, no_mangle);
+
+        let special = Symbol::intern("rustc_std_internal_symbol");
+        let special = self.cx.meta_word(self.span, special);
         vec![
             self.cx.attribute(self.span, linkage),
             self.cx.attribute(self.span, no_mangle),
+            self.cx.attribute(self.span, special),
         ]
     }
 

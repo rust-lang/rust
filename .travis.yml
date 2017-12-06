@@ -12,18 +12,17 @@ matrix:
   fast_finish: true
   include:
     # Images used in testing PR and try-build should be run first.
-    - env: IMAGE=x86_64-gnu-llvm-3.7 RUST_BACKTRACE=1
+    - env: IMAGE=x86_64-gnu-llvm-3.9 RUST_BACKTRACE=1
       if: type = pull_request OR branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
       if: branch = try OR branch = auto
 
-    # "alternate" deployments, these are "nightlies" but don't have assertions
-    # turned on, they're deployed to a different location primarily for projects
-    # which are stuck on nightly and don't want llvm assertions in the artifacts
-    # that they use.
+    # "alternate" deployments, these are "nightlies" but have LLVM assertions
+    # turned on, they're deployed to a different location primarily for
+    # additional testing.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
-      if: branch = auto
+      if: branch = try OR branch = auto
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -36,7 +35,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode7
+      osx_image: xcode7.3
       if: branch = auto
 
     # macOS builders. These are placed near the beginning because they are very
@@ -57,7 +56,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode8.2
+      osx_image: xcode8.3
       if: branch = auto
 
     - env: >
@@ -71,7 +70,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode8.2
+      osx_image: xcode8.3
       if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
@@ -91,7 +90,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode7
+      osx_image: xcode7.3
       if: branch = auto
 
     - env: >
@@ -105,7 +104,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode7
+      osx_image: xcode7.3
       if: branch = auto
 
     # Linux builders, remaining docker images
@@ -113,7 +112,9 @@ matrix:
       if: branch = auto
     - env: IMAGE=armhf-gnu
       if: branch = auto
-    - env: IMAGE=cross DEPLOY=1
+    - env: IMAGE=dist-various-1 DEPLOY=1
+      if: branch = auto
+    - env: IMAGE=dist-various-2 DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
       if: branch = auto
@@ -124,8 +125,6 @@ matrix:
     - env: IMAGE=dist-armhf-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-armv7-linux DEPLOY=1
-      if: branch = auto
-    - env: IMAGE=dist-fuchsia DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-i586-gnu-i686-musl DEPLOY=1
       if: branch = auto
@@ -161,13 +160,15 @@ matrix:
       if: branch = auto
     - env: IMAGE=i686-gnu-nopt
       if: branch = auto
-    # - env: IMAGE=wasm32 issue 42646
-    #   if: branch = auto
+    - env: IMAGE=wasm32-unknown
+      if: branch = auto
     - env: IMAGE=x86_64-gnu
       if: branch = auto
     - env: IMAGE=x86_64-gnu-full-bootstrap
       if: branch = auto
     - env: IMAGE=x86_64-gnu-aux
+      if: branch = auto
+    - env: IMAGE=x86_64-gnu-tools
       if: branch = auto
     - env: IMAGE=x86_64-gnu-debug
       if: branch = auto
@@ -251,7 +252,14 @@ after_failure:
 
   # Random attempt at debugging currently. Just poking around in here to see if
   # anything shows up.
-  - ls $HOME/Library/Logs/DiagnosticReports/
+  - ls -lat $HOME/Library/Logs/DiagnosticReports/
+  - find $HOME/Library/Logs/DiagnosticReports
+      -type f
+      -not -name '*.stage2-*.crash'
+      -not -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
+      -exec printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" {} \;
+      -exec head -750 {} \;
+      -exec echo travis_fold":"end:crashlog \;
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
@@ -284,6 +292,7 @@ before_deploy:
           rm -rf obj/build/dist/doc &&
           cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
       fi
+  - travis_retry gem update --system
 
 deploy:
   - provider: s3
@@ -300,20 +309,6 @@ deploy:
       branch: auto
       condition: $DEPLOY = 1
 
-  - provider: s3
-    bucket: rust-lang-ci2
-    skip_cleanup: true
-    local_dir: deploy
-    upload_dir: rustc-builds-try
-    acl: public_read
-    region: us-west-1
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
-    on:
-      branch: try
-      condition: $DEPLOY = 1
-
   # this is the same as the above deployment provider except that it uploads to
   # a slightly different directory and has a different trigger
   - provider: s3
@@ -328,4 +323,35 @@ deploy:
       secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
       branch: auto
+      condition: $DEPLOY_ALT = 1
+
+  # These two providers are the same as the two above, except deploy on the
+  # try branch. Travis does not appear to provide a way to use "or" in these
+  # conditions.
+  - provider: s3
+    bucket: rust-lang-ci2
+    skip_cleanup: true
+    local_dir: deploy
+    upload_dir: rustc-builds
+    acl: public_read
+    region: us-west-1
+    access_key_id: AKIAJVBODR3IA4O72THQ
+    secret_access_key:
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
+    on:
+      branch: try
+      condition: $DEPLOY = 1
+
+  - provider: s3
+    bucket: rust-lang-ci2
+    skip_cleanup: true
+    local_dir: deploy
+    upload_dir: rustc-builds-alt
+    acl: public_read
+    region: us-west-1
+    access_key_id: AKIAJVBODR3IA4O72THQ
+    secret_access_key:
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
+    on:
+      branch: try
       condition: $DEPLOY_ALT = 1

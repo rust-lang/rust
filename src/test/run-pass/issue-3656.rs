@@ -13,6 +13,7 @@
 // the alignment of elements into account.
 
 // pretty-expanded FIXME #23616
+// ignore-wasm32-bare no libc to test with
 
 #![feature(libc)]
 

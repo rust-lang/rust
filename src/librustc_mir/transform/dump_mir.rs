@@ -16,9 +16,9 @@ use std::fs::File;
 use std::io;
 
 use rustc::mir::Mir;
-use rustc::mir::transform::{MirPass, MirPassIndex, MirSource, MirSuite, PassHook};
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
+use transform::{MirPass, MirSource};
 use util as mir_util;
 
 pub struct Marker(pub &'static str);
@@ -47,26 +47,21 @@ impl fmt::Display for Disambiguator {
     }
 }
 
-pub struct DumpMir;
 
-impl PassHook for DumpMir {
-    fn on_mir_pass<'a, 'tcx: 'a>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 suite: MirSuite,
-                                 pass_num: MirPassIndex,
-                                 pass_name: &str,
-                                 source: MirSource,
-                                 mir: &Mir<'tcx>,
-                                 is_after: bool)
-    {
-        if mir_util::dump_enabled(tcx, pass_name, source) {
-            mir_util::dump_mir(tcx,
-                               Some((suite, pass_num)),
-                               pass_name,
-                               &Disambiguator { is_after },
-                               source,
-                               mir);
-        }
+pub fn on_mir_pass<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             pass_num: &fmt::Display,
+                             pass_name: &str,
+                             source: MirSource,
+                             mir: &Mir<'tcx>,
+                             is_after: bool) {
+    if mir_util::dump_enabled(tcx, pass_name, source) {
+        mir_util::dump_mir(tcx,
+                           Some(pass_num),
+                           pass_name,
+                           &Disambiguator { is_after },
+                           source,
+                           mir,
+                           |_, _| Ok(()) );
     }
 }
 

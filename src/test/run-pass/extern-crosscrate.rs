@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//aux-build:extern-crosscrate-source.rs
+// aux-build:extern-crosscrate-source.rs
+// ignore-wasm32-bare no libc to test ffi with
 
 #![feature(libc)]
 

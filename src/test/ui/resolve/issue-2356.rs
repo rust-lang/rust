@@ -25,24 +25,22 @@ impl MaybeDog {
   fn bark() {
     // If this provides a suggestion, it's a bug as MaybeDog doesn't impl Groom
     shave();
-    //~^ ERROR unresolved function `shave`
-    //~| NOTE no resolution found
+    //~^ ERROR cannot find function `shave`
+    //~| NOTE not found in this scope
   }
 }
 
 impl Clone for cat {
   fn clone(&self) -> Self {
     clone();
-    //~^ ERROR unresolved function `clone`
-    //~| NOTE did you mean `self.clone(...)`?
+    //~^ ERROR cannot find function `clone`
     loop {}
   }
 }
 impl Default for cat {
   fn default() -> Self {
     default();
-    //~^ ERROR unresolved function `default`
-    //~| NOTE did you mean `Self::default`?
+    //~^ ERROR cannot find function `default`
     loop {}
   }
 }
@@ -50,16 +48,13 @@ impl Default for cat {
 impl Groom for cat {
   fn shave(other: usize) {
     whiskers -= other;
-    //~^ ERROR unresolved value `whiskers`
-    //~| ERROR unresolved value `whiskers`
-    //~| NOTE did you mean `self.whiskers`?
+    //~^ ERROR cannot find value `whiskers`
     //~| NOTE `self` value is only available in methods with `self` parameter
     shave(4);
-    //~^ ERROR unresolved function `shave`
-    //~| NOTE did you mean `Self::shave`?
+    //~^ ERROR cannot find function `shave`
     purr();
-    //~^ ERROR unresolved function `purr`
-    //~| NOTE no resolution found
+    //~^ ERROR cannot find function `purr`
+    //~| NOTE not found in this scope
   }
 }
 
@@ -68,17 +63,17 @@ impl cat {
 
     fn purr_louder() {
         static_method();
-        //~^ ERROR unresolved function `static_method`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find function `static_method`
+        //~| NOTE not found in this scope
         purr();
-        //~^ ERROR unresolved function `purr`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find function `purr`
+        //~| NOTE not found in this scope
         purr();
-        //~^ ERROR unresolved function `purr`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find function `purr`
+        //~| NOTE not found in this scope
         purr();
-        //~^ ERROR unresolved function `purr`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find function `purr`
+        //~| NOTE not found in this scope
     }
 }
 
@@ -93,28 +88,25 @@ impl cat {
 
   fn purr(&self) {
     grow_older();
-    //~^ ERROR unresolved function `grow_older`
-    //~| NOTE no resolution found
+    //~^ ERROR cannot find function `grow_older`
+    //~| NOTE not found in this scope
     shave();
-    //~^ ERROR unresolved function `shave`
-    //~| NOTE no resolution found
+    //~^ ERROR cannot find function `shave`
+    //~| NOTE not found in this scope
   }
 
   fn burn_whiskers(&mut self) {
     whiskers = 0;
-    //~^ ERROR unresolved value `whiskers`
-    //~| NOTE did you mean `self.whiskers`?
+    //~^ ERROR cannot find value `whiskers`
   }
 
   pub fn grow_older(other:usize) {
     whiskers = 4;
-    //~^ ERROR unresolved value `whiskers`
-    //~| ERROR unresolved value `whiskers`
-    //~| NOTE did you mean `self.whiskers`?
+    //~^ ERROR cannot find value `whiskers`
     //~| NOTE `self` value is only available in methods with `self` parameter
     purr_louder();
-    //~^ ERROR unresolved function `purr_louder`
-    //~| NOTE no resolution found
+    //~^ ERROR cannot find function `purr_louder`
+    //~| NOTE not found in this scope
   }
 }
 

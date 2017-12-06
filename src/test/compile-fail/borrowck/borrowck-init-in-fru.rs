@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z borrowck=mir
+
 #[derive(Clone)]
 struct point {
     x: isize,
@@ -16,6 +19,8 @@ struct point {
 
 fn main() {
     let mut origin: point;
-    origin = point {x: 10,.. origin}; //~ ERROR use of possibly uninitialized variable: `origin.y`
+    origin = point {x: 10,.. origin};
+    //[ast]~^ ERROR use of possibly uninitialized variable: `origin.y` [E0381]
+    //[mir]~^^ ERROR [E0381]
     origin.clone();
 }

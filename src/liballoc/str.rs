@@ -363,16 +363,16 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// let mut v = String::from("🗻∈🌏");
+    /// let v = String::from("🗻∈🌏");
     ///
     /// assert_eq!(Some("🗻"), v.get(0..4));
     ///
     /// // indices not on UTF-8 sequence boundaries
-    /// assert!(v.get_mut(1..).is_none());
-    /// assert!(v.get_mut(..8).is_none());
+    /// assert!(v.get(1..).is_none());
+    /// assert!(v.get(..8).is_none());
     ///
     /// // out of bounds
-    /// assert!(v.get_mut(..42).is_none());
+    /// assert!(v.get(..42).is_none());
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
@@ -390,8 +390,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
-    ///
     /// let mut v = String::from("hello");
     /// // correct length
     /// assert!(v.get_mut(0..5).is_some());
@@ -617,8 +615,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
-    ///
     /// let mut s = "Per Martin-Löf".to_string();
     /// {
     ///     let (first, last) = s.split_at_mut(3);
@@ -959,13 +955,15 @@ impl str {
     /// assert_eq!(s.find("Léopard"), Some(13));
     /// ```
     ///
-    /// More complex patterns with closures:
+    /// More complex patterns using point-free style and closures:
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.find(char::is_whitespace), Some(5));
     /// assert_eq!(s.find(char::is_lowercase), Some(1));
+    /// assert_eq!(s.find(|c: char| c.is_whitespace() || c.is_lowercase()), Some(1));
+    /// assert_eq!(s.find(|c: char| (c < 'o') && (c > 'a')), Some(4));
     /// ```
     ///
     /// Not finding the pattern:
@@ -1736,7 +1734,7 @@ impl str {
     /// A more complex pattern, using a closure:
     ///
     /// ```
-    /// assert_eq!("1fooX".trim_left_matches(|c| c == '1' || c == 'X'), "fooX");
+    /// assert_eq!("1fooX".trim_right_matches(|c| c == '1' || c == 'X'), "1foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
@@ -2047,10 +2045,8 @@ impl str {
     /// ```
     #[stable(feature = "box_str", since = "1.4.0")]
     pub fn into_string(self: Box<str>) -> String {
-        unsafe {
-            let slice = mem::transmute::<Box<str>, Box<[u8]>>(self);
-            String::from_utf8_unchecked(slice.into_vec())
-        }
+        let slice = Box::<[u8]>::from(self);
+        unsafe { String::from_utf8_unchecked(slice.into_vec()) }
     }
 
     /// Create a [`String`] by repeating a string `n` times.
@@ -2070,6 +2066,134 @@ impl str {
         s.extend((0..n).map(|_| self));
         s
     }
+
+    /// Checks if all characters in this string are within the ASCII range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let ascii = "hello!\n";
+    /// let non_ascii = "Grüße, Jürgen ❤";
+    ///
+    /// assert!(ascii.is_ascii());
+    /// assert!(!non_ascii.is_ascii());
+    /// ```
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn is_ascii(&self) -> bool {
+        // We can treat each byte as character here: all multibyte characters
+        // start with a byte that is not in the ascii range, so we will stop
+        // there already.
+        self.bytes().all(|b| b.is_ascii())
+    }
+
+    /// Returns a copy of this string where each character is mapped to its
+    /// ASCII upper case equivalent.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
+    ///
+    /// To uppercase ASCII characters in addition to non-ASCII characters, use
+    /// [`to_uppercase`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = "Grüße, Jürgen ❤";
+    ///
+    /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
+    /// ```
+    ///
+    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    /// [`to_uppercase`]: #method.to_uppercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn to_ascii_uppercase(&self) -> String {
+        let mut bytes = self.as_bytes().to_vec();
+        bytes.make_ascii_uppercase();
+        // make_ascii_uppercase() preserves the UTF-8 invariant.
+        unsafe { String::from_utf8_unchecked(bytes) }
+    }
+
+    /// Returns a copy of this string where each character is mapped to its
+    /// ASCII lower case equivalent.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To lowercase the value in-place, use [`make_ascii_lowercase`].
+    ///
+    /// To lowercase ASCII characters in addition to non-ASCII characters, use
+    /// [`to_lowercase`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = "Grüße, Jürgen ❤";
+    ///
+    /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
+    /// ```
+    ///
+    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    /// [`to_lowercase`]: #method.to_lowercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn to_ascii_lowercase(&self) -> String {
+        let mut bytes = self.as_bytes().to_vec();
+        bytes.make_ascii_lowercase();
+        // make_ascii_lowercase() preserves the UTF-8 invariant.
+        unsafe { String::from_utf8_unchecked(bytes) }
+    }
+
+    /// Checks that two strings are an ASCII case-insensitive match.
+    ///
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
+    /// but without allocating and copying temporaries.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!("Ferris".eq_ignore_ascii_case("FERRIS"));
+    /// assert!("Ferrös".eq_ignore_ascii_case("FERRöS"));
+    /// assert!(!"Ferrös".eq_ignore_ascii_case("FERRÖS"));
+    /// ```
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    #[inline]
+    pub fn eq_ignore_ascii_case(&self, other: &str) -> bool {
+        self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
+    }
+
+    /// Converts this string to its ASCII upper case equivalent in-place.
+    ///
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new uppercased value without modifying the existing one, use
+    /// [`to_ascii_uppercase`].
+    ///
+    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    pub fn make_ascii_uppercase(&mut self) {
+        let me = unsafe { self.as_bytes_mut() };
+        me.make_ascii_uppercase()
+    }
+
+    /// Converts this string to its ASCII lower case equivalent in-place.
+    ///
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    ///
+    /// To return a new lowercased value without modifying the existing one, use
+    /// [`to_ascii_lowercase`].
+    ///
+    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.21.0")]
+    pub fn make_ascii_lowercase(&mut self) {
+        let me = unsafe { self.as_bytes_mut() };
+        me.make_ascii_lowercase()
+    }
 }
 
 /// Converts a boxed slice of bytes to a boxed string slice without checking
@@ -2087,5 +2211,5 @@ impl str {
 /// ```
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
-    mem::transmute(v)
+    Box::from_raw(Box::into_raw(v) as *mut str)
 }

@@ -1,0 +1,10 @@
+error[E0596]: cannot borrow immutable `Box` content `*x` as mutable
+  --> $DIR/issue-36400.rs:15:12
+   |
+14 |     let x = Box::new(3);
+   |         - consider changing this to `mut x`
+15 |     f(&mut *x); //~ ERROR cannot borrow immutable
+   |            ^^ cannot borrow as mutable
+
+error: aborting due to previous error
+

@@ -19,7 +19,7 @@
 //! given value is destroyed, the pointed-to value is also destroyed.
 //!
 //! Shared references in Rust disallow mutation by default, and [`Rc`]
-//! is no exception: you cannot obtain a mutable reference to
+//! is no exception: you cannot generally obtain a mutable reference to
 //! something inside an [`Rc`]. If you need mutability, put a [`Cell`]
 //! or [`RefCell`] inside the [`Rc`]; see [an example of mutability
 //! inside an Rc][mutability].
@@ -346,7 +346,7 @@ impl<T> Rc<T> {
             unsafe {
                 let val = ptr::read(&*this); // copy the contained object
 
-                // Indicate to Weaks that they can't be promoted by decrememting
+                // Indicate to Weaks that they can't be promoted by decrementing
                 // the strong count, and then remove the implicit "strong weak"
                 // pointer while also handling drop logic by just crafting a
                 // fake Weak.
@@ -1072,7 +1072,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&self.ptr, f)
+        fmt::Pointer::fmt(&(&**self as *const T), f)
     }
 }
 

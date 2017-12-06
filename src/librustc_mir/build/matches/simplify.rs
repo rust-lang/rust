@@ -10,11 +10,11 @@
 
 //! Simplifying Candidates
 //!
-//! *Simplifying* a match pair `lvalue @ pattern` means breaking it down
+//! *Simplifying* a match pair `place @ pattern` means breaking it down
 //! into bindings or other, simpler match pairs. For example:
 //!
-//! - `lvalue @ (P1, P2)` can be simplified to `[lvalue.0 @ P1, lvalue.1 @ P2]`
-//! - `lvalue @ x` can be simplified to `[]` by binding `x` to `lvalue`
+//! - `place @ (P1, P2)` can be simplified to `[place.0 @ P1, place.1 @ P2]`
+//! - `place @ x` can be simplified to `[]` by binding `x` to `place`
 //!
 //! The `simplify_candidate` routine just repeatedly applies these
 //! sort of simplifications until there is nothing left to
@@ -26,7 +26,6 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::matches::{Binding, MatchPair, Candidate};
 use hair::*;
 use rustc::mir::*;
-use rustc_data_structures::fx::FxHashMap;
 
 use std::mem;
 
@@ -74,7 +73,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     name,
                     mutability,
                     span: match_pair.pattern.span,
-                    source: match_pair.lvalue.clone(),
+                    source: match_pair.place.clone(),
                     var_id: var,
                     var_ty: ty,
                     binding_mode: mode,
@@ -82,7 +81,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    candidate.match_pairs.push(MatchPair::new(match_pair.lvalue, subpattern));
+                    candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
                 }
 
                 Ok(())
@@ -99,24 +98,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
-                if self.hir.tcx().sess.features.borrow().never_type {
-                    let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
-                        i == variant_index || {
-                            let mut visited = FxHashMap::default();
-                            let node_set = v.uninhabited_from(&mut visited,
-                                                              self.hir.tcx(),
-                                                              substs,
-                                                              adt_def.adt_kind());
-                            !node_set.is_empty()
-                        }
-                    });
-                    if irrefutable {
-                        let lvalue = match_pair.lvalue.downcast(adt_def, variant_index);
-                        candidate.match_pairs.extend(self.field_match_pairs(lvalue, subpatterns));
-                        Ok(())
-                    } else {
-                        Err(match_pair)
+                let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
+                    i == variant_index || {
+                        self.hir.tcx().sess.features.borrow().never_type &&
+                        self.hir.tcx().is_variant_uninhabited_from_all_modules(v, substs)
                     }
+                });
+                if irrefutable {
+                    let place = match_pair.place.downcast(adt_def, variant_index);
+                    candidate.match_pairs.extend(self.field_match_pairs(place, subpatterns));
+                    Ok(())
                 } else {
                     Err(match_pair)
                 }
@@ -124,7 +115,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
                 self.prefix_slice_suffix(&mut candidate.match_pairs,
-                                         &match_pair.lvalue,
+                                         &match_pair.place,
                                          prefix,
                                          slice.as_ref(),
                                          suffix);
@@ -134,13 +125,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Leaf { ref subpatterns } => {
                 // tuple struct, match subpats (if any)
                 candidate.match_pairs
-                         .extend(self.field_match_pairs(match_pair.lvalue, subpatterns));
+                         .extend(self.field_match_pairs(match_pair.place, subpatterns));
                 Ok(())
             }
 
             PatternKind::Deref { ref subpattern } => {
-                let lvalue = match_pair.lvalue.deref();
-                candidate.match_pairs.push(MatchPair::new(lvalue, subpattern));
+                let place = match_pair.place.deref();
+                candidate.match_pairs.push(MatchPair::new(place, subpattern));
                 Ok(())
             }
         }

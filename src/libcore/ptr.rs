@@ -27,8 +27,6 @@ use nonzero::NonZero;
 
 use cmp::Ordering::{self, Less, Equal, Greater};
 
-// FIXME #19649: intrinsic docs don't render, so these have no docs :(
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::copy_nonoverlapping;
 
@@ -56,7 +54,7 @@ pub use intrinsics::write_bytes;
 /// This has all the same safety problems as `ptr::read` with respect to
 /// invalid pointers, types, and double drops.
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[lang="drop_in_place"]
+#[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the
@@ -76,7 +74,6 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_ptr_null"))]
 pub const fn null<T>() -> *const T { 0 as *const T }
 
 /// Creates a null mutable raw pointer.
@@ -91,7 +88,6 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_ptr_null_mut"))]
 pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Swaps the values at two mutable locations of the same type, without
@@ -230,7 +226,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// moves the value out of `src` without preventing further usage of `src`.
 /// If `T` is not `Copy`, then care must be taken to ensure that the value at
 /// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
+/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 ///
 /// The pointer must be aligned; use `read_unaligned` if that is not the case.
@@ -266,7 +262,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// moves the value out of `src` without preventing further usage of `src`.
 /// If `T` is not `Copy`, then care must be taken to ensure that the value at
 /// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
+/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 ///
 /// # Examples
@@ -399,7 +395,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// moves the value out of `src` without preventing further usage of `src`.
 /// If `T` is not `Copy`, then care must be taken to ensure that the value at
 /// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
+/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 ///
 /// # Examples
@@ -476,6 +472,11 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 impl<T: ?Sized> *const T {
     /// Returns `true` if the pointer is null.
     ///
+    /// Note that unsized types have many possible null pointers, as only the
+    /// raw data pointer is considered, not their length, vtable, etc.
+    /// Therefore, two pointers that are null may still not compare equal to
+    /// each other.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -487,8 +488,10 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool where T: Sized {
-        self == null()
+    pub fn is_null(self) -> bool {
+        // Compare via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        (self as *const u8) == null()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -519,7 +522,7 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         if self.is_null() {
             None
         } else {
@@ -553,7 +556,7 @@ impl<T: ?Sized> *const T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -686,7 +689,7 @@ impl<T: ?Sized> *const T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -745,7 +748,7 @@ impl<T: ?Sized> *const T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -873,7 +876,7 @@ impl<T: ?Sized> *const T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// The pointer must be aligned; use `read_unaligned` if that is not the case.
@@ -927,7 +930,7 @@ impl<T: ?Sized> *const T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// # Examples
@@ -963,7 +966,7 @@ impl<T: ?Sized> *const T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// # Examples
@@ -1107,6 +1110,11 @@ impl<T: ?Sized> *const T {
 impl<T: ?Sized> *mut T {
     /// Returns `true` if the pointer is null.
     ///
+    /// Note that unsized types have many possible null pointers, as only the
+    /// raw data pointer is considered, not their length, vtable, etc.
+    /// Therefore, two pointers that are null may still not compare equal to
+    /// each other.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1118,8 +1126,10 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool where T: Sized {
-        self == null_mut()
+    pub fn is_null(self) -> bool {
+        // Compare via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        (self as *mut u8) == null_mut()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -1150,7 +1160,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         if self.is_null() {
             None
         } else {
@@ -1184,7 +1194,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -1274,7 +1284,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> where T: Sized {
+    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         if self.is_null() {
             None
         } else {
@@ -1384,7 +1394,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -1443,7 +1453,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// Most platforms fundamentally can't even construct such an allocation.
     /// For instance, no known 64-bit platform can ever serve a request
-    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
@@ -1571,7 +1581,7 @@ impl<T: ?Sized> *mut T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// The pointer must be aligned; use `read_unaligned` if that is not the case.
@@ -1625,7 +1635,7 @@ impl<T: ?Sized> *mut T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `src` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// # Examples
@@ -1661,7 +1671,7 @@ impl<T: ?Sized> *mut T {
     /// moves the value out of `self` without preventing further usage of `self`.
     /// If `T` is not `Copy`, then care must be taken to ensure that the value at
     /// `self` is not used before the data is overwritten again (e.g. with `write`,
-    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// `write_bytes`, or `copy`). Note that `*self = foo` counts as a use
     /// because it will attempt to drop the value previously at `*self`.
     ///
     /// # Examples
@@ -2335,7 +2345,6 @@ impl<T: ?Sized> Unique<T> {
     ///
     /// `ptr` must be non-null.
     #[unstable(feature = "unique", issue = "27730")]
-    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_unique_new"))]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         Unique { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
     }
@@ -2470,7 +2479,6 @@ impl<T: ?Sized> Shared<T> {
     ///
     /// `ptr` must be non-null.
     #[unstable(feature = "shared", issue = "27730")]
-    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_shared_new"))]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         Shared { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
     }

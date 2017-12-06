@@ -18,11 +18,13 @@ use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::fold::{TypeFolder,TypeFoldable};
-use rustc::util::nodemap::DefIdSet;
+use rustc::ty::fold::{TypeFolder, TypeFoldable};
+use rustc::ty::subst::{Kind, Substs};
+use rustc::util::nodemap::{DefIdSet, FxHashMap};
 use syntax::ast;
 use syntax_pos::Span;
 use std::mem;
+use std::rc::Rc;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
@@ -45,15 +47,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_anon_types();
         wbcx.visit_cast_types();
         wbcx.visit_free_region_map();
-        wbcx.visit_generator_sigs();
-        wbcx.visit_generator_interiors();
 
         let used_trait_imports = mem::replace(&mut self.tables.borrow_mut().used_trait_imports,
-                                              DefIdSet());
+                                              Rc::new(DefIdSet()));
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.tables.used_trait_imports = used_trait_imports;
 
         wbcx.tables.tainted_by_errors = self.is_tainted_by_errors();
+
+        debug!("writeback: tables for {:?} are {:#?}", item_def_id, wbcx.tables);
 
         self.tcx.alloc_tables(wbcx.tables)
     }
@@ -197,6 +199,8 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
             _ => {}
         };
 
+        self.visit_pat_adjustments(p.span, p.hir_id);
+
         self.visit_node_id(p.span, p.hir_id);
         intravisit::walk_pat(self, p);
     }
@@ -240,21 +244,12 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
         let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
-        for (&id, closure_ty) in fcx_tables.closure_tys().iter() {
+        for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
             let hir_id = hir::HirId {
                 owner: common_local_id_root.index,
                 local_id: id,
             };
-            let closure_ty = self.resolve(closure_ty, &hir_id);
-            self.tables.closure_tys_mut().insert(hir_id, closure_ty);
-        }
-
-        for (&id, &closure_kind) in fcx_tables.closure_kinds().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id: id,
-            };
-            self.tables.closure_kinds_mut().insert(hir_id, closure_kind);
+            self.tables.closure_kind_origins_mut().insert(hir_id, origin);
         }
     }
 
@@ -282,8 +277,23 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_anon_types(&mut self) {
         let gcx = self.tcx().global_tcx();
-        for (&node_id, &concrete_ty) in self.fcx.anon_types.borrow().iter() {
-            let inside_ty = self.resolve(&concrete_ty, &node_id);
+        for (&def_id, anon_defn) in self.fcx.anon_types.borrow().iter() {
+            let node_id = gcx.hir.as_local_node_id(def_id).unwrap();
+            let inside_ty = self.resolve(&anon_defn.concrete_ty, &node_id);
+
+            // Use substs to build up a reverse map from regions
+            // to their identity mappings.
+            // This is necessary because of `impl Trait` lifetimes
+            // are computed by replacing existing lifetimes with 'static
+            // and remapping only those used in the `impl Trait` return type,
+            // resulting in the parameters shifting.
+            let id_substs = Substs::identity_for_item(gcx, def_id);
+            let map: FxHashMap<Kind<'tcx>, Kind<'gcx>> =
+                anon_defn.substs
+                         .iter()
+                         .enumerate()
+                         .map(|(index, subst)| (*subst, id_substs[index]))
+                         .collect();
 
             // Convert the type from the function into a type valid outside
             // the function, by replacing invalid regions with 'static,
@@ -292,25 +302,39 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 match *r {
                     // 'static and early-bound regions are valid.
                     ty::ReStatic |
-                    ty::ReEarlyBound(_) |
                     ty::ReEmpty => r,
 
-                    ty::ReFree(_) |
-                    ty::ReLateBound(..) |
-                    ty::ReScope(_) |
-                    ty::ReSkolemized(..) => {
-                        let span = node_id.to_span(&self.fcx.tcx);
-                        span_err!(self.tcx().sess, span, E0564,
-                                  "only named lifetimes are allowed in `impl Trait`, \
-                                   but `{}` was found in the type `{}`", r, inside_ty);
-                        gcx.types.re_static
-                    }
-
-                    ty::ReVar(_) |
-                    ty::ReErased => {
-                        let span = node_id.to_span(&self.fcx.tcx);
-                        span_bug!(span, "invalid region in impl Trait: {:?}", r);
-                    }
+                    // All other regions, we map them appropriately to their adjusted
+                    // indices, erroring if we find any lifetimes that were not mapped
+                    // into the new set.
+                    _ => if let Some(r1) =
+                            map.get(&Kind::from(r)).and_then(|k| k.as_region()) { r1 } else
+                        {
+                            // No mapping was found. This means that
+                            // it is either a disallowed lifetime,
+                            // which will be caught by regionck, or it
+                            // is a region in a non-upvar closure
+                            // generic, which is explicitly
+                            // allowed. If that surprises you, read
+                            // on.
+                            //
+                            // The case of closure is a somewhat
+                            // subtle (read: hacky) consideration. The
+                            // problem is that our closure types
+                            // currently include all the lifetime
+                            // parameters declared on the enclosing
+                            // function, even if they are unused by
+                            // the closure itself. We can't readily
+                            // filter them out, so here we replace
+                            // those values with `'empty`. This can't
+                            // really make a difference to the rest of
+                            // the compiler; those regions are ignored
+                            // for the outlives relation, and hence
+                            // don't affect trait selection or auto
+                            // traits, and they are erased during
+                            // trans.
+                            gcx.types.re_empty
+                        },
                 }
             });
 
@@ -366,30 +390,22 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_generator_interiors(&mut self) {
-        let common_local_id_root = self.fcx.tables.borrow().local_id_root.unwrap();
-        for (&id, interior) in self.fcx.tables.borrow().generator_interiors().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id: id,
-            };
-            let interior = self.resolve(interior, &hir_id);
-            self.tables.generator_interiors_mut().insert(hir_id, interior);
-        }
-    }
+    fn visit_pat_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
+        let adjustment = self.fcx
+                             .tables
+                             .borrow_mut()
+                             .pat_adjustments_mut()
+                             .remove(hir_id);
+        match adjustment {
+            None => {
+                debug!("No pat_adjustments for node {:?}", hir_id);
+            }
 
-    fn visit_generator_sigs(&mut self) {
-        let common_local_id_root = self.fcx.tables.borrow().local_id_root.unwrap();
-        for (&id, gen_sig) in self.fcx.tables.borrow().generator_sigs().iter() {
-            let hir_id = hir::HirId {
-                owner: common_local_id_root.index,
-                local_id: id,
-            };
-            let gen_sig = gen_sig.map(|s| ty::GenSig {
-                yield_ty: self.resolve(&s.yield_ty, &hir_id),
-                return_ty: self.resolve(&s.return_ty, &hir_id),
-            });
-            self.tables.generator_sigs_mut().insert(hir_id, gen_sig);
+            Some(adjustment) => {
+                let resolved_adjustment = self.resolve(&adjustment, &span);
+                debug!("pat_adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
+                self.tables.pat_adjustments_mut().insert(hir_id, resolved_adjustment);
+            }
         }
     }
 

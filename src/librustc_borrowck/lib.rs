@@ -15,11 +15,12 @@
 
 #![allow(non_camel_case_types)]
 
+#![feature(from_ref)]
+#![feature(match_default_bindings)]
 #![feature(quote)]
-#![feature(rustc_diagnostic_macros)]
 
 #[macro_use] extern crate log;
-#[macro_use] extern crate syntax;
+extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 
@@ -33,14 +34,8 @@ extern crate rustc_mir;
 pub use borrowck::check_crate;
 pub use borrowck::build_borrowck_dataflow_data_for_fn;
 
-// NB: This module needs to be declared first so diagnostics are
-// registered before they are used.
-mod diagnostics;
-
 mod borrowck;
 
 pub mod graphviz;
 
 pub use borrowck::provide;
-
-__build_diagnostic_array! { librustc_borrowck, DIAGNOSTICS }

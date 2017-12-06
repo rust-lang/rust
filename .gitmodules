@@ -42,3 +42,9 @@
 [submodule "src/tools/miri"]
 	path = src/tools/miri
 	url = https://github.com/solson/miri.git
+[submodule "src/dlmalloc"]
+	path = src/dlmalloc
+	url = https://github.com/alexcrichton/dlmalloc-rs.git
+[submodule "src/binaryen"]
+	path = src/binaryen
+	url = https://github.com/alexcrichton/binaryen.git

@@ -87,7 +87,7 @@ impl Thread {
         };
 
         extern fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
-            unsafe { start_thread(main); }
+            unsafe { start_thread(main as *mut u8); }
             ptr::null_mut()
         }
     }
@@ -149,7 +149,7 @@ impl Thread {
 
     pub fn sleep(dur: Duration) {
         let mut secs = dur.as_secs();
-        let mut nsecs = dur.subsec_nanos() as libc::c_long;
+        let mut nsecs = dur.subsec_nanos() as _;
 
         // If we're awoken with a signal then the return value will be -1 and
         // nanosleep will fill in `ts` with the remaining time.

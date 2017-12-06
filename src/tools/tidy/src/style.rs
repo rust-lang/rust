@@ -50,6 +50,11 @@ const UNEXPLAINED_IGNORE_DOCTEST_INFO: &str = r#"unexplained "```ignore" doctest
 
 "#;
 
+const LLVM_UNREACHABLE_INFO: &str = r"\
+C++ code used llvm_unreachable, which triggers undefined behavior
+when executed when assertions are disabled.
+Use llvm::report_fatal_error for increased robustness.";
+
 /// Parser states for line_is_url.
 #[derive(PartialEq)]
 #[allow(non_camel_case_types)]
@@ -108,7 +113,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     let mut contents = String::new();
     super::walk(path, &mut super::filter_dirs, &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();
-        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".h"];
+        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h"];
         if extensions.iter().all(|e| !filename.ends_with(e)) ||
            filename.starts_with(".#") {
             return
@@ -152,6 +157,9 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
             if line.ends_with("```ignore") || line.ends_with("```rust,ignore") {
                 err(UNEXPLAINED_IGNORE_DOCTEST_INFO);
+            }
+            if filename.ends_with(".cpp") && line.contains("llvm_unreachable") {
+                err(LLVM_UNREACHABLE_INFO);
             }
         }
         if !licenseck(file, &contents) {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ascii::*;
+use ascii::AsciiExt;
 use collections::HashMap;
 use collections;
 use env::split_paths;

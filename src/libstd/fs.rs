@@ -1374,14 +1374,17 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// Note that if `from` and `to` both point to the same file, then the file
 /// will likely get truncated by this operation.
 ///
-/// On success, the total number of bytes copied is returned.
+/// On success, the total number of bytes copied is returned and it is equal to
+/// the length of the `to` file as reported by `metadata`.
 ///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `open` function in Unix
 /// with `O_RDONLY` for `from` and `O_WRONLY`, `O_CREAT`, and `O_TRUNC` for `to`.
 /// `O_CLOEXEC` is set for returned file descriptors.
-/// On Windows, this function currently corresponds to `CopyFileEx`.
+/// On Windows, this function currently corresponds to `CopyFileEx`. Alternate
+/// NTFS streams are copied but only the size of the main stream is returned by
+/// this function.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
@@ -2589,11 +2592,23 @@ mod tests {
     fn copy_file_preserves_streams() {
         let tmp = tmpdir();
         check!(check!(File::create(tmp.join("in.txt:bunny"))).write("carrot".as_bytes()));
-        assert_eq!(check!(fs::copy(tmp.join("in.txt"), tmp.join("out.txt"))), 6);
+        assert_eq!(check!(fs::copy(tmp.join("in.txt"), tmp.join("out.txt"))), 0);
         assert_eq!(check!(tmp.join("out.txt").metadata()).len(), 0);
         let mut v = Vec::new();
         check!(check!(File::open(tmp.join("out.txt:bunny"))).read_to_end(&mut v));
         assert_eq!(v, b"carrot".to_vec());
+    }
+
+    #[test]
+    fn copy_file_returns_metadata_len() {
+        let tmp = tmpdir();
+        let in_path = tmp.join("in.txt");
+        let out_path = tmp.join("out.txt");
+        check!(check!(File::create(&in_path)).write(b"lettuce"));
+        #[cfg(windows)]
+        check!(check!(File::create(tmp.join("in.txt:bunny"))).write(b"carrot"));
+        let copied_len = check!(fs::copy(&in_path, &out_path));
+        assert_eq!(check!(out_path.metadata()).len(), copied_len);
     }
 
     #[test]

@@ -185,7 +185,7 @@ pub unsafe fn setup(build: &mut Build) {
                             0, FALSE, DUPLICATE_SAME_ACCESS);
 
     // If this failed, well at least we tried! An example of DuplicateHandle
-    // failing in the past has been when the wrong python2 package spawed this
+    // failing in the past has been when the wrong python2 package spawned this
     // build system (e.g. the `python2` package in MSYS instead of
     // `mingw-w64-x86_64-python2`. Not sure why it failed, but the "failure
     // mode" here is that we only clean everything up when the build system

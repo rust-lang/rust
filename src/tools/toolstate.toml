@@ -3,7 +3,7 @@
 #
 # There are three states a tool can be in:
 # 1. Broken: The tool doesn't build
-# 2. Building: The tool builds but its tests are failing
+# 2. Compiling: The tool builds but its tests are failing
 # 3. Testing: The tool builds and its tests are passing
 #
 # In the future there will be further states like "Distributing", which
@@ -23,14 +23,13 @@
 # Each tool has a list of people to ping
 
 # ping @oli-obk @RalfJung @eddyb
-miri = "Broken"
+miri = "Testing"
 
 # ping @Manishearth @llogiq @mcarton @oli-obk
-clippy = "Broken"
+clippy = "Testing"
 
 # ping @nrc
-rls = "Testing"
+rls = "Broken"
 
 # ping @nrc
-rustfmt = "Testing"
-
+rustfmt = "Broken"

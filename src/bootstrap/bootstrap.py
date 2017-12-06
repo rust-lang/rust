@@ -8,7 +8,7 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 import argparse
 import contextlib
 import datetime
@@ -294,13 +294,14 @@ def default_build_triple():
             raise ValueError('unknown byteorder: {}'.format(sys.byteorder))
         # only the n64 ABI is supported, indicate it
         ostype += 'abi64'
-    elif cputype == 'sparcv9':
+    elif cputype == 'sparcv9' or cputype == 'sparc64':
         pass
     else:
         err = "unknown cpu type: {}".format(cputype)
         sys.exit(err)
 
     return "{}-{}".format(cputype, ostype)
+
 
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
@@ -498,7 +499,7 @@ class RustBuild(object):
 
         If the key does not exists, the result is None:
 
-        >>> rb.get_toml("key3") == None
+        >>> rb.get_toml("key3") is None
         True
         """
         for line in self.config_toml.splitlines():
@@ -531,7 +532,7 @@ class RustBuild(object):
         """
         config = self.get_toml(program)
         if config:
-            return config
+            return os.path.expanduser(config)
         return os.path.join(self.bin_root(), "bin", "{}{}".format(
             program, self.exe_suffix()))
 
@@ -647,7 +648,8 @@ class RustBuild(object):
                       if not ((module.endswith("llvm") and
                                self.get_toml('llvm-config')) or
                               (module.endswith("jemalloc") and
-                               self.get_toml('jemalloc')))]
+                               (self.get_toml('use-jemalloc') == "false" or
+                                self.get_toml('jemalloc'))))]
         run(["git", "submodule", "update",
              "--init", "--recursive"] + submodules,
             cwd=self.rust_root, verbose=self.verbose)

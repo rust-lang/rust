@@ -68,10 +68,10 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                 }
 
                 // In addition to the above rules, we restrict impls of defaulted traits
-                // so that they can only be implemented on structs/enums. To see why this
-                // restriction exists, consider the following example (#22978). Imagine
-                // that crate A defines a defaulted trait `Foo` and a fn that operates
-                // on pairs of types:
+                // so that they can only be implemented on nominal types, such as structs,
+                // enums or foreign types. To see why this restriction exists, consider the
+                // following example (#22978). Imagine that crate A defines a defaulted trait
+                // `Foo` and a fn that operates on pairs of types:
                 //
                 // ```
                 // // Crate A
@@ -100,20 +100,21 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                 // This final impl is legal according to the orpan
                 // rules, but it invalidates the reasoning from
                 // `two_foos` above.
-                debug!("trait_ref={:?} trait_def_id={:?} trait_has_default_impl={}",
+                debug!("trait_ref={:?} trait_def_id={:?} trait_is_auto={}",
                        trait_ref,
                        trait_def_id,
-                       self.tcx.trait_has_default_impl(trait_def_id));
-                if self.tcx.trait_has_default_impl(trait_def_id) &&
+                       self.tcx.trait_is_auto(trait_def_id));
+                if self.tcx.trait_is_auto(trait_def_id) &&
                    !trait_def_id.is_local() {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
                         ty::TyAdt(self_def, _) => Some(self_def.did),
+                        ty::TyForeign(did) => Some(did),
                         _ => None,
                     };
 
                     let msg = match opt_self_def_id {
-                        // We only want to permit structs/enums, but not *all* structs/enums.
+                        // We only want to permit nominal types, but not *all* nominal types.
                         // They must be local to the current crate, so that people
                         // can't do `unsafe impl Send for Rc<SomethingLocal>` or
                         // `impl !Send for Box<SomethingLocalAndSend>`.
@@ -141,7 +142,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                     }
                 }
             }
-            hir::ItemDefaultImpl(_, ref item_trait_ref) => {
+            hir::ItemAutoImpl(_, ref item_trait_ref) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: default trait impl {}",
                        self.tcx.hir.node_to_string(item.id));

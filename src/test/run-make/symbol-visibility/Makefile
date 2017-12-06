@@ -9,17 +9,17 @@ all:
 else
 
 NM=nm -D
-DYLIB_EXT=so
 CDYLIB_NAME=liba_cdylib.so
 RDYLIB_NAME=liba_rust_dylib.so
 EXE_NAME=an_executable
+COMBINED_CDYLIB_NAME=libcombined_rlib_dylib.so
 
 ifeq ($(UNAME),Darwin)
 NM=nm -gU
-DYLIB_EXT=dylib
 CDYLIB_NAME=liba_cdylib.dylib
 RDYLIB_NAME=liba_rust_dylib.dylib
 EXE_NAME=an_executable
+COMBINED_CDYLIB_NAME=libcombined_rlib_dylib.dylib
 endif
 
 all:
@@ -27,6 +27,7 @@ all:
 	$(RUSTC) a_cdylib.rs
 	$(RUSTC) a_rust_dylib.rs
 	$(RUSTC) an_executable.rs
+	$(RUSTC) a_cdylib.rs --crate-name combined_rlib_dylib --crate-type=rlib,cdylib
 
 	# Check that a cdylib exports its public #[no_mangle] functions
 	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -c public_c_function_from_cdylib)" -eq "1" ]
@@ -47,4 +48,13 @@ all:
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -c public_c_function_from_rlib)" -eq "0" ]
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -c public_rust_function_from_exe)" -eq "0" ]
 
+
+	# Check the combined case, where we generate a cdylib and an rlib in the same
+	# compilation session:
+	# Check that a cdylib exports its public #[no_mangle] functions
+	[ "$$($(NM) $(TMPDIR)/$(COMBINED_CDYLIB_NAME) | grep -c public_c_function_from_cdylib)" -eq "1" ]
+	# Check that a cdylib exports the public #[no_mangle] functions of dependencies
+	[ "$$($(NM) $(TMPDIR)/$(COMBINED_CDYLIB_NAME) | grep -c public_c_function_from_rlib)" -eq "1" ]
+	# Check that a cdylib DOES NOT export any public Rust functions
+	[ "$$($(NM) $(TMPDIR)/$(COMBINED_CDYLIB_NAME) | grep -c _ZN.*h.*E)" -eq "0" ]
 endif

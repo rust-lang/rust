@@ -11,4 +11,5 @@
 #![feature(optin_builtin_traits)]
 
 trait Magic<T> {} //~ ERROR E0567
+#[allow(auto_impl)]
 impl Magic<isize> for .. {}

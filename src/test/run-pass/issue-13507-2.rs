@@ -10,9 +10,6 @@
 
 // aux-build:issue13507.rs
 
-
-#![feature(core)]
-
 extern crate issue13507;
 use issue13507::testtypes;
 

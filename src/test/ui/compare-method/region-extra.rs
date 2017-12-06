@@ -16,7 +16,7 @@ trait Master<'a, 'b> {
 }
 
 impl<'a, 'b> Master<'a, 'b> for () {
-    fn foo() where 'a: 'b { }
+    fn foo() where 'a: 'b { } //~ ERROR impl has stricter
 }
 
 fn main() {

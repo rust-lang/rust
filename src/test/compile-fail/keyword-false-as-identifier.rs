@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let false = "foo"; //~ error: mismatched types
+    let false = 22; //~ error: mismatched types
 }

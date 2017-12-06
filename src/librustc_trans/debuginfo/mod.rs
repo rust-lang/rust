@@ -43,7 +43,7 @@ use std::ptr;
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use rustc::ty::layout::{self, LayoutTyper};
+use rustc::ty::layout::{self, LayoutOf};
 
 pub mod gdb;
 mod utils;
@@ -56,6 +56,7 @@ mod source_loc;
 pub use self::create_scope_map::{create_mir_scopes, MirDebugScope};
 pub use self::source_loc::start_emitting_source_locations;
 pub use self::metadata::create_global_var_metadata;
+pub use self::metadata::create_vtable_metadata;
 pub use self::metadata::extend_scope_to_file;
 pub use self::source_loc::set_source_location;
 
@@ -70,7 +71,7 @@ pub struct CrateDebugContext<'tcx> {
     llmod: ModuleRef,
     builder: DIBuilderRef,
     created_files: RefCell<FxHashMap<(Symbol, Symbol), DIFile>>,
-    created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Integer), DIType>>,
+    created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
     namespace_map: RefCell<DefIdMap<DIScope>>,
@@ -334,8 +335,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             signature.extend(inputs.iter().map(|&t| {
                 let t = match t.sty {
                     ty::TyArray(ct, _)
-                        if (ct == cx.tcx().types.u8) ||
-                           (cx.layout_of(ct).size(cx).bytes() == 0) => {
+                        if (ct == cx.tcx().types.u8) || cx.layout_of(ct).is_zst() => {
                         cx.tcx().mk_imm_ptr(ct)
                     }
                     _ => t
@@ -376,7 +376,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            let actual_type = cx.tcx().normalize_associated_type(&actual_type);
+            let actual_type = cx.tcx().fully_normalize_associated_types_in(&actual_type);
             // Add actual type name to <...> clause of function name
             let actual_type_name = compute_debuginfo_type_name(cx,
                                                                actual_type,
@@ -389,7 +389,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
             let names = get_type_parameter_names(cx, generics);
             substs.types().zip(names).map(|(ty, name)| {
-                let actual_type = cx.tcx().normalize_associated_type(&ty);
+                let actual_type = cx.tcx().fully_normalize_associated_types_in(&ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                 let name = CString::new(name.as_str().as_bytes()).unwrap();
                 unsafe {
@@ -498,7 +498,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     cx.sess().opts.optimize != config::OptLevel::No,
                     DIFlags::FlagZero,
                     argument_index,
-                    align,
+                    align.abi() as u32,
                 )
             };
             source_loc::set_debug_location(bcx,

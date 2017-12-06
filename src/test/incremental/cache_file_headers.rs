@@ -20,6 +20,7 @@
 //[rpass1] rustc-env:RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER="l33t haxx0r rustc 2.1 LTS"
 
 // revisions:rpass1 rpass2
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 #![rustc_partition_translated(module="cache_file_headers", cfg="rpass2")]

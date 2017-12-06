@@ -36,48 +36,55 @@ fn main() {
 // contain name of the source file, so we cannot test for it.
 
 // END RUST SOURCE
-// START rustc.node4.EraseRegions.after.mir
+// START rustc.write_42.EraseRegions.after.mir
 // fn write_42(_1: *mut i32) -> bool {
+//     ...
 //     bb0: {
 //         Validate(Acquire, [_1: *mut i32]);
 //         Validate(Release, [_1: *mut i32]);
+//         ...
 //         return;
 //     }
 // }
-// END rustc.node4.EraseRegions.after.mir
-// START rustc.node22.EraseRegions.after.mir
+// END rustc.write_42.EraseRegions.after.mir
+// START rustc.write_42-{{closure}}.EraseRegions.after.mir
 // fn write_42::{{closure}}(_1: &ReErased [closure@NodeId(22)], _2: *mut i32) -> () {
+//     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:9) => validate_4/8cd878b::write_42[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(22)], _2: *mut i32]);
-//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:9) => validate_4/8cd878b::write_42[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(22)], _2: *mut i32]);
-//         StorageLive(_3);
-//         _3 = _2;
-//         (*_3) = const 23i32;
-//         StorageDead(_3);
+//         Validate(Acquire, [_1: &ReFree(DefId(0/1:9 ~ validate_4[317d]::write_42[0]::{{closure}}[0]), BrEnv) [closure@NodeId(22)], _2: *mut i32]);
+//         Validate(Release, [_1: &ReFree(DefId(0/1:9 ~ validate_4[317d]::write_42[0]::{{closure}}[0]), BrEnv) [closure@NodeId(22)], _2: *mut i32]);
+//         (*_2) = const 23i32;
+//         _0 = ();
 //         return;
 //     }
 // }
-// END rustc.node22.EraseRegions.after.mir
-// START rustc.node31.EraseRegions.after.mir
+// END rustc.write_42-{{closure}}.EraseRegions.after.mir
+// START rustc.test.EraseRegions.after.mir
 // fn test(_1: &ReErased mut i32) -> () {
+//     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(0:4) => validate_4/8cd878b::test[0] }, BrAnon(0)) mut i32]);
-//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(0:4) => validate_4/8cd878b::test[0] }, BrAnon(0)) mut i32]);
-//         _3 = const write_42(_4) -> bb1;
+//         Validate(Acquire, [_1: &ReFree(DefId(0/0:4 ~ validate_4[317d]::test[0]), BrAnon(0)) mut i32]);
+//         Validate(Release, [_1: &ReFree(DefId(0/0:4 ~ validate_4[317d]::test[0]), BrAnon(0)) mut i32]);
+//         ...
+//         _2 = const write_42(move _3) -> bb1;
 //     }
 //     bb1: {
-//         Validate(Acquire, [_3: bool]);
-//         Validate(Release, [_3: bool]);
+//         Validate(Acquire, [_2: bool]);
+//         Validate(Release, [_2: bool]);
+//         ...
 //     }
 // }
-// END rustc.node31.EraseRegions.after.mir
-// START rustc.node60.EraseRegions.after.mir
+// END rustc.test.EraseRegions.after.mir
+// START rustc.main-{{closure}}.EraseRegions.after.mir
 // fn main::{{closure}}(_1: &ReErased [closure@NodeId(60)], _2: &ReErased mut i32) -> bool {
+//     ...
 //     bb0: {
-//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:10) => validate_4/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:10) => validate_4/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
-//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:10) => validate_4/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(1:10) => validate_4/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         Validate(Acquire, [_1: &ReFree(DefId(0/1:10 ~ validate_4[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(60)], _2: &ReFree(DefId(0/1:10 ~ validate_4[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
+//         Validate(Release, [_1: &ReFree(DefId(0/1:10 ~ validate_4[317d]::main[0]::{{closure}}[0]), BrEnv) [closure@NodeId(60)], _2: &ReFree(DefId(0/1:10 ~ validate_4[317d]::main[0]::{{closure}}[0]), BrAnon(0)) mut i32]);
 //         StorageLive(_3);
-//         _0 = const write_42(_4) -> bb1;
+//         ...
+//         _0 = const write_42(move _3) -> bb1;
 //     }
+//     ...
 // }
-// END rustc.node60.EraseRegions.after.mir
+// END rustc.main-{{closure}}.EraseRegions.after.mir

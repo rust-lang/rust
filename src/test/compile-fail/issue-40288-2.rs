@@ -12,12 +12,12 @@ fn prove_static<T: 'static + ?Sized>(_: &'static T) {}
 
 fn lifetime_transmute_slice<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
     let mut out = [x];
-    //~^ ERROR cannot infer an appropriate lifetime due to conflicting requirements
     {
         let slice: &mut [_] = &mut out;
         slice[0] = y;
     }
     out[0]
+    //~^ ERROR 19:5: 19:11: explicit lifetime required in the type of `y` [E0621]
 }
 
 struct Struct<T, U: ?Sized> {
@@ -27,12 +27,12 @@ struct Struct<T, U: ?Sized> {
 
 fn lifetime_transmute_struct<'a, T: ?Sized>(x: &'a T, y: &T) -> &'a T {
     let mut out = Struct { head: x, _tail: [()] };
-    //~^ ERROR cannot infer an appropriate lifetime due to conflicting requirements
     {
         let dst: &mut Struct<_, [()]> = &mut out;
         dst.head = y;
     }
     out.head
+    //~^ ERROR 34:5: 34:13: explicit lifetime required in the type of `y` [E0621]
 }
 
 fn main() {

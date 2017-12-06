@@ -176,11 +176,16 @@ impl Socket {
                 }
                 0 => {}
                 _ => {
-                    if pollfd.revents & libc::POLLOUT == 0 {
-                        if let Some(e) = self.take_error()? {
-                            return Err(e);
-                        }
+                    // linux returns POLLOUT|POLLERR|POLLHUP for refused connections (!), so look
+                    // for POLLHUP rather than read readiness
+                    if pollfd.revents & libc::POLLHUP != 0 {
+                        let e = self.take_error()?
+                            .unwrap_or_else(|| {
+                                io::Error::new(io::ErrorKind::Other, "no error set after POLLHUP")
+                            });
+                        return Err(e);
                     }
+
                     return Ok(());
                 }
             }
@@ -354,4 +359,83 @@ impl FromInner<c_int> for Socket {
 
 impl IntoInner<c_int> for Socket {
     fn into_inner(self) -> c_int { self.0.into_raw() }
+}
+
+// In versions of glibc prior to 2.26, there's a bug where the DNS resolver
+// will cache the contents of /etc/resolv.conf, so changes to that file on disk
+// can be ignored by a long-running program. That can break DNS lookups on e.g.
+// laptops where the network comes and goes. See
+// https://sourceware.org/bugzilla/show_bug.cgi?id=984. Note however that some
+// distros including Debian have patched glibc to fix this for a long time.
+//
+// A workaround for this bug is to call the res_init libc function, to clear
+// the cached configs. Unfortunately, while we believe glibc's implementation
+// of res_init is thread-safe, we know that other implementations are not
+// (https://github.com/rust-lang/rust/issues/43592). Code here in libstd could
+// try to synchronize its res_init calls with a Mutex, but that wouldn't
+// protect programs that call into libc in other ways. So instead of calling
+// res_init unconditionally, we call it only when we detect we're linking
+// against glibc version < 2.26. (That is, when we both know its needed and
+// believe it's thread-safe).
+pub fn res_init_if_glibc_before_2_26() -> io::Result<()> {
+    // If the version fails to parse, we treat it the same as "not glibc".
+    if let Some(Ok(version_str)) = glibc_version_cstr().map(CStr::to_str) {
+        if let Some(version) = parse_glibc_version(version_str) {
+            if version < (2, 26) {
+                let ret = unsafe { libc::res_init() };
+                if ret != 0 {
+                    return Err(io::Error::last_os_error());
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn glibc_version_cstr() -> Option<&'static CStr> {
+    weak! {
+        fn gnu_get_libc_version() -> *const libc::c_char
+    }
+    if let Some(f) = gnu_get_libc_version.get() {
+        unsafe { Some(CStr::from_ptr(f())) }
+    } else {
+        None
+    }
+}
+
+// Returns Some((major, minor)) if the string is a valid "x.y" version,
+// ignoring any extra dot-separated parts. Otherwise return None.
+fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
+    let mut parsed_ints = version.split(".").map(str::parse::<usize>).fuse();
+    match (parsed_ints.next(), parsed_ints.next()) {
+        (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
+        _ => None
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_res_init() {
+        // This mostly just tests that the weak linkage doesn't panic wildly...
+        res_init_if_glibc_before_2_26().unwrap();
+    }
+
+    #[test]
+    fn test_parse_glibc_version() {
+        let cases = [
+            ("0.0", Some((0, 0))),
+            ("01.+2", Some((1, 2))),
+            ("3.4.5.six", Some((3, 4))),
+            ("1", None),
+            ("1.-2", None),
+            ("1.foo", None),
+            ("foo.1", None),
+        ];
+        for &(version_str, parsed) in cases.iter() {
+            assert_eq!(parsed, parse_glibc_version(version_str));
+        }
+    }
 }

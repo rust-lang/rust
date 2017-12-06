@@ -8,29 +8,63 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::Ordering::{Equal, Greater, Less};
-use core::slice::heapsort;
 use core::result::Result::{Ok, Err};
-use rand::{Rng, XorShiftRng};
 
 #[test]
 fn test_binary_search() {
+    let b: [i32; 0] = [];
+    assert_eq!(b.binary_search(&5), Err(0));
+
+    let b = [4];
+    assert_eq!(b.binary_search(&3), Err(0));
+    assert_eq!(b.binary_search(&4), Ok(0));
+    assert_eq!(b.binary_search(&5), Err(1));
+
     let b = [1, 2, 4, 6, 8, 9];
-    assert!(b.binary_search_by(|v| v.cmp(&6)) == Ok(3));
-    assert!(b.binary_search_by(|v| v.cmp(&5)) == Err(3));
-    let b = [1, 2, 4, 6, 7, 8, 9];
-    assert!(b.binary_search_by(|v| v.cmp(&6)) == Ok(3));
-    assert!(b.binary_search_by(|v| v.cmp(&5)) == Err(3));
-    let b = [1, 2, 4, 6, 8, 9];
-    assert!(b.binary_search_by(|v| v.cmp(&8)) == Ok(4));
-    assert!(b.binary_search_by(|v| v.cmp(&7)) == Err(4));
-    let b = [1, 2, 4, 6, 7, 8, 9];
-    assert!(b.binary_search_by(|v| v.cmp(&8)) == Ok(5));
-    let b = [1, 2, 4, 5, 6, 8, 9];
-    assert!(b.binary_search_by(|v| v.cmp(&7)) == Err(5));
-    assert!(b.binary_search_by(|v| v.cmp(&0)) == Err(0));
+    assert_eq!(b.binary_search(&5), Err(3));
+    assert_eq!(b.binary_search(&6), Ok(3));
+    assert_eq!(b.binary_search(&7), Err(4));
+    assert_eq!(b.binary_search(&8), Ok(4));
+
     let b = [1, 2, 4, 5, 6, 8];
-    assert!(b.binary_search_by(|v| v.cmp(&9)) == Err(6));
+    assert_eq!(b.binary_search(&9), Err(6));
+
+    let b = [1, 2, 4, 6, 7, 8, 9];
+    assert_eq!(b.binary_search(&6), Ok(3));
+    assert_eq!(b.binary_search(&5), Err(3));
+    assert_eq!(b.binary_search(&8), Ok(5));
+
+    let b = [1, 2, 4, 5, 6, 8, 9];
+    assert_eq!(b.binary_search(&7), Err(5));
+    assert_eq!(b.binary_search(&0), Err(0));
+
+    let b = [1, 3, 3, 3, 7];
+    assert_eq!(b.binary_search(&0), Err(0));
+    assert_eq!(b.binary_search(&1), Ok(0));
+    assert_eq!(b.binary_search(&2), Err(1));
+    assert!(match b.binary_search(&3) { Ok(1...3) => true, _ => false });
+    assert!(match b.binary_search(&3) { Ok(1...3) => true, _ => false });
+    assert_eq!(b.binary_search(&4), Err(4));
+    assert_eq!(b.binary_search(&5), Err(4));
+    assert_eq!(b.binary_search(&6), Err(4));
+    assert_eq!(b.binary_search(&7), Ok(4));
+    assert_eq!(b.binary_search(&8), Err(5));
+}
+
+#[test]
+// Test implementation specific behavior when finding equivalent elements.
+// It is ok to break this test but when you do a crater run is highly advisable.
+fn test_binary_search_implementation_details() {
+    let b = [1, 1, 2, 2, 3, 3, 3];
+    assert_eq!(b.binary_search(&1), Ok(1));
+    assert_eq!(b.binary_search(&2), Ok(3));
+    assert_eq!(b.binary_search(&3), Ok(6));
+    let b = [1, 1, 1, 1, 1, 3, 3, 3, 3];
+    assert_eq!(b.binary_search(&1), Ok(4));
+    assert_eq!(b.binary_search(&3), Ok(8));
+    let b = [1, 1, 1, 1, 3, 3, 3, 3, 3];
+    assert_eq!(b.binary_search(&1), Ok(3));
+    assert_eq!(b.binary_search(&3), Ok(8));
 }
 
 #[test]
@@ -239,6 +273,23 @@ fn test_find_rfind() {
 }
 
 #[test]
+fn test_iter_folds() {
+    let a = [1, 2, 3, 4, 5]; // len>4 so the unroll is used
+    assert_eq!(a.iter().fold(0, |acc, &x| 2*acc + x), 57);
+    assert_eq!(a.iter().rfold(0, |acc, &x| 2*acc + x), 129);
+    let fold = |acc: i32, &x| acc.checked_mul(2)?.checked_add(x);
+    assert_eq!(a.iter().try_fold(0, &fold), Some(57));
+    assert_eq!(a.iter().try_rfold(0, &fold), Some(129));
+
+    // short-circuiting try_fold, through other methods
+    let a = [0, 1, 2, 3, 5, 5, 5, 7, 8, 9];
+    let mut iter = a.iter();
+    assert_eq!(iter.position(|&x| x == 3), Some(3));
+    assert_eq!(iter.rfind(|&&x| x == 5), Some(&5));
+    assert_eq!(iter.len(), 2);
+}
+
+#[test]
 fn test_rotate() {
     const N: usize = 600;
     let a: &mut [_] = &mut [0; N];
@@ -252,69 +303,4 @@ fn test_rotate() {
     for i in 0..N {
         assert_eq!(a[(i+k)%N], i);
     }
-}
-
-#[test]
-fn sort_unstable() {
-    let mut v = [0; 600];
-    let mut tmp = [0; 600];
-    let mut rng = XorShiftRng::new_unseeded();
-
-    for len in (2..25).chain(500..510) {
-        let v = &mut v[0..len];
-        let tmp = &mut tmp[0..len];
-
-        for &modulus in &[5, 10, 100, 1000] {
-            for _ in 0..100 {
-                for i in 0..len {
-                    v[i] = rng.gen::<i32>() % modulus;
-                }
-
-                // Sort in default order.
-                tmp.copy_from_slice(v);
-                tmp.sort_unstable();
-                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
-
-                // Sort in ascending order.
-                tmp.copy_from_slice(v);
-                tmp.sort_unstable_by(|a, b| a.cmp(b));
-                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
-
-                // Sort in descending order.
-                tmp.copy_from_slice(v);
-                tmp.sort_unstable_by(|a, b| b.cmp(a));
-                assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
-
-                // Test heapsort using `<` operator.
-                tmp.copy_from_slice(v);
-                heapsort(tmp, |a, b| a < b);
-                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
-
-                // Test heapsort using `>` operator.
-                tmp.copy_from_slice(v);
-                heapsort(tmp, |a, b| a > b);
-                assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
-            }
-        }
-    }
-
-    // Sort using a completely random comparison function.
-    // This will reorder the elements *somehow*, but won't panic.
-    for i in 0..v.len() {
-        v[i] = i as i32;
-    }
-    v.sort_unstable_by(|_, _| *rng.choose(&[Less, Equal, Greater]).unwrap());
-    v.sort_unstable();
-    for i in 0..v.len() {
-        assert_eq!(v[i], i as i32);
-    }
-
-    // Should not panic.
-    [0i32; 0].sort_unstable();
-    [(); 10].sort_unstable();
-    [(); 100].sort_unstable();
-
-    let mut v = [0xDEADBEEFu64];
-    v.sort_unstable();
-    assert!(v == [0xDEADBEEF]);
 }

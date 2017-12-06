@@ -29,7 +29,6 @@ use infer::{InferCtxt, InferOk};
 use infer::type_variable::TypeVariableOrigin;
 use middle::const_val::ConstVal;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
-use syntax::ast;
 use syntax::symbol::Symbol;
 use ty::subst::{Subst, Substs};
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
@@ -639,7 +638,7 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
                   // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
                   // ?0>`).
                   ty::Predicate::Projection(ref data) =>
-                      !infcx.any_unresolved_type_vars(&data.ty()),
+                      infcx.any_unresolved_type_vars(&data.ty()),
 
                   // We are only interested in `T: Foo<X = U>` predicates, whre
                   // `U` references one of `unresolved_type_vars`. =)
@@ -1044,10 +1043,9 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // In either case, we handle this by not adding a
                 // candidate for an impl if it contains a `default`
                 // type.
-                let item_name = selcx.tcx().associated_item(obligation.predicate.item_def_id).name;
                 let node_item = assoc_ty_def(selcx,
                                              impl_data.impl_def_id,
-                                             item_name);
+                                             obligation.predicate.item_def_id);
 
                 let is_default = if node_item.node.is_from_trait() {
                     // If true, the impl inherited a `type Foo = Bar`
@@ -1118,7 +1116,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                 // projection. And the projection where clause is handled
                 // in `assemble_candidates_from_param_env`.
             }
-            super::VtableDefaultImpl(..) |
+            super::VtableAutoImpl(..) |
             super::VtableBuiltin(..) => {
                 // These traits have no associated types.
                 span_bug!(
@@ -1184,7 +1182,7 @@ fn confirm_select_candidate<'cx, 'gcx, 'tcx>(
             confirm_fn_pointer_candidate(selcx, obligation, data),
         super::VtableObject(_) =>
             confirm_object_candidate(selcx, obligation, obligation_trait_ref),
-        super::VtableDefaultImpl(..) |
+        super::VtableAutoImpl(..) |
         super::VtableParam(..) |
         super::VtableBuiltin(..) =>
             // we don't create Select candidates with this kind of resolution
@@ -1266,8 +1264,7 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
     vtable: VtableGeneratorData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
 {
-    let gen_sig = selcx.infcx().generator_sig(vtable.closure_def_id).unwrap()
-        .subst(selcx.tcx(), vtable.substs.substs);
+    let gen_sig = vtable.substs.generator_poly_sig(vtable.closure_def_id, selcx.tcx());
     let Normalized {
         value: gen_sig,
         obligations
@@ -1441,8 +1438,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
 
     let tcx = selcx.tcx();
     let param_env = obligation.param_env;
-    let assoc_ty = assoc_ty_def(selcx, impl_def_id,
-        tcx.associated_item(obligation.predicate.item_def_id).name);
+    let assoc_ty = assoc_ty_def(selcx, impl_def_id, obligation.predicate.item_def_id);
 
     let ty = if !assoc_ty.item.defaultness.has_value() {
         // This means that the impl is missing a definition for the
@@ -1471,10 +1467,11 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
 fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     selcx: &SelectionContext<'cx, 'gcx, 'tcx>,
     impl_def_id: DefId,
-    assoc_ty_name: ast::Name)
+    assoc_ty_def_id: DefId)
     -> specialization_graph::NodeItem<ty::AssociatedItem>
 {
     let tcx = selcx.tcx();
+    let assoc_ty_name = tcx.associated_item(assoc_ty_def_id).name;
     let trait_def_id = tcx.impl_trait_ref(impl_def_id).unwrap().def_id;
     let trait_def = tcx.trait_def(trait_def_id);
 
@@ -1486,7 +1483,8 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     // cycle error if the specialization graph is currently being built.
     let impl_node = specialization_graph::Node::Impl(impl_def_id);
     for item in impl_node.items(tcx) {
-        if item.kind == ty::AssociatedKind::Type && item.name == assoc_ty_name {
+        if item.kind == ty::AssociatedKind::Type &&
+                tcx.hygienic_eq(item.name, assoc_ty_name, trait_def_id) {
             return specialization_graph::NodeItem {
                 node: specialization_graph::Node::Impl(impl_def_id),
                 item,
@@ -1496,7 +1494,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 
     if let Some(assoc_item) = trait_def
         .ancestors(tcx, impl_def_id)
-        .defs(tcx, assoc_ty_name, ty::AssociatedKind::Type)
+        .defs(tcx, assoc_ty_name, ty::AssociatedKind::Type, trait_def_id)
         .next() {
         assoc_item
     } else {
@@ -1561,7 +1559,7 @@ impl<'cx, 'gcx, 'tcx> ProjectionCacheKey<'tcx> {
         let infcx = selcx.infcx();
         // We don't do cross-snapshot caching of obligations with escaping regions,
         // so there's no cache key to use
-        infcx.tcx.no_late_bound_regions(&predicate)
+        predicate.no_late_bound_regions()
             .map(|predicate| ProjectionCacheKey {
                 // We don't attempt to match up with a specific type-variable state
                 // from a specific call to `opt_normalize_projection_type` - if

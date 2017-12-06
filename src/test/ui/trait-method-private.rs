@@ -26,5 +26,5 @@ mod inner {
 
 fn main() {
     let foo = inner::Foo;
-    foo.method();
+    foo.method(); //~ ERROR is private
 }

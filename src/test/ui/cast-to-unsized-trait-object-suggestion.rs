@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    &1 as Send;
-    Box::new(1) as Send;
+    &1 as Send; //~ ERROR cast to unsized
+    Box::new(1) as Send; //~ ERROR cast to unsized
 }

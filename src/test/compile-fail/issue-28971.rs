@@ -10,13 +10,15 @@
 
 // This should not cause an ICE
 
-enum Foo {
+enum Foo { //~ NOTE variant `Baz` not found here
     Bar(u8)
 }
 fn main(){
     foo(|| {
         match Foo::Bar(1) {
-            Foo::Baz(..) => (), //~ ERROR no associated
+            Foo::Baz(..) => (),
+            //~^ ERROR no variant named `Baz` found for type `Foo`
+            //~| NOTE variant not found in `Foo`
             _ => (),
         }
     });

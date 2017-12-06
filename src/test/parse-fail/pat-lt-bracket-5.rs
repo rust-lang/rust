@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let v[0] = v[1]; //~ error: expected one of `:`, `;`, `=`, or `@`, found `[`
+    let v[0] = v[1]; //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `[`
 }

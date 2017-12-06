@@ -23,9 +23,11 @@ impl<T> Sync for T {}
 trait Copy {}
 #[lang = "freeze"]
 trait Freeze {}
+#[allow(unknown_lints)]
+#[allow(auto_impl)]
 impl Freeze for .. {}
 
-#[lang="drop_in_place"]
+#[lang = "drop_in_place"]
 #[inline]
 #[allow(unconditional_recursion)]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {

@@ -11,100 +11,18 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::ty::adjustment;
-use util::nodemap::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
-
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
+use syntax::print::pprust;
 use syntax::symbol::keywords;
-use syntax::ptr::P;
 use syntax::util::parser;
 use syntax_pos::Span;
 
-use rustc_back::slice;
 use rustc::hir;
-use rustc::hir::intravisit::FnKind;
-
-declare_lint! {
-    pub UNUSED_MUT,
-    Warn,
-    "detect mut variables which don't need to be mutable"
-}
-
-#[derive(Copy, Clone)]
-pub struct UnusedMut;
-
-impl UnusedMut {
-    fn check_unused_mut_pat(&self, cx: &LateContext, pats: &[P<hir::Pat>]) {
-        // collect all mutable pattern and group their NodeIDs by their Identifier to
-        // avoid false warnings in match arms with multiple patterns
-
-        let mut mutables = FxHashMap();
-        for p in pats {
-            p.each_binding(|_, id, span, path1| {
-                let hir_id = cx.tcx.hir.node_to_hir_id(id);
-                let bm = match cx.tables.pat_binding_modes().get(hir_id) {
-                    Some(&bm) => bm,
-                    None => span_bug!(span, "missing binding mode"),
-                };
-                let name = path1.node;
-                if let ty::BindByValue(hir::MutMutable) = bm {
-                    if !name.as_str().starts_with("_") {
-                        match mutables.entry(name) {
-                            Vacant(entry) => {
-                                entry.insert(vec![id]);
-                            }
-                            Occupied(mut entry) => {
-                                entry.get_mut().push(id);
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        let used_mutables = cx.tcx.used_mut_nodes.borrow();
-        for (_, v) in &mutables {
-            if !v.iter().any(|e| used_mutables.contains(e)) {
-                cx.span_lint(UNUSED_MUT,
-                             cx.tcx.hir.span(v[0]),
-                             "variable does not need to be mutable");
-            }
-        }
-    }
-}
-
-impl LintPass for UnusedMut {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_MUT)
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
-    fn check_arm(&mut self, cx: &LateContext, a: &hir::Arm) {
-        self.check_unused_mut_pat(cx, &a.pats)
-    }
-
-    fn check_local(&mut self, cx: &LateContext, l: &hir::Local) {
-        self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
-    }
-
-    fn check_fn(&mut self,
-                cx: &LateContext,
-                _: FnKind,
-                _: &hir::FnDecl,
-                body: &hir::Body,
-                _: Span,
-                _: ast::NodeId) {
-        for a in &body.arguments {
-            self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat));
-        }
-    }
-}
 
 declare_lint! {
     pub UNUSED_MUST_USE,
@@ -307,7 +225,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
 }
 
 declare_lint! {
-    UNUSED_PARENS,
+    pub(super) UNUSED_PARENS,
     Warn,
     "`if`, `match`, `while` and `return` do not need parentheses"
 }
@@ -325,9 +243,40 @@ impl UnusedParens {
             let necessary = struct_lit_needs_parens &&
                             parser::contains_exterior_struct_lit(&inner);
             if !necessary {
-                cx.span_lint(UNUSED_PARENS,
-                             value.span,
-                             &format!("unnecessary parentheses around {}", msg))
+                let span_msg = format!("unnecessary parentheses around {}", msg);
+                let mut err = cx.struct_span_lint(UNUSED_PARENS,
+                                                  value.span,
+                                                  &span_msg);
+                // Remove exactly one pair of parentheses (rather than naïvely
+                // stripping all paren characters)
+                let mut ate_left_paren = false;
+                let mut ate_right_paren = false;
+                let parens_removed = pprust::expr_to_string(value)
+                    .trim_matches(|c| {
+                        match c {
+                            '(' => {
+                                if ate_left_paren {
+                                    false
+                                } else {
+                                    ate_left_paren = true;
+                                    true
+                                }
+                            },
+                            ')' => {
+                                if ate_right_paren {
+                                    false
+                                } else {
+                                    ate_right_paren = true;
+                                    true
+                                }
+                            },
+                            _ => false,
+                        }
+                    }).to_owned();
+                err.span_suggestion_short(value.span,
+                                          "remove these parentheses",
+                                          parens_removed);
+                err.emit();
             }
         }
     }
@@ -381,6 +330,43 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct UnusedImportBraces;
 
+impl UnusedImportBraces {
+    fn check_use_tree(&self, cx: &EarlyContext, use_tree: &ast::UseTree, item: &ast::Item) {
+        if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
+            // Recursively check nested UseTrees
+            for &(ref tree, _) in items {
+                self.check_use_tree(cx, tree, item);
+            }
+
+            // Trigger the lint only if there is one nested item
+            if items.len() != 1 {
+                return;
+            }
+
+            // Trigger the lint if the nested item is a non-self single item
+            let node_ident;
+            match items[0].0.kind {
+                ast::UseTreeKind::Simple(ident) => {
+                    if ident.name == keywords::SelfValue.name() {
+                        return;
+                    } else {
+                        node_ident = ident;
+                    }
+                }
+                ast::UseTreeKind::Glob => {
+                    node_ident = ast::Ident::from_str("*");
+                }
+                ast::UseTreeKind::Nested(_) => {
+                    return;
+                }
+            }
+
+            let msg = format!("braces around {} is unnecessary", node_ident.name);
+            cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
+        }
+    }
+}
+
 impl LintPass for UnusedImportBraces {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_IMPORT_BRACES)
@@ -389,19 +375,14 @@ impl LintPass for UnusedImportBraces {
 
 impl EarlyLintPass for UnusedImportBraces {
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
-        if let ast::ItemKind::Use(ref view_path) = item.node {
-            if let ast::ViewPathList(_, ref items) = view_path.node {
-                if items.len() == 1 && items[0].node.name.name != keywords::SelfValue.name() {
-                    let msg = format!("braces around {} is unnecessary", items[0].node.name);
-                    cx.span_lint(UNUSED_IMPORT_BRACES, item.span, &msg);
-                }
-            }
+        if let ast::ItemKind::Use(ref use_tree) = item.node {
+            self.check_use_tree(cx, use_tree, item);
         }
     }
 }
 
 declare_lint! {
-    UNUSED_ALLOCATION,
+    pub(super) UNUSED_ALLOCATION,
     Warn,
     "detects unnecessary allocations that can be eliminated"
 }

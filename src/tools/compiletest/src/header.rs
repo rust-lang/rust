@@ -150,6 +150,14 @@ impl EarlyProps {
                     // Ignore if actual version is smaller the minimum required
                     // version
                     &actual_version[..] < min_version
+                } else if line.starts_with("min-system-llvm-version") {
+                    let min_version = line.trim_right()
+                        .rsplit(' ')
+                        .next()
+                        .expect("Malformed llvm version directive");
+                    // Ignore if using system LLVM and actual version
+                    // is smaller the minimum required version
+                    !(config.system_llvm && &actual_version[..] < min_version)
                 } else {
                     false
                 }
@@ -259,9 +267,9 @@ impl TestProps {
         props
     }
 
-    pub fn from_file(testfile: &Path, config: &Config) -> Self {
+    pub fn from_file(testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
-        props.load_from(testfile, None, config);
+        props.load_from(testfile, cfg, config);
         props
     }
 
@@ -269,10 +277,10 @@ impl TestProps {
     /// tied to a particular revision `foo` (indicated by writing
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
-    pub fn load_from(&mut self,
-                     testfile: &Path,
-                     cfg: Option<&str>,
-                     config: &Config) {
+    fn load_from(&mut self,
+                 testfile: &Path,
+                 cfg: Option<&str>,
+                 config: &Config) {
         iter_header(testfile,
                     cfg,
                     &mut |ln| {
@@ -531,7 +539,7 @@ impl Config {
             let name = line[prefix.len()+1 ..].split(&[':', ' '][..]).next().unwrap();
 
             name == "test" ||
-                name == util::get_os(&self.target) ||               // target
+                util::matches_os(&self.target, name) ||             // target
                 name == util::get_arch(&self.target) ||             // architecture
                 name == util::get_pointer_width(&self.target) ||    // pointer width
                 name == self.stage_id.split('-').next().unwrap() || // stage
@@ -566,6 +574,19 @@ impl Config {
         } else {
             None
         }
+    }
+
+    pub fn find_rust_src_root(&self) -> Option<PathBuf> {
+        let mut path = self.src_base.clone();
+        let path_postfix = Path::new("src/etc/lldb_batchmode.py");
+
+        while path.pop() {
+            if path.join(&path_postfix).is_file() {
+                return Some(path);
+            }
+        }
+
+        None
     }
 }
 

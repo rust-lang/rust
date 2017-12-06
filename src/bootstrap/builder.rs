@@ -261,9 +261,10 @@ impl<'a> Builder<'a> {
                 doc::Reference, doc::Rustdoc, doc::CargoBook),
             Kind::Dist => describe!(dist::Docs, dist::Mingw, dist::Rustc, dist::DebuggerScripts,
                 dist::Std, dist::Analysis, dist::Src, dist::PlainSourceTarball, dist::Cargo,
-                dist::Rls, dist::Extended, dist::HashSign, dist::DontDistWithMiriEnabled),
+                dist::Rls, dist::Rustfmt, dist::Extended, dist::HashSign,
+                dist::DontDistWithMiriEnabled),
             Kind::Install => describe!(install::Docs, install::Std, install::Cargo, install::Rls,
-                install::Analysis, install::Src, install::Rustc),
+                install::Rustfmt, install::Analysis, install::Src, install::Rustc),
         }
     }
 
@@ -306,7 +307,7 @@ impl<'a> Builder<'a> {
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
-            Subcommand::Clean => panic!(),
+            Subcommand::Clean { .. } => panic!(),
         };
 
         let builder = Builder {
@@ -413,12 +414,15 @@ impl<'a> Builder<'a> {
     pub fn rustdoc_cmd(&self, host: Interned<String>) -> Command {
         let mut cmd = Command::new(&self.out.join("bootstrap/debug/rustdoc"));
         let compiler = self.compiler(self.top_stage, host);
-        cmd
-            .env("RUSTC_STAGE", compiler.stage.to_string())
-            .env("RUSTC_SYSROOT", self.sysroot(compiler))
-            .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
-            .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
-            .env("RUSTDOC_REAL", self.rustdoc(host));
+        cmd.env("RUSTC_STAGE", compiler.stage.to_string())
+           .env("RUSTC_SYSROOT", self.sysroot(compiler))
+           .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
+           .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
+           .env("RUSTDOC_REAL", self.rustdoc(host))
+           .env("RUSTDOC_CRATE_VERSION", self.build.rust_version());
+        if let Some(linker) = self.build.linker(host) {
+            cmd.env("RUSTC_TARGET_LINKER", linker);
+        }
         cmd
     }
 
@@ -468,8 +472,6 @@ impl<'a> Builder<'a> {
              .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.rustc(compiler))
              .env("RUSTC_STAGE", stage.to_string())
-             .env("RUSTC_CODEGEN_UNITS",
-                  self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
                   self.config.rust_debug_assertions.to_string())
              .env("RUSTC_SYSROOT", self.sysroot(compiler))
@@ -481,15 +483,23 @@ impl<'a> Builder<'a> {
              } else {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
              })
-             .env("TEST_MIRI", self.config.test_miri.to_string())
-             .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
+             .env("TEST_MIRI", self.config.test_miri.to_string());
+
+        if let Some(n) = self.config.rust_codegen_units {
+            cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
+        }
+
+        if let Some(host_linker) = self.build.linker(compiler.host) {
+            cargo.env("RUSTC_HOST_LINKER", host_linker);
+        }
+        if let Some(target_linker) = self.build.linker(target) {
+            cargo.env("RUSTC_TARGET_LINKER", target_linker);
+        }
+        cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
+            .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
 
         if mode != Mode::Tool {
-            // Tools don't get debuginfo right now, e.g. cargo and rls don't
-            // get compiled with debuginfo.
-            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-                 .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
-                 .env("RUSTC_FORCE_UNSTABLE", "1");
+            cargo.env("RUSTC_FORCE_UNSTABLE", "1");
 
             // Currently the compiler depends on crates from crates.io, and
             // then other crates can depend on the compiler (e.g. proc-macro
@@ -556,23 +566,44 @@ impl<'a> Builder<'a> {
 
         cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
 
-        // Specify some various options for build scripts used throughout
-        // the build.
+        // Throughout the build Cargo can execute a number of build scripts
+        // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
+        // obtained previously to those build scripts.
+        // Build scripts use either the `cc` crate or `configure/make` so we pass
+        // the options through environment variables that are fetched and understood by both.
         //
         // FIXME: the guard against msvc shouldn't need to be here
         if !target.contains("msvc") {
-            cargo.env(format!("CC_{}", target), self.cc(target))
-                 .env(format!("AR_{}", target), self.ar(target).unwrap()) // only msvc is None
-                 .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
+            let cc = self.cc(target);
+            cargo.env(format!("CC_{}", target), cc)
+                 .env("CC", cc);
+
+            let cflags = self.cflags(target).join(" ");
+            cargo.env(format!("CFLAGS_{}", target), cflags.clone())
+                 .env("CFLAGS", cflags.clone());
+
+            if let Some(ar) = self.ar(target) {
+                let ranlib = format!("{} s", ar.display());
+                cargo.env(format!("AR_{}", target), ar)
+                     .env("AR", ar)
+                     .env(format!("RANLIB_{}", target), ranlib.clone())
+                     .env("RANLIB", ranlib);
+            }
 
             if let Ok(cxx) = self.cxx(target) {
-                 cargo.env(format!("CXX_{}", target), cxx);
+                cargo.env(format!("CXX_{}", target), cxx)
+                     .env("CXX", cxx)
+                     .env(format!("CXXFLAGS_{}", target), cflags.clone())
+                     .env("CXXFLAGS", cflags);
             }
         }
 
         if mode == Mode::Libstd && self.config.extended && compiler.is_final_stage(self) {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
+
+        // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
+        cargo.env("RUSTDOC_CRATE_VERSION", self.build.rust_version());
 
         // Environment variables *required* throughout the build
         //
@@ -582,12 +613,20 @@ impl<'a> Builder<'a> {
         // Set this for all builds to make sure doc builds also get it.
         cargo.env("CFG_RELEASE_CHANNEL", &self.build.config.channel);
 
-        if self.is_verbose() {
+        if self.is_very_verbose() {
             cargo.arg("-v");
         }
-        // FIXME: cargo bench does not accept `--release`
-        if self.config.rust_optimize && cmd != "bench" {
-            cargo.arg("--release");
+        if self.config.rust_optimize {
+            // FIXME: cargo bench does not accept `--release`
+            if cmd != "bench" {
+                cargo.arg("--release");
+            }
+
+            if self.config.rust_codegen_units.is_none() &&
+               self.build.is_rust_llvm(compiler.host)
+            {
+                cargo.env("RUSTC_THINLTO", "1");
+            }
         }
         if self.config.locked_deps {
             cargo.arg("--locked");

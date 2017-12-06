@@ -23,5 +23,5 @@ fn main() {
     bang_proc_macro2!();
     //~^ ERROR cannot find value `foobar2` in this scope
     //~^^ did you mean `foobar`?
-    println!("{}", x);
+    println!("{}", x); //~ ERROR cannot find value `x` in this scope
 }

@@ -16,6 +16,7 @@ graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
 log = "0.3"
 owning_ref = "0.3.3"
+rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_back = { path = "../librustc_back" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }

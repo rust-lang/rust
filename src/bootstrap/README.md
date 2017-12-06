@@ -39,7 +39,7 @@ The script accepts commands, flags, and arguments to determine what to do:
   ```
 
   If files are dirty that would normally be rebuilt from stage 0, that can be
-  overidden using `--keep-stage 0`. Using `--keep-stage n` will skip all steps
+  overridden using `--keep-stage 0`. Using `--keep-stage n` will skip all steps
   that belong to stage n or earlier:
 
   ```
@@ -126,17 +126,17 @@ install a nightly, presumably using `rustup`. You will then want to
 configure your directory to use this build, like so:
 
 ```
-# configure to use local rust instead of downloding a beta.
+# configure to use local rust instead of downloading a beta.
 # `--local-rust-root` is optional here. If elided, we will
 # use whatever rustc we find on your PATH.
-> configure --enable-rustbuild --local-rust-root=~/.cargo/ --enable-local-rebuild
+> ./configure --local-rust-root=~/.cargo/ --enable-local-rebuild
 ```
 
 After that, you can use the `--incremental` flag to actually do
 incremental builds:
 
 ```
-> ../x.py build --incremental
+> ./x.py build --incremental
 ```
 
 The `--incremental` flag will store incremental compilation artifacts

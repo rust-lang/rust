@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/env python2.7
 #
 # Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
@@ -97,10 +97,14 @@ from collections import namedtuple
 from subprocess import Popen, check_call, PIPE
 from glob import glob
 import multiprocessing
-import Queue
 import threading
 import ctypes
 import binascii
+
+try:  # Python 3
+    import queue as Queue
+except ImportError:  # Python 2
+    import Queue
 
 NUM_WORKERS = 2
 UPDATE_EVERY_N = 50000

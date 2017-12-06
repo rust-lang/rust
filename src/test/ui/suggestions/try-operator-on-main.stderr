@@ -1,7 +1,7 @@
 error[E0277]: the `?` operator can only be used in a function that returns `Result` (or another type that implements `std::ops::Try`)
   --> $DIR/try-operator-on-main.rs:17:5
    |
-17 |     std::fs::File::open("foo")?;
+17 |     std::fs::File::open("foo")?; //~ ERROR the `?` operator can only
    |     ---------------------------
    |     |
    |     cannot use the `?` operator in a function that returns `()`
@@ -13,7 +13,7 @@ error[E0277]: the `?` operator can only be used in a function that returns `Resu
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/try-operator-on-main.rs:20:5
    |
-20 |     ()?;
+20 |     ()?; //~ ERROR the `?` operator can only
    |     ---
    |     |
    |     the `?` operator cannot be applied to type `()`
@@ -25,7 +25,7 @@ error[E0277]: the `?` operator can only be applied to values that implement `std
 error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
   --> $DIR/try-operator-on-main.rs:23:5
    |
-23 |     try_trait_generic::<()>();
+23 |     try_trait_generic::<()>(); //~ ERROR the trait bound
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Try` is not implemented for `()`
    |
    = note: required by `try_trait_generic`
@@ -33,7 +33,7 @@ error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/try-operator-on-main.rs:30:5
    |
-30 |     ()?;
+30 |     ()?; //~ ERROR the `?` operator can only
    |     ---
    |     |
    |     the `?` operator cannot be applied to type `()`

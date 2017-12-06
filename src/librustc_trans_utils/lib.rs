@@ -27,8 +27,6 @@
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 
-#![cfg_attr(stage0, feature(const_fn))]
-
 extern crate ar;
 extern crate flate2;
 extern crate owning_ref;
@@ -38,18 +36,21 @@ extern crate log;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_back;
+extern crate rustc_data_structures;
 extern crate syntax;
 extern crate syntax_pos;
 
-use rustc::ty::TyCtxt;
+use rustc::ty::{TyCtxt, Instance};
 use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir::map as hir_map;
 use rustc::util::nodemap::NodeSet;
 
-use syntax::attr;
-
+pub mod common;
 pub mod link;
+pub mod collector;
+pub mod trans_item;
+pub mod monomorphize;
 pub mod trans_crate;
 
 /// check for the #[rustc_error] annotation, which forces an
@@ -74,7 +75,7 @@ pub fn check_for_rustc_errors_attr(tcx: TyCtxt) {
 ///
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
+pub fn find_exported_symbols<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> NodeSet {
     tcx.reachable_set(LOCAL_CRATE).0.iter().cloned().filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
@@ -104,11 +105,10 @@ pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.hir.local_def_id(id);
                 let generics = tcx.generics_of(def_id);
-                let attributes = tcx.get_attrs(def_id);
                 (generics.parent_types == 0 && generics.types.is_empty()) &&
                 // Functions marked with #[inline] are only ever translated
                 // with "internal" linkage and are never exported.
-                !attr::requests_inline(&attributes)
+                !common::requests_inline(tcx, &Instance::mono(tcx, def_id))
             }
 
             _ => false

@@ -12,7 +12,7 @@
 // artificial cycles: during type-checking, we had to get the MIR for
 // the constant expressions in `[u8; 2]`, which in turn would trigger
 // an attempt to get the item-path, which in turn would request the
-// types of the impl, which would trigger a cycle. We supressed this
+// types of the impl, which would trigger a cycle. We suppressed this
 // cycle now by forcing mir-dump to avoid asking for types of an impl.
 
 #![feature(rustc_attrs)]

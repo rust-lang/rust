@@ -32,15 +32,14 @@ use std::rc::Rc;
 use syntax::ast::{Name, Ident};
 use syntax::attr;
 
-use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind};
-use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
-use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
+use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
+use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::codemap::respan;
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::parse::token;
+use syntax::parse::token::{self, Token};
 use syntax::symbol::keywords;
 use syntax::symbol::Symbol;
 use syntax::visit::{self, Visitor};
@@ -102,6 +101,139 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    fn build_reduced_graph_for_use_tree(&mut self,
+                                        use_tree: &ast::UseTree,
+                                        id: NodeId,
+                                        vis: ty::Visibility,
+                                        prefix: &ast::Path,
+                                        nested: bool,
+                                        item: &Item,
+                                        expansion: Mark) {
+        let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
+        let path = &use_tree.prefix;
+
+        let mut module_path: Vec<_> = prefix.segments.iter()
+            .chain(path.segments.iter())
+            .map(|seg| respan(seg.span, seg.identifier))
+            .collect();
+
+        match use_tree.kind {
+            ast::UseTreeKind::Simple(mut ident) => {
+                let mut source = module_path.pop().unwrap().node;
+                let mut type_ns_only = false;
+
+                if nested {
+                    // Correctly handle `self`
+                    if source.name == keywords::SelfValue.name() {
+                        type_ns_only = true;
+
+                        let last_segment = *module_path.last().unwrap();
+                        if last_segment.node.name == keywords::CrateRoot.name() {
+                            resolve_error(
+                                self,
+                                use_tree.span,
+                                ResolutionError::
+                                SelfImportOnlyInImportListWithNonEmptyPrefix
+                            );
+                            return;
+                        }
+
+                        // Replace `use foo::self;` with `use foo;`
+                        let _ = module_path.pop();
+                        source = last_segment.node;
+                        if ident.name == keywords::SelfValue.name() {
+                            ident = last_segment.node;
+                        }
+                    }
+                } else {
+                    // Disallow `self`
+                    if source.name == keywords::SelfValue.name() {
+                        resolve_error(self,
+                                      use_tree.span,
+                                      ResolutionError::SelfImportsOnlyAllowedWithin);
+                    }
+
+                    // Disallow `use $crate;`
+                    if source.name == keywords::DollarCrate.name() && path.segments.len() == 1 {
+                        let crate_root = self.resolve_crate_root(source.ctxt);
+                        let crate_name = match crate_root.kind {
+                            ModuleKind::Def(_, name) => name,
+                            ModuleKind::Block(..) => unreachable!(),
+                        };
+                        source.name = crate_name;
+                        if ident.name == keywords::DollarCrate.name() {
+                            ident.name = crate_name;
+                        }
+
+                        self.session.struct_span_warn(item.span, "`$crate` may not be imported")
+                            .note("`use $crate;` was erroneously allowed and \
+                                   will become a hard error in a future release")
+                            .emit();
+                    }
+                }
+
+                let subclass = SingleImport {
+                    target: ident,
+                    source,
+                    result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
+                    type_ns_only,
+                };
+                self.add_import_directive(
+                    module_path, subclass, use_tree.span, id, vis, expansion,
+                );
+            }
+            ast::UseTreeKind::Glob => {
+                let subclass = GlobImport {
+                    is_prelude,
+                    max_vis: Cell::new(ty::Visibility::Invisible),
+                };
+                self.add_import_directive(
+                    module_path, subclass, use_tree.span, id, vis, expansion,
+                );
+            }
+            ast::UseTreeKind::Nested(ref items) => {
+                let prefix = ast::Path {
+                    segments: module_path.iter()
+                        .map(|s| ast::PathSegment {
+                            identifier: s.node,
+                            span: s.span,
+                            parameters: None,
+                        })
+                        .collect(),
+                    span: path.span,
+                };
+
+                // Ensure there is at most one `self` in the list
+                let self_spans = items.iter().filter_map(|&(ref use_tree, _)| {
+                    if let ast::UseTreeKind::Simple(ident) = use_tree.kind {
+                        if ident.name == keywords::SelfValue.name() {
+                            return Some(use_tree.span);
+                        }
+                    }
+
+                    None
+                }).collect::<Vec<_>>();
+                if self_spans.len() > 1 {
+                    let mut e = resolve_struct_error(self,
+                        self_spans[0],
+                        ResolutionError::SelfImportCanOnlyAppearOnceInTheList);
+
+                    for other_span in self_spans.iter().skip(1) {
+                        e.span_note(*other_span, "another `self` import appears here");
+                    }
+
+                    e.emit();
+                }
+
+                for &(ref tree, id) in items {
+                    self.build_reduced_graph_for_use_tree(
+                        tree, id, vis, &prefix, true, item, expansion
+                    );
+                }
+            }
+        }
+    }
+
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item, expansion: Mark) {
         let parent = self.current_module;
@@ -110,147 +242,19 @@ impl<'a> Resolver<'a> {
         let vis = self.resolve_visibility(&item.vis);
 
         match item.node {
-            ItemKind::Use(ref view_path) => {
-                // Extract and intern the module part of the path. For
-                // globs and lists, the path is found directly in the AST;
-                // for simple paths we have to munge the path a little.
-                let mut module_path: Vec<_> = match view_path.node {
-                    ViewPathSimple(_, ref full_path) => {
-                        full_path.segments
-                                 .split_last()
-                                 .unwrap()
-                                 .1
-                                 .iter()
-                                 .map(|seg| respan(seg.span, seg.identifier))
-                                 .collect()
-                    }
-
-                    ViewPathGlob(ref module_ident_path) |
-                    ViewPathList(ref module_ident_path, _) => {
-                        module_ident_path.segments
-                                         .iter()
-                                         .map(|seg| respan(seg.span, seg.identifier))
-                                         .collect()
-                    }
+            ItemKind::Use(ref use_tree) => {
+                // Just an empty prefix to start out
+                let prefix = ast::Path {
+                    segments: vec![],
+                    span: use_tree.span,
                 };
 
-                // This can be removed once warning cycle #36888 is complete.
-                if module_path.len() >= 2 &&
-                    module_path[0].node.name == keywords::CrateRoot.name() &&
-                    token::Ident(module_path[1].node).is_path_segment_keyword()
-                {
-                    module_path.remove(0);
-                }
-
-                // Build up the import directives.
-                let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
-
-                match view_path.node {
-                    ViewPathSimple(mut binding, ref full_path) => {
-                        let mut source = full_path.segments.last().unwrap().identifier;
-                        let source_name = source.name;
-                        if source_name == "mod" || source_name == "self" {
-                            resolve_error(self,
-                                          view_path.span,
-                                          ResolutionError::SelfImportsOnlyAllowedWithin);
-                        } else if source_name == keywords::DollarCrate.name() &&
-                                  full_path.segments.len() == 1 {
-                            let crate_root = self.resolve_crate_root(source.ctxt);
-                            let crate_name = match crate_root.kind {
-                                ModuleKind::Def(_, name) => name,
-                                ModuleKind::Block(..) => unreachable!(),
-                            };
-                            source.name = crate_name;
-                            if binding.name == keywords::DollarCrate.name() {
-                                binding.name = crate_name;
-                            }
-
-                            self.session.struct_span_warn(item.span, "`$crate` may not be imported")
-                                .note("`use $crate;` was erroneously allowed and \
-                                       will become a hard error in a future release")
-                                .emit();
-                        }
-
-                        let subclass = SingleImport {
-                            target: binding,
-                            source,
-                            result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
-                            type_ns_only: false,
-                        };
-                        self.add_import_directive(
-                            module_path, subclass, view_path.span, item.id, vis, expansion,
-                        );
-                    }
-                    ViewPathList(_, ref source_items) => {
-                        // Make sure there's at most one `mod` import in the list.
-                        let mod_spans = source_items.iter().filter_map(|item| {
-                            if item.node.name.name == keywords::SelfValue.name() {
-                                Some(item.span)
-                            } else {
-                                None
-                            }
-                        }).collect::<Vec<Span>>();
-
-                        if mod_spans.len() > 1 {
-                            let mut e = resolve_struct_error(self,
-                                          mod_spans[0],
-                                          ResolutionError::SelfImportCanOnlyAppearOnceInTheList);
-                            for other_span in mod_spans.iter().skip(1) {
-                                e.span_note(*other_span, "another `self` import appears here");
-                            }
-                            e.emit();
-                        }
-
-                        for source_item in source_items {
-                            let node = source_item.node;
-                            let (module_path, ident, rename, type_ns_only) = {
-                                if node.name.name != keywords::SelfValue.name() {
-                                    let rename = node.rename.unwrap_or(node.name);
-                                    (module_path.clone(),
-                                     respan(source_item.span, node.name),
-                                     rename,
-                                     false)
-                                } else {
-                                    let ident = *module_path.last().unwrap();
-                                    if ident.node.name == keywords::CrateRoot.name() {
-                                        resolve_error(
-                                            self,
-                                            source_item.span,
-                                            ResolutionError::
-                                            SelfImportOnlyInImportListWithNonEmptyPrefix
-                                        );
-                                        continue;
-                                    }
-                                    let module_path = module_path.split_last().unwrap().1;
-                                    let rename = node.rename.unwrap_or(ident.node);
-                                    (module_path.to_vec(), ident, rename, true)
-                                }
-                            };
-                            let subclass = SingleImport {
-                                target: rename,
-                                source: ident.node,
-                                result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
-                                type_ns_only,
-                            };
-                            let id = source_item.node.id;
-                            self.add_import_directive(
-                                module_path, subclass, source_item.span, id, vis, expansion,
-                            );
-                        }
-                    }
-                    ViewPathGlob(_) => {
-                        let subclass = GlobImport {
-                            is_prelude,
-                            max_vis: Cell::new(ty::Visibility::Invisible),
-                        };
-                        self.add_import_directive(
-                            module_path, subclass, view_path.span, item.id, vis, expansion,
-                        );
-                    }
-                }
+                self.build_reduced_graph_for_use_tree(
+                    use_tree, item.id, vis, &prefix, false, item, expansion,
+                );
             }
 
-            ItemKind::ExternCrate(_) => {
+            ItemKind::ExternCrate(as_name) => {
                 self.crate_loader.process_item(item, &self.definitions);
 
                 // n.b. we don't need to look at the path option here, because cstore already did
@@ -265,7 +269,7 @@ impl<'a> Resolver<'a> {
                     id: item.id,
                     parent,
                     imported_module: Cell::new(Some(module)),
-                    subclass: ImportDirectiveSubclass::ExternCrate,
+                    subclass: ImportDirectiveSubclass::ExternCrate(as_name),
                     span: item.span,
                     module_path: Vec::new(),
                     vis: Cell::new(vis),
@@ -338,11 +342,22 @@ impl<'a> Resolver<'a> {
             // These items live in both the type and value namespaces.
             ItemKind::Struct(ref struct_def, _) => {
                 // Define a name in the type namespace.
-                let def = Def::Struct(self.definitions.local_def_id(item.id));
+                let def_id = self.definitions.local_def_id(item.id);
+                let def = Def::Struct(def_id);
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
 
-                // Record field names for error reporting.
                 let mut ctor_vis = vis;
+
+                let has_non_exhaustive = item.attrs.iter()
+                    .any(|item| item.check_name("non_exhaustive"));
+
+                // If the structure is marked as non_exhaustive then lower the visibility
+                // to within the crate.
+                if has_non_exhaustive && vis == ty::Visibility::Public {
+                    ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+                }
+
+                // Record field names for error reporting.
                 let field_names = struct_def.fields().iter().filter_map(|field| {
                     let field_vis = self.resolve_visibility(&field.vis);
                     if ctor_vis.is_at_least(field_vis, &*self) {
@@ -376,7 +391,7 @@ impl<'a> Resolver<'a> {
                 self.insert_field_names(item_def_id, field_names);
             }
 
-            ItemKind::DefaultImpl(..) | ItemKind::Impl(..) => {}
+            ItemKind::AutoImpl(..) | ItemKind::Impl(..) => {}
 
             ItemKind::Trait(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
@@ -414,22 +429,26 @@ impl<'a> Resolver<'a> {
         // value namespace, they are reserved for possible future use.
         let ctor_kind = CtorKind::from_ast(&variant.node.data);
         let ctor_def = Def::VariantCtor(def_id, ctor_kind);
+
         self.define(parent, ident, ValueNS, (ctor_def, vis, variant.span, expansion));
     }
 
     /// Constructs the reduced graph for one foreign item.
     fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, expansion: Mark) {
-        let def = match item.node {
+        let (def, ns) = match item.node {
             ForeignItemKind::Fn(..) => {
-                Def::Fn(self.definitions.local_def_id(item.id))
+                (Def::Fn(self.definitions.local_def_id(item.id)), ValueNS)
             }
             ForeignItemKind::Static(_, m) => {
-                Def::Static(self.definitions.local_def_id(item.id), m)
+                (Def::Static(self.definitions.local_def_id(item.id), m), ValueNS)
+            }
+            ForeignItemKind::Ty => {
+                (Def::TyForeign(self.definitions.local_def_id(item.id)), TypeNS)
             }
         };
         let parent = self.current_module;
         let vis = self.resolve_visibility(&item.vis);
-        self.define(parent, item.ident, ValueNS, (def, vis, item.span, expansion));
+        self.define(parent, item.ident, ns, (def, vis, item.span, expansion));
     }
 
     fn build_reduced_graph_for_block(&mut self, block: &Block, expansion: Mark) {
@@ -462,7 +481,7 @@ impl<'a> Resolver<'a> {
                                              span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
             }
-            Def::Variant(..) | Def::TyAlias(..) => {
+            Def::Variant(..) | Def::TyAlias(..) | Def::TyForeign(..) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }
             Def::Fn(..) | Def::Static(..) | Def::Const(..) | Def::VariantCtor(..) => {
@@ -829,5 +848,18 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         self.resolver.current_module = parent.parent.unwrap(); // nearest normal ancestor
         visit::walk_trait_item(self, item);
         self.resolver.current_module = parent;
+    }
+
+    fn visit_token(&mut self, t: Token) {
+        if let Token::Interpolated(nt) = t {
+            match nt.0 {
+                token::NtExpr(ref expr) => {
+                    if let ast::ExprKind::Mac(..) = expr.node {
+                        self.visit_invoc(expr.id);
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 }

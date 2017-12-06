@@ -4,8 +4,8 @@ error[E0623]: lifetime mismatch
 15 | fn foo(mut x: Ref) {
    |               ---
    |               |
-   |               this type was declared with multiple lifetimes...
-16 |     x.a = x.b;
+   |               this type is declared with multiple lifetimes...
+16 |     x.a = x.b; //~ ERROR lifetime mismatch
    |           ^^^ ...but data with one lifetime flows into the other here
 
 error: aborting due to previous error

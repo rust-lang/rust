@@ -32,12 +32,9 @@ pub fn change_name() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_name() {
     let _y = 2u64;
 }
@@ -51,12 +48,9 @@ pub fn add_type() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables")]
+#[rustc_clean(cfg="cfail3")]
 pub fn add_type() {
     let _x: u32 = 2u32;
 }
@@ -70,12 +64,9 @@ pub fn change_type() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_type() {
     let _x: u8 = 2;
 }
@@ -89,12 +80,9 @@ pub fn change_mutability_of_reference_type() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_mutability_of_reference_type() {
     let _x: &mut u64;
 }
@@ -108,12 +96,9 @@ pub fn change_mutability_of_slot() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_mutability_of_slot() {
     let _x: u64 = 0;
 }
@@ -127,12 +112,9 @@ pub fn change_simple_binding_to_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_simple_binding_to_pattern() {
     let (_a, _b) = (0u8, 'x');
 }
@@ -146,12 +128,9 @@ pub fn change_name_in_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_name_in_pattern() {
     let (_a, _c) = (1u8, 'y');
 }
@@ -165,12 +144,9 @@ pub fn add_ref_in_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn add_ref_in_pattern() {
     let (ref _a, _b) = (1u8, 'y');
 }
@@ -184,12 +160,9 @@ pub fn add_amp_in_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn add_amp_in_pattern() {
     let (&_a, _b) = (&1u8, 'y');
 }
@@ -203,12 +176,9 @@ pub fn change_mutability_of_binding_in_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_mutability_of_binding_in_pattern() {
     let (mut _a, _b) = (99u8, 'q');
 }
@@ -222,12 +192,9 @@ pub fn add_initializer() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,TypeckTables,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn add_initializer() {
     let _x: i16 = 3i16;
 }
@@ -241,12 +208,9 @@ pub fn change_initializer() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail2",
+    except="HirBody,MirValidated,MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 pub fn change_initializer() {
     let _x = 5u16;
 }

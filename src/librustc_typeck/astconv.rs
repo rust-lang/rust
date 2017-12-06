@@ -18,17 +18,19 @@ use hir;
 use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
+use namespace::Namespace;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
-use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::{self, RegionKind, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
-use rustc_back::slice;
+use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
 use util::nodemap::FxHashSet;
 
 use std::iter;
 use syntax::{abi, ast};
+use syntax::symbol::Symbol;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax_pos::Span;
 
@@ -108,7 +110,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.types.re_static
             }
 
-            Some(rl::Region::LateBound(debruijn, id)) => {
+            Some(rl::Region::LateBound(debruijn, id, _)) => {
                 let name = lifetime_name(id);
                 tcx.mk_region(ty::ReLateBound(debruijn,
                     ty::BrNamed(id, name)))
@@ -118,7 +120,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(index)))
             }
 
-            Some(rl::Region::EarlyBound(index, id)) => {
+            Some(rl::Region::EarlyBound(index, id, _)) => {
                 let name = lifetime_name(id);
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                     def_id: id,
@@ -356,9 +358,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         poly_projections.extend(assoc_bindings.iter().filter_map(|binding| {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
-                self.ast_type_binding_to_poly_projection_predicate(trait_ref.ref_id,
-                                                                   poly_trait_ref,
-                                                                   binding);
+                self.ast_type_binding_to_poly_projection_predicate(poly_trait_ref, binding);
             predicate.ok() // ok to ignore Err() because ErrorReported (see above)
         }));
 
@@ -423,13 +423,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                            -> bool
     {
         self.tcx().associated_items(trait_def_id).any(|item| {
-            item.kind == ty::AssociatedKind::Type && item.name == assoc_name
+            item.kind == ty::AssociatedKind::Type &&
+            self.tcx().hygienic_eq(assoc_name, item.name, trait_def_id)
         })
     }
 
     fn ast_type_binding_to_poly_projection_predicate(
         &self,
-        _path_id: ast::NodeId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>)
         -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
@@ -504,7 +504,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let candidate = self.one_bound_for_assoc_type(candidates,
                                                       &trait_ref.to_string(),
-                                                      &binding.item_name.as_str(),
+                                                      binding.item_name,
                                                       binding.span)?;
 
         Ok(candidate.map_bound(|trait_ref| {
@@ -573,8 +573,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             let b = &trait_bounds[0];
             let span = b.trait_ref.path.span;
             struct_span_err!(self.tcx().sess, span, E0225,
-                "only Send/Sync traits can be used as additional traits in a trait object")
-                .span_label(span, "non-Send/Sync additional trait")
+                "only auto traits can be used as additional traits in a trait object")
+                .span_label(span, "non-auto additional trait")
                 .emit();
         }
 
@@ -702,7 +702,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let param_name = tcx.hir.ty_param_name(param_node_id);
         self.one_bound_for_assoc_type(suitable_bounds,
                                       &param_name.as_str(),
-                                      &assoc_name.as_str(),
+                                      assoc_name,
                                       span)
     }
 
@@ -712,7 +712,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn one_bound_for_assoc_type<I>(&self,
                                 mut bounds: I,
                                 ty_param_name: &str,
-                                assoc_name: &str,
+                                assoc_name: ast::Name,
                                 span: Span)
         -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
         where I: Iterator<Item=ty::PolyTraitRef<'tcx>>
@@ -741,7 +741,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
             for bound in bounds {
                 let bound_span = self.tcx().associated_items(bound.def_id()).find(|item| {
-                    item.kind == ty::AssociatedKind::Type && item.name == assoc_name
+                    item.kind == ty::AssociatedKind::Type &&
+                    self.tcx().hygienic_eq(assoc_name, item.name, bound.def_id())
                 })
                 .and_then(|item| self.tcx().hir.span_if_local(item.def_id));
 
@@ -781,7 +782,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
-        self.prohibit_type_params(slice::ref_slice(item_segment));
+        self.prohibit_type_params(slice::from_ref(item_segment));
 
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
@@ -802,10 +803,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     .filter(|r| self.trait_defines_associated_type_named(r.def_id(),
                                                                          assoc_name));
 
-                match self.one_bound_for_assoc_type(candidates,
-                                                    "Self",
-                                                    &assoc_name.as_str(),
-                                                    span) {
+                match self.one_bound_for_assoc_type(candidates, "Self", assoc_name, span) {
                     Ok(bound) => bound,
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
@@ -830,14 +828,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let trait_did = bound.0.def_id;
-        let item = tcx.associated_items(trait_did).find(|i| i.name == assoc_name)
-                                                  .expect("missing associated type");
+        let (assoc_ident, def_scope) = tcx.adjust(assoc_name, trait_did, ref_id);
+        let item = tcx.associated_items(trait_did).find(|i| {
+            Namespace::from(i.kind) == Namespace::Type &&
+            i.name.to_ident() == assoc_ident
+        })
+        .expect("missing associated type");
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, bound);
         let ty = self.normalize_ty(span, ty);
 
         let def = Def::AssociatedTy(item.def_id);
-        let def_scope = tcx.adjust(assoc_name, item.container.id(), ref_id).1;
         if !item.vis.is_accessible_from(def_scope, tcx) {
             let msg = format!("{} `{}` is private", def.kind_name(), assoc_name);
             tcx.sess.span_err(span, &msg);
@@ -858,7 +859,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
         let trait_def_id = tcx.parent_def_id(item_def_id).unwrap();
 
-        self.prohibit_type_params(slice::ref_slice(item_segment));
+        self.prohibit_type_params(slice::from_ref(item_segment));
 
         let self_ty = if let Some(ty) = opt_self_ty {
             ty
@@ -928,7 +929,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let span = path.span;
         match path.def {
-            Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) | Def::Union(did) => {
+            Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) |
+            Def::Union(did) | Def::TyForeign(did) => {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_type_params(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span, did, path.segments.last().unwrap())
@@ -988,16 +990,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
             }
             Def::Err => {
-                for segment in &path.segments {
-                    segment.with_parameters(|parameters| {
-                        for ty in &parameters.types {
-                            self.ast_ty_to_ty(ty);
-                        }
-                        for binding in &parameters.bindings {
-                            self.ast_ty_to_ty(&binding.ty);
-                        }
-                    });
-                }
                 self.set_tainted_by_errors();
                 return self.tcx().types.err;
             }
@@ -1042,53 +1034,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
             }
-            hir::TyImplTrait(_) => {
-                // Figure out if we can allow an `impl Trait` here, by walking up
-                // to a `fn` or inherent `impl` method, going only through `Ty`
-                // or `TraitRef` nodes (as nothing else should be in types) and
-                // ensuring that we reach the `fn`/method signature's return type.
-                let mut node_id = ast_ty.id;
-                let fn_decl = loop {
-                    let parent = tcx.hir.get_parent_node(node_id);
-                    match tcx.hir.get(parent) {
-                        hir::map::NodeItem(&hir::Item {
-                            node: hir::ItemFn(ref fn_decl, ..), ..
-                        }) => break Some(fn_decl),
-
-                        hir::map::NodeImplItem(&hir::ImplItem {
-                            node: hir::ImplItemKind::Method(ref sig, _), ..
-                        }) => {
-                            match tcx.hir.expect_item(tcx.hir.get_parent(parent)).node {
-                                hir::ItemImpl(.., None, _, _) => {
-                                    break Some(&sig.decl)
-                                }
-                                _ => break None
-                            }
-                        }
-
-                        hir::map::NodeTy(_) | hir::map::NodeTraitRef(_) => {}
-
-                        _ => break None
-                    }
-                    node_id = parent;
-                };
-                let allow = fn_decl.map_or(false, |fd| {
-                    match fd.output {
-                        hir::DefaultReturn(_) => false,
-                        hir::Return(ref ty) => ty.id == node_id
-                    }
-                });
-
-                // Create the anonymized type.
-                if allow {
-                    let def_id = tcx.hir.local_def_id(ast_ty.id);
-                    tcx.mk_anon(def_id, Substs::identity_for_item(tcx, def_id))
-                } else {
-                    span_err!(tcx.sess, ast_ty.span, E0562,
-                              "`impl Trait` not allowed outside of function \
-                               and inherent method return types");
-                    tcx.types.err
-                }
+            hir::TyImplTraitExistential(_, ref lifetimes) => {
+                let def_id = tcx.hir.local_def_id(ast_ty.id);
+                self.impl_trait_ty_to_ty(def_id, lifetimes)
+            }
+            hir::TyImplTraitUniversal(fn_def_id, _) => {
+                let impl_trait_def_id = tcx.hir.local_def_id(ast_ty.id);
+                let generics = tcx.generics_of(fn_def_id);
+                let index = generics.type_param_to_index[&impl_trait_def_id.index];
+                tcx.mk_param(index,
+                             Symbol::intern(&tcx.hir.node_to_pretty_string(ast_ty.id)))
             }
             hir::TyPath(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
@@ -1140,6 +1095,43 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);
         result_ty
+    }
+
+    pub fn impl_trait_ty_to_ty(&self, def_id: DefId, lifetimes: &[hir::Lifetime]) -> Ty<'tcx> {
+        debug!("impl_trait_ty_to_ty(def_id={:?}, lifetimes={:?})", def_id, lifetimes);
+        let tcx = self.tcx();
+        let generics = tcx.generics_of(def_id);
+
+        // Fill in the substs of the parent generics
+        debug!("impl_trait_ty_to_ty: generics={:?}", generics);
+        let mut substs = Vec::with_capacity(generics.count());
+        if let Some(parent_id) = generics.parent {
+            let parent_generics = tcx.generics_of(parent_id);
+            Substs::fill_item(
+                &mut substs, tcx, parent_generics,
+                &mut |def, _| tcx.mk_region(
+                    ty::ReEarlyBound(def.to_early_bound_region_data())),
+                &mut |def, _| tcx.mk_param_from_def(def)
+            );
+
+            // Replace all lifetimes with 'static
+            for subst in &mut substs {
+                if let Some(_) = subst.as_region() {
+                    *subst = Kind::from(&RegionKind::ReStatic);
+                }
+            }
+            debug!("impl_trait_ty_to_ty: substs from parent = {:?}", substs);
+        }
+        assert_eq!(substs.len(), generics.parent_count());
+
+        // Fill in our own generics with the resolved lifetimes
+        assert_eq!(lifetimes.len(), generics.own_count());
+        substs.extend(lifetimes.iter().map(|lt|
+            Kind::from(self.ast_region_to_region(lt, None))));
+
+        debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);
+
+        tcx.mk_anon(def_id, tcx.intern_substs(&substs))
     }
 
     pub fn ty_of_arg(&self,
@@ -1215,60 +1207,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         bare_fn_ty
     }
 
-    pub fn ty_of_closure(&self,
-        unsafety: hir::Unsafety,
-        decl: &hir::FnDecl,
-        abi: abi::Abi,
-        expected_sig: Option<ty::FnSig<'tcx>>)
-        -> ty::PolyFnSig<'tcx>
-    {
-        debug!("ty_of_closure(expected_sig={:?})",
-               expected_sig);
-
-        let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
-            let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
-                // no guarantee that the correct number of expected args
-                // were supplied
-                if i < e.inputs().len() {
-                    Some(e.inputs()[i])
-                } else {
-                    None
-                }
-            });
-            self.ty_of_arg(a, expected_arg_ty)
-        });
-
-        let expected_ret_ty = expected_sig.as_ref().map(|e| e.output());
-
-        let output_ty = match decl.output {
-            hir::Return(ref output) => {
-                if let (&hir::TyInfer, Some(expected_ret_ty)) = (&output.node, expected_ret_ty) {
-                    self.record_ty(output.hir_id, expected_ret_ty, output.span);
-                    expected_ret_ty
-                } else {
-                    self.ast_ty_to_ty(&output)
-                }
-            }
-            hir::DefaultReturn(span) => {
-                if let Some(expected_ret_ty) = expected_ret_ty {
-                    expected_ret_ty
-                } else {
-                    self.ty_infer(span)
-                }
-            }
-        };
-
-        debug!("ty_of_closure: output_ty={:?}", output_ty);
-
-        ty::Binder(self.tcx().mk_fn_sig(
-            input_tys,
-            output_ty,
-            decl.variadic,
-            unsafety,
-            abi
-        ))
-    }
-
     /// Given the bounds on an object, determines what single region bound (if any) we can
     /// use to summarize this type. The basic idea is that we will use the bound the user
     /// provided, if they provided one, and otherwise search the supertypes of trait bounds
@@ -1320,27 +1258,10 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     -> (Vec<DefId>, Vec<&'b hir::PolyTraitRef>)
 {
     let (auto_traits, trait_bounds): (Vec<_>, _) = trait_bounds.iter().partition(|bound| {
+        // Checks whether `trait_did` is an auto trait and adds it to `auto_traits` if so.
         match bound.trait_ref.path.def {
-            Def::Trait(trait_did) => {
-                // Checks whether `trait_did` refers to one of the builtin
-                // traits, like `Send`, and adds it to `auto_traits` if so.
-                if Some(trait_did) == tcx.lang_items().send_trait() ||
-                    Some(trait_did) == tcx.lang_items().sync_trait() {
-                    let segments = &bound.trait_ref.path.segments;
-                    segments[segments.len() - 1].with_parameters(|parameters| {
-                        if !parameters.types.is_empty() {
-                            check_type_argument_count(tcx, bound.trait_ref.path.span,
-                                                      parameters.types.len(), &[]);
-                        }
-                        if !parameters.lifetimes.is_empty() {
-                            report_lifetime_number_error(tcx, bound.trait_ref.path.span,
-                                                         parameters.lifetimes.len(), 0);
-                        }
-                    });
-                    true
-                } else {
-                    false
-                }
+            Def::Trait(trait_did) if tcx.trait_is_auto(trait_did) => {
+                true
             }
             _ => false
         }
@@ -1464,66 +1385,5 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
         }
 
         vec
-    }
-}
-
-pub enum ExplicitSelf<'tcx> {
-    ByValue,
-    ByReference(ty::Region<'tcx>, hir::Mutability),
-    ByBox
-}
-
-impl<'tcx> ExplicitSelf<'tcx> {
-    /// We wish to (for now) categorize an explicit self
-    /// declaration like `self: SomeType` into either `self`,
-    /// `&self`, `&mut self`, or `Box<self>`. We do this here
-    /// by some simple pattern matching. A more precise check
-    /// is done later in `check_method_self_type()`.
-    ///
-    /// Examples:
-    ///
-    /// ```
-    /// impl Foo for &T {
-    ///     // Legal declarations:
-    ///     fn method1(self: &&T); // ExplicitSelf::ByReference
-    ///     fn method2(self: &T); // ExplicitSelf::ByValue
-    ///     fn method3(self: Box<&T>); // ExplicitSelf::ByBox
-    ///
-    ///     // Invalid cases will be caught later by `check_method_self_type`:
-    ///     fn method_err1(self: &mut T); // ExplicitSelf::ByReference
-    /// }
-    /// ```
-    ///
-    /// To do the check we just count the number of "modifiers"
-    /// on each type and compare them. If they are the same or
-    /// the impl has more, we call it "by value". Otherwise, we
-    /// look at the outermost modifier on the method decl and
-    /// call it by-ref, by-box as appropriate. For method1, for
-    /// example, the impl type has one modifier, but the method
-    /// type has two, so we end up with
-    /// ExplicitSelf::ByReference.
-    pub fn determine(untransformed_self_ty: Ty<'tcx>,
-                     self_arg_ty: Ty<'tcx>)
-                     -> ExplicitSelf<'tcx> {
-        fn count_modifiers(ty: Ty) -> usize {
-            match ty.sty {
-                ty::TyRef(_, mt) => count_modifiers(mt.ty) + 1,
-                ty::TyAdt(def, _) if def.is_box() => count_modifiers(ty.boxed_ty()) + 1,
-                _ => 0,
-            }
-        }
-
-        let impl_modifiers = count_modifiers(untransformed_self_ty);
-        let method_modifiers = count_modifiers(self_arg_ty);
-
-        if impl_modifiers >= method_modifiers {
-            ExplicitSelf::ByValue
-        } else {
-            match self_arg_ty.sty {
-                ty::TyRef(r, mt) => ExplicitSelf::ByReference(r, mt.mutbl),
-                ty::TyAdt(def, _) if def.is_box() => ExplicitSelf::ByBox,
-                _ => ExplicitSelf::ByValue,
-            }
-        }
     }
 }

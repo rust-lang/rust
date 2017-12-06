@@ -89,7 +89,7 @@ def load_unicode_data(f):
         if is_surrogate(cp):
             continue
         if range_start >= 0:
-            for i in xrange(range_start, cp):
+            for i in range(range_start, cp):
                 udict[i] = data
             range_start = -1
         if data[1].endswith(", First>"):
@@ -382,7 +382,7 @@ def compute_trie(rawdata, chunksize):
     root = []
     childmap = {}
     child_data = []
-    for i in range(len(rawdata) / chunksize):
+    for i in range(len(rawdata) // chunksize):
         data = rawdata[i * chunksize: (i + 1) * chunksize]
         child = '|'.join(map(str, data))
         if child not in childmap:
@@ -400,7 +400,7 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
 
     # convert to bitmap chunks of 64 bits each
     chunks = []
-    for i in range(0x110000 / CHUNK):
+    for i in range(0x110000 // CHUNK):
         chunk = 0
         for j in range(64):
             if rawdata[i * 64 + j]:
@@ -412,12 +412,12 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
         pub_string = "pub "
     f.write("    %sconst %s: &'static super::BoolTrie = &super::BoolTrie {\n" % (pub_string, name))
     f.write("        r1: [\n")
-    data = ','.join('0x%016x' % chunk for chunk in chunks[0:0x800 / CHUNK])
+    data = ','.join('0x%016x' % chunk for chunk in chunks[0:0x800 // CHUNK])
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
     # 0x800..0x10000 trie
-    (r2, r3) = compute_trie(chunks[0x800 / CHUNK : 0x10000 / CHUNK], 64 / CHUNK)
+    (r2, r3) = compute_trie(chunks[0x800 // CHUNK : 0x10000 // CHUNK], 64 // CHUNK)
     f.write("        r2: [\n")
     data = ','.join(str(node) for node in r2)
     format_table_content(f, data, 12)
@@ -428,7 +428,7 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
     f.write("\n        ],\n")
 
     # 0x10000..0x110000 trie
-    (mid, r6) = compute_trie(chunks[0x10000 / CHUNK : 0x110000 / CHUNK], 64 / CHUNK)
+    (mid, r6) = compute_trie(chunks[0x10000 // CHUNK : 0x110000 // CHUNK], 64 // CHUNK)
     (r4, r5) = compute_trie(mid, 64)
     f.write("        r4: [\n")
     data = ','.join(str(node) for node in r4)
@@ -446,14 +446,14 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
     f.write("    };\n\n")
 
 def emit_small_bool_trie(f, name, t_data, is_pub=True):
-    last_chunk = max(int(hi / 64) for (lo, hi) in t_data)
+    last_chunk = max(hi // 64 for (lo, hi) in t_data)
     n_chunks = last_chunk + 1
     chunks = [0] * n_chunks
     for (lo, hi) in t_data:
         for cp in range(lo, hi + 1):
-            if int(cp / 64) >= len(chunks):
-                print(cp, int(cp / 64), len(chunks), lo, hi)
-            chunks[int(cp / 64)] |= 1 << (cp & 63)
+            if cp // 64 >= len(chunks):
+                print(cp, cp // 64, len(chunks), lo, hi)
+            chunks[cp // 64] |= 1 << (cp & 63)
 
     pub_string = ""
     if is_pub:
@@ -519,32 +519,29 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
     pfun = lambda x: "(%s,[%s,%s,%s])" % (
         escape_char(x[0]), escape_char(x[1][0]), escape_char(x[1][1]), escape_char(x[1][2]))
     emit_table(f, "to_lowercase_table",
-        sorted(to_lower.iteritems(), key=operator.itemgetter(0)),
+        sorted(to_lower.items(), key=operator.itemgetter(0)),
         is_pub=False, t_type = t_type, pfun=pfun)
     emit_table(f, "to_uppercase_table",
-        sorted(to_upper.iteritems(), key=operator.itemgetter(0)),
+        sorted(to_upper.items(), key=operator.itemgetter(0)),
         is_pub=False, t_type = t_type, pfun=pfun)
     f.write("}\n\n")
 
 def emit_norm_module(f, canon, compat, combine, norm_props):
-    canon_keys = canon.keys()
-    canon_keys.sort()
+    canon_keys = sorted(canon.keys())
 
-    compat_keys = compat.keys()
-    compat_keys.sort()
+    compat_keys = sorted(compat.keys())
 
     canon_comp = {}
     comp_exclusions = norm_props["Full_Composition_Exclusion"]
     for char in canon_keys:
-        if True in map(lambda (lo, hi): lo <= char <= hi, comp_exclusions):
+        if any(lo <= char <= hi for lo, hi in comp_exclusions):
             continue
         decomp = canon[char]
         if len(decomp) == 2:
-            if not canon_comp.has_key(decomp[0]):
+            if decomp[0] not in canon_comp:
                 canon_comp[decomp[0]] = []
             canon_comp[decomp[0]].append( (decomp[1], char) )
-    canon_comp_keys = canon_comp.keys()
-    canon_comp_keys.sort()
+    canon_comp_keys = sorted(canon_comp.keys())
 
 if __name__ == "__main__":
     r = "tables.rs"

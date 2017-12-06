@@ -1,7 +1,7 @@
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
   --> $DIR/mut-borrow-in-loop.rs:20:25
    |
-20 |             (self.func)(arg)
+20 |             (self.func)(arg) //~ ERROR cannot borrow
    |                         ^^^ mutable borrow starts here in previous iteration of loop
 21 |         }
 22 |     }
@@ -10,7 +10,7 @@ error[E0499]: cannot borrow `*arg` as mutable more than once at a time
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
   --> $DIR/mut-borrow-in-loop.rs:26:25
    |
-26 |             (self.func)(arg)
+26 |             (self.func)(arg) //~ ERROR cannot borrow
    |                         ^^^ mutable borrow starts here in previous iteration of loop
 27 |         }
 28 |     }
@@ -19,7 +19,7 @@ error[E0499]: cannot borrow `*arg` as mutable more than once at a time
 error[E0499]: cannot borrow `*arg` as mutable more than once at a time
   --> $DIR/mut-borrow-in-loop.rs:33:25
    |
-33 |             (self.func)(arg)
+33 |             (self.func)(arg) //~ ERROR cannot borrow
    |                         ^^^ mutable borrow starts here in previous iteration of loop
 34 |         }
 35 |     }

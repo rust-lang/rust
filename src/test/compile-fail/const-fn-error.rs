@@ -13,8 +13,9 @@
 const X : usize = 2;
 
 const fn f(x: usize) -> usize {
-    let mut sum = 0;
-    for i in 0..x {
+    let mut sum = 0; //~ ERROR blocks in constant functions are limited
+    for i in 0..x { //~ ERROR calls in constant functions
+    //~| ERROR constant function contains unimplemented
         sum += i;
     }
     sum //~ ERROR E0080
@@ -24,4 +25,6 @@ const fn f(x: usize) -> usize {
 #[allow(unused_variables)]
 fn main() {
     let a : [i32; f(X)]; //~ NOTE for constant expression here
+    //~| WARNING constant evaluation error: non-constant path
+    //~| on by default
 }

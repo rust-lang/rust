@@ -358,13 +358,6 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         self.record("Mac", Id::None, mac);
     }
 
-    fn visit_path_list_item(&mut self,
-                            prefix: &'v ast::Path,
-                            item: &'v ast::PathListItem) {
-        self.record("PathListItem", Id::None, item);
-        ast_visit::walk_path_list_item(self, prefix, item)
-    }
-
     fn visit_path_segment(&mut self,
                           path_span: Span,
                           path_segment: &'v ast::PathSegment) {

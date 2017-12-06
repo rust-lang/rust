@@ -17,7 +17,7 @@ struct Foo {
 
 pub fn main() {
     let foo = Foo { bar: 1, baz: 2 };
-    let brw = &foo.baz;
+    let brw = unsafe { &foo.baz };
 
     assert_eq!(*brw, 2);
 }

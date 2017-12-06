@@ -60,11 +60,11 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //        transformation encoding the effects of rvalue-promotion.
 //        This may be the simplest and most-likely option; note in
 //        particular that `StorageDead(_6)` goes away below in
-//        rustc.node4.QualifyAndPromoteConstants.after.mir
+//        rustc.main.QualifyAndPromoteConstants.after.mir
 
 // END RUST SOURCE
 
-// START rustc.node4.QualifyAndPromoteConstants.before.mir
+// START rustc.main.QualifyAndPromoteConstants.before.mir
 // fn main() -> () {
 //     let mut _0: ();
 //     let mut _1: &'12ds S1;
@@ -92,17 +92,21 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         _9 = S1::{{constructor}}(const "dang1",);
 //         _8 = &'10s _9;
 //         _7 = &'10s (*_8);
-//         _3 = D1<'12ds, '10s>::{{constructor}}(_4, _7);
+//         _3 = D1<'12ds, '10s>::{{constructor}}(move _4, move _7);
 //         EndRegion('10s);
 //         StorageDead(_7);
 //         StorageDead(_4);
 //         _2 = (_3.0: &'12ds S1);
-//         _1 = _2;
+//         _1 = move _2;
 //         StorageDead(_2);
-//         drop(_3) -> bb1;
+//         drop(_3) -> [return: bb2, unwind: bb1];
 //     }
 //
 //     bb1: {
+//         resume;
+//     }
+//
+//     bb2: {
 //         StorageDead(_3);
 //         StorageDead(_8);
 //         StorageDead(_9);
@@ -113,9 +117,9 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         return;
 //     }
 // }
-// END rustc.node4.QualifyAndPromoteConstants.before.mir
+// END rustc.main.QualifyAndPromoteConstants.before.mir
 
-// START rustc.node4.QualifyAndPromoteConstants.after.mir
+// START rustc.main.QualifyAndPromoteConstants.after.mir
 // fn main() -> () {
 //     let mut _0: ();
 //     let mut _1: &'12ds S1;
@@ -133,23 +137,27 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         StorageLive(_5);
-//         _5 = promoted1;
+//         _5 = promoted[1];
 //         _4 = &'12ds (*_5);
 //         StorageLive(_7);
 //         StorageLive(_8);
-//         _8 = promoted0;
+//         _8 = promoted[0];
 //         _7 = &'10s (*_8);
-//         _3 = D1<'12ds, '10s>::{{constructor}}(_4, _7);
+//         _3 = D1<'12ds, '10s>::{{constructor}}(move _4, move _7);
 //         EndRegion('10s);
 //         StorageDead(_7);
 //         StorageDead(_4);
 //         _2 = (_3.0: &'12ds S1);
-//         _1 = _2;
+//         _1 = move _2;
 //         StorageDead(_2);
-//         drop(_3) -> bb1;
+//         drop(_3) -> [return: bb2, unwind: bb1];
 //     }
 //
 //     bb1: {
+//         resume;
+//     }
+//
+//     bb2: {
 //         StorageDead(_3);
 //         StorageDead(_8);
 //         StorageDead(_5);
@@ -158,4 +166,4 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         return;
 //     }
 // }
-// END rustc.node4.QualifyAndPromoteConstants.after.mir
+// END rustc.main.QualifyAndPromoteConstants.after.mir

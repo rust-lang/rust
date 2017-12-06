@@ -167,7 +167,7 @@ impl TcpStream {
     /// connection request.
     ///
     /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-    #[stable(feature = "tcpstream_connect_timeout", since = "1.22.0")]
+    #[stable(feature = "tcpstream_connect_timeout", since = "1.21.0")]
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         net_imp::TcpStream::connect_timeout(addr, timeout).map(TcpStream)
     }
@@ -194,12 +194,12 @@ impl TcpStream {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream};
+    /// use std::net::{IpAddr, Ipv4Addr, TcpStream};
     ///
     /// let stream = TcpStream::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
-    /// assert_eq!(stream.local_addr().unwrap(),
-    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8080)));
+    /// assert_eq!(stream.local_addr().unwrap().ip(),
+    ///            IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -498,18 +498,46 @@ impl TcpStream {
 
     /// Moves this TCP stream into or out of nonblocking mode.
     ///
-    /// On Unix this corresponds to calling fcntl, and on Windows this
-    /// corresponds to calling ioctlsocket.
+    /// This will result in `read`, `write`, `recv` and `send` operations
+    /// becoming nonblocking, i.e. immediately returning from their calls.
+    /// If the IO operation is successful, `Ok` is returned and no further
+    /// action is required. If the IO operation could not be completed and needs
+    /// to be retried, an error with kind [`io::ErrorKind::WouldBlock`] is
+    /// returned.
+    ///
+    /// On Unix platforms, calling this method corresponds to calling `fcntl`
+    /// `FIONBIO`. On Windows calling this method corresponds to calling
+    /// `ioctlsocket` `FIONBIO`.
     ///
     /// # Examples
     ///
+    /// Reading bytes from a TCP stream in non-blocking mode:
+    ///
     /// ```no_run
+    /// use std::io::{self, Read};
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:8080")
-    ///                        .expect("Couldn't connect to the server...");
+    /// let mut stream = TcpStream::connect("127.0.0.1:7878")
+    ///     .expect("Couldn't connect to the server...");
     /// stream.set_nonblocking(true).expect("set_nonblocking call failed");
+    ///
+    /// # fn wait_for_fd() { unimplemented!() }
+    /// let mut buf = vec![];
+    /// loop {
+    ///     match stream.read_to_end(&mut buf) {
+    ///         Ok(_) => break,
+    ///         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///             // wait until network socket is ready, typically implemented
+    ///             // via platform-specific APIs such as epoll or IOCP
+    ///             wait_for_fd();
+    ///         }
+    ///         Err(e) => panic!("encountered IO error: {}", e),
+    ///     };
+    /// };
+    /// println!("bytes: {:?}", buf);
     /// ```
+    ///
+    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
@@ -780,17 +808,48 @@ impl TcpListener {
 
     /// Moves this TCP stream into or out of nonblocking mode.
     ///
-    /// On Unix this corresponds to calling fcntl, and on Windows this
-    /// corresponds to calling ioctlsocket.
+    /// This will result in the `accept` operation becoming nonblocking,
+    /// i.e. immediately returning from their calls. If the IO operation is
+    /// successful, `Ok` is returned and no further action is required. If the
+    /// IO operation could not be completed and needs to be retried, an error
+    /// with kind [`io::ErrorKind::WouldBlock`] is returned.
+    ///
+    /// On Unix platforms, calling this method corresponds to calling `fcntl`
+    /// `FIONBIO`. On Windows calling this method corresponds to calling
+    /// `ioctlsocket` `FIONBIO`.
     ///
     /// # Examples
     ///
+    /// Bind a TCP listener to an address, listen for connections, and read
+    /// bytes in nonblocking mode:
+    ///
     /// ```no_run
+    /// use std::io;
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     /// listener.set_nonblocking(true).expect("Cannot set non-blocking");
+    ///
+    /// # fn wait_for_fd() { unimplemented!() }
+    /// # fn handle_connection(stream: std::net::TcpStream) { unimplemented!() }
+    /// for stream in listener.incoming() {
+    ///     match stream {
+    ///         Ok(s) => {
+    ///             // do something with the TcpStream
+    ///             handle_connection(s);
+    ///         }
+    ///         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///             // wait until network socket is ready, typically implemented
+    ///             // via platform-specific APIs such as epoll or IOCP
+    ///             wait_for_fd();
+    ///             continue;
+    ///         }
+    ///         Err(e) => panic!("encountered IO error: {}", e),
+    ///     }
+    /// }
     /// ```
+    ///
+    /// [`io::ErrorKind::WouldBlock`]: ../io/enum.ErrorKind.html#variant.WouldBlock
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
@@ -1575,6 +1634,21 @@ mod tests {
         let addr = "10.255.255.1:80".parse().unwrap();
         let e = TcpStream::connect_timeout(&addr, Duration::from_millis(250)).unwrap_err();
         assert!(e.kind() == io::ErrorKind::TimedOut ||
+                e.kind() == io::ErrorKind::Other,
+                "bad error: {} {:?}", e, e.kind());
+    }
+
+    #[test]
+    fn connect_timeout_unbound() {
+        // bind and drop a socket to track down a "probably unassigned" port
+        let socket = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = socket.local_addr().unwrap();
+        drop(socket);
+
+        let timeout = Duration::from_secs(1);
+        let e = TcpStream::connect_timeout(&addr, timeout).unwrap_err();
+        assert!(e.kind() == io::ErrorKind::ConnectionRefused ||
+                e.kind() == io::ErrorKind::TimedOut ||
                 e.kind() == io::ErrorKind::Other,
                 "bad error: {} {:?}", e, e.kind());
     }

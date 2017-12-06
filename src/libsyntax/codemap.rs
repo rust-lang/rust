@@ -17,11 +17,15 @@
 //! within the CodeMap, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
+
 pub use syntax_pos::*;
 pub use syntax_pos::hygiene::{ExpnFormat, ExpnInfo, NameAndSpan};
 pub use self::ExpnFormat::*;
 
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::StableHasher;
 use std::cell::{RefCell, Ref};
+use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -98,6 +102,24 @@ impl FileLoader for RealFileLoader {
     }
 }
 
+// This is a FileMap identifier that is used to correlate FileMaps between
+// subsequent compilation sessions (which is something we need to do during
+// incremental compilation).
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+pub struct StableFilemapId(u128);
+
+impl StableFilemapId {
+    pub fn new(filemap: &FileMap) -> StableFilemapId {
+        let mut hasher = StableHasher::new();
+
+        filemap.name.hash(&mut hasher);
+        filemap.name_was_remapped.hash(&mut hasher);
+        filemap.unmapped_path.hash(&mut hasher);
+
+        StableFilemapId(hasher.finish())
+    }
+}
+
 // _____________________________________________________________________________
 // CodeMap
 //
@@ -108,6 +130,7 @@ pub struct CodeMap {
     // This is used to apply the file path remapping as specified via
     // -Zremap-path-prefix to all FileMaps allocated within this CodeMap.
     path_mapping: FilePathMapping,
+    stable_id_to_filemap: RefCell<FxHashMap<StableFilemapId, Rc<FileMap>>>,
 }
 
 impl CodeMap {
@@ -116,6 +139,7 @@ impl CodeMap {
             files: RefCell::new(Vec::new()),
             file_loader: Box::new(RealFileLoader),
             path_mapping,
+            stable_id_to_filemap: RefCell::new(FxHashMap()),
         }
     }
 
@@ -126,6 +150,7 @@ impl CodeMap {
             files: RefCell::new(Vec::new()),
             file_loader,
             path_mapping,
+            stable_id_to_filemap: RefCell::new(FxHashMap()),
         }
     }
 
@@ -146,6 +171,10 @@ impl CodeMap {
         self.files.borrow()
     }
 
+    pub fn filemap_by_stable_id(&self, stable_id: StableFilemapId) -> Option<Rc<FileMap>> {
+        self.stable_id_to_filemap.borrow().get(&stable_id).map(|fm| fm.clone())
+    }
+
     fn next_start_pos(&self) -> usize {
         let files = self.files.borrow();
         match files.last() {
@@ -162,11 +191,27 @@ impl CodeMap {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
 
+        // The path is used to determine the directory for loading submodules and
+        // include files, so it must be before remapping.
+        // Note that filename may not be a valid path, eg it may be `<anon>` etc,
+        // but this is okay because the directory determined by `path.pop()` will
+        // be empty, so the working directory will be used.
+        let unmapped_path = PathBuf::from(filename.clone());
+
         let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
-        let filemap =
-            Rc::new(FileMap::new(filename, was_remapped, src, Pos::from_usize(start_pos)));
+        let filemap = Rc::new(FileMap::new(
+            filename,
+            was_remapped,
+            unmapped_path,
+            src,
+            Pos::from_usize(start_pos),
+        ));
 
         files.push(filemap.clone());
+
+        self.stable_id_to_filemap
+            .borrow_mut()
+            .insert(StableFilemapId::new(&filemap), filemap.clone());
 
         filemap
     }
@@ -197,7 +242,8 @@ impl CodeMap {
                                 src_hash: u128,
                                 source_len: usize,
                                 mut file_local_lines: Vec<BytePos>,
-                                mut file_local_multibyte_chars: Vec<MultiByteChar>)
+                                mut file_local_multibyte_chars: Vec<MultiByteChar>,
+                                mut file_local_non_narrow_chars: Vec<NonNarrowChar>)
                                 -> Rc<FileMap> {
         let start_pos = self.next_start_pos();
         let mut files = self.files.borrow_mut();
@@ -213,9 +259,14 @@ impl CodeMap {
             mbc.pos = mbc.pos + start_pos;
         }
 
+        for swc in &mut file_local_non_narrow_chars {
+            *swc = *swc + start_pos;
+        }
+
         let filemap = Rc::new(FileMap {
             name: filename,
             name_was_remapped,
+            unmapped_path: None,
             crate_of_origin,
             src: None,
             src_hash,
@@ -224,9 +275,14 @@ impl CodeMap {
             end_pos,
             lines: RefCell::new(file_local_lines),
             multibyte_chars: RefCell::new(file_local_multibyte_chars),
+            non_narrow_chars: RefCell::new(file_local_non_narrow_chars),
         });
 
         files.push(filemap.clone());
+
+        self.stable_id_to_filemap
+            .borrow_mut()
+            .insert(StableFilemapId::new(&filemap), filemap.clone());
 
         filemap
     }
@@ -247,6 +303,24 @@ impl CodeMap {
                 let line = a + 1; // Line numbers start at 1
                 let linebpos = (*f.lines.borrow())[a];
                 let linechpos = self.bytepos_to_file_charpos(linebpos);
+                let col = chpos - linechpos;
+
+                let col_display = {
+                    let non_narrow_chars = f.non_narrow_chars.borrow();
+                    let start_width_idx = non_narrow_chars
+                        .binary_search_by_key(&linebpos, |x| x.pos())
+                        .unwrap_or_else(|x| x);
+                    let end_width_idx = non_narrow_chars
+                        .binary_search_by_key(&pos, |x| x.pos())
+                        .unwrap_or_else(|x| x);
+                    let special_chars = end_width_idx - start_width_idx;
+                    let non_narrow: usize =
+                        non_narrow_chars[start_width_idx..end_width_idx]
+                        .into_iter()
+                        .map(|x| x.width())
+                        .sum();
+                    col.0 - special_chars + non_narrow
+                };
                 debug!("byte pos {:?} is on the line at byte pos {:?}",
                        pos, linebpos);
                 debug!("char pos {:?} is on the line at char pos {:?}",
@@ -256,21 +330,35 @@ impl CodeMap {
                 Loc {
                     file: f,
                     line,
-                    col: chpos - linechpos,
+                    col,
+                    col_display,
                 }
             }
             Err(f) => {
+                let col_display = {
+                    let non_narrow_chars = f.non_narrow_chars.borrow();
+                    let end_width_idx = non_narrow_chars
+                        .binary_search_by_key(&pos, |x| x.pos())
+                        .unwrap_or_else(|x| x);
+                    let non_narrow: usize =
+                        non_narrow_chars[0..end_width_idx]
+                        .into_iter()
+                        .map(|x| x.width())
+                        .sum();
+                    chpos.0 - end_width_idx + non_narrow
+                };
                 Loc {
                     file: f,
                     line: 0,
                     col: chpos,
+                    col_display,
                 }
             }
         }
     }
 
     // If the relevant filemap is empty, we don't return a line number.
-    fn lookup_line(&self, pos: BytePos) -> Result<FileMapAndLine, Rc<FileMap>> {
+    pub fn lookup_line(&self, pos: BytePos) -> Result<FileMapAndLine, Rc<FileMap>> {
         let idx = self.lookup_filemap_idx(pos);
 
         let files = self.files.borrow();
@@ -342,7 +430,12 @@ impl CodeMap {
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
-        self.lookup_char_pos(sp.lo()).file.name.to_string()
+        self.lookup_char_pos(sp.lo()).file.name.clone()
+    }
+
+    pub fn span_to_unmapped_path(&self, sp: Span) -> PathBuf {
+        self.lookup_char_pos(sp.lo()).file.unmapped_path.clone()
+            .expect("CodeMap::span_to_unmapped_path called for imported FileMap?")
     }
 
     pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {
@@ -451,6 +544,17 @@ impl CodeMap {
             }
             _ => sp,
         }
+    }
+
+    /// Given a `Span`, try to get a shorter span ending just after the first
+    /// occurrence of `char` `c`.
+    pub fn span_through_char(&self, sp: Span, c: char) -> Span {
+        if let Ok(snippet) = self.span_to_snippet(sp) {
+            if let Some(offset) = snippet.find(c) {
+                return sp.with_hi(BytePos(sp.lo().0 + (offset + c.len_utf8()) as u32));
+            }
+        }
+        sp
     }
 
     pub fn def_span(&self, sp: Span) -> Span {

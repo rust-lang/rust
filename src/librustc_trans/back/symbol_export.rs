@@ -21,6 +21,8 @@ use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::FxHashMap;
 use rustc_allocator::ALLOCATOR_METHODS;
+use rustc_back::LinkerFlavor;
+use syntax::attr;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
@@ -34,7 +36,7 @@ pub fn threshold(tcx: TyCtxt) -> SymbolExportLevel {
 pub fn metadata_symbol_name(tcx: TyCtxt) -> String {
     format!("rust_metadata_{}_{}",
             tcx.crate_name(LOCAL_CRATE),
-            tcx.crate_disambiguator(LOCAL_CRATE))
+            tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex())
 }
 
 fn crate_export_threshold(crate_type: config::CrateType) -> SymbolExportLevel {
@@ -59,7 +61,7 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType])
     }
 }
 
-pub fn provide_local(providers: &mut Providers) {
+pub fn provide(providers: &mut Providers) {
     providers.exported_symbol_ids = |tcx, cnum| {
         let export_threshold = threshold(tcx);
         Rc::new(tcx.exported_symbols(cnum)
@@ -77,11 +79,7 @@ pub fn provide_local(providers: &mut Providers) {
     };
 
     providers.is_exported_symbol = |tcx, id| {
-        // FIXME(#42293) needs red/green to not break a bunch of incremental
-        // tests
-        tcx.dep_graph.with_ignore(|| {
-            tcx.exported_symbol_ids(id.krate).contains(&id)
-        })
+        tcx.exported_symbol_ids(id.krate).contains(&id)
     };
 
     providers.exported_symbols = |tcx, cnum| {
@@ -128,6 +126,12 @@ pub fn provide_local(providers: &mut Providers) {
                               None,
                               SymbolExportLevel::Rust));
         }
+
+        // Sort so we get a stable incr. comp. hash.
+        local_crate.sort_unstable_by(|&(ref name1, ..), &(ref name2, ..)| {
+            name1.cmp(name2)
+        });
+
         Arc::new(local_crate)
     };
 }
@@ -151,12 +155,26 @@ pub fn provide_extern(providers: &mut Providers) {
         let special_runtime_crate =
             tcx.is_panic_runtime(cnum) || tcx.is_compiler_builtins(cnum);
 
-        let crate_exports = tcx
+        // Dealing with compiler-builtins and wasm right now is super janky.
+        // There's no linker! As a result we need all of the compiler-builtins
+        // exported symbols to make their way through all the way to the end of
+        // compilation. We want to make sure that LLVM doesn't remove them as
+        // well because we may or may not need them in the final output
+        // artifact. For now just force them to always get exported at the C
+        // layer, and we'll worry about gc'ing them later.
+        let compiler_builtins_and_binaryen =
+            tcx.is_compiler_builtins(cnum) &&
+            tcx.sess.linker_flavor() == LinkerFlavor::Binaryen;
+
+        let mut crate_exports: Vec<_> = tcx
             .exported_symbol_ids(cnum)
             .iter()
             .map(|&def_id| {
                 let name = tcx.symbol_name(Instance::mono(tcx, def_id));
-                let export_level = if special_runtime_crate {
+                let export_level = if compiler_builtins_and_binaryen &&
+                                      tcx.contains_extern_indicator(def_id) {
+                    SymbolExportLevel::C
+                } else if special_runtime_crate {
                     // We can probably do better here by just ensuring that
                     // it has hidden visibility rather than public
                     // visibility, as this is primarily here to ensure it's
@@ -179,12 +197,25 @@ pub fn provide_extern(providers: &mut Providers) {
             })
             .collect();
 
+        // Sort so we get a stable incr. comp. hash.
+        crate_exports.sort_unstable_by(|&(ref name1, ..), &(ref name2, ..)| {
+            name1.cmp(name2)
+        });
+
         Arc::new(crate_exports)
     };
 }
 
 fn export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
-    if tcx.contains_extern_indicator(sym_def_id) {
+    // We export anything that's not mangled at the "C" layer as it probably has
+    // to do with ABI concerns. We do not, however, apply such treatment to
+    // special symbols in the standard library for various plumbing between
+    // core/std/allocators/etc. For example symbols used to hook up allocation
+    // are not considered for export
+    let is_extern = tcx.contains_extern_indicator(sym_def_id);
+    let std_internal = attr::contains_name(&tcx.get_attrs(sym_def_id),
+                                           "rustc_std_internal_symbol");
+    if is_extern && !std_internal {
         SymbolExportLevel::C
     } else {
         SymbolExportLevel::Rust

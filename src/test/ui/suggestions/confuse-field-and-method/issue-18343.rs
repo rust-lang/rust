@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Obj<F> where F: FnMut() -> u32 {
+struct Obj<F> where F: FnMut() -> u32 { //~ NOTE not found for this
     closure: F,
 }
 

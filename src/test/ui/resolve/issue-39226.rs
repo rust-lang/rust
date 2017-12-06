@@ -18,7 +18,8 @@ fn main() {
 
     let s: Something = Something {
         handle: Handle
-        //~^ ERROR cannot find value `Handle` in this scope
-        //~| NOTE did you mean `handle`?
+        //~^ ERROR expected value, found struct `Handle`
+        //~| NOTE did you mean `Handle { /* fields */ }`?
+        //~| NOTE did you mean `handle`
     };
 }

@@ -77,7 +77,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use ascii::*;
 use borrow::{Borrow, Cow};
 use cmp;
 use error::Error;
@@ -86,8 +85,9 @@ use fs;
 use hash::{Hash, Hasher};
 use io;
 use iter::{self, FusedIterator};
-use mem;
 use ops::{self, Deref};
+use rc::Rc;
+use sync::Arc;
 
 use ffi::{OsStr, OsString};
 
@@ -317,10 +317,10 @@ fn iter_after<A, I, J>(mut iter: I, mut prefix: J) -> Option<I>
 
 // See note at the top of this module to understand why these are used:
 fn os_str_as_u8_slice(s: &OsStr) -> &[u8] {
-    unsafe { mem::transmute(s) }
+    unsafe { &*(s as *const OsStr as *const [u8]) }
 }
 unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
-    mem::transmute(s)
+    &*(s as *const [u8] as *const OsStr)
 }
 
 // Detect scheme on Redox
@@ -1334,7 +1334,8 @@ impl PathBuf {
     /// [`Path`]: struct.Path.html
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
     pub fn into_boxed_path(self) -> Box<Path> {
-        unsafe { mem::transmute(self.inner.into_boxed_os_str()) }
+        let rw = Box::into_raw(self.inner.into_boxed_os_str()) as *mut Path;
+        unsafe { Box::from_raw(rw) }
     }
 }
 
@@ -1342,7 +1343,8 @@ impl PathBuf {
 impl<'a> From<&'a Path> for Box<Path> {
     fn from(path: &'a Path) -> Box<Path> {
         let boxed: Box<OsStr> = path.inner.into();
-        unsafe { mem::transmute(boxed) }
+        let rw = Box::into_raw(boxed) as *mut Path;
+        unsafe { Box::from_raw(rw) }
     }
 }
 
@@ -1449,6 +1451,42 @@ impl<'a> From<PathBuf> for Cow<'a, Path> {
     #[inline]
     fn from(s: PathBuf) -> Cow<'a, Path> {
         Cow::Owned(s)
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl From<PathBuf> for Arc<Path> {
+    #[inline]
+    fn from(s: PathBuf) -> Arc<Path> {
+        let arc: Arc<OsStr> = Arc::from(s.into_os_string());
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Path) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl<'a> From<&'a Path> for Arc<Path> {
+    #[inline]
+    fn from(s: &Path) -> Arc<Path> {
+        let arc: Arc<OsStr> = Arc::from(s.as_os_str());
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const Path) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl From<PathBuf> for Rc<Path> {
+    #[inline]
+    fn from(s: PathBuf) -> Rc<Path> {
+        let rc: Rc<OsStr> = Rc::from(s.into_os_string());
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Path) }
+    }
+}
+
+#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+impl<'a> From<&'a Path> for Rc<Path> {
+    #[inline]
+    fn from(s: &Path) -> Rc<Path> {
+        let rc: Rc<OsStr> = Rc::from(s.as_os_str());
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Path) }
     }
 }
 
@@ -1589,7 +1627,7 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
-        unsafe { mem::transmute(s.as_ref()) }
+        unsafe { &*(s.as_ref() as *const OsStr as *const Path) }
     }
 
     /// Yields the underlying [`OsStr`] slice.
@@ -1690,11 +1728,11 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
-        if !cfg!(target_os = "redox") {
-            self.has_root() && (cfg!(unix) || self.prefix().is_some())
-        } else {
+        if cfg!(target_os = "redox") {
             // FIXME: Allow Redox prefixes
-            has_redox_scheme(self.as_u8_slice())
+            self.has_root() || has_redox_scheme(self.as_u8_slice())
+        } else {
+            self.has_root() && (cfg!(unix) || self.prefix().is_some())
         }
     }
 
@@ -2312,7 +2350,8 @@ impl Path {
     /// [`PathBuf`]: struct.PathBuf.html
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
     pub fn into_path_buf(self: Box<Path>) -> PathBuf {
-        let inner: Box<OsStr> = unsafe { mem::transmute(self) };
+        let rw = Box::into_raw(self) as *mut OsStr;
+        let inner = unsafe { Box::from_raw(rw) };
         PathBuf { inner: OsString::from(inner) }
     }
 }
@@ -2566,6 +2605,9 @@ impl Error for StripPrefixError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use rc::Rc;
+    use sync::Arc;
 
     macro_rules! t(
         ($path:expr, iter: $iter:expr) => (
@@ -3751,7 +3793,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eq_recievers() {
+    fn test_eq_receivers() {
         use borrow::Cow;
 
         let borrowed: &Path = Path::new("foo/bar");
@@ -3968,5 +4010,22 @@ mod tests {
     fn display_format_flags() {
         assert_eq!(format!("a{:#<5}b", Path::new("").display()), "a#####b");
         assert_eq!(format!("a{:#<5}b", Path::new("a").display()), "aa####b");
+    }
+
+    #[test]
+    fn into_rc() {
+        let orig = "hello/world";
+        let path = Path::new(orig);
+        let rc: Rc<Path> = Rc::from(path);
+        let arc: Arc<Path> = Arc::from(path);
+
+        assert_eq!(&*rc, path);
+        assert_eq!(&*arc, path);
+
+        let rc2: Rc<Path> = Rc::from(path.to_owned());
+        let arc2: Arc<Path> = Arc::from(path.to_owned());
+
+        assert_eq!(&*rc2, path);
+        assert_eq!(&*arc2, path);
     }
 }

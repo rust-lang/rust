@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(Option<i32>, String) {}
-fn bar(x, y: usize) {}
+fn foo(Option<i32>, String) {} //~ ERROR expected one of
+//~^ ERROR expected one of
+fn bar(x, y: usize) {} //~ ERROR expected one of
 
 fn main() {
     foo(Some(42), 2);
-    foo(Some(42), 2, "");
-    bar("", "");
+    foo(Some(42), 2, ""); //~ ERROR this function takes
+    bar("", ""); //~ ERROR mismatched types
     bar(1, 2);
-    bar(1, 2, 3);
+    bar(1, 2, 3); //~ ERROR this function takes
 }

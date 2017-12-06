@@ -36,9 +36,15 @@ pub struct LayoutPacked;
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 #[repr(packed)]
 pub struct LayoutPacked;
 
@@ -47,9 +53,15 @@ struct LayoutC;
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 #[repr(C)]
 struct LayoutC;
 
@@ -61,12 +73,18 @@ struct TupleStructFieldType(i32);
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+// Note that changing the type of a field does not change the type of the struct or enum, but
+// adding/removing fields or changing a fields name or visibility does.
 struct TupleStructFieldType(
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     u32
 );
 
@@ -78,14 +96,17 @@ struct TupleStructAddField(i32);
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct TupleStructAddField(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     i32,
-    #[rustc_metadata_clean(cfg="cfail3")]
     u32
 );
 
@@ -97,9 +118,15 @@ struct TupleStructFieldVisibility(char);
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct TupleStructFieldVisibility(pub char);
 
 
@@ -110,12 +137,18 @@ struct RecordStructFieldType { x: f32 }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
+// Note that changing the type of a field does not change the type of the struct or enum, but
+// adding/removing fields or changing a fields name or visibility does.
 struct RecordStructFieldType {
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     x: u64
 }
 
@@ -127,9 +160,15 @@ struct RecordStructFieldName { x: f32 }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct RecordStructFieldName { y: f32 }
 
 
@@ -140,14 +179,17 @@ struct RecordStructAddField { x: f32 }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct RecordStructAddField {
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     x: f32,
-    #[rustc_metadata_clean(cfg="cfail3")]
     y: () }
 
 
@@ -158,12 +200,16 @@ struct RecordStructFieldVisibility { x: f32 }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct RecordStructFieldVisibility {
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     pub x: f32
 }
 
@@ -175,9 +221,15 @@ struct AddLifetimeParameter<'a>(&'a f32, &'a f64);
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="TypeOfItem", cfg="cfail2")]
+#[rustc_dirty(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct AddLifetimeParameter<'a, 'b>(&'a f32, &'b f64);
 
 
@@ -188,15 +240,17 @@ struct AddLifetimeParameterBound<'a, 'b>(&'a f32, &'b f64);
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_dirty(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct AddLifetimeParameterBound<'a, 'b: 'a>(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     &'a f32,
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     &'b f64
 );
 
@@ -205,15 +259,17 @@ struct AddLifetimeParameterBoundWhereClause<'a, 'b>(&'a f32, &'b f64);
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_dirty(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct AddLifetimeParameterBoundWhereClause<'a, 'b>(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     &'a f32,
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     &'b f64)
     where 'b: 'a;
 
@@ -225,17 +281,19 @@ struct AddTypeParameter<T1>(T1, T1);
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_dirty(label="TypeOfItem", cfg="cfail2")]
+#[rustc_dirty(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_dirty(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct AddTypeParameter<T1, T2>(
      // The field contains the parent's Generics, so it's dirty even though its
      // type hasn't changed.
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     T1,
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     T2
 );
 
@@ -247,12 +305,16 @@ struct AddTypeParameterBound<T>(T);
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_dirty(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct AddTypeParameterBound<T: Send>(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     T
 );
 
@@ -262,20 +324,35 @@ struct AddTypeParameterBoundWhereClause<T>(T);
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_dirty(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 struct AddTypeParameterBoundWhereClause<T>(
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
     T
 ) where T: Sync;
 
 
 // Empty struct ----------------------------------------------------------------
-
+// Since we cannot change anything in this case, we just make sure that the
+// fingerprint is stable (i.e. that there are no random influences like memory
+// addresses taken into account by the hashing algorithm).
+// Note: there is no #[cfg(...)], so this is ALWAYS compiled
 #[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail2")]
+#[rustc_clean(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
+#[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 pub struct EmptyStruct;
 
 
@@ -286,13 +363,16 @@ struct Visibility;
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
+#[rustc_dirty(label="HirBody", cfg="cfail2")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+#[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+#[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
 pub struct Visibility;
-
-
-
 
 struct ReferencedType1;
 struct ReferencedType2;
@@ -305,12 +385,16 @@ mod tuple_struct_change_field_type_indirectly {
     use super::ReferencedType2 as FieldType;
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+    #[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+    #[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+    #[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+    #[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
     struct TupleStruct(
-        #[rustc_metadata_dirty(cfg="cfail2")]
-        #[rustc_metadata_clean(cfg="cfail3")]
         FieldType
     );
 }
@@ -324,12 +408,16 @@ mod record_struct_change_field_type_indirectly {
     use super::ReferencedType2 as FieldType;
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+    #[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+    #[rustc_clean(label="PredicatesOfItem", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_clean(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+    #[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+    #[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
     struct RecordStruct {
-        #[rustc_metadata_dirty(cfg="cfail2")]
-        #[rustc_metadata_clean(cfg="cfail3")]
         _x: FieldType
     }
 }
@@ -348,9 +436,15 @@ mod change_trait_bound_indirectly {
     use super::ReferencedTrait2 as Trait;
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+    #[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+    #[rustc_dirty(label="PredicatesOfItem", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+    #[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+    #[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
     struct Struct<T: Trait>(T);
 }
 
@@ -362,8 +456,14 @@ mod change_trait_bound_indirectly_in_where_clause {
     use super::ReferencedTrait2 as Trait;
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
+    #[rustc_dirty(label="HirBody", cfg="cfail2")]
+    #[rustc_clean(label="TypeOfItem", cfg="cfail2")]
+    #[rustc_clean(label="GenericsOfItem", cfg="cfail2")]
+    #[rustc_dirty(label="PredicatesOfItem", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
+    #[rustc_clean(label="HirBody", cfg="cfail3")]
+    #[rustc_clean(label="TypeOfItem", cfg="cfail3")]
+    #[rustc_clean(label="GenericsOfItem", cfg="cfail3")]
+    #[rustc_clean(label="PredicatesOfItem", cfg="cfail3")]
     struct Struct<T>(T) where T : Trait;
 }

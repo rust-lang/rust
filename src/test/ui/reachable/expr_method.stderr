@@ -1,7 +1,7 @@
 error: unreachable expression
   --> $DIR/expr_method.rs:26:21
    |
-26 |     Foo.foo(return, 22);
+26 |     Foo.foo(return, 22); //~ ERROR unreachable
    |                     ^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ note: lint level defined here
 error: unreachable expression
   --> $DIR/expr_method.rs:31:5
    |
-31 |     Foo.bar(return);
+31 |     Foo.bar(return); //~ ERROR unreachable
    |     ^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

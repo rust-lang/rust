@@ -73,42 +73,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // projection).
         match ty.sty {
             ty::TyClosure(def_id, ref substs) => {
-                // FIXME(#27086). We do not accumulate from substs, since they
-                // don't represent reachable data. This means that, in
-                // practice, some of the lifetime parameters might not
-                // be in scope when the body runs, so long as there is
-                // no reachable data with that lifetime. For better or
-                // worse, this is consistent with fn types, however,
-                // which can also encapsulate data in this fashion
-                // (though it's somewhat harder, and typically
-                // requires virtual dispatch).
-                //
-                // Note that changing this (in a naive way, at least)
-                // causes regressions for what appears to be perfectly
-                // reasonable code like this:
-                //
-                // ```
-                // fn foo<'a>(p: &Data<'a>) {
-                //    bar(|q: &mut Parser| q.read_addr())
-                // }
-                // fn bar(p: Box<FnMut(&mut Parser)+'static>) {
-                // }
-                // ```
-                //
-                // Note that `p` (and `'a`) are not used in the
-                // closure at all, but to meet the requirement that
-                // the closure type `C: 'static` (so it can be coerced
-                // to the object type), we get the requirement that
-                // `'a: 'static` since `'a` appears in the closure
-                // type `C`.
-                //
-                // A smarter fix might "prune" unused `func_substs` --
-                // this would avoid breaking simple examples like
-                // this, but would still break others (which might
-                // indeed be invalid, depending on your POV). Pruning
-                // would be a subtle process, since we have to see
-                // what func/type parameters are used and unused,
-                // taking into consideration UFCS and so forth.
 
                 for upvar_ty in substs.upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
@@ -178,6 +142,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::TyNever |           // ...
             ty::TyAdt(..) |         // OutlivesNominalType
             ty::TyAnon(..) |        // OutlivesNominalType (ish)
+            ty::TyForeign(..) |     // OutlivesNominalType
             ty::TyStr |             // OutlivesScalar (ish)
             ty::TyArray(..) |       // ...
             ty::TySlice(..) |       // ...

@@ -13,5 +13,5 @@ mod foo {
     struct S1(pub(in foo) (), pub(T), pub(crate) (), pub(((), T)));
     struct S2(pub((foo)) ());
     //~^ ERROR expected `,`, found `(`
-    //~| ERROR expected one of `;` or `where`, found `(`
+    //~| ERROR cannot find type `foo` in this scope
 }

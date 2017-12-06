@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let x = ~1;
+    let x = ~1; //~ ERROR can not be used as a unary operator
 }

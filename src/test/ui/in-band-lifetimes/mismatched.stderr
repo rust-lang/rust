@@ -1,0 +1,18 @@
+error[E0621]: explicit lifetime required in the type of `y`
+  --> $DIR/mismatched.rs:14:42
+   |
+14 | fn foo(x: &'a u32, y: &u32) -> &'a u32 { y } //~ ERROR explicit lifetime required
+   |                    -                     ^ lifetime `'a` required
+   |                    |
+   |                    consider changing the type of `y` to `&'a u32`
+
+error[E0623]: lifetime mismatch
+  --> $DIR/mismatched.rs:16:46
+   |
+16 | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y } //~ ERROR lifetime mismatch
+   |                        -------     -------   ^ ...but data from `y` is returned here
+   |                        |
+   |                        this parameter and the return type are declared with different lifetimes...
+
+error: aborting due to 2 previous errors
+

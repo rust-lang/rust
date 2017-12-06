@@ -223,7 +223,34 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(target_os = "netbsd")]
 pub fn current_exe() -> io::Result<PathBuf> {
-    ::fs::read_link("/proc/curproc/exe")
+    fn sysctl() -> io::Result<PathBuf> {
+        unsafe {
+            let mib = [libc::CTL_KERN, libc::KERN_PROC_ARGS, -1, libc::KERN_PROC_PATHNAME];
+            let mut path_len: usize = 0;
+            cvt(libc::sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
+                             ptr::null_mut(), &mut path_len,
+                             ptr::null(), 0))?;
+            if path_len <= 1 {
+                return Err(io::Error::new(io::ErrorKind::Other,
+                           "KERN_PROC_PATHNAME sysctl returned zero-length string"))
+            }
+            let mut path: Vec<u8> = Vec::with_capacity(path_len);
+            cvt(libc::sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
+                             path.as_ptr() as *mut libc::c_void, &mut path_len,
+                             ptr::null(), 0))?;
+            path.set_len(path_len - 1); // chop off NUL
+            Ok(PathBuf::from(OsString::from_vec(path)))
+        }
+    }
+    fn procfs() -> io::Result<PathBuf> {
+        let curproc_exe = path::Path::new("/proc/curproc/exe");
+        if curproc_exe.is_file() {
+            return ::fs::read_link(curproc_exe);
+        }
+        Err(io::Error::new(io::ErrorKind::Other,
+                           "/proc/curproc/exe doesn't point to regular file."))
+    }
+    sysctl().or_else(|_| procfs())
 }
 
 #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
@@ -483,12 +510,10 @@ pub fn home_dir() -> Option<PathBuf> {
 
     #[cfg(any(target_os = "android",
               target_os = "ios",
-              target_os = "nacl",
               target_os = "emscripten"))]
     unsafe fn fallback() -> Option<OsString> { None }
     #[cfg(not(any(target_os = "android",
                   target_os = "ios",
-                  target_os = "nacl",
                   target_os = "emscripten")))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {
@@ -512,4 +537,12 @@ pub fn home_dir() -> Option<PathBuf> {
 
 pub fn exit(code: i32) -> ! {
     unsafe { libc::exit(code as c_int) }
+}
+
+pub fn getpid() -> u32 {
+    unsafe { libc::getpid() as u32 }
+}
+
+pub fn getppid() -> u32 {
+    unsafe { libc::getppid() as u32 }
 }

@@ -17,6 +17,7 @@ fn main() {
         //~| NOTE ranges require char or numeric types
         //~| NOTE start type: &'static str
         //~| NOTE end type: &'static str
+        //~| ERROR non-reference pattern used to match a reference
         _ => {}
     }
 }

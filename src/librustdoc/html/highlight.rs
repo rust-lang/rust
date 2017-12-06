@@ -42,7 +42,7 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>
 
     let mut out = Vec::new();
     if let Some((tooltip, class)) = tooltip {
-        write!(out, "<div class='information'><div class='tooltip {}'>⚠<span \
+        write!(out, "<div class='information'><div class='tooltip {}'>ⓘ<span \
                      class='tooltiptext'>{}</span></div></div>",
                class, tooltip).unwrap();
     }

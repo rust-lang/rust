@@ -22,10 +22,10 @@
 use rustc_data_structures::fx::FxHashSet;
 
 use rustc::middle::region;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::{BasicBlock, Location, Mir, Rvalue, Statement, StatementKind};
-use rustc::mir::visit::{MutVisitor, Visitor, Lookup};
+use rustc::mir::visit::{MutVisitor, Visitor, TyContext};
 use rustc::ty::{Ty, RegionKind, TyCtxt};
+use transform::{MirPass, MirSource};
 
 pub struct CleanEndRegions;
 
@@ -67,7 +67,7 @@ impl<'tcx> Visitor<'tcx> for GatherBorrowedRegions {
         self.super_rvalue(rvalue, location);
     }
 
-    fn visit_ty(&mut self, ty: &Ty<'tcx>, _: Lookup) {
+    fn visit_ty(&mut self, ty: &Ty<'tcx>, _: TyContext) {
         // Gather regions that occur in types
         for re in ty.walk().flat_map(|t| t.regions()) {
             match *re {

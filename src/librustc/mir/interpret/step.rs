@@ -2,18 +2,15 @@
 //!
 //! The main entry point is the `step` method.
 
-use hir::def_id::DefId;
 use hir;
-use mir::visit::{Visitor, LvalueContext};
+use mir::visit::{Visitor, PlaceContext};
 use mir;
-use traits::Reveal;
-use ty;
-use ty::layout::Layout;
+use ty::{self, Instance};
 use ty::subst::Substs;
 use middle::const_val::ConstVal;
 
-use super::{EvalResult, EvalContext, StackPopCleanup, PtrAndAlign, GlobalId, Lvalue,
-            MemoryKind, Machine, PrimVal};
+use super::{EvalResult, EvalContext, StackPopCleanup, PtrAndAlign, GlobalId, Place,
+            Machine, EvalErrorKind};
 
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
@@ -40,14 +37,16 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let mir = self.mir();
         let basic_block = &mir.basic_blocks()[block];
 
+        let old_frames = self.cur_frame();
+
         if let Some(stmt) = basic_block.statements.get(stmt_id) {
-            let mut new = Ok(0);
+            let mut new = Ok(false);
             ConstantExtractor {
                 span: stmt.source_info.span,
                 instance: self.frame().instance,
                 ecx: self,
                 mir,
-                new_constants: &mut new,
+                new_constant: &mut new,
             }.visit_statement(
                 block,
                 stmt,
@@ -56,22 +55,23 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     statement_index: stmt_id,
                 },
             );
-            // if ConstantExtractor added new frames, we don't execute anything here
+            // if ConstantExtractor added a new frame, we don't execute anything here
             // but await the next call to step
-            if new? == 0 {
+            if !new? {
+                assert_eq!(old_frames, self.cur_frame());
                 self.statement(stmt)?;
             }
             return Ok(true);
         }
 
         let terminator = basic_block.terminator();
-        let mut new = Ok(0);
+        let mut new = Ok(false);
         ConstantExtractor {
             span: terminator.source_info.span,
             instance: self.frame().instance,
             ecx: self,
             mir,
-            new_constants: &mut new,
+            new_constant: &mut new,
         }.visit_terminator(
             block,
             terminator,
@@ -80,9 +80,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 statement_index: stmt_id,
             },
         );
-        // if ConstantExtractor added new frames, we don't execute anything here
+        // if ConstantExtractor added a new frame, we don't execute anything here
         // but await the next call to step
-        if new? == 0 {
+        if !new? {
+            assert_eq!(old_frames, self.cur_frame());
             self.terminator(terminator)?;
         }
         Ok(true)
@@ -98,57 +99,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let frame_idx = self.cur_frame();
 
         match stmt.kind {
-            Assign(ref lvalue, ref rvalue) => self.eval_rvalue_into_lvalue(rvalue, lvalue)?,
+            Assign(ref place, ref rvalue) => self.eval_rvalue_into_place(rvalue, place)?,
 
             SetDiscriminant {
-                ref lvalue,
+                ref place,
                 variant_index,
             } => {
-                let dest = self.eval_lvalue(lvalue)?;
-                let dest_ty = self.lvalue_ty(lvalue);
-                let dest_layout = self.type_layout(dest_ty)?;
-
-                match *dest_layout {
-                    Layout::General { discr, .. } => {
-                        let discr_size = discr.size().bytes();
-                        let dest_ptr = self.force_allocation(dest)?.to_ptr()?;
-                        self.memory.write_primval(
-                            dest_ptr,
-                            PrimVal::Bytes(variant_index as u128),
-                            discr_size,
-                            false
-                        )?
-                    }
-
-                    Layout::RawNullablePointer { nndiscr, .. } => {
-                        if variant_index as u64 != nndiscr {
-                            self.write_null(dest, dest_ty)?;
-                        }
-                    }
-
-                    Layout::StructWrappedNullablePointer {
-                        nndiscr,
-                        ref discrfield_source,
-                        ..
-                    } => {
-                        if variant_index as u64 != nndiscr {
-                            self.write_struct_wrapped_null_pointer(
-                                dest_ty,
-                                nndiscr,
-                                discrfield_source,
-                                dest,
-                            )?;
-                        }
-                    }
-
-                    _ => {
-                        bug!(
-                            "SetDiscriminant on {} represented as {:#?}",
-                            dest_ty,
-                            dest_layout
-                        )
-                    }
-                }
+                let dest = self.eval_place(place)?;
+                let dest_ty = self.place_ty(place);
+                self.write_discriminant_value(dest_ty, dest, variant_index)?;
             }
 
             // Mark locals as alive
@@ -164,8 +123,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             // Validity checks.
-            Validate(op, ref lvalues) => {
-                for operand in lvalues {
+            Validate(op, ref places) => {
+                for operand in places {
                     self.validation_op(op, operand)?;
                 }
             }
@@ -196,44 +155,41 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     /// returns `true` if a stackframe was pushed
     fn global_item(
         &mut self,
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        instance: Instance<'tcx>,
         span: Span,
         mutability: Mutability,
+        orig_substs: &'tcx Substs<'tcx>,
     ) -> EvalResult<'tcx, bool> {
-        let instance = self.resolve_associated_const(def_id, substs);
+        debug!("global_item: {:?}", instance);
         let cid = GlobalId {
             instance,
             promoted: None,
         };
-        if self.globals.contains_key(&cid) {
+        if self.tcx.interpret_interner.borrow().get_cached(cid).is_some() {
             return Ok(false);
         }
-        if self.tcx.has_attr(def_id, "linkage") {
+        if self.tcx.has_attr(instance.def_id(), "linkage") {
             M::global_item_with_linkage(self, cid.instance, mutability)?;
             return Ok(false);
         }
         let mir = self.load_mir(instance.def)?;
-        let size = self.type_size_with_substs(mir.return_ty, substs)?.expect(
-            "unsized global",
-        );
-        let align = self.type_align_with_substs(mir.return_ty, substs)?;
+        let layout = self.type_layout_with_substs(mir.return_ty(), orig_substs)?;
+        assert!(!layout.is_unsized());
         let ptr = self.memory.allocate(
-            size,
-            align,
-            MemoryKind::UninitializedStatic,
+            layout.size.bytes(),
+            layout.align.abi(),
+            None,
         )?;
-        let aligned = !self.is_packed(mir.return_ty)?;
-        self.globals.insert(
+        self.tcx.interpret_interner.borrow_mut().cache(
             cid,
             PtrAndAlign {
                 ptr: ptr.into(),
-                aligned,
+                aligned: !layout.is_packed(),
             },
         );
-        let internally_mutable = !mir.return_ty.is_freeze(
+        let internally_mutable = !layout.ty.is_freeze(
             self.tcx,
-            ty::ParamEnv::empty(Reveal::All),
+            M::param_env(self),
             span,
         );
         let mutability = if mutability == Mutability::Mutable || internally_mutable {
@@ -242,45 +198,37 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Mutability::Immutable
         };
         let cleanup = StackPopCleanup::MarkStatic(mutability);
-        let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
+        let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
         trace!("pushing stack frame for global: {}", name);
         self.push_stack_frame(
             instance,
             span,
             mir,
-            Lvalue::from_ptr(ptr),
+            Place::from_ptr(ptr),
             cleanup,
         )?;
         Ok(true)
     }
 }
 
-// WARNING: This code pushes new stack frames.  Make sure that any methods implemented on this
-// type don't ever access ecx.stack[ecx.cur_frame()], as that will change. This includes, e.g.,
-// using the current stack frame's substitution.
-// Basically don't call anything other than `load_mir`, `alloc_ptr`, `push_stack_frame`.
 struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b, M: Machine<'tcx> + 'a> {
     span: Span,
     ecx: &'a mut EvalContext<'b, 'tcx, M>,
     mir: &'tcx mir::Mir<'tcx>,
     instance: ty::Instance<'tcx>,
-    new_constants: &'a mut EvalResult<'tcx, u64>,
+    // Whether a stackframe for a new constant has been pushed
+    new_constant: &'a mut EvalResult<'tcx, bool>,
 }
 
 impl<'a, 'b, 'tcx, M: Machine<'tcx>> ConstantExtractor<'a, 'b, 'tcx, M> {
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx, bool>>(&mut self, f: F) {
-        // previous constant errored
-        let n = match *self.new_constants {
-            Ok(n) => n,
-            Err(_) => return,
-        };
-        match f(self) {
-            // everything ok + a new stackframe
-            Ok(true) => *self.new_constants = Ok(n + 1),
-            // constant correctly evaluated, but no new stackframe
-            Ok(false) => {}
-            // constant eval errored
-            Err(err) => *self.new_constants = Err(err),
+        match *self.new_constant {
+            // already computed a constant, don't do more than one per iteration
+            Ok(true) => {},
+            // no constants computed yet
+            Ok(false) => *self.new_constant = f(self),
+            // error happened, abort the visitor traversing
+            Err(_) => {},
         }
     }
 }
@@ -288,47 +236,51 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> ConstantExtractor<'a, 'b, 'tcx, M> {
 impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx, M> {
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: mir::Location) {
         self.super_constant(constant, location);
-        match constant.literal {
-            // already computed by rustc
-            mir::Literal::Value { value: &ty::Const { val: ConstVal::Unevaluated(def_id, substs), .. } } => {
-                self.try(|this| {
-                    this.ecx.global_item(
+        self.try(|this| {
+            match constant.literal {
+                // already computed by rustc
+                mir::Literal::Value { value: &ty::Const { val: ConstVal::Unevaluated(def_id, substs), .. } } => {
+                    debug!("global_item: {:?}, {:#?}", def_id, substs);
+                    let substs = this.ecx.tcx.trans_apply_param_substs(this.instance.substs, &substs);
+                    debug!("global_item_new_substs: {:#?}", substs);
+                    debug!("global_item_param_env: {:#?}", M::param_env(this.ecx));
+                    let instance = Instance::resolve(
+                        this.ecx.tcx,
+                        M::param_env(this.ecx),
                         def_id,
                         substs,
+                    ).ok_or(EvalErrorKind::TypeckError)?; // turn error prop into a panic to expose associated type in const issue
+                    this.ecx.global_item(
+                        instance,
                         constant.span,
                         Mutability::Immutable,
-                    )
-                });
-            }
-            mir::Literal::Value { .. } => {}
-            mir::Literal::Promoted { index } => {
-                let cid = GlobalId {
-                    instance: self.instance,
-                    promoted: Some(index),
-                };
-                if self.ecx.globals.contains_key(&cid) {
-                    return;
-                }
-                let mir = &self.mir.promoted[index];
-                self.try(|this| {
-                    let size = this.ecx
-                        .type_size_with_substs(mir.return_ty, this.instance.substs)?
-                        .expect("unsized global");
-                    let align = this.ecx.type_align_with_substs(
-                        mir.return_ty,
                         this.instance.substs,
-                    )?;
+                    )
+                }
+                mir::Literal::Value { .. } => Ok(false),
+                mir::Literal::Promoted { index } => {
+                    let cid = GlobalId {
+                        instance: this.instance,
+                        promoted: Some(index),
+                    };
+                    if this.ecx.tcx.interpret_interner.borrow().get_cached(cid).is_some() {
+                        return Ok(false);
+                    }
+                    let mir = &this.mir.promoted[index];
+                    let layout = this.ecx.type_layout_with_substs(
+                        mir.return_ty(),
+                        this.instance.substs)?;
+                    assert!(!layout.is_unsized());
                     let ptr = this.ecx.memory.allocate(
-                        size,
-                        align,
-                        MemoryKind::UninitializedStatic,
+                        layout.size.bytes(),
+                        layout.align.abi(),
+                        None,
                     )?;
-                    let aligned = !this.ecx.is_packed(mir.return_ty)?;
-                    this.ecx.globals.insert(
+                    this.ecx.tcx.interpret_interner.borrow_mut().cache(
                         cid,
                         PtrAndAlign {
                             ptr: ptr.into(),
-                            aligned,
+                            aligned: !layout.is_packed(),
                         },
                     );
                     trace!("pushing stack frame for {:?}", index);
@@ -336,67 +288,67 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                         this.instance,
                         constant.span,
                         mir,
-                        Lvalue::from_ptr(ptr),
+                        Place::from_ptr(ptr),
                         StackPopCleanup::MarkStatic(Mutability::Immutable),
                     )?;
                     Ok(true)
-                });
+                }
             }
-        }
+        });
     }
 
-    fn visit_lvalue(
+    fn visit_place(
         &mut self,
-        lvalue: &mir::Lvalue<'tcx>,
-        context: LvalueContext<'tcx>,
+        place: &mir::Place<'tcx>,
+        context: PlaceContext<'tcx>,
         location: mir::Location,
     ) {
-        self.super_lvalue(lvalue, context, location);
-        if let mir::Lvalue::Static(ref static_) = *lvalue {
-            let def_id = static_.def_id;
-            let substs = self.ecx.tcx.intern_substs(&[]);
-            let span = self.span;
-            if let Some(node_item) = self.ecx.tcx.hir.get_if_local(def_id) {
-                if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = node_item {
-                    if let hir::ItemStatic(_, m, _) = *node {
-                        self.try(|this| {
+        self.super_place(place, context, location);
+        self.try(|this| {
+            if let mir::Place::Static(ref static_) = *place {
+                let def_id = static_.def_id;
+                let span = this.span;
+                if let Some(node_item) = this.ecx.tcx.hir.get_if_local(def_id) {
+                    if let hir::map::Node::NodeItem(&hir::Item { ref node, .. }) = node_item {
+                        if let hir::ItemStatic(_, m, _) = *node {
+                            let instance = Instance::mono(this.ecx.tcx, def_id);
                             this.ecx.global_item(
-                                def_id,
-                                substs,
+                                instance,
                                 span,
                                 if m == hir::MutMutable {
                                     Mutability::Mutable
                                 } else {
                                     Mutability::Immutable
                                 },
+                                this.instance.substs,
                             )
-                        });
-                        return;
+                        } else {
+                            bug!("static def id doesn't point to static");
+                        }
                     } else {
-                        bug!("static def id doesn't point to static");
+                        bug!("static def id doesn't point to item");
                     }
                 } else {
-                    bug!("static def id doesn't point to item");
-                }
-            } else {
-                let def = self.ecx.tcx.describe_def(def_id).expect("static not found");
-                if let hir::def::Def::Static(_, mutable) = def {
-                    self.try(|this| {
+                    let def = this.ecx.tcx.describe_def(def_id).expect("static not found");
+                    if let hir::def::Def::Static(_, mutable) = def {
+                        let instance = Instance::mono(this.ecx.tcx, def_id);
                         this.ecx.global_item(
-                            def_id,
-                            substs,
+                            instance,
                             span,
                             if mutable {
                                 Mutability::Mutable
                             } else {
                                 Mutability::Immutable
                             },
+                            this.instance.substs,
                         )
-                    });
-                } else {
-                    bug!("static found but isn't a static: {:?}", def);
+                    } else {
+                        bug!("static found but isn't a static: {:?}", def);
+                    }
                 }
+            } else {
+                Ok(false)
             }
-        }
+        });
     }
 }

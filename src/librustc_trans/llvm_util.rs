@@ -73,10 +73,19 @@ unsafe fn configure_llvm(sess: &Session) {
 
 const ARM_WHITELIST: &'static [&'static str] = &["neon\0", "vfp2\0", "vfp3\0", "vfp4\0"];
 
+const AARCH64_WHITELIST: &'static [&'static str] = &["neon\0"];
+
 const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bmi2\0", "sse\0",
                                                  "sse2\0", "sse3\0", "sse4.1\0", "sse4.2\0",
                                                  "ssse3\0", "tbm\0", "lzcnt\0", "popcnt\0",
-                                                 "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0"];
+                                                 "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0",
+                                                 "xsave\0", "xsaveopt\0", "xsavec\0",
+                                                 "xsaves\0",
+                                                 "avx512bw\0", "avx512cd\0",
+                                                 "avx512dq\0", "avx512er\0",
+                                                 "avx512f\0", "avx512ifma\0",
+                                                 "avx512pf\0", "avx512vbmi\0",
+                                                 "avx512vl\0", "avx512vpopcntdq\0", "mmx\0"];
 
 const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
 
@@ -85,13 +94,17 @@ const POWERPC_WHITELIST: &'static [&'static str] = &["altivec\0",
                                                      "power8-vector\0", "power9-vector\0",
                                                      "vsx\0"];
 
+const MIPS_WHITELIST: &'static [&'static str] = &["msa\0"];
+
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let target_machine = create_target_machine(sess);
 
     let whitelist = match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
+        "aarch64" => AARCH64_WHITELIST,
         "x86" | "x86_64" => X86_WHITELIST,
         "hexagon" => HEXAGON_WHITELIST,
+        "mips" | "mips64" => MIPS_WHITELIST,
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
         _ => &[],
     };

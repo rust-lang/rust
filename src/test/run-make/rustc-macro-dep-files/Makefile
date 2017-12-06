@@ -8,5 +8,5 @@ else
 all:
 	$(RUSTC) foo.rs
 	$(RUSTC) bar.rs --emit dep-info
-	grep "proc-macro source" $(TMPDIR)/bar.d && exit 1 || exit 0
+	$(CGREP) -v "proc-macro source" < $(TMPDIR)/bar.d
 endif

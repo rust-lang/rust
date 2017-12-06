@@ -35,7 +35,7 @@
 # If an external LLVM root is specified, we automatically check the version by
 # default to make sure it's within the range that we're expecting, but setting
 # this flag will indicate that this version check should not be done.
-#version-check = false
+#version-check = true
 
 # Link libstdc++ statically into the librustc_llvm instead of relying on a
 # dynamic version to be available.
@@ -60,10 +60,9 @@
 # LLVM experimental targets to build support for. These targets are specified in
 # the same format as above, but since these targets are experimental, they are
 # not built by default and the experimental Rust compilation targets that depend
-# on them will not work unless the user opts in to building them. Possible
-# experimental LLVM targets include WebAssembly for the
-# wasm32-experimental-emscripten Rust target.
-#experimental-targets = ""
+# on them will not work unless the user opts in to building them. By default the
+# `WebAssembly` target is enabled when compiling LLVM from scratch.
+#experimental-targets = "WebAssembly"
 
 # Cap the number of parallel linker invocations when compiling LLVM.
 # This can be useful when building LLVM with debug info, which significantly
@@ -203,6 +202,16 @@
 # Where to install man pages in `prefix` above
 #mandir = "share/man"
 
+# Where to install data in `prefix` above (currently unused)
+#datadir = "share"
+
+# Where to install additional info in `prefix` above (currently unused)
+#infodir = "share/info"
+
+# Where to install local state (currently unused)
+# If this is a relative path, it will get installed in `prefix` above
+#localstatedir = "/var/lib"
+
 # =============================================================================
 # Options for compiling Rust code itself
 # =============================================================================
@@ -250,13 +259,10 @@
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 
-# The default linker that will be used by the generated compiler. Note that this
-# is not the linker used to link said compiler.
+# The default linker that will be hard-coded into the generated compiler for
+# targets that don't specify linker explicitly in their target specifications.
+# Note that this is not the linker used to link said compiler.
 #default-linker = "cc"
-
-# The default ar utility that will be used by the generated compiler if LLVM
-# cannot be used. Note that this is not used to assemble said compiler.
-#default-ar = "ar"
 
 # The "channel" for the Rust build to produce. The stable/beta channels only
 # allow using stable features, whereas the nightly and dev channels allow using
@@ -295,6 +301,10 @@
 # As a side-effect also generates MIR for all libraries.
 #test-miri = false
 
+# After building or testing extended tools (e.g. clippy and rustfmt), append the
+# result (broken, compiling, testing) into this JSON file.
+#save-toolstates = "/path/to/toolstates.json"
+
 # =============================================================================
 # Options for specific targets
 #
@@ -303,7 +313,7 @@
 # =============================================================================
 [target.x86_64-unknown-linux-gnu]
 
-# C compiler to be used to compiler C code and link Rust code. Note that the
+# C compiler to be used to compiler C code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
 #cc = "cc"
@@ -311,6 +321,15 @@
 # C++ compiler to be used to compiler C++ code (e.g. LLVM and our LLVM shims).
 # This is only used for host targets.
 #cxx = "c++"
+
+# Archiver to be used to assemble static libraries compiled from C/C++ code.
+# Note: an absolute path should be used, otherwise LLVM build will break.
+#ar = "ar"
+
+# Linker to be used to link Rust code. Note that the
+# default value is platform specific, and if not specified it may also depend on
+# what platform is crossing to what platform.
+#linker = "cc"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
 # against. Note that if this is specifed we don't compile LLVM at all for this

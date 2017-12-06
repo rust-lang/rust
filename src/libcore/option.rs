@@ -146,7 +146,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use mem;
+use {mem, ops};
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -605,6 +605,41 @@ impl<T> Option<T> {
             Some(x) => f(x),
             None => None,
         }
+    }
+
+    /// Returns `None` if the option is `None`, otherwise calls `predicate`
+    /// with the wrapped value and returns:
+    ///
+    /// - `Some(t)` if `predicate` returns `true` (where `t` is the wrapped
+    ///   value), and
+    /// - `None` if `predicate` returns `false`.
+    ///
+    /// This function works similar to `Iterator::filter()`. You can imagine
+    /// the `Option<T>` being an iterator over one or zero elements. `filter()`
+    /// lets you decide which elements to keep.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(option_filter)]
+    ///
+    /// fn is_even(n: &i32) -> bool {
+    ///     n % 2 == 0
+    /// }
+    ///
+    /// assert_eq!(None.filter(is_even), None);
+    /// assert_eq!(Some(3).filter(is_even), None);
+    /// assert_eq!(Some(4).filter(is_even), Some(4));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_filter", issue = "45860")]
+    pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
+        if let Some(x) = self {
+            if predicate(&x) {
+                return Some(x)
+            }
+        }
+        None
     }
 
     /// Returns the option if it contains a value, otherwise returns `optb`.
@@ -1121,5 +1156,31 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
         } else {
             Some(v)
         }
+    }
+}
+
+/// The error type that results from applying the try operator (`?`) to a `None` value. If you wish
+/// to allow `x?` (where `x` is an `Option<T>`) to be converted into your error type, you can
+/// implement `impl From<NoneError>` for `YourErrorType`. In that case, `x?` within a function that
+/// returns `Result<_, YourErrorType>` will translate a `None` value into an `Err` result.
+#[unstable(feature = "try_trait", issue = "42327")]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+pub struct NoneError;
+
+#[unstable(feature = "try_trait", issue = "42327")]
+impl<T> ops::Try for Option<T> {
+    type Ok = T;
+    type Error = NoneError;
+
+    fn into_result(self) -> Result<T, NoneError> {
+        self.ok_or(NoneError)
+    }
+
+    fn from_ok(v: T) -> Self {
+        Some(v)
+    }
+
+    fn from_error(_: NoneError) -> Self {
+        None
     }
 }

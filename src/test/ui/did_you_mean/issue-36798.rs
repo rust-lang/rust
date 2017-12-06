@@ -14,5 +14,5 @@ struct Foo {
 
 fn main() {
     let f = Foo { bar: 22 };
-    f.baz;
+    f.baz; //~ ERROR no field
 }

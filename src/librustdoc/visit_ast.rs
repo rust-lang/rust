@@ -306,6 +306,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 Def::Struct(did) |
                 Def::Union(did) |
                 Def::Enum(did) |
+                Def::TyForeign(did) |
                 Def::TyAlias(did) if !self_is_hidden => {
                     self.cx.access_levels.borrow_mut().map.insert(did, AccessLevel::Public);
                 },
@@ -346,6 +347,17 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let prev = mem::replace(&mut self.inlining, true);
                 self.visit_item(it, renamed, om);
                 self.inlining = prev;
+                true
+            }
+            hir_map::NodeForeignItem(it) if !glob => {
+                // generate a fresh `extern {}` block if we want to inline a foreign item.
+                om.foreigns.push(hir::ForeignMod {
+                    abi: tcx.hir.get_foreign_abi(it.id),
+                    items: vec![hir::ForeignItem {
+                        name: renamed.unwrap_or(it.name),
+                        .. it.clone()
+                    }].into(),
+                });
                 true
             }
             _ => false,
@@ -481,7 +493,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.constants.push(s);
             },
-            hir::ItemTrait(unsafety, ref gen, ref b, ref item_ids) => {
+            hir::ItemTrait(_, unsafety, ref gen, ref b, ref item_ids) => {
                 let items = item_ids.iter()
                                     .map(|ti| self.cx.tcx.hir.trait_item(ti.id).clone())
                                     .collect();
@@ -532,10 +544,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     om.impls.push(i);
                 }
             },
-            hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
+            hir::ItemAutoImpl(unsafety, ref trait_ref) => {
                 // See comment above about ItemImpl.
                 if !self.inlining {
-                    let i = DefaultImpl {
+                    let i = AutoImpl {
                         unsafety,
                         trait_: trait_ref.clone(),
                         id: item.id,

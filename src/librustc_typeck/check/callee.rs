@@ -108,7 +108,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Check whether this is a call to a closure where we
                 // haven't yet decided on whether the closure is fn vs
                 // fnmut vs fnonce. If so, we have to defer further processing.
-                if self.closure_kind(def_id).is_none() {
+                if self.closure_kind(def_id, substs).is_none() {
                     let closure_ty = self.fn_sig(def_id).subst(self.tcx, substs.substs);
                     let fn_sig = self.replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                    infer::FnCall,
@@ -122,6 +122,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         adjustments,
                         fn_sig,
                         closure_def_id: def_id,
+                        closure_substs: substs,
                     });
                     return Some(CallStep::DeferredClosure(fn_sig));
                 }
@@ -271,6 +272,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             fn_sig.output(),
                                             fn_sig.inputs());
         self.check_argument_types(call_expr.span,
+                                  call_expr.span,
                                   fn_sig.inputs(),
                                   &expected_arg_tys[..],
                                   arg_exprs,
@@ -298,6 +300,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                fn_sig.inputs());
 
         self.check_argument_types(call_expr.span,
+                                  call_expr.span,
                                   fn_sig.inputs(),
                                   &expected_arg_tys,
                                   arg_exprs,
@@ -315,6 +318,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                method_callee: MethodCallee<'tcx>)
                                -> Ty<'tcx> {
         let output_type = self.check_method_argument_types(call_expr.span,
+                                                           call_expr.span,
                                                            Ok(method_callee),
                                                            arg_exprs,
                                                            TupleArgumentsFlag::TupleArguments,
@@ -333,6 +337,7 @@ pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: DefId,
+    closure_substs: ty::ClosureSubsts<'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
@@ -341,7 +346,7 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_def_id).is_some());
+        assert!(fcx.closure_kind(self.closure_def_id, self.closure_substs).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match fcx.try_overloaded_call_traits(self.call_expr,

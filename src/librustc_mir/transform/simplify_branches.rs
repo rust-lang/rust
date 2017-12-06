@@ -12,8 +12,8 @@
 
 use rustc::ty::{self, TyCtxt};
 use rustc::middle::const_val::ConstVal;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::*;
+use transform::{MirPass, MirSource};
 
 use std::borrow::Cow;
 
@@ -60,6 +60,9 @@ impl MirPass for SimplifyBranches {
                     }, ..
                 }), expected, .. } if cond == expected => {
                     TerminatorKind::Goto { target: target }
+                },
+                TerminatorKind::FalseEdges { real_target, .. } => {
+                    TerminatorKind::Goto { target: real_target }
                 },
                 _ => continue
             };

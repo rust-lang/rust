@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -10,6 +10,8 @@
 # except according to those terms.
 
 set -e
+
+export MSYS_NO_PATHCONV=1
 
 script=`cd $(dirname $0) && pwd`/`basename $0`
 image=$1
@@ -25,23 +27,32 @@ travis_fold start build_docker
 travis_time_start
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
-    retry docker \
-      build \
-      --rm \
-      -t rust-ci \
-      -f "$docker_dir/$image/Dockerfile" \
-      "$docker_dir"
-elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
-    if [ -n "$TRAVIS_OS_NAME" ]; then
-        echo Cannot run disabled images on travis!
-        exit 1
+    dockerfile="$docker_dir/$image/Dockerfile"
+    if [ -x /usr/bin/cygpath ]; then
+        context="`cygpath -w $docker_dir`"
+        dockerfile="`cygpath -w $dockerfile`"
+    else
+        context="$docker_dir"
     fi
     retry docker \
       build \
       --rm \
       -t rust-ci \
-      -f "$docker_dir/disabled/$image/Dockerfile" \
-      "$docker_dir"
+      -f "$dockerfile" \
+      "$context"
+elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
+    if [ -n "$TRAVIS_OS_NAME" ]; then
+        echo Cannot run disabled images on travis!
+        exit 1
+    fi
+    # retry messes with the pipe from tar to docker. Not needed on non-travis
+    # Transform changes the context of disabled Dockerfiles to match the enabled ones
+    tar --transform 's#^./disabled/#./#' -C $docker_dir -c . | docker \
+      build \
+      --rm \
+      -t rust-ci \
+      -f "$image/Dockerfile" \
+      -
 else
     echo Invalid image: $image
     exit 1

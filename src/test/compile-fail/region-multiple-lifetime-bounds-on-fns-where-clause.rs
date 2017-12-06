@@ -23,7 +23,7 @@ fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
 fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Here we try to call `foo` but do not know that `'a` and `'b` are
     // related as required.
-    a(x, y, z); //~ ERROR cannot infer
+    a(x, y, z); //~ ERROR 26:7: 26:8: lifetime mismatch [E0623]
 }
 
 fn d() {

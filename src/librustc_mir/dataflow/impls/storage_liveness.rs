@@ -62,7 +62,7 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
                              _in_out: &mut IdxSet<Local>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
-                             _dest_lval: &mir::Lvalue) {
+                             _dest_place: &mir::Place) {
         // Nothing to do when a call returns successfully
     }
 }

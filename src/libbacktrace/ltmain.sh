@@ -177,7 +177,7 @@ basename="s,^.*/,,"
 #             to NONDIR_REPLACEMENT.
 #             value returned in "$func_dirname_result"
 #   basename: Compute filename of FILE.
-#             value retuned in "$func_basename_result"
+#             value returned in "$func_basename_result"
 # Implementation must be kept synchronized with func_dirname
 # and func_basename. For efficiency, we do not delegate to
 # those functions but instead duplicate the functionality here.

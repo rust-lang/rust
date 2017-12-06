@@ -66,6 +66,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::lint;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
 use rustc::ty::{self, LvaluePreference, TypeAndMut,
@@ -754,7 +755,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // type, but only if the source expression diverges.
         if target.is_never() && expr_diverges.always() {
             debug!("permit coercion to `!` because expr diverges");
-            return Ok(target);
+            if self.can_eq(self.param_env, source, target).is_err() {
+                self.tcx.lint_node(
+                    lint::builtin::COERCE_NEVER,
+                    expr.id,
+                    expr.span,
+                    &format!("cannot coerce `{}` to !", source)
+                );
+                return Ok(target);
+            }
         }
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);

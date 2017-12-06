@@ -15,5 +15,5 @@ fn main() {
     {
         let x: &[isize] = &vec![1, 2, 3, 4, 5];
         y = &x[1..];
-    }
+    } //~ ERROR does not live long enough
 }

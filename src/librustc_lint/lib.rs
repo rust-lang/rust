@@ -28,6 +28,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(i128_type)]
+#![feature(macro_vis_matcher)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
@@ -38,7 +39,6 @@ extern crate syntax;
 extern crate rustc;
 #[macro_use]
 extern crate log;
-extern crate rustc_back;
 extern crate rustc_const_eval;
 extern crate syntax_pos;
 
@@ -109,6 +109,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        AnonymousParameters,
                        IllegalFloatLiteralPattern,
                        UnusedDocComment,
+                       AutoImpl,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -129,7 +130,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  NonUpperCaseGlobals,
                  NonShorthandFieldPatterns,
                  UnsafeCode,
-                 UnusedMut,
                  UnusedAllocation,
                  MissingCopyImplementations,
                  UnstableFeatures,
@@ -138,6 +138,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  PluginAsLibrary,
                  MutableTransmutes,
                  UnionsWithDropFields,
+                 UnreachablePub,
                  );
 
     add_builtin_with_new!(sess,
@@ -165,7 +166,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_UNSAFE,
                     PATH_STATEMENTS,
                     UNUSED_ATTRIBUTES,
-                    UNUSED_MACROS);
+                    UNUSED_MACROS,
+                    UNUSED_ALLOCATION,
+                    UNUSED_DOC_COMMENT,
+                    UNUSED_EXTERN_CRATES,
+                    UNUSED_FEATURES,
+                    UNUSED_PARENS);
 
     // Guidelines for creating a future incompatibility lint:
     //
@@ -177,6 +183,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     // - Eventually, remove lint
     store.register_future_incompatible(sess,
                                        vec![
+        FutureIncompatibleInfo {
+            id: LintId::of(AUTO_IMPL),
+            reference: "issue #13231 <https://github.com/rust-lang/rust/issues/13231>",
+        },
         FutureIncompatibleInfo {
             id: LintId::of(PRIVATE_IN_PUBLIC),
             reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
@@ -196,10 +206,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(INVALID_TYPE_PARAM_DEFAULT),
             reference: "issue #36887 <https://github.com/rust-lang/rust/issues/36887>",
-        },
-        FutureIncompatibleInfo {
-            id: LintId::of(EXTRA_REQUIREMENT_IN_IMPL),
-            reference: "issue #37166 <https://github.com/rust-lang/rust/issues/37166>",
         },
         FutureIncompatibleInfo {
             id: LintId::of(LEGACY_DIRECTORY_OWNERSHIP),
@@ -237,19 +243,28 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(LATE_BOUND_LIFETIME_ARGUMENTS),
             reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(SAFE_PACKED_BORROWS),
+            reference: "issue #46043 <https://github.com/rust-lang/rust/issues/46043>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(COERCE_NEVER),
+            reference: "issue #46325 <https://github.com/rust-lang/rust/issues/46325>",
+        },
+
         ]);
 
     // Register renamed and removed lints
     store.register_renamed("unknown_features", "unused_features");
-    store.register_removed("unsigned_negation",
-                           "replaced by negate_unsigned feature gate");
+    store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");
     store.register_removed("raw_pointer_derive", "using derive with raw pointers is ok");
     // This was renamed to raw_pointer_derive, which was then removed,
     // so it is also considered removed
-    store.register_removed("raw_pointer_deriving",
-                           "using derive with raw pointers is ok");
+    store.register_removed("raw_pointer_deriving", "using derive with raw pointers is ok");
     store.register_removed("drop_with_repr_extern", "drop flags have been removed");
+    store.register_removed("fat_ptr_transmutes", "was accidentally removed back in 2014");
+    store.register_removed("deprecated_attr", "use `deprecated` instead");
     store.register_removed("transmute_from_fn_item_types",
         "always cast functions before transmuting them");
     store.register_removed("hr_lifetime_in_assoc_type",
@@ -266,4 +281,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36891");
     store.register_removed("lifetime_underscore",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36892");
+    store.register_removed("extra_requirement_in_impl",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/37166");
 }

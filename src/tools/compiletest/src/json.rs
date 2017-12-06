@@ -36,6 +36,7 @@ struct DiagnosticSpan {
     column_end: usize,
     is_primary: bool,
     label: Option<String>,
+    suggested_replacement: Option<String>,
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
@@ -54,6 +55,25 @@ struct DiagnosticCode {
     code: String,
     /// An explanation for the code.
     explanation: Option<String>,
+}
+
+pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
+    output.lines()
+        .filter_map(|line| if line.starts_with('{') {
+            match json::decode::<Diagnostic>(line) {
+                Ok(diagnostic) => diagnostic.rendered,
+                Err(error) => {
+                    proc_res.fatal(Some(&format!("failed to decode compiler output as json: \
+                                                `{}`\noutput: {}\nline: {}",
+                                                error,
+                                                line,
+                                                output)));
+                }
+            }
+        } else {
+            None
+        })
+        .collect()
 }
 
 pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
@@ -164,15 +184,15 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     }
 
     // If the message has a suggestion, register that.
-    if let Some(ref rendered) = diagnostic.rendered {
-        let start_line = primary_spans.iter().map(|s| s.line_start).min().expect("\
-            every suggestion should have at least one span");
-        for (index, line) in rendered.lines().enumerate() {
-            expected_errors.push(Error {
-                line_num: start_line + index,
-                kind: Some(ErrorKind::Suggestion),
-                msg: line.to_string(),
-            });
+    for span in primary_spans {
+        if let Some(ref suggested_replacement) = span.suggested_replacement {
+            for (index, line) in suggested_replacement.lines().enumerate() {
+                expected_errors.push(Error {
+                    line_num: span.line_start + index,
+                    kind: Some(ErrorKind::Suggestion),
+                    msg: line.to_string(),
+                });
+            }
         }
     }
 

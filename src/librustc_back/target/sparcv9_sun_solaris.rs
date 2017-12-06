@@ -17,11 +17,13 @@ pub fn target() -> TargetResult {
     // llvm calls this "v9"
     base.cpu = "v9".to_string();
     base.max_atomic_width = Some(64);
+    base.exe_allocation_crate = None;
 
     Ok(Target {
         llvm_target: "sparcv9-sun-solaris".to_string(),
         target_endian: "big".to_string(),
         target_pointer_width: "64".to_string(),
+        target_c_int_width: "32".to_string(),
         data_layout: "E-m:e-i64:64-n32:64-S128".to_string(),
         // Use "sparc64" instead of "sparcv9" here, since the former is already
         // used widely in the source base.  If we ever needed ABI

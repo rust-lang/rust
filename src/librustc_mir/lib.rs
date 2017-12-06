@@ -18,11 +18,20 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(catch_expr)]
+#![feature(conservative_impl_trait)]
+#![feature(const_fn)]
+#![feature(core_intrinsics)]
+#![feature(decl_macro)]
 #![feature(i128_type)]
+#![feature(inclusive_range_syntax)]
+#![feature(match_default_bindings)]
+#![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(placement_in_syntax)]
 #![feature(collection_placement)]
 #![feature(nonzero)]
+#![feature(underscore_lifetimes)]
 
 #[macro_use]
 extern crate bitflags;
@@ -30,7 +39,8 @@ extern crate bitflags;
 extern crate graphviz as dot;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
+extern crate serialize as rustc_serialize;
 extern crate rustc_errors;
 #[macro_use]
 extern crate syntax;

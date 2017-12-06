@@ -150,7 +150,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                         Some(&adt_def.variants[variant_index])
                     }
                     _ => if let ty::TyAdt(adt, _) = self.ty.sty {
-                        if adt.is_univariant() {
+                        if !adt.is_enum() {
                             Some(&adt.variants[0])
                         } else {
                             None
@@ -301,6 +301,44 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     pub fn lower_pattern(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
+        // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
+        // pattern has the type that results *after* dereferencing. For example, in this code:
+        //
+        // ```
+        // match &&Some(0i32) {
+        //     Some(n) => { ... },
+        //     _ => { ... },
+        // }
+        // ```
+        //
+        // the type assigned to `Some(n)` in `unadjusted_pat` would be `Option<i32>` (this is
+        // determined in rustc_typeck::check::match). The adjustments would be
+        //
+        // `vec![&&Option<i32>, &Option<i32>]`.
+        //
+        // Applying the adjustments, we want to instead output `&&Some(n)` (as a HAIR pattern). So
+        // we wrap the unadjusted pattern in `PatternKind::Deref` repeatedly, consuming the
+        // adjustments in *reverse order* (last-in-first-out, so that the last `Deref` inserted
+        // gets the least-dereferenced type).
+        let unadjusted_pat = self.lower_pattern_unadjusted(pat);
+        self.tables
+            .pat_adjustments()
+            .get(pat.hir_id)
+            .unwrap_or(&vec![])
+            .iter()
+            .rev()
+            .fold(unadjusted_pat, |pat, ref_ty| {
+                    debug!("{:?}: wrapping pattern with type {:?}", pat, ref_ty);
+                    Pattern {
+                        span: pat.span,
+                        ty: ref_ty,
+                        kind: Box::new(PatternKind::Deref { subpattern: pat }),
+                    }
+                },
+            )
+    }
+
+    fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
         let mut ty = self.tables.node_id_to_type(pat.hir_id);
 
         let kind = match pat.node {
@@ -560,7 +598,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             Def::Variant(variant_id) | Def::VariantCtor(variant_id, ..) => {
                 let enum_id = self.tcx.parent_def_id(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
-                if adt_def.variants.len() > 1 {
+                if adt_def.is_enum() {
                     let substs = match ty.sty {
                         ty::TyAdt(_, substs) |
                         ty::TyFnDef(_, substs) => substs,

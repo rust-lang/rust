@@ -12,6 +12,7 @@ pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
 pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 
 use hir::def_id::{CrateNum, DefIndex};
+use ich::Fingerprint;
 
 use lint;
 use middle::allocator::AllocatorKind;
@@ -23,13 +24,12 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 
 use syntax::ast::NodeId;
-use errors::{self, DiagnosticBuilder};
+use errors::{self, DiagnosticBuilder, DiagnosticId};
 use errors::emitter::{Emitter, EmitterWriter};
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::ParseSess;
-use syntax::symbol::Symbol;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{Span, MultiSpan};
@@ -54,42 +54,41 @@ pub mod config;
 pub mod filesearch;
 pub mod search_paths;
 
-// Represents the data associated with a compilation
-// session for a single crate.
+/// Represents the data associated with a compilation
+/// session for a single crate.
 pub struct Session {
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
     pub parse_sess: ParseSess,
-    // For a library crate, this is always none
+    /// For a library crate, this is always none
     pub entry_fn: RefCell<Option<(NodeId, Span)>>,
     pub entry_type: Cell<Option<config::EntryFnType>>,
     pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
     pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
-    // The name of the root source file of the crate, in the local file system.
-    // The path is always expected to be absolute. `None` means that there is no
-    // source file.
+    /// The name of the root source file of the crate, in the local file system.
+    /// `None` means that there is no source file.
     pub local_crate_source_file: Option<String>,
-    // The directory the compiler has been executed in plus a flag indicating
-    // if the value stored here has been affected by path remapping.
+    /// The directory the compiler has been executed in plus a flag indicating
+    /// if the value stored here has been affected by path remapping.
     pub working_dir: (String, bool),
     pub lint_store: RefCell<lint::LintStore>,
     pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
-    /// Set of (LintId, Option<Span>, message) tuples tracking lint
+    /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
-    /// in order to avoid redundantly verbose output (Issue #24690).
-    pub one_time_diagnostics: RefCell<FxHashSet<(lint::LintId, Option<Span>, String)>>,
+    /// in order to avoid redundantly verbose output (Issue #24690, #44953).
+    pub one_time_diagnostics: RefCell<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
-    // The crate_disambiguator is constructed out of all the `-C metadata`
-    // arguments passed to the compiler. Its value together with the crate-name
-    // forms a unique global identifier for the crate. It is used to allow
-    // multiple crates with the same name to coexist. See the
-    // trans::back::symbol_names module for more information.
-    pub crate_disambiguator: RefCell<Option<Symbol>>,
+        /// The crate_disambiguator is constructed out of all the `-C metadata`
+    /// arguments passed to the compiler. Its value together with the crate-name
+    /// forms a unique global identifier for the crate. It is used to allow
+    /// multiple crates with the same name to coexist. See the
+    /// trans::back::symbol_names module for more information.
+    pub crate_disambiguator: RefCell<Option<CrateDisambiguator>>,
     pub features: RefCell<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
@@ -144,17 +143,17 @@ pub struct Session {
 }
 
 pub struct PerfStats {
-    // The accumulated time needed for computing the SVH of the crate
+    /// The accumulated time needed for computing the SVH of the crate
     pub svh_time: Cell<Duration>,
-    // The accumulated time spent on computing incr. comp. hashes
+    /// The accumulated time spent on computing incr. comp. hashes
     pub incr_comp_hashes_time: Cell<Duration>,
-    // The number of incr. comp. hash computations performed
+    /// The number of incr. comp. hash computations performed
     pub incr_comp_hashes_count: Cell<u64>,
-    // The number of bytes hashed when computing ICH values
+    /// The number of bytes hashed when computing ICH values
     pub incr_comp_bytes_hashed: Cell<u64>,
-    // The accumulated time spent on computing symbol hashes
+    /// The accumulated time spent on computing symbol hashes
     pub symbol_hash_time: Cell<Duration>,
-    // The accumulated time spent decoding def path tables from metadata
+    /// The accumulated time spent decoding def path tables from metadata
     pub decode_def_path_tables_time: Cell<Duration>,
 }
 
@@ -165,10 +164,19 @@ enum DiagnosticBuilderMethod {
     // add more variants as needed to support one-time diagnostics
 }
 
+/// Diagnostic message ID—used by `Session.one_time_diagnostics` to avoid
+/// emitting the same message more than once
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DiagnosticMessageId {
+    ErrorId(u16), // EXXXX error code as integer
+    LintId(lint::LintId),
+    StabilityId(u32) // issue number
+}
+
 impl Session {
-    pub fn local_crate_disambiguator(&self) -> Symbol {
+    pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
         match *self.crate_disambiguator.borrow() {
-            Some(sym) => sym,
+            Some(value) => value,
             None => bug!("accessing disambiguator before initialization"),
         }
     }
@@ -181,7 +189,7 @@ impl Session {
     pub fn struct_span_warn_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                               sp: S,
                                                               msg: &str,
-                                                              code: &str)
+                                                              code: DiagnosticId)
                                                               -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
@@ -197,7 +205,7 @@ impl Session {
     pub fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                              sp: S,
                                                              msg: &str,
-                                                             code: &str)
+                                                             code: DiagnosticId)
                                                              -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_err_with_code(sp, msg, code)
     }
@@ -205,7 +213,11 @@ impl Session {
     pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_err(msg)
     }
-    pub fn struct_err_with_code<'a>(&'a self, msg: &str, code: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_err_with_code<'a>(
+        &'a self,
+        msg: &str,
+        code: DiagnosticId,
+    ) -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_err_with_code(msg, code)
     }
     pub fn struct_span_fatal<'a, S: Into<MultiSpan>>(&'a self,
@@ -217,7 +229,7 @@ impl Session {
     pub fn struct_span_fatal_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                                sp: S,
                                                                msg: &str,
-                                                               code: &str)
+                                                               code: DiagnosticId)
                                                                -> DiagnosticBuilder<'a> {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
@@ -228,7 +240,12 @@ impl Session {
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         panic!(self.diagnostic().span_fatal(sp, msg))
     }
-    pub fn span_fatal_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) -> ! {
+    pub fn span_fatal_with_code<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+        code: DiagnosticId,
+    ) -> ! {
         panic!(self.diagnostic().span_fatal_with_code(sp, msg, code))
     }
     pub fn fatal(&self, msg: &str) -> ! {
@@ -244,7 +261,7 @@ impl Session {
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_err(sp, msg)
     }
-    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
+    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.diagnostic().span_err_with_code(sp, &msg, code)
     }
     pub fn err(&self, msg: &str) {
@@ -277,7 +294,7 @@ impl Session {
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_warn(sp, msg)
     }
-    pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: &str) {
+    pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.diagnostic().span_warn_with_code(sp, msg, code)
     }
     pub fn warn(&self, msg: &str) {
@@ -338,34 +355,21 @@ impl Session {
 
     /// Analogous to calling methods on the given `DiagnosticBuilder`, but
     /// deduplicates on lint ID, span (if any), and message for this `Session`
-    /// if we're not outputting in JSON mode.
     fn diag_once<'a, 'b>(&'a self,
                          diag_builder: &'b mut DiagnosticBuilder<'a>,
                          method: DiagnosticBuilderMethod,
                          lint: &'static lint::Lint, message: &str, span: Option<Span>) {
-        let mut do_method = || {
+
+        let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
+        let id_span_message = (lint_id, span, message.to_owned());
+        let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
+        if fresh {
             match method {
                 DiagnosticBuilderMethod::Note => {
                     diag_builder.note(message);
                 },
                 DiagnosticBuilderMethod::SpanNote => {
                     diag_builder.span_note(span.expect("span_note expects a span"), message);
-                }
-            }
-        };
-
-        match self.opts.error_format {
-            // when outputting JSON for tool consumption, the tool might want
-            // the duplicates
-            config::ErrorOutputType::Json => {
-                do_method()
-            },
-            _ => {
-                let lint_id = lint::LintId::of(lint);
-                let id_span_message = (lint_id, span, message.to_owned());
-                let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
-                if fresh {
-                    do_method()
                 }
             }
         }
@@ -412,10 +416,10 @@ impl Session {
     pub fn emit_end_regions(&self) -> bool {
         self.opts.debugging_opts.emit_end_regions ||
             (self.opts.debugging_opts.mir_emit_validate > 0) ||
-            self.opts.debugging_opts.borrowck_mir
+            self.opts.borrowck_mode.use_mir()
     }
     pub fn lto(&self) -> bool {
-        self.opts.cg.lto
+        self.opts.cg.lto || self.target.target.options.requires_lto
     }
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
@@ -472,14 +476,18 @@ impl Session {
 
     /// Returns the symbol name for the registrar function,
     /// given the crate Svh and the function DefIndex.
-    pub fn generate_plugin_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
+    pub fn generate_plugin_registrar_symbol(&self, disambiguator: CrateDisambiguator,
+                                            index: DefIndex)
                                             -> String {
-        format!("__rustc_plugin_registrar__{}_{}", disambiguator, index.as_usize())
+        format!("__rustc_plugin_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
+                                                   index.as_usize())
     }
 
-    pub fn generate_derive_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
+    pub fn generate_derive_registrar_symbol(&self, disambiguator: CrateDisambiguator,
+                                            index: DefIndex)
                                             -> String {
-        format!("__rustc_derive_registrar__{}_{}", disambiguator, index.as_usize())
+        format!("__rustc_derive_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
+                                                   index.as_usize())
     }
 
     pub fn sysroot<'a>(&'a self) -> &'a Path {
@@ -637,6 +645,104 @@ impl Session {
         }
         ret
     }
+
+    /// Returns the number of codegen units that should be used for this
+    /// compilation
+    pub fn codegen_units(&self) -> usize {
+        if let Some(n) = self.opts.cli_forced_codegen_units {
+            return n
+        }
+        if let Some(n) = self.target.target.options.default_codegen_units {
+            return n as usize
+        }
+
+        // Why is 16 codegen units the default all the time?
+        //
+        // The main reason for enabling multiple codegen units by default is to
+        // leverage the ability for the trans backend to do translation and
+        // codegen in parallel. This allows us, especially for large crates, to
+        // make good use of all available resources on the machine once we've
+        // hit that stage of compilation. Large crates especially then often
+        // take a long time in trans/codegen and this helps us amortize that
+        // cost.
+        //
+        // Note that a high number here doesn't mean that we'll be spawning a
+        // large number of threads in parallel. The backend of rustc contains
+        // global rate limiting through the `jobserver` crate so we'll never
+        // overload the system with too much work, but rather we'll only be
+        // optimizing when we're otherwise cooperating with other instances of
+        // rustc.
+        //
+        // Rather a high number here means that we should be able to keep a lot
+        // of idle cpus busy. By ensuring that no codegen unit takes *too* long
+        // to build we'll be guaranteed that all cpus will finish pretty closely
+        // to one another and we should make relatively optimal use of system
+        // resources
+        //
+        // Note that the main cost of codegen units is that it prevents LLVM
+        // from inlining across codegen units. Users in general don't have a lot
+        // of control over how codegen units are split up so it's our job in the
+        // compiler to ensure that undue performance isn't lost when using
+        // codegen units (aka we can't require everyone to slap `#[inline]` on
+        // everything).
+        //
+        // If we're compiling at `-O0` then the number doesn't really matter too
+        // much because performance doesn't matter and inlining is ok to lose.
+        // In debug mode we just want to try to guarantee that no cpu is stuck
+        // doing work that could otherwise be farmed to others.
+        //
+        // In release mode, however (O1 and above) performance does indeed
+        // matter! To recover the loss in performance due to inlining we'll be
+        // enabling ThinLTO by default (the function for which is just below).
+        // This will ensure that we recover any inlining wins we otherwise lost
+        // through codegen unit partitioning.
+        //
+        // ---
+        //
+        // Ok that's a lot of words but the basic tl;dr; is that we want a high
+        // number here -- but not too high. Additionally we're "safe" to have it
+        // always at the same number at all optimization levels.
+        //
+        // As a result 16 was chosen here! Mostly because it was a power of 2
+        // and most benchmarks agreed it was roughly a local optimum. Not very
+        // scientific.
+        match self.opts.optimize {
+            config::OptLevel::No => 16,
+            _ => 1, // FIXME(#46346) this should be 16
+        }
+    }
+
+    /// Returns whether ThinLTO is enabled for this compilation
+    pub fn thinlto(&self) -> bool {
+        // If processing command line options determined that we're incompatible
+        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
+        if let Some(enabled) = self.opts.cli_forced_thinlto {
+            return enabled
+        }
+
+        // If explicitly specified, use that with the next highest priority
+        if let Some(enabled) = self.opts.debugging_opts.thinlto {
+            return enabled
+        }
+
+        // If there's only one codegen unit and LTO isn't enabled then there's
+        // no need for ThinLTO so just return false.
+        if self.codegen_units() == 1 && !self.lto() {
+            return false
+        }
+
+        // Right now ThinLTO isn't compatible with incremental compilation.
+        if self.opts.incremental.is_some() {
+            return false
+        }
+
+        // Now we're in "defaults" territory. By default we enable ThinLTO for
+        // optimized compiles (anything greater than O0).
+        match self.opts.optimize {
+            config::OptLevel::No => false,
+            _ => true,
+        }
+    }
 }
 
 pub fn build_session(sopts: config::Options,
@@ -669,31 +775,42 @@ pub fn build_session_with_codemap(sopts: config::Options,
         .unwrap_or(false);
     let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
 
-    let can_print_warnings = !(warnings_allow || cap_lints_allow);
+    let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
 
+    let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
+
     let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(color_config), None) => {
-            Box::new(EmitterWriter::stderr(color_config,
-                                           Some(codemap.clone())))
+            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), false))
         }
         (config::ErrorOutputType::HumanReadable(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst,
-                                        Some(codemap.clone())))
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), false))
         }
-        (config::ErrorOutputType::Json, None) => {
-            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
+        (config::ErrorOutputType::Json(pretty), None) => {
+            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone(), pretty))
         }
-        (config::ErrorOutputType::Json, Some(dst)) => {
-            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone()))
+        (config::ErrorOutputType::Json(pretty), Some(dst)) => {
+            Box::new(JsonEmitter::new(dst, Some(registry), codemap.clone(), pretty))
+        }
+        (config::ErrorOutputType::Short(color_config), None) => {
+            Box::new(EmitterWriter::stderr(color_config, Some(codemap.clone()), true))
+        }
+        (config::ErrorOutputType::Short(_), Some(dst)) => {
+            Box::new(EmitterWriter::new(dst, Some(codemap.clone()), true))
         }
     };
 
     let diagnostic_handler =
-        errors::Handler::with_emitter(can_print_warnings,
-                                      treat_err_as_bug,
-                                      emitter);
+        errors::Handler::with_emitter_and_flags(
+            emitter,
+            errors::HandlerFlags {
+                can_emit_warnings,
+                treat_err_as_bug,
+                external_macro_backtrace,
+                .. Default::default()
+            });
 
     build_session_(sopts,
                    local_crate_source_file,
@@ -722,7 +839,6 @@ pub fn build_session_(sopts: config::Options,
 
     let file_path_mapping = sopts.file_path_mapping();
 
-    // Make the path absolute, if necessary
     let local_crate_source_file = local_crate_source_file.map(|path| {
         file_path_mapping.map_prefix(path.to_string_lossy().into_owned()).0
     });
@@ -733,7 +849,12 @@ pub fn build_session_(sopts: config::Options,
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
     let print_fuel = Cell::new(0);
 
-    let working_dir = env::current_dir().unwrap().to_string_lossy().into_owned();
+    let working_dir = match env::current_dir() {
+        Ok(dir) => dir.to_string_lossy().into_owned(),
+        Err(e) => {
+            panic!(p_s.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)))
+        }
+    };
     let working_dir = file_path_mapping.map_prefix(working_dir);
 
     let sess = Session {
@@ -803,27 +924,47 @@ pub fn build_session_(sopts: config::Options,
     sess
 }
 
+/// Hash value constructed out of all the `-C metadata` arguments passed to the
+/// compiler. Together with the crate-name forms a unique global identifier for
+/// the crate.
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy, RustcEncodable, RustcDecodable)]
+pub struct CrateDisambiguator(Fingerprint);
+
+impl CrateDisambiguator {
+    pub fn to_fingerprint(self) -> Fingerprint {
+        self.0
+    }
+}
+
+impl From<Fingerprint> for CrateDisambiguator {
+    fn from(fingerprint: Fingerprint) -> CrateDisambiguator {
+        CrateDisambiguator(fingerprint)
+    }
+}
+
+impl_stable_hash_for!(tuple_struct CrateDisambiguator { fingerprint });
+
 /// Holds data on the current incremental compilation session, if there is one.
 #[derive(Debug)]
 pub enum IncrCompSession {
-    // This is the state the session will be in until the incr. comp. dir is
-    // needed.
+    /// This is the state the session will be in until the incr. comp. dir is
+    /// needed.
     NotInitialized,
-    // This is the state during which the session directory is private and can
-    // be modified.
+    /// This is the state during which the session directory is private and can
+    /// be modified.
     Active {
         session_directory: PathBuf,
         lock_file: flock::Lock,
         load_dep_graph: bool,
     },
-    // This is the state after the session directory has been finalized. In this
-    // state, the contents of the directory must not be modified any more.
+    /// This is the state after the session directory has been finalized. In this
+    /// state, the contents of the directory must not be modified any more.
     Finalized {
         session_directory: PathBuf,
     },
-    // This is an error state that is reached when some compilation error has
-    // occurred. It indicates that the contents of the session directory must
-    // not be used, since they might be invalid.
+    /// This is an error state that is reached when some compilation error has
+    /// occurred. It indicates that the contents of the session directory must
+    /// not be used, since they might be invalid.
     InvalidBecauseOfErrors {
         session_directory: PathBuf,
     }
@@ -832,10 +973,12 @@ pub enum IncrCompSession {
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config,
-                                           None))
+            Box::new(EmitterWriter::stderr(color_config, None, false))
         }
-        config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
+        config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
+        config::ErrorOutputType::Short(color_config) => {
+            Box::new(EmitterWriter::stderr(color_config, None, true))
+        }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
@@ -845,10 +988,12 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<Emitter> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config,
-                                           None))
+            Box::new(EmitterWriter::stderr(color_config, None, false))
         }
-        config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
+        config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
+        config::ErrorOutputType::Short(color_config) => {
+            Box::new(EmitterWriter::stderr(color_config, None, true))
+        }
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);

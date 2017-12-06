@@ -2,34 +2,34 @@ use mir::BasicBlock;
 use ty::{self, Ty};
 use syntax::codemap::Span;
 
-use mir::interpret::{EvalResult, EvalContext, Lvalue, LvalueExtra, PrimVal, Value,
+use mir::interpret::{EvalResult, EvalContext, Place, PlaceExtra, PrimVal, Value,
                 Machine, ValTy};
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
-    pub(crate) fn drop_lvalue(
+    pub(crate) fn drop_place(
         &mut self,
-        lval: Lvalue,
+        place: Place,
         instance: ty::Instance<'tcx>,
         ty: Ty<'tcx>,
         span: Span,
         target: BasicBlock,
     ) -> EvalResult<'tcx> {
-        trace!("drop_lvalue: {:#?}", lval);
+        trace!("drop_place: {:#?}", place);
         // We take the address of the object.  This may well be unaligned, which is fine for us here.
         // However, unaligned accesses will probably make the actual drop implementation fail -- a problem shared
         // by rustc.
-        let val = match self.force_allocation(lval)? {
-            Lvalue::Ptr {
+        let val = match self.force_allocation(place)? {
+            Place::Ptr {
                 ptr,
-                extra: LvalueExtra::Vtable(vtable),
+                extra: PlaceExtra::Vtable(vtable),
             } => ptr.ptr.to_value_with_vtable(vtable),
-            Lvalue::Ptr {
+            Place::Ptr {
                 ptr,
-                extra: LvalueExtra::Length(len),
+                extra: PlaceExtra::Length(len),
             } => ptr.ptr.to_value_with_len(len),
-            Lvalue::Ptr {
+            Place::Ptr {
                 ptr,
-                extra: LvalueExtra::None,
+                extra: PlaceExtra::None,
             } => ptr.ptr.to_value(),
             _ => bug!("force_allocation broken"),
         };
@@ -74,7 +74,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         self.eval_fn_call(
             instance,
-            Some((Lvalue::undef(), target)),
+            Some((Place::undef(), target)),
             &vec![valty],
             span,
             fn_sig,

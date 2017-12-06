@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code, unused_imports)]
-#![feature(macro_vis_matcher)]
+#![feature(macro_vis_matcher, crate_visibility_modifier)]
 
 /**
 Ensure that `:vis` matches can be captured in existing positions, and passed
@@ -62,6 +62,18 @@ mod with_pub_restricted {
     vis_passthru! { pub(crate) trait G {} }
     vis_passthru! { pub(crate) type H = i32; }
     vis_passthru! { pub(crate) use A as I; }
+}
+
+mod with_crate {
+    vis_passthru! { crate const A: i32 = 0; }
+    vis_passthru! { crate enum B {} }
+    vis_passthru! { crate extern "C" fn c() {} }
+    vis_passthru! { crate mod d {} }
+    vis_passthru! { crate static E: i32 = 0; }
+    vis_passthru! { crate struct F; }
+    vis_passthru! { crate trait G {} }
+    vis_passthru! { crate type H = i32; }
+    vis_passthru! { crate use A as I; }
 }
 
 mod garden {

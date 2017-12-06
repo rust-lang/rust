@@ -1,0 +1,12 @@
+error[E0644]: closure/generator type that references itself
+  --> $DIR/unboxed-closure-no-cyclic-sig.rs:18:7
+   |
+18 |     g(|_| {  }); //~ ERROR closure/generator type that references itself
+   |       ^^^^^^^^ cyclic type of infinite size
+   |
+   = note: closures cannot capture themselves or take themselves as argument;
+           this error may be the result of a recent compiler bug-fix,
+           see https://github.com/rust-lang/rust/issues/46062 for more details
+
+error: aborting due to previous error
+

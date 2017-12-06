@@ -151,9 +151,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            cur_path.push(self.def_key(cur_def)
-                              .disambiguated_data.data.get_opt_name().unwrap_or_else(||
-                Symbol::intern("<unnamed>").as_str()));
+            let mut cur_def_key = self.def_key(cur_def);
+
+            // For a UnitStruct or TupleStruct we want the name of its parent rather than <unnamed>.
+            if let DefPathData::StructCtor = cur_def_key.disambiguated_data.data {
+                let parent = DefId {
+                    krate: cur_def.krate,
+                    index: cur_def_key.parent.expect("DefPathData::StructCtor missing a parent"),
+                };
+
+                cur_def_key = self.def_key(parent);
+            }
+
+            let data = cur_def_key.disambiguated_data.data;
+            let symbol =
+                data.get_opt_name().unwrap_or_else(|| Symbol::intern("<unnamed>").as_str());
+            cur_path.push(symbol);
+
             match visible_parent_map.get(&cur_def) {
                 Some(&def) => cur_def = def,
                 None => return false,
@@ -218,7 +232,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // Always use types for non-local impls, where types are always
         // available, and filename/line-number is mostly uninteresting.
-        let use_types = !self.is_default_impl(impl_def_id) && (!impl_def_id.is_local() || {
+        let use_types = !self.is_auto_impl(impl_def_id) && (!impl_def_id.is_local() || {
             // Otherwise, use filename/line-number if forced.
             let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
             !force_no_types
@@ -280,6 +294,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     buffer.push(&format!("<{}>", self_ty));
                 }
             }
+
+            ty::TyForeign(did) => self.push_item_path(buffer, did),
 
             ty::TyBool |
             ty::TyChar |
@@ -344,8 +360,9 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
                                       .next(),
 
         ty::TyFnDef(def_id, _) |
-        ty::TyClosure(def_id, _) => Some(def_id),
-        ty::TyGenerator(def_id, _, _) => Some(def_id),
+        ty::TyClosure(def_id, _) |
+        ty::TyGenerator(def_id, _, _) |
+        ty::TyForeign(def_id) => Some(def_id),
 
         ty::TyBool |
         ty::TyChar |

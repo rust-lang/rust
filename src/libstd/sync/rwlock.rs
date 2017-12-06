@@ -10,7 +10,6 @@
 
 use cell::UnsafeCell;
 use fmt;
-use marker;
 use mem;
 use ops::{Deref, DerefMut};
 use ptr;
@@ -82,7 +81,7 @@ pub struct RwLock<T: ?Sized> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: ?Sized + Send + Sync> Send for RwLock<T> {}
+unsafe impl<T: ?Sized + Send> Send for RwLock<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 
@@ -102,7 +101,10 @@ pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
+impl<'a, T: ?Sized> !Send for RwLockReadGuard<'a, T> {}
+
+#[stable(feature = "rwlock_guard_sync", since = "1.23.0")]
+unsafe impl<'a, T: ?Sized + Sync> Sync for RwLockReadGuard<'a, T> {}
 
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
@@ -121,7 +123,10 @@ pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized> !marker::Send for RwLockWriteGuard<'a, T> {}
+impl<'a, T: ?Sized> !Send for RwLockWriteGuard<'a, T> {}
+
+#[stable(feature = "rwlock_guard_sync", since = "1.23.0")]
+unsafe impl<'a, T: ?Sized + Sync> Sync for RwLockWriteGuard<'a, T> {}
 
 impl<T> RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
@@ -428,11 +433,18 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for RwLock<T> {
 impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_read() {
-            Ok(guard) => write!(f, "RwLock {{ data: {:?} }}", &*guard),
+            Ok(guard) => f.debug_struct("RwLock").field("data", &&*guard).finish(),
             Err(TryLockError::Poisoned(err)) => {
-                write!(f, "RwLock {{ data: Poisoned({:?}) }}", &**err.get_ref())
+                f.debug_struct("RwLock").field("data", &&**err.get_ref()).finish()
             },
-            Err(TryLockError::WouldBlock) => write!(f, "RwLock {{ <locked> }}")
+            Err(TryLockError::WouldBlock) => {
+                struct LockedPlaceholder;
+                impl fmt::Debug for LockedPlaceholder {
+                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.write_str("<locked>") }
+                }
+
+                f.debug_struct("RwLock").field("data", &LockedPlaceholder).finish()
+            }
         }
     }
 }
@@ -442,6 +454,17 @@ impl<T: Default> Default for RwLock<T> {
     /// Creates a new `RwLock<T>`, with the `Default` value for T.
     fn default() -> RwLock<T> {
         RwLock::new(Default::default())
+    }
+}
+
+#[stable(feature = "rw_lock_from", since = "1.22.0")]
+impl<T> From<T> for RwLock<T> {
+    /// Creates a new instance of an `RwLock<T>` which is unlocked.
+    /// This is equivalent to [`RwLock::new`].
+    ///
+    /// [`RwLock::new`]: #method.new
+    fn from(t: T) -> Self {
+        RwLock::new(t)
     }
 }
 
@@ -542,8 +565,6 @@ impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    #![allow(deprecated)] // rand
-
     use rand::{self, Rng};
     use sync::mpsc::channel;
     use thread;
@@ -564,7 +585,7 @@ mod tests {
 
     #[test]
     fn frob() {
-        const N: usize = 10;
+        const N: u32 = 10;
         const M: usize = 1000;
 
         let r = Arc::new(RwLock::new(()));

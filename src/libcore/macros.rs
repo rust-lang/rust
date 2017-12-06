@@ -120,6 +120,9 @@ macro_rules! assert_eq {
             }
         }
     });
+    ($left:expr, $right:expr,) => ({
+        assert_eq!($left, $right)
+    });
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
@@ -168,6 +171,9 @@ macro_rules! assert_ne {
             }
         }
     });
+    ($left:expr, $right:expr,) => {
+        assert_ne!($left, $right)
+    };
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
@@ -355,7 +361,7 @@ macro_rules! try {
     })
 }
 
-/// Write formatted data into a buffer
+/// Write formatted data into a buffer.
 ///
 /// This macro accepts a format string, a list of arguments, and a 'writer'. Arguments will be
 /// formatted according to the specified format string and the result will be passed to the writer.
@@ -606,9 +612,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
-        /* compiler built-in */
-    }) }
+    macro_rules! format_args {
+        ($fmt:expr) => ({ /* compiler built-in */ });
+        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
+    }
 
     /// Inspect an environment variable at compile time.
     ///
@@ -618,7 +625,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! env { ($name:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! env {
+        ($name:expr) => ({ /* compiler built-in */ });
+        ($name:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Optionally inspect an environment variable at compile time.
     ///
@@ -639,7 +649,8 @@ mod builtin {
     #[macro_export]
     #[cfg(dox)]
     macro_rules! concat_idents {
-        ($($e:ident),*) => ({ /* compiler built-in */ })
+        ($($e:ident),*) => ({ /* compiler built-in */ });
+        ($($e:ident,)*) => ({ /* compiler built-in */ });
     }
 
     /// Concatenates literals into a static string slice.
@@ -650,7 +661,10 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! concat { ($($e:expr),*) => ({ /* compiler built-in */ }) }
+    macro_rules! concat {
+        ($($e:expr),*) => ({ /* compiler built-in */ });
+        ($($e:expr,)*) => ({ /* compiler built-in */ });
+    }
 
     /// A macro which expands to the line number on which it was invoked.
     ///
@@ -682,7 +696,7 @@ mod builtin {
     #[cfg(dox)]
     macro_rules! file { () => ({ /* compiler built-in */ }) }
 
-    /// A macro which stringifies its argument.
+    /// A macro which stringifies its arguments.
     ///
     /// For more information, see the documentation for [`std::stringify!`].
     ///
@@ -690,7 +704,7 @@ mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     #[cfg(dox)]
-    macro_rules! stringify { ($t:tt) => ({ /* compiler built-in */ }) }
+    macro_rules! stringify { ($($t:tt)*) => ({ /* compiler built-in */ }) }
 
     /// Includes a utf8-encoded file as a string.
     ///

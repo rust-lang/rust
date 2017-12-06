@@ -76,19 +76,18 @@ pub struct Config {
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
     pub llvm_targets: Option<String>,
-    pub llvm_experimental_targets: Option<String>,
+    pub llvm_experimental_targets: String,
     pub llvm_link_jobs: Option<u32>,
 
     // rust codegen options
     pub rust_optimize: bool,
-    pub rust_codegen_units: u32,
+    pub rust_codegen_units: Option<u32>,
     pub rust_debug_assertions: bool,
     pub rust_debuginfo: bool,
     pub rust_debuginfo_lines: bool,
     pub rust_debuginfo_only_std: bool,
     pub rust_rpath: bool,
     pub rustc_default_linker: Option<String>,
-    pub rustc_default_ar: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_debuginfo_tests: bool,
     pub rust_dist_src: bool,
@@ -113,6 +112,8 @@ pub struct Config {
     pub channel: String,
     pub quiet_tests: bool,
     pub test_miri: bool,
+    pub save_toolstates: Option<PathBuf>,
+
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<PathBuf>,
@@ -144,6 +145,8 @@ pub struct Target {
     pub jemalloc: Option<PathBuf>,
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
+    pub ar: Option<PathBuf>,
+    pub linker: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
     pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
@@ -206,6 +209,11 @@ struct Install {
     bindir: Option<String>,
     libdir: Option<String>,
     mandir: Option<String>,
+
+    // standard paths, currently unused
+    datadir: Option<String>,
+    infodir: Option<String>,
+    localstatedir: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -262,7 +270,6 @@ struct Rust {
     use_jemalloc: Option<bool>,
     backtrace: Option<bool>,
     default_linker: Option<String>,
-    default_ar: Option<String>,
     channel: Option<String>,
     musl_root: Option<String>,
     rpath: Option<bool>,
@@ -274,6 +281,7 @@ struct Rust {
     dist_src: Option<bool>,
     quiet_tests: Option<bool>,
     test_miri: Option<bool>,
+    save_toolstates: Option<String>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -284,6 +292,8 @@ struct TomlTarget {
     jemalloc: Option<String>,
     cc: Option<String>,
     cxx: Option<String>,
+    ar: Option<String>,
+    linker: Option<String>,
     android_ndk: Option<String>,
     crt_static: Option<bool>,
     musl_root: Option<String>,
@@ -297,6 +307,7 @@ impl Config {
         let mut config = Config::default();
         config.llvm_enabled = true;
         config.llvm_optimize = true;
+        config.llvm_version_check = true;
         config.use_jemalloc = true;
         config.backtrace = true;
         config.rust_optimize = true;
@@ -304,7 +315,6 @@ impl Config {
         config.submodules = true;
         config.docs = true;
         config.rust_rpath = true;
-        config.rust_codegen_units = 1;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
         config.ignore_git = false;
@@ -440,7 +450,8 @@ impl Config {
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
             set(&mut config.llvm_link_shared, llvm.link_shared);
             config.llvm_targets = llvm.targets.clone();
-            config.llvm_experimental_targets = llvm.experimental_targets.clone();
+            config.llvm_experimental_targets = llvm.experimental_targets.clone()
+                .unwrap_or("WebAssembly".to_string());
             config.llvm_link_jobs = llvm.link_jobs;
         }
 
@@ -464,12 +475,12 @@ impl Config {
             set(&mut config.quiet_tests, rust.quiet_tests);
             set(&mut config.test_miri, rust.test_miri);
             config.rustc_default_linker = rust.default_linker.clone();
-            config.rustc_default_ar = rust.default_ar.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
+            config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
 
             match rust.codegen_units {
-                Some(0) => config.rust_codegen_units = num_cpus::get() as u32,
-                Some(n) => config.rust_codegen_units = n,
+                Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),
+                Some(n) => config.rust_codegen_units = Some(n),
                 None => {}
             }
         }
@@ -487,8 +498,10 @@ impl Config {
                 if let Some(ref s) = cfg.android_ndk {
                     target.ndk = Some(env::current_dir().unwrap().join(s));
                 }
-                target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.cc = cfg.cc.clone().map(PathBuf::from);
+                target.cxx = cfg.cxx.clone().map(PathBuf::from);
+                target.ar = cfg.ar.clone().map(PathBuf::from);
+                target.linker = cfg.linker.clone().map(PathBuf::from);
                 target.crt_static = cfg.crt_static.clone();
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);
@@ -520,7 +533,7 @@ impl Config {
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
 
-        let default = config.channel == "nightly";
+        let default = false;
         config.llvm_assertions = llvm_assertions.unwrap_or(default);
 
         let default = match &config.channel[..] {

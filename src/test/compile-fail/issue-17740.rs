@@ -15,12 +15,12 @@ struct Foo<'a> {
 impl <'a> Foo<'a>{
     fn bar(self: &mut Foo) {
     //~^ mismatched method receiver
-    //~| expected type `&mut Foo<'a>`
-    //~| found type `&mut Foo<'_>`
+    //~| expected type `Foo<'a>`
+    //~| found type `Foo<'_>`
     //~| lifetime mismatch
     //~| mismatched method receiver
-    //~| expected type `&mut Foo<'a>`
-    //~| found type `&mut Foo<'_>`
+    //~| expected type `Foo<'a>`
+    //~| found type `Foo<'_>`
     //~| lifetime mismatch
     }
 }

@@ -9,12 +9,14 @@
 // except according to those terms.
 
 use super::archive::{ArchiveBuilder, ArchiveConfig};
+use super::bytecode::RLIB_BYTECODE_EXTENSION;
 use super::linker::Linker;
 use super::command::Command;
 use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, PrintRequest};
+use rustc::session::config::RUST_CGU_EXT;
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
@@ -24,8 +26,8 @@ use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
-use rustc_back::tempdir::TempDir;
-use rustc_back::{PanicStrategy, RelroLevel};
+use tempdir::TempDir;
+use rustc_back::{PanicStrategy, RelroLevel, LinkerFlavor};
 use context::get_reloc_model;
 use llvm;
 
@@ -35,54 +37,18 @@ use std::env;
 use std::ffi::OsString;
 use std::fmt;
 use std::fs::{self, File};
-use std::io::{self, Read, Write, BufWriter};
-use std::mem;
+use std::io::{self, Write, BufWriter};
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::str;
-use flate2::Compression;
-use flate2::write::DeflateEncoder;
 use syntax::attr;
 
 /// The LLVM module name containing crate-metadata. This includes a `.` on
 /// purpose, so it cannot clash with the name of a user-defined module.
 pub const METADATA_MODULE_NAME: &'static str = "crate.metadata";
-/// The name of the crate-metadata object file the compiler generates. Must
-/// match up with `METADATA_MODULE_NAME`.
-pub const METADATA_OBJ_NAME: &'static str = "crate.metadata.o";
 
 // same as for metadata above, but for allocator shim
 pub const ALLOCATOR_MODULE_NAME: &'static str = "crate.allocator";
-pub const ALLOCATOR_OBJ_NAME: &'static str = "crate.allocator.o";
-
-// RLIB LLVM-BYTECODE OBJECT LAYOUT
-// Version 1
-// Bytes    Data
-// 0..10    "RUST_OBJECT" encoded in ASCII
-// 11..14   format version as little-endian u32
-// 15..22   size in bytes of deflate compressed LLVM bitcode as
-//          little-endian u64
-// 23..     compressed LLVM bitcode
-
-// This is the "magic number" expected at the beginning of a LLVM bytecode
-// object in an rlib.
-pub const RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
-
-// The version number this compiler will write to bytecode objects in rlibs
-pub const RLIB_BYTECODE_OBJECT_VERSION: u32 = 1;
-
-// The offset in bytes the bytecode object format version number can be found at
-pub const RLIB_BYTECODE_OBJECT_VERSION_OFFSET: usize = 11;
-
-// The offset in bytes the size of the compressed bytecode can be found at in
-// format version 1
-pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
-    RLIB_BYTECODE_OBJECT_VERSION_OFFSET + 4;
-
-// The offset in bytes the compressed LLVM bytecode can be found at in format
-// version 1
-pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
-    RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
 pub use rustc_trans_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
                                   invalid_output_for_target, build_link_meta, out_filename,
@@ -201,13 +167,23 @@ pub fn link_binary(sess: &Session,
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
         if sess.opts.output_types.should_trans() {
-            for obj in object_filenames(trans, outputs) {
-                remove(sess, &obj);
+            for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
+                remove(sess, obj);
             }
         }
-        remove(sess, &outputs.with_extension(METADATA_OBJ_NAME));
-        if trans.allocator_module.is_some() {
-            remove(sess, &outputs.with_extension(ALLOCATOR_OBJ_NAME));
+        for obj in trans.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref()) {
+            remove(sess, obj);
+        }
+        if let Some(ref obj) = trans.metadata_module.object {
+            remove(sess, obj);
+        }
+        if let Some(ref allocator) = trans.allocator_module {
+            if let Some(ref obj) = allocator.object {
+                remove(sess, obj);
+            }
+            if let Some(ref bc) = allocator.bytecode_compressed {
+                remove(sess, bc);
+            }
         }
     }
 
@@ -269,12 +245,12 @@ pub fn each_linked_rlib(sess: &Session,
 /// It's unusual for a crate to not participate in LTO. Typically only
 /// compiler-specific and unstable crates have a reason to not participate in
 /// LTO.
-pub fn ignored_for_lto(info: &CrateInfo, cnum: CrateNum) -> bool {
-    // `#![no_builtins]` crates don't participate in LTO because the state
-    // of builtins gets messed up (our crate isn't tagged with no builtins).
-    // Similarly `#![compiler_builtins]` doesn't participate because we want
-    // those builtins!
-    info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum)
+pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool {
+    // If our target enables builtin function lowering in LLVM then the
+    // crates providing these functions don't participate in LTO (e.g.
+    // no_builtins or compiler builtins crates).
+    !sess.target.target.options.no_builtins &&
+        (info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum))
 }
 
 fn link_binary_output(sess: &Session,
@@ -282,24 +258,34 @@ fn link_binary_output(sess: &Session,
                       crate_type: config::CrateType,
                       outputs: &OutputFilenames,
                       crate_name: &str) -> Vec<PathBuf> {
-    let objects = object_filenames(trans, outputs);
+    for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
+        check_file_is_writeable(obj, sess);
+    }
 
-    for file in &objects {
-        check_file_is_writeable(file, sess);
+    let mut out_filenames = vec![];
+
+    if outputs.outputs.contains_key(&OutputType::Metadata) {
+        let out_filename = filename_for_metadata(sess, crate_name, outputs);
+        // To avoid races with another rustc process scanning the output directory,
+        // we need to write the file somewhere else and atomically move it to its
+        // final destination, with a `fs::rename` call. In order for the rename to
+        // always succeed, the temporary file needs to be on the same filesystem,
+        // which is why we create it inside the output directory specifically.
+        let metadata_tmpdir = match TempDir::new_in(out_filename.parent().unwrap(), "rmeta") {
+            Ok(tmpdir) => tmpdir,
+            Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
+        };
+        let metadata = emit_metadata(sess, trans, &metadata_tmpdir);
+        if let Err(e) = fs::rename(metadata, &out_filename) {
+            sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+        }
+        out_filenames.push(out_filename);
     }
 
     let tmpdir = match TempDir::new("rustc") {
         Ok(tmpdir) => tmpdir,
         Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
     };
-
-    let mut out_filenames = vec![];
-
-    if outputs.outputs.contains_key(&OutputType::Metadata) {
-        let out_filename = filename_for_metadata(sess, crate_name, outputs);
-        emit_metadata(sess, trans, &out_filename);
-        out_filenames.push(out_filename);
-    }
 
     if outputs.outputs.should_trans() {
         let out_filename = out_filename(sess, crate_type, outputs, crate_name);
@@ -308,22 +294,14 @@ fn link_binary_output(sess: &Session,
                 link_rlib(sess,
                           trans,
                           RlibFlavor::Normal,
-                          &objects,
-                          outputs,
                           &out_filename,
-                          tmpdir.path()).build();
+                          &tmpdir).build();
             }
             config::CrateTypeStaticlib => {
-                link_staticlib(sess,
-                               trans,
-                               outputs,
-                               &objects,
-                               &out_filename,
-                               tmpdir.path());
+                link_staticlib(sess, trans, &out_filename, &tmpdir);
             }
             _ => {
-                link_natively(sess, crate_type, &objects, &out_filename,
-                              trans, outputs, tmpdir.path());
+                link_natively(sess, crate_type, &out_filename, trans, tmpdir.path());
             }
         }
         out_filenames.push(out_filename);
@@ -334,14 +312,6 @@ fn link_binary_output(sess: &Session,
     }
 
     out_filenames
-}
-
-fn object_filenames(trans: &CrateTranslation,
-                    outputs: &OutputFilenames)
-                    -> Vec<PathBuf> {
-    trans.modules.iter().map(|module| {
-        outputs.temp_path(OutputType::Object, Some(&module.name))
-    }).collect()
 }
 
 fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
@@ -363,14 +333,23 @@ fn archive_config<'a>(sess: &'a Session,
     }
 }
 
-fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, out_filename: &Path) {
-    let result = fs::File::create(out_filename).and_then(|mut f| {
+/// We use a temp directory here to avoid races between concurrent rustc processes,
+/// such as builds in the same directory using the same filename for metadata while
+/// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
+/// directory being searched for `extern crate` (observing an incomplete file).
+/// The returned path is the temporary file containing the complete metadata.
+fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, tmpdir: &TempDir)
+                     -> PathBuf {
+    let out_filename = tmpdir.path().join(METADATA_FILENAME);
+    let result = fs::File::create(&out_filename).and_then(|mut f| {
         f.write_all(&trans.metadata.raw_data)
     });
 
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
     }
+
+    out_filename
 }
 
 enum RlibFlavor {
@@ -387,14 +366,12 @@ enum RlibFlavor {
 fn link_rlib<'a>(sess: &'a Session,
                  trans: &CrateTranslation,
                  flavor: RlibFlavor,
-                 objects: &[PathBuf],
-                 outputs: &OutputFilenames,
                  out_filename: &Path,
-                 tmpdir: &Path) -> ArchiveBuilder<'a> {
-    info!("preparing rlib from {:?} to {:?}", objects, out_filename);
+                 tmpdir: &TempDir) -> ArchiveBuilder<'a> {
+    info!("preparing rlib to {:?}", out_filename);
     let mut ab = ArchiveBuilder::new(archive_config(sess, out_filename, None));
 
-    for obj in objects {
+    for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
         ab.add_file(obj);
     }
 
@@ -452,67 +429,13 @@ fn link_rlib<'a>(sess: &'a Session,
     match flavor {
         RlibFlavor::Normal => {
             // Instead of putting the metadata in an object file section, rlibs
-            // contain the metadata in a separate file. We use a temp directory
-            // here so concurrent builds in the same directory don't try to use
-            // the same filename for metadata (stomping over one another)
-            let metadata = tmpdir.join(METADATA_FILENAME);
-            emit_metadata(sess, trans, &metadata);
-            ab.add_file(&metadata);
+            // contain the metadata in a separate file.
+            ab.add_file(&emit_metadata(sess, trans, tmpdir));
 
             // For LTO purposes, the bytecode of this library is also inserted
-            // into the archive.  If codegen_units > 1, we insert each of the
-            // bitcode files.
-            for obj in objects {
-                // Note that we make sure that the bytecode filename in the
-                // archive is never exactly 16 bytes long by adding a 16 byte
-                // extension to it. This is to work around a bug in LLDB that
-                // would cause it to crash if the name of a file in an archive
-                // was exactly 16 bytes.
-                let bc_filename = obj.with_extension("bc");
-                let bc_deflated_filename = tmpdir.join({
-                    obj.with_extension("bytecode.deflate").file_name().unwrap()
-                });
-
-                let mut bc_data = Vec::new();
-                match fs::File::open(&bc_filename).and_then(|mut f| {
-                    f.read_to_end(&mut bc_data)
-                }) {
-                    Ok(..) => {}
-                    Err(e) => sess.fatal(&format!("failed to read bytecode: {}",
-                                                 e))
-                }
-
-                let mut bc_data_deflated = Vec::new();
-                DeflateEncoder::new(&mut bc_data_deflated, Compression::Fast)
-                    .write_all(&bc_data).unwrap();
-
-                let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
-                    Ok(file) => file,
-                    Err(e) => {
-                        sess.fatal(&format!("failed to create compressed \
-                                             bytecode file: {}", e))
-                    }
-                };
-
-                match write_rlib_bytecode_object_v1(&mut bc_file_deflated,
-                                                    &bc_data_deflated) {
-                    Ok(()) => {}
-                    Err(e) => {
-                        sess.fatal(&format!("failed to write compressed \
-                                             bytecode: {}", e));
-                    }
-                };
-
-                ab.add_file(&bc_deflated_filename);
-
-                // See the bottom of back::write::run_passes for an explanation
-                // of when we do and don't keep .#module-name#.bc files around.
-                let user_wants_numbered_bitcode =
-                        sess.opts.output_types.contains_key(&OutputType::Bitcode) &&
-                        sess.opts.cg.codegen_units > 1;
-                if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
-                    remove(sess, &bc_filename);
-                }
+            // into the archive.
+            for bytecode in trans.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref()) {
+                ab.add_file(bytecode);
             }
 
             // After adding all files to the archive, we need to update the
@@ -524,47 +447,16 @@ fn link_rlib<'a>(sess: &'a Session,
         }
 
         RlibFlavor::StaticlibBase => {
-            if trans.allocator_module.is_some() {
-                ab.add_file(&outputs.with_extension(ALLOCATOR_OBJ_NAME));
+            let obj = trans.allocator_module
+                .as_ref()
+                .and_then(|m| m.object.as_ref());
+            if let Some(obj) = obj {
+                ab.add_file(obj);
             }
         }
     }
 
     ab
-}
-
-fn write_rlib_bytecode_object_v1(writer: &mut Write,
-                                 bc_data_deflated: &[u8]) -> io::Result<()> {
-    let bc_data_deflated_size: u64 = bc_data_deflated.len() as u64;
-
-    writer.write_all(RLIB_BYTECODE_OBJECT_MAGIC)?;
-    writer.write_all(&[1, 0, 0, 0])?;
-    writer.write_all(&[
-        (bc_data_deflated_size >>  0) as u8,
-        (bc_data_deflated_size >>  8) as u8,
-        (bc_data_deflated_size >> 16) as u8,
-        (bc_data_deflated_size >> 24) as u8,
-        (bc_data_deflated_size >> 32) as u8,
-        (bc_data_deflated_size >> 40) as u8,
-        (bc_data_deflated_size >> 48) as u8,
-        (bc_data_deflated_size >> 56) as u8,
-    ])?;
-    writer.write_all(&bc_data_deflated)?;
-
-    let number_of_bytes_written_so_far =
-        RLIB_BYTECODE_OBJECT_MAGIC.len() +                // magic id
-        mem::size_of_val(&RLIB_BYTECODE_OBJECT_VERSION) + // version
-        mem::size_of_val(&bc_data_deflated_size) +        // data size field
-        bc_data_deflated_size as usize;                    // actual data
-
-    // If the number of bytes written to the object so far is odd, add a
-    // padding byte to make it even. This works around a crash bug in LLDB
-    // (see issue #15950)
-    if number_of_bytes_written_so_far % 2 == 1 {
-        writer.write_all(&[0])?;
-    }
-
-    return Ok(());
 }
 
 // Create a static archive
@@ -581,15 +473,11 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
 // metadata file).
 fn link_staticlib(sess: &Session,
                   trans: &CrateTranslation,
-                  outputs: &OutputFilenames,
-                  objects: &[PathBuf],
                   out_filename: &Path,
-                  tempdir: &Path) {
+                  tempdir: &TempDir) {
     let mut ab = link_rlib(sess,
                            trans,
                            RlibFlavor::StaticlibBase,
-                           objects,
-                           outputs,
                            out_filename,
                            tempdir);
     let mut all_native_libs = vec![];
@@ -617,7 +505,7 @@ fn link_staticlib(sess: &Session,
         });
         ab.add_rlib(path,
                     &name.as_str(),
-                    sess.lto() && !ignored_for_lto(&trans.crate_info, cnum),
+                    sess.lto() && !ignored_for_lto(sess, &trans.crate_info, cnum),
                     skip_object_files).unwrap();
 
         all_native_libs.extend(trans.crate_info.native_libraries[&cnum].iter().cloned());
@@ -632,28 +520,7 @@ fn link_staticlib(sess: &Session,
     if !all_native_libs.is_empty() {
         if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
             print_native_static_libs(sess, &all_native_libs);
-        } else {
-            // Fallback for backwards compatibility only
-            print_native_static_libs_legacy(sess, &all_native_libs);
         }
-    }
-}
-
-fn print_native_static_libs_legacy(sess: &Session, all_native_libs: &[NativeLibrary]) {
-    sess.note_without_error("link against the following native artifacts when linking against \
-                             this static library");
-    sess.note_without_error("This list will not be printed by default. \
-        Please add --print=native-static-libs if you need this information");
-
-    for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
-        let name = match lib.kind {
-            NativeLibraryKind::NativeStaticNobundle |
-            NativeLibraryKind::NativeUnknown => "library",
-            NativeLibraryKind::NativeFramework => "framework",
-            // These are included, no need to print them
-            NativeLibraryKind::NativeStatic => continue,
-        };
-        sess.note_without_error(&format!("{}: {}", name, lib.name));
     }
 }
 
@@ -692,13 +559,16 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
 // links to all upstream files as well.
 fn link_natively(sess: &Session,
                  crate_type: config::CrateType,
-                 objects: &[PathBuf],
                  out_filename: &Path,
                  trans: &CrateTranslation,
-                 outputs: &OutputFilenames,
                  tmpdir: &Path) {
-    info!("preparing {:?} from {:?} to {:?}", crate_type, objects, out_filename);
+    info!("preparing {:?} to {:?}", crate_type, out_filename);
     let flavor = sess.linker_flavor();
+
+    // The "binaryen linker" is massively special, so skip everything below.
+    if flavor == LinkerFlavor::Binaryen {
+        return link_binaryen(sess, crate_type, out_filename, trans, tmpdir);
+    }
 
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd, envs) = get_linker(sess);
@@ -735,7 +605,7 @@ fn link_natively(sess: &Session,
     {
         let mut linker = trans.linker_info.to_linker(cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
-                  objects, out_filename, outputs, trans);
+                  out_filename, trans);
         cmd = linker.finalize();
     }
     if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
@@ -796,17 +666,18 @@ fn link_natively(sess: &Session,
         let mut out = output.stderr.clone();
         out.extend(&output.stdout);
         let out = String::from_utf8_lossy(&out);
-        let msg = "clang: error: unable to execute command: \
-                   Segmentation fault: 11";
-        if !out.contains(msg) {
+        let msg_segv = "clang: error: unable to execute command: Segmentation fault: 11";
+        let msg_bus  = "clang: error: unable to execute command: Bus error: 10";
+        if !(out.contains(msg_segv) || out.contains(msg_bus)) {
             break
         }
 
-        sess.struct_warn("looks like the linker segfaulted when we tried to \
-                          call it, automatically retrying again")
-            .note(&format!("{:?}", cmd))
-            .note(&out)
-            .emit();
+        warn!(
+            "looks like the linker segfaulted when we tried to call it, \
+             automatically retrying again. cmd = {:?}, out = {}.",
+            cmd,
+            out,
+        );
     }
 
     match prog {
@@ -956,9 +827,7 @@ fn link_args(cmd: &mut Linker,
              sess: &Session,
              crate_type: config::CrateType,
              tmpdir: &Path,
-             objects: &[PathBuf],
              out_filename: &Path,
-             outputs: &OutputFilenames,
              trans: &CrateTranslation) {
 
     // The default library location, we need this to find the runtime.
@@ -969,7 +838,7 @@ fn link_args(cmd: &mut Linker,
     let t = &sess.target.target;
 
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
-    for obj in objects {
+    for obj in trans.modules.iter().filter_map(|m| m.object.as_ref()) {
         cmd.add_object(obj);
     }
     cmd.output_filename(out_filename);
@@ -993,11 +862,16 @@ fn link_args(cmd: &mut Linker,
     // object file, so we link that in here.
     if crate_type == config::CrateTypeDylib ||
        crate_type == config::CrateTypeProcMacro {
-        cmd.add_object(&outputs.with_extension(METADATA_OBJ_NAME));
+        if let Some(obj) = trans.metadata_module.object.as_ref() {
+            cmd.add_object(obj);
+        }
     }
 
-    if trans.allocator_module.is_some() {
-        cmd.add_object(&outputs.with_extension(ALLOCATOR_OBJ_NAME));
+    let obj = trans.allocator_module
+        .as_ref()
+        .and_then(|m| m.object.as_ref());
+    if let Some(obj) = obj {
+        cmd.add_object(obj);
     }
 
     // Try to strip as much out of the generated object by removing unused
@@ -1264,10 +1138,10 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         archive.update_symbols();
 
         for f in archive.src_files() {
-            if f.ends_with("bytecode.deflate") || f == METADATA_FILENAME {
-                    archive.remove_file(&f);
-                    continue
-                }
+            if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
+                archive.remove_file(&f);
+                continue
+            }
         }
 
         archive.build();
@@ -1324,7 +1198,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
 
-        if (!sess.lto() || ignored_for_lto(&trans.crate_info, cnum)) &&
+        if (!sess.lto() || ignored_for_lto(sess, &trans.crate_info, cnum)) &&
            crate_type != config::CrateTypeDylib &&
            !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
@@ -1342,7 +1216,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 
             let mut any_objects = false;
             for f in archive.src_files() {
-                if f.ends_with("bytecode.deflate") || f == METADATA_FILENAME {
+                if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
                     archive.remove_file(&f);
                     continue
                 }
@@ -1350,11 +1224,23 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 let canonical = f.replace("-", "_");
                 let canonical_name = name.replace("-", "_");
 
+                // Look for `.rcgu.o` at the end of the filename to conclude
+                // that this is a Rust-related object file.
+                fn looks_like_rust(s: &str) -> bool {
+                    let path = Path::new(s);
+                    let ext = path.extension().and_then(|s| s.to_str());
+                    if ext != Some(OutputType::Object.extension()) {
+                        return false
+                    }
+                    let ext2 = path.file_stem()
+                        .and_then(|s| Path::new(s).extension())
+                        .and_then(|s| s.to_str());
+                    ext2 == Some(RUST_CGU_EXT)
+                }
+
                 let is_rust_object =
-                    canonical.starts_with(&canonical_name) && {
-                        let num = &f[name.len()..f.len() - 2];
-                        num.len() > 0 && num[1..].parse::<u32>().is_ok()
-                    };
+                    canonical.starts_with(&canonical_name) &&
+                    looks_like_rust(&f);
 
                 // If we've been requested to skip all native object files
                 // (those not generated by the rust compiler) then we can skip
@@ -1365,8 +1251,10 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                let skip_because_lto = sess.lto() && is_rust_object &&
-                                        !trans.crate_info.is_no_builtins.contains(&cnum);
+                let skip_because_lto = sess.lto() &&
+                    is_rust_object &&
+                    (sess.target.target.options.no_builtins ||
+                     !trans.crate_info.is_no_builtins.contains(&cnum));
 
                 if skip_because_cfg_say_so || skip_because_lto {
                     archive.remove_file(&f);
@@ -1479,5 +1367,32 @@ fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     match lib.cfg {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
+    }
+}
+
+/// For now "linking with binaryen" is just "move the one module we generated in
+/// the backend to the final output"
+///
+/// That is, all the heavy lifting happens during the `back::write` phase. Here
+/// we just clean up after that.
+///
+/// Note that this is super temporary and "will not survive the night", this is
+/// guaranteed to get removed as soon as a linker for wasm exists. This should
+/// not be used for anything other than wasm.
+fn link_binaryen(sess: &Session,
+                 _crate_type: config::CrateType,
+                 out_filename: &Path,
+                 trans: &CrateTranslation,
+                 _tmpdir: &Path) {
+    assert!(trans.allocator_module.is_none());
+    assert_eq!(trans.modules.len(), 1);
+
+    let object = trans.modules[0].object.as_ref().expect("object must exist");
+    let res = fs::hard_link(object, out_filename)
+        .or_else(|_| fs::copy(object, out_filename).map(|_| ()));
+    if let Err(e) = res {
+        sess.fatal(&format!("failed to create `{}`: {}",
+                            out_filename.display(),
+                            e));
     }
 }

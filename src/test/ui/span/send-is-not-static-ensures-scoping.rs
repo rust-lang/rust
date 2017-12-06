@@ -23,13 +23,13 @@ impl<'a> Guard<'a> {
 fn main() {
     let bad = {
         let x = 1;
-        let y = &x; //~ ERROR `x` does not live long enough
+        let y = &x;
 
         scoped(|| {
             let _z = y;
             //~^ ERROR `y` does not live long enough
         })
-    };
+    }; //~ ERROR `x` does not live long enough
 
     bad.join();
 }

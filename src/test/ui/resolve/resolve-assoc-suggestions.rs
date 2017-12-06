@@ -24,34 +24,31 @@ impl Tr for S {
 
     fn method(&self) {
         let _: field;
-        //~^ ERROR unresolved type `field`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find type `field`
+        //~| NOTE not found in this scope
         let field(..);
-        //~^ ERROR unresolved tuple struct/variant `field`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find tuple struct/variant `field`
+        //~| NOTE not found in this scope
         field;
-        //~^ ERROR unresolved value `field`
-        //~| NOTE did you mean `self.field`?
+        //~^ ERROR cannot find value `field`
 
         let _: Type;
-        //~^ ERROR unresolved type `Type`
-        //~| NOTE did you mean `Self::Type`?
+        //~^ ERROR cannot find type `Type`
         let Type(..);
-        //~^ ERROR unresolved tuple struct/variant `Type`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find tuple struct/variant `Type`
+        //~| NOTE not found in this scope
         Type;
-        //~^ ERROR unresolved value `Type`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find value `Type`
+        //~| NOTE not found in this scope
 
         let _: method;
-        //~^ ERROR unresolved type `method`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find type `method`
+        //~| NOTE not found in this scope
         let method(..);
-        //~^ ERROR unresolved tuple struct/variant `method`
-        //~| NOTE no resolution found
+        //~^ ERROR cannot find tuple struct/variant `method`
+        //~| NOTE not found in this scope
         method;
-        //~^ ERROR unresolved value `method`
-        //~| NOTE did you mean `self.method(...)`?
+        //~^ ERROR cannot find value `method`
     }
 }
 

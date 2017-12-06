@@ -596,7 +596,7 @@ impl String {
     /// Decode a UTF-16 encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
     ///
-    /// [`Err`]: ../../std/result/enum.Result.htlm#variant.Err
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -773,8 +773,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// use std::ascii::AsciiExt;
-    ///
     /// let mut s = String::from("foobar");
     /// let s_mut_str = s.as_mut_str();
     ///

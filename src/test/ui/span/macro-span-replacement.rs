@@ -12,7 +12,7 @@
 
 macro_rules! m {
     ($a:tt $b:tt) => {
-        $b $a;
+        $b $a; //~ WARN struct is never used
     }
 }
 

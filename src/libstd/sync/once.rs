@@ -103,8 +103,8 @@ unsafe impl Sync for Once {}
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl Send for Once {}
 
-/// State yielded to the [`call_once_force`] method which can be used to query
-/// whether the [`Once`] was previously poisoned or not.
+/// State yielded to [`call_once_force`]’s closure parameter. The state can be
+/// used to query the poison status of the [`Once`].
 ///
 /// [`call_once_force`]: struct.Once.html#method.call_once_force
 /// [`Once`]: struct.Once.html
@@ -156,7 +156,6 @@ struct Finish {
 impl Once {
     /// Creates a new `Once` value.
     #[stable(feature = "once_new", since = "1.2.0")]
-    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_once_new"))]
     pub const fn new() -> Once {
         Once {
             state: AtomicUsize::new(INCOMPLETE),
@@ -230,17 +229,50 @@ impl Once {
 
     /// Performs the same function as [`call_once`] except ignores poisoning.
     ///
+    /// Unlike [`call_once`], if this `Once` has been poisoned (i.e. a previous
+    /// call to `call_once` or `call_once_force` caused a panic), calling
+    /// `call_once_force` will still invoke the closure `f` and will _not_
+    /// result in an immediate panic. If `f` panics, the `Once` will remain
+    /// in a poison state. If `f` does _not_ panic, the `Once` will no
+    /// longer be in a poison state and all future calls to `call_once` or
+    /// `call_one_force` will no-op.
+    ///
+    /// The closure `f` is yielded a [`OnceState`] structure which can be used
+    /// to query the poison status of the `Once`.
+    ///
     /// [`call_once`]: struct.Once.html#method.call_once
-    ///
-    /// If this `Once` has been poisoned (some initialization panicked) then
-    /// this function will continue to attempt to call initialization functions
-    /// until one of them doesn't panic.
-    ///
-    /// The closure `f` is yielded a [`OnceState`] structure which can be used to query the
-    /// state of this `Once` (whether initialization has previously panicked or
-    /// not).
-    ///
     /// [`OnceState`]: struct.OnceState.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(once_poison)]
+    ///
+    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::thread;
+    ///
+    /// static INIT: Once = ONCE_INIT;
+    ///
+    /// // poison the once
+    /// let handle = thread::spawn(|| {
+    ///     INIT.call_once(|| panic!());
+    /// });
+    /// assert!(handle.join().is_err());
+    ///
+    /// // poisoning propagates
+    /// let handle = thread::spawn(|| {
+    ///     INIT.call_once(|| {});
+    /// });
+    /// assert!(handle.join().is_err());
+    ///
+    /// // call_once_force will still run and reset the poisoned state
+    /// INIT.call_once_force(|state| {
+    ///     assert!(state.poisoned());
+    /// });
+    ///
+    /// // once any success happens, we stop propagating the poison
+    /// INIT.call_once(|| {});
+    /// ```
     #[unstable(feature = "once_poison", issue = "33577")]
     pub fn call_once_force<F>(&'static self, f: F) where F: FnOnce(&OnceState) {
         // same as above, just with a different parameter to `call_inner`.
@@ -386,12 +418,47 @@ impl Drop for Finish {
 }
 
 impl OnceState {
-    /// Returns whether the associated [`Once`] has been poisoned.
+    /// Returns whether the associated [`Once`] was poisoned prior to the
+    /// invocation of the closure passed to [`call_once_force`].
     ///
-    /// Once an initialization routine for a [`Once`] has panicked it will forever
-    /// indicate to future forced initialization routines that it is poisoned.
-    ///
+    /// [`call_once_force`]: struct.Once.html#method.call_once_force
     /// [`Once`]: struct.Once.html
+    ///
+    /// # Examples
+    ///
+    /// A poisoned `Once`:
+    ///
+    /// ```
+    /// #![feature(once_poison)]
+    ///
+    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::thread;
+    ///
+    /// static INIT: Once = ONCE_INIT;
+    ///
+    /// // poison the once
+    /// let handle = thread::spawn(|| {
+    ///     INIT.call_once(|| panic!());
+    /// });
+    /// assert!(handle.join().is_err());
+    ///
+    /// INIT.call_once_force(|state| {
+    ///     assert!(state.poisoned());
+    /// });
+    /// ```
+    ///
+    /// An unpoisoned `Once`:
+    ///
+    /// ```
+    /// #![feature(once_poison)]
+    ///
+    /// use std::sync::{Once, ONCE_INIT};
+    ///
+    /// static INIT: Once = ONCE_INIT;
+    ///
+    /// INIT.call_once_force(|state| {
+    ///     assert!(!state.poisoned());
+    /// });
     #[unstable(feature = "once_poison", issue = "33577")]
     pub fn poisoned(&self) -> bool {
         self.poisoned

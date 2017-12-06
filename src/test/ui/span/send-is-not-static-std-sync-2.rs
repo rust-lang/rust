@@ -18,8 +18,8 @@ use std::sync::{Mutex, RwLock, mpsc};
 fn mutex() {
     let lock = {
         let x = 1;
-        Mutex::new(&x) //~ ERROR does not live long enough
-    };
+        Mutex::new(&x)
+    }; //~ ERROR does not live long enough
 
     let _dangling = *lock.lock().unwrap();
 }
@@ -27,8 +27,8 @@ fn mutex() {
 fn rwlock() {
     let lock = {
         let x = 1;
-        RwLock::new(&x) //~ ERROR does not live long enough
-    };
+        RwLock::new(&x)
+    }; //~ ERROR does not live long enough
     let _dangling = *lock.read().unwrap();
 }
 
@@ -36,9 +36,9 @@ fn channel() {
     let (_tx, rx) = {
         let x = 1;
         let (tx, rx) = mpsc::channel();
-        let _ = tx.send(&x); //~ ERROR does not live long enough
+        let _ = tx.send(&x);
         (tx, rx)
-    };
+    }; //~ ERROR does not live long enough
 
     let _dangling = rx.recv();
 }

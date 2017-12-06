@@ -20,7 +20,9 @@ use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
 use sys::platform::fs::MetadataExt as UnixMetadataExt;
 
-/// Unix-specific extensions to `File`
+/// Unix-specific extensions to [`File`].
+///
+/// [`File`]: ../../../../std/fs/struct.File.html
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Reads a number of bytes starting from a given offset.
@@ -32,8 +34,28 @@ pub trait FileExt {
     ///
     /// The current file cursor is not affected by this function.
     ///
-    /// Note that similar to `File::read`, it is not an error to return with a
+    /// Note that similar to [`File::read`], it is not an error to return with a
     /// short read.
+    ///
+    /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::os::unix::prelude::FileExt;
+    /// use std::fs::File;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let mut buf = [0u8; 8];
+    /// let file = File::open("foo.txt")?;
+    ///
+    /// // We now read 8 bytes from the offset 10.
+    /// let num_bytes_read = file.read_at(&mut buf, 10)?;
+    /// println!("read {} bytes: {:?}", num_bytes_read, buf);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
 
@@ -49,8 +71,26 @@ pub trait FileExt {
     /// When writing beyond the end of the file, the file is appropriately
     /// extended and the intermediate bytes are initialized with the value 0.
     ///
-    /// Note that similar to `File::write`, it is not an error to return a
+    /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
+    ///
+    /// [`File::write`]: ../../../../std/fs/struct.File.html#write.v
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::os::unix::prelude::FileExt;
+    /// use std::fs::File;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let file = File::open("foo.txt")?;
+    ///
+    /// // We now write at the offset 10.
+    /// file.write_at(b"sushi", 10)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
 }
@@ -215,36 +255,282 @@ impl OpenOptionsExt for OpenOptions {
 // casts and rely on manual lowering to `stat` if the raw type is desired.
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
+    /// Returns the ID of the device containing the file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let dev_id = meta.dev();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn dev(&self) -> u64;
+    /// Returns the inode number.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let inode = meta.ino();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn ino(&self) -> u64;
+    /// Returns the rights applied to this file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let mode = meta.mode();
+    /// let user_has_write_access      = mode & 0o200;
+    /// let user_has_read_write_access = mode & 0o600;
+    /// let group_has_read_access      = mode & 0o040;
+    /// let others_have_exec_access    = mode & 0o001;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
+    /// Returns the number of hard links pointing to this file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let nb_hard_links = meta.nlink();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn nlink(&self) -> u64;
+    /// Returns the user ID of the owner of this file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let user_id = meta.uid();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn uid(&self) -> u32;
+    /// Returns the group ID of the owner of this file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let group_id = meta.gid();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn gid(&self) -> u32;
+    /// Returns the device ID of this file (if it is a special one).
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let device_id = meta.rdev();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn rdev(&self) -> u64;
+    /// Returns the total size of this file in bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let file_size = meta.size();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn size(&self) -> u64;
+    /// Returns the time of the last access to the file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let last_access_time = meta.atime();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn atime(&self) -> i64;
+    /// Returns the time of the last access to the file in nanoseconds.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let nano_last_access_time = meta.atime_nsec();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn atime_nsec(&self) -> i64;
+    /// Returns the time of the last modification of the file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let last_modification_time = meta.mtime();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn mtime(&self) -> i64;
+    /// Returns the time of the last modification of the file in nanoseconds.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let nano_last_modification_time = meta.mtime_nsec();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn mtime_nsec(&self) -> i64;
+    /// Returns the time of the last status change of the file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let last_status_change_time = meta.ctime();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn ctime(&self) -> i64;
+    /// Returns the time of the last status change of the file in nanoseconds.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let nano_last_status_change_time = meta.ctime_nsec();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn ctime_nsec(&self) -> i64;
+    /// Returns the blocksize for filesystem I/O.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let blocksize = meta.blksize();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn blksize(&self) -> u64;
+    /// Returns the number of blocks allocated to the file, in 512-byte units.
+    ///
+    /// Please note that this may be smaller than `st_size / 512` when the file has holes.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs;
+    /// use std::os::unix::fs::MetadataExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("some_file")?;
+    /// let blocks = meta.blocks();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn blocks(&self) -> u64;
 }
@@ -269,19 +555,79 @@ impl MetadataExt for fs::Metadata {
     fn blocks(&self) -> u64 { self.st_blocks() }
 }
 
-/// Add special unix types (block/char device, fifo and socket)
+/// Add support for special unix types (block/char device, fifo and socket).
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a block device.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::FileTypeExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("block_device_file")?;
+    /// let file_type = meta.file_type();
+    /// assert!(file_type.is_block_device());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_block_device(&self) -> bool;
     /// Returns whether this file type is a char device.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::FileTypeExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("char_device_file")?;
+    /// let file_type = meta.file_type();
+    /// assert!(file_type.is_char_device());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_char_device(&self) -> bool;
     /// Returns whether this file type is a fifo.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::FileTypeExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("fifo_file")?;
+    /// let file_type = meta.file_type();
+    /// assert!(file_type.is_fifo());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_fifo(&self) -> bool;
     /// Returns whether this file type is a socket.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs;
+    /// use std::os::unix::fs::FileTypeExt;
+    ///
+    /// # use std::io;
+    /// # fn f() -> io::Result<()> {
+    /// let meta = fs::metadata("unix.socket")?;
+    /// let file_type = meta.file_type();
+    /// assert!(file_type.is_socket());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "file_type_ext", since = "1.5.0")]
     fn is_socket(&self) -> bool;
 }
@@ -294,7 +640,9 @@ impl FileTypeExt for fs::FileType {
     fn is_socket(&self) -> bool { self.as_inner().is(libc::S_IFSOCK) }
 }
 
-/// Unix-specific extension methods for `fs::DirEntry`
+/// Unix-specific extension methods for [`fs::DirEntry`].
+///
+/// [`fs::DirEntry`]: ../../../../std/fs/struct.DirEntry.html
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
 pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field in the contained `dirent`
@@ -354,7 +702,9 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
 }
 
 #[stable(feature = "dir_builder", since = "1.6.0")]
-/// An extension trait for `fs::DirBuilder` for unix-specific options.
+/// An extension trait for [`fs::DirBuilder`] for unix-specific options.
+///
+/// [`fs::DirBuilder`]: ../../../../std/fs/struct.DirBuilder.html
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.

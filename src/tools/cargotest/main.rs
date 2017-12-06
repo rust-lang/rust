@@ -19,6 +19,7 @@ struct Test {
     name: &'static str,
     sha: &'static str,
     lock: Option<&'static str>,
+    packages: &'static [&'static str],
 }
 
 const TEST_REPOS: &'static [Test] = &[
@@ -27,30 +28,51 @@ const TEST_REPOS: &'static [Test] = &[
         repo: "https://github.com/iron/iron",
         sha: "21c7dae29c3c214c08533c2a55ac649b418f2fe3",
         lock: Some(include_str!("lockfiles/iron-Cargo.lock")),
+        packages: &[],
     },
     Test {
         name: "ripgrep",
         repo: "https://github.com/BurntSushi/ripgrep",
         sha: "b65bb37b14655e1a89c7cd19c8b011ef3e312791",
         lock: None,
+        packages: &[],
     },
     Test {
         name: "tokei",
         repo: "https://github.com/Aaronepower/tokei",
         sha: "5e11c4852fe4aa086b0e4fe5885822fbe57ba928",
         lock: None,
+        packages: &[],
     },
     Test {
         name: "treeify",
         repo: "https://github.com/dzamlo/treeify",
         sha: "999001b223152441198f117a68fb81f57bc086dd",
         lock: None,
+        packages: &[],
     },
     Test {
         name: "xsv",
         repo: "https://github.com/BurntSushi/xsv",
-        sha: "a9a7163f2a2953cea426fee1216bec914fe2f56a",
+        sha: "66956b6bfd62d6ac767a6b6499c982eae20a2c9f",
         lock: None,
+        packages: &[],
+    },
+    Test {
+        name: "servo",
+        repo: "https://github.com/servo/servo",
+        sha: "17e97b9320fdb7cdb33bbc5f4d0fde0653bbf2e4",
+        lock: None,
+        // Only test Stylo a.k.a. Quantum CSS, the parts of Servo going into Firefox.
+        // This takes much less time to build than all of Servo and supports stable Rust.
+        packages: &["stylo_tests", "selectors"],
+    },
+    Test {
+        name: "webrender",
+        repo: "https://github.com/servo/webrender",
+        sha: "57250b2b8fa63934f80e5376a29f7dcb3f759ad6",
+        lock: None,
+        packages: &[],
     },
 ];
 
@@ -74,7 +96,7 @@ fn test_repo(cargo: &Path, out_dir: &Path, test: &Test) {
             .write_all(lockfile.as_bytes())
             .expect("");
     }
-    if !run_cargo_test(cargo, &dir) {
+    if !run_cargo_test(cargo, &dir, test.packages) {
         panic!("tests failed for {}", test.repo);
     }
 }
@@ -134,11 +156,17 @@ fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
     out_dir
 }
 
-fn run_cargo_test(cargo_path: &Path, crate_path: &Path) -> bool {
-    let status = Command::new(cargo_path)
-        .arg("test")
+fn run_cargo_test(cargo_path: &Path, crate_path: &Path, packages: &[&str]) -> bool {
+    let mut command = Command::new(cargo_path);
+    command.arg("test");
+    for name in packages {
+        command.arg("-p").arg(name);
+    }
+    let status = command
         // Disable rust-lang/cargo's cross-compile tests
         .env("CFG_DISABLE_CROSS_TESTS", "1")
+        // Relax #![deny(warnings)] in some crates
+        .env("RUSTFLAGS", "--cap-lints warn")
         .current_dir(crate_path)
         .status()
         .expect("");

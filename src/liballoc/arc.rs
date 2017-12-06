@@ -52,8 +52,10 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// also destroyed.
 ///
 /// Shared references in Rust disallow mutation by default, and `Arc` is no
-/// exception. If you need to mutate through an `Arc`, use [`Mutex`][mutex],
-/// [`RwLock`][rwlock], or one of the [`Atomic`][atomic] types.
+/// exception: you cannot generally obtain a mutable reference to something
+/// inside an `Arc`. If you need to mutate through an `Arc`, use
+/// [`Mutex`][mutex], [`RwLock`][rwlock], or one of the [`Atomic`][atomic]
+/// types.
 ///
 /// ## Thread Safety
 ///
@@ -1326,7 +1328,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&self.ptr, f)
+        fmt::Pointer::fmt(&(&**self as *const T), f)
     }
 }
 

@@ -107,10 +107,10 @@ macro_rules! make_mir_visitor {
 
             fn visit_assign(&mut self,
                             block: BasicBlock,
-                            lvalue: & $($mutability)* Lvalue<'tcx>,
+                            place: & $($mutability)* Place<'tcx>,
                             rvalue: & $($mutability)* Rvalue<'tcx>,
                             location: Location) {
-                self.super_assign(block, lvalue, rvalue, location);
+                self.super_assign(block, place, rvalue, location);
             }
 
             fn visit_terminator(&mut self,
@@ -145,32 +145,32 @@ macro_rules! make_mir_visitor {
                 self.super_operand(operand, location);
             }
 
-            fn visit_lvalue(&mut self,
-                            lvalue: & $($mutability)* Lvalue<'tcx>,
-                            context: LvalueContext<'tcx>,
+            fn visit_place(&mut self,
+                            place: & $($mutability)* Place<'tcx>,
+                            context: PlaceContext<'tcx>,
                             location: Location) {
-                self.super_lvalue(lvalue, context, location);
+                self.super_place(place, context, location);
             }
 
             fn visit_static(&mut self,
                             static_: & $($mutability)* Static<'tcx>,
-                            context: LvalueContext<'tcx>,
+                            context: PlaceContext<'tcx>,
                             location: Location) {
                 self.super_static(static_, context, location);
             }
 
             fn visit_projection(&mut self,
-                                lvalue: & $($mutability)* LvalueProjection<'tcx>,
-                                context: LvalueContext<'tcx>,
+                                place: & $($mutability)* PlaceProjection<'tcx>,
+                                context: PlaceContext<'tcx>,
                                 location: Location) {
-                self.super_projection(lvalue, context, location);
+                self.super_projection(place, context, location);
             }
 
             fn visit_projection_elem(&mut self,
-                                     lvalue: & $($mutability)* LvalueElem<'tcx>,
-                                     context: LvalueContext<'tcx>,
+                                     place: & $($mutability)* PlaceElem<'tcx>,
+                                     context: PlaceContext<'tcx>,
                                      location: Location) {
-                self.super_projection_elem(lvalue, context, location);
+                self.super_projection_elem(place, context, location);
             }
 
             fn visit_branch(&mut self,
@@ -209,7 +209,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_ty(&mut self,
                         ty: & $($mutability)* Ty<'tcx>,
-                        _: Lookup) {
+                        _: TyContext) {
                 self.super_ty(ty);
             }
 
@@ -256,13 +256,14 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_local_decl(&mut self,
+                                local: Local,
                                 local_decl: & $($mutability)* LocalDecl<'tcx>) {
-                self.super_local_decl(local_decl);
+                self.super_local_decl(local, local_decl);
             }
 
             fn visit_local(&mut self,
                             _local: & $($mutability)* Local,
-                            _context: LvalueContext<'tcx>,
+                            _context: PlaceContext<'tcx>,
                             _location: Location) {
             }
 
@@ -291,14 +292,13 @@ macro_rules! make_mir_visitor {
                     self.visit_visibility_scope_data(scope);
                 }
 
-                let lookup = Lookup::Src(SourceInfo {
+                self.visit_ty(&$($mutability)* mir.return_ty(), TyContext::ReturnTy(SourceInfo {
                     span: mir.span,
                     scope: ARGUMENT_VISIBILITY_SCOPE,
-                });
-                self.visit_ty(&$($mutability)* mir.return_ty, lookup);
+                }));
 
-                for local_decl in &$($mutability)* mir.local_decls {
-                    self.visit_local_decl(local_decl);
+                for local in mir.local_decls.indices() {
+                    self.visit_local_decl(local, & $($mutability)* mir.local_decls[local]);
                 }
 
                 self.visit_span(&$($mutability)* mir.span);
@@ -350,32 +350,33 @@ macro_rules! make_mir_visitor {
 
                 self.visit_source_info(source_info);
                 match *kind {
-                    StatementKind::Assign(ref $($mutability)* lvalue,
+                    StatementKind::Assign(ref $($mutability)* place,
                                           ref $($mutability)* rvalue) => {
-                        self.visit_assign(block, lvalue, rvalue, location);
+                        self.visit_assign(block, place, rvalue, location);
                     }
                     StatementKind::EndRegion(_) => {}
-                    StatementKind::Validate(_, ref $($mutability)* lvalues) => {
-                        for operand in lvalues {
-                            self.visit_lvalue(& $($mutability)* operand.lval,
-                                              LvalueContext::Validate, location);
-                            self.visit_ty(& $($mutability)* operand.ty, Lookup::Loc(location));
+                    StatementKind::Validate(_, ref $($mutability)* places) => {
+                        for operand in places {
+                            self.visit_place(& $($mutability)* operand.place,
+                                              PlaceContext::Validate, location);
+                            self.visit_ty(& $($mutability)* operand.ty,
+                                          TyContext::Location(location));
                         }
                     }
-                    StatementKind::SetDiscriminant{ ref $($mutability)* lvalue, .. } => {
-                        self.visit_lvalue(lvalue, LvalueContext::Store, location);
+                    StatementKind::SetDiscriminant{ ref $($mutability)* place, .. } => {
+                        self.visit_place(place, PlaceContext::Store, location);
                     }
                     StatementKind::StorageLive(ref $($mutability)* local) => {
-                        self.visit_local(local, LvalueContext::StorageLive, location);
+                        self.visit_local(local, PlaceContext::StorageLive, location);
                     }
                     StatementKind::StorageDead(ref $($mutability)* local) => {
-                        self.visit_local(local, LvalueContext::StorageDead, location);
+                        self.visit_local(local, PlaceContext::StorageDead, location);
                     }
                     StatementKind::InlineAsm { ref $($mutability)* outputs,
                                                ref $($mutability)* inputs,
                                                asm: _ } => {
                         for output in & $($mutability)* outputs[..] {
-                            self.visit_lvalue(output, LvalueContext::Store, location);
+                            self.visit_place(output, PlaceContext::Store, location);
                         }
                         for input in & $($mutability)* inputs[..] {
                             self.visit_operand(input, location);
@@ -387,10 +388,10 @@ macro_rules! make_mir_visitor {
 
             fn super_assign(&mut self,
                             _block: BasicBlock,
-                            lvalue: &$($mutability)* Lvalue<'tcx>,
+                            place: &$($mutability)* Place<'tcx>,
                             rvalue: &$($mutability)* Rvalue<'tcx>,
                             location: Location) {
-                self.visit_lvalue(lvalue, LvalueContext::Store, location);
+                self.visit_place(place, PlaceContext::Store, location);
                 self.visit_rvalue(rvalue, location);
             }
 
@@ -421,7 +422,7 @@ macro_rules! make_mir_visitor {
                                                 ref values,
                                                 ref targets } => {
                         self.visit_operand(discr, source_location);
-                        self.visit_ty(switch_ty, Lookup::Loc(source_location));
+                        self.visit_ty(switch_ty, TyContext::Location(source_location));
                         for value in &values[..] {
                             self.visit_const_int(value, source_location);
                         }
@@ -439,7 +440,7 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Drop { ref $($mutability)* location,
                                            target,
                                            unwind } => {
-                        self.visit_lvalue(location, LvalueContext::Drop, source_location);
+                        self.visit_place(location, PlaceContext::Drop, source_location);
                         self.visit_branch(block, target);
                         unwind.map(|t| self.visit_branch(block, t));
                     }
@@ -448,7 +449,7 @@ macro_rules! make_mir_visitor {
                                                      ref $($mutability)* value,
                                                      target,
                                                      unwind } => {
-                        self.visit_lvalue(location, LvalueContext::Drop, source_location);
+                        self.visit_place(location, PlaceContext::Drop, source_location);
                         self.visit_operand(value, source_location);
                         self.visit_branch(block, target);
                         unwind.map(|t| self.visit_branch(block, t));
@@ -463,7 +464,7 @@ macro_rules! make_mir_visitor {
                             self.visit_operand(arg, source_location);
                         }
                         if let Some((ref $($mutability)* destination, target)) = *destination {
-                            self.visit_lvalue(destination, LvalueContext::Call, source_location);
+                            self.visit_place(destination, PlaceContext::Call, source_location);
                             self.visit_branch(block, target);
                         }
                         cleanup.map(|t| self.visit_branch(block, t));
@@ -486,8 +487,15 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(value, source_location);
                         self.visit_branch(block, resume);
                         drop.map(|t| self.visit_branch(block, t));
+
                     }
 
+                    TerminatorKind::FalseEdges { real_target, ref imaginary_targets } => {
+                        self.visit_branch(block, real_target);
+                        for target in imaginary_targets {
+                            self.visit_branch(block, *target);
+                        }
+                    }
                 }
             }
 
@@ -524,21 +532,21 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::Ref(ref $($mutability)* r, bk, ref $($mutability)* path) => {
                         self.visit_region(r, location);
-                        self.visit_lvalue(path, LvalueContext::Borrow {
+                        self.visit_place(path, PlaceContext::Borrow {
                             region: *r,
                             kind: bk
                         }, location);
                     }
 
                     Rvalue::Len(ref $($mutability)* path) => {
-                        self.visit_lvalue(path, LvalueContext::Inspect, location);
+                        self.visit_place(path, PlaceContext::Inspect, location);
                     }
 
                     Rvalue::Cast(_cast_kind,
                                  ref $($mutability)* operand,
                                  ref $($mutability)* ty) => {
                         self.visit_operand(operand, location);
-                        self.visit_ty(ty, Lookup::Loc(location));
+                        self.visit_ty(ty, TyContext::Location(location));
                     }
 
                     Rvalue::BinaryOp(_bin_op,
@@ -555,12 +563,12 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location);
                     }
 
-                    Rvalue::Discriminant(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::Inspect, location);
+                    Rvalue::Discriminant(ref $($mutability)* place) => {
+                        self.visit_place(place, PlaceContext::Inspect, location);
                     }
 
                     Rvalue::NullaryOp(_op, ref $($mutability)* ty) => {
-                        self.visit_ty(ty, Lookup::Loc(location));
+                        self.visit_ty(ty, TyContext::Location(location));
                     }
 
                     Rvalue::Aggregate(ref $($mutability)* kind,
@@ -568,7 +576,7 @@ macro_rules! make_mir_visitor {
                         let kind = &$($mutability)* **kind;
                         match *kind {
                             AggregateKind::Array(ref $($mutability)* ty) => {
-                                self.visit_ty(ty, Lookup::Loc(location));
+                                self.visit_ty(ty, TyContext::Location(location));
                             }
                             AggregateKind::Tuple => {
                             }
@@ -603,8 +611,11 @@ macro_rules! make_mir_visitor {
                              operand: & $($mutability)* Operand<'tcx>,
                              location: Location) {
                 match *operand {
-                    Operand::Consume(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::Consume, location);
+                    Operand::Copy(ref $($mutability)* place) => {
+                        self.visit_place(place, PlaceContext::Copy, location);
+                    }
+                    Operand::Move(ref $($mutability)* place) => {
+                        self.visit_place(place, PlaceContext::Move, location);
                     }
                     Operand::Constant(ref $($mutability)* constant) => {
                         self.visit_constant(constant, location);
@@ -612,18 +623,18 @@ macro_rules! make_mir_visitor {
                 }
             }
 
-            fn super_lvalue(&mut self,
-                            lvalue: & $($mutability)* Lvalue<'tcx>,
-                            context: LvalueContext<'tcx>,
+            fn super_place(&mut self,
+                            place: & $($mutability)* Place<'tcx>,
+                            context: PlaceContext<'tcx>,
                             location: Location) {
-                match *lvalue {
-                    Lvalue::Local(ref $($mutability)* local) => {
+                match *place {
+                    Place::Local(ref $($mutability)* local) => {
                         self.visit_local(local, context, location);
                     }
-                    Lvalue::Static(ref $($mutability)* static_) => {
+                    Place::Static(ref $($mutability)* static_) => {
                         self.visit_static(static_, context, location);
                     }
-                    Lvalue::Projection(ref $($mutability)* proj) => {
+                    Place::Projection(ref $($mutability)* proj) => {
                         self.visit_projection(proj, context, location);
                     }
                 }
@@ -631,36 +642,36 @@ macro_rules! make_mir_visitor {
 
             fn super_static(&mut self,
                             static_: & $($mutability)* Static<'tcx>,
-                            _context: LvalueContext<'tcx>,
+                            _context: PlaceContext<'tcx>,
                             location: Location) {
                 let Static {
                     ref $($mutability)* def_id,
                     ref $($mutability)* ty,
                 } = *static_;
                 self.visit_def_id(def_id, location);
-                self.visit_ty(ty, Lookup::Loc(location));
+                self.visit_ty(ty, TyContext::Location(location));
             }
 
             fn super_projection(&mut self,
-                                proj: & $($mutability)* LvalueProjection<'tcx>,
-                                context: LvalueContext<'tcx>,
+                                proj: & $($mutability)* PlaceProjection<'tcx>,
+                                context: PlaceContext<'tcx>,
                                 location: Location) {
                 let Projection {
                     ref $($mutability)* base,
                     ref $($mutability)* elem,
                 } = *proj;
                 let context = if context.is_mutating_use() {
-                    LvalueContext::Projection(Mutability::Mut)
+                    PlaceContext::Projection(Mutability::Mut)
                 } else {
-                    LvalueContext::Projection(Mutability::Not)
+                    PlaceContext::Projection(Mutability::Not)
                 };
-                self.visit_lvalue(base, context, location);
+                self.visit_place(base, context, location);
                 self.visit_projection_elem(elem, context, location);
             }
 
             fn super_projection_elem(&mut self,
-                                     proj: & $($mutability)* LvalueElem<'tcx>,
-                                     _context: LvalueContext<'tcx>,
+                                     proj: & $($mutability)* PlaceElem<'tcx>,
+                                     _context: PlaceContext<'tcx>,
                                      location: Location) {
                 match *proj {
                     ProjectionElem::Deref => {
@@ -668,10 +679,10 @@ macro_rules! make_mir_visitor {
                     ProjectionElem::Subslice { from: _, to: _ } => {
                     }
                     ProjectionElem::Field(_field, ref $($mutability)* ty) => {
-                        self.visit_ty(ty, Lookup::Loc(location));
+                        self.visit_ty(ty, TyContext::Location(location));
                     }
                     ProjectionElem::Index(ref $($mutability)* local) => {
-                        self.visit_local(local, LvalueContext::Consume, location);
+                        self.visit_local(local, PlaceContext::Copy, location);
                     }
                     ProjectionElem::ConstantIndex { offset: _,
                                                     min_length: _,
@@ -683,6 +694,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_local_decl(&mut self,
+                                local: Local,
                                 local_decl: & $($mutability)* LocalDecl<'tcx>) {
                 let LocalDecl {
                     mutability: _,
@@ -694,7 +706,10 @@ macro_rules! make_mir_visitor {
                     is_user_variable: _,
                 } = *local_decl;
 
-                self.visit_ty(ty, Lookup::Src(*source_info));
+                self.visit_ty(ty, TyContext::LocalDecl {
+                    local,
+                    source_info: *source_info,
+                });
                 self.visit_source_info(source_info);
                 self.visit_visibility_scope(lexical_scope);
             }
@@ -718,7 +733,7 @@ macro_rules! make_mir_visitor {
                 } = *constant;
 
                 self.visit_span(span);
-                self.visit_ty(ty, Lookup::Loc(location));
+                self.visit_ty(ty, TyContext::Location(location));
                 self.visit_literal(literal, location);
             }
 
@@ -796,14 +811,27 @@ macro_rules! make_mir_visitor {
 make_mir_visitor!(Visitor,);
 make_mir_visitor!(MutVisitor,mut);
 
-#[derive(Copy, Clone, Debug)]
-pub enum Lookup {
-    Loc(Location),
-    Src(SourceInfo),
+/// Extra information passed to `visit_ty` and friends to give context
+/// about where the type etc appears.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TyContext {
+    LocalDecl {
+        /// The index of the local variable we are visiting.
+        local: Local,
+
+        /// The source location where this local variable was declared.
+        source_info: SourceInfo,
+    },
+
+    /// The return type of the function.
+    ReturnTy(SourceInfo),
+
+    /// A type found at some location.
+    Location(Location),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum LvalueContext<'tcx> {
+pub enum PlaceContext<'tcx> {
     // Appears as LHS of an assignment
     Store,
 
@@ -819,10 +847,10 @@ pub enum LvalueContext<'tcx> {
     // Being borrowed
     Borrow { region: Region<'tcx>, kind: BorrowKind },
 
-    // Used as base for another lvalue, e.g. `x` in `x.y`.
+    // Used as base for another place, e.g. `x` in `x.y`.
     //
     // The `Mutability` argument specifies whether the projection is being performed in order to
-    // (potentially) mutate the lvalue. For example, the projection `x.y` is marked as a mutation
+    // (potentially) mutate the place. For example, the projection `x.y` is marked as a mutation
     // in these cases:
     //
     //     x.y = ...;
@@ -835,7 +863,8 @@ pub enum LvalueContext<'tcx> {
     Projection(Mutability),
 
     // Consumed as part of an operand
-    Consume,
+    Copy,
+    Move,
 
     // Starting and ending a storage live range
     StorageLive,
@@ -845,65 +874,67 @@ pub enum LvalueContext<'tcx> {
     Validate,
 }
 
-impl<'tcx> LvalueContext<'tcx> {
-    /// Returns true if this lvalue context represents a drop.
+impl<'tcx> PlaceContext<'tcx> {
+    /// Returns true if this place context represents a drop.
     pub fn is_drop(&self) -> bool {
         match *self {
-            LvalueContext::Drop => true,
+            PlaceContext::Drop => true,
             _ => false,
         }
     }
 
-    /// Returns true if this lvalue context represents a storage live or storage dead marker.
+    /// Returns true if this place context represents a storage live or storage dead marker.
     pub fn is_storage_marker(&self) -> bool {
         match *self {
-            LvalueContext::StorageLive | LvalueContext::StorageDead => true,
+            PlaceContext::StorageLive | PlaceContext::StorageDead => true,
             _ => false,
         }
     }
 
-    /// Returns true if this lvalue context represents a storage live marker.
+    /// Returns true if this place context represents a storage live marker.
     pub fn is_storage_live_marker(&self) -> bool {
         match *self {
-            LvalueContext::StorageLive => true,
+            PlaceContext::StorageLive => true,
             _ => false,
         }
     }
 
-    /// Returns true if this lvalue context represents a storage dead marker.
+    /// Returns true if this place context represents a storage dead marker.
     pub fn is_storage_dead_marker(&self) -> bool {
         match *self {
-            LvalueContext::StorageDead => true,
+            PlaceContext::StorageDead => true,
             _ => false,
         }
     }
 
-    /// Returns true if this lvalue context represents a use that potentially changes the value.
+    /// Returns true if this place context represents a use that potentially changes the value.
     pub fn is_mutating_use(&self) -> bool {
         match *self {
-            LvalueContext::Store | LvalueContext::Call |
-            LvalueContext::Borrow { kind: BorrowKind::Mut, .. } |
-            LvalueContext::Projection(Mutability::Mut) |
-            LvalueContext::Drop => true,
-            LvalueContext::Inspect |
-            LvalueContext::Borrow { kind: BorrowKind::Shared, .. } |
-            LvalueContext::Borrow { kind: BorrowKind::Unique, .. } |
-            LvalueContext::Projection(Mutability::Not) | LvalueContext::Consume |
-            LvalueContext::StorageLive | LvalueContext::StorageDead |
-            LvalueContext::Validate => false,
+            PlaceContext::Store | PlaceContext::Call |
+            PlaceContext::Borrow { kind: BorrowKind::Mut, .. } |
+            PlaceContext::Projection(Mutability::Mut) |
+            PlaceContext::Drop => true,
+            PlaceContext::Inspect |
+            PlaceContext::Borrow { kind: BorrowKind::Shared, .. } |
+            PlaceContext::Borrow { kind: BorrowKind::Unique, .. } |
+            PlaceContext::Projection(Mutability::Not) |
+            PlaceContext::Copy | PlaceContext::Move |
+            PlaceContext::StorageLive | PlaceContext::StorageDead |
+            PlaceContext::Validate => false,
         }
     }
 
-    /// Returns true if this lvalue context represents a use that does not change the value.
+    /// Returns true if this place context represents a use that does not change the value.
     pub fn is_nonmutating_use(&self) -> bool {
         match *self {
-            LvalueContext::Inspect | LvalueContext::Borrow { kind: BorrowKind::Shared, .. } |
-            LvalueContext::Borrow { kind: BorrowKind::Unique, .. } |
-            LvalueContext::Projection(Mutability::Not) | LvalueContext::Consume => true,
-            LvalueContext::Borrow { kind: BorrowKind::Mut, .. } | LvalueContext::Store |
-            LvalueContext::Call | LvalueContext::Projection(Mutability::Mut) |
-            LvalueContext::Drop | LvalueContext::StorageLive | LvalueContext::StorageDead |
-            LvalueContext::Validate => false,
+            PlaceContext::Inspect | PlaceContext::Borrow { kind: BorrowKind::Shared, .. } |
+            PlaceContext::Borrow { kind: BorrowKind::Unique, .. } |
+            PlaceContext::Projection(Mutability::Not) |
+            PlaceContext::Copy | PlaceContext::Move => true,
+            PlaceContext::Borrow { kind: BorrowKind::Mut, .. } | PlaceContext::Store |
+            PlaceContext::Call | PlaceContext::Projection(Mutability::Mut) |
+            PlaceContext::Drop | PlaceContext::StorageLive | PlaceContext::StorageDead |
+            PlaceContext::Validate => false,
         }
     }
 

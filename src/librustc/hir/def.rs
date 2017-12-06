@@ -35,6 +35,7 @@ pub enum Def {
     Variant(DefId),
     Trait(DefId),
     TyAlias(DefId),
+    TyForeign(DefId),
     AssociatedTy(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
@@ -152,7 +153,7 @@ impl Def {
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
-            Def::GlobalAsm(id) => {
+            Def::GlobalAsm(id) | Def::TyForeign(id) => {
                 id
             }
 
@@ -186,6 +187,7 @@ impl Def {
             Def::StructCtor(.., CtorKind::Fictive) => bug!("impossible struct constructor"),
             Def::Union(..) => "union",
             Def::Trait(..) => "trait",
+            Def::TyForeign(..) => "foreign type",
             Def::Method(..) => "method",
             Def::Const(..) => "constant",
             Def::AssociatedConst(..) => "associated constant",

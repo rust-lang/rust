@@ -16,6 +16,7 @@ use super::suggest;
 use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
+use namespace::Namespace;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
@@ -413,6 +414,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::TyAdt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
             }
+            ty::TyForeign(did) => {
+                self.assemble_inherent_impl_candidates_for_type(did);
+            }
             ty::TyParam(p) => {
                 self.assemble_inherent_candidates_from_param(self_ty, p);
             }
@@ -426,6 +430,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             }
             ty::TySlice(_) => {
                 let lang_def_id = lang_items.slice_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.slice_u8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
@@ -1317,11 +1324,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 self.tcx.associated_items(def_id)
                     .filter(|x| {
                         let dist = lev_distance(&*name.as_str(), &x.name.as_str());
-                        dist > 0 && dist <= max_dist
+                        Namespace::from(x.kind) == Namespace::Value && dist > 0
+                        && dist <= max_dist
                     })
                     .collect()
             } else {
-                self.fcx.associated_item(def_id, name).map_or(Vec::new(), |x| vec![x])
+                self.fcx
+                    .associated_item(def_id, name, Namespace::Value)
+                    .map_or(Vec::new(), |x| vec![x])
             }
         } else {
             self.tcx.associated_items(def_id).collect()

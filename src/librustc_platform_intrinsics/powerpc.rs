@@ -397,6 +397,56 @@ pub fn find(name: &str) -> Option<Intrinsic> {
             output: &::I32x4,
             definition: Named("llvm.ppc.altivec.vsumsws")
         },
+        "_vec_madd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vmaddfp")
+        },
+        "_vec_nmsub" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vnmsubfp")
+        },
+        "_vec_expte" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vexptefp")
+        },
+        "_vec_floor" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vrfim")
+        },
+        "_vec_ceil" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vrfip")
+        },
+        "_vec_round" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vrfin")
+        },
+        "_vec_trunc" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vrfiz")
+        },
+        "_vec_loge" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vlogefp")
+        },
+        "_vec_re" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vrefp")
+        },
+        "_vec_rsqrte" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.ppc.altivec.vrsqrtefp")
+        },
         _ => return None,
     })
 }

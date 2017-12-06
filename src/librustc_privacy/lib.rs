@@ -85,6 +85,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn item_ty_level(&self, item_def_id: DefId) -> Option<AccessLevel> {
         let ty_def_id = match self.tcx.type_of(item_def_id).sty {
             ty::TyAdt(adt, _) => adt.did,
+            ty::TyForeign(did) => did,
             ty::TyDynamic(ref obj, ..) if obj.principal().is_some() =>
                 obj.principal().unwrap().def_id(),
             ty::TyProjection(ref proj) => proj.trait_ref(self.tcx).def_id,
@@ -146,7 +147,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 cmp::min(self.item_ty_level(def_id), self.impl_trait_level(def_id))
             }
-            hir::ItemDefaultImpl(..) => {
+            hir::ItemAutoImpl(..) => {
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 self.impl_trait_level(def_id)
             }
@@ -212,7 +213,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             }
             hir::ItemUse(..) | hir::ItemStatic(..) | hir::ItemConst(..) |
             hir::ItemGlobalAsm(..) | hir::ItemTy(..) | hir::ItemMod(..) |
-            hir::ItemFn(..) | hir::ItemExternCrate(..) | hir::ItemDefaultImpl(..) => {}
+            hir::ItemFn(..) | hir::ItemExternCrate(..) | hir::ItemAutoImpl(..) => {}
         }
 
         // Mark all items in interfaces of reachable items as reachable
@@ -224,7 +225,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             // Reexports are handled in visit_mod
             hir::ItemUse(..) => {}
             // The interface is empty
-            hir::ItemDefaultImpl(..) => {}
+            hir::ItemAutoImpl(..) => {}
             // The interface is empty
             hir::ItemGlobalAsm(..) => {}
             // Visit everything
@@ -372,7 +373,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTrait(..) = ty.node {
+        if let hir::TyImplTraitExistential(..) = ty.node {
             if self.get(ty.id).is_some() {
                 // Reach the (potentially private) type and the API being exposed.
                 self.reach(ty.id).ty().predicates();
@@ -444,6 +445,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
             ty::TyAdt(adt, _) => Some(adt.did),
+            ty::TyForeign(did) => Some(did),
             ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::TyProjection(ref proj) => Some(proj.item_def_id),
             ty::TyFnDef(def_id, ..) |
@@ -625,6 +627,16 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
                                 ctor_vis = field_vis;
                             }
                         }
+
+                        // If the structure is marked as non_exhaustive then lower the
+                        // visibility to within the crate.
+                        let struct_def_id = self.tcx.hir.get_parent_did(node_id);
+                        let adt_def = self.tcx.adt_def(struct_def_id);
+                        if adt_def.is_non_exhaustive() && ctor_vis == ty::Visibility::Public {
+                            ctor_vis = ty::Visibility::Restricted(
+                                DefId::local(CRATE_DEF_INDEX));
+                        }
+
                         return ctor_vis;
                     }
                     node => bug!("unexpected node kind: {:?}", node)
@@ -800,7 +812,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyAdt(&ty::AdtDef { did: def_id, .. }, ..) | ty::TyFnDef(def_id, ..) => {
+            ty::TyAdt(&ty::AdtDef { did: def_id, .. }, ..) |
+            ty::TyFnDef(def_id, ..) |
+            ty::TyForeign(def_id) => {
                 if !self.item_is_accessible(def_id) {
                     let msg = format!("type `{}` is private", ty);
                     self.tcx.sess.span_err(self.span, &msg);
@@ -1329,6 +1343,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
             ty::TyAdt(adt, _) => Some(adt.did),
+            ty::TyForeign(did) => Some(did),
             ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::TyProjection(ref proj) => {
                 if self.required_visibility == ty::Visibility::Invisible {
@@ -1349,8 +1364,13 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
         if let Some(def_id) = ty_def_id {
             // Non-local means public (private items can't leave their crate, modulo bugs)
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                let item = self.tcx.hir.expect_item(node_id);
-                let vis = ty::Visibility::from_hir(&item.vis, node_id, self.tcx);
+                let vis = match self.tcx.hir.find(node_id) {
+                    Some(hir::map::NodeItem(item)) => &item.vis,
+                    Some(hir::map::NodeForeignItem(item)) => &item.vis,
+                    _ => bug!("expected item of foreign item"),
+                };
+
+                let vis = ty::Visibility::from_hir(vis, node_id, self.tcx);
 
                 if !vis.is_at_least(self.min_visibility, self.tcx) {
                     self.min_visibility = vis;
@@ -1494,7 +1514,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 }
             }
             // The interface is empty
-            hir::ItemDefaultImpl(..) => {}
+            hir::ItemAutoImpl(..) => {}
             // An inherent impl is public when its type is public
             // Subitems of inherent impls have their own publicity
             hir::ItemImpl(.., None, _, ref impl_item_refs) => {
@@ -1537,7 +1557,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTrait(..) = ty.node {
+        if let hir::TyImplTraitExistential(..) = ty.node {
             // Check the traits being exposed, as they're separate,
             // e.g. `impl Iterator<Item=T>` has two predicates,
             // `X: Iterator` and `<X as Iterator>::Item == T`,
@@ -1563,9 +1583,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<AccessLevels> {
-    tcx.dep_graph.with_ignore(|| { // FIXME
-        tcx.privacy_access_levels(LOCAL_CRATE)
-    })
+    tcx.privacy_access_levels(LOCAL_CRATE)
 }
 
 fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

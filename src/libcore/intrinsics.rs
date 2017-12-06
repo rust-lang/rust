@@ -627,6 +627,9 @@ extern "rust-intrinsic" {
     pub fn rustc_peek<T>(_: T) -> T;
 
     /// Aborts the execution of the process.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::process::abort`](../../std/process/fn.abort.html)
     pub fn abort() -> !;
 
     /// Tells LLVM that this point in the code is not reachable, enabling
@@ -676,6 +679,10 @@ extern "rust-intrinsic" {
     pub fn min_align_of<T>() -> usize;
     pub fn pref_align_of<T>() -> usize;
 
+    /// The size of the referenced value in bytes.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::size_of_val`](../../std/mem/fn.size_of_val.html).
     pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
 
@@ -921,6 +928,9 @@ extern "rust-intrinsic" {
     ///
     /// If the actual type neither requires drop glue nor implements
     /// `Copy`, then may return `true` or `false`.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::needs_drop`](../../std/mem/fn.needs_drop.html).
     pub fn needs_drop<T>() -> bool;
 
     /// Calculates the offset from a pointer.
@@ -1376,17 +1386,10 @@ extern "rust-intrinsic" {
     /// }
     /// # } }
     /// ```
-    #[cfg(not(stage0))]
     pub fn align_offset(ptr: *const (), align: usize) -> usize;
-}
 
-#[cfg(stage0)]
-/// remove me after the next release
-pub unsafe fn align_offset(ptr: *const (), align: usize) -> usize {
-    let offset = ptr as usize % align;
-    if offset == 0 {
-        0
-    } else {
-        align - offset
-    }
+    /// Emits a `!nontemporal` store according to LLVM (see their docs).
+    /// Probably will never become stable.
+    #[cfg(not(stage0))]
+    pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 }

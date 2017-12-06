@@ -52,11 +52,8 @@ check:
 	$(Q)$(BOOTSTRAP) test $(BOOTSTRAP_ARGS)
 check-aux:
 	$(Q)$(BOOTSTRAP) test \
-		src/tools/cargotest \
 		src/tools/cargo \
-		src/tools/rls \
-		src/tools/rustfmt \
-		src/tools/miri \
+		src/tools/cargotest \
 		src/test/pretty \
 		src/test/run-pass/pretty \
 		src/test/run-fail/pretty \

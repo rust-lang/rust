@@ -1,0 +1,14 @@
+error[E0261]: use of undeclared lifetime name `'test`
+  --> $DIR/no_introducing_in_band_in_locals.rs:15:13
+   |
+15 |     let y: &'test u32 = x; //~ ERROR use of undeclared lifetime
+   |             ^^^^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'test`
+  --> $DIR/no_introducing_in_band_in_locals.rs:20:16
+   |
+20 |     let y: fn(&'test u32) = foo2; //~ ERROR use of undeclared lifetime
+   |                ^^^^^ undeclared lifetime
+
+error: aborting due to 2 previous errors
+

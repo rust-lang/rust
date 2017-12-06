@@ -19,11 +19,15 @@ use common::{self, CrateContext};
 use consts;
 use declare;
 use llvm::{self, ValueRef};
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
+use type_of::LayoutLlvmExt;
+
 use rustc::hir::def_id::DefId;
-use rustc::ty::TypeFoldable;
+use rustc::ty::{self, TypeFoldable};
+use rustc::ty::layout::LayoutOf;
+use rustc::traits;
 use rustc::ty::subst::Substs;
-use type_of;
+use rustc_back::PanicStrategy;
 
 /// Translates a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -54,7 +58,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Create a fn pointer with the substituted signature.
     let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(ccx, fn_ty));
-    let llptrty = type_of::type_of(ccx, fn_ptr_ty);
+    let llptrty = ccx.layout_of(fn_ptr_ty).llvm_type(ccx);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
         // This is subtle and surprising, but sometimes we have to bitcast
@@ -104,8 +108,10 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // *in Rust code* may unwind. Foreign items like `extern "C" {
         // fn foo(); }` are assumed not to unwind **unless** they have
         // a `#[unwind]` attribute.
-        if !tcx.is_foreign_item(instance_def_id) {
-            attributes::unwind(llfn, true);
+        if tcx.sess.panic_strategy() == PanicStrategy::Unwind {
+            if !tcx.is_foreign_item(instance_def_id) {
+                attributes::unwind(llfn, true);
+            }
         }
 
         // Apply an appropriate linkage/visibility value to our item that we
@@ -155,17 +161,14 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
         }
 
-        // FIXME(#42293) we should actually track this, but fails too many tests
-        // today.
-        tcx.dep_graph.with_ignore(|| {
-            if ccx.use_dll_storage_attrs() &&
-                tcx.is_dllimport_foreign_item(instance_def_id)
-            {
-                unsafe {
-                    llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
-                }
+        if ccx.use_dll_storage_attrs() &&
+            tcx.is_dllimport_foreign_item(instance_def_id)
+        {
+            unsafe {
+                llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
             }
-        });
+        }
+
         llfn
     };
 
@@ -179,5 +182,13 @@ pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     substs: &'tcx Substs<'tcx>)
                                     -> ValueRef
 {
-    get_fn(ccx, monomorphize::resolve(ccx.tcx(), def_id, substs))
+    get_fn(
+        ccx,
+        ty::Instance::resolve(
+            ccx.tcx(),
+            ty::ParamEnv::empty(traits::Reveal::All),
+            def_id,
+            substs
+        ).unwrap()
+    )
 }

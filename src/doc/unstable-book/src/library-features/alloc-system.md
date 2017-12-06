@@ -1,10 +1,10 @@
 # `alloc_system`
 
-The tracking issue for this feature is: [#33082]
+The tracking issue for this feature is: [#32838]
 
-[#33082]: https://github.com/rust-lang/rust/issues/33082
+[#32838]: https://github.com/rust-lang/rust/issues/32838
 
-See also [`alloc_jemalloc`](library-features/alloc-jemalloc.html).
+See also [`global_allocator`](language-features/global-allocator.html).
 
 ------------------------
 
@@ -30,12 +30,17 @@ memory.
 
 Although the compiler's default choices may work most of the time, it's often
 necessary to tweak certain aspects. Overriding the compiler's decision about
-which allocator is in use is done simply by linking to the desired allocator:
+which allocator is in use is done through the `#[global_allocator]` attribute:
 
 ```rust,no_run
-#![feature(alloc_system)]
+#![feature(alloc_system, global_allocator, allocator_api)]
 
 extern crate alloc_system;
+
+use alloc_system::System;
+
+#[global_allocator]
+static A: System = System;
 
 fn main() {
     let a = Box::new(4); // Allocates from the system allocator.
@@ -47,11 +52,22 @@ In this example the binary generated will not link to jemalloc by default but
 instead use the system allocator. Conversely to generate a dynamic library which
 uses jemalloc by default one would write:
 
+(The `alloc_jemalloc` crate cannot be used to control the global allocator,
+crate.io’s `jemallocator` crate provides equivalent functionality.)
+
+```toml
+# Cargo.toml
+[dependencies]
+jemallocator = "0.1"
+```
 ```rust,ignore
-#![feature(alloc_jemalloc)]
+#![feature(global_allocator)]
 #![crate_type = "dylib"]
 
-extern crate alloc_jemalloc;
+extern crate jemallocator;
+
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 pub fn foo() {
     let a = Box::new(4); // Allocates from jemalloc.
@@ -59,4 +75,3 @@ pub fn foo() {
 }
 # fn main() {}
 ```
-

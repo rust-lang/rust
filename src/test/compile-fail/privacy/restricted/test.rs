@@ -50,8 +50,10 @@ fn main() {
     let u = Universe::default();
     let _ = u.x;
     let _ = u.y; //~ ERROR private
+    let _ = u.z; //~ ERROR private
     u.f();
     u.g(); //~ ERROR private
+    u.h(); //~ ERROR private
 }
 
 mod pathological {

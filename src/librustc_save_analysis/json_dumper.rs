@@ -12,10 +12,16 @@ use std::io::Write;
 
 use rustc_serialize::json::as_json;
 
-use rls_data::{self, Analysis, Import, Def, DefKind, Ref, RefKind, MacroRef,
-               Relation, CratePreludeData};
+use rls_data::{self, Analysis, CratePreludeData, Def, DefKind, Import, MacroRef, Ref, RefKind,
+               Relation};
 use rls_data::config::Config;
 use rls_span::{Column, Row};
+
+#[derive(Debug)]
+pub struct Access {
+    pub reachable: bool,
+    pub public: bool,
+}
 
 pub struct JsonDumper<O: DumpOutput> {
     result: Analysis,
@@ -54,15 +60,16 @@ impl<'b, W: Write> JsonDumper<WriteOutput<'b, W>> {
         JsonDumper {
             output: WriteOutput { output: writer },
             config: config.clone(),
-            result: Analysis::new(config)
+            result: Analysis::new(config),
         }
     }
 }
 
 impl<'b> JsonDumper<CallbackOutput<'b>> {
-    pub fn with_callback(callback: &'b mut FnMut(&Analysis),
-                         config: Config)
-                         -> JsonDumper<CallbackOutput<'b>> {
+    pub fn with_callback(
+        callback: &'b mut FnMut(&Analysis),
+        config: Config,
+    ) -> JsonDumper<CallbackOutput<'b>> {
         JsonDumper {
             output: CallbackOutput { callback: callback },
             config: config.clone(),
@@ -83,33 +90,35 @@ impl<'b, O: DumpOutput + 'b> JsonDumper<O> {
     }
 
     pub fn macro_use(&mut self, data: MacroRef) {
-        if self.config.pub_only {
+        if self.config.pub_only || self.config.reachable_only {
             return;
         }
         self.result.macro_refs.push(data);
     }
 
-    pub fn import(&mut self, public: bool, import: Import) {
-        if !public && self.config.pub_only {
+    pub fn import(&mut self, access: &Access, import: Import) {
+        if !access.public && self.config.pub_only
+            || !access.reachable && self.config.reachable_only {
             return;
         }
         self.result.imports.push(import);
     }
 
     pub fn dump_ref(&mut self, data: Ref) {
-        if self.config.pub_only {
+        if self.config.pub_only || self.config.reachable_only {
             return;
         }
         self.result.refs.push(data);
     }
 
-    pub fn dump_def(&mut self, public: bool, mut data: Def) {
-        if !public && self.config.pub_only {
+    pub fn dump_def(&mut self, access: &Access, mut data: Def) {
+        if !access.public && self.config.pub_only
+            || !access.reachable && self.config.reachable_only {
             return;
         }
         if data.kind == DefKind::Mod && data.span.file_name.to_str().unwrap() != data.value {
-            // If the module is an out-of-line defintion, then we'll make the
-            // definition the first character in the module's file and turn the
+            // If the module is an out-of-line definition, then we'll make the
+            // definition the first character in the module's file and turn
             // the declaration into a reference to it.
             let rf = Ref {
                 kind: RefKind::Mod,

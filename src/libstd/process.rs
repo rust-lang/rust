@@ -10,25 +10,66 @@
 
 //! A module for working with processes.
 //!
-//! # Examples
+//! This module is mostly concerned with spawning and interacting with child
+//! processes, but it also provides [`abort`] and [`exit`] for terminating the
+//! current process.
 //!
-//! Basic usage where we try to execute the `cat` shell command:
+//! # Spawning a process
 //!
-//! ```should_panic
+//! The [`Command`] struct is used to configure and spawn processes:
+//!
+//! ```
 //! use std::process::Command;
 //!
-//! let mut child = Command::new("/bin/cat")
-//!                         .arg("file.txt")
-//!                         .spawn()
-//!                         .expect("failed to execute child");
+//! let output = Command::new("echo")
+//!                      .arg("Hello world")
+//!                      .output()
+//!                      .expect("Failed to execute command");
 //!
-//! let ecode = child.wait()
-//!                  .expect("failed to wait on child");
-//!
-//! assert!(ecode.success());
+//! assert_eq!(b"Hello world\n", output.stdout.as_slice());
 //! ```
 //!
-//! Calling a command with input and reading its output:
+//! Several methods on [`Command`], such as [`spawn`] or [`output`], can be used
+//! to spawn a process. In particular, [`output`] spawns the child process and
+//! waits until the process terminates, while [`spawn`] will return a [`Child`]
+//! that represents the spawned child process.
+//!
+//! # Handling I/O
+//!
+//! The [`stdout`], [`stdin`], and [`stderr`] of a child process can be
+//! configured by passing an [`Stdio`] to the corresponding method on
+//! [`Command`]. Once spawned, they can be accessed from the [`Child`]. For
+//! example, piping output from one command into another command can be done
+//! like so:
+//!
+//! ```no_run
+//! use std::process::{Command, Stdio};
+//!
+//! // stdout must be configured with `Stdio::piped` in order to use
+//! // `echo_child.stdout`
+//! let echo_child = Command::new("echo")
+//!     .arg("Oh no, a tpyo!")
+//!     .stdout(Stdio::piped())
+//!     .spawn()
+//!     .expect("Failed to start echo process");
+//!
+//! // Note that `echo_child` is moved here, but we won't be needing
+//! // `echo_child` anymore
+//! let echo_out = echo_child.stdout.expect("Failed to open echo stdout");
+//!
+//! let mut sed_child = Command::new("sed")
+//!     .arg("s/tpyo/typo/")
+//!     .stdin(Stdio::from(echo_out))
+//!     .stdout(Stdio::piped())
+//!     .spawn()
+//!     .expect("Failed to start sed process");
+//!
+//! let output = sed_child.wait_with_output().expect("Failed to wait on sed");
+//! assert_eq!(b"Oh no, a typo!\n", output.stdout.as_slice());
+//! ```
+//!
+//! Note that [`ChildStderr`] and [`ChildStdout`] implement [`Write`] and
+//! [`ChildStdin`] implements [`Read`]:
 //!
 //! ```no_run
 //! use std::process::{Command, Stdio};
@@ -52,6 +93,26 @@
 //!
 //! assert_eq!(b"test", output.stdout.as_slice());
 //! ```
+//!
+//! [`abort`]: fn.abort.html
+//! [`exit`]: fn.exit.html
+//!
+//! [`Command`]: struct.Command.html
+//! [`spawn`]: struct.Command.html#method.spawn
+//! [`output`]: struct.Command.html#method.output
+//!
+//! [`Child`]: struct.Child.html
+//! [`ChildStdin`]: struct.ChildStdin.html
+//! [`ChildStdout`]: struct.ChildStdout.html
+//! [`ChildStderr`]: struct.ChildStderr.html
+//! [`Stdio`]: struct.Stdio.html
+//!
+//! [`stdout`]: struct.Command.html#method.stdout
+//! [`stdin`]: struct.Command.html#method.stdin
+//! [`stderr`]: struct.Command.html#method.stderr
+//!
+//! [`Write`]: ../io/trait.Write.html
+//! [`Read`]: ../io/trait.Read.html
 
 #![stable(feature = "process", since = "1.0.0")]
 
@@ -343,7 +404,7 @@ impl Command {
     /// The search path to be used may be controlled by setting the
     /// `PATH` environment variable on the Command,
     /// but this has some implementation limitations on Windows
-    /// (see https://github.com/rust-lang/rust/issues/37519).
+    /// (see <https://github.com/rust-lang/rust/issues/37519>).
     ///
     /// # Examples
     ///
@@ -552,6 +613,12 @@ impl Command {
 
     /// Configuration for the child process's standard input (stdin) handle.
     ///
+    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
+    /// defaults to [`piped`] when used with `output`.
+    ///
+    /// [`inherit`]: struct.Stdio.html#method.inherit
+    /// [`piped`]: struct.Stdio.html#method.piped
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -572,6 +639,12 @@ impl Command {
 
     /// Configuration for the child process's standard output (stdout) handle.
     ///
+    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
+    /// defaults to [`piped`] when used with `output`.
+    ///
+    /// [`inherit`]: struct.Stdio.html#method.inherit
+    /// [`piped`]: struct.Stdio.html#method.piped
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -591,6 +664,12 @@ impl Command {
     }
 
     /// Configuration for the child process's standard error (stderr) handle.
+    ///
+    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
+    /// defaults to [`piped`] when used with `output`.
+    ///
+    /// [`inherit`]: struct.Stdio.html#method.inherit
+    /// [`piped`]: struct.Stdio.html#method.piped
     ///
     /// # Examples
     ///
@@ -633,8 +712,10 @@ impl Command {
     /// Executes the command as a child process, waiting for it to finish and
     /// collecting all of its output.
     ///
-    /// By default, stdin, stdout and stderr are captured (and used to
-    /// provide the resulting output).
+    /// By default, stdout and stderr are captured (and used to provide the
+    /// resulting output). Stdin is not inherited from the parent and any
+    /// attempt by the child process to read from the stdin stream will result
+    /// in the stream immediately closing.
     ///
     /// # Examples
     ///
@@ -702,6 +783,15 @@ impl AsInnerMut<imp::Command> for Command {
 }
 
 /// The output of a finished process.
+///
+/// This is returned in a Result by either the [`output`] method of a
+/// [`Command`], or the [`wait_with_output`] method of a [`Child`]
+/// process.
+///
+/// [`Command`]: struct.Command.html
+/// [`Child`]: struct.Child.html
+/// [`output`]: struct.Command.html#method.output
+/// [`wait_with_output`]: struct.Child.html#method.wait_with_output
 #[derive(PartialEq, Eq, Clone)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Output {
@@ -742,21 +832,128 @@ impl fmt::Debug for Output {
     }
 }
 
-/// Describes what to do with a standard I/O stream for a child process.
+/// Describes what to do with a standard I/O stream for a child process when
+/// passed to the [`stdin`], [`stdout`], and [`stderr`] methods of [`Command`].
+///
+/// [`stdin`]: struct.Command.html#method.stdin
+/// [`stdout`]: struct.Command.html#method.stdout
+/// [`stderr`]: struct.Command.html#method.stderr
+/// [`Command`]: struct.Command.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Stdio(imp::Stdio);
 
 impl Stdio {
     /// A new pipe should be arranged to connect the parent and child processes.
+    ///
+    /// # Examples
+    ///
+    /// With stdout:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::piped())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "Hello, world!\n");
+    /// // Nothing echoed to console
+    /// ```
+    ///
+    /// With stdin:
+    ///
+    /// ```no_run
+    /// use std::io::Write;
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let mut child = Command::new("rev")
+    ///     .stdin(Stdio::piped())
+    ///     .stdout(Stdio::piped())
+    ///     .spawn()
+    ///     .expect("Failed to spawn child process");
+    ///
+    /// {
+    ///     let mut stdin = child.stdin.as_mut().expect("Failed to open stdin");
+    ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
+    /// }
+    ///
+    /// let output = child.wait_with_output().expect("Failed to read stdout");
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH\n");
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio { Stdio(imp::Stdio::MakePipe) }
 
     /// The child inherits from the corresponding parent descriptor.
+    ///
+    /// # Examples
+    ///
+    /// With stdout:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::inherit())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    /// // "Hello, world!" echoed to console
+    /// ```
+    ///
+    /// With stdin:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("rev")
+    ///     .stdin(Stdio::inherit())
+    ///     .stdout(Stdio::piped())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// println!("You piped in the reverse of: {}", String::from_utf8_lossy(&output.stdout));
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn inherit() -> Stdio { Stdio(imp::Stdio::Inherit) }
 
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
+    ///
+    /// # Examples
+    ///
+    /// With stdout:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("echo")
+    ///     .arg("Hello, world!")
+    ///     .stdout(Stdio::null())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    /// // Nothing echoed to console
+    /// ```
+    ///
+    /// With stdin:
+    ///
+    /// ```no_run
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let output = Command::new("rev")
+    ///     .stdin(Stdio::null())
+    ///     .stdout(Stdio::piped())
+    ///     .output()
+    ///     .expect("Failed to execute command");
+    ///
+    /// assert_eq!(String::from_utf8_lossy(&output.stdout), "");
+    /// // Ignores any piped-in input
+    /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn null() -> Stdio { Stdio(imp::Stdio::Null) }
 }
@@ -1083,8 +1280,6 @@ impl Child {
 /// function and compute the exit code from its return value:
 ///
 /// ```
-/// use std::io::{self, Write};
-///
 /// fn run_app() -> Result<(), ()> {
 ///     // Application logic here
 ///     Ok(())
@@ -1094,7 +1289,7 @@ impl Child {
 ///     ::std::process::exit(match run_app() {
 ///        Ok(_) => 0,
 ///        Err(err) => {
-///            writeln!(io::stderr(), "error: {:?}", err).unwrap();
+///            eprintln!("error: {:?}", err);
 ///            1
 ///        }
 ///     });
@@ -1124,7 +1319,15 @@ pub fn exit(code: i32) -> ! {
 ///
 /// Note that because this function never returns, and that it terminates the
 /// process, no destructors on the current stack or any other thread's stack
-/// will be run. If a clean shutdown is needed it is recommended to only call
+/// will be run.
+///
+/// This is in contrast to the default behaviour of [`panic!`] which unwinds
+/// the current thread's stack and calls all destructors.
+/// When `panic="abort"` is set, either as an argument to `rustc` or in a
+/// crate's Cargo.toml, [`panic!`] and `abort` are similar. However,
+/// [`panic!`] will still call the [panic hook] while `abort` will not.
+///
+/// If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
 /// to run.
 ///
@@ -1142,7 +1345,7 @@ pub fn exit(code: i32) -> ! {
 /// }
 /// ```
 ///
-/// The [`abort`] function terminates the process, so the destructor will not
+/// The `abort` function terminates the process, so the destructor will not
 /// get run on the example below:
 ///
 /// ```no_run
@@ -1162,9 +1365,31 @@ pub fn exit(code: i32) -> ! {
 ///     // the destructor implemented for HasDrop will never get run
 /// }
 /// ```
+///
+/// [`panic!`]: ../../std/macro.panic.html
+/// [panic hook]: ../../std/panic/fn.set_hook.html
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
     unsafe { ::sys::abort_internal() };
+}
+
+/// Returns the OS-assigned process identifier associated with this process.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```no_run
+/// #![feature(getpid)]
+/// use std::process;
+///
+/// println!("My pid is {}", process::id());
+/// ```
+///
+///
+#[unstable(feature = "getpid", issue = "44971", reason = "recently added")]
+pub fn id() -> u32 {
+    ::sys::os::getpid()
 }
 
 #[cfg(all(test, not(target_os = "emscripten")))]

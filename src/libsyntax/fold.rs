@@ -56,8 +56,8 @@ pub trait Folder : Sized {
         noop_fold_meta_item(meta_item, self)
     }
 
-    fn fold_view_path(&mut self, view_path: P<ViewPath>) -> P<ViewPath> {
-        noop_fold_view_path(view_path, self)
+    fn fold_use_tree(&mut self, use_tree: UseTree) -> UseTree {
+        noop_fold_use_tree(use_tree, self)
     }
 
     fn fold_foreign_item(&mut self, ni: ForeignItem) -> ForeignItem {
@@ -310,30 +310,18 @@ pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<MetaItem>, fld: &mut T) -
     meta_items.move_map(|x| fld.fold_meta_item(x))
 }
 
-pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<ViewPath> {
-    view_path.map(|Spanned {node, span}| Spanned {
-        node: match node {
-            ViewPathSimple(ident, path) => {
-                ViewPathSimple(fld.fold_ident(ident), fld.fold_path(path))
-            }
-            ViewPathGlob(path) => {
-                ViewPathGlob(fld.fold_path(path))
-            }
-            ViewPathList(path, path_list_idents) => {
-                let path = fld.fold_path(path);
-                let path_list_idents = path_list_idents.move_map(|path_list_ident| Spanned {
-                    node: PathListItem_ {
-                        id: fld.new_id(path_list_ident.node.id),
-                        rename: path_list_ident.node.rename.map(|ident| fld.fold_ident(ident)),
-                        name: fld.fold_ident(path_list_ident.node.name),
-                    },
-                    span: fld.new_span(path_list_ident.span)
-                });
-                ViewPathList(path, path_list_idents)
-            }
+pub fn noop_fold_use_tree<T: Folder>(use_tree: UseTree, fld: &mut T) -> UseTree {
+    UseTree {
+        span: fld.new_span(use_tree.span),
+        prefix: fld.fold_path(use_tree.prefix),
+        kind: match use_tree.kind {
+            UseTreeKind::Simple(ident) => UseTreeKind::Simple(fld.fold_ident(ident)),
+            UseTreeKind::Glob => UseTreeKind::Glob,
+            UseTreeKind::Nested(items) => UseTreeKind::Nested(items.move_map(|(tree, id)| {
+                (fld.fold_use_tree(tree), fld.new_id(id))
+            })),
         },
-        span: fld.new_span(span)
-    })
+    }
 }
 
 pub fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribute> {
@@ -400,8 +388,8 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyKind::Typeof(expr) => {
                 TyKind::Typeof(fld.fold_expr(expr))
             }
-            TyKind::TraitObject(bounds) => {
-                TyKind::TraitObject(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
+            TyKind::TraitObject(bounds, syntax) => {
+                TyKind::TraitObject(bounds.move_map(|b| fld.fold_ty_param_bound(b)), syntax)
             }
             TyKind::ImplTrait(bounds) => {
                 TyKind::ImplTrait(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
@@ -874,8 +862,8 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
 pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
     match i {
         ItemKind::ExternCrate(string) => ItemKind::ExternCrate(string),
-        ItemKind::Use(view_path) => {
-            ItemKind::Use(folder.fold_view_path(view_path))
+        ItemKind::Use(use_tree) => {
+            ItemKind::Use(use_tree.map(|tree| folder.fold_use_tree(tree)))
         }
         ItemKind::Static(t, m, e) => {
             ItemKind::Static(folder.fold_ty(t), m, folder.fold_expr(e))
@@ -908,8 +896,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             let generics = folder.fold_generics(generics);
             ItemKind::Union(folder.fold_variant_data(struct_def), generics)
         }
-        ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
-            ItemKind::DefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
+        ItemKind::AutoImpl(unsafety, ref trait_ref) => {
+            ItemKind::AutoImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
         }
         ItemKind::Impl(unsafety,
                        polarity,
@@ -926,7 +914,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             folder.fold_ty(ty),
             impl_items.move_flat_map(|item| folder.fold_impl_item(item)),
         ),
-        ItemKind::Trait(unsafety, generics, bounds, items) => ItemKind::Trait(
+        ItemKind::Trait(is_auto, unsafety, generics, bounds, items) => ItemKind::Trait(
+            is_auto,
             unsafety,
             folder.fold_generics(generics),
             folder.fold_bounds(bounds),
@@ -943,6 +932,7 @@ pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T)
         id: folder.new_id(i.id),
         ident: folder.fold_ident(i.ident),
         attrs: fold_attrs(i.attrs, folder),
+        generics: folder.fold_generics(i.generics),
         node: match i.node {
             TraitItemKind::Const(ty, default) => {
                 TraitItemKind::Const(folder.fold_ty(ty),
@@ -972,6 +962,7 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
         vis: folder.fold_vis(i.vis),
         ident: folder.fold_ident(i.ident),
         attrs: fold_attrs(i.attrs, folder),
+        generics: folder.fold_generics(i.generics),
         defaultness: i.defaultness,
         node: match i.node  {
             ast::ImplItemKind::Const(ty, expr) => {
@@ -1067,6 +1058,7 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T) -> For
             ForeignItemKind::Static(t, m) => {
                 ForeignItemKind::Static(folder.fold_ty(t), m)
             }
+            ForeignItemKind::Ty => ForeignItemKind::Ty,
         },
         span: folder.new_span(ni.span)
     }
@@ -1074,7 +1066,6 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: ForeignItem, folder: &mut T) -> For
 
 pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {
     MethodSig {
-        generics: folder.fold_generics(sig.generics),
         abi: sig.abi,
         unsafety: sig.unsafety,
         constness: sig.constness,

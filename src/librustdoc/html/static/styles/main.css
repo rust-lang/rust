@@ -104,6 +104,7 @@ pre {
 .content .highlighted.method,
 .content .highlighted.tymethod { background-color: #c6afb3; }
 .content .highlighted.type { background-color: #ffc891; }
+.content .highlighted.foreigntype { background-color: #f5c4ff; }
 .content .highlighted.macro { background-color: #8ce488; }
 .content .highlighted.constant,
 .content .highlighted.static { background-color: #c3e0ff; }
@@ -112,6 +113,7 @@ pre {
 .content span.enum, .content a.enum, .block a.current.enum { color: #508157; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #df3600; }
 .content span.type, .content a.type, .block a.current.type { color: #ba5d00; }
+.content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #cd00e2; }
 .content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
 .content span.union, .content a.union, .block a.current.union { color: #767b27; }
 .content span.constant, .content a.constant, .block a.current.constant,
@@ -234,4 +236,8 @@ pre.ignore:hover, .information:hover + pre.ignore {
 
 .information > .ignore:hover {
 	color: rgba(255,142,0,1);
+}
+
+.search-failed > a {
+	color: #0089ff;
 }

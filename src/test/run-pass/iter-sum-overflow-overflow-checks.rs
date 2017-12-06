@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled with panic=abort by default
 // compile-flags: -C overflow-checks
 
 use std::panic;

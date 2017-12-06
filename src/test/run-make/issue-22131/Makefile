@@ -2,6 +2,6 @@
 
 all: foo.rs
 	$(RUSTC) --cfg 'feature="bar"' --crate-type lib foo.rs
-	$(HOST_RPATH_ENV) '$(RUSTDOC)' --test --cfg 'feature="bar"' \
+	$(RUSTDOC) --test --cfg 'feature="bar"' \
 		-L $(TMPDIR) foo.rs |\
-		grep -q 'foo.rs - foo (line 11) ... ok'
+		$(CGREP) 'foo.rs - foo (line 11) ... ok'

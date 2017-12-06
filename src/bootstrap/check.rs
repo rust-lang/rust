@@ -65,19 +65,21 @@ impl fmt::Display for TestKind {
     }
 }
 
-fn try_run_expecting(build: &Build, cmd: &mut Command, expect: BuildExpectation) {
+fn try_run_expecting(build: &Build, cmd: &mut Command, expect: BuildExpectation) -> bool {
     if !build.fail_fast {
         if !build.try_run(cmd, expect) {
             let mut failures = build.delayed_failures.borrow_mut();
             failures.push(format!("{:?}", cmd));
+            return false;
         }
     } else {
         build.run_expecting(cmd, expect);
     }
+    true
 }
 
 fn try_run(build: &Build, cmd: &mut Command) {
-    try_run_expecting(build, cmd, BuildExpectation::None)
+    try_run_expecting(build, cmd, BuildExpectation::None);
 }
 
 fn try_run_quiet(build: &Build, cmd: &mut Command) {
@@ -246,19 +248,24 @@ impl Step for Rls {
         let compiler = builder.compiler(stage, host);
 
         builder.ensure(tool::Rls { compiler, target: self.host });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/rls/Cargo.toml"));
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/rls");
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run_expecting(
+        if try_run_expecting(
             build,
             &mut cargo,
             builder.build.config.toolstate.rls.passes(ToolState::Testing),
-        );
+        ) {
+            build.save_toolstate("rls", ToolState::Testing);
+        }
     }
 }
 
@@ -291,24 +298,30 @@ impl Step for Rustfmt {
         let compiler = builder.compiler(stage, host);
 
         builder.ensure(tool::Rustfmt { compiler, target: self.host });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/rustfmt/Cargo.toml"));
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/rustfmt");
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run_expecting(
+        if try_run_expecting(
             build,
             &mut cargo,
             builder.build.config.toolstate.rustfmt.passes(ToolState::Testing),
-        );
+        ) {
+            build.save_toolstate("rustfmt", ToolState::Testing);
+        }
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
+    stage: u32,
     host: Interned<String>,
 }
 
@@ -324,6 +337,7 @@ impl Step for Miri {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Miri {
+            stage: run.builder.top_stage,
             host: run.target,
         });
     }
@@ -331,33 +345,40 @@ impl Step for Miri {
     /// Runs `cargo test` for miri.
     fn run(self, builder: &Builder) {
         let build = builder.build;
+        let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(1, host);
+        let compiler = builder.compiler(stage, host);
 
-        let miri = builder.ensure(tool::Miri { compiler, target: self.host });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/miri/Cargo.toml"));
+        if let Some(miri) = builder.ensure(tool::Miri { compiler, target: self.host }) {
+            let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+            cargo.arg("--manifest-path").arg(build.src.join("src/tools/miri/Cargo.toml"));
 
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-        // miri tests need to know about the stage sysroot
-        cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
-        cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
-        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
-        cargo.env("MIRI_PATH", miri);
+            // Don't build tests dynamically, just a pain to work with
+            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+            // miri tests need to know about the stage sysroot
+            cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
+            cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
+            cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+            cargo.env("MIRI_PATH", miri);
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+            builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run_expecting(
-            build,
-            &mut cargo,
-            builder.build.config.toolstate.miri.passes(ToolState::Testing),
-        );
+            if try_run_expecting(
+                build,
+                &mut cargo,
+                builder.build.config.toolstate.miri.passes(ToolState::Testing),
+            ) {
+                build.save_toolstate("miri", ToolState::Testing);
+            }
+        } else {
+            eprintln!("failed to test miri: could not build");
+        }
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
+    stage: u32,
     host: Interned<String>,
 }
 
@@ -372,6 +393,7 @@ impl Step for Clippy {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Clippy {
+            stage: run.builder.top_stage,
             host: run.target,
         });
     }
@@ -379,25 +401,37 @@ impl Step for Clippy {
     /// Runs `cargo test` for clippy.
     fn run(self, builder: &Builder) {
         let build = builder.build;
+        let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(1, host);
+        let compiler = builder.compiler(stage, host);
 
-        let _clippy = builder.ensure(tool::Clippy { compiler, target: self.host });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
-        cargo.arg("--manifest-path").arg(build.src.join("src/tools/clippy/Cargo.toml"));
+        if let Some(clippy) = builder.ensure(tool::Clippy { compiler, target: self.host }) {
+            let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+            cargo.arg("--manifest-path").arg(build.src.join("src/tools/clippy/Cargo.toml"));
 
-        // Don't build tests dynamically, just a pain to work with
-        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-        // clippy tests need to know about the stage sysroot
-        cargo.env("SYSROOT", builder.sysroot(compiler));
+            // Don't build tests dynamically, just a pain to work with
+            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+            // clippy tests need to know about the stage sysroot
+            cargo.env("SYSROOT", builder.sysroot(compiler));
+            cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
+            cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+            let host_libs = builder.stage_out(compiler, Mode::Tool).join(builder.cargo_dir());
+            cargo.env("HOST_LIBS", host_libs);
+            // clippy tests need to find the driver
+            cargo.env("CLIPPY_DRIVER_PATH", clippy);
 
-        builder.add_rustc_lib_path(compiler, &mut cargo);
+            builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run_expecting(
-            build,
-            &mut cargo,
-            builder.build.config.toolstate.clippy.passes(ToolState::Testing),
-        );
+            if try_run_expecting(
+                build,
+                &mut cargo,
+                builder.build.config.toolstate.clippy.passes(ToolState::Testing),
+            ) {
+                build.save_toolstate("clippy-driver", ToolState::Testing);
+            }
+        } else {
+            eprintln!("failed to test clippy: could not build");
+        }
     }
 }
 
@@ -736,12 +770,14 @@ impl Step for Compiletest {
             flags.push("-g".to_string());
         }
 
-        let mut hostflags = build.rustc_flags(compiler.host);
-        hostflags.extend(flags.clone());
+        if let Some(linker) = build.linker(target) {
+            cmd.arg("--linker").arg(linker);
+        }
+
+        let hostflags = flags.clone();
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
-        let mut targetflags = build.rustc_flags(target);
-        targetflags.extend(flags);
+        let mut targetflags = flags.clone();
         targetflags.push(format!("-Lnative={}",
                                  build.test_helpers_out(target).display()));
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
@@ -795,6 +831,9 @@ impl Step for Compiletest {
                 .arg("--cflags").arg(build.cflags(target).join(" "))
                 .arg("--llvm-components").arg(llvm_components.trim())
                 .arg("--llvm-cxxflags").arg(llvm_cxxflags.trim());
+                if let Some(ar) = build.ar(target) {
+                    cmd.arg("--ar").arg(ar);
+                }
             }
         }
         if suite == "run-make" && !build.config.llvm_enabled {
@@ -820,7 +859,7 @@ impl Step for Compiletest {
         // Note that if we encounter `PATH` we make sure to append to our own `PATH`
         // rather than stomp over it.
         if target.contains("msvc") {
-            for &(ref k, ref v) in build.cc[&target].0.env() {
+            for &(ref k, ref v) in build.cc[&target].env() {
                 if k != "PATH" {
                     cmd.env(k, v);
                 }
@@ -1185,7 +1224,8 @@ impl Step for Crate {
                     // ends up messing with various mtime calculations and such.
                     if !name.contains("jemalloc") &&
                        *name != *"build_helper" &&
-                       !(name.starts_with("rustc_") && name.ends_with("san")) {
+                       !(name.starts_with("rustc_") && name.ends_with("san")) &&
+                       name != "dlmalloc" {
                         cargo.arg("-p").arg(&format!("{}:0.0.0", name));
                     }
                     for dep in build.crates[&name].deps.iter() {
@@ -1218,6 +1258,17 @@ impl Step for Crate {
         if target.contains("emscripten") {
             cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
                       build.config.nodejs.as_ref().expect("nodejs not configured"));
+        } else if target.starts_with("wasm32") {
+            // On the wasm32-unknown-unknown target we're using LTO which is
+            // incompatible with `-C prefer-dynamic`, so disable that here
+            cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+            let node = build.config.nodejs.as_ref()
+                .expect("nodejs not configured");
+            let runner = format!("{} {}/src/etc/wasm32-shim.js",
+                                 node.display(),
+                                 build.src.display());
+            cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)), &runner);
         } else if build.remote_tested(target) {
             cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
                       format!("{} run",

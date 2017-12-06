@@ -259,7 +259,7 @@ pub trait Hasher {
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
     ///
-    /// ['write']: #tymethod.write
+    /// [`write`]: #tymethod.write
     #[stable(feature = "rust1", since = "1.0.0")]
     fn finish(&self) -> u64;
 
@@ -665,16 +665,36 @@ mod impls {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T> Hash for *const T {
+    impl<T: ?Sized> Hash for *const T {
         fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_usize(*self as usize)
+            if mem::size_of::<Self>() == mem::size_of::<usize>() {
+                // Thin pointer
+                state.write_usize(*self as *const () as usize);
+            } else {
+                // Fat pointer
+                let (a, b) = unsafe {
+                    *(self as *const Self as *const (usize, usize))
+                };
+                state.write_usize(a);
+                state.write_usize(b);
+            }
         }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T> Hash for *mut T {
+    impl<T: ?Sized> Hash for *mut T {
         fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_usize(*self as usize)
+            if mem::size_of::<Self>() == mem::size_of::<usize>() {
+                // Thin pointer
+                state.write_usize(*self as *const () as usize);
+            } else {
+                // Fat pointer
+                let (a, b) = unsafe {
+                    *(self as *const Self as *const (usize, usize))
+                };
+                state.write_usize(a);
+                state.write_usize(b);
+            }
         }
     }
 }

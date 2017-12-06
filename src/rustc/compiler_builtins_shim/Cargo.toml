@@ -1,5 +1,3 @@
-# See libc_shim/Cargo.toml for why this exists
-
 [package]
 name = "compiler_builtins"
 authors = ["The Rust Project Developers"]
@@ -12,10 +10,27 @@ test = false
 doctest = false
 
 [dependencies]
+# Specify the path to libcore; at the time of writing, removing this shim in
+# favor of using compiler-builtins from git results in a compilation failure:
+#
+# Building stage0 std artifacts (x86_64-apple-darwin -> x86_64-apple-darwin)
+#    Compiling compiler_builtins v0.1.0 (https://github.com/rust-lang-nursery/compiler-builtins.git#23f14d3f)
+# error[E0463]: can't find crate for `core`
+#
+# error: aborting due to previous error
+#
+# error: Could not compile `compiler_builtins`.
+#
+# Caused by:
+#   process didn't exit successfully: `/Users/tamird/src/rust/build/bootstrap/debug/rustc --crate-name compiler_builtins /Users/tamird/.cargo/git/checkouts/compiler-builtins-ec094dc45a0179c8/23f14d3/src/lib.rs --error-format json --crate-type lib --emit=dep-info,link -C opt-level=2 --cfg feature="c" --cfg feature="compiler-builtins" --cfg feature="default" --cfg feature="gcc" -C metadata=876d429e8d7eae1f -C extra-filename=-876d429e8d7eae1f --out-dir /Users/tamird/src/rust/build/x86_64-apple-darwin/stage0-std/x86_64-apple-darwin/release/deps --target x86_64-apple-darwin -L dependency=/Users/tamird/src/rust/build/x86_64-apple-darwin/stage0-std/x86_64-apple-darwin/release/deps -L dependency=/Users/tamird/src/rust/build/x86_64-apple-darwin/stage0-std/release/deps --cap-lints allow -L native=/Users/tamird/src/rust/build/x86_64-apple-darwin/stage0-std/x86_64-apple-darwin/release/build/compiler_builtins-f18fab55928102ad/out -l static=compiler-rt` (exit code: 101)
+# thread 'main' panicked at 'command did not execute successfully: "/Users/tamird/src/rust/build/x86_64-apple-darwin/stage0/bin/cargo" "build" "-j" "4" "--target" "x86_64-apple-darwin" "--release" "--features" "panic-unwind jemalloc backtrace" "--manifest-path" "/Users/tamird/src/rust/src/libstd/Cargo.toml" "--message-format" "json"
+# expected success, got: exit code: 101', src/bootstrap/compile.rs:883:8
+#
+# See https://github.com/rust-lang/rfcs/pull/1133.
 core = { path = "../../libcore" }
 
 [build-dependencies]
-gcc = "0.3"
+cc = "1.0.1"
 
 [features]
 c = []

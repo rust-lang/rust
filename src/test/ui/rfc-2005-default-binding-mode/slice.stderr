@@ -1,0 +1,8 @@
+error[E0004]: non-exhaustive patterns: `&[]` not covered
+  --> $DIR/slice.rs:17:11
+   |
+17 |     match sl { //~ ERROR non-exhaustive patterns
+   |           ^^ pattern `&[]` not covered
+
+error: aborting due to previous error
+

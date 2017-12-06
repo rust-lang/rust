@@ -455,9 +455,11 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     let id_test = Ident::from_str("test");
     let sp = ignored_span(cx, DUMMY_SP);
     let (vi, vis, ident) = if cx.is_libtest {
-        (ast::ItemKind::Use(
-            P(nospan(ast::ViewPathSimple(id_test,
-                                         path_node(vec![id_test]))))),
+        (ast::ItemKind::Use(P(ast::UseTree {
+            span: DUMMY_SP,
+            prefix: path_node(vec![id_test]),
+            kind: ast::UseTreeKind::Simple(id_test),
+        })),
          ast::Visibility::Public, keywords::Invalid.ident())
     } else {
         (ast::ItemKind::ExternCrate(None), ast::Visibility::Inherited, id_test)
@@ -547,9 +549,11 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         // building `use <ident> = __test::main`
         let reexport_ident = Ident::with_empty_ctxt(s);
 
-        let use_path =
-            nospan(ast::ViewPathSimple(reexport_ident,
-                                       path_node(vec![mod_ident, Ident::from_str("main")])));
+        let use_path = ast::UseTree {
+            span: DUMMY_SP,
+            prefix: path_node(vec![mod_ident, Ident::from_str("main")]),
+            kind: ast::UseTreeKind::Simple(reexport_ident),
+        };
 
         expander.fold_item(P(ast::Item {
             id: ast::DUMMY_NODE_ID,

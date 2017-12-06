@@ -1,13 +1,13 @@
 error[E0379]: trait fns cannot be declared const
   --> $DIR/const-fn-in-trait.rs:17:5
    |
-17 |     const fn g();
+17 |     const fn g(); //~ ERROR cannot be declared const
    |     ^^^^^ trait fns cannot be const
 
 error[E0379]: trait fns cannot be declared const
   --> $DIR/const-fn-in-trait.rs:21:5
    |
-21 |     const fn f() -> u32 { 22 }
+21 |     const fn f() -> u32 { 22 } //~ ERROR cannot be declared const
    |     ^^^^^ trait fns cannot be const
 
 error: aborting due to 2 previous errors

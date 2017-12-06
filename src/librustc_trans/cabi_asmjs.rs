@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{FnType, ArgType, ArgAttribute, LayoutExt, Uniform};
+use abi::{FnType, ArgType, LayoutExt, Uniform};
 use context::CrateContext;
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
@@ -19,9 +19,9 @@ use context::CrateContext;
 fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
     if ret.layout.is_aggregate() {
         if let Some(unit) = ret.layout.homogeneous_aggregate(ccx) {
-            let size = ret.layout.size(ccx);
+            let size = ret.layout.size;
             if unit.size == size {
-                ret.cast_to(ccx, Uniform {
+                ret.cast_to(Uniform {
                     unit,
                     total: size
                 });
@@ -29,14 +29,13 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
             }
         }
 
-        ret.make_indirect(ccx);
+        ret.make_indirect();
     }
 }
 
-fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+fn classify_arg_ty(arg: &mut ArgType) {
     if arg.layout.is_aggregate() {
-        arg.make_indirect(ccx);
-        arg.attrs.set(ArgAttribute::ByVal);
+        arg.make_indirect_byval();
     }
 }
 
@@ -47,6 +46,6 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
 
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(ccx, arg);
+        classify_arg_ty(arg);
     }
 }

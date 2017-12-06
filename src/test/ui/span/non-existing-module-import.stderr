@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `std::bar`
   --> $DIR/non-existing-module-import.rs:11:10
    |
-11 | use std::bar::{foo1, foo2};
+11 | use std::bar::{foo1, foo2}; //~ ERROR unresolved import
    |          ^^^ Could not find `bar` in `std`
 
 error: aborting due to previous error

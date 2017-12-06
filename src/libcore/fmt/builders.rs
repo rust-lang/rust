@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use fmt::{self, FlagV1};
+use fmt;
 
 struct PadAdapter<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
@@ -140,7 +140,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.alternate()
     }
 }
 
@@ -233,7 +233,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.alternate()
     }
 }
 
@@ -277,7 +277,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.alternate()
     }
 }
 
@@ -519,6 +519,6 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.alternate()
     }
 }

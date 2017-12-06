@@ -1,7 +1,10 @@
 use ty::{self, Ty};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
+use rustc_const_math::ConstFloat;
 use super::{PrimVal, EvalContext, EvalResult, MemoryPointer, PointerArithmetic, Machine};
+use rustc_apfloat::ieee::{Single, Double};
+use rustc_apfloat::Float;
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(super) fn cast_primval(
@@ -19,7 +22,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             val @ PrimVal::Bytes(_) => {
                 use super::PrimValKind::*;
                 match src_kind {
-                    F32 => self.cast_from_float(val.to_f32()? as f64, dest_ty),
+                    F32 => self.cast_from_float(val.to_f32()?, dest_ty),
                     F64 => self.cast_from_float(val.to_f64()?, dest_ty),
 
                     I8 | I16 | I32 | I64 | I128 => {
@@ -78,10 +81,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             TyInt(ty) => Ok(PrimVal::Bytes(self.int_to_int(v as i128, ty))),
             TyUint(ty) => Ok(PrimVal::Bytes(self.int_to_uint(v, ty))),
 
-            TyFloat(FloatTy::F64) if negative => Ok(PrimVal::from_f64(v as i128 as f64)),
-            TyFloat(FloatTy::F64) => Ok(PrimVal::from_f64(v as f64)),
-            TyFloat(FloatTy::F32) if negative => Ok(PrimVal::from_f32(v as i128 as f32)),
-            TyFloat(FloatTy::F32) => Ok(PrimVal::from_f32(v as f32)),
+            TyFloat(fty) if negative => Ok(PrimVal::Bytes(ConstFloat::from_i128(v as i128, fty).bits)),
+            TyFloat(fty) => Ok(PrimVal::Bytes(ConstFloat::from_u128(v, fty).bits)),
 
             TyChar if v as u8 as u128 == v => Ok(PrimVal::Bytes(v)),
             TyChar => err!(InvalidChar(v)),
@@ -93,17 +94,26 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    fn cast_from_float(&self, val: f64, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    fn cast_from_float(&self, val: ConstFloat, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         use ty::TypeVariants::*;
         match ty.sty {
-            // Casting negative floats to unsigned integers yields zero.
-            TyUint(_) if val < 0.0 => self.cast_from_int(0, ty, false),
-            TyInt(_) if val < 0.0 => self.cast_from_int(val as i128 as u128, ty, true),
+            TyUint(t) => {
+                let width = t.bit_width().unwrap_or(self.memory.pointer_size() as usize * 8);
+                match val.ty {
+                    FloatTy::F32 => Ok(PrimVal::Bytes(Single::from_bits(val.bits).to_u128(width).value)),
+                    FloatTy::F64 => Ok(PrimVal::Bytes(Double::from_bits(val.bits).to_u128(width).value)),
+                }
+            },
 
-            TyInt(_) | ty::TyUint(_) => self.cast_from_int(val as u128, ty, false),
+            TyInt(t) => {
+                let width = t.bit_width().unwrap_or(self.memory.pointer_size() as usize * 8);
+                match val.ty {
+                    FloatTy::F32 => Ok(PrimVal::from_i128(Single::from_bits(val.bits).to_i128(width).value)),
+                    FloatTy::F64 => Ok(PrimVal::from_i128(Double::from_bits(val.bits).to_i128(width).value)),
+                }
+            },
 
-            TyFloat(FloatTy::F64) => Ok(PrimVal::from_f64(val)),
-            TyFloat(FloatTy::F32) => Ok(PrimVal::from_f32(val as f32)),
+            TyFloat(fty) => Ok(PrimVal::from_float(val.convert(fty))),
             _ => err!(Unimplemented(format!("float to {:?} cast", ty))),
         }
     }

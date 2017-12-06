@@ -22,7 +22,6 @@ pub fn target() -> Result<Target, String> {
 
     let opts = TargetOptions {
         linker: cmd("emcc"),
-        ar: cmd("emar"),
 
         dynamic_linking: false,
         executables: true,
@@ -42,6 +41,7 @@ pub fn target() -> Result<Target, String> {
         llvm_target: "asmjs-unknown-emscripten".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
+        target_c_int_width: "32".to_string(),
         target_os: "emscripten".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),

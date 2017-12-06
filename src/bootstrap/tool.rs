@@ -11,7 +11,7 @@
 use std::fs;
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, exit};
 
 use Mode;
 use Compiler;
@@ -38,24 +38,40 @@ impl Step for CleanTools {
         run.never()
     }
 
-    /// Build a tool in `src/tools`
-    ///
-    /// This will build the specified tool with the specified `host` compiler in
-    /// `stage` into the normal cargo output directory.
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let compiler = self.compiler;
         let target = self.target;
         let mode = self.mode;
 
-        let stamp = match mode {
-            Mode::Libstd => libstd_stamp(build, compiler, target),
-            Mode::Libtest => libtest_stamp(build, compiler, target),
-            Mode::Librustc => librustc_stamp(build, compiler, target),
-            _ => panic!(),
+        // This is for the original compiler, but if we're forced to use stage 1, then
+        // std/test/rustc stamps won't exist in stage 2, so we need to get those from stage 1, since
+        // we copy the libs forward.
+        let tools_dir = build.stage_out(compiler, Mode::Tool);
+        let compiler = if builder.force_use_stage1(compiler, target) {
+            builder.compiler(1, compiler.host)
+        } else {
+            compiler
         };
-        let out_dir = build.cargo_out(compiler, Mode::Tool, target);
-        build.clear_if_dirty(&out_dir, &stamp);
+
+        for &cur_mode in &[Mode::Libstd, Mode::Libtest, Mode::Librustc] {
+            let stamp = match cur_mode {
+                Mode::Libstd => libstd_stamp(build, compiler, target),
+                Mode::Libtest => libtest_stamp(build, compiler, target),
+                Mode::Librustc => librustc_stamp(build, compiler, target),
+                _ => panic!(),
+            };
+
+            if build.clear_if_dirty(&tools_dir, &stamp) {
+                break;
+            }
+
+            // If we are a rustc tool, and std changed, we also need to clear ourselves out -- our
+            // dependencies depend on std. Therefore, we iterate up until our own mode.
+            if mode == cur_mode {
+                break;
+            }
+        }
     }
 }
 
@@ -70,7 +86,7 @@ struct ToolBuild {
 }
 
 impl Step for ToolBuild {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.never()
@@ -80,7 +96,7 @@ impl Step for ToolBuild {
     ///
     /// This will build the specified tool with the specified `host` compiler in
     /// `stage` into the normal cargo output directory.
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         let build = builder.build;
         let compiler = self.compiler;
         let target = self.target;
@@ -99,8 +115,35 @@ impl Step for ToolBuild {
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
-        build.run_expecting(&mut cargo, expectation);
-        build.cargo_out(compiler, Mode::Tool, target).join(exe(tool, &compiler.host))
+        let is_expected = build.try_run(&mut cargo, expectation);
+        // If the expectation is "Failing", `try_run` returning true actually
+        // means a build-failure is successfully observed, i.e. the tool is
+        // broken. Thus the XOR here.
+        // Sorry for the complicated logic, but we can remove this expectation
+        // logic after #45861 is fully fixed.
+        build.save_toolstate(tool, if is_expected ^ (expectation == BuildExpectation::Failing) {
+            ToolState::Compiling
+        } else {
+            ToolState::Broken
+        });
+
+        if !is_expected {
+            if expectation == BuildExpectation::None {
+                exit(1);
+            } else {
+                return None;
+            }
+        }
+
+        if expectation == BuildExpectation::Succeeding || expectation == BuildExpectation::None {
+            let cargo_out = build.cargo_out(compiler, Mode::Tool, target)
+                .join(exe(tool, &compiler.host));
+            let bin = build.tools_dir(compiler).join(exe(tool, &compiler.host));
+            copy(&cargo_out, &bin);
+            Some(bin)
+        } else {
+            None
+        }
     }
 }
 
@@ -169,12 +212,12 @@ macro_rules! tool {
             }
 
             pub fn tool_default_stage(&self, tool: Tool) -> u32 {
-                // Compile the error-index in the top stage as it depends on
-                // rustdoc, so we want to avoid recompiling rustdoc twice if we
-                // can. Otherwise compile everything else in stage0 as there's
-                // no need to rebootstrap everything
+                // Compile the error-index in the same stage as rustdoc to avoid
+                // recompiling rustdoc twice if we can. Otherwise compile
+                // everything else in stage0 as there's no need to rebootstrap
+                // everything.
                 match tool {
-                    Tool::ErrorIndex => self.top_stage,
+                    Tool::ErrorIndex if self.top_stage >= 2 => self.top_stage,
                     _ => 0,
                 }
             }
@@ -209,7 +252,7 @@ macro_rules! tool {
                     mode: $mode,
                     path: $path,
                     expectation: BuildExpectation::None,
-                })
+                }).expect("expected to build -- BuildExpectation::None")
             }
         }
         )+
@@ -257,7 +300,7 @@ impl Step for RemoteTestServer {
             mode: Mode::Libstd,
             path: "src/tools/remote-test-server",
             expectation: BuildExpectation::None,
-        })
+        }).expect("expected to build -- BuildExpectation::None")
     }
 }
 
@@ -375,74 +418,70 @@ impl Step for Cargo {
             mode: Mode::Librustc,
             path: "src/tools/cargo",
             expectation: BuildExpectation::None,
-        })
+        }).expect("BuildExpectation::None - expected to build")
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Clippy {
-    pub compiler: Compiler,
-    pub target: Interned<String>,
+macro_rules! tool_extended {
+    (($sel:ident, $builder:ident),
+       $($name:ident,
+       $toolstate:ident,
+       $path:expr,
+       $tool_name:expr,
+       $extra_deps:block;)+) => {
+        $(
+            #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+        pub struct $name {
+            pub compiler: Compiler,
+            pub target: Interned<String>,
+        }
+
+        impl Step for $name {
+            type Output = Option<PathBuf>;
+            const DEFAULT: bool = true;
+            const ONLY_HOSTS: bool = true;
+
+            fn should_run(run: ShouldRun) -> ShouldRun {
+                let builder = run.builder;
+                run.path($path).default_condition(builder.build.config.extended)
+            }
+
+            fn make_run(run: RunConfig) {
+                run.builder.ensure($name {
+                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
+                    target: run.target,
+                });
+            }
+
+            fn run($sel, $builder: &Builder) -> Option<PathBuf> {
+                $extra_deps
+                let toolstate = $builder.build.config.toolstate.$toolstate;
+                $builder.ensure(ToolBuild {
+                    compiler: $sel.compiler,
+                    target: $sel.target,
+                    tool: $tool_name,
+                    mode: Mode::Librustc,
+                    path: $path,
+                    expectation: toolstate.passes(ToolState::Compiling),
+                })
+            }
+        }
+        )+
+    }
 }
 
-impl Step for Clippy {
-    type Output = PathBuf;
-    const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tools/clippy")
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(Clippy {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
-            target: run.target,
-        });
-    }
-
-    fn run(self, builder: &Builder) -> PathBuf {
+tool_extended!((self, builder),
+    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
+    Clippy, clippy, "src/tools/clippy", "clippy-driver", {
         // Clippy depends on procedural macros (serde), which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
             compiler: self.compiler,
             target: builder.build.build,
         });
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "clippy",
-            mode: Mode::Librustc,
-            path: "src/tools/clippy",
-            expectation: builder.build.config.toolstate.clippy.passes(ToolState::Compiling),
-        })
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Rls {
-    pub compiler: Compiler,
-    pub target: Interned<String>,
-}
-
-impl Step for Rls {
-    type Output = PathBuf;
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        let builder = run.builder;
-        run.path("src/tools/rls").default_condition(builder.build.config.extended)
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(Rls {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
-            target: run.target,
-        });
-    }
-
-    fn run(self, builder: &Builder) -> PathBuf {
+    };
+    Miri, miri, "src/tools/miri", "miri", {};
+    Rls, rls, "src/tools/rls", "rls", {
         builder.ensure(native::Openssl {
             target: self.target,
         });
@@ -452,87 +491,9 @@ impl Step for Rls {
             compiler: self.compiler,
             target: builder.build.build,
         });
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "rls",
-            mode: Mode::Librustc,
-            path: "src/tools/rls",
-            expectation: builder.build.config.toolstate.rls.passes(ToolState::Compiling),
-        })
-    }
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Rustfmt {
-    pub compiler: Compiler,
-    pub target: Interned<String>,
-}
-
-impl Step for Rustfmt {
-    type Output = PathBuf;
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        let builder = run.builder;
-        run.path("src/tools/rustfmt").default_condition(builder.build.config.extended)
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(Rustfmt {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
-            target: run.target,
-        });
-    }
-
-    fn run(self, builder: &Builder) -> PathBuf {
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "rustfmt",
-            mode: Mode::Librustc,
-            path: "src/tools/rustfmt",
-            expectation: builder.build.config.toolstate.rustfmt.passes(ToolState::Compiling),
-        })
-    }
-}
-
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Miri {
-    pub compiler: Compiler,
-    pub target: Interned<String>,
-}
-
-impl Step for Miri {
-    type Output = PathBuf;
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun) -> ShouldRun {
-        let build_miri = run.builder.build.config.test_miri;
-        run.path("src/tools/miri").default_condition(build_miri)
-    }
-
-    fn make_run(run: RunConfig) {
-        run.builder.ensure(Miri {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
-            target: run.target,
-        });
-    }
-
-    fn run(self, builder: &Builder) -> PathBuf {
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "miri",
-            mode: Mode::Librustc,
-            path: "src/tools/miri",
-            expectation: builder.build.config.toolstate.miri.passes(ToolState::Compiling),
-        })
-    }
-}
+    };
+    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", {};
+);
 
 impl<'a> Builder<'a> {
     /// Get a `Command` which is ready to run `tool` in `stage` built for
@@ -561,7 +522,7 @@ impl<'a> Builder<'a> {
         if compiler.host.contains("msvc") {
             let curpaths = env::var_os("PATH").unwrap_or_default();
             let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
-            for &(ref k, ref v) in self.cc[&compiler.host].0.env() {
+            for &(ref k, ref v) in self.cc[&compiler.host].env() {
                 if k != "PATH" {
                     continue
                 }

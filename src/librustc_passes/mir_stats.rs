@@ -14,8 +14,8 @@
 
 use rustc_const_math::{ConstUsize};
 use rustc::mir::{AggregateKind, AssertMessage, BasicBlock, BasicBlockData};
-use rustc::mir::{Constant, Literal, Location, LocalDecl};
-use rustc::mir::{Lvalue, LvalueElem, LvalueProjection};
+use rustc::mir::{Constant, Literal, Location, Local, LocalDecl};
+use rustc::mir::{Place, PlaceElem, PlaceProjection};
 use rustc::mir::{Mir, Operand, ProjectionElem};
 use rustc::mir::{Rvalue, SourceInfo, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind, VisibilityScope, VisibilityScopeData};
@@ -121,6 +121,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             TerminatorKind::Assert { .. } => "TerminatorKind::Assert",
             TerminatorKind::GeneratorDrop => "TerminatorKind::GeneratorDrop",
             TerminatorKind::Yield { .. } => "TerminatorKind::Yield",
+            TerminatorKind::FalseEdges { .. } => "TerminatorKind::FalseEdges",
         }, kind);
         self.super_terminator_kind(block, kind, location);
     }
@@ -180,47 +181,48 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
                      location: Location) {
         self.record("Operand", operand);
         self.record(match *operand {
-            Operand::Consume(..) => "Operand::Consume",
+            Operand::Copy(..) => "Operand::Copy",
+            Operand::Move(..) => "Operand::Move",
             Operand::Constant(..) => "Operand::Constant",
         }, operand);
         self.super_operand(operand, location);
     }
 
-    fn visit_lvalue(&mut self,
-                    lvalue: &Lvalue<'tcx>,
-                    context: mir_visit::LvalueContext<'tcx>,
+    fn visit_place(&mut self,
+                    place: &Place<'tcx>,
+                    context: mir_visit::PlaceContext<'tcx>,
                     location: Location) {
-        self.record("Lvalue", lvalue);
-        self.record(match *lvalue {
-            Lvalue::Local(..) => "Lvalue::Local",
-            Lvalue::Static(..) => "Lvalue::Static",
-            Lvalue::Projection(..) => "Lvalue::Projection",
-        }, lvalue);
-        self.super_lvalue(lvalue, context, location);
+        self.record("Place", place);
+        self.record(match *place {
+            Place::Local(..) => "Place::Local",
+            Place::Static(..) => "Place::Static",
+            Place::Projection(..) => "Place::Projection",
+        }, place);
+        self.super_place(place, context, location);
     }
 
     fn visit_projection(&mut self,
-                        lvalue: &LvalueProjection<'tcx>,
-                        context: mir_visit::LvalueContext<'tcx>,
+                        place: &PlaceProjection<'tcx>,
+                        context: mir_visit::PlaceContext<'tcx>,
                         location: Location) {
-        self.record("LvalueProjection", lvalue);
-        self.super_projection(lvalue, context, location);
+        self.record("PlaceProjection", place);
+        self.super_projection(place, context, location);
     }
 
     fn visit_projection_elem(&mut self,
-                             lvalue: &LvalueElem<'tcx>,
-                             context: mir_visit::LvalueContext<'tcx>,
+                             place: &PlaceElem<'tcx>,
+                             context: mir_visit::PlaceContext<'tcx>,
                              location: Location) {
-        self.record("LvalueElem", lvalue);
-        self.record(match *lvalue {
-            ProjectionElem::Deref => "LvalueElem::Deref",
-            ProjectionElem::Subslice { .. } => "LvalueElem::Subslice",
-            ProjectionElem::Field(..) => "LvalueElem::Field",
-            ProjectionElem::Index(..) => "LvalueElem::Index",
-            ProjectionElem::ConstantIndex { .. } => "LvalueElem::ConstantIndex",
-            ProjectionElem::Downcast(..) => "LvalueElem::Downcast",
-        }, lvalue);
-        self.super_projection_elem(lvalue, context, location);
+        self.record("PlaceElem", place);
+        self.record(match *place {
+            ProjectionElem::Deref => "PlaceElem::Deref",
+            ProjectionElem::Subslice { .. } => "PlaceElem::Subslice",
+            ProjectionElem::Field(..) => "PlaceElem::Field",
+            ProjectionElem::Index(..) => "PlaceElem::Index",
+            ProjectionElem::ConstantIndex { .. } => "PlaceElem::ConstantIndex",
+            ProjectionElem::Downcast(..) => "PlaceElem::Downcast",
+        }, place);
+        self.super_projection_elem(place, context, location);
     }
 
     fn visit_constant(&mut self,
@@ -269,9 +271,10 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
     }
 
     fn visit_local_decl(&mut self,
+                        local: Local,
                         local_decl: &LocalDecl<'tcx>) {
         self.record("LocalDecl", local_decl);
-        self.super_local_decl(local_decl);
+        self.super_local_decl(local, local_decl);
     }
 
     fn visit_visibility_scope(&mut self,

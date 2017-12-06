@@ -17,6 +17,7 @@ use std::path::{Path, PathBuf};
 use std::ptr;
 use std::str;
 
+use back::bytecode::RLIB_BYTECODE_EXTENSION;
 use libc;
 use llvm::archive_ro::{ArchiveRO, Child};
 use llvm::{self, ArchiveKind};
@@ -30,8 +31,7 @@ pub struct ArchiveConfig<'a> {
     pub lib_search_paths: Vec<PathBuf>,
 }
 
-/// Helper for adding many files to an archive with a single invocation of
-/// `ar`.
+/// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]
 pub struct ArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
@@ -154,12 +154,9 @@ impl<'a> ArchiveBuilder<'a> {
         // might be also an extra name suffix
         let obj_start = format!("{}", name);
 
-        // Ignoring all bytecode files, no matter of
-        // name
-        let bc_ext = ".bytecode.deflate";
-
         self.add_archive(rlib, move |fname: &str| {
-            if fname.ends_with(bc_ext) || fname == METADATA_FILENAME {
+            // Ignore bytecode/metadata files, no matter the name.
+            if fname.ends_with(RLIB_BYTECODE_EXTENSION) || fname == METADATA_FILENAME {
                 return true
             }
 
@@ -203,8 +200,8 @@ impl<'a> ArchiveBuilder<'a> {
         });
     }
 
-    /// Indicate that the next call to `build` should updates all symbols in
-    /// the archive (run 'ar s' over it).
+    /// Indicate that the next call to `build` should update all symbols in
+    /// the archive (equivalent to running 'ar s' over it).
     pub fn update_symbols(&mut self) {
         self.should_update_symbols = true;
     }

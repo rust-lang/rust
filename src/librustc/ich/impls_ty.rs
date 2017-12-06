@@ -61,6 +61,9 @@ for ty::RegionKind {
                 def_id.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }
+            ty::ReLateBound(db, ty::BrEnv) => {
+                db.depth.hash_stable(hcx, hasher);
+            }
             ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
                 def_id.hash_stable(hcx, hasher);
                 index.hash_stable(hcx, hasher);
@@ -233,8 +236,9 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::Predicate<'gcx> {
             ty::Predicate::ObjectSafe(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
-            ty::Predicate::ClosureKind(def_id, closure_kind) => {
+            ty::Predicate::ClosureKind(def_id, closure_substs, closure_kind) => {
                 def_id.hash_stable(hcx, hasher);
+                closure_substs.hash_stable(hcx, hasher);
                 closure_kind.hash_stable(hcx, hasher);
             }
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
@@ -367,7 +371,8 @@ for ::middle::const_val::ErrKind<'gcx> {
             MiscBinaryOp |
             MiscCatchAll |
             IndexOpFeatureGated |
-            TypeckError => {
+            TypeckError |
+            CheckMatchError => {
                 // nothing to do
             }
             UnimplementedConstVal(s) => {
@@ -463,7 +468,8 @@ impl_stable_hash_for!(struct ty::TypeParameterDef {
     index,
     has_default,
     object_lifetime_default,
-    pure_wrt_drop
+    pure_wrt_drop,
+    synthetic
 });
 
 impl<'gcx, T> HashStable<StableHashingContext<'gcx>>
@@ -488,10 +494,15 @@ for ::middle::resolve_lifetime::Set1<T>
     }
 }
 
+impl_stable_hash_for!(enum ::middle::resolve_lifetime::LifetimeDefOrigin {
+    Explicit,
+    InBand
+});
+
 impl_stable_hash_for!(enum ::middle::resolve_lifetime::Region {
     Static,
-    EarlyBound(index, decl),
-    LateBound(db_index, decl),
+    EarlyBound(index, decl, is_in_band),
+    LateBound(db_index, decl, is_in_band),
     LateBoundAnon(db_index, anon_index),
     Free(call_site_scope_data, decl)
 });
@@ -514,7 +525,7 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
     FnPtrAddrCast
 });
 
-impl_stable_hash_for!(struct ::middle::region::FirstStatementIndex { idx });
+impl_stable_hash_for!(tuple_struct ::middle::region::FirstStatementIndex { idx });
 impl_stable_hash_for!(struct ::middle::region::Scope { id, code });
 
 impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for region::Scope {
@@ -606,8 +617,7 @@ for ty::TypeVariants<'gcx>
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
             }
-            TyGenerator(def_id, closure_substs, interior)
-             => {
+            TyGenerator(def_id, closure_substs, interior) => {
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
                 interior.hash_stable(hcx, hasher);
@@ -625,6 +635,9 @@ for ty::TypeVariants<'gcx>
             }
             TyParam(param_ty) => {
                 param_ty.hash_stable(hcx, hasher);
+            }
+            TyForeign(def_id) => {
+                def_id.hash_stable(hcx, hasher);
             }
             TyInfer(..) => {
                 bug!("ty::TypeVariants::hash_stable() - Unexpected variant {:?}.", *self)
@@ -725,13 +738,13 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::TraitDef {
             def_id: _,
             unsafety,
             paren_sugar,
-            has_default_impl,
+            has_auto_impl,
             def_path_hash,
         } = *self;
 
         unsafety.hash_stable(hcx, hasher);
         paren_sugar.hash_stable(hcx, hasher);
-        has_default_impl.hash_stable(hcx, hasher);
+        has_auto_impl.hash_stable(hcx, hasher);
         def_path_hash.hash_stable(hcx, hasher);
     }
 }
@@ -751,13 +764,11 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::CrateVariancesMap {
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::CrateVariancesMap {
-            ref dependencies,
             ref variances,
             // This is just an irrelevant helper value.
             empty_variance: _,
         } = *self;
 
-        dependencies.hash_stable(hcx, hasher);
         variances.hash_stable(hcx, hasher);
     }
 }
@@ -840,3 +851,129 @@ impl_stable_hash_for!(struct ::util::common::ErrorReported {});
 impl_stable_hash_for!(tuple_struct ::middle::reachable::ReachableSet {
     reachable_set
 });
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::Vtable<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use traits::Vtable::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match self {
+            &VtableImpl(ref table_impl) => table_impl.hash_stable(hcx, hasher),
+            &VtableAutoImpl(ref table_def_impl) => table_def_impl.hash_stable(hcx, hasher),
+            &VtableParam(ref table_param) => table_param.hash_stable(hcx, hasher),
+            &VtableObject(ref table_obj) => table_obj.hash_stable(hcx, hasher),
+            &VtableBuiltin(ref table_builtin) => table_builtin.hash_stable(hcx, hasher),
+            &VtableClosure(ref table_closure) => table_closure.hash_stable(hcx, hasher),
+            &VtableFnPointer(ref table_fn_pointer) => table_fn_pointer.hash_stable(hcx, hasher),
+            &VtableGenerator(ref table_generator) => table_generator.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableImplData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableImplData {
+            impl_def_id,
+            substs,
+            ref nested,
+        } = *self;
+        impl_def_id.hash_stable(hcx, hasher);
+        substs.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableAutoImplData<N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableAutoImplData {
+            trait_def_id,
+            ref nested,
+        } = *self;
+        trait_def_id.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableObjectData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableObjectData {
+            upcast_trait_ref,
+            vtable_base,
+            ref nested,
+        } = *self;
+        upcast_trait_ref.hash_stable(hcx, hasher);
+        vtable_base.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableBuiltinData<N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableBuiltinData {
+            ref nested,
+        } = *self;
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableClosureData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableClosureData {
+            closure_def_id,
+            substs,
+            ref nested,
+        } = *self;
+        closure_def_id.hash_stable(hcx, hasher);
+        substs.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableFnPointerData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableFnPointerData {
+            fn_ty,
+            ref nested,
+        } = *self;
+        fn_ty.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx, N> HashStable<StableHashingContext<'gcx>>
+for traits::VtableGeneratorData<'gcx, N> where N: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableGeneratorData {
+            closure_def_id,
+            substs,
+            ref nested,
+        } = *self;
+        closure_def_id.hash_stable(hcx, hasher);
+        substs.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}

@@ -14,7 +14,7 @@ struct Bar<'a> {
 
 impl<'a> Bar<'a> {
     fn f(&mut self) {
-        self.s.push('x');
+        self.s.push('x'); //~ ERROR cannot borrow immutable borrowed
     }
 }
 

@@ -41,9 +41,9 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::transform::{MirPass, MirSource};
-use rustc::mir::visit::{MutVisitor, Visitor, LvalueContext};
+use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext};
 use std::borrow::Cow;
+use transform::{MirPass, MirSource};
 
 pub struct SimplifyCfg { label: String }
 
@@ -123,8 +123,6 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
                 for successor in terminator.successors_mut() {
                     self.collapse_goto_chain(successor, &mut changed);
                 }
-
-                changed |= self.simplify_unwind(&mut terminator);
 
                 let mut new_stmts = vec![];
                 let mut inner_changed = true;
@@ -238,38 +236,6 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         true
     }
 
-    // turn an unwind branch to a resume block into a None
-    fn simplify_unwind(&mut self, terminator: &mut Terminator<'tcx>) -> bool {
-        let unwind = match terminator.kind {
-            TerminatorKind::Drop { ref mut unwind, .. } |
-            TerminatorKind::DropAndReplace { ref mut unwind, .. } |
-            TerminatorKind::Call { cleanup: ref mut unwind, .. } |
-            TerminatorKind::Assert { cleanup: ref mut unwind, .. } =>
-                unwind,
-            _ => return false
-        };
-
-        if let &mut Some(unwind_block) = unwind {
-            let is_resume_block = match self.basic_blocks[unwind_block] {
-                BasicBlockData {
-                    ref statements,
-                    terminator: Some(Terminator {
-                        kind: TerminatorKind::Resume, ..
-                    }), ..
-                } if statements.is_empty() => true,
-                _ => false
-            };
-            if is_resume_block {
-                debug!("simplifying unwind to {:?} from {:?}",
-                       unwind_block, terminator.source_info);
-                *unwind = None;
-            }
-            return is_resume_block;
-        }
-
-        false
-    }
-
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
             blk.statements.retain(|stmt| if let StatementKind::Nop = stmt.kind {
@@ -352,9 +318,9 @@ struct DeclMarker {
 }
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
-    fn visit_local(&mut self, local: &Local, ctx: LvalueContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
         // ignore these altogether, they get removed along with their otherwise unused decls.
-        if ctx != LvalueContext::StorageLive && ctx != LvalueContext::StorageDead {
+        if ctx != PlaceContext::StorageLive && ctx != PlaceContext::StorageDead {
             self.locals.insert(local.index());
         }
     }
@@ -377,7 +343,7 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
         });
         self.super_basic_block_data(block, data);
     }
-    fn visit_local(&mut self, l: &mut Local, _: LvalueContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, l: &mut Local, _: PlaceContext<'tcx>, _: Location) {
         *l = Local::new(self.map[l.index()]);
     }
 }

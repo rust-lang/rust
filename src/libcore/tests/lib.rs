@@ -24,9 +24,10 @@
 #![feature(i128_type)]
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
+#![feature(iterator_try_fold)]
 #![feature(iter_rfind)]
+#![feature(iter_rfold)]
 #![feature(nonzero)]
-#![feature(rand)]
 #![feature(raw)]
 #![feature(refcell_replace_swap)]
 #![feature(sip_hash_13)]
@@ -38,15 +39,11 @@
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_from)]
+#![feature(try_trait)]
 #![feature(unique)]
-
-#![feature(const_atomic_bool_new)]
-#![feature(const_atomic_usize_new)]
-#![feature(const_atomic_isize_new)]
 
 extern crate core;
 extern crate test;
-extern crate rand;
 
 mod any;
 mod array;

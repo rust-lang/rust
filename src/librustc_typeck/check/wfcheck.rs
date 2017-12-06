@@ -8,19 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use astconv::ExplicitSelf;
 use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Lift, Ty, TyCtxt};
+use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 
 use syntax::ast;
+use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
@@ -114,7 +115,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
                 let trait_ref = tcx.impl_trait_ref(tcx.hir.local_def_id(item.id)).unwrap();
-                if !tcx.trait_has_default_impl(trait_ref.def_id) {
+                if !tcx.trait_is_auto(trait_ref.def_id) {
                     error_192(tcx, item.span);
                 }
             }
@@ -223,10 +224,31 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     {
         self.for_item(item).with_fcx(|fcx, this| {
             let variants = lookup_fields(fcx);
+            let def_id = fcx.tcx.hir.local_def_id(item.id);
+            let packed = fcx.tcx.adt_def(def_id).repr.packed();
 
             for variant in &variants {
-                // For DST, all intermediate types must be sized.
-                let unsized_len = if all_sized || variant.fields.is_empty() { 0 } else { 1 };
+                // For DST, or when drop needs to copy things around, all
+                // intermediate types must be sized.
+                let needs_drop_copy = || {
+                    packed && {
+                        let ty = variant.fields.last().unwrap().ty;
+                        let ty = fcx.tcx.erase_regions(&ty).lift_to_tcx(this.tcx)
+                            .unwrap_or_else(|| {
+                                span_bug!(item.span, "inference variables in {:?}", ty)
+                            });
+                        ty.needs_drop(this.tcx, this.tcx.param_env(def_id))
+                    }
+                };
+                let unsized_len = if
+                    all_sized ||
+                    variant.fields.is_empty() ||
+                    needs_drop_copy()
+                {
+                    0
+                } else {
+                    1
+                };
                 for field in &variant.fields[..variant.fields.len() - unsized_len] {
                     fcx.register_bound(
                         field.ty,
@@ -245,7 +267,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 }
             }
 
-            let def_id = fcx.tcx.hir.local_def_id(item.id);
             let predicates = fcx.tcx.predicates_of(def_id).instantiate_identity(fcx.tcx);
             let predicates = fcx.normalize_associated_types_in(item.span, &predicates);
             this.check_where_clauses(fcx, item.span, &predicates);
@@ -318,7 +339,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     fn check_trait(&mut self, item: &hir::Item) {
         let trait_def_id = self.tcx.hir.local_def_id(item.id);
 
-        if self.tcx.trait_has_default_impl(trait_def_id) {
+        if self.tcx.trait_is_auto(trait_def_id) {
             self.check_auto_trait(trait_def_id, item.span);
         }
 
@@ -430,7 +451,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                       implied_bounds: &mut Vec<Ty<'tcx>>)
     {
         let sig = fcx.normalize_associated_types_in(span, &sig);
-        let sig = fcx.liberate_late_bound_regions(def_id, &sig);
+        let sig = fcx.tcx.liberate_late_bound_regions(def_id, &sig);
 
         for input_ty in sig.inputs() {
             fcx.register_wf_obligation(&input_ty, span, self.code.clone());
@@ -451,8 +472,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                                          method: &ty::AssociatedItem,
                                          self_ty: Ty<'tcx>)
     {
-        // check that the type of the method's receiver matches the
-        // method's first parameter.
+        // check that the method has a valid receiver type, given the type `Self`
         debug!("check_method_receiver({:?}, self_ty={:?})",
                method, self_ty);
 
@@ -464,30 +484,61 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
         let sig = fcx.tcx.fn_sig(method.def_id);
         let sig = fcx.normalize_associated_types_in(span, &sig);
-        let sig = fcx.liberate_late_bound_regions(method.def_id, &sig);
+        let sig = fcx.tcx.liberate_late_bound_regions(method.def_id, &sig);
 
         debug!("check_method_receiver: sig={:?}", sig);
 
-        let self_arg_ty = sig.inputs()[0];
-        let rcvr_ty = match ExplicitSelf::determine(self_ty, self_arg_ty) {
-            ExplicitSelf::ByValue => self_ty,
-            ExplicitSelf::ByReference(region, mutbl) => {
-                fcx.tcx.mk_ref(region, ty::TypeAndMut {
-                    ty: self_ty,
-                    mutbl,
-                })
-            }
-            ExplicitSelf::ByBox => fcx.tcx.mk_box(self_ty)
-        };
-        let rcvr_ty = fcx.normalize_associated_types_in(span, &rcvr_ty);
-        let rcvr_ty = fcx.liberate_late_bound_regions(method.def_id,
-                                                      &ty::Binder(rcvr_ty));
+        let self_ty = fcx.normalize_associated_types_in(span, &self_ty);
+        let self_ty = fcx.tcx.liberate_late_bound_regions(
+            method.def_id,
+            &ty::Binder(self_ty)
+        );
 
-        debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
+        let self_arg_ty = sig.inputs()[0];
 
         let cause = fcx.cause(span, ObligationCauseCode::MethodReceiver);
-        if let Some(mut err) = fcx.demand_eqtype_with_origin(&cause, rcvr_ty, self_arg_ty) {
-            err.emit();
+        let self_arg_ty = fcx.normalize_associated_types_in(span, &self_arg_ty);
+        let self_arg_ty = fcx.tcx.liberate_late_bound_regions(
+            method.def_id,
+            &ty::Binder(self_arg_ty)
+        );
+
+        let mut autoderef = fcx.autoderef(span, self_arg_ty);
+
+        loop {
+            if let Some((potential_self_ty, _)) = autoderef.next() {
+                debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`",
+                    potential_self_ty, self_ty);
+
+                if fcx.infcx.can_eq(fcx.param_env, self_ty, potential_self_ty).is_ok() {
+                    autoderef.finalize();
+                    if let Some(mut err) = fcx.demand_eqtype_with_origin(
+                        &cause, self_ty, potential_self_ty) {
+                        err.emit();
+                    }
+                    break
+                }
+            } else {
+                fcx.tcx.sess.diagnostic().mut_span_err(
+                    span, &format!("invalid `self` type: {:?}", self_arg_ty))
+                .note(&format!("type must be `{:?}` or a type that dereferences to it`", self_ty))
+                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                .code(DiagnosticId::Error("E0307".into()))
+                .emit();
+                return
+            }
+        }
+
+        let is_self_ty = |ty| fcx.infcx.can_eq(fcx.param_env, self_ty, ty).is_ok();
+        let self_kind = ExplicitSelf::determine(self_arg_ty, is_self_ty);
+
+        if let ExplicitSelf::Other = self_kind {
+            if !fcx.tcx.sess.features.borrow().arbitrary_self_types {
+                feature_gate::feature_err(&fcx.tcx.sess.parse_sess, "arbitrary_self_types", span,
+                    GateIssue::Language, "arbitrary `self` types are unstable")
+                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                .emit();
+            }
         }
     }
 

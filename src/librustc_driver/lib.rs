@@ -138,7 +138,9 @@ pub fn run<F>(run_compiler: F) -> isize
                 }
                 None => {
                     let emitter =
-                        errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto, None);
+                        errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                               None,
+                                                               true);
                     let handler = errors::Handler::with_emitter(true, false, Box::new(emitter));
                     handler.emit(&MultiSpan::new(),
                                  "aborting due to previous error(s)",
@@ -175,6 +177,7 @@ mod rustc_trans {
         pub mod write {
             pub const RELOC_MODEL_ARGS: [(&'static str, ()); 0] = [];
             pub const CODE_GEN_MODEL_ARGS: [(&'static str, ()); 0] = [];
+            pub const TLS_MODEL_ARGS: [(&'static str, ()); 0] = [];
         }
     }
 }
@@ -562,7 +565,9 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 control.after_hir_lowering.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
-                    state.krate = Some(pretty::fold_crate(state.krate.take().unwrap(), ppm));
+                    state.krate = Some(pretty::fold_crate(state.session,
+                                                          state.krate.take().unwrap(),
+                                                          ppm));
                 };
                 control.after_hir_lowering.callback = box move |state| {
                     pretty::print_after_hir_lowering(state.session,
@@ -584,7 +589,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 control.after_parse.stop = Compilation::Stop;
 
                 control.after_parse.callback = box move |state| {
-                    let krate = pretty::fold_crate(state.krate.take().unwrap(), ppm);
+                    let krate = pretty::fold_crate(state.session, state.krate.take().unwrap(), ppm);
                     pretty::print_after_parsing(state.session,
                                                 state.input,
                                                 &krate,
@@ -791,6 +796,13 @@ impl RustcDefaultCalls {
                 PrintRequest::CodeModels => {
                     println!("Available code models:");
                     for &(name, _) in rustc_trans::back::write::CODE_GEN_MODEL_ARGS.iter(){
+                        println!("    {}", name);
+                    }
+                    println!("");
+                }
+                PrintRequest::TlsModels => {
+                    println!("Available TLS models:");
+                    for &(name, _) in rustc_trans::back::write::TLS_MODEL_ARGS.iter(){
                         println!("    {}", name);
                     }
                     println!("");
@@ -1208,7 +1220,9 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
         // Thread panicked without emitting a fatal diagnostic
         if !value.is::<errors::FatalError>() {
             let emitter =
-                Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto, None));
+                Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
+                                                                None,
+                                                                false));
             let handler = errors::Handler::with_emitter(true, false, emitter);
 
             // a .span_bug or .bug call has already printed what
@@ -1238,7 +1252,7 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                              errors::Level::Note);
             }
 
-            writeln!(io::stderr(), "{}", str::from_utf8(&data.lock().unwrap()).unwrap()).unwrap();
+            eprintln!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
         }
 
         exit_on_err();
@@ -1259,7 +1273,6 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     let mut all_errors = Vec::new();
     all_errors.extend_from_slice(&rustc::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_typeck::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_borrowck::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     #[cfg(feature="llvm")]

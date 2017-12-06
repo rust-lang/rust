@@ -135,6 +135,7 @@ macro_rules! supported_targets {
 
 supported_targets! {
     ("x86_64-unknown-linux-gnu", x86_64_unknown_linux_gnu),
+    ("x86_64-unknown-linux-gnux32", x86_64_unknown_linux_gnux32),
     ("i686-unknown-linux-gnu", i686_unknown_linux_gnu),
     ("i586-unknown-linux-gnu", i586_unknown_linux_gnu),
     ("mips-unknown-linux-gnu", mips_unknown_linux_gnu),
@@ -215,9 +216,9 @@ supported_targets! {
     ("i686-pc-windows-msvc", i686_pc_windows_msvc),
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
 
-    ("le32-unknown-nacl", le32_unknown_nacl),
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
+    ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-experimental-emscripten", wasm32_experimental_emscripten),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
@@ -239,6 +240,8 @@ pub struct Target {
     pub target_endian: String,
     /// String to use as the `target_pointer_width` `cfg` variable.
     pub target_pointer_width: String,
+    /// Width of c_int type
+    pub target_c_int_width: String,
     /// OS name to use for conditional compilation.
     pub target_os: String,
     /// Environment name to use for conditional compilation.
@@ -267,8 +270,6 @@ pub struct TargetOptions {
 
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
-    /// Archive utility to use when managing archives. Defaults to "ar".
-    pub ar: String,
 
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
@@ -303,6 +304,8 @@ pub struct TargetOptions {
     pub features: String,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
+    /// If dynamic linking is available, whether only cdylibs are supported.
+    pub only_cdylib: bool,
     /// Whether executables are available on this target. iOS, for example, only allows static
     /// libraries. Defaults to false.
     pub executables: bool,
@@ -311,6 +314,9 @@ pub struct TargetOptions {
     pub relocation_model: String,
     /// Code model to use. Corresponds to `llc -code-model=$code_model`. Defaults to "default".
     pub code_model: String,
+    /// TLS model to use. Options are "global-dynamic" (default), "local-dynamic", "initial-exec"
+    /// and "local-exec". This is similar to the -ftls-model option in GCC/Clang.
+    pub tls_model: String,
     /// Do not emit code that uses the "red zone", if the ABI has one. Defaults to false.
     pub disable_redzone: bool,
     /// Eliminate frame pointers from stack frames if possible. Defaults to true.
@@ -429,6 +435,28 @@ pub struct TargetOptions {
 
     /// The minimum alignment for global symbols.
     pub min_global_align: Option<u64>,
+
+    /// Default number of codegen units to use in debug mode
+    pub default_codegen_units: Option<u64>,
+
+    /// Whether to generate trap instructions in places where optimization would
+    /// otherwise produce control flow that falls through into unrelated memory.
+    pub trap_unreachable: bool,
+
+    /// This target requires everything to be compiled with LTO to emit a final
+    /// executable, aka there is no native linker for this target.
+    pub requires_lto: bool,
+
+    /// This target has no support for threads.
+    pub singlethread: bool,
+
+    /// Whether library functions call lowering/optimization is disabled in LLVM
+    /// for this target unconditionally.
+    pub no_builtins: bool,
+
+    /// Whether to lower 128-bit operations to compiler_builtins calls.  Use if
+    /// your backend only supports 64-bit and smaller math.
+    pub i128_lowering: bool,
 }
 
 impl Default for TargetOptions {
@@ -438,16 +466,17 @@ impl Default for TargetOptions {
         TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
-            ar: option_env!("CFG_DEFAULT_AR").unwrap_or("ar").to_string(),
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             asm_args: Vec::new(),
             cpu: "generic".to_string(),
             features: "".to_string(),
             dynamic_linking: false,
+            only_cdylib: false,
             executables: false,
             relocation_model: "pic".to_string(),
             code_model: "default".to_string(),
+            tls_model: "global-dynamic".to_string(),
             disable_redzone: false,
             eliminate_frame_pointer: true,
             function_sections: true,
@@ -491,6 +520,12 @@ impl Default for TargetOptions {
             crt_static_respected: false,
             stack_probes: false,
             min_global_align: None,
+            default_codegen_units: None,
+            trap_unreachable: true,
+            requires_lto: false,
+            singlethread: false,
+            no_builtins: false,
+            i128_lowering: false,
         }
     }
 }
@@ -556,6 +591,7 @@ impl Target {
             llvm_target: get_req_field("llvm-target")?,
             target_endian: get_req_field("target-endian")?,
             target_pointer_width: get_req_field("target-pointer-width")?,
+            target_c_int_width: get_req_field("target-c-int-width")?,
             data_layout: get_req_field("data-layout")?,
             arch: get_req_field("arch")?,
             target_os: get_req_field("os")?,
@@ -678,7 +714,6 @@ impl Target {
 
         key!(is_builtin, bool);
         key!(linker);
-        key!(ar);
         key!(pre_link_args, link_args);
         key!(pre_link_objects_exe, list);
         key!(pre_link_objects_dll, list);
@@ -690,9 +725,11 @@ impl Target {
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
+        key!(only_cdylib, bool);
         key!(executables, bool);
         key!(relocation_model);
         key!(code_model);
+        key!(tls_model);
         key!(disable_redzone, bool);
         key!(eliminate_frame_pointer, bool);
         key!(function_sections, bool);
@@ -730,6 +767,11 @@ impl Target {
         key!(crt_static_respected, bool);
         key!(stack_probes, bool);
         key!(min_global_align, Option<u64>);
+        key!(default_codegen_units, Option<u64>);
+        key!(trap_unreachable, bool);
+        key!(requires_lto, bool);
+        key!(singlethread, bool);
+        key!(no_builtins, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -860,6 +902,7 @@ impl ToJson for Target {
         target_val!(llvm_target);
         target_val!(target_endian);
         target_val!(target_pointer_width);
+        target_val!(target_c_int_width);
         target_val!(arch);
         target_val!(target_os, "os");
         target_val!(target_env, "env");
@@ -869,7 +912,6 @@ impl ToJson for Target {
 
         target_option_val!(is_builtin);
         target_option_val!(linker);
-        target_option_val!(ar);
         target_option_val!(link_args - pre_link_args);
         target_option_val!(pre_link_objects_exe);
         target_option_val!(pre_link_objects_dll);
@@ -881,9 +923,11 @@ impl ToJson for Target {
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
+        target_option_val!(only_cdylib);
         target_option_val!(executables);
         target_option_val!(relocation_model);
         target_option_val!(code_model);
+        target_option_val!(tls_model);
         target_option_val!(disable_redzone);
         target_option_val!(eliminate_frame_pointer);
         target_option_val!(function_sections);
@@ -921,6 +965,11 @@ impl ToJson for Target {
         target_option_val!(crt_static_respected);
         target_option_val!(stack_probes);
         target_option_val!(min_global_align);
+        target_option_val!(default_codegen_units);
+        target_option_val!(trap_unreachable);
+        target_option_val!(requires_lto);
+        target_option_val!(singlethread);
+        target_option_val!(no_builtins);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

@@ -150,7 +150,7 @@
 //! [`Sub`]: trait.Sub.html
 //! [`Mul`]: trait.Mul.html
 //! [`clone`]: ../clone/trait.Clone.html#tymethod.clone
-//! [operator precedence]: ../../reference/expressions.html#operator-precedence
+//! [operator precedence]: ../../reference/expressions.html#expression-precedence
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

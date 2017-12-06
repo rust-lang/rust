@@ -1,7 +1,7 @@
 error[E0072]: recursive type `Foo` has infinite size
   --> $DIR/recursive-type-field.rs:13:1
    |
-13 | struct Foo<'a> {
+13 | struct Foo<'a> { //~ ERROR recursive type
    | ^^^^^^^^^^^^^^ recursive type has infinite size
 14 |     bar: Bar<'a>,
    |     ------------ recursive without indirection
@@ -11,7 +11,7 @@ error[E0072]: recursive type `Foo` has infinite size
 error[E0072]: recursive type `Bar` has infinite size
   --> $DIR/recursive-type-field.rs:18:1
    |
-18 | struct Bar<'a> {
+18 | struct Bar<'a> { //~ ERROR recursive type
    | ^^^^^^^^^^^^^^ recursive type has infinite size
 19 |     y: (Foo<'a>, Foo<'a>),
    |     --------------------- recursive without indirection

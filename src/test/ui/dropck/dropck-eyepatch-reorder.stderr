@@ -1,7 +1,7 @@
 error[E0597]: `c` does not live long enough
   --> $DIR/dropck-eyepatch-reorder.rs:73:1
    |
-57 |     dt = Dt("dt", &c); //~ ERROR `c` does not live long enough
+57 |     dt = Dt("dt", &c);
    |                    - borrow occurs here
 ...
 73 | }
@@ -12,7 +12,7 @@ error[E0597]: `c` does not live long enough
 error[E0597]: `c` does not live long enough
   --> $DIR/dropck-eyepatch-reorder.rs:73:1
    |
-58 |     dr = Dr("dr", &c); //~ ERROR `c` does not live long enough
+58 |     dr = Dr("dr", &c);
    |                    - borrow occurs here
 ...
 73 | }
@@ -23,7 +23,7 @@ error[E0597]: `c` does not live long enough
 error[E0597]: `c` does not live long enough
   --> $DIR/dropck-eyepatch-reorder.rs:73:1
    |
-65 |     pt = Pt("pt", &c_long, &c); //~ ERROR `c` does not live long enough
+65 |     pt = Pt("pt", &c_long, &c);
    |                             - borrow occurs here
 ...
 73 | }
@@ -34,7 +34,7 @@ error[E0597]: `c` does not live long enough
 error[E0597]: `c` does not live long enough
   --> $DIR/dropck-eyepatch-reorder.rs:73:1
    |
-66 |     pr = Pr("pr", &c_long, &c); //~ ERROR `c` does not live long enough
+66 |     pr = Pr("pr", &c_long, &c);
    |                             - borrow occurs here
 ...
 73 | }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare no libc to test ffi with
 // compile-flags: -lstatic=wronglibrary:rust_test_helpers
 
 #[link(name = "wronglibrary", kind = "dylib")]

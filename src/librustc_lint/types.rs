@@ -13,7 +13,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
-use rustc::ty::layout::{Layout, Primitive};
+use rustc::ty::layout::{self, LayoutOf};
 use middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
 use util::nodemap::FxHashSet;
@@ -431,7 +431,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // fields are actually safe.
                         let mut all_phantom = true;
                         for field in &def.struct_variant().fields {
-                            let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
+                            let field_ty = cx.fully_normalize_associated_types_in(
+                                &field.ty(cx, substs)
+                            );
                             let r = self.check_type_for_ffi(cache, field_ty);
                             match r {
                                 FfiSafe => {
@@ -463,7 +465,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         let mut all_phantom = true;
                         for field in &def.struct_variant().fields {
-                            let field_ty = cx.normalize_associated_type(&field.ty(cx, substs));
+                            let field_ty = cx.fully_normalize_associated_types_in(
+                                &field.ty(cx, substs)
+                            );
                             let r = self.check_type_for_ffi(cache, field_ty);
                             match r {
                                 FfiSafe => {
@@ -516,7 +520,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // Check the contained variants.
                         for variant in &def.variants {
                             for field in &variant.fields {
-                                let arg = cx.normalize_associated_type(&field.ty(cx, substs));
+                                let arg = cx.fully_normalize_associated_types_in(
+                                    &field.ty(cx, substs)
+                                );
                                 let r = self.check_type_for_ffi(cache, arg);
                                 match r {
                                     FfiSafe => {}
@@ -615,6 +621,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
+            ty::TyForeign(..) => FfiSafe,
+
             ty::TyParam(..) |
             ty::TyInfer(..) |
             ty::TyError |
@@ -629,7 +637,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
         // it is only OK to use this function because extern fns cannot have
         // any generic types right now:
-        let ty = self.cx.tcx.normalize_associated_type(&ty);
+        let ty = self.cx.tcx.fully_normalize_associated_types_in(&ty);
 
         match self.check_type_for_ffi(&mut FxHashSet(), ty) {
             FfiResult::FfiSafe => {}
@@ -717,6 +725,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
                         hir::ForeignItemStatic(ref ty, _) => {
                             vis.check_foreign_static(ni.id, ty.span);
                         }
+                        hir::ForeignItemType => ()
                     }
                 }
             }
@@ -739,25 +748,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 // sizes only make sense for non-generic types
                 let item_def_id = cx.tcx.hir.local_def_id(it.id);
                 let t = cx.tcx.type_of(item_def_id);
-                let param_env = cx.param_env.reveal_all();
                 let ty = cx.tcx.erase_regions(&t);
-                let layout = ty.layout(cx.tcx, param_env).unwrap_or_else(|e| {
+                let layout = cx.layout_of(ty).unwrap_or_else(|e| {
                     bug!("failed to get layout for `{}`: {}", t, e)
                 });
 
-                if let Layout::General { ref variants, ref size, discr, .. } = *layout {
-                    let discr_size = Primitive::Int(discr).size(cx.tcx).bytes();
+                if let layout::Variants::Tagged { ref variants, ref discr, .. } = layout.variants {
+                    let discr_size = discr.value.size(cx.tcx).bytes();
 
                     debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
-                      t, size.bytes(), layout);
+                      t, layout.size.bytes(), layout);
 
                     let (largest, slargest, largest_index) = enum_definition.variants
                         .iter()
                         .zip(variants)
                         .map(|(variant, variant_layout)| {
                             // Subtract the size of the enum discriminant
-                            let bytes = variant_layout.min_size
-                                .bytes()
+                            let bytes = variant_layout.size.bytes()
                                 .saturating_sub(discr_size);
 
                             debug!("- variant `{}` is {} bytes large", variant.node.name, bytes);

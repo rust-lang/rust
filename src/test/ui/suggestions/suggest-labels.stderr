@@ -1,0 +1,20 @@
+error[E0426]: use of undeclared label `'fo`
+  --> $DIR/suggest-labels.rs:14:15
+   |
+14 |         break 'fo; //~ ERROR use of undeclared label
+   |               ^^^ did you mean `'foo`?
+
+error[E0426]: use of undeclared label `'bor`
+  --> $DIR/suggest-labels.rs:18:18
+   |
+18 |         continue 'bor; //~ ERROR use of undeclared label
+   |                  ^^^^ did you mean `'bar`?
+
+error[E0426]: use of undeclared label `'longlable`
+  --> $DIR/suggest-labels.rs:23:19
+   |
+23 |             break 'longlable; //~ ERROR use of undeclared label
+   |                   ^^^^^^^^^^ did you mean `'longlabel1`?
+
+error: aborting due to 3 previous errors
+

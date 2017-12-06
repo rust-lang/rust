@@ -13,6 +13,7 @@ use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult};
 use Namespace::{self, MacroNS};
 use build_reduced_graph::BuildReducedGraphVisitor;
 use resolve_imports::ImportResolver;
+use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex};
 use rustc::hir::def::{Def, Export};
 use rustc::hir::map::{self, DefCollector};
@@ -80,6 +81,14 @@ pub struct LegacyBinding<'a> {
     pub ident: Ident,
     def_id: DefId,
     pub span: Span,
+}
+
+pub struct ProcMacError {
+    crate_name: Symbol,
+    name: Symbol,
+    module: ast::NodeId,
+    use_span: Span,
+    warn_msg: &'static str,
 }
 
 #[derive(Copy, Clone)]
@@ -778,12 +787,37 @@ impl<'a> Resolver<'a> {
             _ => return,
         };
 
-        let crate_name = self.cstore.crate_name_untracked(krate);
+        let def_id = self.current_module.normal_ancestor_id;
+        let node_id = self.definitions.as_local_node_id(def_id).unwrap();
 
-        self.session.struct_span_err(use_span, warn_msg)
-            .help(&format!("instead, import the procedural macro like any other item: \
-                             `use {}::{};`", crate_name, name))
-            .emit();
+        self.proc_mac_errors.push(ProcMacError {
+            crate_name: self.cstore.crate_name_untracked(krate),
+            name,
+            module: node_id,
+            use_span,
+            warn_msg,
+        });
+    }
+
+    pub fn report_proc_macro_import(&mut self, krate: &ast::Crate) {
+        for err in self.proc_mac_errors.drain(..) {
+            let (span, found_use) = ::UsePlacementFinder::check(krate, err.module);
+
+            if let Some(span) = span {
+                let found_use = if found_use { "" } else { "\n" };
+                self.session.struct_span_err(err.use_span, err.warn_msg)
+                    .span_suggestion(
+                        span,
+                        "instead, import the procedural macro like any other item",
+                        format!("use {}::{};{}", err.crate_name, err.name, found_use),
+                    ).emit();
+            } else {
+                self.session.struct_span_err(err.use_span, err.warn_msg)
+                    .help(&format!("instead, import the procedural macro like any other item: \
+                                    `use {}::{};`", err.crate_name, err.name))
+                    .emit();
+            }
+        }
     }
 
     fn gate_legacy_custom_derive(&mut self, name: Symbol, span: Span) {

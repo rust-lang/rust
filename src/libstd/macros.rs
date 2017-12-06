@@ -325,9 +325,10 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
-        /* compiler built-in */
-    }) }
+    macro_rules! format_args {
+        ($fmt:expr) => ({ /* compiler built-in */ });
+        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
+    }
 
     /// Inspect an environment variable at compile time.
     ///
@@ -348,7 +349,10 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! env { ($name:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! env {
+        ($name:expr) => ({ /* compiler built-in */ });
+        ($name:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Optionally inspect an environment variable at compile time.
     ///
@@ -400,7 +404,8 @@ pub mod builtin {
     #[unstable(feature = "concat_idents_macro", issue = "29599")]
     #[macro_export]
     macro_rules! concat_idents {
-        ($($e:ident),*) => ({ /* compiler built-in */ })
+        ($($e:ident),*) => ({ /* compiler built-in */ });
+        ($($e:ident,)*) => ({ /* compiler built-in */ });
     }
 
     /// Concatenates literals into a static string slice.
@@ -420,7 +425,10 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! concat { ($($e:expr),*) => ({ /* compiler built-in */ }) }
+    macro_rules! concat {
+        ($($e:expr),*) => ({ /* compiler built-in */ });
+        ($($e:expr,)*) => ({ /* compiler built-in */ });
+    }
 
     /// A macro which expands to the line number on which it was invoked.
     ///
@@ -490,7 +498,7 @@ pub mod builtin {
     #[macro_export]
     macro_rules! file { () => ({ /* compiler built-in */ }) }
 
-    /// A macro which stringifies its argument.
+    /// A macro which stringifies its arguments.
     ///
     /// This macro will yield an expression of type `&'static str` which is the
     /// stringification of all the tokens passed to the macro. No restrictions
@@ -507,7 +515,7 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! stringify { ($t:tt) => ({ /* compiler built-in */ }) }
+    macro_rules! stringify { ($($t:tt)*) => ({ /* compiler built-in */ }) }
 
     /// Includes a utf8-encoded file as a string.
     ///
@@ -662,4 +670,40 @@ pub mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }
+}
+
+/// A macro for defining #[cfg] if-else statements.
+///
+/// This is similar to the `if/elif` C preprocessor macro by allowing definition
+/// of a cascade of `#[cfg]` cases, emitting the implementation which matches
+/// first.
+///
+/// This allows you to conveniently provide a long list #[cfg]'d blocks of code
+/// without having to rewrite each clause multiple times.
+macro_rules! cfg_if {
+    ($(
+        if #[cfg($($meta:meta),*)] { $($it:item)* }
+    ) else * else {
+        $($it2:item)*
+    }) => {
+        __cfg_if_items! {
+            () ;
+            $( ( ($($meta),*) ($($it)*) ), )*
+            ( () ($($it2)*) ),
+        }
+    }
+}
+
+macro_rules! __cfg_if_items {
+    (($($not:meta,)*) ; ) => {};
+    (($($not:meta,)*) ; ( ($($m:meta),*) ($($it:item)*) ), $($rest:tt)*) => {
+        __cfg_if_apply! { cfg(all(not(any($($not),*)), $($m,)*)), $($it)* }
+        __cfg_if_items! { ($($not,)* $($m,)*) ; $($rest)* }
+    }
+}
+
+macro_rules! __cfg_if_apply {
+    ($m:meta, $($it:item)*) => {
+        $(#[$m] $it)*
+    }
 }

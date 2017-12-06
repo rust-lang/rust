@@ -1,0 +1,26 @@
+error[E0594]: cannot assign to immutable borrowed content `*x`
+  --> $DIR/enum.rs:21:5
+   |
+20 |     let Wrap(x) = &Wrap(3);
+   |              - consider changing this to `x`
+21 |     *x += 1; //~ ERROR cannot assign to immutable
+   |     ^^^^^^^ cannot borrow as mutable
+
+error[E0594]: cannot assign to immutable borrowed content `*x`
+  --> $DIR/enum.rs:25:9
+   |
+24 |     if let Some(x) = &Some(3) {
+   |                 - consider changing this to `x`
+25 |         *x += 1; //~ ERROR cannot assign to immutable
+   |         ^^^^^^^ cannot borrow as mutable
+
+error[E0594]: cannot assign to immutable borrowed content `*x`
+  --> $DIR/enum.rs:31:9
+   |
+30 |     while let Some(x) = &Some(3) {
+   |                    - consider changing this to `x`
+31 |         *x += 1; //~ ERROR cannot assign to immutable
+   |         ^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 3 previous errors
+
