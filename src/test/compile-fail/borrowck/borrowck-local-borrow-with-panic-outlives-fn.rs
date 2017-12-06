@@ -14,9 +14,9 @@
 fn cplusplus_mode_exceptionally_unsafe(x: &mut Option<&'static mut isize>) {
     let mut z = (0, 0);
     *x = Some(&mut z.1); //[ast]~ ERROR [E0597]
-                         //[mir]~^ ERROR [E0597]
     panic!("catch me for a dangling pointer!")
 }
+//[mir]~^ ERROR [E0597]
 
 fn main() {
     cplusplus_mode_exceptionally_unsafe(&mut None);

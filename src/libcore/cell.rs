@@ -1084,9 +1084,11 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     pub fn map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> RefMut<'b, U>
         where F: FnOnce(&mut T) -> &mut U
     {
+        // FIXME(nll-rfc#40): fix borrow-check
+        let RefMut { value, borrow } = orig;
         RefMut {
-            value: f(orig.value),
-            borrow: orig.borrow,
+            value: f(value),
+            borrow: borrow,
         }
     }
 }

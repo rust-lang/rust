@@ -1776,12 +1776,18 @@ impl<I: Iterator> Iterator for Peekable<I> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        match self.peeked.take() {
-            // the .take() below is just to avoid "move into pattern guard"
-            Some(ref mut v) if n == 0 => v.take(),
-            Some(None) => None,
-            Some(Some(_)) => self.iter.nth(n - 1),
-            None => self.iter.nth(n),
+        // FIXME(#6393): merge these when borrow-checking gets better.
+        if n == 0 {
+            match self.peeked.take() {
+                Some(v) => v,
+                None => self.iter.nth(n),
+            }
+        } else {
+            match self.peeked.take() {
+                Some(None) => None,
+                Some(Some(_)) => self.iter.nth(n - 1),
+                None => self.iter.nth(n),
+            }
         }
     }
 

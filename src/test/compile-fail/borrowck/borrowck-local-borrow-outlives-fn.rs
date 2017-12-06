@@ -13,7 +13,7 @@
 
 fn cplusplus_mode(x: isize) -> &'static isize {
     &x //[ast]~ ERROR `x` does not live long enough
-       //[mir]~^ ERROR borrowed value does not live long enough
 }
+//[mir]~^ ERROR borrowed value does not live long enough
 
 fn main() {}
