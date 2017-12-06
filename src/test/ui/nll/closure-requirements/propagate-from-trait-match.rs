@@ -40,6 +40,8 @@ where
     T: Trait<'a>,
 {
     establish_relationships(value, |value| {
+        //~^ ERROR failed type test
+
         // This function call requires that
         //
         // (a) T: Trait<'a>
@@ -52,7 +54,6 @@ where
 
         require(value);
         //~^ WARNING not reporting region error due to -Znll
-        //~| ERROR failed type test
     });
 }
 

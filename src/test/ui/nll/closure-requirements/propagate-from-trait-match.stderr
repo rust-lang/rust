@@ -1,7 +1,7 @@
 warning: not reporting region error due to -Znll
-  --> $DIR/propagate-from-trait-match.rs:53:9
+  --> $DIR/propagate-from-trait-match.rs:55:9
    |
-53 |         require(value);
+55 |         require(value);
    |         ^^^^^^^
 
 note: External requirements
@@ -9,12 +9,12 @@ note: External requirements
    |
 42 |       establish_relationships(value, |value| {
    |  ____________________________________^
-43 | |         // This function call requires that
-44 | |         //
-45 | |         // (a) T: Trait<'a>
+43 | |         //~^ ERROR failed type test
+44 | |
+45 | |         // This function call requires that
 ...  |
-55 | |         //~| ERROR failed type test
-56 | |     });
+56 | |         //~^ WARNING not reporting region error due to -Znll
+57 | |     });
    | |_____^
    |
    = note: defining type: DefId(0/1:16 ~ propagate_from_trait_match[317d]::supply[0]::{{closure}}[0]) with closure substs [
@@ -26,17 +26,17 @@ note: External requirements
    = note: number of external vids: 2
    = note: where T: '_#1r
 
-error: failed type test: TypeTest { generic_kind: T/#1, lower_bound: '_#3r, point: bb0[3], span: $DIR/propagate-from-trait-match.rs:42:36: 56:6, test: IsOutlivedByAnyRegionIn(['_#2r]) }
+error: failed type test: TypeTest { generic_kind: T/#1, lower_bound: '_#3r, point: bb0[3], span: $DIR/propagate-from-trait-match.rs:42:36: 57:6, test: IsOutlivedByAnyRegionIn(['_#2r]) }
   --> $DIR/propagate-from-trait-match.rs:42:36
    |
 42 |       establish_relationships(value, |value| {
    |  ____________________________________^
-43 | |         // This function call requires that
-44 | |         //
-45 | |         // (a) T: Trait<'a>
+43 | |         //~^ ERROR failed type test
+44 | |
+45 | |         // This function call requires that
 ...  |
-55 | |         //~| ERROR failed type test
-56 | |     });
+56 | |         //~^ WARNING not reporting region error due to -Znll
+57 | |     });
    | |_____^
 
 note: No external requirements
@@ -47,8 +47,8 @@ note: No external requirements
 40 | |     T: Trait<'a>,
 41 | | {
 ...  |
-56 | |     });
-57 | | }
+57 | |     });
+58 | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_from_trait_match[317d]::supply[0]) with substs [

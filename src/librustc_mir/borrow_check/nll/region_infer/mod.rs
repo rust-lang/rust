@@ -872,35 +872,50 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // be obvious to the user -- not to mention the naive notion
         // of dependencies, which doesn't account for the locations of
         // contraints at all. But it will do for now.
-        for constraint in &self.constraints {
-            if constraint.sub == fr2 && influenced_fr1[constraint.sup] {
-                return constraint.span;
-            }
-        }
+        let relevant_constraint = self.constraints
+                .iter()
+                .filter_map(|constraint| {
+                    if constraint.sub != fr2 {
+                        None
+                    } else {
+                        influenced_fr1[constraint.sup]
+                            .map(|distance| (distance, constraint.span))
+                    }
+                })
+                .min() // constraining fr1 with fewer hops *ought* to be more obvious
+                .map(|(_dist, span)| span);
 
-        bug!(
-            "could not find any constraint to blame for {:?}: {:?}",
-            fr1,
-            fr2
-        );
+        relevant_constraint.unwrap_or_else(|| {
+            bug!(
+                "could not find any constraint to blame for {:?}: {:?}",
+                fr1,
+                fr2
+            );
+        })
     }
 
     /// Finds all regions whose values `'a` may depend on in some way.
-    /// Basically if there exists a constraint `'a: 'b @ P`, then `'b`
-    /// and `dependencies('b)` will be in the final set.
+    /// For each region, returns either `None` (does not influence
+    /// `'a`) or `Some(d)` which indicates that it influences `'a`
+    /// with distinct `d` (minimum number of edges that must be
+    /// traversed).
     ///
     /// Used during error reporting, extremely naive and inefficient.
-    fn dependencies(&self, r0: RegionVid) -> IndexVec<RegionVid, bool> {
-        let mut result_set = IndexVec::from_elem(false, &self.definitions);
+    fn dependencies(&self, r0: RegionVid) -> IndexVec<RegionVid, Option<usize>> {
+        let mut result_set = IndexVec::from_elem(None, &self.definitions);
         let mut changed = true;
-        result_set[r0] = true;
+        result_set[r0] = Some(0); // distance 0 from `r0`
 
         while changed {
             changed = false;
             for constraint in &self.constraints {
-                if result_set[constraint.sup] {
-                    if !result_set[constraint.sub] {
-                        result_set[constraint.sub] = true;
+                if let Some(n) = result_set[constraint.sup] {
+                    let m = n + 1;
+                    if result_set[constraint.sub]
+                        .map(|distance| m < distance)
+                        .unwrap_or(true)
+                    {
+                        result_set[constraint.sub] = Some(m);
                         changed = true;
                     }
                 }
@@ -1049,13 +1064,16 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
         value: &T,
     ) -> T
     where
-        T: TypeFoldable<'tcx>
+        T: TypeFoldable<'tcx>,
     {
         infcx.tcx.fold_regions(value, &mut false, |r, _depth| {
             if let ty::ReClosureBound(vid) = r {
                 closure_mapping[*vid]
             } else {
-                bug!("subst_closure_mapping: encountered non-closure bound free region {:?}", r)
+                bug!(
+                    "subst_closure_mapping: encountered non-closure bound free region {:?}",
+                    r
+                )
             }
         })
     }
