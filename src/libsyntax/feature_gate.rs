@@ -284,10 +284,6 @@ declare_features! (
     // Allows all literals in attribute lists and values of key-value pairs.
     (active, attr_literals, "1.13.0", Some(34981)),
 
-    // Allows the sysV64 ABI to be specified on all platforms
-    // instead of just the platforms on which it is the C ABI
-    (active, abi_sysv64, "1.13.0", Some(36167)),
-
     // Allows untagged unions `union U { ... }`
     (active, untagged_unions, "1.13.0", Some(32836)),
 
@@ -520,6 +516,9 @@ declare_features! (
     (accepted, rvalue_static_promotion, "1.21.0", Some(38865)),
     // Allow Drop types in constants (RFC 1440)
     (accepted, drop_types_in_const, "1.22.0", Some(33156)),
+    // Allows the sysV64 ABI to be specified on all platforms
+    // instead of just the platforms on which it is the C ABI
+    (accepted, abi_sysv64, "1.24.0", Some(36167)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1246,10 +1245,6 @@ impl<'a> PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, unboxed_closures, span,
                                    "rust-call ABI is subject to change");
             },
-            Abi::SysV64 => {
-                gate_feature_post!(&self, abi_sysv64, span,
-                                   "sysv64 ABI is experimental and subject to change");
-            },
             Abi::PtxKernel => {
                 gate_feature_post!(&self, abi_ptx, span,
                                    "PTX ABIs are experimental and subject to change");
@@ -1272,6 +1267,7 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::Fastcall |
             Abi::Aapcs |
             Abi::Win64 |
+            Abi::SysV64 |
             Abi::Rust |
             Abi::C |
             Abi::System => {}

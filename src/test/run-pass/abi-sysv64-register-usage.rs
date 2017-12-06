@@ -15,7 +15,6 @@
 // ignore-arm
 // ignore-aarch64
 
-#![feature(abi_sysv64)]
 #![feature(asm)]
 
 #[cfg(target_arch = "x86_64")]
