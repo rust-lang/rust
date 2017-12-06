@@ -1642,7 +1642,7 @@ These attributes do not work on typedefs, since typedefs are just aliases.
 
 Representations like `#[repr(u8)]`, `#[repr(i64)]` are for selecting the
 discriminant size for enums with no data fields on any of the variants, e.g.
-`enum Color {Red, Blue, Green}`), effectively setting the size of the enum to
+`enum Color {Red, Blue, Green}`, effectively setting the size of the enum to
 the size of the provided type. Such an enum can be cast to a value of the same
 type as well. In short, `#[repr(u8)]` makes the enum behave like an integer
 with a constrained set of allowed values.
