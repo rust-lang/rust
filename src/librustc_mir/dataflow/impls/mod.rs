@@ -585,9 +585,29 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
         sets.gen_all(&init_loc_map[location]);
 
         match stmt.kind {
-            mir::StatementKind::StorageDead(local) => {
-                // End inits for StorageDead, so that an immutable variable can
-                // be reinitialized on the next iteration of the loop.
+            mir::StatementKind::StorageDead(local) |
+            mir::StatementKind::StorageLive(local) => {
+                // End inits for StorageDead and StorageLive, so that an immutable
+                // variable can be reinitialized on the next iteration of the loop.
+                //
+                // FIXME(#46525): We *need* to do this for StorageLive as well as
+                // StorageDead, because lifetimes of match bindings with guards are
+                // weird - i.e. this code
+                //
+                // ```
+                //     fn main() {
+                //         match 0 {
+                //             a | a
+                //             if { println!("a={}", a); false } => {}
+                //             _ => {}
+                //         }
+                //     }
+                // ```
+                //
+                // runs the guard twice, using the same binding for `a`, and only
+                // storagedeads after everything ends, so if we don't regard the
+                // storagelive as killing storage, we would have a multiple assignment
+                // to immutable data error.
                 if let LookupResult::Exact(mpi) = rev_lookup.find(&mir::Place::Local(local)) {
                     debug!("stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
                            stmt, location, &init_path_map[mpi]);
