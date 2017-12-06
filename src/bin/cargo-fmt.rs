@@ -290,8 +290,8 @@ fn get_targets_with_hitlist(
     let mut workspace_hitlist: HashSet<&String> = HashSet::from_iter(hitlist);
 
     for package in metadata.packages {
-        for target in package.targets {
-            if workspace_hitlist.remove(&target.name) {
+        if workspace_hitlist.remove(&package.name) {
+            for target in package.targets {
                 targets.insert(Target::from_target(&target));
             }
         }
