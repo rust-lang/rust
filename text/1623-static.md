@@ -1,7 +1,7 @@
 - Feature Name: static_lifetime_in_statics
 - Start Date: 2016-05-20
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1623
-- Rust Issue: https://github.com/rust-lang/rust/issues/35897
+- RFC PR: [rust-lang/rfcs#1623](https://github.com/rust-lang/rfcs/pull/1623)
+- Rust Issue: [rust-lang/rust#35897](https://github.com/rust-lang/rust/issues/35897)
 
 # Summary
 [summary]: #summary

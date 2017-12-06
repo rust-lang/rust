@@ -1,7 +1,7 @@
 - Feature Name: stable_drop_order
 - Start Date: 2017-01-19
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1857
-- Rust Issue: https://github.com/rust-lang/rust/issues/43034
+- RFC PR: [rust-lang/rfcs#1857](https://github.com/rust-lang/rfcs/pull/1857)
+- Rust Issue: [rust-lang/rust#43034](https://github.com/rust-lang/rust/issues/43034)
 
 # Summary
 [summary]: #summary

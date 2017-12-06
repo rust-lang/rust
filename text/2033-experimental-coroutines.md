@@ -1,7 +1,7 @@
 - Feature Name: `coroutines`
 - Start Date: 2017-06-15
-- RFC PR: https://github.com/rust-lang/rfcs/pull/2033
-- Rust Issue: https://github.com/rust-lang/rust/issues/43122
+- RFC PR: [rust-lang/rfcs#2033](https://github.com/rust-lang/rfcs/pull/2033)
+- Rust Issue: [rust-lang/rust#43122](https://github.com/rust-lang/rust/issues/43122)
 
 # Summary
 [summary]: #summary

@@ -1,6 +1,6 @@
 - Feature Name: N/A
 - Start Date: 2017-04-26
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1983
+- RFC PR: [rust-lang/rfcs#1983](https://github.com/rust-lang/rfcs/pull/1983)
 - Rust Issue: N/A
 
 # Summary

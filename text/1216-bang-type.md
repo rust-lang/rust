@@ -1,7 +1,7 @@
 - Feature Name: bang_type
 - Start Date: 2015-07-19
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1216
-- Rust Issue: https://github.com/rust-lang/rust/issues/35121
+- RFC PR: [rust-lang/rfcs#1216](https://github.com/rust-lang/rfcs/pull/1216)
+- Rust Issue: [rust-lang/rust#35121](https://github.com/rust-lang/rust/issues/35121)
 
 # Summary
 

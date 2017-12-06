@@ -1,7 +1,7 @@
 - Feature Name: tool_attributes, tool_lints
 - Start Date: 2016-09-22
-- RFC PR: https://github.com/rust-lang/rfcs/pull/2103
-- Rust Issue: https://github.com/rust-lang/rust/issues/44690
+- RFC PR: [rust-lang/rfcs#2103](https://github.com/rust-lang/rfcs/pull/2103)
+- Rust Issue: [rust-lang/rust#44690](https://github.com/rust-lang/rust/issues/44690)
 
 
 # Summary

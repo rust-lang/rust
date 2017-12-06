@@ -11,8 +11,8 @@ except according to those terms.
 
 - Feature Name: external_doc
 - Start Date: 2017-04-26
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1990
-- Rust Issue: https://github.com/rust-lang/rust/issues/44732
+- RFC PR: [rust-lang/rfcs#1990](https://github.com/rust-lang/rfcs/pull/1990)
+- Rust Issue: [rust-lang/rust#44732](https://github.com/rust-lang/rust/issues/44732)
 
 # Summary
 [summary]: #summary

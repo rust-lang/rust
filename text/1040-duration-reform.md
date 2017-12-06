@@ -1,7 +1,7 @@
 - Feature Name: duration
 - Start Date: 2015-03-24
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1040
-- Rust Issue: https://github.com/rust-lang/rust/issues/24874
+- RFC PR: [rust-lang/rfcs#1040](https://github.com/rust-lang/rfcs/pull/1040)
+- Rust Issue: [rust-lang/rust#24874](https://github.com/rust-lang/rust/issues/24874)
 
 # Summary
 

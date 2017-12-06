@@ -1,7 +1,7 @@
 - Feature Name: conservative_impl_trait
 - Start Date: 2016-01-31
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1522
-- Rust Issue: https://github.com/rust-lang/rust/issues/34511
+- RFC PR: [rust-lang/rfcs#1522](https://github.com/rust-lang/rfcs/pull/1522)
+- Rust Issue: [rust-lang/rust#34511](https://github.com/rust-lang/rust/issues/34511)
 
 # Summary
 [summary]: #summary

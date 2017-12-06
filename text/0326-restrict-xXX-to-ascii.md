@@ -1,6 +1,6 @@
 - Start Date: 2014-09-26
 - RFC PR: 326
-- Rust Issue: https://github.com/rust-lang/rust/issues/18062
+- Rust Issue: [rust-lang/rust#18062](https://github.com/rust-lang/rust/issues/18062)
 
 # Summary
 

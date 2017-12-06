@@ -1,7 +1,7 @@
 - Feature Name: non_exhaustive
 - Start Date: 2017-05-24
-- RFC PR: https://github.com/rust-lang/rfcs/pull/2008
-- Rust Issue: https://github.com/rust-lang/rust/issues/44109
+- RFC PR: [rust-lang/rfcs#2008](https://github.com/rust-lang/rfcs/pull/2008)
+- Rust Issue: [rust-lang/rust#44109](https://github.com/rust-lang/rust/issues/44109)
 
 # Summary
 

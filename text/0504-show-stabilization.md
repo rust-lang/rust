@@ -1,6 +1,6 @@
 - Start Date: 2014-12-19
-- RFC PR: https://github.com/rust-lang/rfcs/pull/504
-- Rust Issue: https://github.com/rust-lang/rust/issues/20013
+- RFC PR: [rust-lang/rfcs#504](https://github.com/rust-lang/rfcs/pull/504)
+- Rust Issue: [rust-lang/rust#20013](https://github.com/rust-lang/rust/issues/20013)
 
 # Summary
 

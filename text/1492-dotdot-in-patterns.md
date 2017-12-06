@@ -1,6 +1,6 @@
 - Feature Name: dotdot_in_patterns
 - Start Date: 2016-02-06
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1492
+- RFC PR: [rust-lang/rfcs#1492](https://github.com/rust-lang/rfcs/pull/1492)
 - Rust Issue: (leave this empty)
 
 # Summary

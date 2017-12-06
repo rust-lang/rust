@@ -1,7 +1,7 @@
 - Feature Name: hash
 - Start Date: 2015-02-17
-- RFC PR: https://github.com/rust-lang/rfcs/pull/823
-- Rust Issue: https://github.com/rust-lang/rust/issues/22467
+- RFC PR: [rust-lang/rfcs#823](https://github.com/rust-lang/rfcs/pull/823)
+- Rust Issue: [rust-lang/rust#22467](https://github.com/rust-lang/rust/issues/22467)
 
 # Summary
 

@@ -1,7 +1,7 @@
 - Feature Name: more-readable-assert-eq
 - Start Date: 2017-01-23
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1866
-- Rust Issue: https://github.com/rust-lang/rust/issues/41615
+- RFC PR: [rust-lang/rfcs#1866](https://github.com/rust-lang/rfcs/pull/1866)
+- Rust Issue: [rust-lang/rust#41615](https://github.com/rust-lang/rust/issues/41615)
 
 
 # Summary

@@ -1,7 +1,7 @@
 - Feature Name: global_asm
 - Start Date: 2016-03-18
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1548
-- Rust Issue: https://github.com/rust-lang/rust/issues/35119
+- RFC PR: [rust-lang/rfcs#1548](https://github.com/rust-lang/rfcs/pull/1548)
+- Rust Issue: [rust-lang/rust#35119](https://github.com/rust-lang/rust/issues/35119)
 
 # Summary
 [summary]: #summary

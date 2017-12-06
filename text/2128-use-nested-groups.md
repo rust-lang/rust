@@ -1,7 +1,7 @@
 - Feature Name: use_nested_groups
 - Start Date: 2017-08-25
-- RFC PR: https://github.com/rust-lang/rfcs/pull/2128
-- Rust Issue: https://github.com/rust-lang/rust/issues/44494
+- RFC PR: [rust-lang/rfcs#2128](https://github.com/rust-lang/rfcs/pull/2128)
+- Rust Issue: [rust-lang/rust#44494](https://github.com/rust-lang/rust/issues/44494)
 
 # Summary
 [summary]: #summary
