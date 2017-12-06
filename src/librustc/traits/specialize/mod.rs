@@ -30,6 +30,8 @@ use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
 
+use lint;
+
 pub mod specialization_graph;
 
 /// Information pertinent to an overlapping impl error.
@@ -325,16 +327,33 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
             // This is where impl overlap checking happens:
             let insert_result = sg.insert(tcx, impl_def_id);
             // Report error if there was one.
-            if let Err(overlap) = insert_result {
-                let mut err = struct_span_err!(tcx.sess,
-                                               tcx.span_of_impl(impl_def_id).unwrap(),
-                                               E0119,
-                                               "conflicting implementations of trait `{}`{}:",
-                                               overlap.trait_desc,
-                                               overlap.self_desc.clone().map_or(String::new(),
-                                                                                |ty| {
-                    format!(" for type `{}`", ty)
-                }));
+            let (overlap, used_to_be_allowed) = match insert_result {
+                Err(overlap) => (Some(overlap), false),
+                Ok(opt_overlap) => (opt_overlap, true)
+            };
+
+            if let Some(overlap) = overlap {
+                let msg = format!("conflicting implementations of trait `{}`{}:{}",
+                    overlap.trait_desc,
+                    overlap.self_desc.clone().map_or(
+                        String::new(), |ty| {
+                            format!(" for type `{}`", ty)
+                        }),
+                    if used_to_be_allowed { " (E0119)" } else { "" }
+                );
+                let mut err = if used_to_be_allowed {
+                    tcx.struct_span_lint_node(
+                        lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
+                        tcx.hir.as_local_node_id(impl_def_id).unwrap(),
+                        tcx.span_of_impl(impl_def_id).unwrap(),
+                        &msg)
+                } else {
+                    struct_span_err!(tcx.sess,
+                                     tcx.span_of_impl(impl_def_id).unwrap(),
+                                     E0119,
+                                     "{}",
+                                     msg)
+                };
 
                 match tcx.span_of_impl(overlap.with_impl) {
                     Ok(span) => {

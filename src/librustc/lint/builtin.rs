@@ -205,6 +205,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub INCOHERENT_FUNDAMENTAL_IMPLS,
+    Warn,
+    "potentially-conflicting impls were erroneously allowed"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items"
@@ -267,6 +273,7 @@ impl LintPass for HardwiredLints {
             MISSING_FRAGMENT_SPECIFIER,
             PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
             LATE_BOUND_LIFETIME_ARGUMENTS,
+            INCOHERENT_FUNDAMENTAL_IMPLS,
             DEPRECATED,
             UNUSED_UNSAFE,
             UNUSED_MUT,

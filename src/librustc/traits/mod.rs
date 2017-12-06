@@ -60,6 +60,13 @@ mod structural_impls;
 pub mod trans;
 mod util;
 
+// Whether to enable bug compatibility with issue #43355
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum IntercrateMode {
+    Issue43355,
+    Fixed
+}
+
 /// An `Obligation` represents some trait reference (e.g. `int:Eq`) for
 /// which the vtable must be found.  The process of finding a vtable is
 /// called "resolving" the `Obligation`. This process consists of
