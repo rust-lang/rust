@@ -3,7 +3,7 @@ use rustc::traits::Reveal;
 use rustc::ty::layout::TyLayout;
 use rustc::ty;
 
-use rustc::mir::interpret::{EvalResult, Lvalue, LvalueExtra, PrimVal, PrimValKind, Value, Pointer,
+use rustc::mir::interpret::{EvalResult, Place, PlaceExtra, PrimVal, PrimValKind, Value, Pointer,
                             HasMemory, AccessKind, EvalContext, PtrAndAlign, ValTy};
 
 use helpers::EvalContextExt as HelperEvalContextExt;
@@ -13,7 +13,7 @@ pub trait EvalContextExt<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
-        dest: Lvalue,
+        dest: Place,
         dest_layout: TyLayout<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
@@ -24,7 +24,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
-        dest: Lvalue,
+        dest: Place,
         dest_layout: TyLayout<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
@@ -119,7 +119,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 };
                 self.write_primval(dest, old, ty)?;
                 self.write_primval(
-                    Lvalue::from_primval_ptr(ptr),
+                    Place::from_primval_ptr(ptr),
                     change,
                     ty,
                 )?;
@@ -143,7 +143,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 };
                 self.write_value(valty, dest)?;
                 self.write_primval(
-                    Lvalue::from_primval_ptr(ptr),
+                    Place::from_primval_ptr(ptr),
                     change,
                     ty,
                 )?;
@@ -196,7 +196,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 };
                 // FIXME: what do atomics do on overflow?
                 let (val, _) = self.binary_op(op, old, ty, change, ty)?;
-                self.write_primval(Lvalue::from_primval_ptr(ptr), val, ty)?;
+                self.write_primval(Place::from_primval_ptr(ptr), val, ty)?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -240,8 +240,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "discriminant_value" => {
                 let ty = substs.type_at(0);
                 let adt_ptr = args[0].into_ptr(&self.memory)?;
-                let lval = Lvalue::from_primval_ptr(adt_ptr);
-                let discr_val = self.read_discriminant_value(lval, ty)?;
+                let place = Place::from_primval_ptr(adt_ptr);
+                let discr_val = self.read_discriminant_value(place, ty)?;
                 self.write_primval(dest, PrimVal::Bytes(discr_val), dest_layout.ty)?;
             }
 
@@ -336,12 +336,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     Ok(zero_val)
                 };
                 match dest {
-                    Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
-                    Lvalue::Ptr {
+                    Place::Local { frame, local } => self.modify_local(frame, local, init)?,
+                    Place::Ptr {
                         ptr: PtrAndAlign { ptr, aligned: true },
-                        extra: LvalueExtra::None,
+                        extra: PlaceExtra::None,
                     } => self.memory.write_repeat(ptr, 0, size)?,
-                    Lvalue::Ptr { .. } => {
+                    Place::Ptr { .. } => {
                         bug!("init intrinsic tried to write to fat or unaligned ptr target")
                     }
                 }
@@ -623,12 +623,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     _ => Ok(Value::ByVal(PrimVal::Undef)),
                 };
                 match dest {
-                    Lvalue::Local { frame, local } => self.modify_local(frame, local, uninit)?,
-                    Lvalue::Ptr {
+                    Place::Local { frame, local } => self.modify_local(frame, local, uninit)?,
+                    Place::Ptr {
                         ptr: PtrAndAlign { ptr, aligned: true },
-                        extra: LvalueExtra::None,
+                        extra: PlaceExtra::None,
                     } => self.memory.mark_definedness(ptr, size, false)?,
-                    Lvalue::Ptr { .. } => {
+                    Place::Ptr { .. } => {
                         bug!("uninit intrinsic tried to write to fat or unaligned ptr target")
                     }
                 }

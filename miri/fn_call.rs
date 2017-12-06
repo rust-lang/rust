@@ -21,7 +21,7 @@ pub trait EvalContextExt<'tcx> {
         &mut self,
         def_id: DefId,
         args: &[ValTy<'tcx>],
-        dest: Lvalue,
+        dest: Place,
         dest_ty: Ty<'tcx>,
         dest_block: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
@@ -31,7 +31,7 @@ pub trait EvalContextExt<'tcx> {
     fn call_missing_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         sig: ty::FnSig<'tcx>,
         path: String,
@@ -40,20 +40,20 @@ pub trait EvalContextExt<'tcx> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool>;
 
-    fn write_null(&mut self, dest: Lvalue, dest_ty: Ty<'tcx>) -> EvalResult<'tcx>;
+    fn write_null(&mut self, dest: Place, dest_ty: Ty<'tcx>) -> EvalResult<'tcx>;
 }
 
 impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
@@ -75,16 +75,16 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             Err(other) => return Err(other),
         };
 
-        let (return_lvalue, return_to_block) = match destination {
-            Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
-            None => (Lvalue::undef(), StackPopCleanup::None),
+        let (return_place, return_to_block) = match destination {
+            Some((place, block)) => (place, StackPopCleanup::Goto(block)),
+            None => (Place::undef(), StackPopCleanup::None),
         };
 
         self.push_stack_frame(
             instance,
             span,
             mir,
-            return_lvalue,
+            return_place,
             return_to_block,
         )?;
 
@@ -95,7 +95,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         &mut self,
         def_id: DefId,
         args: &[ValTy<'tcx>],
-        dest: Lvalue,
+        dest: Place,
         dest_ty: Ty<'tcx>,
         dest_block: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
@@ -176,7 +176,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     f_instance,
                     mir.span,
                     mir,
-                    Lvalue::undef(),
+                    Place::undef(),
                     StackPopCleanup::Goto(dest_block),
                 )?;
                 let mut args = self.frame().mir.args_iter();
@@ -187,7 +187,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                             .to_owned(),
                     ),
                 )?;
-                let arg_dest = self.eval_lvalue(&mir::Place::Local(arg_local))?;
+                let arg_dest = self.eval_place(&mir::Place::Local(arg_local))?;
                 self.write_ptr(arg_dest, data, u8_ptr_ty)?;
 
                 assert!(args.next().is_none(), "__rust_maybe_catch_panic argument has more arguments than expected");
@@ -416,7 +416,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 };
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
-                let key_type = args[0].ty.builtin_deref(true, ty::LvaluePreference::NoPreference)
+                let key_type = args[0].ty.builtin_deref(true, ty::PlacePreference::NoPreference)
                                    .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
                 let key_size = self.type_layout(key_type)?.size;
 
@@ -516,7 +516,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
     fn call_missing_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         sig: ty::FnSig<'tcx>,
         path: String,
@@ -655,7 +655,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         return Ok(());
     }
 
-    fn write_null(&mut self, dest: Lvalue, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {
+    fn write_null(&mut self, dest: Place, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {
         self.write_primval(dest, PrimVal::Bytes(0), dest_ty)
     }
 }

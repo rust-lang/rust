@@ -1,6 +1,6 @@
 use rustc::{ty, mir};
 
-use super::{TlsKey, TlsEntry, EvalResult, EvalErrorKind, Pointer, Memory, Evaluator, Lvalue,
+use super::{TlsKey, TlsEntry, EvalResult, EvalErrorKind, Pointer, Memory, Evaluator, Place,
             StackPopCleanup, EvalContext};
 
 pub trait MemoryExt<'tcx> {
@@ -119,13 +119,13 @@ impl<'a, 'tcx: 'a> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, Evaluator> {
                 instance,
                 mir.span,
                 mir,
-                Lvalue::undef(),
+                Place::undef(),
                 StackPopCleanup::None,
             )?;
             let arg_local = self.frame().mir.args_iter().next().ok_or(
                 EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
             )?;
-            let dest = self.eval_lvalue(&mir::Place::Local(arg_local))?;
+            let dest = self.eval_place(&mir::Place::Local(arg_local))?;
             let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
             self.write_ptr(dest, ptr, ty)?;
 

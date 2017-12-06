@@ -79,7 +79,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 start_instance,
                 start_mir.span,
                 start_mir,
-                Lvalue::from_ptr(ret_ptr),
+                Place::from_ptr(ret_ptr),
                 StackPopCleanup::None,
             )?;
 
@@ -87,7 +87,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
 
             // First argument: pointer to main()
             let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
-            let dest = ecx.eval_lvalue(&mir::Place::Local(args.next().unwrap()))?;
+            let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
             let main_ty = main_instance.def.def_ty(ecx.tcx);
             let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx));
             ecx.write_value(
@@ -99,13 +99,13 @@ pub fn eval_main<'a, 'tcx: 'a>(
             )?;
 
             // Second argument (argc): 1
-            let dest = ecx.eval_lvalue(&mir::Place::Local(args.next().unwrap()))?;
+            let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
             let ty = ecx.tcx.types.isize;
             ecx.write_primval(dest, PrimVal::Bytes(1), ty)?;
 
             // FIXME: extract main source file path
             // Third argument (argv): &[b"foo"]
-            let dest = ecx.eval_lvalue(&mir::Place::Local(args.next().unwrap()))?;
+            let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
             let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
             let foo = ecx.memory.allocate_cached(b"foo\0");
             let ptr_size = ecx.memory.pointer_size();
@@ -120,7 +120,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 main_instance,
                 main_mir.span,
                 main_mir,
-                Lvalue::undef(),
+                Place::undef(),
                 StackPopCleanup::None,
             )?;
 
@@ -195,7 +195,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
@@ -207,7 +207,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         ecx: &mut rustc::mir::interpret::EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
-        dest: Lvalue,
+        dest: Place,
         dest_layout: TyLayout<'tcx>,
         target: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
@@ -237,7 +237,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
     fn box_alloc<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         ty: ty::Ty<'tcx>,
-        dest: Lvalue,
+        dest: Place,
     ) -> EvalResult<'tcx> {
         let size = ecx.type_size(ty)?.expect("box only works with sized types");
         let align = ecx.type_align(ty)?;
@@ -261,7 +261,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         let usize = ecx.tcx.types.usize;
 
         // First argument: size
-        let dest = ecx.eval_lvalue(&mir::Place::Local(args.next().unwrap()))?;
+        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_value(
             ValTy {
                 value: Value::ByVal(PrimVal::Bytes(size as u128)),
@@ -271,7 +271,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         )?;
 
         // Second argument: align
-        let dest = ecx.eval_lvalue(&mir::Place::Local(args.next().unwrap()))?;
+        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_value(
             ValTy {
                 value: Value::ByVal(PrimVal::Bytes(align as u128)),
