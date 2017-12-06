@@ -9,8 +9,15 @@
 // except according to those terms.
 
 // Test closure that:
-// - captures a variable `y`
-// - stores reference to `y` into another, longer-lived spot
+//
+// - captures a variable `y` by reference
+// - stores that reference to `y` into another, longer-lived place (`p`)
+//
+// Both of these are upvars of reference type (the capture of `y` is
+// of type `&'a i32`, the capture of `p` is of type `&mut &'b
+// i32`). The closure thus computes a relationship between `'a` and
+// `'b`.  This relationship is propagated to the closure creator,
+// which reports an error.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
 

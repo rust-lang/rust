@@ -1,7 +1,7 @@
 note: External requirements
-  --> $DIR/escape-upvar-ref.rs:26:27
+  --> $DIR/escape-upvar-ref.rs:33:27
    |
-26 |         let mut closure = || p = &y;
+33 |         let mut closure = || p = &y;
    |                           ^^^^^^^^^
    |
    = note: defining type: DefId(0/1:9 ~ escape_upvar_ref[317d]::test[0]::{{closure}}[0]) with closure substs [
@@ -14,26 +14,26 @@ note: External requirements
    = note: where '_#3r: '_#2r
 
 note: No external requirements
-  --> $DIR/escape-upvar-ref.rs:20:1
+  --> $DIR/escape-upvar-ref.rs:27:1
    |
-20 | / fn test() {
-21 | |     let x = 44;
-22 | |     let mut p = &x;
-23 | |
+27 | / fn test() {
+28 | |     let x = 44;
+29 | |     let mut p = &x;
+30 | |
 ...  |
-30 | |     deref(p);
-31 | | }
+37 | |     deref(p);
+38 | | }
    | |_^
    |
    = note: defining type: DefId(0/0:3 ~ escape_upvar_ref[317d]::test[0]) with substs []
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/escape-upvar-ref.rs:28:6
+  --> $DIR/escape-upvar-ref.rs:35:6
    |
-25 |         let y = 22;
+32 |         let y = 22;
    |             - temporary value created here
 ...
-28 |     } //~ ERROR borrowed value does not live long enough
+35 |     } //~ ERROR borrowed value does not live long enough
    |      ^ temporary value dropped here while still borrowed
    |
    = note: consider using a `let` binding to increase its lifetime
