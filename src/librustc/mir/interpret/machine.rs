@@ -21,11 +21,6 @@ pub trait Machine<'tcx>: Sized {
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones
     type MemoryKinds: ::std::fmt::Debug + PartialEq + Copy + Clone;
 
-    /// Produces the param env for this computation.
-    fn param_env<'a>(
-        ecx: &EvalContext<'a, 'tcx, Self>,
-    ) -> ty::ParamEnv<'tcx>;
-
     /// Entry point to all function calls.
     ///
     /// Returns Ok(true) when the function was handled completely

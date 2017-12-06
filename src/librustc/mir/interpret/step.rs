@@ -188,11 +188,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 aligned: !layout.is_packed(),
             },
         );
-        let internally_mutable = !layout.ty.is_freeze(
-            self.tcx,
-            M::param_env(self),
-            span,
-        );
+        let internally_mutable = !layout.ty.is_freeze(self.tcx, self.param_env, span);
         let mutability = if mutability == Mutability::Mutable || internally_mutable {
             Mutability::Mutable
         } else {
@@ -245,10 +241,10 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                     debug!("global_item: {:?}, {:#?}", def_id, substs);
                     let substs = this.ecx.tcx.trans_apply_param_substs(this.instance.substs, &substs);
                     debug!("global_item_new_substs: {:#?}", substs);
-                    debug!("global_item_param_env: {:#?}", M::param_env(this.ecx));
+                    debug!("global_item_param_env: {:#?}", this.ecx.param_env);
                     let instance = Instance::resolve(
                         this.ecx.tcx,
-                        M::param_env(this.ecx),
+                        this.ecx.param_env,
                         def_id,
                         substs,
                     ).ok_or(EvalErrorKind::TypeckError)?; // turn error prop into a panic to expose associated type in const issue

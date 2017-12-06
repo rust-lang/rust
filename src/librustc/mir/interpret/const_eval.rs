@@ -20,7 +20,7 @@ pub fn eval_body<'a, 'tcx>(
 ) -> (EvalResult<'tcx, (PtrAndAlign, Ty<'tcx>)>, EvalContext<'a, 'tcx, CompileTimeFunctionEvaluator>) {
     debug!("eval_body: {:?}, {:?}", instance, param_env);
     let limits = super::ResourceLimits::default();
-    let mut ecx = EvalContext::<CompileTimeFunctionEvaluator>::new(tcx, limits, param_env, ());
+    let mut ecx = EvalContext::<CompileTimeFunctionEvaluator>::new(tcx, param_env, limits, (), ());
     let cid = GlobalId {
         instance,
         promoted: None,
@@ -165,14 +165,9 @@ impl Error for ConstEvalError {
 }
 
 impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
-    type Data = ty::ParamEnv<'tcx>;
+    type Data = ();
     type MemoryData = ();
     type MemoryKinds = !;
-    fn param_env<'a>(
-        ecx: &EvalContext<'a, 'tcx, Self>,
-    ) -> ty::ParamEnv<'tcx> {
-        ecx.machine_data
-    }
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,

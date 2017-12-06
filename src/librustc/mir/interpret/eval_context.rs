@@ -25,6 +25,9 @@ pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
     /// The results of the type checker, from rustc.
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
+    /// Bounds in scope for polymorphic evaluations.
+    pub param_env: ty::ParamEnv<'tcx>,
+
     /// The virtual memory system.
     pub memory: Memory<'a, 'tcx, M>,
 
@@ -194,7 +197,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> LayoutOf<Ty<'tcx>> for &'a EvalContext<'a, 'tcx
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        (self.tcx, M::param_env(self)).layout_of(ty)
+        (self.tcx, self.param_env).layout_of(ty)
             .map_err(|layout| EvalErrorKind::Layout(layout).into())
     }
 }
@@ -212,6 +215,7 @@ impl<'c, 'b, 'a, 'tcx, M: Machine<'tcx>> LayoutOf<Ty<'tcx>>
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn new(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         limits: ResourceLimits,
         machine_data: M::Data,
         memory_data: M::MemoryData,
@@ -219,6 +223,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         EvalContext {
             machine_data,
             tcx,
+            param_env,
             memory: Memory::new(tcx, limits.memory_size, memory_data),
             suspended: HashMap::new(),
             stack: Vec::new(),
@@ -302,14 +307,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let substs = self.tcx.trans_apply_param_substs(self.substs(), &substs);
         ty::Instance::resolve(
             self.tcx,
-            M::param_env(self),
+            self.param_env,
             def_id,
             substs,
         ).ok_or(EvalErrorKind::TypeckError.into()) // turn error prop into a panic to expose associated type in const issue
     }
 
     pub(super) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, M::param_env(self), DUMMY_SP)
+        ty.is_sized(self.tcx, self.param_env, DUMMY_SP)
     }
 
     pub fn load_mir(

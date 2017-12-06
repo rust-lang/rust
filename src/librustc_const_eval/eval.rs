@@ -24,7 +24,7 @@ use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 
 use rustc::mir::interpret::{PrimVal, Value, PtrAndAlign, HasMemory, EvalError};
-use rustc::mir::interpret::{CompileTimeFunctionEvaluator, EvalContext, Machine};
+use rustc::mir::interpret::{CompileTimeFunctionEvaluator, EvalContext};
 use rustc::mir::Field;
 use rustc::mir::interpret::{Place, PlaceExtra};
 use rustc_data_structures::indexed_vec::Idx;
@@ -937,7 +937,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
                 ConstVal::Function(did, substs) => {
                     let ctfe = ty::Instance::resolve(
                         ecx.tcx,
-                        CompileTimeFunctionEvaluator::param_env(&ecx),
+                        ecx.param_env,
                         did,
                         substs,
                     ).unwrap();
