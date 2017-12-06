@@ -1,6 +1,6 @@
 use rustc::mir;
 use rustc::traits::Reveal;
-use rustc::ty::layout::TyLayout;
+use rustc::ty::layout::{TyLayout, LayoutOf};
 use rustc::ty;
 
 use rustc::mir::interpret::{EvalResult, Place, PlaceExtra, PrimVal, PrimValKind, Value, Pointer,
@@ -204,12 +204,13 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "copy" |
             "copy_nonoverlapping" => {
                 let elem_ty = substs.type_at(0);
-                let elem_size = self.type_size(elem_ty)?.expect("cannot copy unsized value");
+                let elem_layout = self.layout_of(elem_ty)?;
+                let elem_size = elem_layout.size.bytes();
                 let count = self.value_to_primval(args[2])?.to_u64()?;
                 if count * elem_size != 0 {
                     // TODO: We do not even validate alignment for the 0-bytes case.  libstd relies on this in vec::IntoIter::next.
                     // Also see the write_bytes intrinsic.
-                    let elem_align = self.type_align(elem_ty)?;
+                    let elem_align = elem_layout.align.abi();
                     let src = args[0].into_ptr(&self.memory)?;
                     let dest = args[1].into_ptr(&self.memory)?;
                     self.memory.copy(
@@ -308,7 +309,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "likely" | "unlikely" | "forget" => {}
 
             "init" => {
-                let size = self.type_size(dest_layout.ty)?.expect("cannot zero unsized value");
+                let size = dest_layout.size.bytes();
                 let init = |this: &mut Self, val: Value| {
                     let zero_val = match val {
                         Value::ByRef(PtrAndAlign { ptr, .. }) => {
@@ -321,7 +322,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                             match this.ty_to_primval_kind(dest_layout.ty) {
                                 Ok(_) => Value::ByVal(PrimVal::Bytes(0)),
                                 Err(_) => {
-                                    let ptr = this.alloc_ptr_with_substs(dest_layout.ty, substs)?;
+                                    // FIXME(oli-obk): pass TyLayout to alloc_ptr instead of Ty
+                                    let ptr = this.alloc_ptr(dest_layout.ty)?;
                                     let ptr = Pointer::from(PrimVal::Ptr(ptr));
                                     this.memory.write_repeat(ptr, 0, size)?;
                                     Value::by_ref(ptr)
@@ -349,14 +351,14 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
-                let elem_align = self.type_align(elem_ty)?;
+                let elem_align = self.layout_of(elem_ty)?.align.abi();
                 let align_val = PrimVal::from_u128(elem_align as u128);
                 self.write_primval(dest, align_val, dest_layout.ty)?;
             }
 
             "pref_align_of" => {
                 let ty = substs.type_at(0);
-                let layout = self.type_layout(ty)?;
+                let layout = self.layout_of(ty)?;
                 let align = layout.align.pref();
                 let align_val = PrimVal::from_u128(align as u128);
                 self.write_primval(dest, align_val, dest_layout.ty)?;
@@ -492,9 +494,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "size_of" => {
                 let ty = substs.type_at(0);
-                let size = self.type_size(ty)?.expect(
-                    "size_of intrinsic called on unsized value",
-                ) as u128;
+                let size = self.layout_of(ty)?.size.bytes().into();
                 self.write_primval(dest, PrimVal::from_u128(size), dest_layout.ty)?;
             }
 
@@ -544,9 +544,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "unchecked_shl" => {
-                let bits = self.type_size(dest_layout.ty)?.expect(
-                    "intrinsic can't be called on unsized type",
-                ) as u128 * 8;
+                let bits = dest_layout.size.bytes() as u128 * 8;
                 let rhs = self.value_to_primval(args[1])?
                     .to_bytes()?;
                 if rhs >= bits {
@@ -564,9 +562,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "unchecked_shr" => {
-                let bits = self.type_size(dest_layout.ty)?.expect(
-                    "intrinsic can't be called on unsized type",
-                ) as u128 * 8;
+                let bits = dest_layout.size.bytes() as u128 * 8;
                 let rhs = self.value_to_primval(args[1])?
                     .to_bytes()?;
                 if rhs >= bits {
@@ -636,18 +632,15 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "write_bytes" => {
                 let ty = substs.type_at(0);
-                let ty_align = self.type_align(ty)?;
+                let ty_layout = self.layout_of(ty)?;
                 let val_byte = self.value_to_primval(args[1])?.to_u128()? as u8;
-                let size = self.type_size(ty)?.expect(
-                    "write_bytes() type must be sized",
-                );
                 let ptr = args[0].into_ptr(&self.memory)?;
                 let count = self.value_to_primval(args[2])?.to_u64()?;
                 if count > 0 {
                     // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
                     // TODO: Should we, at least, validate the alignment? (Also see the copy intrinsic)
-                    self.memory.check_align(ptr, ty_align, Some(AccessKind::Write))?;
-                    self.memory.write_repeat(ptr, val_byte, size * count)?;
+                    self.memory.check_align(ptr, ty_layout.align.abi(), Some(AccessKind::Write))?;
+                    self.memory.write_repeat(ptr, val_byte, ty_layout.size.bytes() * count)?;
                 }
             }
 

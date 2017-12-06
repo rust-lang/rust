@@ -1,4 +1,5 @@
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::LayoutOf;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use syntax::attr;
@@ -261,7 +262,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let result = {
                     let name_ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
                     let name = self.memory.read_c_str(name_ptr)?;
-                    match self.machine_data.env_vars.get(name) {
+                    match self.machine.env_vars.get(name) {
                         Some(&var) => PrimVal::Ptr(var),
                         None => PrimVal::Bytes(0),
                     }
@@ -276,7 +277,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     if !name_ptr.is_null()? {
                         let name = self.memory.read_c_str(name_ptr.to_ptr()?)?;
                         if !name.is_empty() && !name.contains(&b'=') {
-                            success = Some(self.machine_data.env_vars.remove(name));
+                            success = Some(self.machine.env_vars.remove(name));
                         }
                     }
                 }
@@ -313,7 +314,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     self.memory.write_bytes(value_copy.into(), &value)?;
                     let trailing_zero_ptr = value_copy.offset(value.len() as u64, &self)?.into();
                     self.memory.write_bytes(trailing_zero_ptr, &[0])?;
-                    if let Some(var) = self.machine_data.env_vars.insert(
+                    if let Some(var) = self.machine.env_vars.insert(
                         name.to_owned(),
                         value_copy,
                     )
@@ -416,9 +417,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 };
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
-                let key_type = args[0].ty.builtin_deref(true, ty::PlacePreference::NoPreference)
+                let key_type = args[0].ty.builtin_deref(true, ty::LvaluePreference::NoPreference)
                                    .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
-                let key_size = self.type_layout(key_type)?.size;
+                let key_size = self.layout_of(key_type)?.size;
 
                 // Create key and write it into the memory where key_ptr wants it
                 let key = self.memory.create_tls_key(dtor) as u128;

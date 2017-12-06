@@ -11,7 +11,7 @@ extern crate rustc;
 extern crate syntax;
 
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::layout::TyLayout;
+use rustc::ty::layout::{TyLayout, LayoutOf};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::traits;
@@ -141,7 +141,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         Ok(())
     }
 
-    let mut ecx = EvalContext::new(tcx, limits, Default::default(), Default::default());
+    let mut ecx = EvalContext::new(tcx, ty::ParamEnv::empty(traits::Reveal::All), limits, Default::default(), Default::default());
     match run_main(&mut ecx, main_id, start_wrapper) {
         Ok(()) => {
             let leaks = ecx.memory().leak_report();
@@ -155,9 +155,8 @@ pub fn eval_main<'a, 'tcx: 'a>(
     }
 }
 
-pub struct Evaluator;
 #[derive(Default)]
-pub struct EvaluatorData {
+pub struct Evaluator {
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
     pub(crate) env_vars: HashMap<Vec<u8>, MemoryPointer>,
@@ -181,15 +180,8 @@ pub struct MemoryData<'tcx> {
 }
 
 impl<'tcx> Machine<'tcx> for Evaluator {
-    type Data = EvaluatorData;
     type MemoryData = MemoryData<'tcx>;
     type MemoryKinds = memory::MemoryKind;
-
-    fn param_env<'a>(
-        _: &EvalContext<'a, 'tcx, Self>,
-    ) -> ty::ParamEnv<'tcx> {
-        ty::ParamEnv::empty(traits::Reveal::All)
-    }
 
     /// Returns Ok() when the function was handled, fail otherwise
     fn eval_fn_call<'a>(
@@ -239,8 +231,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         ty: ty::Ty<'tcx>,
         dest: Place,
     ) -> EvalResult<'tcx> {
-        let size = ecx.type_size(ty)?.expect("box only works with sized types");
-        let align = ecx.type_align(ty)?;
+        let layout = ecx.layout_of(ty)?;
 
         // Call the `exchange_malloc` lang item
         let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();
@@ -264,7 +255,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_value(
             ValTy {
-                value: Value::ByVal(PrimVal::Bytes(size as u128)),
+                value: Value::ByVal(PrimVal::Bytes(layout.size.bytes().into())),
                 ty: usize,
             },
             dest,
@@ -274,7 +265,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_value(
             ValTy {
-                value: Value::ByVal(PrimVal::Bytes(align as u128)),
+                value: Value::ByVal(PrimVal::Bytes(layout.align.abi().into())),
                 ty: usize,
             },
             dest,
