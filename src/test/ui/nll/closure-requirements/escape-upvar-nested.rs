@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// As in via-upvar, test closure that:
+// As in `escape-upvar-ref.rs`, test closure that:
 //
 // - captures a variable `y`
 // - stores reference to `y` into another, longer-lived spot
