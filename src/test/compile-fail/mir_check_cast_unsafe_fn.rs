@@ -17,8 +17,8 @@ fn bar<'a>(input: &'a u32, f: fn(&'a u32) -> &'a u32) -> &'static u32 {
     // in `g`. These are related via the `UnsafeFnPointer` cast.
     let g: unsafe fn(_) -> _ = f;
     //~^ WARNING not reporting region error due to -Znll
+    //~| ERROR free region `'_#1r` does not outlive free region `'static`
     unsafe { g(input) }
-    //~^ ERROR free region `'_#1r` does not outlive free region `'static`
 }
 
 fn main() {}

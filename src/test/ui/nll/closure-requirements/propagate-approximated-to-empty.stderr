@@ -5,10 +5,10 @@ warning: not reporting region error due to -Znll
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: free region `'_#6r` does not outlive free region `'_#4r`
-  --> $DIR/propagate-approximated-to-empty.rs:41:21
+  --> $DIR/propagate-approximated-to-empty.rs:41:18
    |
 41 |         demand_y(x, y, x.get())
-   |                     ^
+   |                  ^
 
 note: No external requirements
   --> $DIR/propagate-approximated-to-empty.rs:39:47
