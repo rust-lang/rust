@@ -263,6 +263,11 @@ pub fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
 }
 
 #[inline]
+pub fn count_newlines(input: &str) -> usize {
+    input.chars().filter(|&c| c == '\n').count()
+}
+
+#[inline]
 pub fn trim_newlines(input: &str) -> &str {
     match input.find(|c| c != '\n' && c != '\r') {
         Some(start) => {

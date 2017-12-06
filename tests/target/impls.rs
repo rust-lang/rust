@@ -78,7 +78,6 @@ mod a {
     }
 }
 
-
 mod b {
     mod a {
         impl Foo {

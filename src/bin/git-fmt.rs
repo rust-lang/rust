@@ -14,7 +14,6 @@ use getopts::{Matches, Options};
 use rustfmt::{run, Input};
 use rustfmt::config;
 
-
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files
         .iter()

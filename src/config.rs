@@ -21,7 +21,6 @@ use file_lines::FileLines;
 use lists::{ListTactic, SeparatorPlace, SeparatorTactic};
 use Summary;
 
-
 macro_rules! is_nightly_channel {
     () => {
         option_env!("CFG_RELEASE_CHANNEL")
@@ -87,7 +86,6 @@ configuration_option_enum! { TypeDensity:
     // Spaces around " = " and " + "
     Wide,
 }
-
 
 impl Density {
     pub fn to_list_tactic(self) -> ListTactic {
@@ -579,8 +577,6 @@ pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
     Ok(None)
 }
 
-
-
 create_config! {
     // Fundamental stuff
     max_width: usize, 100, true, "Maximum width of each line";
@@ -651,6 +647,10 @@ create_config! {
         "Add trailing semicolon after break, continue and return";
     match_block_trailing_comma: bool, false, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
+    blank_lines_upper_bound: usize, 1, false,
+        "Maximum number of blank lines which can be put between items.";
+    blank_lines_lower_bound: usize, 0, false,
+        "Minimum number of blank lines which must be put between items.";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";

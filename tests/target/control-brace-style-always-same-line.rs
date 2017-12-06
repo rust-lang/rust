@@ -6,25 +6,21 @@ fn main() {
         ();
     }
 
-
     'label: loop
     // loop comment
     {
         ();
     }
 
-
     cond = true;
     while cond {
         ();
     }
 
-
     'while_label: while cond {
         // while comment
         ();
     }
-
 
     for obj in iter {
         for sub_obj in obj {

@@ -52,7 +52,6 @@ pub type CommentTest<
     T,
 > = ();
 
-
 pub type WithWhereClause<LONGPARAMETERNAME, T>
 where
     T: Clone,

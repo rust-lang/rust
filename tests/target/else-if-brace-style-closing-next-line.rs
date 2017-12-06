@@ -13,9 +13,7 @@ fn main() {
         ();
     }
 
-
     let a = if 0 > 1 { unreachable!() } else { 0x0 };
-
 
     if true {
         ();

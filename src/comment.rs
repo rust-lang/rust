@@ -18,7 +18,7 @@ use config::Config;
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
 use string::{rewrite_string, StringFormat};
-use utils::{first_line_width, last_line_width};
+use utils::{count_newlines, first_line_width, last_line_width};
 
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
@@ -292,7 +292,7 @@ fn rewrite_comment_inner(
         config: config,
     };
 
-    let line_breaks = orig.trim_right().chars().filter(|&c| c == '\n').count();
+    let line_breaks = count_newlines(orig.trim_right());
     let lines = orig.lines()
         .enumerate()
         .map(|(i, mut line)| {
@@ -829,9 +829,6 @@ impl<'a> Iterator for UngroupedCommentCodeSlices<'a> {
     }
 }
 
-
-
-
 /// Iterator over an alternating sequence of functional and commented parts of
 /// a string. The first item is always a, possibly zero length, subslice of
 /// functional text. Line style comments contain their ending newlines.
@@ -953,7 +950,6 @@ fn changed_comment_content(orig: &str, new: &str) -> bool {
     res
 }
 
-
 /// Iterator over the 'payload' characters of a comment.
 /// It skips whitespace, comment start/end marks, and '*' at the beginning of lines.
 /// The comment must be one comment, ie not more than one start mark (no multiple line comments,
@@ -998,7 +994,6 @@ impl<'a> Iterator for CommentReducer<'a> {
         }
     }
 }
-
 
 fn remove_comment_header(comment: &str) -> &str {
     if comment.starts_with("///") || comment.starts_with("//!") {

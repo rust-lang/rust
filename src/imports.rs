@@ -13,7 +13,6 @@ use std::cmp::Ordering;
 use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 
-
 use spanned::Spanned;
 use codemap::SpanUtils;
 use comment::combine_strs_with_missing_comments;

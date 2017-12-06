@@ -283,7 +283,6 @@ impl<'a> FmtVisitor<'a> {
         self.format_item(item);
     }
 
-
     fn format_foreign_item(&mut self, item: &ast::ForeignItem) {
         let rewrite = item.rewrite(&self.get_context(), self.shape());
         self.push_rewrite(item.span(), rewrite);
