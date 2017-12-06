@@ -257,9 +257,28 @@ struct AnonTypeDecl<'tcx> {
     /// lifetime parameter on `foo`.)
     concrete_ty: Ty<'tcx>,
 
-    /// A list of all required region bounds on the impl Trait type,
-    /// e.g. `'a` and `'b` in `fn foo<'a, 'b, 'c>() -> impl Trait<'c> + 'a + 'b`.
-    required_region_bounds: Vec<ty::Region<'tcx>>,
+    /// True if the `impl Trait` bounds include region bounds.
+    /// For example, this would be true for:
+    ///
+    ///     fn foo<'a, 'b, 'c>() -> impl Trait<'c> + 'a + 'b
+    ///
+    /// but false for:
+    ///
+    ///     fn foo<'c>() -> impl Trait<'c>
+    ///
+    /// unless `Trait` was declared like:
+    ///
+    ///     trait Trait<'c>: 'c
+    ///
+    /// in which case it would be true.
+    ///
+    /// This is used during regionck to decide whether we need to
+    /// impose any additional constraints to ensure that region
+    /// variables in `concrete_ty` wind up being constrained to
+    /// something from `substs` (or, at minimum, things that outlive
+    /// the fn body). (Ultimately, writeback is responsible for this
+    /// check.)
+    has_required_region_bounds: bool,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
@@ -1942,7 +1961,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.anon_types.borrow_mut().insert(def_id, AnonTypeDecl {
                     substs,
                     concrete_ty: ty_var,
-                    required_region_bounds,
+                    has_required_region_bounds: !required_region_bounds.is_empty(),
                 });
                 debug!("instantiate_anon_types: ty_var={:?}", ty_var);
 
