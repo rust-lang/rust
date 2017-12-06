@@ -46,12 +46,31 @@ mod liveness;
 /// This phase of type-check ought to be infallible -- this is because
 /// the original, HIR-based type-check succeeded. So if any errors
 /// occur here, we will get a `bug!` reported.
+///
+/// # Parameters
+///
+/// - `infcx` -- inference context to use
+/// - `body_id` -- body-id of the MIR being checked
+/// - `param_env` -- parameter environment to use for trait solving
+/// - `mir` -- MIR to type-check
+/// - `implicit_region_bound` -- a region which all generic parameters are assumed
+///   to outlive; should represent the fn body
+/// - `input_tys` -- fully liberated, but **not** normalized, expected types of the arguments;
+///   the types of the input parameters found in the MIR itself will be equated with these
+/// - `output_ty` -- fully liberaetd, but **not** normalized, expected return type;
+///   the type for the RETURN_PLACE will be equated with this
+/// - `liveness` -- results of a liveness computation on the MIR; used to create liveness
+///   constraints for the regions in the types of variables
+/// - `flow_inits` -- results of a maybe-init dataflow analysis
+/// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 pub(crate) fn type_check<'gcx, 'tcx>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
     body_id: ast::NodeId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
+    input_tys: &[Ty<'tcx>],
+    output_ty: Ty<'tcx>,
     liveness: &LivenessResults,
     flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -62,7 +81,16 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         param_env,
         mir,
         Some(implicit_region_bound),
-        &mut |cx| liveness::generate(cx, mir, liveness, flow_inits, move_data),
+        &mut |cx| {
+            liveness::generate(cx, mir, liveness, flow_inits, move_data);
+
+            // Equate the input and output tys given by the user with
+            // the ones found in the MIR.
+            cx.equate_input_or_output(output_ty, mir.local_decls[RETURN_PLACE].ty);
+            for (&input_ty, local) in input_tys.iter().zip((1..).map(Local::new)) {
+                cx.equate_input_or_output(input_ty, mir.local_decls[local].ty);
+            }
+        },
     )
 }
 
@@ -664,6 +692,25 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 .at(&this.misc(this.last_span), this.param_env)
                 .eq(b, a)
         })
+    }
+
+    fn equate_input_or_output(&mut self, unnormalized_a: Ty<'tcx>, b: Ty<'tcx>) {
+        let start_position = Location {
+            block: START_BLOCK,
+            statement_index: 0,
+        };
+        let a = self.normalize(&unnormalized_a, start_position);
+        if let Err(terr) = self.eq_types(a, b, start_position.at_self()) {
+            span_mirbug!(
+                self,
+                start_position,
+                "bad input or output {:?} normalized to {:?} should equal {:?} but got error {:?}",
+                unnormalized_a,
+                a,
+                b,
+                terr
+            );
+        }
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
