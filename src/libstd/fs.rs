@@ -281,12 +281,12 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// use std::net::SocketAddr;
 ///
 /// # fn foo() -> Result<(), Box<std::error::Error + 'static>> {
-/// let foo: SocketAddr = fs::read_utf8("address.txt")?.parse()?;
+/// let foo: SocketAddr = fs::read_string("address.txt")?.parse()?;
 /// # Ok(())
 /// # }
 /// ```
 #[unstable(feature = "fs_read_write", issue = /* FIXME */ "0")]
-pub fn read_utf8<P: AsRef<Path>>(path: P) -> io::Result<String> {
+pub fn read_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     let mut string = String::new();
     File::open(path)?.read_to_string(&mut string)?;
     Ok(string)
@@ -3044,12 +3044,12 @@ mod tests {
         assert!(v == &bytes[..]);
 
         check!(fs::write(&tmpdir.join("not-utf8"), &[0xFF]));
-        error_contains!(fs::read_utf8(&tmpdir.join("not-utf8")),
+        error_contains!(fs::read_string(&tmpdir.join("not-utf8")),
                         "stream did not contain valid UTF-8");
 
         let s = "𐁁𐀓𐀠𐀴𐀍";
         check!(fs::write(&tmpdir.join("utf8"), s.as_bytes()));
-        let string = check!(fs::read_utf8(&tmpdir.join("utf8")));
+        let string = check!(fs::read_string(&tmpdir.join("utf8")));
         assert_eq!(string, s);
     }
 
