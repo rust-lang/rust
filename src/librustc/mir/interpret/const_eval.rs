@@ -17,10 +17,10 @@ pub fn eval_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, (PtrAndAlign, Ty<'tcx>)>, EvalContext<'a, 'tcx, CompileTimeFunctionEvaluator>) {
+) -> (EvalResult<'tcx, (PtrAndAlign, Ty<'tcx>)>, EvalContext<'a, 'tcx, CompileTimeEvaluator>) {
     debug!("eval_body: {:?}, {:?}", instance, param_env);
     let limits = super::ResourceLimits::default();
-    let mut ecx = EvalContext::<CompileTimeFunctionEvaluator>::new(tcx, param_env, limits, (), ());
+    let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
     let cid = GlobalId {
         instance,
         promoted: None,
@@ -120,7 +120,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
     })
 }
 
-pub struct CompileTimeFunctionEvaluator;
+pub struct CompileTimeEvaluator;
 
 impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
     fn into(self) -> EvalError<'tcx> {
@@ -164,8 +164,7 @@ impl Error for ConstEvalError {
     }
 }
 
-impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
-    type Data = ();
+impl<'tcx> super::Machine<'tcx> for CompileTimeEvaluator {
     type MemoryData = ();
     type MemoryKinds = !;
     fn eval_fn_call<'a>(

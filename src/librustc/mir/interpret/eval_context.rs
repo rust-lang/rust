@@ -19,8 +19,8 @@ use super::{EvalError, EvalResult, EvalErrorKind, GlobalId, Place, PlaceExtra, M
             ValidationQuery, Machine};
 
 pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
-    /// Stores data required by the `Machine`
-    pub machine_data: M::Data,
+    /// Stores the `Machine` instance.
+    pub machine: M,
 
     /// The results of the type checker, from rustc.
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -217,11 +217,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         limits: ResourceLimits,
-        machine_data: M::Data,
+        machine: M,
         memory_data: M::MemoryData,
     ) -> Self {
         EvalContext {
-            machine_data,
+            machine,
             tcx,
             param_env,
             memory: Memory::new(tcx, limits.memory_size, memory_data),

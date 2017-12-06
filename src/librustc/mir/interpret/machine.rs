@@ -12,9 +12,6 @@ use syntax::ast::Mutability;
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
 pub trait Machine<'tcx>: Sized {
-    /// Additional data that can be accessed via the EvalContext
-    type Data;
-
     /// Additional data that can be accessed via the Memory
     type MemoryData;
 

@@ -35,7 +35,7 @@ use self::range_map::RangeMap;
 
 pub use self::value::{PrimVal, PrimValKind, Value, Pointer};
 
-pub use self::const_eval::{eval_body_as_integer, eval_body, CompileTimeFunctionEvaluator};
+pub use self::const_eval::{eval_body_as_integer, eval_body, CompileTimeEvaluator};
 
 pub use self::machine::Machine;
 

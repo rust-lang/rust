@@ -24,7 +24,7 @@ use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 
 use rustc::mir::interpret::{PrimVal, Value, PtrAndAlign, HasMemory, EvalError};
-use rustc::mir::interpret::{CompileTimeFunctionEvaluator, EvalContext};
+use rustc::mir::interpret::{CompileTimeEvaluator, EvalContext};
 use rustc::mir::Field;
 use rustc::mir::interpret::{Place, PlaceExtra};
 use rustc_data_structures::indexed_vec::Idx;
@@ -754,7 +754,7 @@ pub(crate) fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn check_ctfe_against_miri<'a, 'tcx>(
-    ecx: &mut EvalContext<'a, 'tcx, CompileTimeFunctionEvaluator>,
+    ecx: &mut EvalContext<'a, 'tcx, CompileTimeEvaluator>,
     miri_val: PtrAndAlign,
     miri_ty: Ty<'tcx>,
     ctfe: ConstVal<'tcx>,
@@ -950,7 +950,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
 }
 
 fn get_prim<'a, 'tcx>(
-    ecx: &mut EvalContext<'a, 'tcx, CompileTimeFunctionEvaluator>,
+    ecx: &mut EvalContext<'a, 'tcx, CompileTimeEvaluator>,
     res: Result<Option<Value>, EvalError<'tcx>>,
 ) -> u128 {
     match res {
@@ -961,7 +961,7 @@ fn get_prim<'a, 'tcx>(
 }
 
 fn unwrap_miri<'a, 'tcx, T>(
-    ecx: &EvalContext<'a, 'tcx, CompileTimeFunctionEvaluator>,
+    ecx: &EvalContext<'a, 'tcx, CompileTimeEvaluator>,
     res: Result<T, EvalError<'tcx>>,
 ) -> T {
     match res {
