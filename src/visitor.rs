@@ -84,6 +84,7 @@ pub struct FmtVisitor<'a> {
     pub block_indent: Indent,
     pub config: &'a Config,
     pub is_if_else_block: bool,
+    pub snippet_provier: SnippetProvider,
 }
 
 impl<'a> FmtVisitor<'a> {
@@ -538,25 +539,18 @@ impl<'a> FmtVisitor<'a> {
             block_indent: Indent::empty(),
             config: config,
             is_if_else_block: false,
+            snippet_provier: SnippetProvider::from_codemap(parse_session.codemap(), span),
         }
     }
 
-    pub fn opt_snippet(&self, span: Span) -> Option<String> {
-        self.codemap.span_to_snippet(span).ok()
+    pub fn opt_snippet<'b: 'a>(&'a self, span: Span) -> Option<&'b str> {
+        self.snippet_provier
+            .span_to_snippet(span)
+            .map(|s| unsafe { mem::transmute::<&'a str, &'b str>(s) })
     }
 
-    pub fn snippet(&self, span: Span) -> String {
-        match self.codemap.span_to_snippet(span) {
-            Ok(s) => s,
-            Err(_) => {
-                eprintln!(
-                    "Couldn't make snippet for span {:?}->{:?}",
-                    self.codemap.lookup_char_pos(span.lo()),
-                    self.codemap.lookup_char_pos(span.hi())
-                );
-                "".to_owned()
-            }
-        }
+    pub fn snippet<'b: 'a>(&'a self, span: Span) -> &'b str {
+        self.opt_snippet(span).unwrap()
     }
 
     // Returns true if we should skip the following item.
@@ -753,6 +747,7 @@ impl<'a> FmtVisitor<'a> {
             use_block: false,
             is_if_else_block: false,
             force_one_line_chain: false,
+            snippet_provider: &self.snippet_provier,
         }
     }
 }

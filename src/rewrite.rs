@@ -15,6 +15,7 @@ use syntax::parse::ParseSess;
 
 use config::{Config, IndentStyle};
 use shape::Shape;
+use visitor::SnippetProvider;
 
 pub trait Rewrite {
     /// Rewrite self into shape.
@@ -34,11 +35,12 @@ pub struct RewriteContext<'a> {
     pub is_if_else_block: bool,
     // When rewriting chain, veto going multi line except the last element
     pub force_one_line_chain: bool,
+    pub snippet_provider: &'a SnippetProvider,
 }
 
 impl<'a> RewriteContext<'a> {
-    pub fn snippet(&self, span: Span) -> String {
-        self.codemap.span_to_snippet(span).unwrap()
+    pub fn snippet(&self, span: Span) -> &str {
+        self.snippet_provider.span_to_snippet(span).unwrap()
     }
 
     /// Return true if we should use block indent style for rewriting function call.
