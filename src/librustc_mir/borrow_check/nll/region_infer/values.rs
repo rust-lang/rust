@@ -27,18 +27,23 @@ pub(super) struct RegionValueElements {
 impl RegionValueElements {
     pub(super) fn new(mir: &Mir<'_>, num_universal_regions: usize) -> Self {
         let mut num_points = 0;
-        let statements_before_block =
-            mir.basic_blocks()
-               .iter()
-               .map(|block_data| {
-                   let v = num_points;
-                   num_points += block_data.statements.len() + 1;
-                   v
-               })
-               .collect();
+        let statements_before_block = mir.basic_blocks()
+            .iter()
+            .map(|block_data| {
+                let v = num_points;
+                num_points += block_data.statements.len() + 1;
+                v
+            })
+            .collect();
 
-        debug!("RegionValueElements(num_universal_regions={:?})", num_universal_regions);
-        debug!("RegionValueElements: statements_before_block={:#?}", statements_before_block);
+        debug!(
+            "RegionValueElements(num_universal_regions={:?})",
+            num_universal_regions
+        );
+        debug!(
+            "RegionValueElements: statements_before_block={:#?}",
+            statements_before_block
+        );
         debug!("RegionValueElements: num_points={:#?}", num_points);
 
         Self {
@@ -60,7 +65,9 @@ impl RegionValueElements {
 
     /// Iterates over the `RegionElementIndex` for all points in the CFG.
     pub(super) fn all_point_indices<'a>(&'a self) -> impl Iterator<Item = RegionElementIndex> + 'a {
-        (0..self.num_points).map(move |i| RegionElementIndex::new(i + self.num_universal_regions))
+        (0..self.num_points).map(move |i| {
+            RegionElementIndex::new(i + self.num_universal_regions)
+        })
     }
 
     /// Iterates over the `RegionElementIndex` for all points in the CFG.
@@ -95,12 +102,11 @@ impl RegionValueElements {
             // be (BB2, 20).
             //
             // Nit: we could do a binary search here but I'm too lazy.
-            let (block, &first_index) =
-                self.statements_before_block
-                    .iter_enumerated()
-                    .filter(|(_, first_index)| **first_index <= point_index)
-                    .last()
-                    .unwrap();
+            let (block, &first_index) = self.statements_before_block
+                .iter_enumerated()
+                .filter(|(_, first_index)| **first_index <= point_index)
+                .last()
+                .unwrap();
 
             RegionElement::Location(Location {
                 block,
@@ -151,7 +157,10 @@ pub(super) trait ToElementIndex {
 
 impl ToElementIndex for Location {
     fn to_element_index(self, elements: &RegionValueElements) -> RegionElementIndex {
-        let Location { block, statement_index } = self;
+        let Location {
+            block,
+            statement_index,
+        } = self;
         let start_index = elements.statements_before_block[block];
         RegionElementIndex::new(elements.num_universal_regions + start_index + statement_index)
     }
