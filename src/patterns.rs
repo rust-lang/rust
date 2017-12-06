@@ -122,7 +122,7 @@ impl Rewrite for Pat {
                 rewrite_struct_pat(path, fields, ellipsis, self.span, context, shape)
             }
             // FIXME(#819) format pattern macros.
-            PatKind::Mac(..) => Some(context.snippet(self.span)),
+            PatKind::Mac(..) => Some(context.snippet(self.span).into()),
         }
     }
 }

@@ -58,7 +58,7 @@ pub fn format_expr(
     skip_out_of_file_lines_range!(context, expr.span);
 
     if contains_skip(&*expr.attrs) {
-        return Some(context.snippet(expr.span()));
+        return Some(context.snippet(expr.span()).into());
     }
 
     let expr_rw = match expr.node {
@@ -168,7 +168,7 @@ pub fn format_expr(
         ast::ExprKind::Mac(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
                 wrap_str(
-                    context.snippet(expr.span),
+                    context.snippet(expr.span).into(),
                     context.config.max_width(),
                     shape,
                 )
@@ -274,7 +274,7 @@ pub fn format_expr(
         // We do not format these expressions yet, but they should still
         // satisfy our width restrictions.
         ast::ExprKind::InPlace(..) | ast::ExprKind::InlineAsm(..) => {
-            Some(context.snippet(expr.span))
+            Some(context.snippet(expr.span).into())
         }
         ast::ExprKind::Catch(ref block) => {
             if let rw @ Some(_) = rewrite_single_line_block(context, "do catch ", block, shape) {
@@ -1308,7 +1308,7 @@ fn rewrite_match(
             Some(format!("match {} {{}}", cond_str))
         } else {
             // Empty match with comments or inner attributes? We are not going to bother, sorry ;)
-            Some(context.snippet(span))
+            Some(context.snippet(span).into())
         }
     } else {
         Some(format!(
@@ -1767,7 +1767,11 @@ fn can_extend_match_arm_body(body: &ast::Expr) -> bool {
 pub fn rewrite_literal(context: &RewriteContext, l: &ast::Lit, shape: Shape) -> Option<String> {
     match l.node {
         ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
-        _ => wrap_str(context.snippet(l.span), context.config.max_width(), shape),
+        _ => wrap_str(
+            context.snippet(l.span).into(),
+            context.config.max_width(),
+            shape,
+        ),
     }
 }
 
@@ -1798,7 +1802,7 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
             );
             return wrap_str(indented_string_lit, context.config.max_width(), shape);
         } else {
-            return wrap_str(string_lit, context.config.max_width(), shape);
+            return wrap_str(string_lit.into(), context.config.max_width(), shape);
         }
     }
 
@@ -2530,7 +2534,7 @@ pub fn rewrite_field(
     prefix_max_width: usize,
 ) -> Option<String> {
     if contains_skip(&field.attrs) {
-        return Some(context.snippet(field.span()));
+        return Some(context.snippet(field.span()).into());
     }
     let name = &field.ident.node.to_string();
     if field.is_shorthand {
@@ -2738,7 +2742,7 @@ fn rewrite_assignment(
 ) -> Option<String> {
     let operator_str = match op {
         Some(op) => context.snippet(op.span),
-        None => "=".to_owned(),
+        None => "=",
     };
 
     // 1 = space between lhs and operator.

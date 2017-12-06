@@ -424,7 +424,7 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::GlobalAsm(..) => {
-                let snippet = Some(self.snippet(item.span));
+                let snippet = Some(self.snippet(item.span).into());
                 self.push_rewrite(item.span, snippet);
             }
             ast::ItemKind::MacroDef(..) => {
@@ -525,8 +525,12 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(source!(self, span).lo());
-        let result = rewrite.unwrap_or_else(|| self.snippet(span));
-        self.buffer.push_str(&result);
+        if let Some(ref s) = rewrite {
+            self.buffer.push_str(s);
+        } else {
+            let snippet = self.snippet(span);
+            self.buffer.push_str(snippet);
+        }
         self.last_pos = source!(self, span).hi();
     }
 
@@ -826,10 +830,10 @@ impl Rewrite for ast::Attribute {
                     .unwrap_or(0),
                 ..shape
             };
-            rewrite_comment(&snippet, false, doc_shape, context.config)
+            rewrite_comment(snippet, false, doc_shape, context.config)
         } else {
-            if contains_comment(&snippet) {
-                return Some(snippet);
+            if contains_comment(snippet) {
+                return Some(snippet.into());
             }
             // 1 = `[`
             let shape = shape.offset_left(prefix.len() + 1)?;
@@ -980,7 +984,7 @@ impl<'a> Rewrite for [ast::Attribute] {
 }
 
 // Format `#[derive(..)]`, using visual indent & mixed style when we need to go multiline.
-fn format_derive(context: &RewriteContext, derive_args: &[String], shape: Shape) -> Option<String> {
+fn format_derive(context: &RewriteContext, derive_args: &[&str], shape: Shape) -> Option<String> {
     let mut result = String::with_capacity(128);
     result.push_str("#[derive(");
     // 11 = `#[derive()]`
@@ -1022,7 +1026,7 @@ fn is_derive(attr: &ast::Attribute) -> bool {
 }
 
 /// Returns the arguments of `#[derive(...)]`.
-fn get_derive_args(context: &RewriteContext, attr: &ast::Attribute) -> Option<Vec<String>> {
+fn get_derive_args<'a>(context: &'a RewriteContext, attr: &ast::Attribute) -> Option<Vec<&'a str>> {
     attr.meta().and_then(|meta_item| match meta_item.node {
         ast::MetaItemKind::List(ref args) if meta_item.name.as_str() == "derive" => {
             // Every argument of `derive` should be `NestedMetaItemKind::Literal`.
@@ -1041,7 +1045,7 @@ pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Optio
     assert!(is_extern_crate(item));
     let new_str = context.snippet(item.span);
     Some(if contains_comment(&new_str) {
-        new_str
+        new_str.into()
     } else {
         let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
         String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))

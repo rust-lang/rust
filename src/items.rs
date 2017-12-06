@@ -382,7 +382,7 @@ impl<'a> FmtVisitor<'a> {
 
                             format_expr(e, ExprType::Statement, &self.get_context(), self.shape())
                                 .map(|s| s + suffix)
-                                .or_else(|| Some(self.snippet(e.span)))
+                                .or_else(|| Some(self.snippet(e.span).into()))
                         }
                         None => stmt.rewrite(&self.get_context(), self.shape()),
                     }
@@ -526,7 +526,7 @@ impl<'a> FmtVisitor<'a> {
         if contains_skip(&field.node.attrs) {
             let lo = field.node.attrs[0].span.lo();
             let span = mk_sp(lo, field.span.hi());
-            return Some(self.snippet(span));
+            return Some(self.snippet(span).into());
         }
 
         let context = self.get_context();
@@ -1429,7 +1429,8 @@ pub fn rewrite_struct_field(
     lhs_max_width: usize,
 ) -> Option<String> {
     if contains_skip(&field.attrs) {
-        return Some(context.snippet(mk_sp(field.attrs[0].span.lo(), field.span.hi())));
+        let snippet = context.snippet(mk_sp(field.attrs[0].span.lo(), field.span.hi()));
+        return Some(snippet.into());
     }
 
     let type_annotation_spacing = type_annotation_spacing(context.config);
