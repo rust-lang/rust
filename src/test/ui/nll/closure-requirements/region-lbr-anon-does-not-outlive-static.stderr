@@ -4,29 +4,11 @@ warning: not reporting region error due to -Znll
 19 |     &*x
    |     ^^^
 
-error[E0597]: `*x` does not live long enough
-  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:6
-   |
-19 |     &*x
-   |      ^^ does not live long enough
-   |
-   = note: borrowed value must be valid for the static lifetime...
-note: ...but borrowed value is only valid for the anonymous lifetime #1 defined on the function body at 18:1
-  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:18:1
-   |
-18 | / fn foo(x: &u32) -> &'static u32 {
-19 | |     &*x
-20 | |         //~^ WARN not reporting region error due to -Znll
-21 | |         //~| ERROR `*x` does not live long enough
-22 | |         //~| ERROR free region `'_#1r` does not outlive free region `'static`
-23 | | }
-   | |_^
-
-error: free region `'_#1r` does not outlive free region `'static`
+error: free region `'_#1r` does not outlive free region `ReStatic`
   --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
    |
 19 |     &*x
    |     ^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

@@ -13,12 +13,12 @@
 // a variety of errors from the older, AST-based machinery (notably
 // borrowck), and then we get the NLL error at the end.
 
-// compile-flags:-Znll -Zborrowck=mir
+// compile-flags:-Znll -Zborrowck=mir -Zverbose
 
 fn foo<'a>(x: &'a u32) -> &'static u32 {
     &*x
         //~^ WARN not reporting region error due to -Znll
-        //~| ERROR free region `'_#1r` does not outlive free region `'static`
+        //~| ERROR free region `'_#1r` does not outlive free region `ReStatic`
 }
 
 fn main() { }
