@@ -24,13 +24,14 @@ error: this loop never actually loops
 error: this loop never actually loops
   --> $DIR/never_loop.rs:47:2
    |
-47 | /  loop { // never loops
+47 |       loop { // never loops
+   |  _____^
 48 | |         while i == 0 { // never loops
 49 | |             break
 50 | |         }
 51 | |         return
-52 | |  }
-   | |__^
+52 | |     }
+   | |_____^
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:48:9
@@ -43,11 +44,12 @@ error: this loop never actually loops
 error: this loop never actually loops
   --> $DIR/never_loop.rs:59:3
    |
-59 | /   loop { // never loops
+59 |           loop { // never loops
+   |  _________^
 60 | |             if x == 5 { break }
-61 | |    continue 'outer
-62 | |   }
-   | |___^
+61 | |             continue 'outer
+62 | |         }
+   | |_________^
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:92:5
