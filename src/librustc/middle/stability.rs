@@ -324,6 +324,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 }
 
+#[derive(Clone)]
 struct MissingStabilityAnnotations<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     access_levels: &'a AccessLevels,
@@ -466,8 +467,7 @@ impl<'a, 'tcx> Index<'tcx> {
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut checker = Checker { tcx: tcx };
-    tcx.hir.krate().visit_all_item_likes(&mut checker.as_deep_visitor());
+    tcx.hir.krate().par_deep_visit_items(Checker { tcx: tcx });
 }
 
 /// Check whether an item marked with `deprecated(since="X")` is currently
@@ -494,6 +494,7 @@ pub fn deprecation_in_effect(since: &str) -> bool {
     }
 }
 
+#[derive(Clone)]
 struct Checker<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
@@ -807,7 +808,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         };
         missing.check_missing_stability(ast::CRATE_NODE_ID, krate.span);
         intravisit::walk_crate(&mut missing, krate);
-        krate.visit_all_item_likes(&mut missing.as_deep_visitor());
+        krate.par_deep_visit_items(missing);
     }
 
     let ref declared_lib_features = tcx.features().declared_lib_features;

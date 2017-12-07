@@ -16,7 +16,7 @@ use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::{self, Lift, TyCtxt};
 
 use std::fmt;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 // structural impls for the structs in traits
 
@@ -246,7 +246,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::DerivedObligationCause<'a> {
             tcx.lift(&*self.parent_code)
                 .map(|code| traits::DerivedObligationCause {
                     parent_trait_ref: trait_ref,
-                    parent_code: Rc::new(code),
+                    parent_code: Lrc::new(code),
                 })
         })
     }

@@ -32,7 +32,6 @@ use infer::{InferCtxt};
 
 use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
-use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -261,7 +260,7 @@ pub struct DerivedObligationCause<'tcx> {
     parent_trait_ref: ty::PolyTraitRef<'tcx>,
 
     /// The parent trait had this cause
-    parent_code: Rc<ObligationCauseCode<'tcx>>
+    parent_code: Lrc<ObligationCauseCode<'tcx>>
 }
 
 pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
