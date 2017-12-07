@@ -74,7 +74,7 @@ pub fn addr_of_mut(ccx: &CrateContext,
         });
         llvm::LLVMSetInitializer(gv, cv);
         set_global_alignment(ccx, gv, align);
-        llvm::LLVMRustSetLinkage(gv, llvm::Linkage::InternalLinkage);
+        llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
         SetUnnamedAddr(gv, true);
         gv
     }
