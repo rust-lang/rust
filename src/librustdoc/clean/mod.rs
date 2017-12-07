@@ -666,17 +666,18 @@ impl Attributes {
     /// `#[doc(include="file")]`, and returns the filename and contents of the file as loaded from
     /// its expansion.
     fn extract_include(mi: &ast::MetaItem)
-        -> Option<(String, String)>
+        -> Result<Option<(String, String)>, String>
     {
-        mi.meta_item_list().and_then(|list| {
+        mi.meta_item_list().map_or(Ok(None), |list| {
             for meta in list {
                 if meta.check_name("include") {
                     // the actual compiled `#[doc(include="filename")]` gets expanded to
                     // `#[doc(include(file="filename", contents="file contents")]` so we need to
                     // look for that instead
-                    return meta.meta_item_list().and_then(|list| {
+                    return meta.meta_item_list().map_or(Ok(None), |list| {
                         let mut filename: Option<String> = None;
                         let mut contents: Option<String> = None;
+                        let mut error: Option<String> = None;
 
                         for it in list {
                             if it.check_name("file") {
@@ -687,19 +688,25 @@ impl Attributes {
                                 if let Some(docs) = it.value_str() {
                                     contents = Some(docs.to_string());
                                 }
+                            } else if it.check_name("error") {
+                                if let Some(err) = it.value_str() {
+                                    error = Some(err.to_string());
+                                }
                             }
                         }
 
-                        if let (Some(filename), Some(contents)) = (filename, contents) {
-                            Some((filename, contents))
+                        if let Some(error) = error {
+                            Err(error)
+                        } else if let (Some(filename), Some(contents)) = (filename, contents) {
+                            Ok(Some((filename, contents)))
                         } else {
-                            None
+                            Ok(None)
                         }
                     });
                 }
             }
 
-            None
+            Ok(None)
         })
     }
 
@@ -751,14 +758,21 @@ impl Attributes {
                                 Err(e) => diagnostic.span_err(e.span, e.msg),
                             }
                             return None;
-                        } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
-                        {
-                            let line = doc_line;
-                            doc_line += contents.lines().count();
-                            doc_strings.push(DocFragment::Include(line,
-                                                                  attr.span,
-                                                                  filename,
-                                                                  contents));
+                        } else {
+                            match Attributes::extract_include(&mi) {
+                                Ok(Some((filename, contents))) => {
+                                    let line = doc_line;
+                                    doc_line += contents.lines().count();
+                                    doc_strings.push(DocFragment::Include(line,
+                                                                          attr.span,
+                                                                          filename,
+                                                                          contents));
+                                }
+                                Err(e) => {
+                                    diagnostic.span_err(attr.span(), &e);
+                                }
+                                Ok(None) => {}
+                            }
                         }
                     }
                 }

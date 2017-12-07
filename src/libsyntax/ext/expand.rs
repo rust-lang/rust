@@ -1101,37 +1101,48 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                     let mut buf = vec![];
                     let filename = self.cx.root_path.join(file.to_string());
+                    let mut include_info = vec![
+                        dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                attr::mk_name_value_item_str("file".into(),
+                                                             file))),
+                    ];
 
                     match File::open(&filename).and_then(|mut f| f.read_to_end(&mut buf)) {
                         Ok(..) => {}
                         Err(e) => {
-                            self.cx.span_warn(at.span,
-                                              &format!("couldn't read {}: {}",
-                                                       filename.display(),
-                                                       e));
+                            include_info.push(
+                                dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                    attr::mk_name_value_item_str("error".into(),
+                                                                 (&*format!("couldn't read {}: {}",
+                                                                            filename.display(),
+                                                                            e)).into()))));
+
+                            //make sure the buffer is empty so we can properly skip the next match
+                            buf.clear();
                         }
                     }
 
-                    match String::from_utf8(buf) {
-                        Ok(src) => {
-                            let include_info = vec![
-                                dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str("file".into(),
-                                                                     file))),
-                                dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str("contents".into(),
-                                                                     (&*src).into()))),
-                            ];
-
-                            items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_list_item("include".into(), include_info))));
-                        }
-                        Err(_) => {
-                            self.cx.span_warn(at.span,
-                                              &format!("{} wasn't a utf-8 file",
-                                                       filename.display()));
+                    if !buf.is_empty() {
+                        match String::from_utf8(buf) {
+                            Ok(src) => {
+                                include_info.push(
+                                    dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                            attr::mk_name_value_item_str("contents".into(),
+                                            (&*src).into()))));
+                            }
+                            Err(_) => {
+                                include_info.push(
+                                    dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                                        attr::mk_name_value_item_str(
+                                            "error".into(),
+                                            (&*format!("{} wasn't a utf-8 file",
+                                                    filename.display())).into()))));
+                            }
                         }
                     }
+
+                    items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(
+                        attr::mk_list_item("include".into(), include_info))));
                 } else {
                     items.push(noop_fold_meta_list_item(it, self));
                 }
