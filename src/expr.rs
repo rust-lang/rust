@@ -1818,14 +1818,14 @@ const FORMAT_LIKE_WHITELIST: &[&str] = &[
     "eprintln!",
     "format!",
     "format_args!",
-    "panic!",
+    "print!",
     "println!",
+    "panic!",
     "unreachable!",
     // From the `log` crate.
     "debug!",
     "error!",
     "info!",
-    "panic!",
     "warn!",
 ];
 
