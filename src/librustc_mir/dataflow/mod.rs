@@ -171,7 +171,7 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation
 
         {
             let sets = &mut self.flow_state.sets.for_block(mir::START_BLOCK.index());
-            self.flow_state.operator.start_block_effect(sets);
+            self.flow_state.operator.start_block_effect(&mut sets.on_entry);
         }
 
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
@@ -556,16 +556,13 @@ pub trait BitDenotation: DataflowOperator {
     /// Size of each bitvector allocated for each block in the analysis.
     fn bits_per_block(&self) -> usize;
 
-    /// Mutates the block-sets (the flow sets for the given
-    /// basic block) according to the effects that have been
-    /// established *prior* to entering the start block.
+    /// Mutates the entry set according to the effects that
+    /// have been established *prior* to entering the start
+    /// block. This can't access the gen/kill sets, because
+    /// these won't be accounted for correctly.
     ///
     /// (For example, establishing the call arguments.)
-    ///
-    /// (Typically this should only modify `sets.on_entry`, since the
-    /// gen and kill sets should reflect the effects of *executing*
-    /// the start block itself.)
-    fn start_block_effect(&self, sets: &mut BlockSets<Self::Idx>);
+    fn start_block_effect(&self, entry_set: &mut IdxSet<Self::Idx>);
 
     /// Mutates the block-sets (the flow sets for the given
     /// basic block) according to the effects of evaluating statement.

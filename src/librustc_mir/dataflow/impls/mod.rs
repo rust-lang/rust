@@ -331,13 +331,12 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
         self.move_data().move_paths.len()
     }
 
-    fn start_block_effect(&self, sets: &mut BlockSets<MovePathIndex>)
-    {
+    fn start_block_effect(&self, entry_set: &mut IdxSet<MovePathIndex>) {
         drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.mdpe,
             |path, s| {
                 assert!(s == DropFlagState::Present);
-                sets.on_entry.add(&path);
+                entry_set.add(&path);
             });
     }
 
@@ -384,15 +383,15 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     }
 
     // sets on_entry bits for Arg places
-    fn start_block_effect(&self, sets: &mut BlockSets<MovePathIndex>) {
+    fn start_block_effect(&self, entry_set: &mut IdxSet<MovePathIndex>) {
         // set all bits to 1 (uninit) before gathering counterevidence
-        for e in sets.on_entry.words_mut() { *e = !0; }
+        for e in entry_set.words_mut() { *e = !0; }
 
         drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.mdpe,
             |path, s| {
                 assert!(s == DropFlagState::Present);
-                sets.on_entry.remove(&path);
+                entry_set.remove(&path);
             });
     }
 
@@ -439,14 +438,14 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'gcx, 'tcx
     }
 
     // sets on_entry bits for Arg places
-    fn start_block_effect(&self, sets: &mut BlockSets<MovePathIndex>) {
-        for e in sets.on_entry.words_mut() { *e = 0; }
+    fn start_block_effect(&self, entry_set: &mut IdxSet<MovePathIndex>) {
+        for e in entry_set.words_mut() { *e = 0; }
 
         drop_flag_effects_for_function_entry(
             self.tcx, self.mir, self.mdpe,
             |path, s| {
                 assert!(s == DropFlagState::Present);
-                sets.on_entry.add(&path);
+                entry_set.add(&path);
             });
     }
 
@@ -492,10 +491,11 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
         self.move_data().moves.len()
     }
 
-    fn start_block_effect(&self, _sets: &mut BlockSets<MoveOutIndex>) {
+    fn start_block_effect(&self, _sets: &mut IdxSet<MoveOutIndex>) {
         // no move-statements have been executed prior to function
         // execution, so this method has no effect on `_sets`.
     }
+
     fn statement_effect(&self,
                         sets: &mut BlockSets<MoveOutIndex>,
                         location: Location) {
@@ -568,9 +568,12 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
         self.move_data().inits.len()
     }
 
-    fn start_block_effect(&self, sets: &mut BlockSets<InitIndex>) {
-        sets.gen_all((0..self.mir.arg_count).map(InitIndex::new));
+    fn start_block_effect(&self, entry_set: &mut IdxSet<InitIndex>) {
+        for arg_init in 0..self.mir.arg_count {
+            entry_set.add(&InitIndex::new(arg_init));
+        }
     }
+
     fn statement_effect(&self,
                         sets: &mut BlockSets<InitIndex>,
                         location: Location) {
