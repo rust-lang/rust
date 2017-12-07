@@ -629,7 +629,7 @@ pub fn rewrite_block_with_visitor(
         return rw;
     }
 
-    let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config, block.span);
+    let mut visitor = FmtVisitor::from_context(context);
     visitor.block_indent = shape.indent;
     visitor.is_if_else_block = context.is_if_else_block;
     match block.rules {

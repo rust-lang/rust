@@ -531,6 +531,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.last_pos = source!(self, span).hi();
     }
 
+    pub fn from_context(ctx: &'a RewriteContext) -> FmtVisitor<'a> {
+        FmtVisitor::from_codemap(ctx.parse_session, ctx.config, ctx.snippet_provider)
+    }
+
     pub fn from_codemap(
         parse_session: &'a ParseSess,
         config: &'a Config,
