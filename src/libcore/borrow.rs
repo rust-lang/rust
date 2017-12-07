@@ -12,10 +12,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-// impl Borrow<str> for String
-// impl<T> Borrow<T> for Arc<T>
-// impl<K> HashSet<K> { fn get<Q>(&self, q: &Q) where K: Borrow<Q> }
-
 /// A trait identifying how borrowed data behaves.
 ///
 /// If a type implements this trait, it signals that a reference to it behaves
@@ -26,10 +22,10 @@
 ///
 /// As a consequence, this trait should only be implemented for types managing
 /// a value of another type without modifying its behavior. Examples are
-/// smart pointers such as [`Box`] or [`Rc`] as well the owned version of
-/// slices such as [`Vec`].
+/// smart pointers such as [`Box<T>`] or [`Rc<T>`] as well the owned version
+/// of slices such as [`Vec<T>`].
 ///
-/// A relaxed version that allows providing a reference to some other type
+/// A relaxed version that allows converting a reference to some other type
 /// without any further promises is available through [`AsRef`].
 ///
 /// When writing generic code, a use of `Borrow` should always be justified
@@ -41,23 +37,24 @@
 /// The companion trait [`BorrowMut`] provides the same guarantees for
 /// mutable references.
 ///
-/// [`Box`]: ../boxed/struct.Box.html
-/// [`Rc`]: ../rc/struct.Rc.html
-/// [`Vec`]: ../vec/struct.Vec.html
+/// [`Box<T>`]: ../boxed/struct.Box.html
+/// [`Rc<T>`]: ../rc/struct.Rc.html
+/// [`Vec<T>`]: ../vec/struct.Vec.html
 /// [`AsRef`]: ../convert/trait.AsRef.html
 /// [`BorrowMut`]: trait.BorrowMut.html
 ///
 /// # Examples
 ///
-/// As a data collection, [`HashMap`] owns both keys and values. If the key’s
-/// actual data is wrapped in a managing type of some kind, it should,
-/// however, still be possible to search for a value using a reference to the
-/// key’s data. For instance, if the key is a string, then it is likely
-/// stored with the hash map as a [`String`], while it should be possible
-/// to search using a [`&str`][`str`]. Thus, `insert` needs to operate on a
-/// string while `get` needs to be able to use a `&str`.
+/// As a data collection, [`HashMap<K, V>`] owns both keys and values. If
+/// the key’s actual data is wrapped in a managing type of some kind, it
+/// should, however, still be possible to search for a value using a
+/// reference to the key’s data. For instance, if the key is a string, then
+/// it is likely stored with the hash map as a [`String`], while it should
+/// be possible to search using a [`&str`][`str`]. Thus, `insert` needs to
+/// operate on a `String` while `get` needs to be able to use a `&str`.
 ///
-/// Slightly simplified, the relevant parts of `HashMap` look like this:
+/// Slightly simplified, the relevant parts of `HashMap<K, V>` look like
+/// this:
 ///
 /// ```
 /// use std::borrow::Borrow;
@@ -70,15 +67,16 @@
 ///
 /// impl<K, V> HashMap<K, V> {
 ///     pub fn insert(&self, key: K, value: V) -> Option<V>
-///         where K: Hash + Eq
+///     where K: Hash + Eq
 ///     {
 ///         # unimplemented!()
 ///         // ...
 ///     }
 ///
 ///     pub fn get<Q>(&self, k: &Q) -> Option<&V>
-///         where K: Borrow<Q>,
-///               Q: Hash + Eq + ?Sized
+///     where
+///         K: Borrow<Q>,
+///         Q: Hash + Eq + ?Sized
 ///     {
 ///         # unimplemented!()
 ///         // ...
@@ -86,10 +84,11 @@
 /// }
 /// ```
 ///
-/// The entire hash map is generic over the stored type for the key, `K`.
-/// When inserting a value, the map is given such a `K` and needs to find
-/// the correct hash bucket and check if the key is already present based
-/// on that `K` value. It therefore requires `K: Hash + Eq`.
+/// The entire hash map is generic over a key type `K`. Because these keys
+/// are stored by with the hash map, this type as to own the key’s data.
+/// When inserting a key-value pair, the map is given such a `K` and needs
+/// to find the correct hash bucket and check if the key is already present
+/// based on that `K`. It therefore requires `K: Hash + Eq`.
 ///
 /// In order to search for a value based on the key’s data, the `get` method
 /// is generic over some type `Q`. Technically, it needs to convert that `Q`
@@ -103,10 +102,11 @@
 /// result as `Q`’s by demanding that `K: Borrow<Q>`.
 ///
 /// As a consequence, the hash map breaks if a `K` wrapping a `Q` value
-/// produces a different hash than `Q`. For instance, image you have a
-/// type that wraps a string but compares ASCII letters case-insensitive:
+/// produces a different hash than `Q`. For instance, imagine you have a
+/// type that wraps a string but compares ASCII letters ignoring their case:
 ///
 /// ```
+/// # #[allow(unused_imports)]
 /// use std::ascii::AsciiExt;
 ///
 /// pub struct CIString(String);
@@ -121,10 +121,10 @@
 /// ```
 ///
 /// Because two equal values need to produce the same hash value, the
-/// implementation of `Hash` need to reflect that, too:
+/// implementation of `Hash` needs to reflect that, too:
 ///
 /// ```
-/// # use std::ascii::AsciiExt;
+/// # #[allow(unused_imports)] use std::ascii::AsciiExt;
 /// # use std::hash::{Hash, Hasher};
 /// # pub struct CIString(String);
 /// impl Hash for CIString {
@@ -145,7 +145,7 @@
 /// which doesn’t carry any such restrictions.
 ///
 /// [`Hash`]: ../hash/trait.Hash.html
-/// [`HashMap`]: ../collections/struct.HashMap.html
+/// [`HashMap<K, V>`]: ../collections/struct.HashMap.html
 /// [`String`]: ../string/struct.String.html
 /// [`str`]: ../primitive.str.html
 ///
