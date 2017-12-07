@@ -610,6 +610,12 @@ enum LocalMutationIsAllowed {
     No
 }
 
+struct AccessErrorsReported {
+    mutability_error: bool,
+    #[allow(dead_code)]
+    conflict_error: bool
+}
+
 #[derive(Copy, Clone)]
 enum InitializationRequiringAction {
     Update,
@@ -652,7 +658,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         kind: (ShallowOrDeep, ReadOrWrite),
         is_local_mutation_allowed: LocalMutationIsAllowed,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
-    ) {
+    ) -> AccessErrorsReported {
         let (sd, rw) = kind;
 
         let storage_dead_or_drop_local = match (place_span.0, rw) {
@@ -663,14 +669,38 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // Check if error has already been reported to stop duplicate reporting.
         if let Some(local) = storage_dead_or_drop_local {
             if self.storage_dead_or_drop_error_reported.contains(&local) {
-                return;
+                return AccessErrorsReported {
+                    mutability_error: false,
+                    conflict_error: true
+                };
             }
         }
 
-        // Check permissions
-        let mut error_reported =
+        let mutability_error =
             self.check_access_permissions(place_span, rw, is_local_mutation_allowed);
+        let conflict_error =
+            self.check_access_for_conflict(context, place_span, sd, rw, flow_state);
 
+        // A conflict with a storagedead/drop is a "borrow does not live long enough"
+        // error. Avoid reporting such an error multiple times for the same local.
+        if conflict_error {
+            if let Some(local) = storage_dead_or_drop_local {
+                self.storage_dead_or_drop_error_reported.insert(local);
+            }
+        }
+
+        AccessErrorsReported { mutability_error, conflict_error }
+    }
+
+    fn check_access_for_conflict(
+        &mut self,
+        context: Context,
+        place_span: (&Place<'tcx>, Span),
+        sd: ShallowOrDeep,
+        rw: ReadOrWrite,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
+    ) -> bool {
+        let mut error_reported = false;
         self.each_borrow_involving_path(
             context,
             (sd, place_span.0),
@@ -742,11 +772,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             },
         );
 
-        if error_reported {
-            if let Some(local) = storage_dead_or_drop_local {
-                self.storage_dead_or_drop_error_reported.insert(local);
-            }
-        }
+        error_reported
     }
 
     fn mutate_place(
@@ -772,7 +798,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        self.access_place(
+        let errors_reported = self.access_place(
             context,
             place_span,
             (kind, Write(WriteKind::Mutate)),
@@ -780,8 +806,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             flow_state,
         );
 
-        // check for reassignments to immutable local variables
-        self.check_if_reassignment_to_immutable_state(context, place_span, flow_state);
+        if !errors_reported.mutability_error {
+            // check for reassignments to immutable local variables
+            self.check_if_reassignment_to_immutable_state(context, place_span, flow_state);
+        }
     }
 
     fn consume_rvalue(
@@ -985,10 +1013,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         // determine if this path has a non-mut owner (and thus needs checking).
         if let Ok(()) = self.is_mutable(place, LocalMutationIsAllowed::No) {
-            return;
-        }
-
-        if let Err(_) = self.is_mutable(place, LocalMutationIsAllowed::Yes) {
             return;
         }
 
