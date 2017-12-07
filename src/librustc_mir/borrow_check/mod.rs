@@ -1251,7 +1251,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut error_reported = false;
         match kind {
             Write(WriteKind::MutableBorrow(BorrowKind::Unique)) => {
-                if let Err(_place_err) = self.is_unique(place) {
+                if let Err(_place_err) = self.is_mutable(place, LocalMutationIsAllowed::Yes) {
                     span_bug!(span, "&unique borrow for {:?} should not fail", place);
                 }
             }
@@ -1358,25 +1358,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
                                     hir::MutMutable => {
-                                        match self.is_upvar_field_projection(&proj.base) {
+                                        let mode = match self.is_upvar_field_projection(&proj.base) {
                                             Some(field) if {
                                                 self.mir.upvar_decls[field.index()].by_ref
-                                            } => {
-                                                self.is_mutable(&proj.base,
-                                                                is_local_mutation_allowed)
-                                            }
-                                            _ => self.is_unique(&proj.base)
-                                        }
+                                            } => is_local_mutation_allowed,
+                                            _ => LocalMutationIsAllowed::Yes
+                                        };
+
+                                        self.is_mutable(&proj.base, mode)
                                     }
                                 }
                             }
                             ty::TyRawPtr(tnm) => {
                                 match tnm.mutbl {
                                     // `*const` raw pointers are not mutable
-                                    hir::MutImmutable => Err(place),
+                                    hir::MutImmutable => return Err(place),
                                     // `*mut` raw pointers are always mutable, regardless of context
                                     // The users have to check by themselve.
-                                    hir::MutMutable => Ok(()),
+                                    hir::MutMutable => return Ok(()),
                                 }
                             }
                             // `Box<T>` owns its content, so mutable if its location is mutable
@@ -1394,80 +1393,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     ProjectionElem::ConstantIndex { .. } |
                     ProjectionElem::Subslice { .. } |
                     ProjectionElem::Downcast(..) => {
-                        let field_projection = self.is_upvar_field_projection(place);
-
-                        if let Some(field) = field_projection {
+                        if let Some(field) = self.is_upvar_field_projection(place) {
                             let decl = &self.mir.upvar_decls[field.index()];
                             debug!("decl.mutability={:?} local_mutation_is_allowed={:?} place={:?}",
                                    decl, is_local_mutation_allowed, place);
-                            return match (decl.mutability, is_local_mutation_allowed) {
+                            match (decl.mutability, is_local_mutation_allowed) {
                                 (Mutability::Not, LocalMutationIsAllowed::No) |
                                 (Mutability::Not, LocalMutationIsAllowed::ExceptUpvars)
                                     => Err(place),
                                 (Mutability::Not, LocalMutationIsAllowed::Yes) |
-                                (Mutability::Mut, _) => self.is_unique(&proj.base),
-                            };
-                        }
-
-                        self.is_mutable(&proj.base, is_local_mutation_allowed)
-                    }
-                }
-            }
-        }
-    }
-
-    /// Does this place have a unique path
-    fn is_unique<'d>(&self, place: &'d Place<'tcx>) -> Result<(), &'d Place<'tcx>> {
-        match *place {
-            Place::Local(..) => {
-                // Local variables are unique
-                Ok(())
-            }
-            Place::Static(ref static_) => {
-                if !self.tcx.is_static_mut(static_.def_id) {
-                    Err(place)
-                } else {
-                    Ok(())
-                }
-            }
-            Place::Projection(ref proj) => {
-                match proj.elem {
-                    ProjectionElem::Deref => {
-                        let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
-
-                        // `Box<T>` referent is unique if box is a unique spot
-                        if base_ty.is_box() {
-                            return self.is_unique(&proj.base);
-                        }
-
-                        // Otherwise we check the kind of deref to decide
-                        match base_ty.sty {
-                            ty::TyRef(_, tnm) => {
-                                match tnm.mutbl {
-                                    // place represent an aliased location
-                                    hir::MutImmutable => Err(place),
-                                    // `&mut T` is as unique as the context in which it is found
-                                    hir::MutMutable => self.is_unique(&proj.base),
-                                }
+                                (Mutability::Mut, _) =>
+                                    self.is_mutable(&proj.base, is_local_mutation_allowed)
                             }
-                            ty::TyRawPtr(tnm) => {
-                                match tnm.mutbl {
-                                    // `*mut` can be aliased, but we leave it to user
-                                    hir::MutMutable => Ok(()),
-                                    // `*const` is treated the same as `*mut`
-                                    hir::MutImmutable => Ok(()),
-                                }
-                            }
-                            // Deref should only be for reference, pointers or boxes
-                            _ => bug!("Deref of unexpected type: {:?}", base_ty),
+                        } else {
+                            self.is_mutable(&proj.base, is_local_mutation_allowed)
                         }
                     }
-                    // Other projections are unique if the base is unique
-                    ProjectionElem::Field(..) |
-                    ProjectionElem::Index(..) |
-                    ProjectionElem::ConstantIndex { .. } |
-                    ProjectionElem::Subslice { .. } |
-                    ProjectionElem::Downcast(..) => self.is_unique(&proj.base),
                 }
             }
         }
