@@ -631,7 +631,7 @@ pub mod builtin {
     #[macro_export]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
-    /// Boolean evaluation of configuration flags.
+    /// Boolean evaluation of configuration flags, at compile-time.
     ///
     /// In addition to the `#[cfg]` attribute, this macro is provided to allow
     /// boolean expression evaluation of configuration flags. This frequently
