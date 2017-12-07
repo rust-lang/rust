@@ -15,24 +15,23 @@
 // This is similar to two-phase-reservation-sharing-interference.rs
 // in that it shows a reservation that overlaps with a shared borrow.
 //
-// However, it is also more immediately concerning because one would
-// intutively think that if run-pass/borrowck/two-phase-baseline.rs
-// works, then this *should* work too.
+// Currently, this test fails with lexical lifetimes, but succeeds
+// with non-lexical lifetimes. (The reason is because the activation
+// of the mutable borrow ends up overlapping with a lexically-scoped
+// shared borrow; but a non-lexical shared borrow can end before the
+// activation occurs.)
 //
-// As before, the current implementation is (probably) more
-// conservative than is necessary.
-//
-// So this test is just making a note of the current behavior, with
-// the caveat that in the future, the rules may be loosened, at which
-// point this test might be thrown out.
+// So this test is just making a note of the current behavior.
 
-fn main() {
+#![feature(rustc_attrs)]
+
+#[rustc_error]
+fn main() { //[nll]~ ERROR compilation successful
     let mut v = vec![0, 1, 2];
     let shared = &v;
 
     v.push(shared.len());
     //[lxl]~^  ERROR cannot borrow `v` as mutable because it is also borrowed as immutable [E0502]
-    //[nll]~^^ ERROR cannot borrow `v` as mutable because it is also borrowed as immutable [E0502]
 
     assert_eq!(v, [0, 1, 2, 3]);
 }
