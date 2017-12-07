@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rc::Rc;
 use std::cmp;
 
 use strings::string_buffer::StringBuffer;
@@ -51,7 +50,7 @@ fn is_extern_crate(item: &ast::Item) -> bool {
 /// Creates a string slice corresponding to the specified span.
 pub struct SnippetProvider<'a> {
     /// A pointer to the content of the file we are formatting.
-    big_snippet: &'a Rc<String>,
+    big_snippet: &'a str,
     /// A position of the start of `big_snippet`, used as an offset.
     start_pos: usize,
 }
@@ -63,7 +62,7 @@ impl<'b, 'a: 'b> SnippetProvider<'a> {
         Some(&self.big_snippet[start_index..end_index])
     }
 
-    pub fn new(start_pos: BytePos, big_snippet: &'a Rc<String>) -> Self {
+    pub fn new(start_pos: BytePos, big_snippet: &'a str) -> Self {
         let start_pos = start_pos.to_usize();
         SnippetProvider {
             big_snippet,
