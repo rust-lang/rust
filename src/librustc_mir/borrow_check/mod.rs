@@ -10,6 +10,7 @@
 
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+use borrow_check::nll::region_infer::RegionInferenceContext;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
@@ -224,6 +225,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         storage_dead_or_drop_error_reported_l: FxHashSet(),
         storage_dead_or_drop_error_reported_s: FxHashSet(),
         reservation_error_reported: FxHashSet(),
+        nonlexical_regioncx: opt_regioncx.clone(),
     };
 
     let borrows = Borrows::new(tcx, mir, opt_regioncx, def_id, body_id);
@@ -299,6 +301,10 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// but it is currently inconvenient to track down the BorrowIndex
     /// at the time we detect and report a reservation error.
     reservation_error_reported: FxHashSet<Place<'tcx>>,
+    /// Non-lexical region inference context, if NLL is enabled.  This
+    /// contains the results from region inference and lets us e.g.
+    /// find out which CFG points are contained in each borrow region.
+    nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
 }
 
 // Check that:

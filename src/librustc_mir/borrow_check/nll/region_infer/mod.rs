@@ -35,6 +35,8 @@ mod graphviz;
 mod values;
 use self::values::{RegionValueElements, RegionValues};
 
+use super::ToRegionVid;
+
 pub struct RegionInferenceContext<'tcx> {
     /// Contains the definition for every region variable.  Region
     /// variables are identified by their index (`RegionVid`). The
@@ -330,11 +332,25 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Returns true if the region `r` contains the point `p`.
     ///
     /// Panics if called before `solve()` executes,
-    pub fn region_contains_point(&self, r: RegionVid, p: Location) -> bool {
+    pub fn region_contains_point<R>(&self, r: R, p: Location) -> bool
+    where
+        R: ToRegionVid,
+    {
         let inferred_values = self.inferred_values
             .as_ref()
             .expect("region values not yet inferred");
-        inferred_values.contains(r, p)
+        inferred_values.contains(r.to_region_vid(), p)
+    }
+
+    /// Returns the *reason* that the region `r` contains the given point.
+    pub(crate) fn why_region_contains_point<R>(&self, r: R, p: Location) -> Option<Rc<Cause>>
+    where
+        R: ToRegionVid,
+    {
+        let inferred_values = self.inferred_values
+            .as_ref()
+            .expect("region values not yet inferred");
+        inferred_values.cause(r.to_region_vid(), p)
     }
 
     /// Returns access to the value of `r` for debugging purposes.
