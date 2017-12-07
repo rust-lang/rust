@@ -18,7 +18,6 @@ use utils::{in_macro, span_lint_and_then};
 /// ```rust
 ///  const FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
 /// ```
-
 declare_lint! {
     pub CONST_STATIC_LIFETIME,
     Warn,
