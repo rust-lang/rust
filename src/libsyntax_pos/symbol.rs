@@ -35,6 +35,10 @@ impl Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
     }
 
+    pub fn without_first_quote(&self) -> Ident {
+        Ident { name: Symbol::from(self.name.as_str().trim_left_matches('\'')), ctxt: self.ctxt }
+    }
+
     pub fn modern(self) -> Ident {
         Ident { name: self.name, ctxt: self.ctxt.modern() }
     }
@@ -436,5 +440,11 @@ mod tests {
         assert_eq!(i.gensym("zebra"), Symbol(4294967294));
         // gensym of *existing* string gets new number:
         assert_eq!(i.gensym("dog"), Symbol(4294967293));
+    }
+
+    #[test]
+    fn without_first_quote_test() {
+        let i = Ident::from_str("'break");
+        assert_eq!(i.without_first_quote().name, keywords::Break.name());
     }
 }

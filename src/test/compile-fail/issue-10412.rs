@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only -Z continue-parse-after-error
-
-
 trait Serializable<'self, T> { //~ ERROR lifetimes cannot use keyword names
-    fn serialize(val : &'self T) -> Vec<u8> ; //~ ERROR lifetimes cannot use keyword names
+    fn serialize(val : &'self T) -> Vec<u8>; //~ ERROR lifetimes cannot use keyword names
     fn deserialize(repr : &[u8]) -> &'self T; //~ ERROR lifetimes cannot use keyword names
 }
 
 impl<'self> Serializable<str> for &'self str { //~ ERROR lifetimes cannot use keyword names
     //~^ ERROR lifetimes cannot use keyword names
+    //~| ERROR missing lifetime specifier
     fn serialize(val : &'self str) -> Vec<u8> { //~ ERROR lifetimes cannot use keyword names
         vec![1]
     }

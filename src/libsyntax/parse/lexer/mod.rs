@@ -14,7 +14,7 @@ use codemap::{CodeMap, FilePathMapping};
 use errors::{FatalError, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
-use symbol::{Symbol, keywords};
+use symbol::Symbol;
 use std_unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
@@ -1295,18 +1295,6 @@ impl<'a> StringReader<'a> {
                     let ident = self.with_str_from(start, |lifetime_name| {
                         self.mk_ident(&format!("'{}", lifetime_name))
                     });
-
-                    // Conjure up a "keyword checking ident" to make sure that
-                    // the lifetime name is not a keyword.
-                    let keyword_checking_ident = self.with_str_from(start, |lifetime_name| {
-                        self.mk_ident(lifetime_name)
-                    });
-                    let keyword_checking_token = &token::Ident(keyword_checking_ident);
-                    let last_bpos = self.pos;
-                    if keyword_checking_token.is_reserved_ident() &&
-                       !keyword_checking_token.is_keyword(keywords::Static) {
-                        self.err_span_(start, last_bpos, "lifetimes cannot use keyword names");
-                    }
 
                     return Ok(token::Lifetime(ident));
                 }

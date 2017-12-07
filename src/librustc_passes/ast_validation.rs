@@ -21,6 +21,7 @@ use rustc::session::Session;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Spanned;
+use syntax::parse::token;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -35,8 +36,16 @@ impl<'a> AstValidator<'a> {
         &self.session.parse_sess.span_diagnostic
     }
 
+    fn check_lifetime(&self, lifetime: &Lifetime) {
+        let valid_names = [keywords::StaticLifetime.name(), keywords::Invalid.name()];
+        if !valid_names.contains(&lifetime.ident.name) &&
+            token::Ident(lifetime.ident.without_first_quote()).is_reserved_ident() {
+            self.err_handler().span_err(lifetime.span, "lifetimes cannot use keyword names");
+        }
+    }
+
     fn check_label(&self, label: Ident, span: Span) {
-        if label.name == keywords::StaticLifetime.name() || label.name == "'_" {
+        if token::Ident(label.without_first_quote()).is_reserved_ident() || label.name == "'_" {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
         }
     }
@@ -198,6 +207,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         });
 
         visit::walk_use_tree(self, use_tree, id);
+    }
+
+    fn visit_lifetime(&mut self, lifetime: &'a Lifetime) {
+        self.check_lifetime(lifetime);
+        visit::walk_lifetime(self, lifetime);
     }
 
     fn visit_item(&mut self, item: &'a Item) {
