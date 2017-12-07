@@ -18,7 +18,7 @@ use std::io;
 use transform::MirSource;
 use transform::type_check;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
-use borrow_check::FlowInProgress;
+use borrow_check::FlowAtLocation;
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::MoveData;
 
@@ -69,7 +69,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     universal_regions: UniversalRegions<'tcx>,
     mir: &Mir<'tcx>,
     param_env: ty::ParamEnv<'gcx>,
-    flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> (
     RegionInferenceContext<'tcx>,

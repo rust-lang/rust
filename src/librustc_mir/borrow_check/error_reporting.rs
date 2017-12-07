@@ -16,8 +16,7 @@ use rustc_data_structures::indexed_vec::Idx;
 
 use super::{MirBorrowckCtxt, Context};
 use super::{InitializationRequiringAction, PrefixSet};
-use super::flow::FlowInProgress;
-use dataflow::{BorrowData, MovingOutStatements};
+use dataflow::{BorrowData, FlowAtLocation, MovingOutStatements};
 use dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -28,7 +27,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         desired_action: InitializationRequiringAction,
         (place, span): (&Place<'tcx>, Span),
         mpi: MovePathIndex,
-        curr_move_out: &FlowInProgress<MovingOutStatements<'_, 'gcx, 'tcx>>,
+        curr_move_out: &FlowAtLocation<MovingOutStatements<'_, 'gcx, 'tcx>>,
     ) {
         let mois = self.move_data.path_map[mpi]
             .iter()

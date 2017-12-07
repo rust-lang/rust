@@ -31,6 +31,7 @@ use syntax_pos::Span;
 use dataflow::do_dataflow;
 use dataflow::MoveDataParamEnv;
 use dataflow::DataflowResultsConsumer;
+use dataflow::{FlowAtLocation, FlowsAtLocation};
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use dataflow::{EverInitializedLvals, MovingOutStatements};
 use dataflow::{BorrowData, BorrowIndex, Borrows};
@@ -40,12 +41,12 @@ use util::borrowck_errors::{BorrowckErrors, Origin};
 
 use std::iter;
 
-use self::flow::{InProgress, FlowInProgress};
+use self::flows::Flows;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
 
 mod error_reporting;
-mod flow;
+mod flows;
 mod prefixes;
 pub(crate) mod nll;
 
@@ -149,7 +150,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     };
 
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
-    let mut flow_inits = FlowInProgress::new(do_dataflow(
+    let mut flow_inits = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
         id,
@@ -158,7 +159,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         MaybeInitializedLvals::new(tcx, mir, &mdpe),
         |bd, i| &bd.move_data().move_paths[i],
     ));
-    let flow_uninits = FlowInProgress::new(do_dataflow(
+    let flow_uninits = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
         id,
@@ -167,7 +168,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         MaybeUninitializedLvals::new(tcx, mir, &mdpe),
         |bd, i| &bd.move_data().move_paths[i],
     ));
-    let flow_move_outs = FlowInProgress::new(do_dataflow(
+    let flow_move_outs = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
         id,
@@ -176,7 +177,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         MovingOutStatements::new(tcx, mir, &mdpe),
         |bd, i| &bd.move_data().moves[i],
     ));
-    let flow_ever_inits = FlowInProgress::new(do_dataflow(
+    let flow_ever_inits = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
         id,
@@ -204,7 +205,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     };
     let flow_inits = flow_inits; // remove mut
 
-    let flow_borrows = FlowInProgress::new(do_dataflow(
+    let flow_borrows = FlowAtLocation::new(do_dataflow(
         tcx,
         mir,
         id,
@@ -214,14 +215,13 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         |bd, i| bd.location(i),
     ));
 
-    let mut state = InProgress::new(
+    let mut state = Flows::new(
         flow_borrows,
         flow_inits,
         flow_uninits,
         flow_move_outs,
         flow_ever_inits,
     );
-
     let mut mbcx = MirBorrowckCtxt {
         tcx: tcx,
         mir: mir,
@@ -267,34 +267,10 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
 impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
-    type FlowState = InProgress<'cx, 'gcx, 'tcx>;
+    type FlowState = Flows<'cx, 'gcx, 'tcx>;
 
     fn mir(&self) -> &'cx Mir<'tcx> {
         self.mir
-    }
-
-    fn reset_to_entry_of(&mut self, bb: BasicBlock, flow_state: &mut Self::FlowState) {
-        flow_state.reset_to_entry_of(bb);
-    }
-
-    fn reconstruct_statement_effect(
-        &mut self,
-        location: Location,
-        flow_state: &mut Self::FlowState,
-    ) {
-        flow_state.reconstruct_statement_effect(location);
-    }
-
-    fn apply_local_effect(&mut self, location: Location, flow_state: &mut Self::FlowState) {
-        flow_state.apply_local_effect(location);
-    }
-
-    fn reconstruct_terminator_effect(
-        &mut self,
-        location: Location,
-        flow_state: &mut Self::FlowState,
-    ) {
-        flow_state.reconstruct_terminator_effect(location);
     }
 
     fn visit_block_entry(&mut self, bb: BasicBlock, flow_state: &Self::FlowState) {
@@ -675,7 +651,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         place_span: (&Place<'tcx>, Span),
         kind: (ShallowOrDeep, ReadOrWrite),
         is_local_mutation_allowed: LocalMutationIsAllowed,
-        flow_state: &InProgress<'cx, 'gcx, 'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         let (sd, rw) = kind;
 
@@ -779,7 +755,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         place_span: (&Place<'tcx>, Span),
         kind: ShallowOrDeep,
         mode: MutateMode,
-        flow_state: &InProgress<'cx, 'gcx, 'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         // Write of P[i] or *P, or WriteAndRead of any P, requires P init'd.
         match mode {
@@ -813,7 +789,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         (rvalue, span): (&Rvalue<'tcx>, Span),
         _location: Location,
-        flow_state: &InProgress<'cx, 'gcx, 'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
@@ -890,7 +866,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         (operand, span): (&Operand<'tcx>, Span),
-        flow_state: &InProgress<'cx, 'gcx, 'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         match *operand {
             Operand::Copy(ref place) => {
@@ -1003,7 +979,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         (place, span): (&Place<'tcx>, Span),
-        flow_state: &InProgress<'cx, 'gcx, 'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         let move_data = self.move_data;
 
@@ -1046,7 +1022,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         desired_action: InitializationRequiringAction,
         place_span: (&Place<'tcx>, Span),
-        flow_state: &InProgress<'cx, 'gcx, 'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         // FIXME: analogous code in check_loans first maps `place` to
         // its base_path ... but is that what we want here?
@@ -1180,7 +1156,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         (place, span): (&Place<'tcx>, Span),
-        flow_state: &InProgress<'cx, 'gcx, 'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         // recur down place; dispatch to check_if_path_is_moved when necessary
         let mut place = place;
@@ -1860,7 +1836,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         _context: Context,
         access_place: (ShallowOrDeep, &Place<'tcx>),
-        flow_state: &InProgress<'cx, 'gcx, 'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
         mut op: F,
     ) where
         F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>) -> Control,
