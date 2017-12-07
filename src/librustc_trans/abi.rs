@@ -792,7 +792,8 @@ impl<'a, 'tcx> FnType<'tcx> {
                     // dependencies rather than pointer equality
                     let no_alias = match kind {
                         PointerKind::Shared => false,
-                        PointerKind::Frozen | PointerKind::UniqueOwned => true,
+                        PointerKind::UniqueOwned => true,
+                        PointerKind::Frozen |
                         PointerKind::UniqueBorrowed => !is_return
                     };
                     if no_alias {
