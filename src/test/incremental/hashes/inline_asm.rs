@@ -30,7 +30,7 @@
 // Change template -------------------------------------------------------------
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_template(a: i32) -> i32 {
+pub fn change_template(a: i32) -> i32 {
     let c: i32;
     unsafe {
         asm!("add 1, $0"
@@ -44,12 +44,10 @@ fn change_template(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_template(a: i32) -> i32 {
+pub fn change_template(a: i32) -> i32 {
     let c: i32;
     unsafe {
         asm!("add 2, $0"
@@ -67,7 +65,7 @@ fn change_template(a: i32) -> i32 {
 // Change output -------------------------------------------------------------
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_output(a: i32) -> i32 {
+pub fn change_output(a: i32) -> i32 {
     let mut _out1: i32 = 0;
     let mut _out2: i32 = 0;
     unsafe {
@@ -82,12 +80,10 @@ fn change_output(a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_output(a: i32) -> i32 {
+pub fn change_output(a: i32) -> i32 {
     let mut _out1: i32 = 0;
     let mut _out2: i32 = 0;
     unsafe {
@@ -106,7 +102,7 @@ fn change_output(a: i32) -> i32 {
 // Change input -------------------------------------------------------------
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_input(_a: i32, _b: i32) -> i32 {
+pub fn change_input(_a: i32, _b: i32) -> i32 {
     let _out;
     unsafe {
         asm!("add 1, $0"
@@ -120,12 +116,10 @@ fn change_input(_a: i32, _b: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_input(_a: i32, _b: i32) -> i32 {
+pub fn change_input(_a: i32, _b: i32) -> i32 {
     let _out;
     unsafe {
         asm!("add 1, $0"
@@ -143,7 +137,7 @@ fn change_input(_a: i32, _b: i32) -> i32 {
 // Change input constraint -----------------------------------------------------
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_input_constraint(_a: i32, _b: i32) -> i32 {
+pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
     let _out;
     unsafe {
         asm!("add 1, $0"
@@ -157,12 +151,10 @@ fn change_input_constraint(_a: i32, _b: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_input_constraint(_a: i32, _b: i32) -> i32 {
+pub fn change_input_constraint(_a: i32, _b: i32) -> i32 {
     let _out;
     unsafe {
         asm!("add 1, $0"
@@ -180,7 +172,7 @@ fn change_input_constraint(_a: i32, _b: i32) -> i32 {
 // Change clobber --------------------------------------------------------------
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_clobber(_a: i32) -> i32 {
+pub fn change_clobber(_a: i32) -> i32 {
     let _out;
     unsafe {
         asm!("add 1, $0"
@@ -194,12 +186,10 @@ fn change_clobber(_a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_clobber(_a: i32) -> i32 {
+pub fn change_clobber(_a: i32) -> i32 {
     let _out;
     unsafe {
         asm!("add 1, $0"
@@ -217,7 +207,7 @@ fn change_clobber(_a: i32) -> i32 {
 // Change options --------------------------------------------------------------
 #[cfg(cfail1)]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_options(_a: i32) -> i32 {
+pub fn change_options(_a: i32) -> i32 {
     let _out;
     unsafe {
         asm!("add 1, $0"
@@ -231,12 +221,10 @@ fn change_options(_a: i32) -> i32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_dirty(label="HirBody", cfg="cfail2")]
-#[rustc_clean(label="HirBody", cfg="cfail3")]
+#[rustc_clean(cfg="cfail2", except="HirBody, MirValidated, MirOptimized")]
+#[rustc_clean(cfg="cfail3")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn change_options(_a: i32) -> i32 {
+pub fn change_options(_a: i32) -> i32 {
     let _out;
     unsafe {
         asm!("add 1, $0"
