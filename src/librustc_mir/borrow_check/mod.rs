@@ -140,9 +140,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         param_env: param_env,
     };
     let body_id = match tcx.def_key(def_id).disambiguated_data.data {
-        DefPathData::StructCtor |
-        DefPathData::EnumVariant(_) => None,
-        _ => Some(tcx.hir.body_owned_by(id))
+        DefPathData::StructCtor | DefPathData::EnumVariant(_) => None,
+        _ => Some(tcx.hir.body_owned_by(id)),
     };
 
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
@@ -208,8 +207,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         move_data: &mdpe.move_data,
         param_env: param_env,
         locals_are_invalidated_at_exit: match tcx.hir.body_owner_kind(id) {
-            hir::BodyOwnerKind::Const |
-            hir::BodyOwnerKind::Static(_) => false,
+            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => false,
             hir::BodyOwnerKind::Fn => true,
         },
         storage_dead_or_drop_error_reported: FxHashSet(),
@@ -565,16 +563,16 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
 
                             self.report_borrowed_value_does_not_live_long_enough(
                                 ContextKind::StorageDead.new(loc),
-                            (&borrow.place, end_span.unwrap_or(span)),
+                                (&borrow.place, end_span.unwrap_or(span)),
                                 end_span,
                             )
                         }
                     }
                 });
             }
-            TerminatorKind::Goto { target: _ } |
-            TerminatorKind::Unreachable |
-            TerminatorKind::FalseEdges { .. } => {
+            TerminatorKind::Goto { target: _ }
+            | TerminatorKind::Unreachable
+            | TerminatorKind::FalseEdges { .. } => {
                 // no data used, thus irrelevant to borrowck
             }
         }
@@ -661,7 +659,7 @@ enum WriteKind {
 enum LocalMutationIsAllowed {
     Move,
     Yes,
-    No
+    No,
 }
 
 #[derive(Copy, Clone)]
@@ -868,10 +866,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 );
             }
 
-            Rvalue::Use(ref operand) |
-            Rvalue::Repeat(ref operand, _) |
-            Rvalue::UnaryOp(_ /*un_op*/, ref operand) |
-            Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/) => {
+            Rvalue::Use(ref operand)
+            | Rvalue::Repeat(ref operand, _)
+            | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
+            | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/) => {
                 self.consume_operand(context, (operand, span), flow_state)
             }
 
@@ -896,8 +894,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2) |
-            Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
+            Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2)
+            | Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
                 self.consume_operand(context, (operand1, span), flow_state);
                 self.consume_operand(context, (operand2, span), flow_state);
             }
@@ -1012,8 +1010,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             PrefixSet::Shallow
         };
 
-        let result =
-            self.prefixes(place, prefix_set).any(|prefix| prefix == root_place);
+        let result = self.prefixes(place, prefix_set)
+            .any(|prefix| prefix == root_place);
 
         if result {
             if let Some(local) = local {
@@ -1336,9 +1334,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     err.emit();
                 }
             }
-            Write(WriteKind::Move) |
-            Write(WriteKind::StorageDeadOrDrop) |
-            Write(WriteKind::MutableBorrow(BorrowKind::Shared)) => {
+            Write(WriteKind::Move)
+            | Write(WriteKind::StorageDeadOrDrop)
+            | Write(WriteKind::MutableBorrow(BorrowKind::Shared)) => {
                 if let Err(_place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     self.tcx.sess.delay_span_bug(
                         span,
@@ -1350,10 +1348,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
                 }
             }
-            Read(ReadKind::Borrow(BorrowKind::Unique)) |
-            Read(ReadKind::Borrow(BorrowKind::Mut)) |
-            Read(ReadKind::Borrow(BorrowKind::Shared)) |
-            Read(ReadKind::Copy) => {} // Access authorized
+            Read(ReadKind::Borrow(BorrowKind::Unique))
+            | Read(ReadKind::Borrow(BorrowKind::Mut))
+            | Read(ReadKind::Borrow(BorrowKind::Shared))
+            | Read(ReadKind::Copy) => {} // Access authorized
         }
 
         error_reported
@@ -1370,8 +1368,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let local = &self.mir.local_decls[local];
                 match local.mutability {
                     Mutability::Not => match is_local_mutation_allowed {
-                        LocalMutationIsAllowed::Yes |
-                        LocalMutationIsAllowed::Move => Ok(()),
+                        LocalMutationIsAllowed::Yes | LocalMutationIsAllowed::Move => Ok(()),
                         LocalMutationIsAllowed::No => Err(place),
                     },
                     Mutability::Mut => Ok(()),
@@ -1395,17 +1392,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     hir::MutImmutable => Err(place),
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
-                                    hir::MutMutable => {
-                                        match self.is_upvar_field_projection(&proj.base) {
-                                            Some(field) if {
-                                                self.mir.upvar_decls[field.index()].by_ref
-                                            } => {
-                                                self.is_mutable(&proj.base,
-                                                                is_local_mutation_allowed)
-                                            }
-                                            _ => self.is_unique(&proj.base)
+                                    hir::MutMutable => match self.is_upvar_field_projection(
+                                        &proj.base,
+                                    ) {
+                                        Some(field)
+                                            if { self.mir.upvar_decls[field.index()].by_ref } =>
+                                        {
+                                            self.is_mutable(&proj.base, is_local_mutation_allowed)
                                         }
-                                    }
+                                        _ => self.is_unique(&proj.base),
+                                    },
                                 }
                             }
                             ty::TyRawPtr(tnm) => {
@@ -1427,22 +1423,26 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
                     // All other projections are owned by their base path, so mutable if
                     // base path is mutable
-                    ProjectionElem::Field(..) |
-                    ProjectionElem::Index(..) |
-                    ProjectionElem::ConstantIndex { .. } |
-                    ProjectionElem::Subslice { .. } |
-                    ProjectionElem::Downcast(..) => {
+                    ProjectionElem::Field(..)
+                    | ProjectionElem::Index(..)
+                    | ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::Downcast(..) => {
                         let field_projection = self.is_upvar_field_projection(place);
 
                         if let Some(field) = field_projection {
                             let decl = &self.mir.upvar_decls[field.index()];
-                            debug!("decl.mutability={:?} local_mutation_is_allowed={:?} place={:?}",
-                                   decl, is_local_mutation_allowed, place);
+                            debug!(
+                                "decl.mutability={:?} local_mutation_is_allowed={:?} place={:?}",
+                                decl,
+                                is_local_mutation_allowed,
+                                place
+                            );
                             return match (decl.mutability, is_local_mutation_allowed) {
-                                (Mutability::Not, LocalMutationIsAllowed::No) |
-                                (Mutability::Not, LocalMutationIsAllowed::Yes) => Err(place),
-                                (Mutability::Not, LocalMutationIsAllowed::Move) |
-                                (Mutability::Mut, _) => self.is_unique(&proj.base),
+                                (Mutability::Not, LocalMutationIsAllowed::No)
+                                | (Mutability::Not, LocalMutationIsAllowed::Yes) => Err(place),
+                                (Mutability::Not, LocalMutationIsAllowed::Move)
+                                | (Mutability::Mut, _) => self.is_unique(&proj.base),
                             };
                         }
 
@@ -1500,11 +1500,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         }
                     }
                     // Other projections are unique if the base is unique
-                    ProjectionElem::Field(..) |
-                    ProjectionElem::Index(..) |
-                    ProjectionElem::ConstantIndex { .. } |
-                    ProjectionElem::Subslice { .. } |
-                    ProjectionElem::Downcast(..) => self.is_unique(&proj.base),
+                    ProjectionElem::Field(..)
+                    | ProjectionElem::Index(..)
+                    | ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::Downcast(..) => self.is_unique(&proj.base),
                 }
             }
         }
@@ -1538,11 +1538,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // Given that the bases of `elem1` and `elem2` are always either equal
     // or disjoint (and have the same type!), return the overlap situation
     // between `elem1` and `elem2`.
-    fn place_element_conflict(&self,
-                               elem1: &Place<'tcx>,
-                               elem2: &Place<'tcx>)
-                               -> Overlap
-    {
+    fn place_element_conflict(&self, elem1: &Place<'tcx>, elem2: &Place<'tcx>) -> Overlap {
         match (elem1, elem2) {
             (Place::Local(l1), Place::Local(l2)) => {
                 if l1 == l2 {
@@ -1560,8 +1556,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 debug!("place_element_conflict: IGNORED-STATIC");
                 Overlap::Disjoint
             }
-            (Place::Local(_), Place::Static(_)) |
-            (Place::Static(_), Place::Local(_)) => {
+            (Place::Local(_), Place::Static(_)) | (Place::Static(_), Place::Local(_)) => {
                 debug!("place_element_conflict: DISJOINT-STATIC-LOCAL");
                 Overlap::Disjoint
             }
@@ -1626,15 +1621,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             Overlap::Disjoint
                         }
                     }
-                    (ProjectionElem::Index(..), ProjectionElem::Index(..)) |
-                    (ProjectionElem::Index(..), ProjectionElem::ConstantIndex { .. }) |
-                    (ProjectionElem::Index(..), ProjectionElem::Subslice { .. }) |
-                    (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Index(..)) |
-                    (ProjectionElem::ConstantIndex { .. }, ProjectionElem::ConstantIndex { .. }) |
-                    (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Subslice { .. }) |
-                    (ProjectionElem::Subslice { .. }, ProjectionElem::Index(..)) |
-                    (ProjectionElem::Subslice { .. }, ProjectionElem::ConstantIndex { .. }) |
-                    (ProjectionElem::Subslice { .. }, ProjectionElem::Subslice { .. }) => {
+                    (ProjectionElem::Index(..), ProjectionElem::Index(..))
+                    | (ProjectionElem::Index(..), ProjectionElem::ConstantIndex { .. })
+                    | (ProjectionElem::Index(..), ProjectionElem::Subslice { .. })
+                    | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Index(..))
+                    | (
+                        ProjectionElem::ConstantIndex { .. },
+                        ProjectionElem::ConstantIndex { .. },
+                    )
+                    | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Subslice { .. })
+                    | (ProjectionElem::Subslice { .. }, ProjectionElem::Index(..))
+                    | (ProjectionElem::Subslice { .. }, ProjectionElem::ConstantIndex { .. })
+                    | (ProjectionElem::Subslice { .. }, ProjectionElem::Subslice { .. }) => {
                         // Array indexes (`a[0]` vs. `a[i]`). These can either be disjoint
                         // (if the indexes differ) or equal (if they are the same), so this
                         // is the recursive case that gives "equal *or* disjoint" its meaning.
@@ -1651,37 +1649,41 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         Overlap::EqualOrDisjoint
                     }
 
-                    (ProjectionElem::Deref, _) |
-                    (ProjectionElem::Field(..), _) |
-                    (ProjectionElem::Index(..), _) |
-                    (ProjectionElem::ConstantIndex { .. }, _) |
-                    (ProjectionElem::Subslice { .. }, _) |
-                    (ProjectionElem::Downcast(..), _) => {
-                        bug!("mismatched projections in place_element_conflict: {:?} and {:?}",
-
-                             elem1, elem2)
-                    }
+                    (ProjectionElem::Deref, _)
+                    | (ProjectionElem::Field(..), _)
+                    | (ProjectionElem::Index(..), _)
+                    | (ProjectionElem::ConstantIndex { .. }, _)
+                    | (ProjectionElem::Subslice { .. }, _)
+                    | (ProjectionElem::Downcast(..), _) => bug!(
+                        "mismatched projections in place_element_conflict: {:?} and {:?}",
+                        elem1,
+                        elem2
+                    ),
                 }
             }
-            (Place::Projection(_), _) |
-            (_, Place::Projection(_)) => {
-                bug!("unexpected elements in place_element_conflict: {:?} and {:?}",
-                     elem1, elem2)
-            }
+            (Place::Projection(_), _) | (_, Place::Projection(_)) => bug!(
+                "unexpected elements in place_element_conflict: {:?} and {:?}",
+                elem1,
+                elem2
+            ),
         }
     }
-    fn borrow_conflicts_with_place(&mut self,
-                                    borrow: &BorrowData<'tcx>,
-                                    place: &Place<'tcx>,
-                                    access: ShallowOrDeep)
-                                    -> bool
-    {
-        debug!("borrow_conflicts_with_place({:?},{:?},{:?})", borrow, place, access);
+    fn borrow_conflicts_with_place(
+        &mut self,
+        borrow: &BorrowData<'tcx>,
+        place: &Place<'tcx>,
+        access: ShallowOrDeep,
+    ) -> bool {
+        debug!(
+            "borrow_conflicts_with_place({:?},{:?},{:?})",
+            borrow,
+            place,
+            access
+        );
 
         // Return all the prefixes of `place` in reverse order, including
         // downcasts.
-        fn place_elements<'a, 'tcx>(place: &'a Place<'tcx>) -> Vec<&'a Place<'tcx>>
-        {
+        fn place_elements<'a, 'tcx>(place: &'a Place<'tcx>) -> Vec<&'a Place<'tcx>> {
             let mut result = vec![];
             let mut place = place;
             loop {
@@ -1700,13 +1702,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let borrow_components = place_elements(&borrow.place);
         let access_components = place_elements(place);
-        debug!("borrow_conflicts_with_place: components {:?} / {:?}",
-               borrow_components, access_components);
+        debug!(
+            "borrow_conflicts_with_place: components {:?} / {:?}",
+            borrow_components,
+            access_components
+        );
 
-        let borrow_components = borrow_components.into_iter()
-             .map(Some).chain(iter::repeat(None));
-        let access_components = access_components.into_iter()
-             .map(Some).chain(iter::repeat(None));
+        let borrow_components = borrow_components
+            .into_iter()
+            .map(Some)
+            .chain(iter::repeat(None));
+        let access_components = access_components
+            .into_iter()
+            .map(Some)
+            .chain(iter::repeat(None));
         // The borrowck rules for proving disjointness are applied from the "root" of the
         // borrow forwards, iterating over "similar" projections in lockstep until
         // we can prove overlap one way or another. Essentially, we treat `Overlap` as
@@ -1750,7 +1759,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //  - If we did run out of accesss, the borrow can access a part of it.
         for (borrow_c, access_c) in borrow_components.zip(access_components) {
             // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
-            debug!("borrow_conflicts_with_place: {:?} vs. {:?}", borrow_c, access_c);
+            debug!(
+                "borrow_conflicts_with_place: {:?} vs. {:?}",
+                borrow_c,
+                access_c
+            );
             match (borrow_c, access_c) {
                 (None, _) => {
                     // If we didn't run out of access, the borrow can access all of our
@@ -1772,13 +1785,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                     let (base, elem) = match borrow_c {
                         Place::Projection(box Projection { base, elem }) => (base, elem),
-                        _ => bug!("place has no base?")
+                        _ => bug!("place has no base?"),
                     };
                     let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
 
                     match (elem, &base_ty.sty, access) {
-                        (_, _, Shallow(Some(ArtificialField::Discriminant))) |
-                        (_, _, Shallow(Some(ArtificialField::ArrayLength))) => {
+                        (_, _, Shallow(Some(ArtificialField::Discriminant)))
+                        | (_, _, Shallow(Some(ArtificialField::ArrayLength))) => {
                             // The discriminant and array length are like
                             // additional fields on the type; they do not
                             // overlap any existing data there. Furthermore,
@@ -1799,9 +1812,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             debug!("borrow_conflicts_with_place: shallow access behind ptr");
                             return false;
                         }
-                        (ProjectionElem::Deref, ty::TyRef(_, ty::TypeAndMut {
-                            ty: _, mutbl: hir::MutImmutable
-                        }), _) => {
+                        (
+                            ProjectionElem::Deref,
+                            ty::TyRef(
+                                _,
+                                ty::TypeAndMut {
+                                    ty: _,
+                                    mutbl: hir::MutImmutable,
+                                },
+                            ),
+                            _,
+                        ) => {
                             // the borrow goes through a dereference of a shared reference.
                             //
                             // I'm not sure why we are tracking these borrows - shared
@@ -1811,12 +1832,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             return false;
                         }
 
-                        (ProjectionElem::Deref, _, Deep) |
-                        (ProjectionElem::Field { .. }, _, _) |
-                        (ProjectionElem::Index { ..}, _, _) |
-                        (ProjectionElem::ConstantIndex { .. }, _, _) |
-                        (ProjectionElem::Subslice { .. }, _, _) |
-                        (ProjectionElem::Downcast { .. }, _, _) => {
+                        (ProjectionElem::Deref, _, Deep)
+                        | (ProjectionElem::Field { .. }, _, _)
+                        | (ProjectionElem::Index { .. }, _, _)
+                        | (ProjectionElem::ConstantIndex { .. }, _, _)
+                        | (ProjectionElem::Subslice { .. }, _, _)
+                        | (ProjectionElem::Downcast { .. }, _, _) => {
                             // Recursive case. This can still be disjoint on a
                             // further iteration if this a shallow access and
                             // there's a deref later on, e.g. a borrow
@@ -1853,7 +1874,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             return false;
                         }
                     }
-
                 }
             }
         }
@@ -1884,7 +1904,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             if self.borrow_conflicts_with_place(borrowed, place, access) {
                 let ctrl = op(self, i, borrowed);
-                if ctrl == Control::Break { return; }
+                if ctrl == Control::Break {
+                    return;
+                }
             }
         }
     }
@@ -1997,10 +2019,10 @@ mod prefixes {
                         self.next = Some(&proj.base);
                         return Some(cursor);
                     }
-                    ProjectionElem::Downcast(..) |
-                    ProjectionElem::Subslice { .. } |
-                    ProjectionElem::ConstantIndex { .. } |
-                    ProjectionElem::Index(_) => {
+                    ProjectionElem::Downcast(..)
+                    | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Index(_) => {
                         cursor = &proj.base;
                         continue 'cursor;
                     }
@@ -2037,8 +2059,8 @@ mod prefixes {
 
                 let ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
                 match ty.sty {
-                    ty::TyRawPtr(_) |
-                    ty::TyRef(
+                    ty::TyRawPtr(_)
+                    | ty::TyRef(
                         _, /*rgn*/
                         ty::TypeAndMut {
                             ty: _,
@@ -2223,8 +2245,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             .with_freevars(node_id, |freevars| {
                                 for (v, place) in freevars.iter().zip(places) {
                                     match *place {
-                                        Operand::Copy(Place::Local(l)) |
-                                        Operand::Move(Place::Local(l)) if local == l =>
+                                        Operand::Copy(Place::Local(l))
+                                        | Operand::Move(Place::Local(l)) if local == l =>
                                         {
                                             debug!(
                                                 "find_closure_span: found captured local {:?}",
@@ -2276,8 +2298,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "immutable",
             "mutable",
         ) {
-            (BorrowKind::Shared, lft, _, BorrowKind::Mut, _, rgt) |
-            (BorrowKind::Mut, _, lft, BorrowKind::Shared, rgt, _) => self.tcx
+            (BorrowKind::Shared, lft, _, BorrowKind::Mut, _, rgt)
+            | (BorrowKind::Mut, _, lft, BorrowKind::Shared, rgt, _) => self.tcx
                 .cannot_reborrow_already_borrowed(
                     span,
                     &desc_place,
@@ -2560,9 +2582,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ProjectionElem::Field(_, field_type) => {
                     self.describe_field_from_ty(&field_type, field)
                 }
-                ProjectionElem::Index(..) |
-                ProjectionElem::ConstantIndex { .. } |
-                ProjectionElem::Subslice { .. } => {
+                ProjectionElem::Index(..)
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. } => {
                     format!("{}", self.describe_field(&proj.base, field))
                 }
             },
@@ -2760,8 +2782,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let move_path =
-                &self.uninits.operator().move_data().move_paths[mpi_uninit];
+            let move_path = &self.uninits.operator().move_data().move_paths[mpi_uninit];
             s.push_str(&format!("{}", move_path));
         });
         s.push_str("] ");
@@ -2785,8 +2806,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let ever_init =
-                &self.ever_inits.operator().move_data().inits[mpi_ever_init];
+            let ever_init = &self.ever_inits.operator().move_data().inits[mpi_ever_init];
             s.push_str(&format!("{:?}", ever_init));
         });
         s.push_str("]");
@@ -2794,4 +2814,3 @@ impl<'b, 'gcx, 'tcx> fmt::Display for InProgress<'b, 'gcx, 'tcx> {
         fmt::Display::fmt(&s, fmt)
     }
 }
-
