@@ -10,6 +10,7 @@
 
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+use borrow_check::nll::region_infer::RegionInferenceContext;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
@@ -24,6 +25,8 @@ use rustc::mir::ClosureRegionRequirements;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
+
+use rustc_errors::DiagnosticBuilder;
 
 use std::rc::Rc;
 
@@ -213,6 +216,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             hir::BodyOwnerKind::Fn => true,
         },
         storage_dead_or_drop_error_reported: FxHashSet(),
+        nonlexical_regioncx: opt_regioncx.clone(),
     };
 
     let flow_borrows = FlowInProgress::new(do_dataflow(
@@ -256,6 +260,7 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// in order to stop duplicate error reporting and identify the conditions required
     /// for a "temporary value dropped here while still borrowed" error. See #45360.
     storage_dead_or_drop_error_reported: FxHashSet<Local>,
+    nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
 }
 
 // (forced to be `pub` due to its use as an associated type below.)
@@ -565,6 +570,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
 
                             self.report_borrowed_value_does_not_live_long_enough(
                                 ContextKind::StorageDead.new(loc),
+                                borrow,
                                 (&borrow.place, end_span.unwrap_or(span)),
                                 end_span,
                             )
@@ -778,6 +784,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             error_reported = true;
                             this.report_borrowed_value_does_not_live_long_enough(
                                 context,
+                                borrow,
                                 place_span,
                                 end_span,
                             )
@@ -1462,13 +1469,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // Local variables are unique
                 Ok(())
             }
-            Place::Static(ref static_) => {
-                if !self.tcx.is_static_mut(static_.def_id) {
-                    Err(place)
-                } else {
-                    Ok(())
-                }
-            }
+            Place::Static(ref static_) => if !self.tcx.is_static_mut(static_.def_id) {
+                Err(place)
+            } else {
+                Ok(())
+            },
             Place::Projection(ref proj) => {
                 match proj.elem {
                     ProjectionElem::Deref => {
@@ -2116,15 +2121,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 Some(name) => format!("`{}`", name),
                 None => "value".to_owned(),
             };
-            self.tcx
-                .cannot_act_on_uninitialized_variable(
-                    span,
-                    desired_action.as_noun(),
-                    &self.describe_place(place).unwrap_or("_".to_owned()),
-                    Origin::Mir,
-                )
-                .span_label(span, format!("use of possibly uninitialized {}", item_msg))
-                .emit();
+            let mut err = self.tcx.cannot_act_on_uninitialized_variable(
+                span,
+                desired_action.as_noun(),
+                &self.describe_place(place).unwrap_or("_".to_owned()),
+                Origin::Mir,
+            );
+            err.span_label(span, format!("use of possibly uninitialized {}", item_msg));
+            err.emit();
         } else {
             let msg = ""; //FIXME: add "partially " or "collaterally "
 
@@ -2162,7 +2166,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     fn report_move_out_while_borrowed(
         &mut self,
-        _context: Context,
+        context: Context,
         (place, span): (&Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
     ) {
@@ -2174,23 +2178,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Some(name) => format!("`{}`", name),
             None => "value".to_owned(),
         };
-        self.tcx
-            .cannot_move_when_borrowed(
-                span,
-                &self.describe_place(place).unwrap_or("_".to_owned()),
-                Origin::Mir,
-            )
-            .span_label(
-                self.retrieve_borrow_span(borrow),
-                format!("borrow of {} occurs here", borrow_msg),
-            )
-            .span_label(span, format!("move out of {} occurs here", value_msg))
-            .emit();
+        let mut err = self.tcx.cannot_move_when_borrowed(
+            span,
+            &self.describe_place(place).unwrap_or("_".to_owned()),
+            Origin::Mir,
+        );
+        err.span_label(
+            self.retrieve_borrow_span(borrow),
+            format!("borrow of {} occurs here", borrow_msg),
+        );
+        err.span_label(span, format!("move out of {} occurs here", value_msg));
+        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+        err.emit();
     }
 
     fn report_use_while_mutably_borrowed(
         &mut self,
-        _context: Context,
+        context: Context,
         (place, span): (&Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
     ) {
@@ -2202,7 +2206,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Origin::Mir,
         );
 
+        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+
         err.emit();
+    }
+
+    fn explain_why_borrow_contains_point(
+        &self,
+        context: Context,
+        borrow: &BorrowData<'_>,
+        err: &mut DiagnosticBuilder<'_>,
+    ) {
+        if let Some(regioncx) = &self.nonlexical_regioncx {
+            if let Some(cause) = regioncx.why_region_contains_point(borrow.region, context.loc) {
+                cause.label_diagnostic(self.mir, err);
+            }
+        }
     }
 
     /// Finds the span of arguments of a closure (within `maybe_closure_span`) and its usage of
@@ -2378,12 +2397,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
         }
 
+        self.explain_why_borrow_contains_point(context, issued_borrow, &mut err);
+
         err.emit();
     }
 
     fn report_borrowed_value_does_not_live_long_enough(
         &mut self,
-        _: Context,
+        context: Context,
+        borrow: &BorrowData,
         (place, span): (&Place<'tcx>, Span),
         end_span: Option<Span>,
     ) {
@@ -2402,12 +2424,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             err.span_label(end, "temporary value needs to live until here");
         }
 
+        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+
         err.emit();
     }
 
     fn report_illegal_mutation_of_borrowed(
         &mut self,
-        _: Context,
+        context: Context,
         (place, span): (&Place<'tcx>, Span),
         loan: &BorrowData,
     ) {
@@ -2417,6 +2441,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             &self.describe_place(place).unwrap_or("_".to_owned()),
             Origin::Mir,
         );
+
+        self.explain_why_borrow_contains_point(context, loan, &mut err);
 
         err.emit();
     }

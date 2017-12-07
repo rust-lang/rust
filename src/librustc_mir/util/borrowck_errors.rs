@@ -75,7 +75,7 @@ pub trait BorrowckErrors {
                                 -> DiagnosticBuilder<'a>;
 
     fn cannot_move_when_borrowed(&self, span: Span, desc: &str, o: Origin)
-                                 -> DiagnosticBuilder
+                                 -> DiagnosticBuilder<'_>
     {
         let err = struct_span_err!(self, span, E0505,
                                    "cannot move out of `{}` because it is borrowed{OGN}",
@@ -89,7 +89,7 @@ pub trait BorrowckErrors {
                                         borrow_span: Span,
                                         borrow_desc: &str,
                                         o: Origin)
-                                        -> DiagnosticBuilder
+                                        -> DiagnosticBuilder<'_>
     {
         let mut err = struct_span_err!(self, span, E0503,
                          "cannot use `{}` because it was mutably borrowed{OGN}",

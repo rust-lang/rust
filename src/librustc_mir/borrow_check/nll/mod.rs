@@ -285,16 +285,22 @@ fn for_each_region_constraint(
 /// This is reasonable because in our MIR we replace all universal regions
 /// with inference variables.
 pub trait ToRegionVid {
-    fn to_region_vid(&self) -> RegionVid;
+    fn to_region_vid(self) -> RegionVid;
 }
 
-impl ToRegionVid for RegionKind {
-    fn to_region_vid(&self) -> RegionVid {
-        if let &ty::ReVar(vid) = self {
-            vid
+impl<'tcx> ToRegionVid for &'tcx RegionKind {
+    fn to_region_vid(self) -> RegionVid {
+        if let ty::ReVar(vid) = self {
+            *vid
         } else {
             bug!("region is not an ReVar: {:?}", self)
         }
+    }
+}
+
+impl ToRegionVid for RegionVid {
+    fn to_region_vid(self) -> RegionVid {
+        self
     }
 }
 
