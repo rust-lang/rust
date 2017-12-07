@@ -625,6 +625,10 @@ impl<T, E> Result<T, E> {
 
     /// Returns `res` if the result is [`Err`], otherwise returns the [`Ok`] value of `self`.
     ///
+    /// Arguments passed to `or` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use `or_else`, which is
+    /// lazily evaluated.
+    ///
     /// [`Ok`]: enum.Result.html#variant.Ok
     /// [`Err`]: enum.Result.html#variant.Err
     ///
@@ -689,6 +693,10 @@ impl<T, E> Result<T, E> {
 
     /// Unwraps a result, yielding the content of an [`Ok`].
     /// Else, it returns `optb`.
+    ///
+    /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing 
+    /// the result of a function call, it is recommended to use `unwrap_or_else`, 
+    /// which is lazily evaluated. 
     ///
     /// [`Ok`]: enum.Result.html#variant.Ok
     /// [`Err`]: enum.Result.html#variant.Err
