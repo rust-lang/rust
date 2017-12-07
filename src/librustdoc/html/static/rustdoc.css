@@ -263,6 +263,10 @@ nav.sub {
 	width: 100%;
 }
 
+.sidebar-menu {
+	display: none;
+}
+
 .content {
 	padding: 15px 0;
 }
@@ -820,7 +824,7 @@ span.since {
 		position: static;
 	}
 
-	.sidebar .location {
+	.sidebar > .location {
 		float: right;
 		margin: 0px;
 		margin-top: 2px;
@@ -840,14 +844,31 @@ span.since {
 		margin-top: 5px;
 		margin-bottom: 5px;
 		float: left;
+		margin-left: 50px;
+	}
+
+	.sidebar-menu {
+		position: absolute;
+		font-size: 2rem;
+		cursor: pointer;
+		margin-top: 2px;
+		display: block;
+	}
+
+	.sidebar-elems {
+		background-color: #F1F1F1;
+		position: fixed;
+		z-index: 1;
+		left: 0;
+		top: 45px;
+		bottom: 0;
+		overflow-y: auto;
+		border-right: 1px solid #000;
+		display: none;
 	}
 
 	nav.sub {
 		margin: 0 auto;
-	}
-
-	.sidebar .block {
-		display: none;
 	}
 
 	.content {
