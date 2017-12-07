@@ -25,6 +25,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 
+use std::rc::Rc;
+
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -202,7 +204,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             &mut flow_inits,
             &mdpe.move_data,
         );
-        (Some(regioncx), opt_closure_req)
+        (Some(Rc::new(regioncx)), opt_closure_req)
     } else {
         assert!(!tcx.sess.opts.debugging_opts.nll);
         (None, None)
