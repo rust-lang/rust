@@ -119,8 +119,7 @@
             map(function(s) {
                 var pair = s.split("=");
                 params[decodeURIComponent(pair[0])] =
-                    typeof pair[1] === "undefined" ?
-                            null : decodeURIComponent(pair[1]);
+                    typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
             });
         return params;
     }
@@ -1821,6 +1820,14 @@
                 }
             }
         };
+    }
+
+    var params = getQueryStringParams();
+    if (params && params.search) {
+        addClass(document.getElementById("main"), "hidden");
+        var search = document.getElementById("search");
+        removeClass(search, "hidden");
+        search.innerHTML = '<h3 style="text-align: center;">Loading search results...</h3>';
     }
 }());
 
