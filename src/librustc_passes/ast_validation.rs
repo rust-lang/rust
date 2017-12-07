@@ -22,9 +22,9 @@ use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Spanned;
 use syntax::parse::token;
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
-use syntax_pos::symbol::keywords;
 use errors;
 
 struct AstValidator<'a> {
