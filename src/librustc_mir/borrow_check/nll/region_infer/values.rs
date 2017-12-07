@@ -261,8 +261,11 @@ impl RegionValues {
         }
     }
 
-    /// Adds all the universal regions outlived by `from_region` to
-    /// `to_region`.
+    /// Adds `elem` to `to_region` because of a relation:
+    ///
+    ///     to_region: from_region @ constraint_location
+    ///
+    /// that was added by the cod at `constraint_span`.
     pub(super) fn add_due_to_outlives<T: ToElementIndex>(
         &mut self,
         from_region: RegionVid,
@@ -416,6 +419,20 @@ impl RegionValues {
                 location1.statement_index,
                 location2.statement_index
             ));
+        }
+    }
+
+    /// Given a region `r` that contains the element `elem`, returns the `Cause`
+    /// that tells us *why* `elem` is found in that region.
+    ///
+    /// Returns None if cause tracking is disabled or `elem` is not
+    /// actually found in `r`.
+    pub(super) fn cause<T: ToElementIndex>(&self, r: RegionVid, elem: T) -> Option<Rc<Cause>> {
+        let index = self.elements.index(elem);
+        if let Some(causes) = &self.causes {
+            causes.get(&(r, index)).cloned()
+        } else {
+            None
         }
     }
 }
