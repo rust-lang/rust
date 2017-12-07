@@ -1,0 +1,20 @@
+error: cannot find derive macro `x3300` in this scope
+  --> $DIR/issue-43106-gating-of-derive-2.rs:14:14
+   |
+14 |     #[derive(x3300)]
+   |              ^^^^^
+
+error: cannot find derive macro `x3300` in this scope
+  --> $DIR/issue-43106-gating-of-derive-2.rs:18:14
+   |
+18 |     #[derive(x3300)]
+   |              ^^^^^
+
+error: cannot find derive macro `x3300` in this scope
+  --> $DIR/issue-43106-gating-of-derive-2.rs:22:14
+   |
+22 |     #[derive(x3300)]
+   |              ^^^^^
+
+error: aborting due to 3 previous errors
+
