@@ -107,7 +107,10 @@
     }
 
     function showSidebar() {
-        document.getElementsByClassName("sidebar-elems")[0].style.display = "block";
+        var elems = document.getElementsByClassName("sidebar-elems")[0];
+        if (elems) {
+            elems.style.display = "block";
+        }
         var sidebar = document.getElementsByClassName('sidebar')[0];
         sidebar.style.position = 'fixed';
         sidebar.style.width = '100%';
@@ -116,7 +119,10 @@
     }
 
     function hideSidebar() {
-        document.getElementsByClassName("sidebar-elems")[0].style.display = "";
+        var elems = document.getElementsByClassName("sidebar-elems")[0];
+        if (elems) {
+            elems.style.display = "";
+        }
         var sidebar = document.getElementsByClassName('sidebar')[0];
         sidebar.style.position = '';
         sidebar.style.width = '';
