@@ -28,7 +28,7 @@ environment:
   # MSVC tools tests
   - MSYS_BITS: 64
     SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py toolstates.json
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=toolstates.json
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=toolstates.json --enable-test-miri
 
   # 32/64-bit MinGW builds.
   #
