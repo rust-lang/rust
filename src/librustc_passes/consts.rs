@@ -135,6 +135,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 IndexOpFeatureGated => {}
                 ErroneousReferencedConstant(_) => {}
                 TypeckError => {}
+                MiscCatchAll => {}
                 _ => {
                     self.tcx.lint_node(CONST_ERR,
                                        expr.id,

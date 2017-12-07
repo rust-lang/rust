@@ -16,6 +16,5 @@ use std::cell::RefCell;
 static boxed: Box<RefCell<isize>> = box RefCell::new(0);
 //~^ ERROR allocations are not allowed in statics
 //~| ERROR `std::cell::RefCell<isize>: std::marker::Sync` is not satisfied
-//~| WARN unsupported constant expr
 
 fn main() { }
