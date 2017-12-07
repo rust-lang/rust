@@ -338,6 +338,12 @@ impl<T> Option<T> {
 
     /// Returns the contained value or a default.
     ///
+    /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
+    /// the result of a function call, it is recommended to use [`unwrap_or_else`],
+    /// which is lazily evaluated.
+    ///
+    /// [`unwrap_or_else`]: #method.unwrap_or_else
+    ///
     /// # Examples
     ///
     /// ```
@@ -451,11 +457,16 @@ impl<T> Option<T> {
     /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping [`Some(v)`] to
     /// [`Ok(v)`] and [`None`] to [`Err(err)`].
     ///
+    /// Arguments passed to `ok_or` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`ok_or_else`], which is
+    /// lazily evaluated.
+    ///
     /// [`Result<T, E>`]: ../../std/result/enum.Result.html
     /// [`Ok(v)`]: ../../std/result/enum.Result.html#variant.Ok
     /// [`Err(err)`]: ../../std/result/enum.Result.html#variant.Err
     /// [`None`]: #variant.None
     /// [`Some(v)`]: #variant.Some
+    /// [`ok_or_else`]: #method.ok_or_else
     ///
     /// # Examples
     ///
@@ -643,6 +654,12 @@ impl<T> Option<T> {
     }
 
     /// Returns the option if it contains a value, otherwise returns `optb`.
+    ///
+    /// Arguments passed to `or` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`or_else`], which is
+    /// lazily evaluated.
+    ///
+    /// [`or_else`]: #method.or_else
     ///
     /// # Examples
     ///
