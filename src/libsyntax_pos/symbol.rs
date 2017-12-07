@@ -36,7 +36,7 @@ impl Ident {
     }
 
     pub fn without_first_quote(&self) -> Ident {
-        Ident { name: self.name.without_first_quote(), ctxt: self.ctxt }
+        Ident { name: Symbol::from(self.name.as_str().trim_left_matches('\'')), ctxt: self.ctxt }
     }
 
     pub fn modern(self) -> Ident {
@@ -116,10 +116,6 @@ impl Symbol {
 
     pub fn as_u32(self) -> u32 {
         self.0
-    }
-
-    pub fn without_first_quote(&self) -> Symbol {
-        Symbol::from(self.as_str().trim_left_matches('\''))
     }
 }
 
