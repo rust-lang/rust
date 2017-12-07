@@ -5995,7 +5995,7 @@ impl<'a> Parser<'a> {
         match any_disr {
             Some(disr_span) if !all_nullary =>
                 self.span_err(disr_span,
-                    "discriminator values can only be used with a c-like enum"),
+                    "discriminator values can only be used with a field-less enum"),
             _ => ()
         }
 
