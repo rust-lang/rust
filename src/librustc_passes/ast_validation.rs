@@ -21,8 +21,10 @@ use rustc::session::Session;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Spanned;
+use syntax::parse::token;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
+use syntax_pos::symbol::keywords;
 use errors;
 
 struct AstValidator<'a> {
@@ -35,15 +37,15 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_lifetime(&self, lifetime: &Lifetime) {
-        if !lifetime.ident.without_first_quote().is_valid() &&
-            !lifetime.ident.name.is_static_keyword() {
+        let valid_names = [keywords::StaticLifetime.name(), keywords::Invalid.name()];
+        if !valid_names.contains(&lifetime.ident.name) &&
+            token::Ident(lifetime.ident.without_first_quote()).is_reserved_ident() {
             self.err_handler().span_err(lifetime.span, "lifetimes cannot use keyword names");
         }
     }
 
     fn check_label(&self, label: Ident, span: Span) {
-        if label.name.is_static_keyword() || !label.without_first_quote().is_valid()
-            || label.name == "'_" {
+        if token::Ident(label.without_first_quote()).is_reserved_ident() || label.name == "'_" {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
         }
     }
@@ -207,9 +209,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_use_tree(self, use_tree, id);
     }
 
+    fn visit_lifetime(&mut self, lifetime: &'a Lifetime) {
+        self.check_lifetime(lifetime);
+        visit::walk_lifetime(self, lifetime);
+    }
+
     fn visit_item(&mut self, item: &'a Item) {
         match item.node {
-            ItemKind::Impl(.., ref generics, Some(..), _, ref impl_items) => {
+            ItemKind::Impl(.., Some(..), _, ref impl_items) => {
                 self.invalid_visibility(&item.vis, item.span, None);
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, impl_item.span, None);
@@ -217,13 +224,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         self.check_trait_fn_not_const(sig.constness);
                     }
                 }
-                generics.lifetimes.iter().for_each(|l| self.check_lifetime(&l.lifetime))
             }
-            ItemKind::Impl(.., ref generics, None, _, _) => {
+            ItemKind::Impl(.., None, _, _) => {
                 self.invalid_visibility(&item.vis,
                                         item.span,
                                         Some("place qualifiers on individual impl items instead"));
-                generics.lifetimes.iter().for_each(|l| self.check_lifetime(&l.lifetime))
             }
             ItemKind::AutoImpl(..) => {
                 self.invalid_visibility(&item.vis, item.span, None);
@@ -234,14 +239,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                         Some("place qualifiers on individual foreign items \
                                               instead"));
             }
-            ItemKind::Enum(ref def, ref generics) => {
+            ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
                     self.invalid_non_exhaustive_attribute(variant);
                     for field in variant.node.data.fields() {
                         self.invalid_visibility(&field.vis, field.span, None);
                     }
                 }
-                generics.lifetimes.iter().for_each(|l| self.check_lifetime(&l.lifetime))
             }
             ItemKind::Trait(is_auto, _, ref generics, ref bounds, ref trait_items) => {
                 if is_auto == IsAuto::Yes {
@@ -278,7 +282,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         }
                     }
                 }
-                generics.lifetimes.iter().for_each(|l| self.check_lifetime(&l.lifetime))
             }
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
@@ -289,7 +292,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.session.buffer_lint(lint, item.id, item.span, msg);
                 }
             }
-            ItemKind::Union(ref vdata, ref generics) => {
+            ItemKind::Union(ref vdata, _) => {
                 if !vdata.is_struct() {
                     self.err_handler().span_err(item.span,
                                                 "tuple and unit unions are not permitted");
@@ -298,12 +301,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().span_err(item.span,
                                                 "unions cannot have zero fields");
                 }
-                generics.lifetimes.iter().for_each(|l| self.check_lifetime(&l.lifetime))
-            }
-            ItemKind::Fn(.., ref generics, _) |
-            ItemKind::Ty(_, ref generics) |
-            ItemKind::Struct(_, ref generics) => {
-                generics.lifetimes.iter().for_each(|l| self.check_lifetime(&l.lifetime))
             }
             _ => {}
         }

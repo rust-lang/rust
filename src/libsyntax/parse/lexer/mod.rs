@@ -14,7 +14,7 @@ use codemap::{CodeMap, FilePathMapping};
 use errors::{FatalError, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
-use symbol::{Symbol};
+use symbol::Symbol;
 use std_unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;

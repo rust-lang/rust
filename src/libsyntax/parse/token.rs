@@ -364,12 +364,18 @@ impl Token {
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(&self) -> bool {
-        self.ident().map(|id| id.name.is_used_keyword()).unwrap_or(false)
+        match self.ident() {
+            Some(id) => id.name >= keywords::As.name() && id.name <= keywords::While.name(),
+            _ => false,
+        }
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(&self) -> bool {
-        self.ident().map(|id| id.name.is_unused_keyword()).unwrap_or(false)
+        match self.ident() {
+            Some(id) => id.name >= keywords::Abstract.name() && id.name <= keywords::Yield.name(),
+            _ => false,
+        }
     }
 
     pub fn glue(self, joint: Token) -> Option<Token> {

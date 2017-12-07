@@ -42,10 +42,6 @@ impl Ident {
     pub fn modern(self) -> Ident {
         Ident { name: self.name, ctxt: self.ctxt.modern() }
     }
-
-    pub fn is_valid(&self) -> bool {
-        !self.name.is_used_keyword() && !self.name.is_unused_keyword()
-    }
 }
 
 impl fmt::Debug for Ident {
@@ -120,20 +116,6 @@ impl Symbol {
 
     pub fn as_u32(self) -> u32 {
         self.0
-    }
-
-    /// Returns `true` if the token is a keyword used in the language.
-    pub fn is_used_keyword(&self) -> bool {
-        self >= &keywords::As.name() && self <= &keywords::While.name()
-    }
-
-    /// Returns `true` if the token is a keyword reserved for possible future use.
-    pub fn is_unused_keyword(&self) -> bool {
-        self >= &keywords::Abstract.name() && self <= &keywords::Yield.name()
-    }
-
-    pub fn is_static_keyword(&self) -> bool {
-        self == &keywords::StaticLifetime.name()
     }
 
     pub fn without_first_quote(&self) -> Symbol {
