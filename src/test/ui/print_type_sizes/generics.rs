@@ -67,8 +67,10 @@ pub fn f1<T:Copy>(x: T) {
 }
 
 pub fn main() {
-    let _b: Pair<u8> = Pair::new(0, 0);
-    let _s: Pair<SevenBytes> = Pair::new(SevenBytes::new(), SevenBytes::new());
-    let _z: ZeroSized = ZeroSized;
+    let b: Pair<u8> = Pair::new(0, 0);
+    let s: Pair<SevenBytes> = Pair::new(SevenBytes::new(), SevenBytes::new());
+    let z: ZeroSized = ZeroSized;
     f1::<SevenBytes>(SevenBytes::new());
+
+    std::mem::drop((b, s, z));
 }

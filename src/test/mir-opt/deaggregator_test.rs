@@ -27,7 +27,7 @@ fn main() {
 // START rustc.bar.Deaggregator.before.mir
 // bb0: {
 //     ...
-//     _2 = _1;
+//     _2 = move _1;
 //     ...
 //     _0 = Baz { x: move _2, y: const 0f32, z: const false };
 //     ...
@@ -37,7 +37,7 @@ fn main() {
 // START rustc.bar.Deaggregator.after.mir
 // bb0: {
 //     ...
-//     _2 = _1;
+//     _2 = move _1;
 //     ...
 //     (_0.0: usize) = move _2;
 //     (_0.1: f32) = const 0f32;

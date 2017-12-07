@@ -32,7 +32,7 @@ fn main() {
 //     ...
 //     _2 = Foo::A(move _3,);
 //     ...
-//     _5 = _1;
+//     _5 = move _1;
 //     _4 = Foo::A(move _5,);
 //     ...
 //     _0 = [move _2, move _4];
@@ -48,7 +48,7 @@ fn main() {
 //     ((_2 as A).0: i32) = move _3;
 //     discriminant(_2) = 0;
 //     ...
-//     _5 = _1;
+//     _5 = move _1;
 //     ((_4 as A).0: i32) = move _5;
 //     discriminant(_4) = 0;
 //     ...

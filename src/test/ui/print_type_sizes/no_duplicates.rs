@@ -18,9 +18,11 @@
 pub struct SevenBytes([u8; 7]);
 
 pub fn f1() {
-    let _s: SevenBytes = SevenBytes([0; 7]);
+    let s: SevenBytes = SevenBytes([0; 7]);
+    std::mem::drop(s);
 }
 
 pub fn main() {
-    let _s: SevenBytes = SevenBytes([0; 7]);
+    let s: SevenBytes = SevenBytes([0; 7]);
+    std::mem::drop(s);
 }

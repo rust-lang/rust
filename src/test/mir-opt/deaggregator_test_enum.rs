@@ -29,7 +29,7 @@ fn main() {
 // START rustc.bar.Deaggregator.before.mir
 // bb0: {
 //     StorageLive(_2);
-//     _2 = _1;
+//     _2 = move _1;
 //     _0 = Baz::Foo { x: move _2 };
 //     StorageDead(_2);
 //     return;
@@ -38,7 +38,7 @@ fn main() {
 // START rustc.bar.Deaggregator.after.mir
 // bb0: {
 //     StorageLive(_2);
-//     _2 = _1;
+//     _2 = move _1;
 //     ((_0 as Foo).0: usize) = move _2;
 //     discriminant(_0) = 1;
 //     StorageDead(_2);
