@@ -84,6 +84,16 @@ for ty::RegionKind {
     }
 }
 
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::RegionVid {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use rustc_data_structures::indexed_vec::Idx;
+        self.index().hash_stable(hcx, hasher);
+    }
+}
+
 impl<'gcx> HashStable<StableHashingContext<'gcx>>
 for ty::adjustment::AutoBorrow<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,

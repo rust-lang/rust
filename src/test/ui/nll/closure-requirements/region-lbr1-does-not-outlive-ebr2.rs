@@ -13,12 +13,12 @@
 // a variety of errors from the older, AST-based machinery (notably
 // borrowck), and then we get the NLL error at the end.
 
-// compile-flags:-Znll
+// compile-flags:-Znll -Zborrowck=mir -Zverbose
 
 fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
-    &*x //~ ERROR free region `'a` does not outlive `'b`
-    //~^ ERROR `*x` does not live long enough
-    //~| WARN not reporting region error due to -Znll
+    &*x
+        //~^ WARN not reporting region error due to -Znll
+        //~| ERROR free region `'_#1r` does not outlive free region `'_#2r`
 }
 
 fn main() { }

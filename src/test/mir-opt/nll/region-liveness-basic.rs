@@ -31,26 +31,26 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.main.nll.0.mir
-// | '_#1r: {bb2[0], bb2[1], bb3[0], bb3[1]}
-// | '_#2r: {bb2[1], bb3[0], bb3[1]}
+// | '_#1r    | {bb2[0], bb2[1], bb3[0], bb3[1]}
+// | '_#2r    | {bb2[1], bb3[0], bb3[1]}
 // ...
 //             let _2: &'_#2r usize;
 // END rustc.main.nll.0.mir
 // START rustc.main.nll.0.mir
 //    bb2: {
-//            | Live variables at bb2[0]: [_1, _3]
+//            | Live variables on entry to bb2[0]: [_1, _3]
 //        _2 = &'_#1r _1[_3];
-//            | Live variables at bb2[1]: [_2]
+//            | Live variables on entry to bb2[1]: [_2]
 //        switchInt(const true) -> [0u8: bb4, otherwise: bb3];
 //    }
 // END rustc.main.nll.0.mir
 // START rustc.main.nll.0.mir
 //    bb3: {
-//            | Live variables at bb3[0]: [_2]
+//            | Live variables on entry to bb3[0]: [_2]
 //        StorageLive(_7);
-//            | Live variables at bb3[1]: [_2]
+//            | Live variables on entry to bb3[1]: [_2]
 //        _7 = (*_2);
-//            | Live variables at bb3[2]: [_7]
+//            | Live variables on entry to bb3[2]: [_7]
 //        _6 = const use_x(move _7) -> [return: bb5, unwind: bb1];
 //    }
 // END rustc.main.nll.0.mir

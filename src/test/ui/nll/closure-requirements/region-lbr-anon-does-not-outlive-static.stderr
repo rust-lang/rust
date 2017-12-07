@@ -1,0 +1,14 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
+   |
+19 |     &*x
+   |     ^^^
+
+error: free region `'_#1r` does not outlive free region `ReStatic`
+  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
+   |
+19 |     &*x
+   |     ^^^
+
+error: aborting due to previous error
+

@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::indexed_vec::Idx;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, ClosureSubsts, RegionVid, Ty, TypeFoldable};
+use rustc::ty::{self, ClosureSubsts, Ty, TypeFoldable};
 use rustc::mir::{BasicBlock, Local, Location, Mir, Statement, StatementKind};
+use rustc::mir::RETURN_PLACE;
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
@@ -25,25 +26,24 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(
     universal_regions: &UniversalRegions<'tcx>,
     mir: &mut Mir<'tcx>,
 ) {
-    // Create inference variables for each of the free regions
-    // declared on the function signature.
-    let free_region_inference_vars = (0..universal_regions.indices.len())
-        .map(RegionVid::new)
-        .map(|vid_expected| {
-            let r = infcx.next_nll_region_var(NLLRegionVariableOrigin::FreeRegion);
-            assert_eq!(vid_expected, r.to_region_vid());
-            r
-        })
-        .collect();
-
     debug!("renumber_mir()");
-    debug!("renumber_mir: universal_regions={:#?}", universal_regions);
     debug!("renumber_mir: mir.arg_count={:?}", mir.arg_count);
+
+    // Update the return type and types of the arguments based on the
+    // `universal_regions` computation.
+    debug!("renumber_mir: output_ty={:?}", universal_regions.output_ty);
+    mir.local_decls[RETURN_PLACE].ty = universal_regions.output_ty;
+    for (&input_ty, local) in universal_regions
+        .input_tys
+        .iter()
+        .zip((1..).map(Local::new))
+    {
+        debug!("renumber_mir: input_ty={:?} local={:?}", input_ty, local);
+        mir.local_decls[local].ty = input_ty;
+    }
 
     let mut visitor = NLLVisitor {
         infcx,
-        universal_regions,
-        free_region_inference_vars,
         arg_count: mir.arg_count,
     };
     visitor.visit_mir(mir);
@@ -51,8 +51,6 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(
 
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    universal_regions: &'a UniversalRegions<'tcx>,
-    free_region_inference_vars: IndexVec<RegionVid, ty::Region<'tcx>>,
     arg_count: usize,
 }
 
@@ -74,20 +72,17 @@ impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
             })
     }
 
-    /// Renumbers the regions appearing in `value`, but those regions
-    /// are expected to be free regions from the function signature.
-    fn renumber_universal_regions<T>(&mut self, value: &T) -> T
+    /// Checks that all the regions appearing in `value` have already
+    /// been renumbered. `FreeRegions` code should have done this.
+    fn assert_free_regions_are_renumbered<T>(&self, value: &T)
     where
         T: TypeFoldable<'tcx>,
     {
-        debug!("renumber_universal_regions(value={:?})", value);
+        debug!("assert_free_regions_are_renumbered(value={:?})", value);
 
-        self.infcx
-            .tcx
-            .fold_regions(value, &mut false, |region, _depth| {
-                let index = self.universal_regions.indices[&region];
-                self.free_region_inference_vars[index]
-            })
+        self.infcx.tcx.for_each_free_region(value, |region| {
+            region.to_region_vid(); // will panic if `region` is not renumbered
+        });
     }
 
     fn is_argument_or_return_slot(&self, local: Local) -> bool {
@@ -110,12 +105,12 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
             ty_context
         );
 
-        let old_ty = *ty;
-        *ty = if is_arg {
-            self.renumber_universal_regions(&old_ty)
+        if is_arg {
+            self.assert_free_regions_are_renumbered(ty);
         } else {
-            self.renumber_regions(ty_context, &old_ty)
-        };
+            *ty = self.renumber_regions(ty_context, ty);
+        }
+
         debug!("visit_ty: ty={:?}", ty);
     }
 
@@ -136,6 +131,11 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         *region = self.renumber_regions(ty_context, &old_region);
 
         debug!("visit_region: region={:?}", region);
+    }
+
+    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, location: Location) {
+        let ty_context = TyContext::Location(location);
+        *constant = self.renumber_regions(ty_context, &*constant);
     }
 
     fn visit_closure_substs(&mut self, substs: &mut ClosureSubsts<'tcx>, location: Location) {

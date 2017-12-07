@@ -19,6 +19,7 @@ use rustc::ty::maps::Providers;
 use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Local, Location, Place};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
+use rustc::mir::ClosureRegionRequirements;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
@@ -51,7 +52,10 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
+fn mir_borrowck<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+) -> Option<ClosureRegionRequirements> {
     let input_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
@@ -59,21 +63,23 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
         !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.sess.opts.borrowck_mode.use_mir()
             && !tcx.sess.opts.debugging_opts.nll
     } {
-        return;
+        return None;
     }
 
-    tcx.infer_ctxt().enter(|infcx| {
+    let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
         let input_mir: &Mir = &input_mir.borrow();
-        do_mir_borrowck(&infcx, input_mir, def_id);
+        do_mir_borrowck(&infcx, input_mir, def_id)
     });
     debug!("mir_borrowck done");
+
+    opt_closure_req
 }
 
 fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     input_mir: &Mir<'gcx>,
     def_id: DefId,
-) {
+) -> Option<ClosureRegionRequirements> {
     let tcx = infcx.tcx;
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);
@@ -91,7 +97,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         let mir = &mut mir;
 
         // Replace all regions with fresh inference variables.
-        Some(nll::replace_regions_in_mir(infcx, def_id, mir))
+        Some(nll::replace_regions_in_mir(infcx, def_id, param_env, mir))
     };
     let mir = &mir;
 
@@ -177,8 +183,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     ));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
-    let opt_regioncx = if let Some(free_regions) = free_regions {
-        Some(nll::compute_regions(
+    let (opt_regioncx, opt_closure_req) = if let Some(free_regions) = free_regions {
+        let (regioncx, opt_closure_req) = nll::compute_regions(
             infcx,
             def_id,
             free_regions,
@@ -186,10 +192,11 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             param_env,
             &mut flow_inits,
             &mdpe.move_data,
-        ))
+        );
+        (Some(regioncx), opt_closure_req)
     } else {
         assert!(!tcx.sess.opts.debugging_opts.nll);
-        None
+        (None, None)
     };
     let flow_inits = flow_inits; // remove mut
 
@@ -226,6 +233,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     );
 
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
+
+    opt_closure_req
 }
 
 #[allow(dead_code)]

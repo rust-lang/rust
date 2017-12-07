@@ -1,0 +1,14 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+   |
+19 |     &*x
+   |     ^^^
+
+error: free region `'_#1r` does not outlive free region `'_#2r`
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+   |
+19 |     &*x
+   |     ^^^
+
+error: aborting due to previous error
+

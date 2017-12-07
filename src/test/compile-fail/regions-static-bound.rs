@@ -8,17 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ll nll
+//[nll] compile-flags: -Znll -Zborrowck=mir
+
 fn static_id<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'static { t }
 fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'b, 'b: 'static { t }
 fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
-    t //~ ERROR E0312
+    t //[ll]~ ERROR E0312
+        //[nll]~^ WARNING not reporting region error due to -Znll
+        //[nll]~| ERROR free region `'a` does not outlive free region `'static`
 }
 
 fn error(u: &(), v: &()) {
-    static_id(&u); //~ ERROR cannot infer an appropriate lifetime
-    static_id_indirect(&v); //~ ERROR cannot infer an appropriate lifetime
+    static_id(&u); //[ll]~ ERROR cannot infer an appropriate lifetime
+    //[nll]~^ WARNING not reporting region error due to -Znll
+    static_id_indirect(&v); //[ll]~ ERROR cannot infer an appropriate lifetime
+    //[nll]~^ WARNING not reporting region error due to -Znll
+
+    // FIXME(#45827) -- MIR type checker shortcomings mean we don't
+    // see these errors (yet) in nll mode.
 }
 
 fn main() {}

@@ -572,3 +572,15 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Literal<'gcx> {
 }
 
 impl_stable_hash_for!(struct mir::Location { block, statement_index });
+
+impl_stable_hash_for!(struct mir::ClosureRegionRequirements {
+    num_external_vids,
+    outlives_requirements
+});
+
+impl_stable_hash_for!(struct mir::ClosureOutlivesRequirement {
+    free_region,
+    outlived_free_region,
+    blame_span
+});
+

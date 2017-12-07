@@ -1789,6 +1789,75 @@ pub struct GeneratorLayout<'tcx> {
     pub fields: Vec<LocalDecl<'tcx>>,
 }
 
+/// After we borrow check a closure, we are left with various
+/// requirements that we have inferred between the free regions that
+/// appear in the closure's signature or on its field types.  These
+/// requirements are then verified and proved by the closure's
+/// creating function. This struct encodes those requirements.
+///
+/// The requirements are listed as being between various
+/// `RegionVid`. The 0th region refers to `'static`; subsequent region
+/// vids refer to the free regions that appear in the closure (or
+/// generator's) type, in order of appearance. (This numbering is
+/// actually defined by the `UniversalRegions` struct in the NLL
+/// region checker. See for example
+/// `UniversalRegions::closure_mapping`.) Note that we treat the free
+/// regions in the closure's type "as if" they were erased, so their
+/// precise identity is not important, only their position.
+///
+/// Example: If type check produces a closure with the closure substs:
+///
+/// ```
+/// ClosureSubsts = [
+///     i8,                                  // the "closure kind"
+///     for<'x> fn(&'a &'x u32) -> &'x u32,  // the "closure signature"
+///     &'a String,                          // some upvar
+/// ]
+/// ```
+///
+/// here, there is one unique free region (`'a`) but it appears
+/// twice. We would "renumber" each occurence to a unique vid, as follows:
+///
+/// ```
+/// ClosureSubsts = [
+///     i8,                                  // the "closure kind"
+///     for<'x> fn(&'1 &'x u32) -> &'x u32,  // the "closure signature"
+///     &'2 String,                          // some upvar
+/// ]
+/// ```
+///
+/// Now the code might impose a requirement like `'1: '2`. When an
+/// instance of the closure is created, the corresponding free regions
+/// can be extracted from its type and constrained to have the given
+/// outlives relationship.
+#[derive(Clone, Debug)]
+pub struct ClosureRegionRequirements {
+    /// The number of external regions defined on the closure.  In our
+    /// example above, it would be 3 -- one for `'static`, then `'1`
+    /// and `'2`. This is just used for a sanity check later on, to
+    /// make sure that the number of regions we see at the callsite
+    /// matches.
+    pub num_external_vids: usize,
+
+    /// Requirements between the various free regions defined in
+    /// indices.
+    pub outlives_requirements: Vec<ClosureOutlivesRequirement>,
+}
+
+/// Indicates an outlives constraint between two free-regions declared
+/// on the closure.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ClosureOutlivesRequirement {
+    // This region ...
+    pub free_region: ty::RegionVid,
+
+    // .. must outlive this one.
+    pub outlived_free_region: ty::RegionVid,
+
+    // If not, report an error here.
+    pub blame_span: Span,
+}
+
 /*
  * TypeFoldable implementations for MIR types
  */

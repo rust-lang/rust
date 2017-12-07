@@ -123,7 +123,12 @@ impl<'a> From<&'a str> for Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}({})", self, self.0)
+        let is_gensymed = with_interner(|interner| interner.is_gensymed(*self));
+        if is_gensymed {
+            write!(f, "{}({})", self, self.0)
+        } else {
+            write!(f, "{}", self)
+        }
     }
 }
 
@@ -199,6 +204,10 @@ impl Interner {
     fn gensymed(&mut self, symbol: Symbol) -> Symbol {
         self.gensyms.push(symbol);
         Symbol(!0 - self.gensyms.len() as u32 + 1)
+    }
+
+    fn is_gensymed(&mut self, symbol: Symbol) -> bool {
+        symbol.0 as usize >= self.strings.len()
     }
 
     pub fn get(&self, symbol: Symbol) -> &str {

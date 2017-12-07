@@ -27,15 +27,15 @@ fn main() {
 // START rustc.main.nll.0.mir
 //    | Live variables on entry to bb2: []
 //    bb2: {
-//            | Live variables at bb2[0]: []
+//            | Live variables on entry to bb2[0]: []
 //        _1 = const 55usize;
-//            | Live variables at bb2[1]: [_1]
+//            | Live variables on entry to bb2[1]: [_1]
 //        StorageLive(_3);
-//            | Live variables at bb2[2]: [_1]
+//            | Live variables on entry to bb2[2]: [_1]
 //        StorageLive(_4);
-//            | Live variables at bb2[3]: [_1]
+//            | Live variables on entry to bb2[3]: [_1]
 //        _4 = _1;
-//            | Live variables at bb2[4]: [_4]
+//            | Live variables on entry to bb2[4]: [_4]
 //        _3 = const use_x(move _4) -> [return: bb3, unwind: bb1];
 //    }
 // END rustc.main.nll.0.mir

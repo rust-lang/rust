@@ -26,9 +26,18 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.use_x.nll.0.mir
-// | '_#0r: {bb0[0], bb0[1], '_#0r}
-// | '_#1r: {bb0[0], bb0[1], '_#1r}
-// | '_#2r: {bb0[0], bb0[1], '_#2r}
-// | '_#3r: {bb0[0], bb0[1], '_#3r}
+// | Free Region Mapping
+// | '_#0r    | Global   | ['_#2r, '_#1r, '_#0r, '_#3r]
+// | '_#1r    | External | ['_#1r]
+// | '_#2r    | External | ['_#2r, '_#1r]
+// | '_#3r    | Local    | ['_#3r]
+// |
+// | Inferred Region Values
+// | '_#0r    | {bb0[0], bb0[1], '_#0r}
+// | '_#1r    | {bb0[0], bb0[1], '_#1r}
+// | '_#2r    | {bb0[0], bb0[1], '_#2r}
+// | '_#3r    | {bb0[0], bb0[1], '_#3r}
+// |
+// ...
 // fn use_x(_1: &'_#1r mut i32, _2: &'_#2r u32, _3: &'_#1r u32, _4: &'_#3r u32) -> bool {
 // END rustc.use_x.nll.0.mir
