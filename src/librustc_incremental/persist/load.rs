@@ -14,9 +14,11 @@ use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::OnDiskCache;
+use rustc::util::common::time;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
 use std::path::Path;
+use std;
 
 use super::data::*;
 use super::fs::*;
@@ -39,7 +41,9 @@ pub fn dep_graph_tcx_init<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     let work_products_path = work_products_path(tcx.sess);
-    if let Some((work_products_data, start_pos)) = load_data(tcx.sess, &work_products_path) {
+    let load_result = load_data(tcx.sess.opts.debugging_opts.incremental_info, &work_products_path);
+
+    if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
         // Decode the list of work_products
         let mut work_product_decoder = Decoder::new(&work_products_data[..], start_pos);
         let work_products: Vec<SerializedWorkProduct> =
@@ -74,27 +78,50 @@ pub fn dep_graph_tcx_init<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 }
 
-fn load_data(sess: &Session, path: &Path) -> Option<(Vec<u8>, usize)> {
-    match file_format::read_file(sess, path) {
-        Ok(Some(data_and_pos)) => return Some(data_and_pos),
+pub enum LoadResult<T> {
+    Ok { data: T },
+    DataOutOfDate,
+    Error { message: String },
+}
+
+
+impl LoadResult<PreviousDepGraph> {
+    pub fn open(self, sess: &Session) -> PreviousDepGraph {
+        match self {
+            LoadResult::Error { message } => {
+                sess.fatal(&message) /* never returns */
+            },
+            LoadResult::DataOutOfDate => {
+                if let Err(err) = delete_all_session_dir_contents(sess) {
+                    sess.err(&format!("Failed to delete invalidated or incompatible \
+                                      incremental compilation session directory contents `{}`: {}.",
+                                      dep_graph_path(sess).display(), err));
+                }
+                PreviousDepGraph::new(SerializedDepGraph::new())
+            }
+            LoadResult::Ok { data } => data
+        }
+    }
+}
+
+
+fn load_data(report_incremental_info: bool, path: &Path) -> LoadResult<(Vec<u8>, usize)> {
+    match file_format::read_file(report_incremental_info, path) {
+        Ok(Some(data_and_pos)) => LoadResult::Ok {
+            data: data_and_pos
+        },
         Ok(None) => {
             // The file either didn't exist or was produced by an incompatible
             // compiler version. Neither is an error.
+            LoadResult::DataOutOfDate
         }
         Err(err) => {
-            sess.err(
-                &format!("could not load dep-graph from `{}`: {}",
-                         path.display(), err));
+            LoadResult::Error {
+                message: format!("could not load dep-graph from `{}`: {}",
+                                  path.display(), err)
+            }
         }
     }
-
-    if let Err(err) = delete_all_session_dir_contents(sess) {
-        sess.err(&format!("could not clear incompatible incremental \
-                           compilation session directory `{}`: {}",
-                          path.display(), err));
-    }
-
-    None
 }
 
 fn delete_dirty_work_product(tcx: TyCtxt,
@@ -103,41 +130,73 @@ fn delete_dirty_work_product(tcx: TyCtxt,
     work_product::delete_workproduct_files(tcx.sess, &swp.work_product);
 }
 
-pub fn load_dep_graph(sess: &Session) -> PreviousDepGraph {
-    let empty = PreviousDepGraph::new(SerializedDepGraph::new());
+/// Either a result that has already be computed or a
+/// handle that will let us wait until it is computed
+/// by a background thread.
+pub enum MaybeAsync<T> {
+    Sync(T),
+    Async(std::thread::JoinHandle<T>)
+}
+impl<T> MaybeAsync<T> {
+    pub fn open(self) -> std::thread::Result<T> {
+        match self {
+            MaybeAsync::Sync(result) => Ok(result),
+            MaybeAsync::Async(handle) => handle.join()
+        }
+    }
+}
+
+/// Launch a thread and load the dependency graph in the background.
+pub fn load_dep_graph(sess: &Session, time_passes: bool) ->
+    MaybeAsync<LoadResult<PreviousDepGraph>>
+{
+    // Since `sess` isn't `Sync`, we perform all accesses to `sess`
+    // before we fire the background thread.
 
     if sess.opts.incremental.is_none() {
-        return empty
+        // No incremental compilation.
+        return MaybeAsync::Sync(LoadResult::Ok {
+            data: PreviousDepGraph::new(SerializedDepGraph::new())
+        });
     }
 
-    if let Some((bytes, start_pos)) = load_data(sess, &dep_graph_path(sess)) {
-        let mut decoder = Decoder::new(&bytes, start_pos);
-        let prev_commandline_args_hash = u64::decode(&mut decoder)
-            .expect("Error reading commandline arg hash from cached dep-graph");
+    // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
+    // Fortunately, we just checked that this isn't the case.
+    let path = dep_graph_path_from(&sess.incr_comp_session_dir());
+    let report_incremental_info = sess.opts.debugging_opts.incremental_info;
+    let expected_hash = sess.opts.dep_tracking_hash();
 
-        if prev_commandline_args_hash != sess.opts.dep_tracking_hash() {
-            if sess.opts.debugging_opts.incremental_info {
-                println!("[incremental] completely ignoring cache because of \
-                          differing commandline arguments");
+    MaybeAsync::Async(std::thread::spawn(move || {
+        time(time_passes, "background load prev dep-graph", move || {
+            match load_data(report_incremental_info, &path) {
+                LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
+                LoadResult::Error { message } => LoadResult::Error { message },
+                LoadResult::Ok { data: (bytes, start_pos) } => {
+
+                    let mut decoder = Decoder::new(&bytes, start_pos);
+                    let prev_commandline_args_hash = u64::decode(&mut decoder)
+                        .expect("Error reading commandline arg hash from cached dep-graph");
+
+                    if prev_commandline_args_hash != expected_hash {
+                        if report_incremental_info {
+                            println!("[incremental] completely ignoring cache because of \
+                                    differing commandline arguments");
+                        }
+                        // We can't reuse the cache, purge it.
+                        debug!("load_dep_graph_new: differing commandline arg hashes");
+
+                        // No need to do any further work
+                        return LoadResult::DataOutOfDate;
+                    }
+
+                    let dep_graph = SerializedDepGraph::decode(&mut decoder)
+                        .expect("Error reading cached dep-graph");
+
+                    LoadResult::Ok { data: PreviousDepGraph::new(dep_graph) }
+                }
             }
-            // We can't reuse the cache, purge it.
-            debug!("load_dep_graph_new: differing commandline arg hashes");
-
-            delete_all_session_dir_contents(sess)
-                .expect("Failed to delete invalidated incr. comp. session \
-                         directory contents.");
-
-            // No need to do any further work
-            return empty
-        }
-
-        let dep_graph = SerializedDepGraph::decode(&mut decoder)
-            .expect("Error reading cached dep-graph");
-
-        PreviousDepGraph::new(dep_graph)
-    } else {
-        empty
-    }
+        })
+    }))
 }
 
 pub fn load_query_result_cache<'sess>(sess: &'sess Session) -> OnDiskCache<'sess> {
@@ -146,9 +205,8 @@ pub fn load_query_result_cache<'sess>(sess: &'sess Session) -> OnDiskCache<'sess
         return OnDiskCache::new_empty(sess.codemap());
     }
 
-    if let Some((bytes, start_pos)) = load_data(sess, &query_cache_path(sess)) {
-        OnDiskCache::new(sess, bytes, start_pos)
-    } else {
-        OnDiskCache::new_empty(sess.codemap())
+    match load_data(sess.opts.debugging_opts.incremental_info, &query_cache_path(sess)) {
+        LoadResult::Ok{ data: (bytes, start_pos) } => OnDiskCache::new(sess, bytes, start_pos),
+        _ => OnDiskCache::new_empty(sess.codemap())
     }
 }

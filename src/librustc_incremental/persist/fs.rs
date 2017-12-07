@@ -142,6 +142,9 @@ const INT_ENCODE_BASE: u64 = 36;
 pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
 }
+pub fn dep_graph_path_from(incr_comp_session_dir: &Path) -> PathBuf {
+    in_incr_comp_dir(incr_comp_session_dir, DEP_GRAPH_FILENAME)
+}
 
 pub fn work_products_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, WORK_PRODUCTS_FILENAME)
