@@ -605,8 +605,10 @@ enum WriteKind {
 /// - Take flow state into consideration in `is_assignable()` for local variables
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum LocalMutationIsAllowed {
-    Move,
     Yes,
+    /// We want use of immutable upvars to cause a "write to immutable upvar"
+    /// error, not an "reassignment" error.
+    ExceptUpvars,
     No
 }
 
@@ -802,7 +804,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             context,
             place_span,
             (kind, Write(WriteKind::Mutate)),
-            LocalMutationIsAllowed::Yes,
+            // We want immutable upvars to cause an "assignment to immutable var"
+            // error, not an "reassignment of immutable var" error, because the
+            // latter can't find a good previous assignment span.
+            //
+            // There's probably a better way to do this.
+            LocalMutationIsAllowed::ExceptUpvars,
             flow_state,
         );
 
@@ -922,7 +929,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     context,
                     (place, span),
                     (Deep, Write(WriteKind::Move)),
-                    LocalMutationIsAllowed::Move,
+                    LocalMutationIsAllowed::Yes,
                     flow_state,
                 );
 
@@ -1009,34 +1016,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         (place, span): (&Place<'tcx>, Span),
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
-        let move_data = self.move_data;
-
+        debug!("check_if_reassignment_to_immutable_state({:?})", place);
         // determine if this path has a non-mut owner (and thus needs checking).
         if let Ok(()) = self.is_mutable(place, LocalMutationIsAllowed::No) {
             return;
         }
+        debug!("check_if_reassignment_to_immutable_state({:?}) - is an imm local", place);
 
-        match self.move_path_closest_to(place) {
-            Ok(mpi) => for ii in &move_data.init_path_map[mpi] {
-                if flow_state.ever_inits.contains(ii) {
-                    let first_assign_span = self.move_data.inits[*ii].span;
-                    self.report_illegal_reassignment(context, (place, span), first_assign_span);
-                    break;
-                }
-            },
-            Err(NoMovePathFound::ReachedStatic) => {
-                let item_msg = match self.describe_place(place) {
-                    Some(name) => format!("immutable static item `{}`", name),
-                    None => "immutable static item".to_owned(),
-                };
-                self.tcx.sess.delay_span_bug(
-                    span,
-                    &format!(
-                        "cannot assign to {}, should have been caught by \
-                         `check_access_permissions()`",
-                        item_msg
-                    ),
-                );
+        for i in flow_state.ever_inits.elems_incoming() {
+            let init = self.move_data.inits[i];
+            let init_place = &self.move_data.move_paths[init.path].place;
+            if self.places_conflict(&init_place, place, Deep) {
+                self.report_illegal_reassignment(context, (place, span), init.span);
+                break;
             }
         }
     }
@@ -1341,7 +1333,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 match local.mutability {
                     Mutability::Not => match is_local_mutation_allowed {
                         LocalMutationIsAllowed::Yes |
-                        LocalMutationIsAllowed::Move => Ok(()),
+                        LocalMutationIsAllowed::ExceptUpvars => Ok(()),
                         LocalMutationIsAllowed::No => Err(place),
                     },
                     Mutability::Mut => Ok(()),
@@ -1410,8 +1402,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                    decl, is_local_mutation_allowed, place);
                             return match (decl.mutability, is_local_mutation_allowed) {
                                 (Mutability::Not, LocalMutationIsAllowed::No) |
-                                (Mutability::Not, LocalMutationIsAllowed::Yes) => Err(place),
-                                (Mutability::Not, LocalMutationIsAllowed::Move) |
+                                (Mutability::Not, LocalMutationIsAllowed::ExceptUpvars)
+                                    => Err(place),
+                                (Mutability::Not, LocalMutationIsAllowed::Yes) |
                                 (Mutability::Mut, _) => self.is_unique(&proj.base),
                             };
                         }
@@ -1666,13 +1659,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
     }
-    fn borrow_conflicts_with_place(&mut self,
-                                    borrow: &BorrowData<'tcx>,
-                                    place: &Place<'tcx>,
-                                    access: ShallowOrDeep)
-                                    -> bool
+
+    /// Returns whether an access of kind `access` to `access_place` conflicts with
+    /// a borrow/full access to `borrow_place` (for deep accesses to mutable
+    /// locations, this function is symmetric between `borrow_place` & `access_place`).
+    fn places_conflict(&mut self,
+                       borrow_place: &Place<'tcx>,
+                       access_place: &Place<'tcx>,
+                       access: ShallowOrDeep)
+                       -> bool
     {
-        debug!("borrow_conflicts_with_place({:?},{:?},{:?})", borrow, place, access);
+        debug!("places_conflict({:?},{:?},{:?})", borrow_place, access_place, access);
 
         // Return all the prefixes of `place` in reverse order, including
         // downcasts.
@@ -1694,9 +1691,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        let borrow_components = place_elements(&borrow.place);
-        let access_components = place_elements(place);
-        debug!("borrow_conflicts_with_place: components {:?} / {:?}",
+        let borrow_components = place_elements(borrow_place);
+        let access_components = place_elements(access_place);
+        debug!("places_conflict: components {:?} / {:?}",
                borrow_components, access_components);
 
         let borrow_components = borrow_components.into_iter()
@@ -1746,7 +1743,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //  - If we did run out of accesss, the borrow can access a part of it.
         for (borrow_c, access_c) in borrow_components.zip(access_components) {
             // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
-            debug!("borrow_conflicts_with_place: {:?} vs. {:?}", borrow_c, access_c);
+            debug!("places_conflict: {:?} vs. {:?}", borrow_c, access_c);
             match (borrow_c, access_c) {
                 (None, _) => {
                     // If we didn't run out of access, the borrow can access all of our
@@ -1759,7 +1756,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     //
                     // FIXME: Differs from AST-borrowck; includes drive-by fix
                     // to #38899. Will probably need back-compat mode flag.
-                    debug!("borrow_conflict_with_place: full borrow, CONFLICT");
+                    debug!("places_conflict: full borrow, CONFLICT");
                     return true;
                 }
                 (Some(borrow_c), None) => {
@@ -1784,7 +1781,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             //
                             // e.g. a (mutable) borrow of `a[5]` while we read the
                             // array length of `a`.
-                            debug!("borrow_conflicts_with_place: implicit field");
+                            debug!("places_conflict: implicit field");
                             return false;
                         }
 
@@ -1792,7 +1789,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             // e.g. a borrow of `*x.y` while we shallowly access `x.y` or some
                             // prefix thereof - the shallow access can't touch anything behind
                             // the pointer.
-                            debug!("borrow_conflicts_with_place: shallow access behind ptr");
+                            debug!("places_conflict: shallow access behind ptr");
                             return false;
                         }
                         (ProjectionElem::Deref, ty::TyRef(_, ty::TypeAndMut {
@@ -1803,7 +1800,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             // I'm not sure why we are tracking these borrows - shared
                             // references can *always* be aliased, which means the
                             // permission check already account for this borrow.
-                            debug!("borrow_conflicts_with_place: behind a shared ref");
+                            debug!("places_conflict: behind a shared ref");
                             return false;
                         }
 
@@ -1836,7 +1833,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             // idea, at least for now, so just give up and
                             // report a conflict. This is unsafe code anyway so
                             // the user could always use raw pointers.
-                            debug!("borrow_conflicts_with_place: arbitrary -> conflict");
+                            debug!("places_conflict: arbitrary -> conflict");
                             return true;
                         }
                         Overlap::EqualOrDisjoint => {
@@ -1845,7 +1842,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         Overlap::Disjoint => {
                             // We have proven the borrow disjoint - further
                             // projections will remain disjoint.
-                            debug!("borrow_conflicts_with_place: disjoint");
+                            debug!("places_conflict: disjoint");
                             return false;
                         }
                     }
@@ -1874,10 +1871,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
-        'next_borrow: for i in flow_state.borrows.elems_incoming() {
+        for i in flow_state.borrows.elems_incoming() {
             let borrowed = &data[i];
 
-            if self.borrow_conflicts_with_place(borrowed, place, access) {
+            if self.places_conflict(&borrowed.place, place, access) {
                 let ctrl = op(self, i, borrowed);
                 if ctrl == Control::Break { return; }
             }
