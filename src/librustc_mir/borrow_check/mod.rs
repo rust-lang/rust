@@ -2334,12 +2334,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 Origin::Mir,
             ),
 
-            (_, _, _, BorrowKind::Unique, _, _) => self.tcx
+            (BorrowKind::Shared, lft, _, BorrowKind::Unique, _, _) => self.tcx
                 .cannot_reborrow_already_uniquely_borrowed(
                     span,
                     &desc_place,
-                    "it",
                     "",
+                    lft,
+                    issued_span,
+                    "",
+                    end_issued_loan_span,
+                    Origin::Mir,
+                ),
+
+            (BorrowKind::Mut, _, lft, BorrowKind::Unique, _, _) => self.tcx
+                .cannot_reborrow_already_uniquely_borrowed(
+                    span,
+                    &desc_place,
+                    "",
+                    lft,
                     issued_span,
                     "",
                     end_issued_loan_span,
