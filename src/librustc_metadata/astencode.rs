@@ -47,9 +47,7 @@ impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
             let mut hasher = StableHasher::new();
 
             hcx.while_hashing_hir_bodies(true, |hcx| {
-                hcx.while_hashing_spans(false, |hcx| {
-                    body.hash_stable(hcx, &mut hasher);
-                });
+                body.hash_stable(hcx, &mut hasher);
             });
 
             hasher.finish()
