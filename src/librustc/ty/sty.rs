@@ -654,7 +654,7 @@ impl<T> Binder<T> {
     /// contain any bound regions that would be bound by the
     /// binder. This is commonly used to 'inject' a value T into a
     /// different binding level.
-    pub fn new_not_binding<'tcx>(value: T) -> Binder<T>
+    pub fn dummy<'tcx>(value: T) -> Binder<T>
         where T: TypeFoldable<'tcx>
     {
         assert!(!value.has_escaping_regions());

@@ -545,7 +545,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 assert_eq!(self.mir_def_id, def_id);
                 let output = substs.generator_return_ty(def_id, tcx);
                 let inputs_and_output = self.infcx.tcx.intern_type_list(&[defining_ty, output]);
-                ty::Binder::new_not_binding(inputs_and_output)
+                ty::Binder::dummy(inputs_and_output)
             }
 
             ty::TyFnDef(def_id, _) => {
