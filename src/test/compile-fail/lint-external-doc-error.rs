@@ -11,5 +11,7 @@
 #![feature(external_doc)]
 #![deny(external_doc_error)]
 
-#[doc(include = "not-a-file.md")] //~ ERROR
+#[doc(include = "not-a-file.md")] //~ ERROR: couldn't read
 pub struct SomeStruct;
+
+fn main() {}
