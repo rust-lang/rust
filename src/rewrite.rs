@@ -35,7 +35,7 @@ pub struct RewriteContext<'a> {
     pub is_if_else_block: bool,
     // When rewriting chain, veto going multi line except the last element
     pub force_one_line_chain: bool,
-    pub snippet_provider: &'a SnippetProvider,
+    pub snippet_provider: &'a SnippetProvider<'a>,
 }
 
 impl<'a> RewriteContext<'a> {

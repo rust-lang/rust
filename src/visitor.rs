@@ -10,7 +10,6 @@
 
 use std::rc::Rc;
 use std::cmp;
-use std::mem;
 
 use strings::string_buffer::StringBuffer;
 use syntax::{ast, visit};
@@ -50,24 +49,22 @@ fn is_extern_crate(item: &ast::Item) -> bool {
 }
 
 /// Creates a string slice corresponding to the specified span.
-pub struct SnippetProvider {
+pub struct SnippetProvider<'a> {
     /// A pointer to the content of the file we are formatting.
-    big_snippet: *const Rc<String>,
+    big_snippet: &'a Rc<String>,
     /// A position of the start of `big_snippet`, used as an offset.
     start_pos: usize,
 }
 
-impl SnippetProvider {
-    pub fn span_to_snippet(&self, span: Span) -> Option<&str> {
+impl<'b, 'a: 'b> SnippetProvider<'a> {
+    pub fn span_to_snippet(&'b self, span: Span) -> Option<&'a str> {
         let start_index = span.lo().to_usize().checked_sub(self.start_pos)?;
         let end_index = span.hi().to_usize().checked_sub(self.start_pos)?;
-        unsafe { Some(&(*self.big_snippet)[start_index..end_index]) }
+        Some(&self.big_snippet[start_index..end_index])
     }
 
-    pub fn from_codemap(codemap: &CodeMap, span: Span) -> Self {
-        let filemap = codemap.lookup_char_pos(span.lo()).file;
-        let big_snippet = unsafe { mem::transmute(&filemap.src) };
-        let start_pos = filemap.start_pos.to_usize();
+    pub fn new(start_pos: BytePos, big_snippet: &'a Rc<String>) -> Self {
+        let start_pos = start_pos.to_usize();
         SnippetProvider {
             big_snippet,
             start_pos,
@@ -84,10 +81,10 @@ pub struct FmtVisitor<'a> {
     pub block_indent: Indent,
     pub config: &'a Config,
     pub is_if_else_block: bool,
-    pub snippet_provier: SnippetProvider,
+    pub snippet_provider: &'a SnippetProvider<'a>,
 }
 
-impl<'a> FmtVisitor<'a> {
+impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub fn shape(&self) -> Shape {
         Shape::indented(self.block_indent, self.config)
     }
@@ -537,7 +534,7 @@ impl<'a> FmtVisitor<'a> {
     pub fn from_codemap(
         parse_session: &'a ParseSess,
         config: &'a Config,
-        span: Span,
+        snippet_provider: &'a SnippetProvider,
     ) -> FmtVisitor<'a> {
         FmtVisitor {
             parse_session: parse_session,
@@ -547,17 +544,15 @@ impl<'a> FmtVisitor<'a> {
             block_indent: Indent::empty(),
             config: config,
             is_if_else_block: false,
-            snippet_provier: SnippetProvider::from_codemap(parse_session.codemap(), span),
+            snippet_provider: snippet_provider,
         }
     }
 
-    pub fn opt_snippet<'b: 'a>(&'a self, span: Span) -> Option<&'b str> {
-        self.snippet_provier
-            .span_to_snippet(span)
-            .map(|s| unsafe { mem::transmute::<&'a str, &'b str>(s) })
+    pub fn opt_snippet(&'b self, span: Span) -> Option<&'a str> {
+        self.snippet_provider.span_to_snippet(span)
     }
 
-    pub fn snippet<'b: 'a>(&'a self, span: Span) -> &'b str {
+    pub fn snippet(&'b self, span: Span) -> &'a str {
         self.opt_snippet(span).unwrap()
     }
 
@@ -755,7 +750,7 @@ impl<'a> FmtVisitor<'a> {
             use_block: false,
             is_if_else_block: false,
             force_one_line_chain: false,
-            snippet_provider: &self.snippet_provier,
+            snippet_provider: &self.snippet_provider,
         }
     }
 }
