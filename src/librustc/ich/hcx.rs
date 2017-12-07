@@ -12,7 +12,7 @@ use hir;
 use hir::def_id::{DefId, DefIndex};
 use hir::map::DefPathHash;
 use hir::map::definitions::Definitions;
-use ich::{self, CachingCodemapView};
+use ich::{self, CachingCodemapView, Fingerprint};
 use middle::cstore::CrateStore;
 use ty::{TyCtxt, fast_reject};
 use session::Session;
@@ -28,12 +28,13 @@ use syntax::codemap::CodeMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::hygiene;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHashingContextProvider,
                                            StableHasher, StableHasherResult,
                                            ToStableHashKey};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 thread_local!(static IGNORED_ATTR_NAMES: RefCell<FxHashSet<Symbol>> =
     RefCell::new(FxHashSet()));
@@ -349,7 +350,31 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Span {
             TAG_NO_EXPANSION.hash_stable(hcx, hasher);
         } else {
             TAG_EXPANSION.hash_stable(hcx, hasher);
-            span.ctxt.outer().expn_info().hash_stable(hcx, hasher);
+
+            // Since the same expansion context is usually referenced many
+            // times, we cache a stable hash of it and hash that instead of
+            // recursing every time.
+            thread_local! {
+                static CACHE: RefCell<FxHashMap<hygiene::Mark, u64>> =
+                    RefCell::new(FxHashMap());
+            }
+
+            let sub_hash: u64 = CACHE.with(|cache| {
+                let mark = span.ctxt.outer();
+
+                if let Some(&sub_hash) = cache.borrow().get(&mark) {
+                    return sub_hash;
+                }
+
+                let mut hasher = StableHasher::new();
+                mark.expn_info().hash_stable(hcx, &mut hasher);
+                let sub_hash: Fingerprint = hasher.finish();
+                let sub_hash = sub_hash.to_smaller_hash();
+                cache.borrow_mut().insert(mark, sub_hash);
+                sub_hash
+            });
+
+            sub_hash.hash_stable(hcx, hasher);
         }
     }
 }
