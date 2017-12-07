@@ -970,7 +970,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   std::set<GlobalValue::GUID> ExportedGUIDs;
   for (auto &List : Ret->Index) {
     for (auto &GVS: List.second) {
-      if (!GlobalValue::isExternalLinkage(GVS->linkage()))
+      if (GlobalValue::isLocalLinkage(GVS->linkage()))
         continue;
       auto GUID = GVS->getOriginalName();
       if (!DeadSymbols.count(GUID))
