@@ -17,7 +17,6 @@
 // these errors are not (yet) reported.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
-// must-compile-successfully
 
 #![feature(rustc_attrs)]
 
@@ -44,8 +43,10 @@ fn demand_y<'x, 'y>(_cell_x: &Cell<&'x u32>, _cell_y: &Cell<&'y u32>, _y: &'y u3
 #[rustc_regions]
 fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+        //~^ ERROR free region `'_#1r` does not outlive free region `ReStatic`
+
         // Only works if 'x: 'y:
-        demand_y(x, y, x.get())
+        demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
     });
 }
 

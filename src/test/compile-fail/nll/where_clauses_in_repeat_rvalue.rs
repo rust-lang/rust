@@ -27,7 +27,8 @@ fn main() {
     let mut x = 22;
 
     {
-        let p = &x; //~ ERROR borrowed value does not live long enough
+        let p = &x;
+        //~^ ERROR `x` does not live long enough
         let w = Foo { t: p };
 
         let v = [w; 22];
@@ -36,4 +37,3 @@ fn main() {
     x += 1;
     //~^ ERROR cannot assign to `x` because it is borrowed [E0506]
 }
-//~^ ERROR borrowed value does not live long enough [E0597]
