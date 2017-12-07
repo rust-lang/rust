@@ -434,26 +434,6 @@ mod tests {
     }
 
     #[test]
-    fn is_used_keyword_test() {
-        let s = Symbol(5);
-        assert_eq!(s.is_used_keyword(), true);
-    }
-
-    #[test]
-    fn is_unused_keyword_test() {
-        let s = Symbol(40);
-        assert_eq!(s.is_unused_keyword(), true);
-    }
-
-    #[test]
-    fn is_valid_test() {
-        let i = Ident { name: Symbol(40), ctxt: SyntaxContext(0) };
-        assert_eq!(i.is_valid(), false);
-        let i = Ident { name: Symbol(61), ctxt: SyntaxContext(0) };
-        assert_eq!(i.is_valid(), true);
-    }
-
-    #[test]
     fn without_first_quote_test() {
         let i = Ident::from_str("'break");
         assert_eq!(i.without_first_quote().name, keywords::Break.name());
