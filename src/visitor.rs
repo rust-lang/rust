@@ -420,7 +420,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::GlobalAsm(..) => {
-                let snippet = Some(self.snippet(item.span).into());
+                let snippet = Some(self.snippet(item.span).to_owned());
                 self.push_rewrite(item.span, snippet);
             }
             ast::ItemKind::MacroDef(..) => {
@@ -831,7 +831,7 @@ impl Rewrite for ast::Attribute {
             rewrite_comment(snippet, false, doc_shape, context.config)
         } else {
             if contains_comment(snippet) {
-                return Some(snippet.into());
+                return Some(snippet.to_owned());
             }
             // 1 = `[`
             let shape = shape.offset_left(prefix.len() + 1)?;
@@ -1043,7 +1043,7 @@ pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Optio
     assert!(is_extern_crate(item));
     let new_str = context.snippet(item.span);
     Some(if contains_comment(&new_str) {
-        new_str.into()
+        new_str.to_owned()
     } else {
         let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
         String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))

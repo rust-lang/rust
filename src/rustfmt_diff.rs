@@ -180,10 +180,10 @@ mod test {
                 Mismatch {
                     line_number: 2,
                     lines: vec![
-                        Context("two".into()),
-                        Resulting("three".into()),
-                        Expected("trois".into()),
-                        Context("four".into()),
+                        Context("two".to_owned()),
+                        Resulting("three".to_owned()),
+                        Expected("trois".to_owned()),
+                        Context("four".to_owned()),
                     ],
                 },
             ]
@@ -201,18 +201,18 @@ mod test {
                 Mismatch {
                     line_number: 2,
                     lines: vec![
-                        Context("two".into()),
-                        Resulting("three".into()),
-                        Expected("trois".into()),
-                        Context("four".into()),
+                        Context("two".to_owned()),
+                        Resulting("three".to_owned()),
+                        Expected("trois".to_owned()),
+                        Context("four".to_owned()),
                     ],
                 },
                 Mismatch {
                     line_number: 5,
                     lines: vec![
-                        Resulting("five".into()),
-                        Expected("cinq".into()),
-                        Context("six".into()),
+                        Resulting("five".to_owned()),
+                        Expected("cinq".to_owned()),
+                        Context("six".to_owned()),
                     ],
                 },
             ]
@@ -229,7 +229,7 @@ mod test {
             vec![
                 Mismatch {
                     line_number: 3,
-                    lines: vec![Resulting("three".into()), Expected("trois".into())],
+                    lines: vec![Resulting("three".to_owned()), Expected("trois".to_owned())],
                 },
             ]
         );
@@ -245,7 +245,7 @@ mod test {
             vec![
                 Mismatch {
                     line_number: 5,
-                    lines: vec![Context("five".into()), Expected("".into())],
+                    lines: vec![Context("five".to_owned()), Expected("".to_owned())],
                 },
             ]
         );

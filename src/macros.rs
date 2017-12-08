@@ -162,7 +162,7 @@ pub fn rewrite_macro(
         loop {
             match parse_macro_arg(&mut parser) {
                 Some(arg) => arg_vec.push(arg),
-                None => return Some(context.snippet(mac.span).into()),
+                None => return Some(context.snippet(mac.span).to_owned()),
             }
 
             match parser.token {
@@ -182,13 +182,13 @@ pub fn rewrite_macro(
                                         break;
                                     }
                                 }
-                                None => return Some(context.snippet(mac.span).into()),
+                                None => return Some(context.snippet(mac.span).to_owned()),
                             }
                         }
                     }
-                    return Some(context.snippet(mac.span).into());
+                    return Some(context.snippet(mac.span).to_owned());
                 }
-                _ => return Some(context.snippet(mac.span).into()),
+                _ => return Some(context.snippet(mac.span).to_owned()),
             }
 
             parser.bump();

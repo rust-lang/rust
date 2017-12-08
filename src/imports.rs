@@ -148,7 +148,7 @@ impl Rewrite for ast::UseTree {
                     let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)?;
                     Some(format!("{}::*", path_str))
                 } else {
-                    Some("*".into())
+                    Some("*".to_owned())
                 }
             }
             ast::UseTreeKind::Simple(ident) => {
@@ -184,7 +184,7 @@ fn rewrite_import(
         .and_then(|shape| match tree.kind {
             // If we have an empty nested group with no attributes, we erase it
             ast::UseTreeKind::Nested(ref items) if items.is_empty() && attrs.is_empty() => {
-                Some("".into())
+                Some("".to_owned())
             }
             _ => tree.rewrite(context, shape),
         });
