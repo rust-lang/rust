@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::io::{self, Write};
+use std::path::Path;
 
 use config::WriteMode;
 use rustfmt_diff::{DiffLine, Mismatch};
@@ -41,13 +42,13 @@ where
 
 pub fn output_checkstyle_file<T>(
     mut writer: T,
-    filename: &str,
+    filename: &Path,
     diff: Vec<Mismatch>,
 ) -> Result<(), io::Error>
 where
     T: Write,
 {
-    write!(writer, "<file name=\"{}\">", filename)?;
+    write!(writer, "<file name=\"{}\">", filename.display())?;
     for mismatch in diff {
         for line in mismatch.lines {
             // Do nothing with `DiffLine::Context` and `DiffLine::Resulting`.

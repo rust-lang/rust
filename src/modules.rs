@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::io;
 
 use syntax::ast;
-use syntax::codemap;
+use syntax::codemap::{self, FileName};
 use syntax::parse::parser;
 
 use utils::contains_skip;
@@ -23,15 +23,16 @@ use utils::contains_skip;
 pub fn list_files<'a>(
     krate: &'a ast::Crate,
     codemap: &codemap::CodeMap,
-) -> Result<BTreeMap<PathBuf, &'a ast::Mod>, io::Error> {
+) -> Result<BTreeMap<FileName, &'a ast::Mod>, io::Error> {
     let mut result = BTreeMap::new(); // Enforce file order determinism
-    let root_filename: PathBuf = codemap.span_to_filename(krate.span).into();
-    list_submodules(
-        &krate.module,
-        root_filename.parent().unwrap(),
-        codemap,
-        &mut result,
-    )?;
+    let root_filename = codemap.span_to_filename(krate.span);
+    {
+        let parent = match root_filename {
+            FileName::Real(ref path) => path.parent().unwrap(),
+            _ => Path::new(""),
+        };
+        list_submodules(&krate.module, parent, codemap, &mut result)?;
+    }
     result.insert(root_filename, &krate.module);
     Ok(result)
 }
@@ -41,7 +42,7 @@ fn list_submodules<'a>(
     module: &'a ast::Mod,
     search_dir: &Path,
     codemap: &codemap::CodeMap,
-    result: &mut BTreeMap<PathBuf, &'a ast::Mod>,
+    result: &mut BTreeMap<FileName, &'a ast::Mod>,
 ) -> Result<(), io::Error> {
     debug!("list_submodules: search_dir: {:?}", search_dir);
     for item in &module.items {
@@ -54,7 +55,7 @@ fn list_submodules<'a>(
                 } else {
                     let mod_path = module_file(item.ident, &item.attrs, search_dir, codemap)?;
                     let dir_path = mod_path.parent().unwrap().to_owned();
-                    result.insert(mod_path, sub_mod);
+                    result.insert(FileName::Real(mod_path), sub_mod);
                     dir_path
                 };
                 list_submodules(sub_mod, &dir_path, codemap, result)?;

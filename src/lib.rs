@@ -29,13 +29,14 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, stdout, Write};
 use std::iter::repeat;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use errors::{DiagnosticBuilder, Handler};
 use errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::ast;
 use syntax::codemap::{CodeMap, FilePathMapping};
+pub use syntax::codemap::FileName;
 use syntax::parse::{self, ParseSess};
 
 use checkstyle::{output_footer, output_header};
@@ -146,7 +147,7 @@ impl FormattingError {
 
 pub struct FormatReport {
     // Maps stringified file paths to their associated formatting errors.
-    file_error_map: HashMap<String, Vec<FormattingError>>,
+    file_error_map: HashMap<FileName, Vec<FormattingError>>,
 }
 
 impl FormatReport {
@@ -295,12 +296,12 @@ impl fmt::Display for FormatReport {
 fn format_ast<F>(
     krate: &ast::Crate,
     parse_session: &mut ParseSess,
-    main_file: &Path,
+    main_file: &FileName,
     config: &Config,
     mut after_file: F,
 ) -> Result<(FileMap, bool), io::Error>
 where
-    F: FnMut(&str, &mut String, &[(usize, usize)]) -> Result<bool, io::Error>,
+    F: FnMut(&FileName, &mut String, &[(usize, usize)]) -> Result<bool, io::Error>,
 {
     let mut result = FileMap::new();
     // diff mode: check if any files are differing
@@ -310,12 +311,11 @@ where
     // nothing to distinguish the nested module contents.
     let skip_children = config.skip_children() || config.write_mode() == config::WriteMode::Plain;
     for (path, module) in modules::list_files(krate, parse_session.codemap())? {
-        if skip_children && path.as_path() != main_file {
+        if skip_children && path != *main_file {
             continue;
         }
-        let path_str = path.to_str().unwrap();
         if config.verbose() {
-            println!("Formatting {}", path_str);
+            println!("Formatting {}", path);
         }
         let filemap = parse_session
             .codemap()
@@ -325,7 +325,7 @@ where
         let snippet_provider = SnippetProvider::new(filemap.start_pos, big_snippet);
         let mut visitor = FmtVisitor::from_codemap(parse_session, config, &snippet_provider);
         // Format inner attributes if available.
-        if !krate.attrs.is_empty() && path == main_file {
+        if !krate.attrs.is_empty() && path == *main_file {
             visitor.skip_empty_lines(filemap.end_pos);
             if visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner) {
                 visitor.push_rewrite(module.inner, None);
@@ -343,16 +343,17 @@ where
             ::utils::count_newlines(&format!("{}", visitor.buffer))
         );
 
-        has_diff |= match after_file(path_str, &mut visitor.buffer, &visitor.skipped_range) {
+        let filename = path.clone();
+        has_diff |= match after_file(&filename, &mut visitor.buffer, &visitor.skipped_range) {
             Ok(result) => result,
             Err(e) => {
                 // Create a new error with path_str to help users see which files failed
-                let err_msg = path_str.to_string() + &": ".to_string() + &e.to_string();
+                let err_msg = format!("{}: {}", path, e);
                 return Err(io::Error::new(e.kind(), err_msg));
             }
         };
 
-        result.push((path_str.to_owned(), visitor.buffer));
+        result.push((filename, visitor.buffer));
     }
 
     Ok((result, has_diff))
@@ -389,7 +390,7 @@ fn should_report_error(
 // FIXME(#20) other stuff for parity with make tidy
 fn format_lines(
     text: &mut String,
-    name: &str,
+    name: &FileName,
     skipped_range: &[(usize, usize)],
     config: &Config,
     report: &mut FormatReport,
@@ -491,7 +492,7 @@ fn format_lines(
         }
     }
 
-    report.file_error_map.insert(name.to_owned(), errors);
+    report.file_error_map.insert(name.clone(), errors);
 }
 
 fn parse_input(
@@ -505,8 +506,11 @@ fn parse_input(
             parser.parse_crate_mod()
         }
         Input::Text(text) => {
-            let mut parser =
-                parse::new_parser_from_source_str(parse_session, "stdin".to_owned(), text);
+            let mut parser = parse::new_parser_from_source_str(
+                parse_session,
+                FileName::Custom("stdin".to_owned()),
+                text,
+            );
             parser.cfg_mods = false;
             parser.parse_crate_mod()
         }
@@ -547,8 +551,8 @@ pub fn format_input<T: Write>(
     let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
 
     let main_file = match input {
-        Input::File(ref file) => file.clone(),
-        Input::Text(..) => PathBuf::from("stdin"),
+        Input::File(ref file) => FileName::Real(file.clone()),
+        Input::Text(..) => FileName::Custom("stdin".to_owned()),
     };
 
     let krate = match parse_input(input, &parse_session) {

@@ -13,7 +13,7 @@
 
 use std::rc::Rc;
 
-use syntax::codemap::{BytePos, CodeMap, FileMap, Span};
+use syntax::codemap::{BytePos, CodeMap, FileMap, FileName, Span};
 
 use comment::FindUncommented;
 
@@ -25,8 +25,8 @@ pub struct LineRange {
 }
 
 impl LineRange {
-    pub fn file_name(&self) -> &str {
-        self.file.as_ref().name.as_str()
+    pub fn file_name(&self) -> &FileName {
+        &self.file.name
     }
 }
 

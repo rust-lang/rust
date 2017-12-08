@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_private)]
 #![cfg(not(test))]
 
 extern crate env_logger;
@@ -22,7 +23,7 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
-use rustfmt::{run, Input, Summary};
+use rustfmt::{run, FileName, Input, Summary};
 use rustfmt::file_lines::FileLines;
 use rustfmt::config::{get_toml_path, Color, Config, WriteMode};
 
@@ -243,8 +244,9 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             if let Some(ref file_lines) = matches.opt_str("file-lines") {
                 config.set().file_lines(file_lines.parse()?);
                 for f in config.file_lines().files() {
-                    if f != "stdin" {
-                        eprintln!("Warning: Extra file listed in file_lines option '{}'", f);
+                    match *f {
+                        FileName::Custom(ref f) if f == "stdin" => {}
+                        _ => eprintln!("Warning: Extra file listed in file_lines option '{}'", f),
                     }
                 }
             }
@@ -264,8 +266,12 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             let options = CliOptions::from_matches(&matches)?;
 
             for f in options.file_lines.files() {
-                if !files.contains(&PathBuf::from(f)) {
-                    eprintln!("Warning: Extra file listed in file_lines option '{}'", f);
+                match *f {
+                    FileName::Real(ref f) if files.contains(f) => {}
+                    FileName::Real(_) => {
+                        eprintln!("Warning: Extra file listed in file_lines option '{}'", f)
+                    }
+                    _ => eprintln!("Warning: Not a file '{}'", f),
                 }
             }
 

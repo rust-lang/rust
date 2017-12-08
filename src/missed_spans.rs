@@ -11,7 +11,7 @@
 use std::borrow::Cow;
 use std::iter::repeat;
 
-use syntax::codemap::{BytePos, Pos, Span};
+use syntax::codemap::{BytePos, FileName, Pos, Span};
 
 use codemap::LineRangeUtils;
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
@@ -260,7 +260,7 @@ impl<'a> FmtVisitor<'a> {
         snippet: &str,
         subslice: &str,
         offset: usize,
-        file_name: &str,
+        file_name: &FileName,
     ) {
         for (mut i, c) in subslice.char_indices() {
             i += offset;

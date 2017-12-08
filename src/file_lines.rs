@@ -10,12 +10,14 @@
 
 //! This module contains types and functions to support formatting specific line ranges.
 
-use std::{cmp, iter, path, str};
+use std::{cmp, iter, str};
 use std::collections::HashMap;
 
+use serde::de::{Deserialize, Deserializer};
 use serde_json as json;
 
 use codemap::LineRange;
+use syntax::codemap::FileName;
 
 /// A range that is inclusive of both ends.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Deserialize)]
@@ -84,11 +86,11 @@ impl Range {
 /// non-overlapping ranges sorted by their start point. An inner `None` is interpreted to mean all
 /// lines in all files.
 #[derive(Clone, Debug, Default)]
-pub struct FileLines(Option<HashMap<String, Vec<Range>>>);
+pub struct FileLines(Option<HashMap<FileName, Vec<Range>>>);
 
 /// Normalizes the ranges so that the invariants for `FileLines` hold: ranges are non-overlapping,
 /// and ordered by their start point.
-fn normalize_ranges(ranges: &mut HashMap<String, Vec<Range>>) {
+fn normalize_ranges(ranges: &mut HashMap<FileName, Vec<Range>>) {
     for ranges in ranges.values_mut() {
         ranges.sort();
         let mut result = vec![];
@@ -117,7 +119,7 @@ impl FileLines {
         FileLines(None)
     }
 
-    pub fn from_ranges(mut ranges: HashMap<String, Vec<Range>>) -> FileLines {
+    pub fn from_ranges(mut ranges: HashMap<FileName, Vec<Range>>) -> FileLines {
         normalize_ranges(&mut ranges);
         FileLines(Some(ranges))
     }
@@ -129,7 +131,7 @@ impl FileLines {
 
     /// Returns true if `self` includes all lines in all files. Otherwise runs `f` on all ranges in
     /// the designated file (if any) and returns true if `f` ever does.
-    fn file_range_matches<F>(&self, file_name: &str, f: F) -> bool
+    fn file_range_matches<F>(&self, file_name: &FileName, f: F) -> bool
     where
         F: FnMut(&Range) -> bool,
     {
@@ -156,35 +158,31 @@ impl FileLines {
     }
 
     /// Returns true if `line` from `file_name` is in `self`.
-    pub fn contains_line(&self, file_name: &str, line: usize) -> bool {
+    pub fn contains_line(&self, file_name: &FileName, line: usize) -> bool {
         self.file_range_matches(file_name, |r| r.lo <= line && r.hi >= line)
     }
 
     /// Returns true if any of the lines between `lo` and `hi` from `file_name` are in `self`.
-    pub fn intersects_range(&self, file_name: &str, lo: usize, hi: usize) -> bool {
+    pub fn intersects_range(&self, file_name: &FileName, lo: usize, hi: usize) -> bool {
         self.file_range_matches(file_name, |r| r.intersects(Range::new(lo, hi)))
     }
 }
 
 /// `FileLines` files iterator.
-pub struct Files<'a>(Option<::std::collections::hash_map::Keys<'a, String, Vec<Range>>>);
+pub struct Files<'a>(Option<::std::collections::hash_map::Keys<'a, FileName, Vec<Range>>>);
 
 impl<'a> iter::Iterator for Files<'a> {
-    type Item = &'a String;
+    type Item = &'a FileName;
 
-    fn next(&mut self) -> Option<&'a String> {
+    fn next(&mut self) -> Option<&'a FileName> {
         self.0.as_mut().and_then(Iterator::next)
     }
 }
 
-fn canonicalize_path_string(s: &str) -> Option<String> {
-    if s == "stdin" {
-        return Some(s.to_string());
-    }
-
-    match path::PathBuf::from(s).canonicalize() {
-        Ok(canonicalized) => canonicalized.to_str().map(|s| s.to_string()),
-        _ => None,
+fn canonicalize_path_string(file: &FileName) -> Option<FileName> {
+    match *file {
+        FileName::Real(ref path) => path.canonicalize().ok().map(FileName::Real),
+        _ => Some(file.clone()),
     }
 }
 
@@ -206,12 +204,21 @@ impl str::FromStr for FileLines {
 // For JSON decoding.
 #[derive(Clone, Debug, Deserialize)]
 struct JsonSpan {
-    file: String,
+    #[serde(deserialize_with = "deserialize_filename")] file: FileName,
     range: (usize, usize),
 }
 
+fn deserialize_filename<'de, D: Deserializer<'de>>(d: D) -> Result<FileName, D::Error> {
+    let s = String::deserialize(d)?;
+    if s == "stdin" {
+        Ok(FileName::Custom(s))
+    } else {
+        Ok(FileName::Real(s.into()))
+    }
+}
+
 impl JsonSpan {
-    fn into_tuple(self) -> Result<(String, Range), String> {
+    fn into_tuple(self) -> Result<(FileName, Range), String> {
         let (lo, hi) = self.range;
         let canonical = canonicalize_path_string(&self.file)
             .ok_or_else(|| format!("Can't canonicalize {}", &self.file))?;
