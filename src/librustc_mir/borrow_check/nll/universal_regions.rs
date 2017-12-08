@@ -22,7 +22,7 @@
 //! The code in this file doesn't *do anything* with those results; it
 //! just returns them for other code to use.
 
-use rustc::hir::HirId;
+use rustc::hir::{BodyOwnerKind, HirId};
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::infer::region_constraints::GenericKind;
@@ -67,7 +67,7 @@ pub struct UniversalRegions<'tcx> {
     /// The "defining" type for this function, with all universal
     /// regions instantiated.  For a closure or generator, this is the
     /// closure type, but for a top-level function it's the `TyFnDef`.
-    pub defining_ty: Ty<'tcx>,
+    pub defining_ty: DefiningTy<'tcx>,
 
     /// The return type of this function, with all regions replaced by
     /// their universal `RegionVid` equivalents. This type is **NOT
@@ -94,6 +94,33 @@ pub struct UniversalRegions<'tcx> {
     pub region_bound_pairs: Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
 
     relations: UniversalRegionRelations,
+}
+
+/// The "defining type" for this MIR. The key feature of the "defining
+/// type" is that it contains the information needed to derive all the
+/// universal regions that are in scope as well as the types of the
+/// inputs/output from the MIR. In general, early-bound universal
+/// regions appear free in the defining type and late-bound regions
+/// appear bound in the signature.
+#[derive(Copy, Clone, Debug)]
+pub enum DefiningTy<'tcx> {
+    /// The MIR is a closure. The signature is found via
+    /// `ClosureSubsts::closure_sig_ty`.
+    Closure(DefId, ty::ClosureSubsts<'tcx>),
+
+    /// The MIR is a generator. The signature is that generators take
+    /// no parameters and return the result of
+    /// `ClosureSubsts::generator_return_ty`.
+    Generator(DefId, ty::ClosureSubsts<'tcx>, ty::GeneratorInterior<'tcx>),
+
+    /// The MIR is a fn item with the given def-id and substs. The signature
+    /// of the function can be bound then with the `fn_sig` query.
+    FnDef(DefId, &'tcx Substs<'tcx>),
+
+    /// The MIR represents some form of constant. The signature then
+    /// is that it has no inputs and a single return value, which is
+    /// the value of the constant.
+    Const(Ty<'tcx>),
 }
 
 #[derive(Debug)]
@@ -488,23 +515,11 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns the "defining type" of the current MIR:
-    ///
-    /// - for functions, this is the `TyFnDef`;
-    /// - for closures, this is the `TyClosure`;
-    /// - for generators, this is the `TyGenerator`;
-    /// - for constants, this is the type of value that gets produced.
-    ///   - FIXME. Constants are handled somewhat inelegantly; this gets
-    ///     patched in a later PR that has already landed on nll-master.
-    ///
-    /// The key feature of the "defining type" is that it contains the
-    /// information needed to derive all the universal regions that
-    /// are in scope as well as the types of the inputs/output from
-    /// the MIR. In general, early-bound universal regions appear free
-    /// in the defining type and late-bound regions appear bound in
-    /// the signature.
-    fn defining_ty(&self) -> ty::Ty<'tcx> {
+    /// Returns the "defining type" of the current MIR;
+    /// see `DefiningTy` for details.
+    fn defining_ty(&self) -> DefiningTy<'tcx> {
         let tcx = self.infcx.tcx;
+
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
 
         let defining_ty = if self.mir_def_id == closure_base_def_id {
@@ -514,8 +529,25 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             tables.node_id_to_type(self.mir_hir_id)
         };
 
-        self.infcx
-            .replace_free_regions_with_nll_infer_vars(FR, &defining_ty)
+        let defining_ty = self.infcx
+            .replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
+
+        match tcx.hir.body_owner_kind(self.mir_node_id) {
+            BodyOwnerKind::Fn => match defining_ty.sty {
+                ty::TyClosure(def_id, substs) => DefiningTy::Closure(def_id, substs),
+                ty::TyGenerator(def_id, substs, interior) => {
+                    DefiningTy::Generator(def_id, substs, interior)
+                }
+                ty::TyFnDef(def_id, substs) => DefiningTy::FnDef(def_id, substs),
+                _ => span_bug!(
+                    tcx.def_span(self.mir_def_id),
+                    "expected defining type for `{:?}`: `{:?}`",
+                    self.mir_def_id,
+                    defining_ty
+                ),
+            },
+            BodyOwnerKind::Const | BodyOwnerKind::Static(..) => DefiningTy::Const(defining_ty),
+        }
     }
 
     /// Builds a hashmap that maps from the universal regions that are
@@ -525,14 +557,14 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
     fn compute_indices(
         &self,
         fr_static: RegionVid,
-        defining_ty: Ty<'tcx>,
+        defining_ty: DefiningTy<'tcx>,
     ) -> UniversalRegionIndices<'tcx> {
         let tcx = self.infcx.tcx;
         let gcx = tcx.global_tcx();
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
         let identity_substs = Substs::identity_for_item(gcx, closure_base_def_id);
-        let fr_substs = match defining_ty.sty {
-            ty::TyClosure(_, substs) | ty::TyGenerator(_, substs, ..) => {
+        let fr_substs = match defining_ty {
+            DefiningTy::Closure(_, substs) | DefiningTy::Generator(_, substs, _) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureSubsts are
                 // inherited from the `closure_base_def_id`.
@@ -544,28 +576,18 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 assert_eq!(substs.substs.regions().count(), identity_substs.regions().count());
                 substs.substs
             }
-            ty::TyFnDef(_, substs) => substs,
 
-            // FIXME. When we encounter other sorts of constant
+            DefiningTy::FnDef(_, substs) => substs,
+
+            // When we encounter other sorts of constant
             // expressions, such as the `22` in `[foo; 22]`, we can
             // get the type `usize` here. For now, just return an
             // empty vector of substs in this case, since there are no
             // generics in scope in such expressions right now.
-            //
-            // Eventually I imagine we could get a wider range of
-            // types.  What is the best way to handle this? Should we
-            // be checking something other than the type of the def-id
-            // to figure out what to do (e.g. the def-key?).
-            ty::TyUint(..) => {
+            DefiningTy::Const(_) => {
                 assert!(identity_substs.is_empty());
                 identity_substs
             }
-
-            _ => span_bug!(
-                tcx.def_span(self.mir_def_id),
-                "unknown defining type: {:?}",
-                defining_ty
-            ),
         };
 
         let global_mapping = iter::once((gcx.types.re_static, fr_static));
@@ -581,11 +603,11 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
     fn compute_inputs_and_output(
         &self,
         indices: &UniversalRegionIndices<'tcx>,
-        defining_ty: Ty<'tcx>,
+        defining_ty: DefiningTy<'tcx>,
     ) -> ty::Binder<&'tcx ty::Slice<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
-        match defining_ty.sty {
-            ty::TyClosure(def_id, substs) => {
+        match defining_ty {
+            DefiningTy::Closure(def_id, substs) => {
                 assert_eq!(self.mir_def_id, def_id);
                 let closure_sig = substs.closure_sig_ty(def_id, tcx).fn_sig(tcx);
                 let inputs_and_output = closure_sig.inputs_and_output();
@@ -613,32 +635,24 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 )
             }
 
-            ty::TyGenerator(def_id, substs, ..) => {
+            DefiningTy::Generator(def_id, substs, interior) => {
                 assert_eq!(self.mir_def_id, def_id);
                 let output = substs.generator_return_ty(def_id, tcx);
-                let inputs_and_output = self.infcx.tcx.intern_type_list(&[defining_ty, output]);
+                let generator_ty = tcx.mk_generator(def_id, substs, interior);
+                let inputs_and_output = self.infcx.tcx.intern_type_list(&[generator_ty, output]);
                 ty::Binder::dummy(inputs_and_output)
             }
 
-            ty::TyFnDef(def_id, _) => {
+            DefiningTy::FnDef(def_id, _) => {
                 let sig = tcx.fn_sig(def_id);
                 let sig = indices.fold_to_region_vids(tcx, &sig);
                 sig.inputs_and_output()
             }
 
-            // FIXME: as above, this happens on things like `[foo;
-            // 22]`. For now, no inputs, one output, but it seems like
-            // we need a more general way to handle this category of
-            // MIR.
-            ty::TyUint(..) => {
-                ty::Binder::dummy(tcx.mk_type_list(iter::once(defining_ty)))
-            }
-
-            _ => span_bug!(
-                tcx.def_span(self.mir_def_id),
-                "unexpected defining type: {:?}",
-                defining_ty
-            ),
+            // This happens on things like `[foo; 22]`. Hence, no
+            // inputs, one output, but it seems like we need a more
+            // general way to handle this category of MIR.
+            DefiningTy::Const(ty) => ty::Binder::dummy(tcx.mk_type_list(iter::once(ty))),
         }
     }
 
@@ -729,11 +743,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        self.tcx.fold_regions(
-            value,
-            &mut false,
-            |_region, _depth| self.next_nll_region_var(origin),
-        )
+        self.tcx.fold_regions(value, &mut false, |_region, _depth| {
+            self.next_nll_region_var(origin)
+        })
     }
 
     fn replace_bound_regions_with_nll_infer_vars<T>(
@@ -773,10 +785,8 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        tcx.fold_regions(
-            value,
-            &mut false,
-            |region, _| tcx.mk_region(ty::ReVar(self.to_region_vid(region))),
-        )
+        tcx.fold_regions(value, &mut false, |region, _| {
+            tcx.mk_region(ty::ReVar(self.to_region_vid(region)))
+        })
     }
 }
