@@ -244,7 +244,7 @@ pub struct DirBuilder {
 /// # Ok(())
 /// # }
 /// ```
-#[unstable(feature = "fs_read_write", issue = /* FIXME */ "0")]
+#[unstable(feature = "fs_read_write", issue = "46588")]
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     let mut bytes = Vec::new();
     File::open(path)?.read_to_end(&mut bytes)?;
@@ -285,7 +285,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// # Ok(())
 /// # }
 /// ```
-#[unstable(feature = "fs_read_write", issue = /* FIXME */ "0")]
+#[unstable(feature = "fs_read_write", issue = "46588")]
 pub fn read_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     let mut string = String::new();
     File::open(path)?.read_to_string(&mut string)?;
@@ -315,7 +315,7 @@ pub fn read_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// # Ok(())
 /// # }
 /// ```
-#[unstable(feature = "fs_read_write", issue = /* FIXME */ "0")]
+#[unstable(feature = "fs_read_write", issue = "46588")]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
     File::create(path)?.write_all(contents.as_ref())
 }
