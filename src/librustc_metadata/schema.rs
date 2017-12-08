@@ -19,7 +19,7 @@ use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, Ty, ReprOptions};
-use rustc_back::PanicStrategy;
+use rustc_back::target::PanicStrategy;
 use rustc_back::target::TargetTriple;
 
 use rustc_serialize as serialize;

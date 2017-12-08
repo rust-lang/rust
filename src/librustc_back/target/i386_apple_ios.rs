@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
-use target::{Target, TargetOptions, TargetResult};
+use target::{LinkerFlavor, Target, TargetOptions, TargetResult};
 use super::apple_ios_base::{opts, Arch};
 
 pub fn target() -> TargetResult {

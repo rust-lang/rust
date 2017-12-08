@@ -17,7 +17,7 @@ use std::io;
 use std::mem;
 use std::process::{self, Output};
 
-use rustc_back::LldFlavor;
+use rustc_back::target::LldFlavor;
 
 #[derive(Clone)]
 pub struct Command {

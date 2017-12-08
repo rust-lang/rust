@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
-use PanicStrategy;
-use target::{LinkArgs, TargetOptions};
+use target::{LinkArgs, LinkerFlavor, PanicStrategy, TargetOptions};
 use std::default::Default;
 //use std::process::Command;
 

@@ -13,7 +13,7 @@
 use session::config;
 use middle::lang_items;
 
-use rustc_back::PanicStrategy;
+use rustc_back::target::PanicStrategy;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;

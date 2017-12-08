@@ -41,7 +41,7 @@ use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{MultiSpan, Span};
 
-use rustc_back::{LinkerFlavor, PanicStrategy};
+use rustc_back::target::{LinkerFlavor, PanicStrategy};
 use rustc_back::target::{Target, TargetTriple};
 use rustc_data_structures::flock;
 use jobserver::Client;

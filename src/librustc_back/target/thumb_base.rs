@@ -35,9 +35,8 @@
 // differentiate these targets from our other `arm(v7)-*-*-gnueabi(hf)` targets in the context of
 // build scripts / gcc flags.
 
-use PanicStrategy;
 use std::default::Default;
-use target::TargetOptions;
+use target::{PanicStrategy, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults

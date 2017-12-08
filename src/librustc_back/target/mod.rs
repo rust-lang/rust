@@ -49,9 +49,8 @@ use std::collections::BTreeMap;
 use std::default::Default;
 use std::{fmt, io};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use syntax::abi::{Abi, lookup as lookup_abi};
-
-use {LinkerFlavor, PanicStrategy, RelroLevel};
 
 mod android_base;
 mod apple_base;
@@ -73,6 +72,133 @@ mod thumb_base;
 mod l4re_base;
 mod fuchsia_base;
 mod redox_base;
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
+         RustcEncodable, RustcDecodable)]
+pub enum LinkerFlavor {
+    Em,
+    Gcc,
+    Ld,
+    Msvc,
+    Lld(LldFlavor),
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
+         RustcEncodable, RustcDecodable)]
+pub enum LldFlavor {
+    Wasm,
+    Ld64,
+    Ld,
+    Link,
+}
+
+impl ToJson for LinkerFlavor {
+    fn to_json(&self) -> Json {
+        self.desc().to_json()
+    }
+}
+macro_rules! flavor_mappings {
+    ($((($($flavor:tt)*), $string:expr),)*) => (
+        impl LinkerFlavor {
+            pub const fn one_of() -> &'static str {
+                concat!("one of: ", $($string, " ",)+)
+            }
+
+            pub fn from_str(s: &str) -> Option<Self> {
+                Some(match s {
+                    $($string => $($flavor)*,)+
+                    _ => return None,
+                })
+            }
+
+            pub fn desc(&self) -> &str {
+                match *self {
+                    $($($flavor)* => $string,)+
+                }
+            }
+        }
+    )
+}
+
+
+flavor_mappings! {
+    ((LinkerFlavor::Em), "em"),
+    ((LinkerFlavor::Gcc), "gcc"),
+    ((LinkerFlavor::Ld), "ld"),
+    ((LinkerFlavor::Msvc), "msvc"),
+    ((LinkerFlavor::Lld(LldFlavor::Wasm)), "wasm-ld"),
+    ((LinkerFlavor::Lld(LldFlavor::Ld64)), "ld64.lld"),
+    ((LinkerFlavor::Lld(LldFlavor::Ld)), "ld.lld"),
+    ((LinkerFlavor::Lld(LldFlavor::Link)), "lld-link"),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum PanicStrategy {
+    Unwind,
+    Abort,
+}
+
+impl PanicStrategy {
+    pub fn desc(&self) -> &str {
+        match *self {
+            PanicStrategy::Unwind => "unwind",
+            PanicStrategy::Abort => "abort",
+        }
+    }
+}
+
+impl ToJson for PanicStrategy {
+    fn to_json(&self) -> Json {
+        match *self {
+            PanicStrategy::Abort => "abort".to_json(),
+            PanicStrategy::Unwind => "unwind".to_json(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum RelroLevel {
+    Full,
+    Partial,
+    Off,
+    None,
+}
+
+impl RelroLevel {
+    pub fn desc(&self) -> &str {
+        match *self {
+            RelroLevel::Full => "full",
+            RelroLevel::Partial => "partial",
+            RelroLevel::Off => "off",
+            RelroLevel::None => "none",
+        }
+    }
+}
+
+impl FromStr for RelroLevel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<RelroLevel, ()> {
+        match s {
+            "full" => Ok(RelroLevel::Full),
+            "partial" => Ok(RelroLevel::Partial),
+            "off" => Ok(RelroLevel::Off),
+            "none" => Ok(RelroLevel::None),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for RelroLevel {
+    fn to_json(&self) -> Json {
+        match *self {
+            RelroLevel::Full => "full".to_json(),
+            RelroLevel::Partial => "partial".to_json(),
+            RelroLevel::Off => "off".to_json(),
+            RelroLevel::None => "None".to_json(),
+        }
+    }
+}
 
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
 pub type TargetResult = Result<Target, String>;

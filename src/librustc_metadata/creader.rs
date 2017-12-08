@@ -21,7 +21,7 @@ use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::DepKind;
 use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
-use rustc_back::PanicStrategy;
+use rustc_back::target::PanicStrategy;
 use rustc_back::target::TargetTriple;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;

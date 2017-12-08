@@ -10,8 +10,7 @@
 
 // Targets the Cortex-M3 processor (ARMv7-M)
 
-use LinkerFlavor;
-use target::{Target, TargetOptions, TargetResult};
+use target::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {

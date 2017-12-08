@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
 use std::io;
 use std::process::Command;
-use target::{LinkArgs, TargetOptions};
+use target::{LinkArgs, LinkerFlavor, TargetOptions};
 
 use self::Arch::*;
 

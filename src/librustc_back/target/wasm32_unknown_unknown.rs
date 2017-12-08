@@ -17,8 +17,7 @@
 // (aka panic=abort by default), but otherwise this is in general a relatively
 // standard target.
 
-use {LinkerFlavor, LldFlavor};
-use super::{Target, TargetOptions, PanicStrategy};
+use super::{LldFlavor, LinkerFlavor, Target, TargetOptions, PanicStrategy};
 
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {

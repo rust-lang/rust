@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
-use super::{LinkArgs, Target, TargetOptions};
+use super::{LinkArgs, LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Result<Target, String> {
     let mut args = LinkArgs::new();

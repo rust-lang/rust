@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
-use target::{LinkArgs, TargetOptions, RelroLevel};
-use std::default::Default;
+use target::{LinkArgs, LinkerFlavor, TargetOptions, RelroLevel};
 
 pub fn opts() -> TargetOptions {
     let mut args = LinkArgs::new();

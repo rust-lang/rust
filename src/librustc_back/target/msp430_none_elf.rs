@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {LinkerFlavor, PanicStrategy};
-use target::{Target, TargetOptions, TargetResult};
+use target::{LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {

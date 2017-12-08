@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use LinkerFlavor;
-use target::{Target, TargetResult};
+use target::{LinkerFlavor, Target, TargetResult};
 
 // See https://developer.android.com/ndk/guides/abis.html#x86
 // for target ABI requirements.
