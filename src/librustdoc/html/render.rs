@@ -421,8 +421,18 @@ impl ToJson for IndexItemFunctionType {
 thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
                     RefCell::new(Vec::new()));
-thread_local!(static USED_ID_MAP: RefCell<FxHashMap<String, usize>> =
+thread_local!(pub static USED_ID_MAP: RefCell<FxHashMap<String, usize>> =
                     RefCell::new(init_ids()));
+
+pub fn render_text<F: FnMut(RenderType) -> String>(mut render: F) -> (String, String) {
+    // Save the state of USED_ID_MAP so it only gets updated once even
+    // though we're rendering twice.
+    let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
+    let hoedown_output = render(RenderType::Hoedown);
+    USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
+    let pulldown_output = render(RenderType::Pulldown);
+    (hoedown_output, pulldown_output)
+}
 
 fn init_ids() -> FxHashMap<String, usize> {
     [
@@ -699,7 +709,10 @@ fn print_message(msg: &str, intro_msg: &mut bool, span: &Span, text: &str) {
     println!("{}", msg);
 }
 
-fn render_difference(diff: &html_diff::Difference, intro_msg: &mut bool, span: &Span, text: &str) {
+pub fn render_difference(diff: &html_diff::Difference,
+                         intro_msg: &mut bool,
+                         span: &Span,
+                         text: &str) {
     match *diff {
         html_diff::Difference::NodeType { ref elem, ref opposite_elem } => {
             print_message(&format!("    {} Types differ: expected: `{}`, found: `{}`",
@@ -1853,12 +1866,7 @@ fn render_markdown(w: &mut fmt::Formatter,
                    prefix: &str,
                    scx: &SharedContext)
                    -> fmt::Result {
-    // Save the state of USED_ID_MAP so it only gets updated once even
-    // though we're rendering twice.
-    let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
-    let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
-    USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
-    let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
+    let (hoedown_output, pulldown_output) = render_text(|ty| format!("{}", Markdown(md_text, ty)));
     let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
     differences.retain(|s| {
         match *s {
