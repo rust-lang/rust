@@ -55,8 +55,8 @@ pub struct SnippetProvider<'a> {
     start_pos: usize,
 }
 
-impl<'b, 'a: 'b> SnippetProvider<'a> {
-    pub fn span_to_snippet(&'b self, span: Span) -> Option<&'a str> {
+impl<'a> SnippetProvider<'a> {
+    pub fn span_to_snippet(&self, span: Span) -> Option<&str> {
         let start_index = span.lo().to_usize().checked_sub(self.start_pos)?;
         let end_index = span.hi().to_usize().checked_sub(self.start_pos)?;
         Some(&self.big_snippet[start_index..end_index])
