@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(const_fn)]
-#![warn(const_err)]
+#![deny(const_err)]
 
 pub struct Data<T> {
     function: fn() -> T,
