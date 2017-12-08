@@ -106,6 +106,30 @@
         return (elem.offsetParent === null)
     }
 
+    function showSidebar() {
+        var elems = document.getElementsByClassName("sidebar-elems")[0];
+        if (elems) {
+            elems.style.display = "block";
+        }
+        var sidebar = document.getElementsByClassName('sidebar')[0];
+        sidebar.style.position = 'fixed';
+        sidebar.style.width = '100%';
+        sidebar.style.marginLeft = '0';
+        document.getElementsByTagName("body")[0].style.marginTop = '45px';
+    }
+
+    function hideSidebar() {
+        var elems = document.getElementsByClassName("sidebar-elems")[0];
+        if (elems) {
+            elems.style.display = "";
+        }
+        var sidebar = document.getElementsByClassName('sidebar')[0];
+        sidebar.style.position = '';
+        sidebar.style.width = '';
+        sidebar.style.marginLeft = '';
+        document.getElementsByTagName("body")[0].style.marginTop = '';
+    }
+
     // used for special search precedence
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
 
@@ -130,6 +154,8 @@
     }
 
     function highlightSourceLines(ev) {
+        // If we're in mobile mode, we should add the sidebar in any case.
+        hideSidebar();
         var search = document.getElementById("search");
         var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
         if (match) {
@@ -1459,7 +1485,7 @@
 
     // delayed sidebar rendering.
     function initSidebarItems(items) {
-        var sidebar = document.getElementsByClassName('sidebar')[0];
+        var sidebar = document.getElementsByClassName('sidebar-elems')[0];
         var current = window.sidebarCurrent;
 
         function block(shortty, longty) {
@@ -1829,6 +1855,22 @@
         removeClass(search, "hidden");
         search.innerHTML = '<h3 style="text-align: center;">Loading search results...</h3>';
     }
+
+    var sidebar_menu = document.getElementsByClassName("sidebar-menu")[0];
+    if (sidebar_menu) {
+        sidebar_menu.onclick = function() {
+            var sidebar = document.getElementsByClassName('sidebar')[0];
+            if (sidebar.style.position === "fixed") {
+                hideSidebar();
+            } else {
+                showSidebar();
+            }
+        };
+    }
+
+    window.onresize = function() {
+        hideSidebar();
+    };
 }());
 
 // Sets the focus on the search bar at the top of the page

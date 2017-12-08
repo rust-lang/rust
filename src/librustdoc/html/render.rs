@@ -3542,6 +3542,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let cx = self.cx;
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
+        let mut should_close = false;
 
         if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
             || it.is_enum() || it.is_mod() || it.is_typedef()
@@ -3575,6 +3576,8 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 }
             }
 
+            write!(fmt, "<div class=\"sidebar-elems\">")?;
+            should_close = true;
             match it.inner {
                 clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
                 clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,
@@ -3624,6 +3627,10 @@ impl<'a> fmt::Display for Sidebar<'a> {
         } else {
             write!(fmt, "<script defer src=\"{path}sidebar-items.js\"></script>",
                    path = relpath)?;
+        }
+        if should_close {
+            // Closes sidebar-elems div.
+            write!(fmt, "</div>")?;
         }
 
         Ok(())

@@ -31,6 +31,10 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	background-color: white;
 }
 
+.invisible {
+	background: rgba(0, 0, 0, 0);
+}
+
 .docblock code, .docblock-short code {
 	background-color: #F5F5F5;
 }
@@ -54,6 +58,15 @@ pre {
 	border-color: #000;
 	background-color: #fff;
 	color: #333;
+}
+
+.sidebar .version {
+	border-bottom-color: #DDD;
+}
+
+.sidebar-title {
+	border-top-color: #777;
+	border-bottom-color: #777;
 }
 
 .block a:hover {
@@ -87,6 +100,12 @@ pre {
 
 :target > .in-band {
 	background: #FDFFD3;
+}
+
+.content .method .where,
+.content .fn .where,
+.content .where.fmt-newline {
+	color: #4E4C4C;
 }
 
 .content .highlighted {
@@ -152,10 +171,18 @@ a.test-arrow {
 	color: #f5f5f5;
 }
 
+.collapse-toggle {
+	color: #999;
+}
+
 .search-input {
 	color: #555;
 	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
 	background-color: white;
+}
+
+.search-input:focus {
+	border-color: #66afe9;
 }
 
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
@@ -174,6 +201,10 @@ a.test-arrow {
 
 .since {
 	color: grey;
+}
+
+tr.result span.primitive::after {
+	color: black;
 }
 
 .line-numbers :target { background-color: transparent; }
@@ -240,4 +271,62 @@ pre.ignore:hover, .information:hover + pre.ignore {
 
 .search-failed > a {
 	color: #0089ff;
+}
+
+.tooltip .tooltiptext {
+	background-color: black;
+	color: #fff;
+}
+
+.tooltip .tooltiptext::after {
+	border-color: transparent black transparent transparent;
+}
+
+.important-traits .tooltip .tooltiptext {
+	background-color: white;
+	color: black;
+	border-color: black;
+}
+
+#titles > div {
+	border-bottom-color:  #ccc;
+}
+
+#titles > div.selected {
+	border-bottom-color: #0078ee;
+}
+
+#titles > div:hover {
+	border-bottom-color: #0089ff;
+}
+
+#titles > div > div.count {
+	color: #888;
+}
+
+.modal {
+	background-color: rgba(0,0,0,0.3);
+}
+
+.modal-content {
+	background-color: #eee;
+	border-color: #999;
+}
+
+.modal-content > .close {
+	background-color: #eee;
+	border-color: #999;
+}
+
+.modal-content > .close:hover {
+	background-color: #ff1f1f;
+	color: white;
+}
+
+.modal-content > .whiter {
+	background-color: #eee;
+}
+
+.modal-content > .close:hover + .whiter {
+	background-color: #ff1f1f;
 }

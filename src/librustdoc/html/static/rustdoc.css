@@ -208,7 +208,7 @@ nav.sub {
 .sidebar .version {
 	font-size: 15px;
 	text-align: center;
-	border-bottom: #DDDDDD 1px solid;
+	border-bottom: 1px solid;
 	overflow-wrap: break-word;
 	word-wrap: break-word; /* deprecated */
 	word-break: break-word; /* Chrome, non-standard */
@@ -247,8 +247,8 @@ nav.sub {
 }
 
 .sidebar-title {
-	border-top: 1px solid #777;
-	border-bottom: 1px solid #777;
+	border-top: 1px solid;
+	border-bottom: 1px solid;
 	text-align: center;
 	font-size: 17px;
 	margin-bottom: 5px;
@@ -261,6 +261,10 @@ nav.sub {
 .sidebar-links > a {
 	padding-left: 10px;
 	width: 100%;
+}
+
+.sidebar-menu {
+	display: none;
 }
 
 .content {
@@ -364,7 +368,6 @@ h4 > code, h3 > code, .invisible > code {
 }
 
 .invisible {
-	background: rgba(0, 0, 0, 0);
 	width: 100%;
 	display: inline-block;
 }
@@ -444,7 +447,6 @@ h4 > code, h3 > code, .invisible > code {
 .content .fn .where,
 .content .where.fmt-newline {
 	display: block;
-	color: #4E4C4C;
 	font-size: 0.8em;
 }
 
@@ -538,7 +540,6 @@ a {
 }
 
 .search-input:focus {
-	border-color: #66afe9;
 	border-radius: 2px;
 	border: 0;
 	outline: 0;
@@ -560,7 +561,8 @@ a {
 .content .search-results td:first-child a { padding-right: 10px; }
 
 tr.result span.primitive::after {
-	content: ' (primitive type)'; font-style: italic; color: black;
+	content: ' (primitive type)';
+	font-style: italic;
 }
 
 body.blur > :not(#help) {
@@ -697,7 +699,6 @@ a.test-arrow:hover{
 	font-weight: 300;
 	position: absolute;
 	left: -23px;
-	color: #999;
 	top: 0;
 }
 
@@ -823,7 +824,7 @@ span.since {
 		position: static;
 	}
 
-	.sidebar .location {
+	.sidebar > .location {
 		float: right;
 		margin: 0px;
 		margin-top: 2px;
@@ -843,14 +844,31 @@ span.since {
 		margin-top: 5px;
 		margin-bottom: 5px;
 		float: left;
+		margin-left: 50px;
+	}
+
+	.sidebar-menu {
+		position: absolute;
+		font-size: 2rem;
+		cursor: pointer;
+		margin-top: 2px;
+		display: block;
+	}
+
+	.sidebar-elems {
+		background-color: #F1F1F1;
+		position: fixed;
+		z-index: 1;
+		left: 0;
+		top: 45px;
+		bottom: 0;
+		overflow-y: auto;
+		border-right: 1px solid #000;
+		display: none;
 	}
 
 	nav.sub {
 		margin: 0 auto;
-	}
-
-	.sidebar .block {
-		display: none;
 	}
 
 	.content {
@@ -904,8 +922,6 @@ span.since {
 .tooltip .tooltiptext {
 	width: 120px;
 	display: none;
-	background-color: black;
-	color: #fff;
 	text-align: center;
 	padding: 5px 3px;
 	border-radius: 6px;
@@ -927,13 +943,10 @@ span.since {
 	margin-top: -5px;
 	border-width: 5px;
 	border-style: solid;
-	border-color: transparent black transparent transparent;
 }
 
 .important-traits .tooltip .tooltiptext {
-	background-color: white;
-	color: black;
-	border: 1px solid #000;
+	border: 1px solid;
 }
 
 pre.rust {
@@ -953,22 +966,21 @@ pre.rust {
 	float: left;
 	width: 33.3%;
 	text-align: center;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid;
 	font-size: 18px;
 	cursor: pointer;
 }
 
 #titles > div.selected {
-	border-bottom: 3px solid #0078ee;
+	border-bottom: 3px solid;
 }
 
 #titles > div:hover {
-	border-bottom: 3px solid #0089ff;
+	border-bottom: 3px solid;
 }
 
 #titles > div > div.count {
 	display: inline-block;
-	color: #888;
 	font-size: 16px;
 }
 
@@ -987,7 +999,6 @@ h4 > .important-traits {
 	position: fixed;
 	width: 100vw;
 	height: 100vh;
-	background-color: rgba(0,0,0,0.3);
 	z-index: 10000;
 	top: 0;
 	left: 0;
@@ -997,13 +1008,12 @@ h4 > .important-traits {
 	display: block;
 	max-width: 60%;
 	min-width: 200px;
-	background-color: #eee;
 	padding: 8px;
 	top: 40%;
 	position: absolute;
 	left: 50%;
 	transform: translate(-50%, -40%);
-	border: 1px solid #999;
+	border: 1px solid;
 	border-radius: 4px;
 	border-top-right-radius: 0;
 }
@@ -1030,33 +1040,22 @@ h3.important {
 	right: -25px;
 	top: -1px;
 	font-size: 18px;
-	background-color: #eee;
 	width: 25px;
 	padding-right: 2px;
 	border-top-right-radius: 5px;
 	border-bottom-right-radius: 5px;
 	text-align: center;
-	border: 1px solid #999;
+	border: 1px solid;
 	border-right: 0;
 	cursor: pointer;
-}
-
-.modal-content > .close:hover {
-	background-color: #ff1f1f;
-	color: white;
 }
 
 .modal-content > .whiter {
 	height: 25px;
 	position: absolute;
 	width: 3px;
-	background-color: #eee;
 	right: -2px;
 	top: 0px;
-}
-
-.modal-content > .close:hover + .whiter {
-	background-color: #ff1f1f;
 }
 
 #main > div.important-traits {

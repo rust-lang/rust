@@ -736,7 +736,7 @@ mod builtin {
     #[cfg(dox)]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
-    /// Boolean evaluation of configuration flags.
+    /// Boolean evaluation of configuration flags, at compile-time.
     ///
     /// For more information, see the documentation for [`std::cfg!`].
     ///
