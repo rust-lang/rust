@@ -17,7 +17,7 @@ use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::MoveData;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
-use rustc::infer::region_constraints::RegionConstraintData;
+use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
 use rustc::traits::{self, FulfillmentContext};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
@@ -54,6 +54,8 @@ mod liveness;
 /// - `body_id` -- body-id of the MIR being checked
 /// - `param_env` -- parameter environment to use for trait solving
 /// - `mir` -- MIR to type-check
+/// - `region_bound_pairs` -- the implied outlives obligations between type parameters
+///   and lifetimes (e.g., `&'a T` implies `T: 'a`)
 /// - `implicit_region_bound` -- a region which all generic parameters are assumed
 ///   to outlive; should represent the fn body
 /// - `input_tys` -- fully liberated, but **not** normalized, expected types of the arguments;
@@ -69,6 +71,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     body_id: ast::NodeId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
+    region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: ty::Region<'tcx>,
     input_tys: &[Ty<'tcx>],
     output_ty: Ty<'tcx>,
@@ -81,6 +84,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         body_id,
         param_env,
         mir,
+        region_bound_pairs,
         Some(implicit_region_bound),
         &mut |cx| {
             liveness::generate(cx, mir, liveness, flow_inits, move_data);
@@ -100,10 +104,17 @@ fn type_check_internal<'gcx, 'tcx>(
     body_id: ast::NodeId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
+    region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     extra: &mut FnMut(&mut TypeChecker<'_, 'gcx, 'tcx>),
 ) -> MirTypeckRegionConstraints<'tcx> {
-    let mut checker = TypeChecker::new(infcx, body_id, param_env, implicit_region_bound);
+    let mut checker = TypeChecker::new(
+        infcx,
+        body_id,
+        param_env,
+        region_bound_pairs,
+        implicit_region_bound,
+    );
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, mir);
         verifier.visit_mir(mir);
@@ -571,6 +582,7 @@ struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     param_env: ty::ParamEnv<'gcx>,
     last_span: Span,
     body_id: ast::NodeId,
+    region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     constraints: MirTypeckRegionConstraints<'tcx>,
@@ -625,6 +637,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
         body_id: ast::NodeId,
         param_env: ty::ParamEnv<'gcx>,
+        region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
     ) -> Self {
         TypeChecker {
@@ -632,6 +645,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             last_span: DUMMY_SP,
             body_id,
             param_env,
+            region_bound_pairs,
             implicit_region_bound,
             reported_errors: FxHashSet(),
             constraints: MirTypeckRegionConstraints::default(),
@@ -658,7 +672,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
 
         self.infcx.process_registered_region_obligations(
-            &[],
+            self.region_bound_pairs,
             self.implicit_region_bound,
             self.param_env,
             self.body_id,
@@ -764,12 +778,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 };
             }
-            StatementKind::StorageLive(_) |
-            StatementKind::StorageDead(_) |
-            StatementKind::InlineAsm { .. } |
-            StatementKind::EndRegion(_) |
-            StatementKind::Validate(..) |
-            StatementKind::Nop => {}
+            StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
+            | StatementKind::InlineAsm { .. }
+            | StatementKind::EndRegion(_)
+            | StatementKind::Validate(..)
+            | StatementKind::Nop => {}
         }
     }
 
@@ -782,13 +796,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         debug!("check_terminator: {:?}", term);
         let tcx = self.tcx();
         match term.kind {
-            TerminatorKind::Goto { .. } |
-            TerminatorKind::Resume |
-            TerminatorKind::Return |
-            TerminatorKind::GeneratorDrop |
-            TerminatorKind::Unreachable |
-            TerminatorKind::Drop { .. } |
-            TerminatorKind::FalseEdges { .. } => {
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Return
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Drop { .. }
+            | TerminatorKind::FalseEdges { .. } => {
                 // no checks needed for these
             }
 
@@ -888,9 +902,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // output) types in the signature must be live, since
                 // all the inputs that fed into it were live.
                 for &late_bound_region in map.values() {
-                    self.constraints
-                        .liveness_set
-                        .push((late_bound_region, term_location, Cause::LiveOther(term_location)));
+                    self.constraints.liveness_set.push((
+                        late_bound_region,
+                        term_location,
+                        Cause::LiveOther(term_location),
+                    ));
                 }
 
                 if self.is_box_free(func) {
@@ -1100,9 +1116,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             TerminatorKind::Unreachable => {}
-            TerminatorKind::Drop { target, unwind, .. } |
-            TerminatorKind::DropAndReplace { target, unwind, .. } |
-            TerminatorKind::Assert {
+            TerminatorKind::Drop { target, unwind, .. }
+            | TerminatorKind::DropAndReplace { target, unwind, .. }
+            | TerminatorKind::Assert {
                 target,
                 cleanup: unwind,
                 ..
@@ -1358,13 +1374,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             },
 
             // FIXME: These other cases have to be implemented in future PRs
-            Rvalue::Use(..) |
-            Rvalue::Ref(..) |
-            Rvalue::Len(..) |
-            Rvalue::BinaryOp(..) |
-            Rvalue::CheckedBinaryOp(..) |
-            Rvalue::UnaryOp(..) |
-            Rvalue::Discriminant(..) => {}
+            Rvalue::Use(..)
+            | Rvalue::Ref(..)
+            | Rvalue::Len(..)
+            | Rvalue::BinaryOp(..)
+            | Rvalue::CheckedBinaryOp(..)
+            | Rvalue::UnaryOp(..)
+            | Rvalue::Discriminant(..) => {}
         }
     }
 
@@ -1498,9 +1514,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             let cause = this.misc(this.last_span);
             let obligations = predicates
                 .iter()
-                .map(|&p| {
-                    traits::Obligation::new(cause.clone(), this.param_env, p)
-                })
+                .map(|&p| traits::Obligation::new(cause.clone(), this.param_env, p))
                 .collect();
             Ok(InferOk {
                 value: (),
@@ -1564,7 +1578,7 @@ impl MirPass for TypeckMir {
         }
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let _ = type_check_internal(&infcx, id, param_env, mir, None, &mut |_| ());
+            let _ = type_check_internal(&infcx, id, param_env, mir, &[], None, &mut |_| ());
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)
