@@ -45,7 +45,7 @@ use config::Config;
 use filemap::FileMap;
 use issues::{BadIssueSeeker, Issue};
 use utils::use_colored_tty;
-use visitor::FmtVisitor;
+use visitor::{FmtVisitor, SnippetProvider};
 
 pub use self::summary::Summary;
 
@@ -317,8 +317,13 @@ where
         if config.verbose() {
             println!("Formatting {}", path_str);
         }
-        let mut visitor = FmtVisitor::from_codemap(parse_session, config);
-        let filemap = visitor.codemap.lookup_char_pos(module.inner.lo()).file;
+        let filemap = parse_session
+            .codemap()
+            .lookup_char_pos(module.inner.lo())
+            .file;
+        let big_snippet = filemap.src.as_ref().unwrap();
+        let snippet_provider = SnippetProvider::new(filemap.start_pos, big_snippet);
+        let mut visitor = FmtVisitor::from_codemap(parse_session, config, &snippet_provider);
         // Format inner attributes if available.
         if !krate.attrs.is_empty() && path == main_file {
             visitor.skip_empty_lines(filemap.end_pos);

@@ -47,6 +47,30 @@ fn is_extern_crate(item: &ast::Item) -> bool {
     }
 }
 
+/// Creates a string slice corresponding to the specified span.
+pub struct SnippetProvider<'a> {
+    /// A pointer to the content of the file we are formatting.
+    big_snippet: &'a str,
+    /// A position of the start of `big_snippet`, used as an offset.
+    start_pos: usize,
+}
+
+impl<'a> SnippetProvider<'a> {
+    pub fn span_to_snippet(&self, span: Span) -> Option<&str> {
+        let start_index = span.lo().to_usize().checked_sub(self.start_pos)?;
+        let end_index = span.hi().to_usize().checked_sub(self.start_pos)?;
+        Some(&self.big_snippet[start_index..end_index])
+    }
+
+    pub fn new(start_pos: BytePos, big_snippet: &'a str) -> Self {
+        let start_pos = start_pos.to_usize();
+        SnippetProvider {
+            big_snippet,
+            start_pos,
+        }
+    }
+}
+
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
     pub codemap: &'a CodeMap,
@@ -56,9 +80,10 @@ pub struct FmtVisitor<'a> {
     pub block_indent: Indent,
     pub config: &'a Config,
     pub is_if_else_block: bool,
+    pub snippet_provider: &'a SnippetProvider<'a>,
 }
 
-impl<'a> FmtVisitor<'a> {
+impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub fn shape(&self) -> Shape {
         Shape::indented(self.block_indent, self.config)
     }
@@ -395,7 +420,7 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::GlobalAsm(..) => {
-                let snippet = Some(self.snippet(item.span));
+                let snippet = Some(self.snippet(item.span).to_owned());
                 self.push_rewrite(item.span, snippet);
             }
             ast::ItemKind::MacroDef(..) => {
@@ -496,12 +521,24 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(source!(self, span).lo());
-        let result = rewrite.unwrap_or_else(|| self.snippet(span));
-        self.buffer.push_str(&result);
+        if let Some(ref s) = rewrite {
+            self.buffer.push_str(s);
+        } else {
+            let snippet = self.snippet(span);
+            self.buffer.push_str(snippet);
+        }
         self.last_pos = source!(self, span).hi();
     }
 
-    pub fn from_codemap(parse_session: &'a ParseSess, config: &'a Config) -> FmtVisitor<'a> {
+    pub fn from_context(ctx: &'a RewriteContext) -> FmtVisitor<'a> {
+        FmtVisitor::from_codemap(ctx.parse_session, ctx.config, ctx.snippet_provider)
+    }
+
+    pub fn from_codemap(
+        parse_session: &'a ParseSess,
+        config: &'a Config,
+        snippet_provider: &'a SnippetProvider,
+    ) -> FmtVisitor<'a> {
         FmtVisitor {
             parse_session: parse_session,
             codemap: parse_session.codemap(),
@@ -510,25 +547,16 @@ impl<'a> FmtVisitor<'a> {
             block_indent: Indent::empty(),
             config: config,
             is_if_else_block: false,
+            snippet_provider: snippet_provider,
         }
     }
 
-    pub fn opt_snippet(&self, span: Span) -> Option<String> {
-        self.codemap.span_to_snippet(span).ok()
+    pub fn opt_snippet(&'b self, span: Span) -> Option<&'a str> {
+        self.snippet_provider.span_to_snippet(span)
     }
 
-    pub fn snippet(&self, span: Span) -> String {
-        match self.codemap.span_to_snippet(span) {
-            Ok(s) => s,
-            Err(_) => {
-                eprintln!(
-                    "Couldn't make snippet for span {:?}->{:?}",
-                    self.codemap.lookup_char_pos(span.lo()),
-                    self.codemap.lookup_char_pos(span.hi())
-                );
-                "".to_owned()
-            }
-        }
+    pub fn snippet(&'b self, span: Span) -> &'a str {
+        self.opt_snippet(span).unwrap()
     }
 
     // Returns true if we should skip the following item.
@@ -725,6 +753,7 @@ impl<'a> FmtVisitor<'a> {
             use_block: false,
             is_if_else_block: false,
             force_one_line_chain: false,
+            snippet_provider: &self.snippet_provider,
         }
     }
 }
@@ -799,10 +828,10 @@ impl Rewrite for ast::Attribute {
                     .unwrap_or(0),
                 ..shape
             };
-            rewrite_comment(&snippet, false, doc_shape, context.config)
+            rewrite_comment(snippet, false, doc_shape, context.config)
         } else {
-            if contains_comment(&snippet) {
-                return Some(snippet);
+            if contains_comment(snippet) {
+                return Some(snippet.to_owned());
             }
             // 1 = `[`
             let shape = shape.offset_left(prefix.len() + 1)?;
@@ -953,7 +982,7 @@ impl<'a> Rewrite for [ast::Attribute] {
 }
 
 // Format `#[derive(..)]`, using visual indent & mixed style when we need to go multiline.
-fn format_derive(context: &RewriteContext, derive_args: &[String], shape: Shape) -> Option<String> {
+fn format_derive(context: &RewriteContext, derive_args: &[&str], shape: Shape) -> Option<String> {
     let mut result = String::with_capacity(128);
     result.push_str("#[derive(");
     // 11 = `#[derive()]`
@@ -995,7 +1024,7 @@ fn is_derive(attr: &ast::Attribute) -> bool {
 }
 
 /// Returns the arguments of `#[derive(...)]`.
-fn get_derive_args(context: &RewriteContext, attr: &ast::Attribute) -> Option<Vec<String>> {
+fn get_derive_args<'a>(context: &'a RewriteContext, attr: &ast::Attribute) -> Option<Vec<&'a str>> {
     attr.meta().and_then(|meta_item| match meta_item.node {
         ast::MetaItemKind::List(ref args) if meta_item.name.as_str() == "derive" => {
             // Every argument of `derive` should be `NestedMetaItemKind::Literal`.
@@ -1014,7 +1043,7 @@ pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Optio
     assert!(is_extern_crate(item));
     let new_str = context.snippet(item.span);
     Some(if contains_comment(&new_str) {
-        new_str
+        new_str.to_owned()
     } else {
         let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
         String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))

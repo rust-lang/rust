@@ -162,7 +162,7 @@ pub fn rewrite_macro(
         loop {
             match parse_macro_arg(&mut parser) {
                 Some(arg) => arg_vec.push(arg),
-                None => return Some(context.snippet(mac.span)),
+                None => return Some(context.snippet(mac.span).to_owned()),
             }
 
             match parser.token {
@@ -182,13 +182,13 @@ pub fn rewrite_macro(
                                         break;
                                     }
                                 }
-                                None => return Some(context.snippet(mac.span)),
+                                None => return Some(context.snippet(mac.span).to_owned()),
                             }
                         }
                     }
-                    return Some(context.snippet(mac.span));
+                    return Some(context.snippet(mac.span).to_owned());
                 }
-                _ => return Some(context.snippet(mac.span)),
+                _ => return Some(context.snippet(mac.span).to_owned()),
             }
 
             parser.bump();
@@ -271,7 +271,7 @@ pub fn rewrite_macro(
         }
         MacroStyle::Braces => {
             // Skip macro invocations with braces, for now.
-            indent_macro_snippet(context, &context.snippet(mac.span), shape.indent)
+            indent_macro_snippet(context, context.snippet(mac.span), shape.indent)
         }
     }
 }

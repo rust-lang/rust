@@ -120,7 +120,7 @@ fn run(opts: &getopts::Options) -> Result<(), FormatDiffError> {
 
     let filter = matches
         .opt_str("f")
-        .unwrap_or_else(|| DEFAULT_PATTERN.into());
+        .unwrap_or_else(|| DEFAULT_PATTERN.to_owned());
 
     let skip_prefix = matches
         .opt_str("p")
@@ -247,19 +247,19 @@ fn scan_simple_git_diff() {
         &ranges,
         &[
             Range {
-                file: "src/ir/item.rs".into(),
+                file: "src/ir/item.rs".to_owned(),
                 range: [148, 158],
             },
             Range {
-                file: "src/ir/item.rs".into(),
+                file: "src/ir/item.rs".to_owned(),
                 range: [160, 170],
             },
             Range {
-                file: "src/ir/traversal.rs".into(),
+                file: "src/ir/traversal.rs".to_owned(),
                 range: [9, 16],
             },
             Range {
-                file: "src/ir/traversal.rs".into(),
+                file: "src/ir/traversal.rs".to_owned(),
                 range: [35, 43],
             }
         ]

@@ -382,7 +382,7 @@ impl<'a> FmtVisitor<'a> {
 
                             format_expr(e, ExprType::Statement, &self.get_context(), self.shape())
                                 .map(|s| s + suffix)
-                                .or_else(|| Some(self.snippet(e.span)))
+                                .or_else(|| Some(self.snippet(e.span).to_owned()))
                         }
                         None => stmt.rewrite(&self.get_context(), self.shape()),
                     }
@@ -526,7 +526,7 @@ impl<'a> FmtVisitor<'a> {
         if contains_skip(&field.node.attrs) {
             let lo = field.node.attrs[0].span.lo();
             let span = mk_sp(lo, field.span.hi());
-            return Some(self.snippet(span));
+            return Some(self.snippet(span).to_owned());
         }
 
         let context = self.get_context();
@@ -657,7 +657,7 @@ pub fn format_impl(
         let open_pos = snippet.find_uncommented("{")? + 1;
 
         if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
-            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
+            let mut visitor = FmtVisitor::from_context(context);
             visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = item.span.lo() + BytePos(open_pos as u32);
 
@@ -1055,7 +1055,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let open_pos = snippet.find_uncommented("{")? + 1;
 
         if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
-            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
+            let mut visitor = FmtVisitor::from_context(context);
             visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = item.span.lo() + BytePos(open_pos as u32);
 
@@ -1427,7 +1427,8 @@ pub fn rewrite_struct_field(
     lhs_max_width: usize,
 ) -> Option<String> {
     if contains_skip(&field.attrs) {
-        return Some(context.snippet(mk_sp(field.attrs[0].span.lo(), field.span.hi())));
+        let snippet = context.snippet(mk_sp(field.attrs[0].span.lo(), field.span.hi()));
+        return Some(snippet.to_owned());
     }
 
     let type_annotation_spacing = type_annotation_spacing(context.config);
