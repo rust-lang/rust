@@ -20,8 +20,15 @@ addons:
 
 before_script:
 - |
-  pip install 'travis-cargo<0.2' --user &&
-  export PATH=$HOME/.local/bin:/usr/local/bin:$PATH
+  if [ $TRAVIS_OS_NAME = 'osx' ]; then
+    brew install python3 &&
+    virtualenv env -p python3 &&
+    source env/bin/activate &&
+    pip install 'travis-cargo<0.2'
+  else
+    pip install 'travis-cargo<0.2' --user &&
+    export PATH="$(python -m site --user-base)/bin:$PATH"
+  fi
 
 script:
 - |
