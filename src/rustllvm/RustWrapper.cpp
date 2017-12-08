@@ -1428,11 +1428,6 @@ LLVMRustModuleBufferLen(const LLVMRustModuleBuffer *Buffer) {
 
 extern "C" uint64_t
 LLVMRustModuleCost(LLVMModuleRef M) {
-  Module &Mod = *unwrap(M);
-  uint64_t cost = 0;
-  for (auto &F : Mod.functions()) {
-    (void)F;
-    cost += 1;
-  }
-  return cost;
+  auto f = unwrap(M)->functions();
+  return std::distance(std::begin(f), std::end(f));
 }
