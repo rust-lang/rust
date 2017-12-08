@@ -300,7 +300,7 @@ fn format_ast<F>(
     mut after_file: F,
 ) -> Result<(FileMap, bool), io::Error>
 where
-    F: FnMut(&str, &mut StringBuffer) -> Result<bool, io::Error>,
+    F: FnMut(&str, &mut StringBuffer, &[(usize, usize)]) -> Result<bool, io::Error>,
 {
     let mut result = FileMap::new();
     // diff mode: check if any files are differing
@@ -343,7 +343,7 @@ where
             ::utils::count_newlines(&format!("{}", visitor.buffer))
         );
 
-        has_diff |= match after_file(path_str, &mut visitor.buffer) {
+        has_diff |= match after_file(path_str, &mut visitor.buffer, &visitor.skipped_range) {
             Ok(result) => result,
             Err(e) => {
                 // Create a new error with path_str to help users see which files failed
@@ -358,10 +358,24 @@ where
     Ok((result, has_diff))
 }
 
+/// Returns true if the line with the given line number was skipped by `#[rustfmt_skip]`.
+fn is_skipped_line(line_number: usize, skipped_range: &[(usize, usize)]) -> bool {
+    skipped_range
+        .iter()
+        .any(|&(lo, hi)| lo <= line_number && line_number <= hi)
+}
+
 // Formatting done on a char by char or line by line basis.
 // FIXME(#209) warn on bad license
 // FIXME(#20) other stuff for parity with make tidy
-fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &mut FormatReport) {
+fn format_lines(
+    text: &mut StringBuffer,
+    name: &str,
+    skipped_range: &[(usize, usize)],
+    config: &Config,
+    report: &mut FormatReport,
+) {
+    println!("skipped_range: {:?}", skipped_range);
     // Iterate over the chars in the file map.
     let mut trims = vec![];
     let mut last_wspace: Option<usize> = None;
@@ -403,6 +417,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
 
                 // Check for any line width errors we couldn't correct.
                 let report_error_on_line_overflow = config.error_on_line_overflow()
+                    && !is_skipped_line(cur_line, skipped_range)
                     && (config.error_on_line_overflow_comments() || !is_comment);
                 if report_error_on_line_overflow && line_len > config.max_width() {
                     errors.push(FormattingError {
@@ -448,12 +463,14 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
     }
 
     for &(l, _, _, ref b) in &trims {
-        errors.push(FormattingError {
-            line: l,
-            kind: ErrorKind::TrailingWhitespace,
-            is_comment: false,
-            line_buffer: b.clone(),
-        });
+        if !is_skipped_line(l, skipped_range) {
+            errors.push(FormattingError {
+                line: l,
+                kind: ErrorKind::TrailingWhitespace,
+                is_comment: false,
+                line_buffer: b.clone(),
+            });
+        }
     }
 
     report.file_error_map.insert(name.to_owned(), errors);
@@ -546,12 +563,12 @@ pub fn format_input<T: Write>(
         &mut parse_session,
         &main_file,
         config,
-        |file_name, file| {
+        |file_name, file, skipped_range| {
             // For some reason, the codemap does not include terminating
             // newlines so we must add one on for each file. This is sad.
             filemap::append_newline(file);
 
-            format_lines(file, file_name, config, &mut report);
+            format_lines(file, file_name, skipped_range, config, &mut report);
 
             if let Some(ref mut out) = out {
                 return filemap::write_file(file, file_name, out, config);

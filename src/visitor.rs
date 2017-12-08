@@ -82,6 +82,7 @@ pub struct FmtVisitor<'a> {
     pub is_if_else_block: bool,
     pub snippet_provider: &'a SnippetProvider<'a>,
     pub line_number: usize,
+    pub skipped_range: Vec<(usize, usize)>,
 }
 
 impl<'b, 'a: 'b> FmtVisitor<'a> {
@@ -101,13 +102,17 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.visit_item(item);
             }
             ast::StmtKind::Local(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
-                let rewrite = stmt.rewrite(&self.get_context(), self.shape());
-                self.push_rewrite(stmt.span(), rewrite)
+                if contains_skip(get_attrs_from_stmt(stmt)) {
+                    self.push_skipped_with_span(stmt.span());
+                } else {
+                    let rewrite = stmt.rewrite(&self.get_context(), self.shape());
+                    self.push_rewrite(stmt.span(), rewrite)
+                }
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, _macro_style, ref attrs) = **mac;
                 if self.visit_attrs(attrs, ast::AttrStyle::Outer) {
-                    self.push_rewrite(stmt.span(), None);
+                    self.push_skipped_with_span(stmt.span());
                 } else {
                     self.visit_mac(mac, None, MacroPosition::Statement);
                 }
@@ -321,7 +326,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     // Module is inline, in this case we treat modules like any
                     // other item.
                     if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
-                        self.push_rewrite(item.span, None);
+                        self.push_skipped_with_span(item.span());
                         return;
                     }
                 } else if contains_skip(&item.attrs) {
@@ -349,7 +354,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
             _ => {
                 if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
-                    self.push_rewrite(item.span, None);
+                    self.push_skipped_with_span(item.span());
                     return;
                 }
             }
@@ -436,7 +441,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, ti.span);
 
         if self.visit_attrs(&ti.attrs, ast::AttrStyle::Outer) {
-            self.push_rewrite(ti.span, None);
+            self.push_skipped_with_span(ti.span());
             return;
         }
 
@@ -478,7 +483,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, ii.span);
 
         if self.visit_attrs(&ii.attrs, ast::AttrStyle::Outer) {
-            self.push_rewrite(ii.span, None);
+            self.push_skipped_with_span(ii.span());
             return;
         }
 
@@ -525,8 +530,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.buffer.push_str(s);
     }
 
-    pub fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
-        self.format_missing_with_indent(source!(self, span).lo());
+    fn push_rewrite_inner(&mut self, span: Span, rewrite: Option<String>) {
         if let Some(ref s) = rewrite {
             self.push_str(s);
         } else {
@@ -534,6 +538,19 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             self.push_str(snippet);
         }
         self.last_pos = source!(self, span).hi();
+    }
+
+    pub fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
+        self.format_missing_with_indent(source!(self, span).lo());
+        self.push_rewrite_inner(span, rewrite);
+    }
+
+    pub fn push_skipped_with_span(&mut self, span: Span) {
+        self.format_missing_with_indent(source!(self, span).lo());
+        let lo = self.line_number + 1;
+        self.push_rewrite_inner(span, None);
+        let hi = self.line_number + 1;
+        self.skipped_range.push((lo, hi));
     }
 
     pub fn from_context(ctx: &'a RewriteContext) -> FmtVisitor<'a> {
@@ -555,6 +572,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             is_if_else_block: false,
             snippet_provider: snippet_provider,
             line_number: 0,
+            skipped_range: vec![],
         }
     }
 
@@ -1057,4 +1075,13 @@ pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Optio
         let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
         String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))
     })
+}
+
+fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
+    match stmt.node {
+        ast::StmtKind::Local(ref local) => &local.attrs,
+        ast::StmtKind::Item(ref item) => &item.attrs,
+        ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => &expr.attrs,
+        ast::StmtKind::Mac(ref mac) => &mac.2,
+    }
 }
