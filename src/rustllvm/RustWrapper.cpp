@@ -1144,13 +1144,6 @@ extern "C" void LLVMRustWriteSMDiagnosticToString(LLVMSMDiagnosticRef D,
   unwrap(D)->print("", OS);
 }
 
-extern "C" LLVMValueRef
-LLVMRustBuildLandingPad(LLVMBuilderRef B, LLVMTypeRef Ty,
-                        LLVMValueRef PersFn, unsigned NumClauses,
-                        const char *Name, LLVMValueRef F) {
-  return LLVMBuildLandingPad(B, Ty, PersFn, NumClauses, Name);
-}
-
 extern "C" LLVMValueRef LLVMRustBuildCleanupPad(LLVMBuilderRef B,
                                                 LLVMValueRef ParentPad,
                                                 unsigned ArgCount,

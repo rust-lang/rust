@@ -1012,12 +1012,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn landing_pad(&self, ty: Type, pers_fn: ValueRef,
-                       num_clauses: usize,
-                       llfn: ValueRef) -> ValueRef {
+                       num_clauses: usize) -> ValueRef {
         self.count_insn("landingpad");
         unsafe {
-            llvm::LLVMRustBuildLandingPad(self.llbuilder, ty.to_ref(), pers_fn,
-                                          num_clauses as c_uint, noname(), llfn)
+            llvm::LLVMBuildLandingPad(self.llbuilder, ty.to_ref(), pers_fn,
+                                      num_clauses as c_uint, noname())
         }
     }
 
