@@ -375,7 +375,6 @@ fn format_lines(
     config: &Config,
     report: &mut FormatReport,
 ) {
-    println!("skipped_range: {:?}", skipped_range);
     // Iterate over the chars in the file map.
     let mut trims = vec![];
     let mut last_wspace: Option<usize> = None;
