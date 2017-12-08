@@ -176,7 +176,7 @@ impl<'sess> OnDiskCache<'sess> {
                 let index = FileMapIndex(index as u32);
                 let file_ptr: *const FileMap = &**file as *const _;
                 file_to_file_index.insert(file_ptr, index);
-                file_index_to_stable_id.insert(index, StableFilemapId::new(&file));
+                file_index_to_stable_id.insert(index, file.stable_id);
             }
 
             (file_to_file_index, file_index_to_stable_id)
