@@ -338,6 +338,11 @@ where
             visitor.format_separate_mod(module, &*filemap);
         };
 
+        assert_eq!(
+            visitor.line_number,
+            ::utils::count_newlines(&format!("{}", visitor.buffer))
+        );
+
         has_diff |= match after_file(path_str, &mut visitor.buffer) {
             Ok(result) => result,
             Err(e) => {

@@ -285,7 +285,7 @@ impl<'a> FmtVisitor<'a> {
             }
             Some(ref s) => {
                 self.format_missing_with_indent(source!(self, span).lo());
-                self.buffer.push_str(s);
+                self.push_str(s);
                 self.last_pos = source!(self, span).hi();
             }
             None => {

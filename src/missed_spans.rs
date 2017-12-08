@@ -28,27 +28,25 @@ impl<'a> FmtVisitor<'a> {
     // TODO these format_missing methods are ugly. Refactor and add unit tests
     // for the central whitespace stripping loop.
     pub fn format_missing(&mut self, end: BytePos) {
-        self.format_missing_inner(end, |this, last_snippet, _| {
-            this.buffer.push_str(last_snippet)
-        })
+        self.format_missing_inner(end, |this, last_snippet, _| this.push_str(last_snippet))
     }
 
     pub fn format_missing_with_indent(&mut self, end: BytePos) {
         let config = self.config;
         self.format_missing_inner(end, |this, last_snippet, snippet| {
-            this.buffer.push_str(last_snippet.trim_right());
+            this.push_str(last_snippet.trim_right());
             if last_snippet == snippet && !this.output_at_start() {
                 // No new lines in the snippet.
-                this.buffer.push_str("\n");
+                this.push_str("\n");
             }
             let indent = this.block_indent.to_string(config);
-            this.buffer.push_str(&indent);
+            this.push_str(&indent);
         })
     }
 
     pub fn format_missing_no_indent(&mut self, end: BytePos) {
         self.format_missing_inner(end, |this, last_snippet, _| {
-            this.buffer.push_str(last_snippet.trim_right());
+            this.push_str(last_snippet.trim_right());
         })
     }
 
@@ -97,7 +95,7 @@ impl<'a> FmtVisitor<'a> {
             newline_count = newline_lower_bound;
         }
         let blank_lines: String = repeat('\n').take(newline_count).collect();
-        self.buffer.push_str(&blank_lines);
+        self.push_str(&blank_lines);
     }
 
     fn write_snippet<F>(&mut self, span: Span, process_last_snippet: F)
@@ -154,12 +152,12 @@ impl<'a> FmtVisitor<'a> {
         if status.rewrite_next_comment {
             if fix_indent {
                 if let Some('{') = last_char {
-                    self.buffer.push_str("\n");
+                    self.push_str("\n");
                 }
-                self.buffer
-                    .push_str(&self.block_indent.to_string(self.config));
+                let indent_str = self.block_indent.to_string(self.config);
+                self.push_str(&indent_str);
             } else {
-                self.buffer.push_str(" ");
+                self.push_str(" ");
             }
 
             let comment_width = ::std::cmp::min(
@@ -170,7 +168,7 @@ impl<'a> FmtVisitor<'a> {
             let comment_shape = Shape::legacy(comment_width, comment_indent);
             let comment_str = rewrite_comment(subslice, false, comment_shape, self.config)
                 .unwrap_or_else(|| String::from(subslice));
-            self.buffer.push_str(&comment_str);
+            self.push_str(&comment_str);
 
             status.last_wspace = None;
             status.line_start = offset + subslice.len();
@@ -183,13 +181,13 @@ impl<'a> FmtVisitor<'a> {
                     .any(|s| s.len() >= 2 && &s[0..2] == "/*")
                 {
                     // Add a newline after line comments
-                    self.buffer.push_str("\n");
+                    self.push_str("\n");
                 }
             } else if status.line_start <= snippet.len() {
                 // For other comments add a newline if there isn't one at the end already
                 match snippet[status.line_start..].chars().next() {
                     Some('\n') | Some('\r') => (),
-                    _ => self.buffer.push_str("\n"),
+                    _ => self.push_str("\n"),
                 }
             }
 
@@ -277,10 +275,10 @@ impl<'a> FmtVisitor<'a> {
                         }
 
                         if let Some(lw) = status.last_wspace {
-                            self.buffer.push_str(&snippet[status.line_start..lw]);
-                            self.buffer.push_str("\n");
+                            self.push_str(&snippet[status.line_start..lw]);
+                            self.push_str("\n");
                         } else {
-                            self.buffer.push_str(&snippet[status.line_start..i + 1]);
+                            self.push_str(&snippet[status.line_start..i + 1]);
                         }
 
                         status.cur_line += 1;
@@ -306,7 +304,7 @@ impl<'a> FmtVisitor<'a> {
 
                 let remaining = snippet[status.line_start..subslice.len() + offset].trim();
                 if !remaining.is_empty() {
-                    self.buffer.push_str(remaining);
+                    self.push_str(remaining);
                     status.line_start = subslice.len() + offset;
                     status.rewrite_next_comment = true;
                 }
