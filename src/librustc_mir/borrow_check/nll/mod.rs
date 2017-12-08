@@ -85,6 +85,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         mir_node_id,
         param_env,
         mir,
+        &universal_regions.region_bound_pairs,
         fr_fn_body,
         universal_regions.input_tys,
         universal_regions.output_ty,
