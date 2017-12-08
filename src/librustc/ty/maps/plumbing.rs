@@ -974,4 +974,7 @@ impl_load_from_cache!(
     BorrowCheck => borrowck,
     MirBorrowCheck => mir_borrowck,
     MirConstQualif => mir_const_qualif,
+    SymbolName => def_symbol_name,
+    ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
+    ContainsExternIndicator => contains_extern_indicator,
 );

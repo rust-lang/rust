@@ -1830,7 +1830,7 @@ pub struct GeneratorLayout<'tcx> {
 /// instance of the closure is created, the corresponding free regions
 /// can be extracted from its type and constrained to have the given
 /// outlives relationship.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ClosureRegionRequirements {
     /// The number of external regions defined on the closure.  In our
     /// example above, it would be 3 -- one for `'static`, then `'1`
@@ -1846,7 +1846,7 @@ pub struct ClosureRegionRequirements {
 
 /// Indicates an outlives constraint between two free-regions declared
 /// on the closure.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct ClosureOutlivesRequirement {
     // This region ...
     pub free_region: ty::RegionVid,

@@ -273,23 +273,21 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let lo = BytePos::decode(self)?;
         let hi = BytePos::decode(self)?;
 
+        if lo == BytePos(0) && hi == BytePos(0) {
+            // Don't try to rebase DUMMY_SP. Otherwise it will look like a valid
+            // Span again.
+            return Ok(DUMMY_SP)
+        }
+
+        if hi < lo {
+            // Consistently map invalid spans to DUMMY_SP.
+            return Ok(DUMMY_SP)
+        }
+
         let sess = if let Some(sess) = self.sess {
             sess
         } else {
             bug!("Cannot decode Span without Session.")
-        };
-
-        let (lo, hi) = if lo > hi {
-            // Currently macro expansion sometimes produces invalid Span values
-            // where lo > hi. In order not to crash the compiler when trying to
-            // translate these values, let's transform them into something we
-            // can handle (and which will produce useful debug locations at
-            // least some of the time).
-            // This workaround is only necessary as long as macro expansion is
-            // not fixed. FIXME(#23480)
-            (lo, lo)
-        } else {
-            (lo, hi)
         };
 
         let imported_filemaps = self.cdata().imported_filemaps(&sess.codemap());
@@ -320,6 +318,16 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
                 &imported_filemaps[a]
             }
         };
+
+        // Make sure our binary search above is correct.
+        debug_assert!(lo >= filemap.original_start_pos &&
+                      lo <= filemap.original_end_pos);
+
+        if hi < filemap.original_start_pos || hi > filemap.original_end_pos {
+            // `hi` points to a different FileMap than `lo` which is invalid.
+            // Again, map invalid Spans to DUMMY_SP.
+            return Ok(DUMMY_SP)
+        }
 
         let lo = (lo + filemap.translated_filemap.start_pos) - filemap.original_start_pos;
         let hi = (hi + filemap.translated_filemap.start_pos) - filemap.original_start_pos;

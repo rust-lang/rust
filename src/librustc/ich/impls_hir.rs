@@ -529,63 +529,9 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Expr {
                 ref attrs
             } = *self;
 
-            let spans_always_on = match *node {
-                hir::ExprBox(..)        |
-                hir::ExprArray(..)      |
-                hir::ExprCall(..)       |
-                hir::ExprLit(..)        |
-                hir::ExprCast(..)       |
-                hir::ExprType(..)       |
-                hir::ExprIf(..)         |
-                hir::ExprWhile(..)      |
-                hir::ExprLoop(..)       |
-                hir::ExprMatch(..)      |
-                hir::ExprClosure(..)    |
-                hir::ExprBlock(..)      |
-                hir::ExprAssign(..)     |
-                hir::ExprTupField(..)   |
-                hir::ExprAddrOf(..)     |
-                hir::ExprBreak(..)      |
-                hir::ExprAgain(..)      |
-                hir::ExprRet(..)        |
-                hir::ExprYield(..)      |
-                hir::ExprInlineAsm(..)  |
-                hir::ExprRepeat(..)     |
-                hir::ExprTup(..)        |
-                hir::ExprMethodCall(..) |
-                hir::ExprPath(..)       |
-                hir::ExprStruct(..)     |
-                hir::ExprField(..)      => {
-                    // For these we only hash the span when debuginfo is on.
-                    false
-                }
-                // For the following, spans might be significant because of
-                // panic messages indicating the source location.
-                hir::ExprBinary(op, ..) => {
-                    hcx.binop_can_panic_at_runtime(op.node)
-                }
-                hir::ExprUnary(op, _) => {
-                    hcx.unop_can_panic_at_runtime(op)
-                }
-                hir::ExprAssignOp(op, ..) => {
-                    hcx.binop_can_panic_at_runtime(op.node)
-                }
-                hir::ExprIndex(..) => {
-                    true
-                }
-            };
-
-            if spans_always_on {
-                hcx.while_hashing_spans(true, |hcx| {
-                    span.hash_stable(hcx, hasher);
-                    node.hash_stable(hcx, hasher);
-                    attrs.hash_stable(hcx, hasher);
-                });
-            } else {
-                span.hash_stable(hcx, hasher);
-                node.hash_stable(hcx, hasher);
-                attrs.hash_stable(hcx, hasher);
-            }
+            span.hash_stable(hcx, hasher);
+            node.hash_stable(hcx, hasher);
+            attrs.hash_stable(hcx, hasher);
         })
     }
 }
@@ -712,15 +658,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::TraitItem {
             span
         } = *self;
 
-        let is_const = match *node {
-            hir::TraitItemKind::Const(..) |
-            hir::TraitItemKind::Type(..) => true,
-            hir::TraitItemKind::Method(hir::MethodSig { constness, .. }, _) => {
-                constness == hir::Constness::Const
-            }
-        };
-
-        hcx.hash_hir_item_like(attrs, is_const, |hcx| {
+        hcx.hash_hir_item_like(|hcx| {
             name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
@@ -757,15 +695,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItem {
             span
         } = *self;
 
-        let is_const = match *node {
-            hir::ImplItemKind::Const(..) |
-            hir::ImplItemKind::Type(..) => true,
-            hir::ImplItemKind::Method(hir::MethodSig { constness, .. }, _) => {
-                constness == hir::Constness::Const
-            }
-        };
-
-        hcx.hash_hir_item_like(attrs, is_const, |hcx| {
+        hcx.hash_hir_item_like(|hcx| {
             name.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             defaultness.hash_stable(hcx, hasher);
@@ -884,30 +814,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Item {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        let is_const = match self.node {
-            hir::ItemStatic(..)      |
-            hir::ItemConst(..)       => {
-                true
-            }
-            hir::ItemFn(_, _, constness, ..) => {
-                constness == hir::Constness::Const
-            }
-            hir::ItemUse(..)         |
-            hir::ItemExternCrate(..) |
-            hir::ItemForeignMod(..)  |
-            hir::ItemGlobalAsm(..)   |
-            hir::ItemMod(..)         |
-            hir::ItemAutoImpl(..) |
-            hir::ItemTrait(..)       |
-            hir::ItemImpl(..)        |
-            hir::ItemTy(..)          |
-            hir::ItemEnum(..)        |
-            hir::ItemStruct(..)      |
-            hir::ItemUnion(..)       => {
-                false
-            }
-        };
-
         let hir::Item {
             name,
             ref attrs,
@@ -918,7 +824,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Item {
             span
         } = *self;
 
-        hcx.hash_hir_item_like(attrs, is_const, |hcx| {
+        hcx.hash_hir_item_like(|hcx| {
             name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             node.hash_stable(hcx, hasher);
