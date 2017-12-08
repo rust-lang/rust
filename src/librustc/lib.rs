@@ -81,7 +81,7 @@ extern crate graphviz;
 #[macro_use] extern crate lazy_static;
 #[cfg(windows)]
 extern crate libc;
-extern crate rustc_back;
+extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
 extern crate rustc_const_math;

@@ -35,7 +35,6 @@ extern crate rustc_trans_utils;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
-extern crate rustc_back;
 extern crate rustc_metadata;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -66,7 +65,7 @@ use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{ErrorOutputType, RustcOptGroup, Externs, CodegenOptions};
 use rustc::session::config::{nightly_options, build_codegen_options};
-use rustc_back::target::TargetTriple;
+use rustc_target::spec::TargetTriple;
 
 #[macro_use]
 pub mod externalfiles;

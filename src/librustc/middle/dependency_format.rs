@@ -69,7 +69,7 @@ use ty::TyCtxt;
 use middle::cstore::{self, DepKind};
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FxHashMap;
-use rustc_back::target::PanicStrategy;
+use rustc_target::spec::PanicStrategy;
 
 /// A list of dependencies for a certain crate type.
 ///

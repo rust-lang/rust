@@ -24,7 +24,7 @@ use llvm::{self, ValueRef};
 use llvm::AttributePlace::Function;
 use rustc::ty::{self, Ty};
 use rustc::session::config::Sanitizer;
-use rustc_back::target::PanicStrategy;
+use rustc_target::spec::PanicStrategy;
 use abi::{Abi, FnType};
 use attributes;
 use context::CodegenCx;

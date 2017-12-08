@@ -35,7 +35,7 @@ extern crate env_logger;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_allocator;
-extern crate rustc_back;
+extern crate rustc_target;
 extern crate rustc_borrowck;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
@@ -1021,7 +1021,7 @@ impl RustcDefaultCalls {
         for req in &sess.opts.prints {
             match *req {
                 TargetList => {
-                    let mut targets = rustc_back::target::get_targets().collect::<Vec<String>>();
+                    let mut targets = rustc_target::spec::get_targets().collect::<Vec<String>>();
                     targets.sort();
                     println!("{}", targets.join("\n"));
                 },

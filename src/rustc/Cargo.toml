@@ -8,8 +8,8 @@ name = "rustc"
 path = "rustc.rs"
 
 [dependencies]
-rustc_back = { path = "../librustc_back" }
+rustc_target = { path = "../librustc_target" }
 rustc_driver = { path = "../librustc_driver" }
 
 [features]
-jemalloc = ["rustc_back/jemalloc"]
+jemalloc = ["rustc_target/jemalloc"]

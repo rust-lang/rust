@@ -43,7 +43,7 @@ use rustc::ty::maps::Providers;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
-use rustc_back::target::Target;
+use rustc_target::spec::Target;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_mir::monomorphize::collector;
 use link::{build_link_meta, out_filename};

@@ -13,7 +13,7 @@ use common::*;
 use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
-use rustc_back::target::PanicStrategy;
+use rustc_target::spec::PanicStrategy;
 use trans_item::DefPathBasedNames;
 use type_::Type;
 

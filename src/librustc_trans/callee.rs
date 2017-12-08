@@ -26,7 +26,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::subst::Substs;
-use rustc_back::target::PanicStrategy;
+use rustc_target::spec::PanicStrategy;
 
 /// Translates a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.

@@ -49,7 +49,7 @@ extern crate rustc_errors;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
-extern crate rustc_back;
+extern crate rustc_target;
 extern crate rustc_const_math;
 extern crate core; // for NonZero
 extern crate log_settings;

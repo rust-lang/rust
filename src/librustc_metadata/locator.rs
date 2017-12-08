@@ -236,7 +236,7 @@ use rustc::util::nodemap::FxHashMap;
 use errors::DiagnosticBuilder;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use rustc_back::target::{Target, TargetTriple};
+use rustc_target::spec::{Target, TargetTriple};
 
 use std::cmp;
 use std::collections::HashSet;
