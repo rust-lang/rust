@@ -410,6 +410,42 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 }
                                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
                             }
+                        } else if let Some((op, is_checked)) = self.is_binop_lang_item(def_id) {
+                            (||{
+                                assert_eq!(arg_vals.len(), 2);
+                                let rhs = arg_vals.pop().unwrap()?;
+                                let lhs = arg_vals.pop().unwrap()?;
+                                if !is_checked {
+                                    let binop_ty = op.ty(tcx, lhs.ty, rhs.ty);
+                                    let (lhs, rhs) = (lhs.llval, rhs.llval);
+                                    Ok(Const::new(const_scalar_binop(op, lhs, rhs, binop_ty),
+                                                  binop_ty))
+                                } else {
+                                    let ty = lhs.ty;
+                                    let val_ty = op.ty(tcx, lhs.ty, rhs.ty);
+                                    let binop_ty = tcx.intern_tup(&[val_ty, tcx.types.bool], false);
+                                    let (lhs, rhs) = (lhs.llval, rhs.llval);
+                                    assert!(!ty.is_fp());
+
+                                    match const_scalar_checked_binop(tcx, op, lhs, rhs, ty) {
+                                        Some((llval, of)) => {
+                                            Ok(trans_const_adt(
+                                                self.ccx,
+                                                binop_ty,
+                                                &mir::AggregateKind::Tuple,
+                                                &[
+                                                    Const::new(llval, val_ty),
+                                                    Const::new(C_bool(self.ccx, of), tcx.types.bool)
+                                                ]))
+                                        }
+                                        None => {
+                                            span_bug!(span,
+                                                "{:?} got non-integer operands: {:?} and {:?}",
+                                                op, Value(lhs), Value(rhs));
+                                        }
+                                    }
+                                }
+                            })()
                         } else {
                             MirConstContext::trans_def(self.ccx, def_id, substs, arg_vals)
                         };
@@ -423,6 +459,37 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
             };
         }
+    }
+
+    fn is_binop_lang_item(&mut self, def_id: DefId) -> Option<(mir::BinOp, bool)> {
+        let tcx = self.ccx.tcx();
+        let items = tcx.lang_items();
+        let def_id = Some(def_id);
+        if items.i128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
+        else if items.u128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
+        else if items.i128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
+        else if items.u128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
+        else if items.i128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
+        else if items.u128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
+        else if items.i128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
+        else if items.u128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
+        else if items.i128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
+        else if items.u128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
+        else if items.i128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
+        else if items.u128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
+        else if items.i128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
+        else if items.u128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
+        else if items.i128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
+        else if items.u128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
+        else if items.i128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
+        else if items.u128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
+        else if items.i128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
+        else if items.u128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
+        else if items.i128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
+        else if items.u128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
+        else if items.i128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
+        else if items.u128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
+        else { None }
     }
 
     fn store(&mut self,
