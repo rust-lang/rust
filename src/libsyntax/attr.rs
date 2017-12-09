@@ -1123,10 +1123,7 @@ impl MetaItem {
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
-        let node = match MetaItemKind::from_tokens(tokens) {
-            Some(node) => node,
-            _ => return None,
-        };
+        let node = MetaItemKind::from_tokens(tokens)?;
         let hi = match node {
             MetaItemKind::NameValue(ref lit) => lit.span.hi(),
             MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(span.hi()),
@@ -1182,10 +1179,8 @@ impl MetaItemKind {
         let mut tokens = delimited.into_trees().peekable();
         let mut result = Vec::new();
         while let Some(..) = tokens.peek() {
-            match NestedMetaItemKind::from_tokens(&mut tokens) {
-                Some(item) => result.push(respan(item.span(), item)),
-                None => return None,
-            }
+            let item = NestedMetaItemKind::from_tokens(&mut tokens)?;
+            result.push(respan(item.span(), item));
             match tokens.next() {
                 None | Some(TokenTree::Token(_, Token::Comma)) => {}
                 _ => return None,

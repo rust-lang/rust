@@ -1152,13 +1152,9 @@ impl<'a, T, S> Iterator for Intersection<'a, T, S>
 
     fn next(&mut self) -> Option<&'a T> {
         loop {
-            match self.iter.next() {
-                None => return None,
-                Some(elt) => {
-                    if self.other.contains(elt) {
-                        return Some(elt);
-                    }
-                }
+            let elt = self.iter.next()?;
+            if self.other.contains(elt) {
+                return Some(elt);
             }
         }
     }
@@ -1202,13 +1198,9 @@ impl<'a, T, S> Iterator for Difference<'a, T, S>
 
     fn next(&mut self) -> Option<&'a T> {
         loop {
-            match self.iter.next() {
-                None => return None,
-                Some(elt) => {
-                    if !self.other.contains(elt) {
-                        return Some(elt);
-                    }
-                }
+            let elt = self.iter.next()?;
+            if !self.other.contains(elt) {
+                return Some(elt);
             }
         }
     }

@@ -91,10 +91,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         .iter()
                         .enumerate()
                         .filter_map(|(index, arg)| {
-                            let ty = match tables.borrow().node_id_to_type_opt(arg.hir_id) {
-                                Some(v) => v,
-                                None => return None, // sometimes the tables are not yet populated
-                            };
+                            // May return None; sometimes the tables are not yet populated.
+                            let ty = tables.borrow().node_id_to_type_opt(arg.hir_id)?;
                             let mut found_anon_region = false;
                             let new_arg_ty = self.tcx
                                 .fold_regions(&ty, &mut false, |r, _| if *r == *anon_region {

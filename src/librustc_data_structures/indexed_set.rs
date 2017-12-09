@@ -291,10 +291,8 @@ impl<'a, T: Idx> Iterator for Iter<'a, T> {
                 }
             }
 
-            match self.iter.next() {
-                Some((i, word)) => self.cur = Some((*word, word_bits * i)),
-                None => return None,
-            }
+            let (i, word) = self.iter.next()?;
+            self.cur = Some((*word, word_bits * i));
         }
     }
 }

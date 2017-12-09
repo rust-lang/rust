@@ -79,10 +79,8 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
         let (kind, new_ty) = if let Some(mt) = self.cur_ty.builtin_deref(false, NoPreference) {
             (AutoderefKind::Builtin, mt.ty)
         } else {
-            match self.overloaded_deref_ty(self.cur_ty) {
-                Some(ty) => (AutoderefKind::Overloaded, ty),
-                _ => return None,
-            }
+            let ty = self.overloaded_deref_ty(self.cur_ty)?;
+            (AutoderefKind::Overloaded, ty)
         };
 
         if new_ty.references_error() {
@@ -108,10 +106,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
 
         // <cur_ty as Deref>
         let trait_ref = TraitRef {
-            def_id: match tcx.lang_items().deref_trait() {
-                Some(f) => f,
-                None => return None,
-            },
+            def_id: tcx.lang_items().deref_trait()?,
             substs: tcx.mk_substs_trait(self.cur_ty, &[]),
         };
 
