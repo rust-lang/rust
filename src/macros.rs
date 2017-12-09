@@ -50,6 +50,7 @@ pub enum MacroPosition {
     Item,
     Statement,
     Expression,
+    Pat,
 }
 
 impl MacroStyle {

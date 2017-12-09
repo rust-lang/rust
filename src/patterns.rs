@@ -19,6 +19,7 @@ use expr::{can_be_overflowed_expr, rewrite_call_inner, rewrite_pair, rewrite_una
            wrap_struct_field, PairParts};
 use lists::{itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
             struct_lit_tactic, write_list, DefinitiveListTactic, SeparatorPlace, SeparatorTactic};
+use macros::{rewrite_macro, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use types::{rewrite_path, PathContext};
@@ -121,8 +122,7 @@ impl Rewrite for Pat {
             PatKind::Struct(ref path, ref fields, ellipsis) => {
                 rewrite_struct_pat(path, fields, ellipsis, self.span, context, shape)
             }
-            // FIXME(#819) format pattern macros.
-            PatKind::Mac(..) => Some(context.snippet(self.span).to_owned()),
+            PatKind::Mac(ref mac) => rewrite_macro(mac, None, context, shape, MacroPosition::Pat),
         }
     }
 }
