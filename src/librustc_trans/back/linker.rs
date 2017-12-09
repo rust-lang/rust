@@ -21,6 +21,7 @@ use back::symbol_export;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
+use rustc::session::search_paths::PathKind;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel};
 use rustc::ty::TyCtxt;
 use rustc_back::LinkerFlavor;
@@ -115,6 +116,7 @@ pub trait Linker {
     fn args(&mut self, args: &[String]);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
     fn subsystem(&mut self, subsystem: &str);
+    fn application_manifest(&mut self);
     // Should have been finalize(self), but we don't support self-by-value on trait objects (yet?).
     fn finalize(&mut self) -> Command;
 }
@@ -373,6 +375,10 @@ impl<'a> Linker for GccLinker<'a> {
         self.linker_arg(&format!("--subsystem,{}", subsystem));
     }
 
+    fn application_manifest(&mut self) {
+        // noop
+    }
+
     fn finalize(&mut self) -> Command {
         self.hint_dynamic(); // Reset to default before returning the composed command line.
         let mut cmd = Command::new("");
@@ -590,6 +596,16 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
+    fn application_manifest(&mut self) {
+        self.cmd.arg("/MANIFEST:EMBED");
+        self.cmd.arg("/MANIFESTUAC");
+        let mut arg = OsString::from("/MANIFESTINPUT:");
+        let mut manifest = self.sess.target_filesearch(PathKind::All).get_lib_path();
+        manifest.push("longPathAware.manifest");
+        arg.push(manifest);
+        self.cmd.arg(arg);
+    }
+
     fn finalize(&mut self) -> Command {
         let mut cmd = Command::new("");
         ::std::mem::swap(&mut cmd, &mut self.cmd);
@@ -737,6 +753,10 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn subsystem(&mut self, _subsystem: &str) {
+        // noop
+    }
+
+    fn application_manifest(&mut self) {
         // noop
     }
 

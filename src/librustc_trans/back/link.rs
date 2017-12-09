@@ -845,6 +845,7 @@ fn link_args(cmd: &mut Linker,
 
     if crate_type == config::CrateTypeExecutable &&
        sess.target.target.options.is_like_windows {
+        cmd.application_manifest();
         if let Some(ref s) = trans.windows_subsystem {
             cmd.subsystem(s);
         }
