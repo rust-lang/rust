@@ -581,7 +581,7 @@ pub fn remove_trailing_white_spaces(text: &str) -> String {
     buffer
 }
 
-struct CharClasses<T>
+pub struct CharClasses<T>
 where
     T: Iterator,
     T::Item: RichChar,
@@ -603,6 +603,12 @@ impl RichChar for char {
 impl RichChar for (usize, char) {
     fn get_char(&self) -> char {
         self.1
+    }
+}
+
+impl RichChar for (char, usize) {
+    fn get_char(&self) -> char {
+        self.0
     }
 }
 
@@ -635,7 +641,7 @@ pub enum CodeCharKind {
 /// describing opening and closing of comments for ease when chunking
 /// code from tagged characters
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-enum FullCodeCharKind {
+pub enum FullCodeCharKind {
     Normal,
     /// The first character of a comment, there is only one for a comment (always '/')
     StartComment,
@@ -649,13 +655,17 @@ enum FullCodeCharKind {
 }
 
 impl FullCodeCharKind {
-    fn is_comment(&self) -> bool {
+    pub fn is_comment(&self) -> bool {
         match *self {
             FullCodeCharKind::StartComment
             | FullCodeCharKind::InComment
             | FullCodeCharKind::EndComment => true,
             _ => false,
         }
+    }
+
+    pub fn is_string(&self) -> bool {
+        *self == FullCodeCharKind::InString
     }
 
     fn to_codecharkind(&self) -> CodeCharKind {
@@ -672,7 +682,7 @@ where
     T: Iterator,
     T::Item: RichChar,
 {
-    fn new(base: T) -> CharClasses<T> {
+    pub fn new(base: T) -> CharClasses<T> {
         CharClasses {
             base: base.peekable(),
             status: CharClassesStatus::Normal,
