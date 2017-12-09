@@ -81,6 +81,7 @@ This API is completely unstable and subject to change.
 #![feature(match_default_bindings)]
 #![feature(never_type)]
 #![feature(quote)]
+#![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 
