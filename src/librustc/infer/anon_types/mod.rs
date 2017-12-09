@@ -11,12 +11,13 @@
 use hir::def_id::DefId;
 use infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
 use infer::outlives::free_region_map::FreeRegionRelations;
+use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use traits::{self, PredicateObligation};
 use ty::{self, Ty};
 use ty::fold::{BottomUpFolder, TypeFoldable};
 use ty::outlives::Component;
-use ty::subst::Substs;
+use ty::subst::{Kind, Substs};
 use util::nodemap::DefIdMap;
 
 pub type AnonTypeMap<'tcx> = DefIdMap<AnonTypeDecl<'tcx>>;
@@ -374,6 +375,106 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         }
+    }
+
+    /// Given the fully resolved, instantiated type for an anonymous
+    /// type, i.e., the value of an inference variable like C1 or C2
+    /// (*), computes the "definition type" for an abstract type
+    /// definition -- that is, the inferred value of `Foo1<'x>` or
+    /// `Foo2<'x>` that we would conceptually use in its definition:
+    ///
+    ///     abstract type Foo1<'x>: Bar<'x> = AAA; <-- this type AAA
+    ///     abstract type Foo2<'x>: Bar<'x> = BBB; <-- or this type BBB
+    ///     fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
+    ///
+    /// Note that these values are defined in terms of a distinct set of
+    /// generic parameters (`'x` instead of `'a`) from C1 or C2. The main
+    /// purpose of this function is to do that translation.
+    ///
+    /// (*) C1 and C2 were introduced in the comments on
+    /// `constrain_anon_types`. Read that comment for more context.
+    ///
+    /// # Parameters
+    ///
+    /// - `def_id`, the `impl Trait` type
+    /// - `anon_defn`, the anonymous definition created in `instantiate_anon_types`
+    /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
+    ///   `anon_defn.concrete_ty`
+    pub fn infer_anon_definition_from_instantiation(
+        &self,
+        def_id: DefId,
+        anon_defn: &AnonTypeDecl<'tcx>,
+        instantiated_ty: Ty<'gcx>,
+    ) -> Ty<'gcx> {
+        debug!(
+            "infer_anon_definition_from_instantiation(instantiated_ty={:?})",
+            instantiated_ty
+        );
+
+        let gcx = self.tcx.global_tcx();
+
+        // Use substs to build up a reverse map from regions to their
+        // identity mappings. This is necessary because of `impl
+        // Trait` lifetimes are computed by replacing existing
+        // lifetimes with 'static and remapping only those used in the
+        // `impl Trait` return type, resulting in the parameters
+        // shifting.
+        let id_substs = Substs::identity_for_item(gcx, def_id);
+        let map: FxHashMap<Kind<'tcx>, Kind<'gcx>> = anon_defn
+            .substs
+            .iter()
+            .enumerate()
+            .map(|(index, subst)| (*subst, id_substs[index]))
+            .collect();
+
+        // Convert the type from the function into a type valid outside
+        // the function, by replacing invalid regions with 'static,
+        // after producing an error for each of them.
+        let definition_ty = gcx.fold_regions(&instantiated_ty, &mut false, |r, _| {
+            match *r {
+                // 'static and early-bound regions are valid.
+                ty::ReStatic | ty::ReEmpty => r,
+
+                // All other regions, we map them appropriately to their adjusted
+                // indices, erroring if we find any lifetimes that were not mapped
+                // into the new set.
+                _ => if let Some(r1) = map.get(&Kind::from(r)).and_then(|k| k.as_region()) {
+                    r1
+                } else {
+                    // No mapping was found. This means that
+                    // it is either a disallowed lifetime,
+                    // which will be caught by regionck, or it
+                    // is a region in a non-upvar closure
+                    // generic, which is explicitly
+                    // allowed. If that surprises you, read
+                    // on.
+                    //
+                    // The case of closure is a somewhat
+                    // subtle (read: hacky) consideration. The
+                    // problem is that our closure types
+                    // currently include all the lifetime
+                    // parameters declared on the enclosing
+                    // function, even if they are unused by
+                    // the closure itself. We can't readily
+                    // filter them out, so here we replace
+                    // those values with `'empty`. This can't
+                    // really make a difference to the rest of
+                    // the compiler; those regions are ignored
+                    // for the outlives relation, and hence
+                    // don't affect trait selection or auto
+                    // traits, and they are erased during
+                    // trans.
+                    gcx.types.re_empty
+                },
+            }
+        });
+
+        debug!(
+            "infer_anon_definition_from_instantiation: definition_ty={:?}",
+            definition_ty
+        );
+
+        definition_ty
     }
 }
 
