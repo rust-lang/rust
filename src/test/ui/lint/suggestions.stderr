@@ -38,7 +38,7 @@ warning: static is marked #[no_mangle], but not exported
 14 | #[no_mangle] static SHENZHOU: usize = 1; // should suggest `pub`
    |              -^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              help: try making it public: `pub `
+   |              help: try making it public: `pub`
    |
    = note: #[warn(private_no_mangle_statics)] on by default
 
@@ -68,7 +68,7 @@ warning: function is marked #[no_mangle], but not exported
 24 | fn rio_grande() {} // should suggest `pub`
    | -^^^^^^^^^^^^^^^^^
    | |
-   | help: try making it public: `pub `
+   | help: try making it public: `pub`
    |
    = note: #[warn(private_no_mangle_fns)] on by default
 
