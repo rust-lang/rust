@@ -15,7 +15,7 @@
 //! `TransitiveRelation` type and use that to decide when one free
 //! region outlives another and so forth.
 
-use infer::outlives::free_region_map::FreeRegionMap;
+use infer::outlives::free_region_map::{FreeRegionMap, FreeRegionRelations};
 use hir::def_id::DefId;
 use middle::region;
 use ty::{self, TyCtxt, Region};

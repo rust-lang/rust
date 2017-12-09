@@ -38,20 +38,6 @@ impl<'tcx> FreeRegionMap<'tcx> {
         }
     }
 
-    /// Tests whether `r_a <= r_b`. Both must be free regions or
-    /// `'static`.
-    pub fn sub_free_regions<'a, 'gcx>(&self,
-                                      r_a: Region<'tcx>,
-                                      r_b: Region<'tcx>)
-                                      -> bool {
-        assert!(is_free_or_static(r_a) && is_free_or_static(r_b));
-        if let ty::ReStatic = r_b {
-            true // `'a <= 'static` is just always true, and not stored in the relation explicitly
-        } else {
-            r_a == r_b || self.relation.contains(&r_a, &r_b)
-        }
-    }
-
     /// Compute the least-upper-bound of two free regions. In some
     /// cases, this is more conservative than necessary, in order to
     /// avoid making arbitrary choices. See
@@ -72,6 +58,29 @@ impl<'tcx> FreeRegionMap<'tcx> {
         };
         debug!("lub_free_regions(r_a={:?}, r_b={:?}) = {:?}", r_a, r_b, result);
         result
+    }
+}
+
+/// The NLL region handling code represents free region relations in a
+/// slightly different way; this trait allows functions to be abstract
+/// over which version is in use.
+pub trait FreeRegionRelations<'tcx> {
+    /// Tests whether `r_a <= r_b`. Both must be free regions or
+    /// `'static`.
+    fn sub_free_regions(&self, shorter: ty::Region<'tcx>, longer: ty::Region<'tcx>) -> bool;
+}
+
+impl<'tcx> FreeRegionRelations<'tcx> for FreeRegionMap<'tcx> {
+    fn sub_free_regions(&self,
+                        r_a: Region<'tcx>,
+                        r_b: Region<'tcx>)
+                        -> bool {
+        assert!(is_free_or_static(r_a) && is_free_or_static(r_b));
+        if let ty::ReStatic = r_b {
+            true // `'a <= 'static` is just always true, and not stored in the relation explicitly
+        } else {
+            r_a == r_b || self.relation.contains(&r_a, &r_b)
+        }
     }
 }
 
