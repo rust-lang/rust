@@ -590,7 +590,7 @@ where
     status: CharClassesStatus,
 }
 
-trait RichChar {
+pub trait RichChar {
     fn get_char(&self) -> char;
 }
 
