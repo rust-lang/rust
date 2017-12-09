@@ -81,6 +81,18 @@ intrinsics! {
     }
 
     #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
+    #[arm_aeabi_alias = __aeabi_l2f]
+    pub extern "C" fn __floatdisf(i: i64) -> f32 {
+        // On x86_64 LLVM will use native instructions for this conversion, we
+        // can just do it directly
+        if cfg!(target_arch = "x86_64") {
+            i as f32
+        } else {
+            int_to_float!(i, i64, f32)
+        }
+    }
+
+    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
     #[arm_aeabi_alias = __aeabi_l2d]
     pub extern "C" fn __floatdidf(i: i64) -> f64 {
         // On x86_64 LLVM will use native instructions for this conversion, we
@@ -110,6 +122,14 @@ intrinsics! {
     #[arm_aeabi_alias = __aeabi_ui2d]
     pub extern "C" fn __floatunsidf(i: u32) -> f64 {
         int_to_float!(i, u32, f64)
+    }
+
+    #[use_c_shim_if(all(not(target_env = "msvc"),
+                        any(target_arch = "x86",
+                            all(not(windows), target_arch = "x86_64"))))]
+    #[arm_aeabi_alias = __aeabi_ul2f]
+    pub extern "C" fn __floatundisf(i: u64) -> f32 {
+        int_to_float!(i, u64, f32)
     }
 
     #[use_c_shim_if(all(not(target_env = "msvc"),

@@ -150,11 +150,11 @@ features = ["c"]
 - [x] fixunssfdi.c
 - [x] fixunssfsi.c
 - [x] floatdidf.c
-- [ ] floatdisf.c
+- [x] floatdisf.c
 - [x] floatsidf.c
 - [x] floatsisf.c
 - [x] floatundidf.c
-- [ ] floatundisf.c
+- [x] floatundisf.c
 - [x] floatunsidf.c
 - [x] floatunsisf.c
 - [ ] i386/ashldi3.S
