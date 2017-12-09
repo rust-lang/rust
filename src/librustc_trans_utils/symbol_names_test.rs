@@ -15,7 +15,6 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::ty::TyCtxt;
 use syntax::ast;
 
@@ -34,8 +33,7 @@ pub fn report_symbol_names<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     tcx.dep_graph.with_ignore(|| {
         let mut visitor = SymbolNamesTest { tcx: tcx };
-        // FIXME(#37712) could use ItemLikeVisitor if trait items were item-like
-        tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+        tcx.hir.krate().visit_all_item_likes(&mut visitor);
     })
 }
 
@@ -66,23 +64,16 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SymbolNamesTest<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::None
-    }
-
+impl<'a, 'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.process_attrs(item.id);
-        intravisit::walk_item(self, item);
     }
 
-    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        self.process_attrs(ti.id);
-        intravisit::walk_trait_item(self, ti)
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+        self.process_attrs(trait_item.id);
     }
 
-    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
-        self.process_attrs(ii.id);
-        intravisit::walk_impl_item(self, ii)
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+        self.process_attrs(impl_item.id);
     }
 }
