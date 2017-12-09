@@ -995,6 +995,14 @@ h4 > .important-traits {
 	top: 2px;
 }
 
+@media (max-width: 700px) {
+	h4 > .important-traits {
+		position: absolute;
+		left: -22px;
+		top: 24px;
+	}
+}
+
 .modal {
 	position: fixed;
 	width: 100vw;
