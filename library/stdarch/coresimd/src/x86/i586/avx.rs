@@ -1537,6 +1537,37 @@ pub unsafe fn _mm256_lddqu_si256(mem_addr: *const i8x32) -> i8x32 {
     vlddqu(mem_addr as *const i8)
 }
 
+/// Moves integer data from a 256-bit integer vector to a 32-byte
+/// aligned memory location. To minimize caching, the data is flagged as
+/// non-temporal (unlikely to be used again soon)
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vmovntps))] // FIXME vmovntdq
+pub unsafe fn _mm256_stream_si256(mem_addr: *const __m256i, a: __m256i) {
+    ::core::intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
+}
+
+/// Moves double-precision values from a 256-bit vector of [4 x double]
+/// to a 32-byte aligned memory location. To minimize caching, the data is
+/// flagged as non-temporal (unlikely to be used again soon).
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vmovntps))] // FIXME vmovntpd
+pub unsafe fn _mm256_stream_pd(mem_addr: *const f64, a: f64x4) {
+    ::core::intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
+}
+
+/// Moves single-precision floating point values from a 256-bit vector
+/// of [8 x float] to a 32-byte aligned memory location. To minimize
+/// caching, the data is flagged as non-temporal (unlikely to be used again
+/// soon).
+#[inline(always)]
+#[target_feature = "+avx"]
+#[cfg_attr(test, assert_instr(vmovntps))]
+pub unsafe fn _mm256_stream_ps(mem_addr: *const f32, a: f32x8) {
+    ::core::intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
+}
+
 /// Compute the approximate reciprocal of packed single-precision (32-bit)
 /// floating-point elements in `a`, and return the results. The maximum
 /// relative error for this approximation is less than 1.5*2^-12.
@@ -3530,6 +3561,44 @@ mod tests {
             25, 26, 27, 28, 29, 30, 31, 32,
         );
         assert_eq!(r, e);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_stream_si256() {
+        let a = __m256i::from(avx::_mm256_setr_epi64x(1, 2, 3, 4));
+        let mut r = avx::_mm256_undefined_si256();
+        avx::_mm256_stream_si256(&mut r as *mut _, a);
+        assert_eq!(r, a);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_stream_pd() {
+        #[repr(align(32))]
+        struct Memory {
+            pub data: [f64; 4],
+        }
+        let a = f64x4::splat(7.0);
+        let mut mem = Memory { data: [-1.0; 4] };
+
+        avx::_mm256_stream_pd(&mut mem.data[0] as *mut f64, a);
+        for i in 0..4 {
+            assert_eq!(mem.data[i], a.extract(i as u32));
+        }
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_stream_ps() {
+        #[repr(align(32))]
+        struct Memory {
+            pub data: [f32; 8],
+        }
+        let a = f32x8::splat(7.0);
+        let mut mem = Memory { data: [-1.0; 8] };
+
+        avx::_mm256_stream_ps(&mut mem.data[0] as *mut f32, a);
+        for i in 0..8 {
+            assert_eq!(mem.data[i], a.extract(i as u32));
+        }
     }
 
     #[simd_test = "avx"]
