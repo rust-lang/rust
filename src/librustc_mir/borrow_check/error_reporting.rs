@@ -347,22 +347,35 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 unreachable!("root_place is an unreachable???")
         };
 
+        let borrow_span = self.mir.source_info(borrow.location).span;
         let proper_span = match *root_place {
             Place::Local(local) => self.mir.local_decls[local].source_info.span,
             _ => drop_span,
         };
 
-        let mut err = self.tcx
-            .path_does_not_live_long_enough(drop_span, "borrowed value", Origin::Mir);
-        err.span_label(proper_span, "temporary value created here");
-        err.span_label(drop_span, "temporary value dropped here while still borrowed");
-        err.note("consider using a `let` binding to increase its lifetime");
+        match &self.describe_place(&borrow.place) {
+            Some(description) => {
+                let mut err = self.tcx.path_does_not_live_long_enough(
+                    borrow_span, &format!("`{}`", description), Origin::Mir);
+                err.span_label(borrow_span, "does not live long enough");
+                err.span_label(drop_span, "borrowed value only lives until here");
+                err.note("borrowed value must be valid for the static lifetime...");
+                err.emit();
+            },
+            None => {
+                let mut err = self.tcx
+                    .path_does_not_live_long_enough(drop_span, "borrowed value", Origin::Mir);
+                err.span_label(proper_span, "temporary value created here");
+                err.span_label(drop_span, "temporary value dropped here while still borrowed");
+                err.note("consider using a `let` binding to increase its lifetime");
 
-        if let Some(end) = end_span {
-            err.span_label(end, "temporary value needs to live until here");
+                if let Some(end) = end_span {
+                    err.span_label(end, "temporary value needs to live until here");
+                }
+
+                err.emit();
+            },
         }
-
-        err.emit();
     }
 
     pub(super) fn report_illegal_mutation_of_borrowed(
