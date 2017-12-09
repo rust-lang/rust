@@ -1071,7 +1071,7 @@ impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
     }
 }
 
-#[stable(feature = "drain_filter_drop", since = "1.25.0")]
+#[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 impl<'a, T, F> Drop for DrainFilter<'a, T, F>
     where F: FnMut(&mut T) -> bool,
 {
