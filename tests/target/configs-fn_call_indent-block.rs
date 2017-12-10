@@ -72,11 +72,9 @@ fn query(conn: &Connection) -> Result<()> {
             WHERE DATE(date) = $1
         "#,
         &[],
-        |row| {
-            Post {
-                title: row.get(0),
-                date: row.get(1),
-            }
+        |row| Post {
+            title: row.get(0),
+            date: row.get(1),
         },
     )?;
 

@@ -204,3 +204,10 @@ fn issue2207() {
         a_very_very_very_very_very_very_very_long_function_name_or_anything_else()
     }.to_string())
 }
+
+fn issue2262() {
+    result.init(&mut result.slave.borrow_mut(), &mut (result.strategy)()).map_err(|factory| Error {
+        factory,
+        slave: None,
+    })?;
+}
