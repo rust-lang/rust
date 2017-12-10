@@ -2432,21 +2432,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut expected_arg_tys = expected_arg_tys;
         let expected_arg_count = fn_inputs.len();
 
-        let sp_args = if args.len() > 0 {
-            let (first, args) = args.split_at(1);
-            let mut sp_tmp = first[0].span;
-            for arg in args {
-                let sp_opt = self.sess().codemap().merge_spans(sp_tmp, arg.span);
-                if ! sp_opt.is_some() {
-                    break;
-                }
-                sp_tmp = sp_opt.unwrap();
-            };
-            sp_tmp
-        } else {
-            sp
-        };
-
         fn parameter_count_error<'tcx>(sess: &Session,
                                        sp: Span,
                                        expr_sp: Span,
@@ -2465,7 +2450,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if arg_count == 1 {" was"} else {"s were"}),
                 DiagnosticId::Error(error_code.to_owned()));
 
-            if let Some(def_s) = def_span {
+            if let Some(def_s) = def_span.map(|sp| sess.codemap().def_span(sp)) {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
@@ -2489,7 +2474,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
             match tuple_type.sty {
                 ty::TyTuple(arg_types, _) if arg_types.len() != args.len() => {
-                    parameter_count_error(tcx.sess, sp_args, expr_sp, arg_types.len(), args.len(),
+                    parameter_count_error(tcx.sess, sp, expr_sp, arg_types.len(), args.len(),
                                           "E0057", false, def_span, false);
                     expected_arg_tys = &[];
                     self.err_args(args.len())
@@ -2518,7 +2503,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if supplied_arg_count >= expected_arg_count {
                 fn_inputs.to_vec()
             } else {
-                parameter_count_error(tcx.sess, sp_args, expr_sp, expected_arg_count,
+                parameter_count_error(tcx.sess, sp, expr_sp, expected_arg_count,
                                       supplied_arg_count, "E0060", true, def_span, false);
                 expected_arg_tys = &[];
                 self.err_args(supplied_arg_count)
@@ -2532,7 +2517,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else {
                 false
             };
-            parameter_count_error(tcx.sess, sp_args, expr_sp, expected_arg_count,
+            parameter_count_error(tcx.sess, sp, expr_sp, expected_arg_count,
                                   supplied_arg_count, "E0061", false, def_span, sugg_unit);
             expected_arg_tys = &[];
             self.err_args(supplied_arg_count)

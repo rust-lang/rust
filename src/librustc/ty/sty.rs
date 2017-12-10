@@ -1559,6 +1559,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyAdt(def, _) => Some(def.did),
             TyForeign(did) => Some(did),
             TyClosure(id, _) => Some(id),
+            TyFnDef(id, _) => Some(id),
             _ => None,
         }
     }

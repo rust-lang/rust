@@ -714,7 +714,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let found_did = found_trait_ty.ty_to_def_id();
                 let found_span = found_did.and_then(|did| {
                     self.tcx.hir.span_if_local(did)
-                });
+                }).map(|sp| self.tcx.sess.codemap().def_span(sp)); // the sp could be an fn def
 
                 let found_ty_count =
                     match found_trait_ref.skip_binder().substs.type_at(1).sty {
@@ -751,7 +751,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     //
                     // ```
                     // [1i32, 2, 3].sort_by(|(a, b)| ..)
-                    // //                   ^^^^^^^^
+                    // //           ^^^^^^^ --------
                     // // expected_trait_ref:  std::ops::FnMut<(&i32, &i32)>
                     // //    found_trait_ref:  std::ops::FnMut<(&i32,)>
                     // ```
