@@ -218,7 +218,7 @@ pub struct TestProps {
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
-    // Specifies that a cfail test must actually compile without errors.
+    // Specifies that a test must actually compile without errors.
     pub must_compile_successfully: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,

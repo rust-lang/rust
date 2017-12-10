@@ -147,23 +147,26 @@ impl<'test> TestCx<'test> {
         assert!(self.revision.is_none(), "init_all invoked for a revision");
     }
 
-    fn run_cfail_test(&self) {
-        let proc_res = self.compile_test();
-
+    fn check_if_test_should_compile(&self, proc_res: &ProcRes) {
         if self.props.must_compile_successfully {
             if !proc_res.status.success() {
-                self.fatal_proc_rec("test compilation failed although it shouldn't!", &proc_res);
+                self.fatal_proc_rec("test compilation failed although it shouldn't!", proc_res);
             }
         } else {
             if proc_res.status.success() {
                 self.fatal_proc_rec(
                     &format!("{} test compiled successfully!", self.config.mode)[..],
-                    &proc_res,
+                    proc_res,
                 );
             }
 
-            self.check_correct_failure_status(&proc_res);
+            self.check_correct_failure_status(proc_res);
         }
+    }
+
+    fn run_cfail_test(&self) {
+        let proc_res = self.compile_test();
+        self.check_if_test_should_compile(&proc_res);
 
         let output_to_check = self.get_output(&proc_res);
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
@@ -2388,6 +2391,7 @@ impl<'test> TestCx<'test> {
             .any(|s| s.contains("--error-format"));
 
         let proc_res = self.compile_test();
+        self.check_if_test_should_compile(&proc_res);
 
         let expected_stderr_path = self.expected_output_path(UI_STDERR);
         let expected_stderr = self.load_expected_output(&expected_stderr_path);
