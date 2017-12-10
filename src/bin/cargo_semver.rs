@@ -97,7 +97,7 @@ impl<'a> WorkInfo<'a> {
 
     /// Construct a package/workspace pair by fetching the package of a specified name and
     /// version.
-    fn remote(config: &'a Config, source: &mut SourceInfo<'a>, info: NameAndVersion)
+    fn remote(config: &'a Config, source: &mut SourceInfo<'a>, info: &NameAndVersion)
         -> CargoResult<WorkInfo<'a>>
     {
         // TODO: fall back to locally cached package instance, or better yet, search for it
@@ -159,7 +159,7 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     let mut source = SourceInfo::new(config)?;
 
     let current = if let Some(opt) = matches.opt_str("C") {
-        WorkInfo::remote(config, &mut source, parse_arg(&opt)?)?
+        WorkInfo::remote(config, &mut source, &parse_arg(&opt)?)?
     } else {
         WorkInfo::local(config, matches.opt_str("c").map(PathBuf::from))?
     };
@@ -170,7 +170,7 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         let info = parse_arg(&opt)?;
         let version = info.version.to_owned();
 
-        let work_info = WorkInfo::remote(config, &mut source, info)?;
+        let work_info = WorkInfo::remote(config, &mut source, &info)?;
 
         (work_info, version)
     } else if let Some(path) = matches.opt_str("s") {
@@ -180,7 +180,7 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     } else {
         let stable_crate = exact_search(&name)?;
         let info = NameAndVersion { name: &name, version: &stable_crate.max_version };
-        let work_info = WorkInfo::remote(config, &mut source, info)?;
+        let work_info = WorkInfo::remote(config, &mut source, &info)?;
 
         (work_info, stable_crate.max_version.clone())
     };
