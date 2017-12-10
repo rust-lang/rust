@@ -180,7 +180,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                                        orig: Ty<'tcx>,
                                        target: Ty<'tcx>) -> Option<TypeError<'tcx2>> {
         use rustc::infer::InferOk;
-        use rustc::middle::free_region::FreeRegionMap;
+        use rustc::infer::outlives::env::OutlivesEnvironment;
         use rustc::middle::region::ScopeTree;
         use rustc::ty::Lift;
 
@@ -192,12 +192,22 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
 
         if let Err(err) = error {
             let scope_tree = ScopeTree::default();
-            let mut free_regions = FreeRegionMap::new();
+            let mut outlives_env = OutlivesEnvironment::new(target_param_env);
 
-            free_regions.relate_free_regions_from_predicates(target_param_env.caller_bounds);
+            // The old code here added the bounds from the target param env by hand. However, at
+            // least the explicit bounds are added when the OutlivesEnvironment is created. This
+            // seems to work, but in case it stops to do so, the below code snippets should be
+            // of help to implement the old behaviour.
+            //
+            // outlives_env.add_outlives_bounds(None, target_param_env.caller_bounds.iter()....)
+            // free_regions.relate_free_regions_from_predicates(target_param_env.caller_bounds);
+            //  ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
+            //      self.relate_regions(r_b, r_a);
+            //  }
+
             self.infcx.resolve_regions_and_report_errors(target_def_id,
                                                          &scope_tree,
-                                                         &free_regions);
+                                                         &outlives_env);
 
             let err =
                 self.infcx
