@@ -79,7 +79,7 @@ mod prim_bool { }
 /// write:
 ///
 /// ```
-/// # #![feature(never_type)]
+/// #![feature(never_type)]
 /// # fn foo() -> u32 {
 /// let x: ! = {
 ///     return 123
@@ -131,6 +131,7 @@ mod prim_bool { }
 /// [`Result<String, !>`] which we can unpack like this:
 ///
 /// ```ignore (string-from-str-error-type-is-not-never-yet)
+/// // NOTE: This does not work today!
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
