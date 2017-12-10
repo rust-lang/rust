@@ -35,6 +35,7 @@
 #![deny(warnings)]
 
 #![feature(asm)]
+#![feature(fnbox)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
@@ -56,6 +57,7 @@ use self::OutputLocation::*;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::any::Any;
+use std::boxed::FnBox;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::env;
@@ -133,16 +135,6 @@ pub trait TDynBenchFn: Send {
     fn run(&self, harness: &mut Bencher);
 }
 
-pub trait FnBox<T>: Send + 'static {
-    fn call_box(self: Box<Self>, t: T);
-}
-
-impl<T, F: FnOnce(T) + Send + 'static> FnBox<T> for F {
-    fn call_box(self: Box<F>, t: T) {
-        (*self)(t)
-    }
-}
-
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function panics then the test fails. We
 // may need to come up with a more clever definition of test in order
@@ -150,7 +142,7 @@ impl<T, F: FnOnce(T) + Send + 'static> FnBox<T> for F {
 pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
-    DynTestFn(Box<FnBox<()>>),
+    DynTestFn(Box<FnBox() + Send>),
     DynBenchFn(Box<TDynBenchFn + 'static>),
 }
 
@@ -1337,14 +1329,14 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
     tests.into_iter().map(|x| {
         let testfn = match x.testfn {
             DynBenchFn(bench) => {
-                DynTestFn(Box::new(move |()| {
+                DynTestFn(Box::new(move || {
                     bench::run_once(|b| {
                         __rust_begin_short_backtrace(|| bench.run(b))
                     })
                 }))
             }
             StaticBenchFn(benchfn) => {
-                DynTestFn(Box::new(move |()| {
+                DynTestFn(Box::new(move || {
                     bench::run_once(|b| {
                         __rust_begin_short_backtrace(|| benchfn(b))
                     })
@@ -1379,7 +1371,7 @@ pub fn run_test(opts: &TestOpts,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
-                      testfn: Box<FnBox<()>>) {
+                      testfn: Box<FnBox() + Send>) {
         struct Sink(Arc<Mutex<Vec<u8>>>);
         impl Write for Sink {
             fn write(&mut self, data: &[u8]) -> io::Result<usize> {
@@ -1405,9 +1397,7 @@ pub fn run_test(opts: &TestOpts,
                 None
             };
 
-            let result = catch_unwind(AssertUnwindSafe(|| {
-                testfn.call_box(())
-            }));
+            let result = catch_unwind(AssertUnwindSafe(testfn));
 
             if let Some((printio, panicio)) = oldio {
                 io::set_print(printio);
@@ -1449,14 +1439,14 @@ pub fn run_test(opts: &TestOpts,
             return;
         }
         DynTestFn(f) => {
-            let cb = move |()| {
-                __rust_begin_short_backtrace(|| f.call_box(()))
+            let cb = move || {
+                __rust_begin_short_backtrace(f)
             };
             run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb))
         }
         StaticTestFn(f) =>
             run_test_inner(desc, monitor_ch, opts.nocapture,
-                           Box::new(move |()| __rust_begin_short_backtrace(f))),
+                           Box::new(move || __rust_begin_short_backtrace(f))),
     }
 }
 
@@ -1720,7 +1710,7 @@ mod tests {
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
             },
-            testfn: DynTestFn(Box::new(move |()| f())),
+            testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1738,7 +1728,7 @@ mod tests {
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
             },
-            testfn: DynTestFn(Box::new(move |()| f())),
+            testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1758,7 +1748,7 @@ mod tests {
                 should_panic: ShouldPanic::Yes,
                 allow_fail: false,
             },
-            testfn: DynTestFn(Box::new(move |()| f())),
+            testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1778,7 +1768,7 @@ mod tests {
                 should_panic: ShouldPanic::YesWithMessage("error message"),
                 allow_fail: false,
             },
-            testfn: DynTestFn(Box::new(move |()| f())),
+            testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1800,7 +1790,7 @@ mod tests {
                 should_panic: ShouldPanic::YesWithMessage(expected),
                 allow_fail: false,
             },
-            testfn: DynTestFn(Box::new(move |()| f())),
+            testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1818,7 +1808,7 @@ mod tests {
                 should_panic: ShouldPanic::Yes,
                 allow_fail: false,
             },
-            testfn: DynTestFn(Box::new(move |()| f())),
+            testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
         run_test(&TestOpts::new(), false, desc, tx);
@@ -1852,7 +1842,7 @@ mod tests {
                                  should_panic: ShouldPanic::No,
                                  allow_fail: false,
                              },
-                             testfn: DynTestFn(Box::new(move |()| {})),
+                             testfn: DynTestFn(Box::new(move || {})),
                          },
                          TestDescAndFn {
                              desc: TestDesc {
@@ -1861,7 +1851,7 @@ mod tests {
                                  should_panic: ShouldPanic::No,
                                  allow_fail: false,
                              },
-                             testfn: DynTestFn(Box::new(move |()| {})),
+                             testfn: DynTestFn(Box::new(move || {})),
                          }];
         let filtered = filter_tests(&opts, tests);
 
@@ -1885,7 +1875,7 @@ mod tests {
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
                 },
-                testfn: DynTestFn(Box::new(move |()| {}))
+                testfn: DynTestFn(Box::new(move || {}))
             })
             .collect()
         }
@@ -1967,7 +1957,7 @@ mod tests {
                         should_panic: ShouldPanic::No,
                         allow_fail: false,
                     },
-                    testfn: DynTestFn(Box::new(move |()| testfn())),
+                    testfn: DynTestFn(Box::new(testfn)),
                 };
                 tests.push(test);
             }

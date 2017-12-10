@@ -534,7 +534,7 @@ impl Collector {
                 should_panic: testing::ShouldPanic::No,
                 allow_fail,
             },
-            testfn: testing::DynTestFn(box move |()| {
+            testfn: testing::DynTestFn(box move || {
                 let panic = io::set_panic(None);
                 let print = io::set_print(None);
                 match {
