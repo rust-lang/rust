@@ -4194,7 +4194,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type of the lvalue it is referencing, and not some
             // supertype thereof.
             let init_ty = self.check_expr_with_lvalue_pref(init, LvaluePreference::from_mutbl(m));
-            self.demand_eqtype(init.span, init_ty, local_ty);
+            self.demand_eqtype(init.span, local_ty, init_ty);
             init_ty
         } else {
             self.check_expr_coercable_to_type(init, local_ty)
