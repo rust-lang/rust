@@ -15,7 +15,6 @@ extern crate derive_panic;
 
 #[derive(A)]
 //~^ ERROR: proc-macro derive panicked
-//~| HELP: message: nope!
 struct Foo;
 
 fn main() {}
