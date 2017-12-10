@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: normal nll
+//[nll] compile-flags: -Znll -Zborrowck=mir
+
 #![feature(conservative_impl_trait,
            universal_impl_trait,
            fn_traits,

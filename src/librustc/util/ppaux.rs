@@ -865,13 +865,17 @@ impl fmt::Debug for ty::RegionVid {
 define_print! {
     () ty::InferTy, (self, f, cx) {
         display {
-            match *self {
-                ty::TyVar(_) => write!(f, "_"),
-                ty::IntVar(_) => write!(f, "{}", "{integer}"),
-                ty::FloatVar(_) => write!(f, "{}", "{float}"),
-                ty::FreshTy(v) => write!(f, "FreshTy({})", v),
-                ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
-                ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
+            if cx.is_verbose {
+                print!(f, cx, print_debug(self))
+            } else {
+                match *self {
+                    ty::TyVar(_) => write!(f, "_"),
+                    ty::IntVar(_) => write!(f, "{}", "{integer}"),
+                    ty::FloatVar(_) => write!(f, "{}", "{float}"),
+                    ty::FreshTy(v) => write!(f, "FreshTy({})", v),
+                    ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
+                    ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
+                }
             }
         }
         debug {
