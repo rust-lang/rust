@@ -1672,11 +1672,8 @@ impl<'a> Item<'a> {
         let mut path = String::new();
         let (krate, path) = if self.item.def_id.is_local() {
             let path = PathBuf::from(&self.item.source.filename);
-            if let Some(path) = self.cx.shared.local_sources.get(&path) {
-                (&self.cx.shared.layout.krate, path)
-            } else {
-                return None;
-            }
+            let path = self.cx.shared.local_sources.get(&path)?;
+            (&self.cx.shared.layout.krate, path)
         } else {
             // Macros from other libraries get special filenames which we can
             // safely ignore.

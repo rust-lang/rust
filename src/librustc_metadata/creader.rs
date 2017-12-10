@@ -385,10 +385,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn load(&mut self, locate_ctxt: &mut locator::Context) -> Option<LoadResult> {
-        let library = match locate_ctxt.maybe_load_library_crate() {
-            Some(lib) => lib,
-            None => return None,
-        };
+        let library = locate_ctxt.maybe_load_library_crate()?;
 
         // In the case that we're loading a crate, but not matching
         // against a hash, we could load a crate which has the same hash

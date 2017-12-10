@@ -1528,12 +1528,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
     fn next(&mut self) -> Option<Result<char, DecodeUtf16Error>> {
         let u = match self.buf.take() {
             Some(buf) => buf,
-            None => {
-                match self.iter.next() {
-                    Some(u) => u,
-                    None => return None,
-                }
-            }
+            None => self.iter.next()?
         };
 
         if u < 0xD800 || 0xDFFF < u {

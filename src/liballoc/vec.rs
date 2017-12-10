@@ -1423,10 +1423,7 @@ impl<T: PartialEq> Vec<T> {
     /// ```
     #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
     pub fn remove_item(&mut self, item: &T) -> Option<T> {
-        let pos = match self.iter().position(|x| *x == *item) {
-            Some(x) => x,
-            None => return None,
-        };
+        let pos = self.iter().position(|x| *x == *item)?;
         Some(self.remove(pos))
     }
 }

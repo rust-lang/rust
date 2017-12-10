@@ -439,12 +439,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        let dtor_did = match dtor_did {
-            Some(dtor) => dtor,
-            None => return None,
-        };
-
-        Some(ty::Destructor { did: dtor_did })
+        Some(ty::Destructor { did: dtor_did? })
     }
 
     /// Return the set of types that are required to be alive in
