@@ -9,10 +9,8 @@
 // except according to those terms.
 
 trait Foo {
-    fn orange(&self); //~ NOTE previous definition of the value `orange` here
+    fn orange(&self);
     fn orange(&self); //~ ERROR the name `orange` is defined multiple times
-                      //~| NOTE `orange` redefined here
-//~| NOTE `orange` must be defined only once in the value namespace of this trait
 }
 
 fn main() {}

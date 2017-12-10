@@ -19,10 +19,9 @@ impl A {
 
 fn main() {
     let mut x = A;
-    call_it(|| {    //~ HELP consider changing this to accept closures that implement `FnMut`
+    call_it(|| {
         call_it(|| x.gen());
         call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a captured outer
         //~^ ERROR cannot borrow data mutably in a captured outer
-        //~| HELP consider changing this closure to take self by mutable reference
     });
 }

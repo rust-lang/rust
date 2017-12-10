@@ -12,7 +12,6 @@
 #![allow(unused_variables)]
 #![allow(non_snake_case)]
 #![deny(unreachable_patterns)]
-//~^ NOTE lint level defined here
 
 #[derive(Clone, Copy)]
 enum Enum {
@@ -26,26 +25,20 @@ fn main() {
     match s {
         Var1 => (),
         Var3 => (),
-        //~^ NOTE this pattern matches any value
         Var2 => (),
         //~^ ERROR unreachable pattern
-        //~^^ NOTE this is an unreachable pattern
     };
     match &s {
         &Var1 => (),
         &Var3 => (),
-        //~^ NOTE this pattern matches any value
         &Var2 => (),
         //~^ ERROR unreachable pattern
-        //~^^ NOTE this is an unreachable pattern
     };
     let t = (Var1, Var1);
     match t {
         (Var1, b) => (),
         (c, d) => (),
-        //~^ NOTE this pattern matches any value
         anything => ()
         //~^ ERROR unreachable pattern
-        //~^^ NOTE this is an unreachable pattern
     };
 }

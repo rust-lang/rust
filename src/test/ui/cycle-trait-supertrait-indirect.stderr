@@ -1,7 +1,7 @@
 error[E0391]: unsupported cyclic reference between types/traits detected
-  --> $DIR/cycle-trait-supertrait-indirect.rs:22:1
+  --> $DIR/cycle-trait-supertrait-indirect.rs:20:1
    |
-22 | trait C: B { }
+20 | trait C: B { }
    | ^^^^^^^^^^ cyclic reference
    |
 note: the cycle begins when computing the supertraits of `B`...
@@ -10,9 +10,9 @@ note: the cycle begins when computing the supertraits of `B`...
 14 | trait A: B {
    | ^^^^^^^^^^
 note: ...which then requires computing the supertraits of `C`...
-  --> $DIR/cycle-trait-supertrait-indirect.rs:18:1
+  --> $DIR/cycle-trait-supertrait-indirect.rs:17:1
    |
-18 | trait B: C {
+17 | trait B: C {
    | ^^^^^^^^^^
    = note: ...which then again requires computing the supertraits of `B`, completing the cycle.
 

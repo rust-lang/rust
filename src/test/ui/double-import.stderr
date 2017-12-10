@@ -1,7 +1,7 @@
 error[E0252]: the name `foo` is defined multiple times
   --> $DIR/double-import.rs:23:5
    |
-22 | use sub1::foo; //~ NOTE previous import of the value `foo` here
+22 | use sub1::foo;
    |     --------- previous import of the value `foo` here
 23 | use sub2::foo; //~ ERROR the name `foo` is defined multiple times
    |     ^^^^^^^^^ `foo` reimported here

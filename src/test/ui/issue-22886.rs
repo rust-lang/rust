@@ -21,7 +21,6 @@ fn crash_please() {
 struct Newtype(Option<Box<usize>>);
 
 impl<'a> Iterator for Newtype { //~ ERROR E0207
-                                //~| NOTE unconstrained lifetime parameter
     type Item = &'a Box<usize>;
 
     fn next(&mut self) -> Option<&Box<usize>> {

@@ -17,8 +17,6 @@ trait Bar : Sized {
 
 fn make_bar<T:Bar>(t: &T) -> &Bar {
         //~^ ERROR E0038
-        //~| NOTE the trait cannot require that `Self : Sized`
-        //~| NOTE the trait `Bar` cannot be made into an object
     t
 }
 

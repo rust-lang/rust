@@ -42,20 +42,11 @@ impl Index<Bar<usize>> for [i32] {
 fn main() {
     Index::index(&[] as &[i32], 2u32);
     //~^ ERROR E0277
-    //~| NOTE trait message
-    //~| NOTE required by
     //~| ERROR E0277
-    //~| NOTE trait message
     Index::index(&[] as &[i32], Foo(2u32));
     //~^ ERROR E0277
-    //~| NOTE on impl for Foo
-    //~| NOTE required by
     //~| ERROR E0277
-    //~| NOTE on impl for Foo
     Index::index(&[] as &[i32], Bar(2u32));
     //~^ ERROR E0277
-    //~| NOTE on impl for Bar
-    //~| NOTE required by
     //~| ERROR E0277
-    //~| NOTE on impl for Bar
 }

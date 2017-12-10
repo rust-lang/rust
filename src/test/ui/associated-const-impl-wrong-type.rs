@@ -10,7 +10,7 @@
 
 
 trait Foo {
-    const BAR: u32; //~ NOTE type in trait
+    const BAR: u32;
 }
 
 struct SignedBar;
@@ -18,7 +18,6 @@ struct SignedBar;
 impl Foo for SignedBar {
     const BAR: i32 = -1;
     //~^ ERROR implemented const `BAR` has an incompatible type for trait [E0326]
-    //~| NOTE expected u32, found i32
 }
 
 fn main() {}

@@ -4,7 +4,7 @@ error[E0072]: recursive type `Bar` has infinite size
 15 | enum Bar {
    | ^^^^^^^^ recursive type has infinite size
 ...
-19 |     BarSome(Bar)  //~ NOTE recursive without indirection
+18 |     BarSome(Bar)
    |             ---- recursive without indirection
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Bar` representable

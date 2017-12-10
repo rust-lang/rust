@@ -11,13 +11,9 @@
 use foo::bar::{
     self,
 //~^ ERROR `self` import can only appear once in the list
-//~^^ NOTE previous import of the module `bar` here
     Bar,
     self
-//~^ NOTE another `self` import appears here
-//~| ERROR the name `bar` is defined multiple times
-//~| NOTE `bar` reimported here
-//~| NOTE `bar` must be defined only once in the type namespace of this module
+//~^ ERROR the name `bar` is defined multiple times
 };
 
 use {self};

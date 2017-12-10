@@ -1,10 +1,10 @@
 error: `panic` is already in scope
-  --> $DIR/shadow_builtin_macros.rs:46:9
+  --> $DIR/shadow_builtin_macros.rs:42:9
    |
-46 |         macro_rules! panic { () => {} } //~ ERROR `panic` is already in scope
+42 |         macro_rules! panic { () => {} } //~ ERROR `panic` is already in scope
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-49 |     m!(); //~ NOTE in this expansion
+43 |     } }
+44 |     m!();
    |     ----- in this macro invocation
    |
    = note: macro-expanded `macro_rules!`s may not shadow existing macros (see RFC 1560)
@@ -18,40 +18,40 @@ error: `panic` is ambiguous
 note: `panic` could refer to the name imported here
   --> $DIR/shadow_builtin_macros.rs:26:9
    |
-26 |     use foo::*; //~ NOTE `panic` could refer to the name imported here
+26 |     use foo::*;
    |         ^^^^^^
    = note: `panic` is also a builtin macro
    = note: consider adding an explicit import of `panic` to disambiguate
 
 error: `panic` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:34:14
+  --> $DIR/shadow_builtin_macros.rs:32:14
    |
-34 |     fn f() { panic!(); } //~ ERROR ambiguous
+32 |     fn f() { panic!(); } //~ ERROR ambiguous
    |              ^^^^^
    |
 note: `panic` could refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:33:26
+  --> $DIR/shadow_builtin_macros.rs:31:26
    |
-33 |     ::two_macros::m!(use foo::panic;); //~ NOTE `panic` could refer to the name imported here
+31 |     ::two_macros::m!(use foo::panic;);
    |                          ^^^^^^^^^^
    = note: `panic` is also a builtin macro
    = note: macro-expanded macro imports do not shadow
 
 error: `n` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:67:5
+  --> $DIR/shadow_builtin_macros.rs:61:5
    |
-67 |     n!(); //~ ERROR ambiguous
+61 |     n!(); //~ ERROR ambiguous
    |     ^
    |
 note: `n` could refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:66:9
+  --> $DIR/shadow_builtin_macros.rs:60:9
    |
-66 |     use bar::*; //~ NOTE `n` could refer to the name imported here
+60 |     use bar::*;
    |         ^^^^^^
 note: `n` could also refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:54:13
+  --> $DIR/shadow_builtin_macros.rs:48:13
    |
-54 | #[macro_use(n)] //~ NOTE `n` could also refer to the name imported here
+48 | #[macro_use(n)]
    |             ^
    = note: consider adding an explicit import of `n` to disambiguate
 

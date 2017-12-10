@@ -4,7 +4,7 @@ error[E0601]: main function not found
 note: here is a function named 'main'
  --> $DIR/main-wrong-location.rs:14:5
   |
-14|     fn main() { } //~ NOTE here is a function named 'main'
+14|     fn main() { }
   |     ^^^^^^^^^^^^^
 
 error: aborting due to previous error

@@ -13,9 +13,5 @@ fn main() {
     match y {
        a | b => {} //~  ERROR variable `a` is not bound in all patterns
                    //~^ ERROR variable `b` is not bound in all patterns
-                   //~| NOTE pattern doesn't bind `a`
-                   //~| NOTE pattern doesn't bind `b`
-                   //~| NOTE variable not in all patterns
-                   //~| NOTE variable not in all patterns
     }
 }

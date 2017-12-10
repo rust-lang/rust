@@ -11,5 +11,4 @@
 fn main() {
     let x = vec![1];
     x[0i32]; //~ ERROR E0277
-             //~| NOTE vector indices are of type `usize` or ranges of `usize`
 }

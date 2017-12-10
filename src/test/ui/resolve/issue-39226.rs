@@ -19,7 +19,5 @@ fn main() {
     let s: Something = Something {
         handle: Handle
         //~^ ERROR expected value, found struct `Handle`
-        //~| NOTE did you mean `Handle { /* fields */ }`?
-        //~| NOTE did you mean `handle`
     };
 }

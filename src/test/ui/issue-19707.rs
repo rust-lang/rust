@@ -11,9 +11,7 @@
 #![allow(dead_code)]
 
 type foo = fn(&u8, &u8) -> &u8; //~ ERROR missing lifetime specifier
-//~^ HELP the signature does not say whether it is borrowed from argument 1 or argument 2
 
 fn bar<F: Fn(&u8, &u8) -> &u8>(f: &F) {} //~ ERROR missing lifetime specifier
-//~^ HELP the signature does not say whether it is borrowed from argument 1 or argument 2
 
 fn main() {}

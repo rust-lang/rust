@@ -12,6 +12,5 @@
 
 fn main() {
     static C: u64 = unsafe {*(0xdeadbeef as *const u64)}; //~ ERROR E0396
-                    //~| NOTE dereference of raw pointer in constant
     println!("{}", C);
 }

@@ -15,6 +15,4 @@ fn new<T>() -> &'static T {
 fn main() {
     let &v = new();
     //~^ ERROR type annotations needed [E0282]
-    //~| NOTE cannot infer type for `_`
-    //~| NOTE consider giving the pattern a type
 }

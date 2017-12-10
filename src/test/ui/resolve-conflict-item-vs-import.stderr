@@ -1,10 +1,10 @@
 error[E0255]: the name `transmute` is defined multiple times
-  --> $DIR/resolve-conflict-item-vs-import.rs:14:1
+  --> $DIR/resolve-conflict-item-vs-import.rs:13:1
    |
 11 | use std::mem::transmute;
    |     ------------------- previous import of the value `transmute` here
-...
-14 | fn transmute() {}
+12 | 
+13 | fn transmute() {}
    | ^^^^^^^^^^^^^^^^^ `transmute` redefined here
    |
    = note: `transmute` must be defined only once in the value namespace of this module

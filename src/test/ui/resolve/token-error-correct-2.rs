@@ -12,8 +12,6 @@
 
 fn main() {
     if foo {
-    //~^ NOTE: unclosed delimiter
-    //~| ERROR: cannot find value `foo`
-    //~| NOTE: not found in this scope
+    //~^ ERROR: cannot find value `foo`
     ) //~ ERROR: incorrect close delimiter: `)`
 }

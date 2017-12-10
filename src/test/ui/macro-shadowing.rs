@@ -18,16 +18,11 @@ macro_rules! macro_one { () => {} }
 
 macro_rules! m1 { () => {
     macro_rules! foo { () => {} } //~ ERROR `foo` is already in scope
-    //~^ NOTE macro-expanded `macro_rules!`s may not shadow existing macros
 
     #[macro_use] //~ ERROR `macro_two` is already in scope
-    //~^ NOTE macro-expanded `#[macro_use]`s may not shadow existing macros
     extern crate two_macros as __;
 }}
-m1!(); //~ NOTE in this expansion
-       //~| NOTE in this expansion
-       //~| NOTE in this expansion
-       //~| NOTE in this expansion
+m1!();
 
 foo!();
 

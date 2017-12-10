@@ -20,7 +20,6 @@ unsafe impl UnsafeTrait for *mut isize {
         // Unsafe actions are not made legal by taking place in an unsafe trait:
         *self += 1;
         //~^ ERROR E0133
-        //~| NOTE dereference of raw pointer
     }
 }
 

@@ -5,34 +5,34 @@ error: `bar` is ambiguous
    |     ^^^^^^
    |
 note: `bar` could refer to the name defined here
-  --> $DIR/macro-paths.rs:27:9
+  --> $DIR/macro-paths.rs:26:9
    |
-27 |         mod bar { pub use two_macros::m; } //~ NOTE could refer to the name defined here
+26 |         mod bar { pub use two_macros::m; }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `bar` could also refer to the name imported here
   --> $DIR/macro-paths.rs:24:9
    |
-24 |     use foo::*; //~ NOTE could also refer to the name imported here
+24 |     use foo::*;
    |         ^^^^^^
    = note: macro-expanded items do not shadow when used in a macro invocation path
 
 error: `baz` is ambiguous
-  --> $DIR/macro-paths.rs:36:5
+  --> $DIR/macro-paths.rs:35:5
    |
-36 |     baz::m! { //~ ERROR ambiguous
+35 |     baz::m! { //~ ERROR ambiguous
    |     ^^^^^^
    |
 note: `baz` could refer to the name defined here
-  --> $DIR/macro-paths.rs:38:9
+  --> $DIR/macro-paths.rs:36:9
    |
-38 |         mod baz { pub use two_macros::m; } //~ NOTE could refer to the name defined here
+36 |         mod baz { pub use two_macros::m; }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `baz` could also refer to the name defined here
-  --> $DIR/macro-paths.rs:31:1
+  --> $DIR/macro-paths.rs:30:1
    |
-31 | / pub mod baz { //~ NOTE could also refer to the name defined here
-32 | |     pub use two_macros::m;
-33 | | }
+30 | / pub mod baz {
+31 | |     pub use two_macros::m;
+32 | | }
    | |_^
    = note: macro-expanded items do not shadow when used in a macro invocation path
 

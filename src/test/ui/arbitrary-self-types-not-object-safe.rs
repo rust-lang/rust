@@ -39,12 +39,7 @@ impl Bar for usize {
 fn make_foo() {
     let x = Box::new(5usize) as Box<Foo>;
     //~^ ERROR E0038
-    //~| NOTE method `foo` has a non-standard `self` type
-    //~| NOTE the trait `Foo` cannot be made into an object
     //~| ERROR E0038
-    //~| NOTE method `foo` has a non-standard `self` type
-    //~| NOTE the trait `Foo` cannot be made into an object
-    //~| NOTE requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<Foo>>`
 }
 
 fn make_bar() {

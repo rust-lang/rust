@@ -1,7 +1,7 @@
 error[E0382]: use of partially moved value: `x`
   --> $DIR/moves-based-on-type-match-bindings.rs:26:12
    |
-23 |         Foo {f} => {} //~ NOTE moved here
+23 |         Foo {f} => {}
    |              - value moved here
 ...
 26 |     touch(&x); //~ ERROR use of partially moved value: `x`

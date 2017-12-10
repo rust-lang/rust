@@ -12,5 +12,4 @@
 
 #[allow(auto_impl)]
 impl Copy for .. {} //~ ERROR E0318
-     //~^ NOTE `Copy` trait not defined in this crate
 fn main() {}

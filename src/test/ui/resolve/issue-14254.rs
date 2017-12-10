@@ -30,7 +30,6 @@ impl Foo for *const BarTy {
         //~^ ERROR cannot find function `baz`
         a;
         //~^ ERROR cannot find value `a`
-        //~| NOTE not found in this scope
     }
 }
 
@@ -44,12 +43,10 @@ impl<'a> Foo for &'a BarTy {
         //~^ ERROR cannot find value `y`
         a;
         //~^ ERROR cannot find value `a`
-        //~| NOTE not found in this scope
         bah;
         //~^ ERROR cannot find value `bah`
         b;
         //~^ ERROR cannot find value `b`
-        //~| NOTE not found in this scope
     }
 }
 
@@ -63,12 +60,10 @@ impl<'a> Foo for &'a mut BarTy {
         //~^ ERROR cannot find value `y`
         a;
         //~^ ERROR cannot find value `a`
-        //~| NOTE not found in this scope
         bah;
         //~^ ERROR cannot find value `bah`
         b;
         //~^ ERROR cannot find value `b`
-        //~| NOTE not found in this scope
     }
 }
 

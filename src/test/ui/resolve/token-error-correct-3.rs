@@ -19,10 +19,7 @@ pub mod raw {
                                                                callback: F)
                                                                -> io::Result<bool> {
         if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `is_directory`
-                                          //~^ NOTE: not found in this scope
-            callback(path.as_ref();  //~ NOTE: unclosed delimiter
-                     //~^ NOTE: expected one of
-                     //~| ERROR expected one of
+            callback(path.as_ref(); //~ ERROR expected one of
             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
             //~^ expected (), found enum `std::result::Result`
             //~| expected type `()`

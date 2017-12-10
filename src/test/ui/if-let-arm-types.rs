@@ -14,7 +14,7 @@ fn main() {
         //~| expected type `()`
         //~| found type `{integer}`
         ()
-    } else {                //~ NOTE: `if let` arm with an incompatible type
+    } else {
         1
     };
 }

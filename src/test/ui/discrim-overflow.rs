@@ -23,8 +23,6 @@ fn f_i8() {
         Ok = i8::MAX - 1,
         Ok2,
         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-              //~| NOTE overflowed on value after 127i8
-              //~| NOTE explicitly set `OhNo = -128i8` if that is desired outcome
     }
 
     let x = A::Ok;
@@ -36,8 +34,6 @@ fn f_u8() {
         Ok = u8::MAX - 1,
         Ok2,
         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-              //~| NOTE overflowed on value after 255u8
-              //~| NOTE explicitly set `OhNo = 0u8` if that is desired outcome
     }
 
     let x = A::Ok;
@@ -49,8 +45,6 @@ fn f_i16() {
         Ok = i16::MAX - 1,
         Ok2,
         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-              //~| NOTE overflowed on value after 32767i16
-              //~| NOTE explicitly set `OhNo = -32768i16` if that is desired outcome
     }
 
     let x = A::Ok;
@@ -63,7 +57,6 @@ fn f_u16() {
         Ok2,
         OhNo, //~ ERROR enum discriminant overflowed [E0370]
               //~| overflowed on value after 65535u16
-              //~| NOTE explicitly set `OhNo = 0u16` if that is desired outcome
     }
 
     let x = A::Ok;
@@ -76,7 +69,6 @@ fn f_i32() {
         Ok2,
         OhNo, //~ ERROR enum discriminant overflowed [E0370]
               //~| overflowed on value after 2147483647i32
-              //~| NOTE explicitly set `OhNo = -2147483648i32` if that is desired outcome
     }
 
     let x = A::Ok;
@@ -89,7 +81,6 @@ fn f_u32() {
         Ok2,
         OhNo, //~ ERROR enum discriminant overflowed [E0370]
               //~| overflowed on value after 4294967295u32
-              //~| NOTE explicitly set `OhNo = 0u32` if that is desired outcome
     }
 
     let x = A::Ok;
@@ -102,7 +93,6 @@ fn f_i64() {
         Ok2,
         OhNo, //~ ERROR enum discriminant overflowed [E0370]
               //~| overflowed on value after 9223372036854775807i64
-              //~| NOTE explicitly set `OhNo = -9223372036854775808i64` if that is desired outcome
     }
 
     let x = A::Ok;
@@ -115,7 +105,6 @@ fn f_u64() {
         Ok2,
         OhNo, //~ ERROR enum discriminant overflowed [E0370]
               //~| overflowed on value after 18446744073709551615u64
-              //~| NOTE explicitly set `OhNo = 0u64` if that is desired outcome
     }
 
     let x = A::Ok;

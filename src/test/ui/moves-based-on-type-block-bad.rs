@@ -35,7 +35,6 @@ fn main() {
                                  //~| cannot move out of borrowed content
                 box E::Foo(_) => {}
                 box E::Bar(x) => println!("{}", x.to_string()),
-                //~^ NOTE to prevent move
                 box E::Baz => {}
             }
         })

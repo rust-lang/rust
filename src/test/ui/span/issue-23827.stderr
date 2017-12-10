@@ -3,11 +3,10 @@ error[E0046]: not all trait items implemented, missing: `Output`
    |
 36 | / impl<C: Component> FnOnce<(C,)> for Prototype {
 37 | |     //~^ ERROR E0046
-38 | |     //~| NOTE missing `Output` in implementation
-39 | |     //~| NOTE `Output` from trait: `type Output;`
-...  |
-42 | |     }
-43 | | }
+38 | |     extern "rust-call" fn call_once(self, (comp,): (C,)) -> Prototype {
+39 | |         Fn::call(&self, (comp,))
+40 | |     }
+41 | | }
    | |_^ missing `Output` in implementation
    |
    = note: `Output` from trait: `type Output;`

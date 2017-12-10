@@ -13,5 +13,5 @@ macro_rules! t {
 }
 
 fn main() {
-    let i: Vec<t!()>;       //~ NOTE caused by the macro expansion here
+    let i: Vec<t!()>;
 }

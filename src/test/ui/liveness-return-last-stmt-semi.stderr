@@ -7,41 +7,41 @@ error[E0308]: mismatched types
    |                                             |  help: consider removing this semicolon
    |                                             expected i32, found ()
 ...
-28 |     test!();
+27 |     test!();
    |     -------- in this macro invocation
    |
    = note: expected type `i32`
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/liveness-return-last-stmt-semi.rs:17:23
+  --> $DIR/liveness-return-last-stmt-semi.rs:16:23
    |
-17 | fn no_return() -> i32 {} //~ ERROR mismatched types
+16 | fn no_return() -> i32 {} //~ ERROR mismatched types
    |                       ^^ expected i32, found ()
    |
    = note: expected type `i32`
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/liveness-return-last-stmt-semi.rs:19:23
+  --> $DIR/liveness-return-last-stmt-semi.rs:18:23
    |
-19 |   fn bar(x: u32) -> u32 { //~ ERROR mismatched types
+18 |   fn bar(x: u32) -> u32 { //~ ERROR mismatched types
    |  _______________________^
-20 | |     x * 2; //~ HELP consider removing this semicolon
+19 | |     x * 2;
    | |          - help: consider removing this semicolon
-21 | | }
+20 | | }
    | |_^ expected u32, found ()
    |
    = note: expected type `u32`
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/liveness-return-last-stmt-semi.rs:23:23
+  --> $DIR/liveness-return-last-stmt-semi.rs:22:23
    |
-23 |   fn baz(x: u64) -> u32 { //~ ERROR mismatched types
+22 |   fn baz(x: u64) -> u32 { //~ ERROR mismatched types
    |  _______________________^
-24 | |     x * 2;
-25 | | }
+23 | |     x * 2;
+24 | | }
    | |_^ expected u32, found ()
    |
    = note: expected type `u32`

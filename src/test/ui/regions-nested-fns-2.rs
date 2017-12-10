@@ -15,9 +15,7 @@ fn nested() {
     ignore(
         |z| {
             //~^ ERROR E0373
-            //~| NOTE may outlive borrowed value `y`
             if false { &y } else { z }
-            //~^ NOTE `y` is borrowed here
         });
 }
 

@@ -16,7 +16,6 @@
 extern crate issue_21221_4;
 
 struct Foo;
-//~^ HELP possible candidate is found in another module
 
 impl T for Foo {}
 //~^ ERROR cannot find trait `T`

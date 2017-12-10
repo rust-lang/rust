@@ -6,18 +6,18 @@ error[E0499]: cannot borrow `x` (via `x.b`) as mutable more than once at a time
    |                        |
    |                        first mutable borrow occurs here (via `x.a`)
 ...
-27 | }
+23 | }
    | - first borrow ends here
 
 error[E0502]: cannot borrow `foo` (via `foo.b`) as immutable because `foo` is also borrowed as mutable (via `foo.a`)
-  --> $DIR/issue-17263.rs:23:32
+  --> $DIR/issue-17263.rs:21:32
    |
-23 |     let (c, d) = (&mut foo.a, &foo.b);
+21 |     let (c, d) = (&mut foo.a, &foo.b);
    |                        -----   ^^^^^ immutable borrow occurs here (via `foo.b`)
    |                        |
    |                        mutable borrow occurs here (via `foo.a`)
-...
-27 | }
+22 |     //~^ ERROR cannot borrow `foo` (via `foo.b`) as immutable
+23 | }
    | - mutable borrow ends here
 
 error: aborting due to 2 previous errors

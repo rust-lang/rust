@@ -24,15 +24,15 @@ note: defined here
    |     ^^^^^^
 
 error[E0618]: expected function, found `empty_struct::XEmpty2`
-  --> $DIR/empty-struct-unit-expr.rs:29:15
+  --> $DIR/empty-struct-unit-expr.rs:28:15
    |
-29 |     let xe2 = XEmpty2(); //~ ERROR expected function, found `empty_struct::XEmpty2`
+28 |     let xe2 = XEmpty2(); //~ ERROR expected function, found `empty_struct::XEmpty2`
    |               ^^^^^^^^^
 
 error[E0618]: expected function, found `XE::XEmpty4`
-  --> $DIR/empty-struct-unit-expr.rs:30:15
+  --> $DIR/empty-struct-unit-expr.rs:29:15
    |
-30 |     let xe4 = XE::XEmpty4();
+29 |     let xe4 = XE::XEmpty4();
    |               ^^^^^^^^^^^^^
    |
    = help: did you mean to write `XE::XEmpty4`?

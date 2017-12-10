@@ -21,20 +21,18 @@ mod foo {
 }
 
 fn f() {
-    use foo::*; //~ NOTE could also refer to the name imported here
+    use foo::*;
     bar::m! { //~ ERROR ambiguous
-              //~| NOTE macro-expanded items do not shadow when used in a macro invocation path
-        mod bar { pub use two_macros::m; } //~ NOTE could refer to the name defined here
+        mod bar { pub use two_macros::m; }
     }
 }
 
-pub mod baz { //~ NOTE could also refer to the name defined here
+pub mod baz {
     pub use two_macros::m;
 }
 
 fn g() {
     baz::m! { //~ ERROR ambiguous
-              //~| NOTE macro-expanded items do not shadow when used in a macro invocation path
-        mod baz { pub use two_macros::m; } //~ NOTE could refer to the name defined here
+        mod baz { pub use two_macros::m; }
     }
 }

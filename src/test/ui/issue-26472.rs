@@ -20,5 +20,4 @@ fn main() {
     let s = sub::S::new();
     let v = s.len;
     //~^ ERROR field `len` of struct `sub::S` is private
-    //~| NOTE a method `len` also exists, perhaps you wish to call it
 }

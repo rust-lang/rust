@@ -19,7 +19,6 @@ enum E {
     V = CONSTANT,
     //~^ ERROR mismatched types
     //~| expected isize, found struct `S`
-    //~| NOTE expected type `isize`
     //~|         found type `S`
 }
 

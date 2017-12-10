@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Obj<F> where F: FnMut() -> u32 { //~ NOTE not found for this
+struct Obj<F> where F: FnMut() -> u32 {
     closure: F,
 }
 
@@ -16,6 +16,4 @@ fn main() {
     let o = Obj { closure: || 42 };
     o.closure();
     //~^ ERROR no method named `closure` found
-    //~| HELP use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
-    //~| NOTE field, not a method
 }

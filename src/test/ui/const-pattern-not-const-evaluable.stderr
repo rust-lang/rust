@@ -7,7 +7,7 @@ error[E0080]: constant evaluation error
 note: for pattern here
   --> $DIR/const-pattern-not-const-evaluable.rs:37:9
    |
-37 |         FOO => println!("hi"), //~ NOTE: for pattern here
+37 |         FOO => println!("hi"),
    |         ^^^
 
 error: aborting due to previous error

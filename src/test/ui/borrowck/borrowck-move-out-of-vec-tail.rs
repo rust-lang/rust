@@ -32,7 +32,6 @@ pub fn main() {
                 //~| cannot move out
                 //~| to prevent move
                   Foo { string: b }] => {
-                    //~^ NOTE and here
                 }
                 _ => {
                     unreachable!();

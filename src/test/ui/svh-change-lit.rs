@@ -17,8 +17,6 @@
 
 extern crate a;
 extern crate b; //~ ERROR: found possibly newer version of crate `a` which `b` depends on
-//~| NOTE: perhaps that crate needs to be recompiled
-//~| NOTE: the following crate versions were found:
 
 fn main() {
     b::foo()

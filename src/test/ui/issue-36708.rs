@@ -17,7 +17,6 @@ struct Bar;
 impl lib::Foo for Bar {
     fn foo<T>() {}
     //~^ ERROR E0049
-    //~| NOTE found 1 type parameter, expected 0
 }
 
 fn main() {}

@@ -15,7 +15,7 @@ error[E0308]: match arms have incompatible types
 note: match arm with an incompatible type
   --> $DIR/issue-11319.rs:19:20
    |
-19 |         None    => (), //~ NOTE match arm with an incompatible type
+19 |         None    => (),
    |                    ^^
 
 error: aborting due to previous error

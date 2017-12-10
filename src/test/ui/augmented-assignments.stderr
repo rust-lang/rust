@@ -1,10 +1,10 @@
 error[E0596]: cannot borrow immutable local variable `y` as mutable
-  --> $DIR/augmented-assignments.rs:31:5
+  --> $DIR/augmented-assignments.rs:30:5
    |
-29 |     let y = Int(2);
+28 |     let y = Int(2);
    |         - consider changing this to `mut y`
-30 |     //~^ consider changing this to `mut y`
-31 |     y   //~ error: cannot borrow immutable local variable `y` as mutable
+29 |     //~^ consider changing this to `mut y`
+30 |     y   //~ error: cannot borrow immutable local variable `y` as mutable
    |     ^ cannot borrow mutably
 
 error[E0382]: use of moved value: `x`
@@ -13,7 +13,7 @@ error[E0382]: use of moved value: `x`
 23 |     x   //~ error: use of moved value: `x`
    |     ^ value used here after move
 ...
-27 |     x;  //~ value moved here
+26 |     x;  //~ value moved here
    |     - value moved here
    |
    = note: move occurs because `x` has type `Int`, which does not implement the `Copy` trait

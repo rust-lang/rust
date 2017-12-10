@@ -10,9 +10,6 @@
 
 fn foo<T: PartialEq>(a: &T, b: T) {
     a == b; //~ ERROR E0277
-            //~| NOTE can't compare `&T` with `T`
-            //~| HELP the trait `std::cmp::PartialEq<T>` is not implemented for `&T`
-            //~| HELP consider adding a `where &T: std::cmp::PartialEq<T>` bound
 }
 
 fn main() {

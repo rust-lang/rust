@@ -5,9 +5,9 @@ error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer
    |             ^^^^^^ help: to access tuple elements, use: `tup.0`
 
 error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer})`
-  --> $DIR/issue-27842.rs:20:13
+  --> $DIR/issue-27842.rs:19:13
    |
-20 |     let _ = tup[i];
+19 |     let _ = tup[i];
    |             ^^^^^^
    |
    = help: to access tuple elements, use tuple indexing syntax (e.g. `tuple.0`)

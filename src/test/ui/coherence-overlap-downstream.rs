@@ -15,18 +15,13 @@ pub trait Sugar {}
 pub trait Fruit {}
 pub trait Sweet {}
 impl<T:Sugar> Sweet for T { }
-//~^ NOTE first implementation here
 impl<T:Fruit> Sweet for T { }
 //~^ ERROR E0119
-//~| NOTE conflicting implementation
 
 pub trait Foo<X> {}
 pub trait Bar<X> {}
 impl<X, T> Foo<X> for T where T: Bar<X> {}
-//~^ NOTE first implementation here
 impl<X> Foo<X> for i32 {}
 //~^ ERROR E0119
-//~| NOTE conflicting implementation for `i32`
-//~| NOTE downstream crates may implement trait `Bar<_>` for type `i32`
 
 fn main() { }

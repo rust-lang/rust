@@ -20,9 +20,9 @@ fn blah() {
     let f = &Foo::Foo1(box 1, box 2);
     match *f {             //~ ERROR cannot move out of
                            //~| cannot move out
-        Foo::Foo1(num1,         //~ NOTE to prevent move
-                  num2) => (),  //~ NOTE and here
-        Foo::Foo2(num) => (),   //~ NOTE and here
+        Foo::Foo1(num1,
+                  num2) => (),
+        Foo::Foo2(num) => (),
         Foo::Foo3 => ()
     }
 }
@@ -39,8 +39,8 @@ fn move_in_match() {
     match (S {f: "foo".to_string(), g: "bar".to_string()}) {
         S {         //~ ERROR cannot move out of type `S`, which implements the `Drop` trait
         //~| cannot move out of here
-            f: _s,  //~ NOTE to prevent move
-            g: _t   //~ NOTE and here
+            f: _s,
+            g: _t
         } => {}
     }
 }
@@ -56,7 +56,7 @@ fn blah2() {
     let a = &A { a: box 1 };
     match a.a {           //~ ERROR cannot move out of
                           //~| cannot move out
-        n => {            //~ NOTE to prevent move
+        n => {
             free(n)
         }
     }

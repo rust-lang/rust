@@ -32,12 +32,8 @@ impl Bar {
     fn f() {
         let _: <Self>::Baz = true;
         //~^ ERROR ambiguous associated type
-        //~| NOTE ambiguous associated type
-        //~| NOTE specify the type using the syntax `<Bar as Trait>::Baz`
         let _: Self::Baz = true;
         //~^ ERROR ambiguous associated type
-        //~| NOTE ambiguous associated type
-        //~| NOTE specify the type using the syntax `<Bar as Trait>::Baz`
     }
 }
 

@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub enum SomeEnum { //~ NOTE variant `A` not found here
+pub enum SomeEnum {
     B = SomeEnum::A,
     //~^ ERROR no variant named `A` found for type `SomeEnum`
-    //~| NOTE variant not found in `SomeEnum`
 }
 
 fn main() {}

@@ -18,7 +18,6 @@ impl Foo {
     fn bar() {
         f(cx);
         //~^ ERROR cannot find value `cx` in this scope
-        //~| NOTE `self` value is only available in methods with `self` parameter
     }
 }
 

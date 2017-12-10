@@ -34,7 +34,7 @@ const GOO: Cake = foo();
 
 fn main() {
     match BlackForest {
-        FOO => println!("hi"), //~ NOTE: for pattern here
+        FOO => println!("hi"),
         GOO => println!("meh"),
         WORKS => println!("möp"),
         _ => println!("bye"),

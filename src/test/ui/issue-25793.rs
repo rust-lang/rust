@@ -12,7 +12,6 @@ macro_rules! width(
     ($this:expr) => {
         $this.width.unwrap()
         //~^ ERROR cannot use `self.width` because it was mutably borrowed
-        //~| NOTE use of borrowed `*self`
     }
 );
 
@@ -27,8 +26,6 @@ impl HasInfo {
 
     fn get_other(&mut self) -> usize {
         self.get_size(width!(self))
-        //~^ NOTE in this expansion of width!
-        //~| NOTE borrow of `*self` occurs here
     }
 }
 

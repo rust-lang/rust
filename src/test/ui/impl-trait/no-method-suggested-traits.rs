@@ -11,12 +11,7 @@
 // aux-build:no_method_suggested_traits.rs
 extern crate no_method_suggested_traits;
 
-struct Foo; //~ HELP perhaps add a `use` for it
-//~^ HELP perhaps add a `use` for it
-//~| HELP perhaps add a `use` for it
-//~| HELP perhaps add a `use` for it
-//~| HELP perhaps add a `use` for one of them
-//~| HELP perhaps add a `use` for one of them
+struct Foo;
 enum Bar { X }
 
 mod foo {
@@ -44,57 +39,41 @@ fn main() {
 
     'a'.method();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is in scope
     std::rc::Rc::new(&mut Box::new(&'a')).method();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is in scope
 
     1i32.method();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is in scope
     std::rc::Rc::new(&mut Box::new(&1i32)).method();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is in scope
 
     Foo.method();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&Foo)).method();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
 
     1u64.method2();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&1u64)).method2();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
 
     no_method_suggested_traits::Foo.method2();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method2();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
     no_method_suggested_traits::Bar::X.method2();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Bar::X)).method2();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
 
     Foo.method3();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&Foo)).method3();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
     Bar::X.method3();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
     std::rc::Rc::new(&mut Box::new(&Bar::X)).method3();
     //~^ ERROR no method named
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
 
     // should have no help:
     1_usize.method3(); //~ ERROR no method named

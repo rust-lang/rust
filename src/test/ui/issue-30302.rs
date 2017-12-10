@@ -22,7 +22,6 @@ fn is_empty<T>(s: Stack<T>) -> bool {
     match s {
         Nil => true,
 //~^ WARN pattern binding `Nil` is named the same as one of the variants of the type `Stack`
-//~| HELP consider making the path in the pattern qualified: `Stack::Nil`
         _ => false
 //~^ ERROR unreachable pattern
     }

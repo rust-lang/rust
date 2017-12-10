@@ -9,7 +9,6 @@
 // except according to those terms.
 
 enum SomeEnum {
-//~^ HELP you can import it into scope
     E
 }
 

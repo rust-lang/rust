@@ -7,7 +7,7 @@ error: macro expansion ignores token `;` and any following
 note: caused by the macro expansion here; the usage of `t!` is likely invalid in type context
   --> $DIR/issue-30007.rs:16:16
    |
-16 |     let i: Vec<t!()>;       //~ NOTE caused by the macro expansion here
+16 |     let i: Vec<t!()>;
    |                ^^^^
 
 error: aborting due to previous error

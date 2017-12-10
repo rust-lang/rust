@@ -3,8 +3,8 @@ error[E0072]: recursive type `S` has infinite size
    |
 11 | struct S {
    | ^^^^^^^^ recursive type has infinite size
-...
-14 |     element: Option<S>
+12 |     //~^ ERROR E0072
+13 |     element: Option<S>
    |     ------------------ recursive without indirection
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `S` representable

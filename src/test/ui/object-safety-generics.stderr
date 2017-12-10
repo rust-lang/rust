@@ -7,9 +7,9 @@ error[E0038]: the trait `Bar` cannot be made into an object
    = note: method `bar` has generic type parameters
 
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/object-safety-generics.rs:31:1
+  --> $DIR/object-safety-generics.rs:29:1
    |
-31 | fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
+29 | fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
    |
    = note: method `bar` has generic type parameters

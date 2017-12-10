@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Example { //~ NOTE not found for this
+struct Example {
     example: Box<Fn(i32) -> i32>
 }
 
@@ -21,7 +21,5 @@ fn main() {
 
     demo.example(1);
     //~^ ERROR no method named `example`
-    //~| HELP use `(demo.example)(...)`
-    //~| NOTE field, not a method
     // (demo.example)(1);
 }

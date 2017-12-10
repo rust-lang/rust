@@ -15,16 +15,13 @@
 
 struct SomeStruct<A> { x: u32 }
 //~^ ERROR parameter `A` is never used
-//~| HELP PhantomData
 
 enum SomeEnum<A> { Nothing }
 //~^ ERROR parameter `A` is never used
-//~| HELP PhantomData
 
 // Here T might *appear* used, but in fact it isn't.
 enum ListCell<T> {
 //~^ ERROR parameter `T` is never used
-//~| HELP PhantomData
     Cons(Box<ListCell<T>>),
     Nil
 }

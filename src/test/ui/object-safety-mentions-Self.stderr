@@ -7,9 +7,9 @@ error[E0038]: the trait `Bar` cannot be made into an object
    = note: method `bar` references the `Self` type in its arguments or return type
 
 error[E0038]: the trait `Baz` cannot be made into an object
-  --> $DIR/object-safety-mentions-Self.rs:34:1
+  --> $DIR/object-safety-mentions-Self.rs:32:1
    |
-34 | fn make_baz<T:Baz>(t: &T) -> &Baz {
+32 | fn make_baz<T:Baz>(t: &T) -> &Baz {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Baz` cannot be made into an object
    |
    = note: method `bar` references the `Self` type in its arguments or return type

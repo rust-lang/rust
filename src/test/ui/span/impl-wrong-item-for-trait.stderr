@@ -1,86 +1,84 @@
 error[E0437]: type `bar` is not a member of trait `Foo`
-  --> $DIR/impl-wrong-item-for-trait.rs:52:5
+  --> $DIR/impl-wrong-item-for-trait.rs:41:5
    |
-52 |     type bar = u64;
+41 |     type bar = u64;
    |     ^^^^^^^^^^^^^^^ not a member of trait `Foo`
 
 error[E0323]: item `bar` is an associated const, which doesn't match its trait `Foo`
-  --> $DIR/impl-wrong-item-for-trait.rs:30:5
+  --> $DIR/impl-wrong-item-for-trait.rs:23:5
    |
 15 |     fn bar(&self);
    |     -------------- item in trait
 ...
-30 |     const bar: u64 = 1;
+23 |     const bar: u64 = 1;
    |     ^^^^^^^^^^^^^^^^^^^ does not match trait
 
 error[E0046]: not all trait items implemented, missing: `bar`
-  --> $DIR/impl-wrong-item-for-trait.rs:27:1
+  --> $DIR/impl-wrong-item-for-trait.rs:21:1
    |
 15 |       fn bar(&self);
    |       -------------- `bar` from trait
 ...
-27 | / impl Foo for FooConstForMethod {
-28 | |     //~^ ERROR E0046
-29 | |     //~| NOTE missing `bar` in implementation
-30 | |     const bar: u64 = 1;
-...  |
-33 | |     const MY_CONST: u32 = 1;
-34 | | }
+21 | / impl Foo for FooConstForMethod {
+22 | |     //~^ ERROR E0046
+23 | |     const bar: u64 = 1;
+24 | |     //~^ ERROR E0323
+25 | |     const MY_CONST: u32 = 1;
+26 | | }
    | |_^ missing `bar` in implementation
 
 error[E0324]: item `MY_CONST` is an associated method, which doesn't match its trait `Foo`
-  --> $DIR/impl-wrong-item-for-trait.rs:42:5
+  --> $DIR/impl-wrong-item-for-trait.rs:33:5
    |
-20 |     const MY_CONST: u32;
+16 |     const MY_CONST: u32;
    |     -------------------- item in trait
 ...
-42 |     fn MY_CONST() {}
+33 |     fn MY_CONST() {}
    |     ^^^^^^^^^^^^^^^^ does not match trait
 
 error[E0046]: not all trait items implemented, missing: `MY_CONST`
-  --> $DIR/impl-wrong-item-for-trait.rs:38:1
+  --> $DIR/impl-wrong-item-for-trait.rs:30:1
    |
-20 |       const MY_CONST: u32;
+16 |       const MY_CONST: u32;
    |       -------------------- `MY_CONST` from trait
 ...
-38 | / impl Foo for FooMethodForConst {
-39 | |     //~^ ERROR E0046
-40 | |     //~| NOTE missing `MY_CONST` in implementation
-41 | |     fn bar(&self) {}
-...  |
-44 | |     //~| NOTE does not match trait
-45 | | }
+30 | / impl Foo for FooMethodForConst {
+31 | |     //~^ ERROR E0046
+32 | |     fn bar(&self) {}
+33 | |     fn MY_CONST() {}
+34 | |     //~^ ERROR E0324
+35 | | }
    | |_^ missing `MY_CONST` in implementation
 
 error[E0325]: item `bar` is an associated type, which doesn't match its trait `Foo`
-  --> $DIR/impl-wrong-item-for-trait.rs:52:5
+  --> $DIR/impl-wrong-item-for-trait.rs:41:5
    |
 15 |     fn bar(&self);
    |     -------------- item in trait
 ...
-52 |     type bar = u64;
+41 |     type bar = u64;
    |     ^^^^^^^^^^^^^^^ does not match trait
 
 error[E0046]: not all trait items implemented, missing: `bar`
-  --> $DIR/impl-wrong-item-for-trait.rs:49:1
+  --> $DIR/impl-wrong-item-for-trait.rs:39:1
    |
 15 |       fn bar(&self);
    |       -------------- `bar` from trait
 ...
-49 | / impl Foo for FooTypeForMethod {
-50 | |     //~^ ERROR E0046
-51 | |     //~| NOTE missing `bar` in implementation
-52 | |     type bar = u64;
-...  |
-57 | |     const MY_CONST: u32 = 1;
-58 | | }
+39 | / impl Foo for FooTypeForMethod {
+40 | |     //~^ ERROR E0046
+41 | |     type bar = u64;
+42 | |     //~^ ERROR E0325
+43 | |     //~| ERROR E0437
+44 | |     const MY_CONST: u32 = 1;
+45 | | }
    | |_^ missing `bar` in implementation
 
 error[E0046]: not all trait items implemented, missing: `fmt`
-  --> $DIR/impl-wrong-item-for-trait.rs:60:1
+  --> $DIR/impl-wrong-item-for-trait.rs:47:1
    |
-60 | / impl Debug for FooTypeForMethod {
-61 | | }
+47 | / impl Debug for FooTypeForMethod {
+48 | | }
    | |_^ missing `fmt` in implementation
    |
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`

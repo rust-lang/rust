@@ -19,15 +19,11 @@ fn f() {
     let young = ['y'];       // statement 3
 
     v2.push(&young[0]);      // statement 4
-    //~^ NOTE borrow occurs here
 
     let mut v3 = Vec::new(); // statement 5
 
     v3.push(&id('x'));           // statement 6
     //~^ ERROR borrowed value does not live long enough
-    //~| NOTE temporary value created here
-    //~| NOTE temporary value dropped here while still borrowed
-    //~| NOTE consider using a `let` binding to increase its lifetime
 
     {
 
@@ -35,28 +31,17 @@ fn f() {
 
         v4.push(&id('y'));
         //~^ ERROR borrowed value does not live long enough
-        //~| NOTE temporary value created here
-        //~| NOTE temporary value dropped here while still borrowed
-        //~| NOTE consider using a `let` binding to increase its lifetime
 
     }                       // (statement 7)
-    //~^ NOTE temporary value needs to live until here
 
     let mut v5 = Vec::new(); // statement 8
 
     v5.push(&id('z'));
     //~^ ERROR borrowed value does not live long enough
-    //~| NOTE temporary value created here
-    //~| NOTE temporary value dropped here while still borrowed
-    //~| NOTE consider using a `let` binding to increase its lifetime
 
     v1.push(&old[0]);
 }
 //~^ ERROR `young[..]` does not live long enough
-//~| NOTE `young[..]` dropped here while still borrowed
-//~| NOTE values in a scope are dropped in the opposite order they are created
-//~| NOTE temporary value needs to live until here
-//~| NOTE temporary value needs to live until here
 
 fn main() {
     f();

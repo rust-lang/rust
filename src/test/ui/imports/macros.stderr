@@ -1,18 +1,18 @@
 error: `m` is ambiguous
-  --> $DIR/macros.rs:52:5
+  --> $DIR/macros.rs:50:5
    |
-52 |     m!(); //~ ERROR ambiguous
+50 |     m!(); //~ ERROR ambiguous
    |     ^
    |
 note: `m` could refer to the macro defined here
-  --> $DIR/macros.rs:50:5
+  --> $DIR/macros.rs:48:5
    |
-50 |     macro_rules! m { () => {} } //~ NOTE could refer to the macro defined here
+48 |     macro_rules! m { () => {} }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `m` could also refer to the macro imported here
-  --> $DIR/macros.rs:51:9
+  --> $DIR/macros.rs:49:9
    |
-51 |     use two_macros::m; //~ NOTE could also refer to the macro imported here
+49 |     use two_macros::m;
    |         ^^^^^^^^^^^^^
 
 error: `m` is ambiguous
@@ -22,32 +22,32 @@ error: `m` is ambiguous
    |     ^
    |
 note: `m` could refer to the name imported here
-  --> $DIR/macros.rs:30:13
+  --> $DIR/macros.rs:29:13
    |
-30 |         use foo::m; //~ NOTE could refer to the name imported here
+29 |         use foo::m;
    |             ^^^^^^
 note: `m` could also refer to the name imported here
   --> $DIR/macros.rs:27:9
    |
-27 |     use two_macros::*; //~ NOTE could also refer
+27 |     use two_macros::*;
    |         ^^^^^^^^^^^^^
    = note: macro-expanded macro imports do not shadow
 
 error: `m` is ambiguous
-  --> $DIR/macros.rs:42:9
+  --> $DIR/macros.rs:41:9
    |
-42 |         m! { //~ ERROR ambiguous
+41 |         m! { //~ ERROR ambiguous
    |         ^
    |
 note: `m` could refer to the name imported here
-  --> $DIR/macros.rs:44:17
+  --> $DIR/macros.rs:42:17
    |
-44 |             use two_macros::n as m; //~ NOTE could refer to the name imported here
+42 |             use two_macros::n as m;
    |                 ^^^^^^^^^^^^^^^^^^
 note: `m` could also refer to the name imported here
-  --> $DIR/macros.rs:35:9
+  --> $DIR/macros.rs:34:9
    |
-35 |     use two_macros::m; //~ NOTE could also refer
+34 |     use two_macros::m;
    |         ^^^^^^^^^^^^^
    = note: macro-expanded macro imports do not shadow
 

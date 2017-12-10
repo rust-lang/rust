@@ -7,55 +7,55 @@ error[E0606]: casting `&[i32]` as `usize` is invalid
    = help: cast through a raw pointer first
 
 error[E0606]: casting `&[i32]` as `isize` is invalid
-  --> $DIR/fat-ptr-cast.rs:22:5
+  --> $DIR/fat-ptr-cast.rs:21:5
    |
-22 |     a as isize; //~ ERROR casting
+21 |     a as isize; //~ ERROR casting
    |     ^^^^^^^^^^
 
 error[E0606]: casting `&[i32]` as `i16` is invalid
-  --> $DIR/fat-ptr-cast.rs:23:5
+  --> $DIR/fat-ptr-cast.rs:22:5
    |
-23 |     a as i16; //~ ERROR casting `&[i32]` as `i16` is invalid
+22 |     a as i16; //~ ERROR casting `&[i32]` as `i16` is invalid
    |     ^^^^^^^^
 
 error[E0606]: casting `&[i32]` as `u32` is invalid
-  --> $DIR/fat-ptr-cast.rs:24:5
+  --> $DIR/fat-ptr-cast.rs:23:5
    |
-24 |     a as u32; //~ ERROR casting `&[i32]` as `u32` is invalid
+23 |     a as u32; //~ ERROR casting `&[i32]` as `u32` is invalid
    |     ^^^^^^^^
 
 error[E0605]: non-primitive cast: `std::boxed::Box<[i32]>` as `usize`
-  --> $DIR/fat-ptr-cast.rs:25:5
+  --> $DIR/fat-ptr-cast.rs:24:5
    |
-25 |     b as usize; //~ ERROR non-primitive cast
+24 |     b as usize; //~ ERROR non-primitive cast
    |     ^^^^^^^^^^
    |
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
 error[E0606]: casting `*const [i32]` as `usize` is invalid
-  --> $DIR/fat-ptr-cast.rs:26:5
+  --> $DIR/fat-ptr-cast.rs:25:5
    |
-26 |     p as usize;
+25 |     p as usize;
    |     ^^^^^^^^^^
    |
    = help: cast through a thin pointer first
 
 error[E0607]: cannot cast thin pointer `*const i32` to fat pointer `*const [i32]`
-  --> $DIR/fat-ptr-cast.rs:31:5
+  --> $DIR/fat-ptr-cast.rs:29:5
    |
-31 |     q as *const [i32]; //~ ERROR cannot cast
+29 |     q as *const [i32]; //~ ERROR cannot cast
    |     ^^^^^^^^^^^^^^^^^
 
 error[E0606]: casting `usize` as `*mut Trait + 'static` is invalid
-  --> $DIR/fat-ptr-cast.rs:34:37
+  --> $DIR/fat-ptr-cast.rs:32:37
    |
-34 |     let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR casting
+32 |     let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR casting
    |                                     ^^^^^^^^^^^
 
 error[E0606]: casting `usize` as `*const str` is invalid
-  --> $DIR/fat-ptr-cast.rs:35:32
+  --> $DIR/fat-ptr-cast.rs:33:32
    |
-35 |     let mut fail: *const str = 0 as *const str; //~ ERROR casting
+33 |     let mut fail: *const str = 0 as *const str; //~ ERROR casting
    |                                ^^^^^^^^^^^^^^^
 
 error: aborting due to 9 previous errors

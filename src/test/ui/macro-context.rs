@@ -17,11 +17,11 @@ macro_rules! m {
 }
 
 fn main() {
-    let a: m!();    //~ NOTE the usage of `m!` is likely invalid in type context
-    let i = m!();   //~ NOTE the usage of `m!` is likely invalid in expression context
+    let a: m!();
+    let i = m!();
     match 0 {
-        m!() => {}  //~ NOTE the usage of `m!` is likely invalid in pattern context
+        m!() => {}
     }
 
-    m!(); //~ NOTE in this expansion
+    m!();
 }

@@ -10,9 +10,7 @@
 
 struct S {
     //~^ ERROR E0072
-    //~| NOTE recursive type has infinite size
     element: Option<S>
-    //~^ NOTE recursive without indirection
 }
 
 fn main() {

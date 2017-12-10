@@ -32,5 +32,4 @@ fn ice<A>(a: A) {
     let r = loop {};
     r = r + a;
     //~^ ERROR the trait bound `(): Add<A>` is not satisfied
-    //~| NOTE the trait `Add<A>` is not implemented for `()`
 }

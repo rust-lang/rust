@@ -14,5 +14,4 @@ fn main() {
     needlesArr.iter().fold(|x, y| {
     });
     //~^^ ERROR this function takes 2 parameters but 1 parameter was supplied
-    //~| NOTE expected 2 parameters
 }

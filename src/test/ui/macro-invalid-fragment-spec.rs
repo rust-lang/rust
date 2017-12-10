@@ -11,7 +11,6 @@
 macro_rules! foo(
     ($x:foo) => ()
     //~^ ERROR invalid fragment specifier
-    //~| HELP valid fragment specifiers are
 );
 
 fn main() {

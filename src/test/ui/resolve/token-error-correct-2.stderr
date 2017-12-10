@@ -1,7 +1,7 @@
 error: incorrect close delimiter: `)`
-  --> $DIR/token-error-correct-2.rs:18:5
+  --> $DIR/token-error-correct-2.rs:16:5
    |
-18 |     ) //~ ERROR: incorrect close delimiter: `)`
+16 |     ) //~ ERROR: incorrect close delimiter: `)`
    |     ^
    |
 note: unclosed delimiter

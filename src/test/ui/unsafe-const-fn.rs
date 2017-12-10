@@ -18,7 +18,6 @@ const unsafe fn dummy(v: u32) -> u32 {
 
 const VAL: u32 = dummy(0xFFFF);
 //~^ ERROR E0133
-//~| NOTE call to unsafe function
 
 fn main() {
     assert_eq!(VAL, 0xFFFF0000);

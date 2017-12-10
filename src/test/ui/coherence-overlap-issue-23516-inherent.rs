@@ -18,9 +18,6 @@ struct Cake<X>(X);
 
 impl<T:Sugar> Cake<T> { fn dummy(&self) { } }
 //~^ ERROR E0592
-//~| NOTE duplicate definitions for `dummy`
-//~| NOTE downstream crates may implement trait `Sugar` for type `std::boxed::Box<_>`
 impl<U:Sugar> Cake<Box<U>> { fn dummy(&self) { } }
-//~^ NOTE other definition for `dummy`
 
 fn main() { }

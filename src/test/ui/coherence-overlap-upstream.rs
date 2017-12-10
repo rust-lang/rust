@@ -19,10 +19,7 @@ use coherence_lib::Remote;
 
 trait Foo {}
 impl<T> Foo for T where T: Remote {}
-//~^ NOTE first implementation here
 impl Foo for i16 {}
 //~^ ERROR E0119
-//~| NOTE conflicting implementation for `i16`
-//~| NOTE upstream crates may add new impl of trait `coherence_lib::Remote` for type `i16`
 
 fn main() {}

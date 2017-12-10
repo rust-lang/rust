@@ -15,20 +15,15 @@ trait Bar { fn bar(); }
 impl Bar for Foo<i32> {
     fn bar() {
         Self { inner: 1.5f32 }; //~ ERROR mismatched types
-                                //~^ NOTE expected i32, found f32
     }
 }
 
 impl<T> Foo<T> {
-    fn new<U>(u: U) -> Foo<U> { //~ NOTE expected `Foo<U>` because of return type
+    fn new<U>(u: U) -> Foo<U> {
         Self {
         //~^ ERROR mismatched types
-        //~| NOTE expected type parameter, found a different type parameter
-        //~| NOTE expected type `Foo<U>`
             inner: u
             //~^ ERROR mismatched types
-            //~| NOTE expected type parameter, found a different type parameter
-            //~| NOTE expected type `T`
         }
     }
 }

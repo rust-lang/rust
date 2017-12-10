@@ -1,7 +1,7 @@
 error[E0326]: implemented const `BAR` has an incompatible type for trait
   --> $DIR/associated-const-impl-wrong-type.rs:19:16
    |
-13 |     const BAR: u32; //~ NOTE type in trait
+13 |     const BAR: u32;
    |                --- type in trait
 ...
 19 |     const BAR: i32 = -1;

@@ -29,7 +29,6 @@ fn main() {
 
     let mut map = HashMap::new();
     //~^ ERROR E0433
-    //~| NOTE Use of undeclared type or module `HashMap`
 
     for line in input.lines() {
         let line = line.unwrap();

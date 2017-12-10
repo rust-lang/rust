@@ -60,7 +60,6 @@ fn borrow_after_move() {
 fn move_after_borrow() {
     let a: Box<_> = box B { x: box 0, y: box 1 };
     let _x = &a.x;
-    //~^ NOTE borrow of `a.x` occurs here
     let _y = a.y;
     //~^ ERROR cannot move
     //~| move out of
@@ -69,15 +68,12 @@ fn move_after_borrow() {
 fn copy_after_mut_borrow() {
     let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &mut a.x;
-    //~^ NOTE borrow of `a.x` occurs here
     let _y = a.y; //~ ERROR cannot use
-    //~^ NOTE use of borrowed `a.x`
 }
 
 fn move_after_mut_borrow() {
     let mut a: Box<_> = box B { x: box 0, y: box 1 };
     let _x = &mut a.x;
-    //~^ NOTE borrow of `a.x` occurs here
     let _y = a.y;
     //~^ ERROR cannot move
     //~| move out of
@@ -86,27 +82,22 @@ fn move_after_mut_borrow() {
 fn borrow_after_mut_borrow() {
     let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &mut a.x;
-    //~^ NOTE mutable borrow occurs here (via `a.x`)
     let _y = &a.y; //~ ERROR cannot borrow
     //~^ immutable borrow occurs here (via `a.y`)
 }
-//~^ NOTE mutable borrow ends here
 
 fn mut_borrow_after_borrow() {
     let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &a.x;
-    //~^ NOTE immutable borrow occurs here (via `a.x`)
     let _y = &mut a.y; //~ ERROR cannot borrow
     //~^ mutable borrow occurs here (via `a.y`)
 }
-//~^ NOTE immutable borrow ends here
 
 fn copy_after_move_nested() {
     let a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = a.x.x;
     //~^ value moved here
     let _y = a.y; //~ ERROR use of collaterally moved
-    //~^ NOTE move occurs because `a.x.x` has type `std::boxed::Box<isize>`
     //~| value used here after move
 }
 
@@ -115,7 +106,6 @@ fn move_after_move_nested() {
     let _x = a.x.x;
     //~^ value moved here
     let _y = a.y; //~ ERROR use of collaterally moved
-    //~^ NOTE move occurs because `a.x.x` has type `std::boxed::Box<isize>`
     //~| value used here after move
 }
 
@@ -124,7 +114,6 @@ fn borrow_after_move_nested() {
     let _x = a.x.x;
     //~^ value moved here
     let _y = &a.y; //~ ERROR use of collaterally moved
-    //~^ NOTE move occurs because `a.x.x` has type `std::boxed::Box<isize>`
     //~| value used here after move
 }
 
@@ -140,15 +129,12 @@ fn move_after_borrow_nested() {
 fn copy_after_mut_borrow_nested() {
     let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = &mut a.x.x;
-    //~^ NOTE borrow of `a.x.x` occurs here
     let _y = a.y; //~ ERROR cannot use
-    //~^ NOTE use of borrowed `a.x.x`
 }
 
 fn move_after_mut_borrow_nested() {
     let mut a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
     let _x = &mut a.x.x;
-    //~^ NOTE borrow of `a.x.x` occurs here
     let _y = a.y;
     //~^ ERROR cannot move
     //~| move out of
@@ -161,7 +147,6 @@ fn borrow_after_mut_borrow_nested() {
     let _y = &a.y; //~ ERROR cannot borrow
     //~^ immutable borrow occurs here
 }
-//~^ NOTE mutable borrow ends here
 
 fn mut_borrow_after_borrow_nested() {
     let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
@@ -170,7 +155,6 @@ fn mut_borrow_after_borrow_nested() {
     let _y = &mut a.y; //~ ERROR cannot borrow
     //~^ mutable borrow occurs here
 }
-//~^ NOTE immutable borrow ends here
 
 fn main() {
     copy_after_move();

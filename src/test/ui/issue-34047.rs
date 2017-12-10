@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const C: u8 = 0; //~ NOTE a constant `C` is defined here
+const C: u8 = 0;
 
 fn main() {
     match 1u8 {
         mut C => {} //~ ERROR match bindings cannot shadow constants
-        //~^ NOTE cannot be named the same as a constant
         _ => {}
     }
 }

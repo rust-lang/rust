@@ -15,12 +15,8 @@ trait Foo {
 
 
 impl<'a> Foo for &'a () {
-//~^ NOTE the lifetime 'a as defined
     const NAME: &'a str = "unit";
     //~^ ERROR mismatched types [E0308]
-    //~| NOTE lifetime mismatch
-    //~| NOTE expected type `&'static str`
-    //~| NOTE ...does not necessarily outlive the static lifetime
 }
 
 fn main() {}

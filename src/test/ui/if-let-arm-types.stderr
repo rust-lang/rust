@@ -15,7 +15,7 @@ error[E0308]: `if let` arms have incompatible types
 note: `if let` arm with an incompatible type
   --> $DIR/if-let-arm-types.rs:17:12
    |
-17 |       } else {                //~ NOTE: `if let` arm with an incompatible type
+17 |       } else {
    |  ____________^
 18 | |         1
 19 | |     };

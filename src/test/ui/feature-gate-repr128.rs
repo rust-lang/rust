@@ -10,7 +10,6 @@
 
 #[repr(u128)]
 enum A { //~ ERROR repr with 128-bit type is unstable
-    //~| HELP: add #![feature(repr128)]
     A(u64)
 }
 

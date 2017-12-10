@@ -10,41 +10,41 @@ error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::S
    = note: required by `send`
 
 error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied in `impl std::ops::Fn<(i32,)>`
-  --> $DIR/auto-trait-leak.rs:34:5
+  --> $DIR/auto-trait-leak.rs:30:5
    |
-34 |     send(after());
+30 |     send(after());
    |     ^^^^ `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
    |
    = help: within `impl std::ops::Fn<(i32,)>`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::cell::Cell<i32>>`
-   = note: required because it appears within the type `[closure@$DIR/auto-trait-leak.rs:46:5: 46:22 p:std::rc::Rc<std::cell::Cell<i32>>]`
+   = note: required because it appears within the type `[closure@$DIR/auto-trait-leak.rs:38:5: 38:22 p:std::rc::Rc<std::cell::Cell<i32>>]`
    = note: required because it appears within the type `impl std::ops::Fn<(i32,)>`
    = note: required by `send`
 
 error[E0391]: unsupported cyclic reference between types/traits detected
-  --> $DIR/auto-trait-leak.rs:52:1
+  --> $DIR/auto-trait-leak.rs:44:1
    |
-52 | fn cycle1() -> impl Clone {
+44 | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic reference
    |
 note: the cycle begins when processing `cycle1`...
-  --> $DIR/auto-trait-leak.rs:52:1
+  --> $DIR/auto-trait-leak.rs:44:1
    |
-52 | fn cycle1() -> impl Clone {
+44 | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which then requires processing `cycle2::{{impl-Trait}}`...
-  --> $DIR/auto-trait-leak.rs:63:16
-   |
-63 | fn cycle2() -> impl Clone {
-   |                ^^^^^^^^^^
-note: ...which then requires processing `cycle2`...
-  --> $DIR/auto-trait-leak.rs:63:1
-   |
-63 | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which then requires processing `cycle1::{{impl-Trait}}`...
   --> $DIR/auto-trait-leak.rs:52:16
    |
-52 | fn cycle1() -> impl Clone {
+52 | fn cycle2() -> impl Clone {
+   |                ^^^^^^^^^^
+note: ...which then requires processing `cycle2`...
+  --> $DIR/auto-trait-leak.rs:52:1
+   |
+52 | fn cycle2() -> impl Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which then requires processing `cycle1::{{impl-Trait}}`...
+  --> $DIR/auto-trait-leak.rs:44:16
+   |
+44 | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    = note: ...which then again requires processing `cycle1`, completing the cycle.
 

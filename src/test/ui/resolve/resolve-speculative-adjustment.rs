@@ -26,10 +26,8 @@ impl Tr for S {
             // "did you mean" messages are not printed.
             field;
             //~^ ERROR cannot find value `field`
-            //~| NOTE not found in this scope
             method();
             //~^ ERROR cannot find function `method`
-            //~| NOTE not found in this scope
         }
 
         field;

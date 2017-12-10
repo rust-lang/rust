@@ -13,5 +13,4 @@
 fn main() {
     let x = |ref x: isize| { x += 1; };
     //~^ ERROR E0368
-    //~| NOTE cannot use `+=` on type `&isize`
 }

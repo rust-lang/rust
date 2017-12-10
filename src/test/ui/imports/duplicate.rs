@@ -21,10 +21,8 @@ mod c {
 }
 
 mod d {
-    use a::foo; //~ NOTE previous import of the value `foo` here
+    use a::foo;
     use a::foo; //~ ERROR the name `foo` is defined multiple times
-                //~| NOTE `foo` reimported here
-                //~| NOTE `foo` must be defined only once in the value namespace of this module
 }
 
 mod e {
@@ -33,37 +31,31 @@ mod e {
 }
 
 mod f {
-    pub use a::*; //~ NOTE `foo` could refer to the name imported here
-    pub use b::*; //~ NOTE `foo` could also refer to the name imported here
+    pub use a::*;
+    pub use b::*;
 }
 
 mod g {
-    pub use a::*; //~ NOTE `foo` could refer to the name imported here
-    pub use f::*; //~ NOTE `foo` could also refer to the name imported here
+    pub use a::*;
+    pub use f::*;
 }
 
 fn main() {
     e::foo();
     f::foo(); //~ ERROR `foo` is ambiguous
-              //~| NOTE consider adding an explicit import of `foo` to disambiguate
     g::foo(); //~ ERROR `foo` is ambiguous
-              //~| NOTE consider adding an explicit import of `foo` to disambiguate
 }
 
 mod ambiguous_module_errors {
     pub mod m1 { pub use super::m1 as foo; }
     pub mod m2 { pub use super::m2 as foo; }
 
-    use self::m1::*; //~ NOTE
-                     //~| NOTE
-    use self::m2::*; //~ NOTE
-                     //~| NOTE
+    use self::m1::*;
+    use self::m2::*;
 
     use self::foo::bar; //~ ERROR `foo` is ambiguous
-                        //~| NOTE
 
     fn f() {
         foo::bar(); //~ ERROR `foo` is ambiguous
-                    //~| NOTE
     }
 }

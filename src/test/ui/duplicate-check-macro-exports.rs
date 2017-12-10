@@ -10,10 +10,9 @@
 
 #![feature(use_extern_macros)]
 
-pub use std::panic; //~ NOTE previous macro export here
+pub use std::panic;
 
 #[macro_export]
 macro_rules! panic { () => {} } //~ ERROR a macro named `panic` has already been exported
-//~| NOTE `panic` already exported
 
 fn main() {}

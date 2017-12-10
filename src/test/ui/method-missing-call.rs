@@ -30,7 +30,6 @@ fn main() {
     let point: Point = Point::new();
     let px: isize =  point
                         .get_x;//~ ERROR attempted to take value of method `get_x` on type `Point`
-                        //~^ HELP maybe a `()` to call it is missing
 
     // Ensure the span is useful
     let ys = &[1,2,3,4,5,6,7];
@@ -38,5 +37,4 @@ fn main() {
               .map(|x| x)
               .filter(|&&x| x == 1)
               .filter_map; //~ ERROR attempted to take value of method `filter_map` on type
-              //~^ HELP maybe a `()` to call it is missing
 }

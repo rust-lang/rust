@@ -16,17 +16,12 @@ pub trait Sugar {}
 pub trait Fruit {}
 impl<T:Sugar> Sweet<T> { fn dummy(&self) { } }
 //~^ ERROR E0592
-//~| NOTE duplicate definitions for `dummy`
 impl<T:Fruit> Sweet<T> { fn dummy(&self) { } }
-//~^ NOTE other definition for `dummy`
 
 trait Bar<X> {}
 struct A<T, X>(T, X);
 impl<X, T> A<T, X> where T: Bar<X> { fn f(&self) {} }
 //~^ ERROR E0592
-//~| NOTE duplicate definitions for `f`
-//~| NOTE downstream crates may implement trait `Bar<_>` for type `i32`
 impl<X> A<i32, X> { fn f(&self) {} }
-//~^ NOTE other definition for `f`
 
 fn main() {}

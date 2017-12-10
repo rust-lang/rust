@@ -16,14 +16,8 @@ fn main() {
     let mut x: Box<_> = box Foo { a: 1, b: 2 };
     let (a, b) = (&mut x.a, &mut x.b);
     //~^ ERROR cannot borrow `x` (via `x.b`) as mutable more than once at a time
-    //~| NOTE first mutable borrow occurs here (via `x.a`)
-    //~| NOTE second mutable borrow occurs here (via `x.b`)
 
     let mut foo: Box<_> = box Foo { a: 1, b: 2 };
     let (c, d) = (&mut foo.a, &foo.b);
     //~^ ERROR cannot borrow `foo` (via `foo.b`) as immutable
-    //~| NOTE mutable borrow occurs here (via `foo.a`)
-    //~| NOTE immutable borrow occurs here (via `foo.b`)
 }
-//~^ NOTE first borrow ends here
-//~^^ NOTE mutable borrow ends here

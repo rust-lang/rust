@@ -4,11 +4,11 @@ error[E0507]: cannot move out of borrowed content
 21 |     match *f {             //~ ERROR cannot move out of
    |           ^^ cannot move out of borrowed content
 22 |                            //~| cannot move out
-23 |         Foo::Foo1(num1,         //~ NOTE to prevent move
+23 |         Foo::Foo1(num1,
    |                   ---- hint: to prevent move, use `ref num1` or `ref mut num1`
-24 |                   num2) => (),  //~ NOTE and here
+24 |                   num2) => (),
    |                   ---- ...and here (use `ref num2` or `ref mut num2`)
-25 |         Foo::Foo2(num) => (),   //~ NOTE and here
+25 |         Foo::Foo2(num) => (),
    |                   --- ...and here (use `ref num` or `ref mut num`)
 
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
@@ -16,9 +16,9 @@ error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
    |
 40 | /         S {         //~ ERROR cannot move out of type `S`, which implements the `Drop` trait
 41 | |         //~| cannot move out of here
-42 | |             f: _s,  //~ NOTE to prevent move
+42 | |             f: _s,
    | |                -- hint: to prevent move, use `ref _s` or `ref mut _s`
-43 | |             g: _t   //~ NOTE and here
+43 | |             g: _t
    | |                -- ...and here (use `ref _t` or `ref mut _t`)
 44 | |         } => {}
    | |_________^ cannot move out of here
@@ -29,7 +29,7 @@ error[E0507]: cannot move out of borrowed content
 57 |     match a.a {           //~ ERROR cannot move out of
    |           ^ cannot move out of borrowed content
 58 |                           //~| cannot move out
-59 |         n => {            //~ NOTE to prevent move
+59 |         n => {
    |         - hint: to prevent move, use `ref n` or `ref mut n`
 
 error: aborting due to 3 previous errors

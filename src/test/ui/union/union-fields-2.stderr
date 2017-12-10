@@ -25,57 +25,57 @@ error: union expressions should have exactly one field
    |             ^
 
 error: union expressions should have exactly one field
-  --> $DIR/union-fields-2.rs:24:13
+  --> $DIR/union-fields-2.rs:22:13
    |
-24 |     let u = U { ..u }; //~ ERROR union expressions should have exactly one field
+22 |     let u = U { ..u }; //~ ERROR union expressions should have exactly one field
    |             ^
 
 error[E0436]: functional record update syntax requires a struct
-  --> $DIR/union-fields-2.rs:24:19
+  --> $DIR/union-fields-2.rs:22:19
    |
-24 |     let u = U { ..u }; //~ ERROR union expressions should have exactly one field
+22 |     let u = U { ..u }; //~ ERROR union expressions should have exactly one field
    |                   ^
+
+error: union patterns should have exactly one field
+  --> $DIR/union-fields-2.rs:25:9
+   |
+25 |     let U {} = u; //~ ERROR union patterns should have exactly one field
+   |         ^^^^
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:27:9
    |
-27 |     let U {} = u; //~ ERROR union patterns should have exactly one field
-   |         ^^^^
-
-error: union patterns should have exactly one field
-  --> $DIR/union-fields-2.rs:29:9
-   |
-29 |     let U { a, b } = u; //~ ERROR union patterns should have exactly one field
+27 |     let U { a, b } = u; //~ ERROR union patterns should have exactly one field
    |         ^^^^^^^^^^
 
 error[E0026]: union `U` does not have a field named `c`
-  --> $DIR/union-fields-2.rs:30:19
+  --> $DIR/union-fields-2.rs:28:19
    |
-30 |     let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
+28 |     let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
    |                   ^ union `U` does not have field `c`
+
+error: union patterns should have exactly one field
+  --> $DIR/union-fields-2.rs:28:9
+   |
+28 |     let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
+   |         ^^^^^^^^^^^^^
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:30:9
    |
-30 |     let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
-   |         ^^^^^^^^^^^^^
-
-error: union patterns should have exactly one field
-  --> $DIR/union-fields-2.rs:33:9
-   |
-33 |     let U { .. } = u; //~ ERROR union patterns should have exactly one field
+30 |     let U { .. } = u; //~ ERROR union patterns should have exactly one field
    |         ^^^^^^^^
 
 error: `..` cannot be used in union patterns
-  --> $DIR/union-fields-2.rs:33:9
+  --> $DIR/union-fields-2.rs:30:9
    |
-33 |     let U { .. } = u; //~ ERROR union patterns should have exactly one field
+30 |     let U { .. } = u; //~ ERROR union patterns should have exactly one field
    |         ^^^^^^^^
 
 error: `..` cannot be used in union patterns
-  --> $DIR/union-fields-2.rs:35:9
+  --> $DIR/union-fields-2.rs:32:9
    |
-35 |     let U { a, .. } = u; //~ ERROR `..` cannot be used in union patterns
+32 |     let U { a, .. } = u; //~ ERROR `..` cannot be used in union patterns
    |         ^^^^^^^^^^^
 
 error: aborting due to 13 previous errors

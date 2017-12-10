@@ -18,14 +18,12 @@ fn main() {
     let q = a.as_ptr();
 
     a as usize; //~ ERROR casting
-    //~^ HELP cast through a raw pointer first
     a as isize; //~ ERROR casting
     a as i16; //~ ERROR casting `&[i32]` as `i16` is invalid
     a as u32; //~ ERROR casting `&[i32]` as `u32` is invalid
     b as usize; //~ ERROR non-primitive cast
     p as usize;
     //~^ ERROR casting
-    //~^^ HELP cast through a thin pointer
 
     // #22955
     q as *const [i32]; //~ ERROR cannot cast

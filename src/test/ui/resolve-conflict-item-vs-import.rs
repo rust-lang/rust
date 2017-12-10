@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::mem::transmute;
-//~^ NOTE previous import of the value `transmute` here
 
 fn transmute() {}
 //~^ ERROR the name `transmute` is defined multiple times

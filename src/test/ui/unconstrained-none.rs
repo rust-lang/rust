@@ -12,5 +12,4 @@
 
 fn main() {
     None; //~ ERROR type annotations needed [E0282]
-          //~| NOTE cannot infer type for `T`
 }

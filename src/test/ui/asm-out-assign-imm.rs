@@ -23,12 +23,11 @@ fn foo(x: isize) { println!("{}", x); }
           target_arch = "aarch64"))]
 pub fn main() {
     let x: isize;
-    x = 1; //~ NOTE first assignment
+    x = 1;
     foo(x);
     unsafe {
         asm!("mov $1, $0" : "=r"(x) : "r"(5));
         //~^ ERROR cannot assign twice to immutable variable `x`
-        //~| NOTE cannot assign twice to immutable
     }
     foo(x);
 }

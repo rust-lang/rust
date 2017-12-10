@@ -13,18 +13,12 @@
 
 pub trait Vehicle {
     type Color;
-    //~^ NOTE ambiguous `Color` from `Vehicle`
-    //~| NOTE ambiguous `Color` from `Vehicle`
-    //~| NOTE ambiguous `Color` from `Vehicle`
 
     fn go(&self) {  }
 }
 
 pub trait Box {
     type Color;
-    //~^ NOTE ambiguous `Color` from `Box`
-    //~| NOTE ambiguous `Color` from `Box`
-    //~| NOTE ambiguous `Color` from `Box`
     //
     fn mail(&self) {  }
 }
@@ -34,19 +28,15 @@ pub trait BoxCar : Box + Vehicle {
 
 fn dent<C:BoxCar>(c: C, color: C::Color) {
     //~^ ERROR ambiguous associated type `Color` in bounds of `C`
-    //~| NOTE ambiguous associated type `Color`
 }
 
 fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
     //~^ ERROR ambiguous associated type
     //~| ERROR the value of the associated type `Color` (from the trait `Vehicle`) must be specified
-    //~| NOTE ambiguous associated type `Color`
-    //~| NOTE missing associated type `Color` value
 }
 
 fn paint<C:BoxCar>(c: C, d: C::Color) {
     //~^ ERROR ambiguous associated type `Color` in bounds of `C`
-    //~| NOTE ambiguous associated type `Color`
 }
 
 pub fn main() { }

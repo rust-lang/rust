@@ -5,15 +5,15 @@ error[E0560]: union `U` has no field named `principle`
    |                 ^^^^^^^^^^ field does not exist - did you mean `principal`?
 
 error[E0609]: no field `principial` on type `U`
-  --> $DIR/union-suggest-field.rs:23:15
+  --> $DIR/union-suggest-field.rs:22:15
    |
-23 |     let w = u.principial; //~ ERROR no field `principial` on type `U`
+22 |     let w = u.principial; //~ ERROR no field `principial` on type `U`
    |               ^^^^^^^^^^ did you mean `principal`?
 
 error[E0615]: attempted to take value of method `calculate` on type `U`
-  --> $DIR/union-suggest-field.rs:26:15
+  --> $DIR/union-suggest-field.rs:25:15
    |
-26 |     let y = u.calculate; //~ ERROR attempted to take value of method `calculate` on type `U`
+25 |     let y = u.calculate; //~ ERROR attempted to take value of method `calculate` on type `U`
    |               ^^^^^^^^^
    |
    = help: maybe a `()` to call it is missing?

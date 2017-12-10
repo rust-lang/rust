@@ -18,8 +18,6 @@ fn slice_pat(x: &[u8]) {
     match x {
         [a, b..] => {},
         //~^ ERROR non-reference pattern used to match a reference
-        //~| HELP add #![feature(match_default_bindings)] to the crate attributes to enable
-        //~| HELP consider using
         _ => panic!(),
     }
 }

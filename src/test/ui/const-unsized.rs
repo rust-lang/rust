@@ -12,23 +12,15 @@ use std::fmt::Debug;
 
 const CONST_0: Debug+Sync = *(&0 as &(Debug+Sync));
 //~^ ERROR `std::fmt::Debug + std::marker::Sync + 'static: std::marker::Sized` is not satisfied
-//~| NOTE does not have a constant size known at compile-time
-//~| NOTE constant expressions must have a statically known size
 
 const CONST_FOO: str = *"foo";
 //~^ ERROR `str: std::marker::Sized` is not satisfied
-//~| NOTE does not have a constant size known at compile-time
-//~| NOTE constant expressions must have a statically known size
 
 static STATIC_1: Debug+Sync = *(&1 as &(Debug+Sync));
 //~^ ERROR `std::fmt::Debug + std::marker::Sync + 'static: std::marker::Sized` is not satisfied
-//~| NOTE does not have a constant size known at compile-time
-//~| NOTE constant expressions must have a statically known size
 
 static STATIC_BAR: str = *"bar";
 //~^ ERROR `str: std::marker::Sized` is not satisfied
-//~| NOTE does not have a constant size known at compile-time
-//~| NOTE constant expressions must have a statically known size
 
 fn main() {
     println!("{:?} {:?} {:?} {:?}", &CONST_0, &CONST_FOO, &STATIC_1, &STATIC_BAR);

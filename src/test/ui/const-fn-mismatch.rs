@@ -22,7 +22,6 @@ trait Foo {
 impl Foo for u32 {
     const fn f() -> u32 { 22 }
     //~^ ERROR trait fns cannot be declared const
-    //~| NOTE trait fns cannot be const
 }
 
 fn main() { }

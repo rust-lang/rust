@@ -10,7 +10,5 @@
 
 fn main() {
     let v = &[]; //~ ERROR type annotations needed
-    //~| NOTE consider giving `v` a type
-    //~| NOTE cannot infer type for `_`
     let it = v.iter();
 }

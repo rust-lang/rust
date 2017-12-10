@@ -17,7 +17,6 @@ pub trait MethodType {
 pub struct MTFn;
 
 impl<'a> MethodType for MTFn { //~ ERROR E0207
-                               //~| NOTE unconstrained lifetime parameter
     type GetProp = fmt::Debug + 'a;
 }
 

@@ -16,32 +16,24 @@
 // This is testing the exact cases that are in the issue description.
 
 fn foo() {
-    'fl: for _ in 0..10 { break; } //~ NOTE first declared here
+    'fl: for _ in 0..10 { break; }
     'fl: loop { break; }           //~ WARN label name `'fl` shadows a label name that is already in scope
-                                   //~^ NOTE lifetime 'fl already in scope
 
-    'lf: loop { break; }           //~ NOTE first declared here
+    'lf: loop { break; }
     'lf: for _ in 0..10 { break; } //~ WARN label name `'lf` shadows a label name that is already in scope
-                                   //~^ NOTE lifetime 'lf already in scope
-    'wl: while 2 > 1 { break; }    //~ NOTE first declared here
+    'wl: while 2 > 1 { break; }
     'wl: loop { break; }           //~ WARN label name `'wl` shadows a label name that is already in scope
-                                   //~^ NOTE lifetime 'wl already in scope
-    'lw: loop { break; }           //~ NOTE first declared here
+    'lw: loop { break; }
     'lw: while 2 > 1 { break; }    //~ WARN label name `'lw` shadows a label name that is already in scope
-                                   //~^ NOTE lifetime 'lw already in scope
-    'fw: for _ in 0..10 { break; } //~ NOTE first declared here
+    'fw: for _ in 0..10 { break; }
     'fw: while 2 > 1 { break; }    //~ WARN label name `'fw` shadows a label name that is already in scope
-                                   //~^ NOTE lifetime 'fw already in scope
-    'wf: while 2 > 1 { break; }    //~ NOTE first declared here
+    'wf: while 2 > 1 { break; }
     'wf: for _ in 0..10 { break; } //~ WARN label name `'wf` shadows a label name that is already in scope
-                                   //~^ NOTE lifetime 'wf already in scope
-    'tl: while let Some(_) = None::<i32> { break; } //~ NOTE first declared here
+    'tl: while let Some(_) = None::<i32> { break; }
     'tl: loop { break; }           //~ WARN label name `'tl` shadows a label name that is already in scope
-                                   //~^ NOTE lifetime 'tl already in scope
-    'lt: loop { break; }           //~ NOTE first declared here
+    'lt: loop { break; }
     'lt: while let Some(_) = None::<i32> { break; }
                                    //~^ WARN label name `'lt` shadows a label name that is already in scope
-                                   //~| NOTE lifetime 'lt already in scope
 }
 
 // Note however that it is okay for the same label to be reused in

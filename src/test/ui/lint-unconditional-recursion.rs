@@ -9,11 +9,10 @@
 // except according to those terms.
 
 #![deny(unconditional_recursion)]
-//~^ NOTE lint level defined here
 
 #![allow(dead_code)]
 fn foo() { //~ ERROR function cannot return without recurring
-    foo(); //~ NOTE recursive call site
+    foo();
 }
 
 fn bar() {
@@ -24,9 +23,9 @@ fn bar() {
 
 fn baz() { //~ ERROR function cannot return without recurring
     if true {
-        baz() //~ NOTE recursive call site
+        baz()
     } else {
-        baz() //~ NOTE recursive call site
+        baz()
     }
 }
 
@@ -36,24 +35,24 @@ fn qux() {
 
 fn quz() -> bool { //~ ERROR function cannot return without recurring
     if true {
-        while quz() {} //~ NOTE recursive call site
+        while quz() {}
         true
     } else {
-        loop { quz(); } //~ NOTE recursive call site
+        loop { quz(); }
     }
 }
 
 // Trait method calls.
 trait Foo {
     fn bar(&self) { //~ ERROR function cannot return without recurring
-        self.bar() //~ NOTE recursive call site
+        self.bar()
     }
 }
 
 impl Foo for Box<Foo+'static> {
     fn bar(&self) { //~ ERROR function cannot return without recurring
         loop {
-            self.bar() //~ NOTE recursive call site
+            self.bar()
         }
     }
 }
@@ -61,7 +60,7 @@ impl Foo for Box<Foo+'static> {
 // Trait method call with integer fallback after method resolution.
 impl Foo for i32 {
     fn bar(&self) { //~ ERROR function cannot return without recurring
-        0.bar() //~ NOTE recursive call site
+        0.bar()
     }
 }
 
@@ -74,14 +73,14 @@ impl Foo for u32 {
 // Trait method calls via paths.
 trait Foo2 {
     fn bar(&self) { //~ ERROR function cannot return without recurring
-        Foo2::bar(self) //~ NOTE recursive call site
+        Foo2::bar(self)
     }
 }
 
 impl Foo2 for Box<Foo2+'static> {
     fn bar(&self) { //~ ERROR function cannot return without recurring
         loop {
-            Foo2::bar(self) //~ NOTE recursive call site
+            Foo2::bar(self)
         }
     }
 }
@@ -90,19 +89,19 @@ struct Baz;
 impl Baz {
     // Inherent method call.
     fn qux(&self) { //~ ERROR function cannot return without recurring
-        self.qux(); //~ NOTE recursive call site
+        self.qux();
     }
 
     // Inherent method call via path.
     fn as_ref(&self) -> &Self { //~ ERROR function cannot return without recurring
-        Baz::as_ref(self) //~ NOTE recursive call site
+        Baz::as_ref(self)
     }
 }
 
 // Trait method calls to impls via paths.
 impl Default for Baz {
     fn default() -> Baz { //~ ERROR function cannot return without recurring
-        let x = Default::default(); //~ NOTE recursive call site
+        let x = Default::default();
         x
     }
 }
@@ -111,14 +110,14 @@ impl Default for Baz {
 impl std::ops::Deref for Baz {
     type Target = ();
     fn deref(&self) -> &() { //~ ERROR function cannot return without recurring
-        &**self //~ NOTE recursive call site
+        &**self
     }
 }
 
 impl std::ops::Index<usize> for Baz {
     type Output = Baz;
     fn index(&self, x: usize) -> &Baz { //~ ERROR function cannot return without recurring
-        &self[x] //~ NOTE recursive call site
+        &self[x]
     }
 }
 
@@ -127,7 +126,7 @@ struct Quux;
 impl std::ops::Deref for Quux {
     type Target = Baz;
     fn deref(&self) -> &Baz { //~ ERROR function cannot return without recurring
-        self.as_ref() //~ NOTE recursive call site
+        self.as_ref()
     }
 }
 

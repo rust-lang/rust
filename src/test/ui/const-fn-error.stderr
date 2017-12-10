@@ -7,7 +7,7 @@ error[E0080]: constant evaluation error
 note: for constant expression here
   --> $DIR/const-fn-error.rs:26:13
    |
-26 |     let a : [i32; f(X)]; //~ NOTE for constant expression here
+26 |     let a : [i32; f(X)];
    |             ^^^^^^^^^^^
 
 error: aborting due to previous error

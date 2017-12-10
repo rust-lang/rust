@@ -14,9 +14,8 @@ enum Foo {
 
 enum Bar {
     //~^ ERROR recursive type `Bar` has infinite size
-    //~| NOTE recursive type has infinite size
     BarNone,
-    BarSome(Bar)  //~ NOTE recursive without indirection
+    BarSome(Bar)
 }
 
 fn main() {

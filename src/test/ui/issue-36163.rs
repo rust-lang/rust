@@ -9,16 +9,13 @@
 // except according to those terms.
 
 const A: i32 = Foo::B; //~ ERROR E0265
-                       //~^ NOTE recursion not allowed in constant
 
 enum Foo {
     B = A, //~ ERROR E0265
-           //~^ NOTE recursion not allowed in constant
 }
 
 enum Bar {
     C = Bar::C, //~ ERROR E0265
-                //~^ NOTE recursion not allowed in constant
 }
 
 const D: i32 = A;

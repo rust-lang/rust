@@ -7,9 +7,9 @@ error[E0599]: no method named `x` found for type `fn() -> ret {obj::func}` in th
    = note: obj::func is a function, perhaps you wish to call it
 
 error[E0599]: no method named `x` found for type `fn() -> ret {func}` in the current scope
-  --> $DIR/issue-29124.rs:28:10
+  --> $DIR/issue-29124.rs:27:10
    |
-28 |     func.x();
+27 |     func.x();
    |          ^
    |
    = note: func is a function, perhaps you wish to call it

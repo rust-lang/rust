@@ -1,9 +1,9 @@
 error: `Foo` is ambiguous
   --> $DIR/rfc-1560-warning-cycle.rs:21:17
    |
-19 |         use *; //~ NOTE `Foo` could refer to the name imported here
+19 |         use *;
    |             - `Foo` could refer to the name imported here
-20 |         use bar::*; //~ NOTE `Foo` could also refer to the name imported here
+20 |         use bar::*;
    |             ------ `Foo` could also refer to the name imported here
 21 |         fn f(_: Foo) {}
    |                 ^^^

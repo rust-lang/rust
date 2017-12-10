@@ -17,7 +17,6 @@ fn main() {
     let z = &x; //~ ERROR cannot borrow
     //~^ immutable borrow occurs here
 }
-//~^ NOTE mutable borrow ends here
 
 fn foo() {
     match true {
@@ -29,7 +28,6 @@ fn foo() {
             let z = &mut x; //~ ERROR cannot borrow
             //~^ mutable borrow occurs here
         }
-     //~^ NOTE immutable borrow ends here
         false => ()
     }
 }
@@ -43,5 +41,4 @@ fn bar() {
         let z = &mut x; //~ ERROR cannot borrow
         //~^ second mutable borrow occurs here
     };
- //~^ NOTE first borrow ends here
 }

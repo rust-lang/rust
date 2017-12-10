@@ -15,10 +15,7 @@ fn id<T>(t: T) -> T { t }
 fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
     id(Box::new(|| *v))
         //~^ ERROR E0373
-        //~| NOTE `v` is borrowed here
-        //~| NOTE may outlive borrowed value `v`
         //~| ERROR E0507
-        //~| NOTE cannot move out of borrowed content
 }
 
 fn main() {

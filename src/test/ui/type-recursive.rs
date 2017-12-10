@@ -9,9 +9,8 @@
 // except according to those terms.
 
 struct t1 { //~ ERROR E0072
-            //~| NOTE recursive type has infinite size
     foo: isize,
-    foolish: t1  //~ NOTE recursive without indirection
+    foolish: t1
 }
 
 fn main() { }

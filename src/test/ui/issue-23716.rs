@@ -9,7 +9,6 @@
 // except according to those terms.
 
 static foo: i32 = 0;
-//~^ NOTE a static `foo` is defined here
 
 fn bar(foo: i32) {}
 //~^ ERROR function parameters cannot shadow statics
@@ -20,7 +19,6 @@ mod submod {
 }
 
 use self::submod::answer;
-//~^ NOTE a static `answer` is imported here
 
 fn question(answer: i32) {}
 //~^ ERROR function parameters cannot shadow statics

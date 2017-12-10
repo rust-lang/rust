@@ -27,10 +27,9 @@ fn foo() {
 
     let z = 3_i8;
 
-    'a: loop { //~ NOTE first declared here
+    'a: loop {
         let b = Box::new(|x: &i8| *x) as Box<for <'a> Fn(&'a i8) -> i8>;
         //~^ WARN lifetime name `'a` shadows a label name that is already in scope
-        //~| NOTE lifetime 'a already in scope
         assert_eq!((*b)(&z), z);
         break 'a;
     }

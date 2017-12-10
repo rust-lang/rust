@@ -19,16 +19,8 @@ fn escaping_borrow_of_closure_params_1() {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
         //~^ ERROR `x` does not live long enough
         //~| ERROR `y` does not live long enough
-        //~| NOTE capture occurs here
-        //~| NOTE capture occurs here
-        //~| NOTE does not live long enough
-        //~| NOTE does not live long enough
-        //~| NOTE values in a scope are dropped in the opposite order they are created
-        //~| NOTE values in a scope are dropped in the opposite order they are created
         return f;
     };
-    //~^ NOTE borrowed value dropped before borrower
-    //~| NOTE borrowed value dropped before borrower
 
     // We delberately do not call `g`; this small version of the test,
     // after adding such a call, was (properly) rejected even when the
@@ -42,16 +34,8 @@ fn escaping_borrow_of_closure_params_2() {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
         //~^ ERROR `x` does not live long enough
         //~| ERROR `y` does not live long enough
-        //~| NOTE capture occurs here
-        //~| NOTE capture occurs here
-        //~| NOTE does not live long enough
-        //~| NOTE does not live long enough
-        //~| NOTE values in a scope are dropped in the opposite order they are created
-        //~| NOTE values in a scope are dropped in the opposite order they are created
         f
     };
-    //~^ NOTE borrowed value dropped before borrower
-    //~| NOTE borrowed value dropped before borrower
 
     // (we don't call `g`; see above)
 }
@@ -80,11 +64,7 @@ fn escaping_borrow_of_fn_params_1() {
     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
         //~^ ERROR E0373
-        //~| NOTE `x` is borrowed here
-        //~| NOTE may outlive borrowed value `x`
         //~| ERROR E0373
-        //~| NOTE `y` is borrowed here
-        //~| NOTE may outlive borrowed value `y`
         return Box::new(f);
     };
 
@@ -95,11 +75,7 @@ fn escaping_borrow_of_fn_params_2() {
     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
         //~^ ERROR E0373
-        //~| NOTE `x` is borrowed here
-        //~| NOTE may outlive borrowed value `x`
         //~| ERROR E0373
-        //~| NOTE `y` is borrowed here
-        //~| NOTE may outlive borrowed value `y`
         Box::new(f)
     };
 
@@ -123,11 +99,7 @@ fn escaping_borrow_of_method_params_1() {
         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
-            //~| NOTE `x` is borrowed here
-            //~| NOTE may outlive borrowed value `x`
             //~| ERROR E0373
-            //~| NOTE `y` is borrowed here
-            //~| NOTE may outlive borrowed value `y`
             return Box::new(f);
         }
     }
@@ -141,11 +113,7 @@ fn escaping_borrow_of_method_params_2() {
         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
-            //~| NOTE `x` is borrowed here
-            //~| NOTE may outlive borrowed value `x`
             //~| ERROR E0373
-            //~| NOTE `y` is borrowed here
-            //~| NOTE may outlive borrowed value `y`
             Box::new(f)
         }
     }
@@ -173,11 +141,7 @@ fn escaping_borrow_of_trait_impl_params_1() {
         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
-            //~| NOTE `x` is borrowed here
-            //~| NOTE may outlive borrowed value `x`
             //~| ERROR E0373
-            //~| NOTE `y` is borrowed here
-            //~| NOTE may outlive borrowed value `y`
             return Box::new(f);
         }
     }
@@ -192,11 +156,7 @@ fn escaping_borrow_of_trait_impl_params_2() {
         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
-            //~| NOTE `x` is borrowed here
-            //~| NOTE may outlive borrowed value `x`
             //~| ERROR E0373
-            //~| NOTE `y` is borrowed here
-            //~| NOTE may outlive borrowed value `y`
             Box::new(f)
         }
     }
@@ -224,11 +184,7 @@ fn escaping_borrow_of_trait_default_params_1() {
         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
-            //~| NOTE `x` is borrowed here
-            //~| NOTE may outlive borrowed value `x`
             //~| ERROR E0373
-            //~| NOTE `y` is borrowed here
-            //~| NOTE may outlive borrowed value `y`
             return Box::new(f);
         }
     }
@@ -242,11 +198,7 @@ fn escaping_borrow_of_trait_default_params_2() {
         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
-            //~| NOTE `x` is borrowed here
-            //~| NOTE may outlive borrowed value `x`
             //~| ERROR E0373
-            //~| NOTE `y` is borrowed here
-            //~| NOTE may outlive borrowed value `y`
             Box::new(f)
         }
     }

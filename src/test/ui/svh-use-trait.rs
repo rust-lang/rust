@@ -22,8 +22,6 @@
 
 extern crate uta;
 extern crate utb; //~ ERROR: found possibly newer version of crate `uta` which `utb` depends
-//~| NOTE: perhaps that crate needs to be recompiled?
-//~| NOTE: the following crate versions were found:
 
 fn main() {
     utb::foo()

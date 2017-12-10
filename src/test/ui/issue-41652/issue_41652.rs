@@ -18,8 +18,6 @@ impl issue_41652_b::Tr for S {
     fn f() {
         3.f()
         //~^ ERROR no method named `f` found for type `{integer}` in the current scope
-        //~| NOTE found the following associated functions
-        //~| NOTE candidate #1 is defined in the trait `issue_41652_b::Tr`
     }
 }
 

@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn func(i: i32) { //~NOTE defined here
+fn func(i: i32) {
     i(); //~ERROR expected function, found `i32`
 }
 fn main() {
-    let i = 0i32; //~NOTE defined here
+    let i = 0i32;
     i(); //~ERROR expected function, found `i32`
 }

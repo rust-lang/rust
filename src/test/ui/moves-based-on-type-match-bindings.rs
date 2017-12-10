@@ -20,7 +20,7 @@ fn f10() {
     let x = Foo {f: "hi".to_string()};
 
     let y = match x {
-        Foo {f} => {} //~ NOTE moved here
+        Foo {f} => {}
     };
 
     touch(&x); //~ ERROR use of partially moved value: `x`

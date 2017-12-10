@@ -7,7 +7,7 @@ error: a macro named `panic` has already been exported
 note: previous macro export here
   --> $DIR/duplicate-check-macro-exports.rs:13:9
    |
-13 | pub use std::panic; //~ NOTE previous macro export here
+13 | pub use std::panic;
    |         ^^^^^^^^^^
 
 error: aborting due to previous error

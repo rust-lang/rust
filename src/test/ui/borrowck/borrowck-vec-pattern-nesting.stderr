@@ -44,7 +44,7 @@ error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy sli
 64 |           &mut [ //~ ERROR cannot move out
    |  ______________^
 65 | |         //~^ cannot move out
-66 | |          _b] => {} //~ NOTE to prevent move
+66 | |          _b] => {}
    | |__________--^ cannot move out of here
    |            |
    |            hint: to prevent move, use `ref _b` or `ref mut _b`
@@ -70,9 +70,9 @@ error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy sli
    |              cannot move out of here
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
-  --> $DIR/borrowck-vec-pattern-nesting.rs:84:13
+  --> $DIR/borrowck-vec-pattern-nesting.rs:81:13
    |
-84 |     let a = vec[0]; //~ ERROR cannot move out
+81 |     let a = vec[0]; //~ ERROR cannot move out
    |             ^^^^^^
    |             |
    |             cannot move out of here

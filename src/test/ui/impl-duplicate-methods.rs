@@ -11,10 +11,9 @@
 struct Foo;
 
 impl Foo {
-    fn orange(&self) {} //~ NOTE previous definition of `orange` here
+    fn orange(&self) {}
     fn orange(&self) {}
     //~^ ERROR duplicate definition
-    //~| NOTE duplicate definition
 }
 
 fn main() {}

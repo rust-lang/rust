@@ -17,7 +17,5 @@
 
 extern crate a;
 extern crate b; //~ ERROR: found possibly newer version of crate `a` which `b` depends on
-//~| NOTE: the following crate versions were found
-//~| NOTE: perhaps that crate needs to be recompiled
 
 fn main() {}

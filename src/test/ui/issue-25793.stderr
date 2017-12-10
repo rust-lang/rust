@@ -4,7 +4,7 @@ error[E0503]: cannot use `self.width` because it was mutably borrowed
 13 |         $this.width.unwrap()
    |         ^^^^^^^^^^^ use of borrowed `*self`
 ...
-29 |         self.get_size(width!(self))
+28 |         self.get_size(width!(self))
    |         ----          ------------ in this macro invocation
    |         |
    |         borrow of `*self` occurs here

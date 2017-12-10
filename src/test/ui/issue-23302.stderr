@@ -5,21 +5,21 @@ error[E0265]: recursive constant
    |         ^^^^^^^^^^^^^ recursion not allowed in constant
 
 error[E0265]: recursive constant
-  --> $DIR/issue-23302.rs:21:9
+  --> $DIR/issue-23302.rs:20:9
    |
-21 |     A = Y::B as isize, //~ ERROR E0265
+20 |     A = Y::B as isize, //~ ERROR E0265
    |         ^^^^^^^^^^^^^ recursion not allowed in constant
+
+error[E0265]: recursive constant
+  --> $DIR/issue-23302.rs:24:1
+   |
+24 | const A: i32 = B; //~ ERROR E0265
+   | ^^^^^^^^^^^^^^^^^ recursion not allowed in constant
 
 error[E0265]: recursive constant
   --> $DIR/issue-23302.rs:26:1
    |
-26 | const A: i32 = B; //~ ERROR E0265
-   | ^^^^^^^^^^^^^^^^^ recursion not allowed in constant
-
-error[E0265]: recursive constant
-  --> $DIR/issue-23302.rs:29:1
-   |
-29 | const B: i32 = A; //~ ERROR E0265
+26 | const B: i32 = A; //~ ERROR E0265
    | ^^^^^^^^^^^^^^^^^ recursion not allowed in constant
 
 error: aborting due to 4 previous errors

@@ -3,11 +3,11 @@ error[E0046]: not all trait items implemented, missing: `Item`
    |
 20 | /         impl Iterator for Recurrence {
 21 | |             //~^ ERROR E0046
-22 | |             //~| NOTE missing `Item` in implementation
-23 | |             //~| NOTE `Item` from trait: `type Item;`
+22 | |             #[inline]
+23 | |             fn next(&mut self) -> Option<u64> {
 ...  |
-36 | |             }
-37 | |         }
+34 | |             }
+35 | |         }
    | |_________^ missing `Item` in implementation
    |
    = note: `Item` from trait: `type Item;`

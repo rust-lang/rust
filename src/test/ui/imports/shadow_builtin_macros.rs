@@ -23,17 +23,13 @@ mod m1 {
 }
 
 mod m2 {
-    use foo::*; //~ NOTE `panic` could refer to the name imported here
+    use foo::*;
     fn f() { panic!(); } //~ ERROR ambiguous
-    //~| NOTE `panic` is also a builtin macro
-    //~| NOTE consider adding an explicit import of `panic` to disambiguate
 }
 
 mod m3 {
-    ::two_macros::m!(use foo::panic;); //~ NOTE `panic` could refer to the name imported here
+    ::two_macros::m!(use foo::panic;);
     fn f() { panic!(); } //~ ERROR ambiguous
-    //~| NOTE `panic` is also a builtin macro
-    //~| NOTE macro-expanded macro imports do not shadow
 }
 
 mod m4 {
@@ -44,14 +40,12 @@ mod m4 {
 mod m5 {
     macro_rules! m { () => {
         macro_rules! panic { () => {} } //~ ERROR `panic` is already in scope
-        //~| NOTE macro-expanded `macro_rules!`s may not shadow existing macros
     } }
-    m!(); //~ NOTE in this expansion
-    //~| NOTE in this expansion
+    m!();
     panic!();
 }
 
-#[macro_use(n)] //~ NOTE `n` could also refer to the name imported here
+#[macro_use(n)]
 extern crate two_macros;
 mod bar {
     pub use two_macros::m as n;
@@ -63,9 +57,8 @@ mod m6 {
 }
 
 mod m7 {
-    use bar::*; //~ NOTE `n` could refer to the name imported here
+    use bar::*;
     n!(); //~ ERROR ambiguous
-    //~| NOTE consider adding an explicit import of `n` to disambiguate
 }
 
 fn main() {}

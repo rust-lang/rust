@@ -16,8 +16,5 @@ fn main() {
     let x = &10 as
             &Add;
             //~^ ERROR E0393
-            //~| NOTE missing reference to `RHS`
-            //~| NOTE because of the default `Self` reference, type parameters must be specified on object types
             //~| ERROR E0191
-            //~| NOTE missing associated type `Output` value
 }

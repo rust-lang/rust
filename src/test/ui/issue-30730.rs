@@ -9,8 +9,7 @@
 // except according to those terms.
 
 #![warn(unused)]
-#![deny(warnings)] //~ NOTE: lint level defined here
+#![deny(warnings)]
 use std::thread;
 //~^ ERROR: unused import
-//~| NOTE: #[deny(unused_imports)] implied by #[deny(warnings)]
 fn main() {}

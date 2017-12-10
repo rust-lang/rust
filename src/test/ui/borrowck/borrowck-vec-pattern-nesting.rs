@@ -63,7 +63,7 @@ fn d() {
     match vec {
         &mut [ //~ ERROR cannot move out
         //~^ cannot move out
-         _b] => {} //~ NOTE to prevent move
+         _b] => {}
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
@@ -76,9 +76,6 @@ fn e() {
     match vec {
         &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
         //~| cannot move out
-        //~| NOTE to prevent move
-        //~| NOTE and here
-        //~| NOTE and here
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out

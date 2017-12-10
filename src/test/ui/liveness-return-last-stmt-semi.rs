@@ -12,12 +12,11 @@
 
 macro_rules! test { () => { fn foo() -> i32 { 1; } } }
                                            //~^ ERROR mismatched types
-                                           //~| HELP consider removing this semicolon
 
 fn no_return() -> i32 {} //~ ERROR mismatched types
 
 fn bar(x: u32) -> u32 { //~ ERROR mismatched types
-    x * 2; //~ HELP consider removing this semicolon
+    x * 2;
 }
 
 fn baz(x: u64) -> u32 { //~ ERROR mismatched types
