@@ -79,16 +79,12 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // Run the MIR type-checker.
     let mir_node_id = infcx.tcx.hir.as_local_node_id(def_id).unwrap();
     let liveness = &LivenessResults::compute(mir);
-    let fr_fn_body = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let constraint_sets = &type_check::type_check(
         infcx,
         mir_node_id,
         param_env,
         mir,
-        &universal_regions.region_bound_pairs,
-        fr_fn_body,
-        universal_regions.input_tys,
-        universal_regions.output_ty,
+        &universal_regions,
         &liveness,
         flow_inits,
         move_data,
