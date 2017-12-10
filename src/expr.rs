@@ -2316,12 +2316,13 @@ fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) ->
         .offset_left(paren_overhead)
         .and_then(|s| s.sub_width(paren_overhead))?;
 
-    let paren_wrapper =
-        |s: &str| if context.config.spaces_within_parens_and_brackets() && !s.is_empty() {
+    let paren_wrapper = |s: &str| {
+        if context.config.spaces_within_parens_and_brackets() && !s.is_empty() {
             format!("( {} )", s)
         } else {
             format!("({})", s)
-        };
+        }
+    };
 
     let subexpr_str = subexpr.rewrite(context, sub_shape)?;
     debug!("rewrite_paren, subexpr_str: `{:?}`", subexpr_str);
