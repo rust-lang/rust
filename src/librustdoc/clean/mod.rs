@@ -1802,6 +1802,7 @@ pub enum PrimitiveType {
     RawPointer,
     Reference,
     Fn,
+    Never,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -1843,6 +1844,7 @@ impl Type {
             RawPointer(..) => Some(PrimitiveType::RawPointer),
             BorrowedRef { type_: box Generic(..), .. } => Some(PrimitiveType::Reference),
             BareFunction(..) => Some(PrimitiveType::Fn),
+            Never => Some(PrimitiveType::Never),
             _ => None,
         }
     }
@@ -1891,6 +1893,7 @@ impl GetDefId for Type {
                 Primitive(PrimitiveType::Tuple).def_id()
             },
             BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(),
+            Never => Primitive(PrimitiveType::Never).def_id(),
             Slice(..) => Primitive(PrimitiveType::Slice).def_id(),
             Array(..) => Primitive(PrimitiveType::Array).def_id(),
             RawPointer(..) => Primitive(PrimitiveType::RawPointer).def_id(),
@@ -1927,6 +1930,7 @@ impl PrimitiveType {
             "pointer" => Some(PrimitiveType::RawPointer),
             "reference" => Some(PrimitiveType::Reference),
             "fn" => Some(PrimitiveType::Fn),
+            "never" => Some(PrimitiveType::Never),
             _ => None,
         }
     }
@@ -1958,6 +1962,7 @@ impl PrimitiveType {
             RawPointer => "pointer",
             Reference => "reference",
             Fn => "fn",
+            Never => "never",
         }
     }
 
@@ -2892,6 +2897,7 @@ fn build_deref_target_impls(cx: &DocContext,
             RawPointer => tcx.lang_items().const_ptr_impl(),
             Reference => None,
             Fn => None,
+            Never => None,
         };
         if let Some(did) = did {
             if !did.is_local() {

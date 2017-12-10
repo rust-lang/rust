@@ -636,7 +636,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
             fmt::Display::fmt(t, f)?;
             primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
         }
-        clean::Never => f.write_str("!"),
+        clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
         clean::RawPointer(m, ref t) => {
             match **t {
                 clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {
