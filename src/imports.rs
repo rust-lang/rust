@@ -53,8 +53,8 @@ fn compare_use_trees(a: &ast::UseTree, b: &ast::UseTree, nested: bool) -> Orderi
 
     match (&a.kind, &b.kind) {
         (&Simple(ident_a), &Simple(ident_b)) => {
-            let name_a = &*a.prefix.segments.last().unwrap().identifier.name.as_str();
-            let name_b = &*b.prefix.segments.last().unwrap().identifier.name.as_str();
+            let name_a = &*path_to_imported_ident(&a.prefix).name.as_str();
+            let name_b = &*path_to_imported_ident(&b.prefix).name.as_str();
             let name_ordering = if name_a == "self" {
                 if name_b == "self" {
                     Ordering::Equal
@@ -121,18 +121,15 @@ fn compare_use_items(context: &RewriteContext, a: &ast::Item, b: &ast::Item) -> 
 // imports into a list import.
 
 fn rewrite_prefix(path: &ast::Path, context: &RewriteContext, shape: Shape) -> Option<String> {
-    let path_str = if path.segments.last().unwrap().identifier.to_string() == "self"
-        && path.segments.len() > 1
-    {
+    if path.segments.len() > 1 && path_to_imported_ident(path).to_string() == "self" {
         let path = &ast::Path {
             span: path.span,
             segments: path.segments[..path.segments.len() - 1].to_owned(),
         };
-        rewrite_path(context, PathContext::Import, None, path, shape)?
+        rewrite_path(context, PathContext::Import, None, path, shape)
     } else {
-        rewrite_path(context, PathContext::Import, None, path, shape)?
-    };
-    Some(path_str)
+        rewrite_path(context, PathContext::Import, None, path, shape)
+    }
 }
 
 impl Rewrite for ast::UseTree {
@@ -155,16 +152,37 @@ impl Rewrite for ast::UseTree {
                 let ident_str = ident.to_string();
 
                 // 4 = " as ".len()
-                let prefix_shape = shape.sub_width(ident_str.len() + 4)?;
-                let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)?;
+                let is_same_name_bind = path_to_imported_ident(&self.prefix) == ident;
+                let prefix_shape = if is_same_name_bind {
+                    shape
+                } else {
+                    shape.sub_width(ident_str.len() + 4)?
+                };
+                let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)
+                    .unwrap_or_else(|| context.snippet(self.prefix.span).to_owned());
 
-                if self.prefix.segments.last().unwrap().identifier == ident {
+                if is_same_name_bind {
                     Some(path_str)
                 } else {
                     Some(format!("{} as {}", path_str, ident_str))
                 }
             }
         }
+    }
+}
+
+fn is_unused_import(tree: &ast::UseTree, attrs: &[ast::Attribute]) -> bool {
+    attrs.is_empty() && is_unused_import_inner(tree)
+}
+
+fn is_unused_import_inner(tree: &ast::UseTree) -> bool {
+    match tree.kind {
+        ast::UseTreeKind::Nested(ref items) => match items.len() {
+            0 => true,
+            1 => is_unused_import_inner(&items[0].0),
+            _ => false,
+        },
+        _ => false,
     }
 }
 
@@ -181,12 +199,13 @@ fn rewrite_import(
     let rw = shape
         .offset_left(vis.len() + 4)
         .and_then(|shape| shape.sub_width(1))
-        .and_then(|shape| match tree.kind {
+        .and_then(|shape| {
             // If we have an empty nested group with no attributes, we erase it
-            ast::UseTreeKind::Nested(ref items) if items.is_empty() && attrs.is_empty() => {
+            if is_unused_import(tree, attrs) {
                 Some("".to_owned())
+            } else {
+                tree.rewrite(context, shape)
             }
-            _ => tree.rewrite(context, shape),
         });
     match rw {
         Some(ref s) if !s.is_empty() => Some(format!("{}use {};", vis, s)),
@@ -296,48 +315,45 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-fn rewrite_nested_use_tree_single(path_str: String, tree: &ast::UseTree) -> String {
-    if let ast::UseTreeKind::Simple(rename) = tree.kind {
-        let ident = tree.prefix.segments.last().unwrap().identifier;
-        let mut item_str = ident.name.to_string();
-        if item_str == "self" {
-            item_str = "".to_owned();
-        }
-
-        let path_item_str = if path_str.is_empty() {
-            if item_str.is_empty() {
-                "self".to_owned()
-            } else {
-                item_str
+fn rewrite_nested_use_tree_single(
+    context: &RewriteContext,
+    path_str: &str,
+    tree: &ast::UseTree,
+    shape: Shape,
+) -> Option<String> {
+    match tree.kind {
+        ast::UseTreeKind::Simple(rename) => {
+            let ident = path_to_imported_ident(&tree.prefix);
+            let mut item_str = rewrite_prefix(&tree.prefix, context, shape)?;
+            if item_str == "self" {
+                item_str = "".to_owned();
             }
-        } else if item_str.is_empty() {
-            path_str
-        } else {
-            format!("{}::{}", path_str, item_str)
-        };
 
-        if ident == rename {
-            path_item_str
-        } else {
-            format!("{} as {}", path_item_str, rename)
+            let path_item_str = if path_str.is_empty() {
+                if item_str.is_empty() {
+                    "self".to_owned()
+                } else {
+                    item_str
+                }
+            } else if item_str.is_empty() {
+                path_str.to_owned()
+            } else {
+                format!("{}::{}", path_str, item_str)
+            };
+
+            Some(if ident == rename {
+                path_item_str
+            } else {
+                format!("{} as {}", path_item_str, rename)
+            })
         }
-    } else {
-        unimplemented!("`use_nested_groups` is not yet fully supported");
+        ast::UseTreeKind::Glob | ast::UseTreeKind::Nested(..) => {
+            // 2 = "::"
+            let nested_shape = shape.offset_left(path_str.len() + 2)?;
+            tree.rewrite(context, nested_shape)
+                .map(|item| format!("{}::{}", path_str, item))
+        }
     }
-}
-
-fn rewrite_nested_use_tree_item(tree: &&ast::UseTree) -> Option<String> {
-    Some(if let ast::UseTreeKind::Simple(rename) = tree.kind {
-        let ident = tree.prefix.segments.last().unwrap().identifier;
-
-        if ident == rename {
-            ident.name.to_string()
-        } else {
-            format!("{} as {}", ident.name.to_string(), rename)
-        }
-    } else {
-        unimplemented!("`use_nested_groups` is not yet fully supported");
-    })
 }
 
 #[derive(Eq, PartialEq)]
@@ -426,11 +442,13 @@ fn rewrite_nested_use_tree(
 
     match trees.len() {
         0 => {
+            let shape = shape.offset_left(path_str.len() + 3)?;
             return rewrite_path(context, PathContext::Import, None, path, shape)
                 .map(|path_str| format!("{}::{{}}", path_str));
         }
-        // TODO: fix this
-        1 => return Some(rewrite_nested_use_tree_single(path_str, &trees[0].0)),
+        1 => {
+            return rewrite_nested_use_tree_single(context, &path_str, &trees[0].0, shape);
+        }
         _ => (),
     }
 
@@ -442,6 +460,16 @@ fn rewrite_nested_use_tree(
 
     // 2 = "{}"
     let remaining_width = shape.width.checked_sub(path_str.len() + 2).unwrap_or(0);
+    let nested_indent = match context.config.imports_indent() {
+        IndentStyle::Block => shape.indent.block_indent(context.config),
+        // 1 = `{`
+        IndentStyle::Visual => shape.visual_indent(path_str.len() + 1).indent,
+    };
+
+    let nested_shape = match context.config.imports_indent() {
+        IndentStyle::Block => Shape::indented(nested_indent, context.config).sub_width(1)?,
+        IndentStyle::Visual => Shape::legacy(remaining_width, nested_indent),
+    };
 
     let mut items = {
         // Dummy value, see explanation below.
@@ -453,7 +481,7 @@ fn rewrite_nested_use_tree(
             ",",
             |tree| tree.span.lo(),
             |tree| tree.span.hi(),
-            rewrite_nested_use_tree_item,
+            |tree| tree.rewrite(context, nested_shape),
             context.codemap.span_after(span, "{"),
             span.hi(),
             false,
@@ -482,17 +510,6 @@ fn rewrite_nested_use_tree(
         Separator::Comma,
         remaining_width,
     );
-
-    let nested_indent = match context.config.imports_indent() {
-        IndentStyle::Block => shape.indent.block_indent(context.config),
-        // 1 = `{`
-        IndentStyle::Visual => shape.visual_indent(path_str.len() + 1).indent,
-    };
-
-    let nested_shape = match context.config.imports_indent() {
-        IndentStyle::Block => Shape::indented(nested_indent, context.config),
-        IndentStyle::Visual => Shape::legacy(remaining_width, nested_indent),
-    };
 
     let ends_with_newline = context.config.imports_indent() == IndentStyle::Block
         && tactic != DefinitiveListTactic::Horizontal;
@@ -540,4 +557,8 @@ fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
         }
         None => false,
     }
+}
+
+fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
+    path.segments.last().unwrap().identifier
 }

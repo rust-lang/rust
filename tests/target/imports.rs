@@ -71,3 +71,18 @@ use foo::issue_1356::*;
 // We shouldn't remove imports which have attributes attached (#1858)
 #[cfg(unix)]
 use self::unix::{};
+
+// nested imports
+use foo::{a, b, boo, c,
+          bar::{baz, qux, xxxxxxxxxxx, yyyyyyyyyyyyy, zzzzzzzzzzzzzzzz,
+                foo::{a, b, cxxxxxxxxxxxxx, yyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz}}};
+
+use fooo::{bar, x, y, z,
+           baar::foobar::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+                          zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz},
+           bar::*};
+
+// nested imports with a single sub-tree.
+use a::b::c::*;
+use a::b::c::d;
+use a::b::c::{xxx, yyy, zzz};
