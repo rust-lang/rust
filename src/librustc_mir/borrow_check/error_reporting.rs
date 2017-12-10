@@ -356,14 +356,30 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         match &self.describe_place(&borrow.place) {
             Some(description) => {
-                let mut err = self.tcx.path_does_not_live_long_enough(
-                    borrow_span, &format!("`{}`", description), Origin::Mir);
-                err.span_label(borrow_span, "does not live long enough");
-                err.span_label(drop_span, "borrowed value only lives until here");
-                self.tcx.note_and_explain_region(scope_tree, &mut err,
-                                                 "borrowed value must be valid for ",
-                                                 borrow.region, "...");
-                err.emit();
+                match borrow.region {
+                    RegionKind::ReScope(_) => {
+                        let mut err = self.tcx.path_does_not_live_long_enough(
+                            drop_span, &format!("`{}`", description), Origin::Mir);
+                        err.span_label(borrow_span, "borrow occurs here");
+                        err.span_label(drop_span,
+                                       format!("`{}` dropped here while still borrowed",
+                                               description));
+                        if let Some(end) = end_span {
+                            err.span_label(end, "borrowed value needs to live until here");
+                        }
+                        err.emit();
+                    },
+                    _ => {
+                        let mut err = self.tcx.path_does_not_live_long_enough(
+                            borrow_span, &format!("`{}`", description), Origin::Mir);
+                        err.span_label(borrow_span, "does not live long enough");
+                        err.span_label(drop_span, "borrowed value only lives until here");
+                        self.tcx.note_and_explain_region(scope_tree, &mut err,
+                                                         "borrowed value must be valid for ",
+                                                         borrow.region, "...");
+                        err.emit();
+                    }
+                }
             },
             None => {
                 match borrow.region {
