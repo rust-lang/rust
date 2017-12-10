@@ -1087,4 +1087,8 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             _ => {}
         }
     }
+
+    fn resolve_crate_from_path(&mut self, name: Symbol, span: Span) -> CrateNum {
+        self.resolve_crate(&None, name, name, None, span, PathKind::Crate, DepKind::Explicit).0
+    }
 }
