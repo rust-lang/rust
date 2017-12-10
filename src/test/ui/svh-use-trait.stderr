@@ -1,13 +1,13 @@
 error[E0460]: found possibly newer version of crate `uta` which `utb` depends on
-  --> $DIR/svh-use-trait.rs:24:1
+  --> $DIR/svh-use-trait.rs:25:1
    |
-24 | extern crate utb; //~ ERROR: found possibly newer version of crate `uta` which `utb` depends
+25 | extern crate utb; //~ ERROR: found possibly newer version of crate `uta` which `utb` depends
    | ^^^^^^^^^^^^^^^^^
    |
    = note: perhaps that crate needs to be recompiled?
    = note: the following crate versions were found:
-           crate `uta`: /?/C:/msys64/home/we/rust/build/x86_64-pc-windows-gnu/test/ui/svh-use-trait.stage1-x86_64-pc-windows-gnu.aux/uta.dll
-           crate `utb`: /?/C:/msys64/home/we/rust/build/x86_64-pc-windows-gnu/test/ui/svh-use-trait.stage1-x86_64-pc-windows-gnu.aux/utb.dll
+           crate `uta`: $PATH_uta
+           crate `utb`: $PATH_utb
 
 error: aborting due to previous error
 
