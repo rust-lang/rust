@@ -118,6 +118,12 @@ fn rewrite_closure_with_block(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
+    let left_most = left_most_sub_expr(body);
+    let veto_block = left_most != body && !classify::expr_requires_semi_to_be_stmt(left_most);
+    if veto_block {
+        return None;
+    }
+
     let block = ast::Block {
         stmts: vec![
             ast::Stmt {
@@ -142,9 +148,6 @@ fn rewrite_closure_expr(
     shape: Shape,
 ) -> Option<String> {
     let mut rewrite = expr.rewrite(context, shape);
-    if classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(expr)) {
-        rewrite = and_one_line(rewrite);
-    }
     rewrite = rewrite.and_then(|rw| {
         if context.config.force_multiline_blocks() && rw.contains('\n') {
             None
