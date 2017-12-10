@@ -600,24 +600,45 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 } = *exist_ty;
                 let mut index = self.next_early_index();
                 debug!("visit_ty: index = {}", index);
-                let lifetimes = generics
-                    .lifetimes
-                    .iter()
-                    .map(|lt_def| Region::early(&self.tcx.hir, &mut index, lt_def))
-                    .collect();
+
+                let mut elision = None;
+                let mut lifetimes = FxHashMap();
+                for lt_def in &generics.lifetimes {
+                    let (lt_name, region) = Region::early(&self.tcx.hir, &mut index, &lt_def);
+                    if let hir::LifetimeName::Underscore = lt_name {
+                        // Pick the elided lifetime "definition" if one exists and use it to make an
+                        // elision scope.
+                        elision = Some(region);
+                    } else {
+                        lifetimes.insert(lt_name, region);
+                    }
+                }
 
                 let next_early_index = index + generics.ty_params.len() as u32;
-                let scope = Scope::Binder {
-                    lifetimes,
-                    next_early_index,
-                    s: self.scope,
-                };
-                self.with(scope, |_old_scope, this| {
-                    this.visit_generics(generics);
-                    for bound in bounds {
-                        this.visit_ty_param_bound(bound);
-                    }
-                });
+
+                if let Some(elision_region) = elision {
+                    let scope = Scope::Elision {
+                        elide: Elide::Exact(elision_region),
+                        s: self.scope
+                    };
+                    self.with(scope, |_old_scope, this| {
+                        let scope = Scope::Binder { lifetimes, next_early_index, s: this.scope };
+                        this.with(scope, |_old_scope, this| {
+                            this.visit_generics(generics);
+                            for bound in bounds {
+                                this.visit_ty_param_bound(bound);
+                            }
+                        });
+                    });
+                } else {
+                    let scope = Scope::Binder { lifetimes, next_early_index, s: self.scope };
+                    self.with(scope, |_old_scope, this| {
+                        this.visit_generics(generics);
+                        for bound in bounds {
+                            this.visit_ty_param_bound(bound);
+                        }
+                    });
+                }
             }
             _ => intravisit::walk_ty(self, ty),
         }

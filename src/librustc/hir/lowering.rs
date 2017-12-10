@@ -990,8 +990,9 @@ impl<'a> LoweringContext<'a> {
         struct ImplTraitLifetimeCollector<'r, 'a: 'r> {
             context: &'r mut LoweringContext<'a>,
             parent: DefIndex,
-            currently_bound_lifetimes: Vec<Name>,
-            already_defined_lifetimes: HashSet<Name>,
+            collect_elided_lifetimes: bool,
+            currently_bound_lifetimes: Vec<hir::LifetimeName>,
+            already_defined_lifetimes: HashSet<hir::LifetimeName>,
             output_lifetimes: Vec<hir::Lifetime>,
             output_lifetime_defs: Vec<hir::LifetimeDef>,
         }
@@ -1002,6 +1003,30 @@ impl<'a> LoweringContext<'a> {
                 hir::intravisit::NestedVisitorMap::None
             }
 
+            fn visit_path_parameters(&mut self, span: Span, parameters: &'v hir::PathParameters) {
+                // Don't collect elided lifetimes used inside of `Fn()` syntax.
+                if parameters.parenthesized {
+                    let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
+                    self.collect_elided_lifetimes = false;
+                    hir::intravisit::walk_path_parameters(self, span, parameters);
+                    self.collect_elided_lifetimes = old_collect_elided_lifetimes;
+                } else {
+                    hir::intravisit::walk_path_parameters(self, span, parameters);
+                }
+            }
+
+            fn visit_ty(&mut self, t: &'v hir::Ty) {
+                // Don't collect elided lifetimes used inside of `fn()` syntax
+                if let &hir::Ty_::TyBareFn(_) = &t.node {
+                    let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
+                    self.collect_elided_lifetimes = false;
+                    hir::intravisit::walk_ty(self, t);
+                    self.collect_elided_lifetimes = old_collect_elided_lifetimes;
+                } else {
+                    hir::intravisit::walk_ty(self, t);
+                }
+            }
+
             fn visit_poly_trait_ref(&mut self,
                                     polytr: &'v hir::PolyTraitRef,
                                     _: hir::TraitBoundModifier) {
@@ -1010,10 +1035,8 @@ impl<'a> LoweringContext<'a> {
                 // Record the introduction of 'a in `for<'a> ...`
                 for lt_def in &polytr.bound_lifetimes {
                     // Introduce lifetimes one at a time so that we can handle
-                    // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd> ...`
-                    if let hir::LifetimeName::Name(name) = lt_def.lifetime.name {
-                        self.currently_bound_lifetimes.push(name);
-                    }
+                    // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
+                    self.currently_bound_lifetimes.push(lt_def.lifetime.name);
 
                     // Visit the lifetime bounds
                     for lt_bound in &lt_def.bounds {
@@ -1027,40 +1050,50 @@ impl<'a> LoweringContext<'a> {
             }
 
             fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
-                // Exclude '_, 'static, and elided lifetimes (there should be no elided lifetimes)
-                if let hir::LifetimeName::Name(lifetime_name) = lifetime.name {
-                    if !self.currently_bound_lifetimes.contains(&lifetime_name) &&
-                       !self.already_defined_lifetimes.contains(&lifetime_name)
-                    {
-                        self.already_defined_lifetimes.insert(lifetime_name);
-                        let name = hir::LifetimeName::Name(lifetime_name);
+                let name = match lifetime.name {
+                    hir::LifetimeName::Implicit |
+                    hir::LifetimeName::Underscore =>
+                        if self.collect_elided_lifetimes {
+                            // Use `'_` for both implicit and underscore lifetimes in
+                            // `abstract type Foo<'_>: SomeTrait<'_>;`
+                            hir::LifetimeName::Underscore
+                        } else {
+                            return
+                        }
+                    name @ hir::LifetimeName::Name(_) => name,
+                    hir::LifetimeName::Static => return,
+                };
 
-                        self.output_lifetimes.push(hir::Lifetime {
-                            id: self.context.next_id().node_id,
-                            span: lifetime.span,
-                            name,
-                        });
+                if !self.currently_bound_lifetimes.contains(&name) &&
+                   !self.already_defined_lifetimes.contains(&name)
+                {
+                    self.already_defined_lifetimes.insert(name);
 
-                        let def_node_id = self.context.next_id().node_id;
-                        self.context.resolver.definitions().create_def_with_parent(
-                            self.parent,
-                            def_node_id,
-                            DefPathData::LifetimeDef(lifetime_name.as_str()),
-                            DefIndexAddressSpace::High,
-                            Mark::root()
-                        );
-                        let def_lifetime = hir::Lifetime {
-                            id: def_node_id,
-                            span: lifetime.span,
-                            name,
-                        };
-                        self.output_lifetime_defs.push(hir::LifetimeDef {
-                            lifetime: def_lifetime,
-                            bounds: Vec::new().into(),
-                            pure_wrt_drop: false,
-                            in_band: false,
-                        });
-                    }
+                    self.output_lifetimes.push(hir::Lifetime {
+                        id: self.context.next_id().node_id,
+                        span: lifetime.span,
+                        name,
+                    });
+
+                    let def_node_id = self.context.next_id().node_id;
+                    self.context.resolver.definitions().create_def_with_parent(
+                        self.parent,
+                        def_node_id,
+                        DefPathData::LifetimeDef(name.name().as_str()),
+                        DefIndexAddressSpace::High,
+                        Mark::root()
+                    );
+                    let def_lifetime = hir::Lifetime {
+                        id: def_node_id,
+                        span: lifetime.span,
+                        name: name,
+                    };
+                    self.output_lifetime_defs.push(hir::LifetimeDef {
+                        lifetime: def_lifetime,
+                        bounds: Vec::new().into(),
+                        pure_wrt_drop: false,
+                        in_band: false,
+                    });
                 }
             }
         }
@@ -1068,6 +1101,7 @@ impl<'a> LoweringContext<'a> {
         let mut lifetime_collector = ImplTraitLifetimeCollector {
             context: self,
             parent: parent_index,
+            collect_elided_lifetimes: true,
             currently_bound_lifetimes: Vec::new(),
             already_defined_lifetimes: HashSet::new(),
             output_lifetimes: Vec::new(),
