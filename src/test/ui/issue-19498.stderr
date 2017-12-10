@@ -1,0 +1,46 @@
+error[E0255]: the name `A` is defined multiple times
+  --> $DIR/issue-19498.rs:13:1
+   |
+11 | use self::A; //~ NOTE previous import of the module `A` here
+   |     ------- previous import of the module `A` here
+12 | use self::B; //~ NOTE previous import of the module `B` here
+13 | mod A {} //~ ERROR the name `A` is defined multiple times
+   | ^^^^^^^^ `A` redefined here
+   |
+   = note: `A` must be defined only once in the type namespace of this module
+help: You can use `as` to change the binding name of the import
+   |
+11 | use self::A as OtherA; //~ NOTE previous import of the module `A` here
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0255]: the name `B` is defined multiple times
+  --> $DIR/issue-19498.rs:16:1
+   |
+12 | use self::B; //~ NOTE previous import of the module `B` here
+   |     ------- previous import of the module `B` here
+...
+16 | pub mod B {} //~ ERROR the name `B` is defined multiple times
+   | ^^^^^^^^^^^^ `B` redefined here
+   |
+   = note: `B` must be defined only once in the type namespace of this module
+help: You can use `as` to change the binding name of the import
+   |
+12 | use self::B as OtherB; //~ NOTE previous import of the module `B` here
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0255]: the name `D` is defined multiple times
+  --> $DIR/issue-19498.rs:21:5
+   |
+20 |     use C::D; //~ NOTE previous import of the module `D` here
+   |         ---- previous import of the module `D` here
+21 |     mod D {} //~ ERROR the name `D` is defined multiple times
+   |     ^^^^^^^^ `D` redefined here
+   |
+   = note: `D` must be defined only once in the type namespace of this module
+help: You can use `as` to change the binding name of the import
+   |
+20 |     use C::D as OtherD; //~ NOTE previous import of the module `D` here
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

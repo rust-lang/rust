@@ -1,0 +1,18 @@
+error[E0119]: conflicting implementations of trait `std::ops::Drop` for type `MyStruct`:
+  --> $DIR/issue-28568.rs:18:1
+   |
+13 | / impl Drop for MyStruct {
+14 | | //~^ NOTE first implementation here
+15 | |     fn drop(&mut self) { }
+16 | | }
+   | |_- first implementation here
+17 | 
+18 | / impl Drop for MyStruct {
+19 | | //~^ ERROR conflicting implementations of trait
+20 | | //~| NOTE conflicting implementation for `MyStruct`
+21 | |     fn drop(&mut self) { }
+22 | | }
+   | |_^ conflicting implementation for `MyStruct`
+
+error: aborting due to previous error
+

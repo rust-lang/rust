@@ -1,0 +1,57 @@
+error: `m` is ambiguous
+  --> $DIR/macros.rs:52:5
+   |
+52 |     m!(); //~ ERROR ambiguous
+   |     ^
+   |
+note: `m` could refer to the macro defined here
+  --> $DIR/macros.rs:50:5
+   |
+50 |     macro_rules! m { () => {} } //~ NOTE could refer to the macro defined here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `m` could also refer to the macro imported here
+  --> $DIR/macros.rs:51:9
+   |
+51 |     use two_macros::m; //~ NOTE could also refer to the macro imported here
+   |         ^^^^^^^^^^^^^
+
+error: `m` is ambiguous
+  --> $DIR/macros.rs:28:5
+   |
+28 |     m! { //~ ERROR ambiguous
+   |     ^
+   |
+note: `m` could refer to the name imported here
+  --> $DIR/macros.rs:30:13
+   |
+30 |         use foo::m; //~ NOTE could refer to the name imported here
+   |             ^^^^^^
+note: `m` could also refer to the name imported here
+  --> $DIR/macros.rs:27:9
+   |
+27 |     use two_macros::*; //~ NOTE could also refer
+   |         ^^^^^^^^^^^^^
+   = note: macro-expanded macro imports do not shadow
+
+error: `m` is ambiguous
+  --> $DIR/macros.rs:42:9
+   |
+42 |         m! { //~ ERROR ambiguous
+   |         ^
+   |
+note: `m` could refer to the name imported here
+  --> $DIR/macros.rs:44:17
+   |
+44 |             use two_macros::n as m; //~ NOTE could refer to the name imported here
+   |                 ^^^^^^^^^^^^^^^^^^
+note: `m` could also refer to the name imported here
+  --> $DIR/macros.rs:35:9
+   |
+35 |     use two_macros::m; //~ NOTE could also refer
+   |         ^^^^^^^^^^^^^
+   = note: macro-expanded macro imports do not shadow
+
+error[E0601]: main function not found
+
+error: aborting due to 4 previous errors
+

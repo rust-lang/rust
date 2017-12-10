@@ -1,0 +1,111 @@
+warning: label name `'a` shadows a lifetime name that is already in scope
+  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:20:9
+   |
+19 |     fn foo<'a>() { //~ NOTE first declared here
+   |            -- first declared here
+20 |         'a: loop { break 'a; }
+   |         ^^ lifetime 'a already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:46:13
+   |
+44 |     impl<'bad, 'c> Struct<'bad, 'c> { //~ NOTE first declared here
+   |          ---- first declared here
+45 |         fn meth_bad(&self) {
+46 |             'bad: loop { break 'bad; }
+   |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:54:13
+   |
+52 |     impl<'b, 'bad> Struct<'b, 'bad> { //~ NOTE first declared here
+   |              ---- first declared here
+53 |         fn meth_bad2(&self) {
+54 |             'bad: loop { break 'bad; }
+   |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:62:13
+   |
+61 |         fn meth_bad3<'bad>(x: &'bad i8) { //~ NOTE first declared here
+   |                      ---- first declared here
+62 |             'bad: loop { break 'bad; }
+   |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:69:13
+   |
+67 |         fn meth_bad4<'a,'bad>(x: &'a i8, y: &'bad i8) {
+   |                         ---- first declared here
+68 |             //~^ NOTE first declared here
+69 |             'bad: loop { break 'bad; }
+   |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:77:13
+   |
+75 |     impl <'bad, 'e> Enum<'bad, 'e> { //~ NOTE first declared here
+   |           ---- first declared here
+76 |         fn meth_bad(&self) {
+77 |             'bad: loop { break 'bad; }
+   |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:84:13
+   |
+82 |     impl <'d, 'bad> Enum<'d, 'bad> { //~ NOTE first declared here
+   |               ---- first declared here
+83 |         fn meth_bad2(&self) {
+84 |             'bad: loop { break 'bad; }
+   |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:91:13
+   |
+90 |         fn meth_bad3<'bad>(x: &'bad i8) { //~ NOTE first declared here
+   |                      ---- first declared here
+91 |             'bad: loop { break 'bad; }
+   |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:97:13
+   |
+96 |         fn meth_bad4<'a,'bad>(x: &'bad i8) { //~ NOTE first declared here
+   |                         ---- first declared here
+97 |             'bad: loop { break 'bad; }
+   |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+   --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:108:13
+    |
+103 |     trait HasDefaultMethod1<'bad> { //~ NOTE first declared here
+    |                             ---- first declared here
+...
+108 |             'bad: loop { break 'bad; }
+    |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+   --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:115:13
+    |
+113 |     trait HasDefaultMethod2<'a,'bad> { //~ NOTE first declared here
+    |                                ---- first declared here
+114 |         fn meth_bad(&self) {
+115 |             'bad: loop { break 'bad; }
+    |             ^^^^ lifetime 'bad already in scope
+
+warning: label name `'bad` shadows a lifetime name that is already in scope
+   --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:122:13
+    |
+121 |         fn meth_bad<'bad>(&self) { //~ NOTE first declared here
+    |                     ---- first declared here
+122 |             'bad: loop { break 'bad; }
+    |             ^^^^ lifetime 'bad already in scope
+
+error: compilation successful
+   --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:130:1
+    |
+130 | / pub fn main() { //~ ERROR compilation successful
+131 | |     foo();
+132 | | }
+    | |_^
+

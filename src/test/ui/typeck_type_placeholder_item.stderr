@@ -1,0 +1,206 @@
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:14:14
+   |
+14 | fn test() -> _ { 5 }
+   |              ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:18:16
+   |
+18 | fn test2() -> (_, _) { (5, 5) }
+   |                ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:18:19
+   |
+18 | fn test2() -> (_, _) { (5, 5) }
+   |                   ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:24:15
+   |
+24 | static TEST3: _ = "test";
+   |               ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:28:15
+   |
+28 | static TEST4: _ = 145;
+   |               ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:32:16
+   |
+32 | static TEST5: (_, _) = (1, 2);
+   |                ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:32:19
+   |
+32 | static TEST5: (_, _) = (1, 2);
+   |                   ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:38:13
+   |
+38 | fn test6(_: _) { }
+   |             ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:42:13
+   |
+42 | fn test7(x: _) { let _x: usize = x; }
+   |             ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:46:22
+   |
+46 | fn test8(_f: fn() -> _) { }
+   |                      ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:73:8
+   |
+73 |     a: _,
+   |        ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:76:9
+   |
+76 |     b: (_, _),
+   |         ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:76:12
+   |
+76 |     b: (_, _),
+   |            ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:84:21
+   |
+84 |     fn fn_test() -> _ { 5 }
+   |                     ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:88:23
+   |
+88 |     fn fn_test2() -> (_, _) { (5, 5) }
+   |                       ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:88:26
+   |
+88 |     fn fn_test2() -> (_, _) { (5, 5) }
+   |                          ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:94:22
+   |
+94 |     static FN_TEST3: _ = "test";
+   |                      ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:98:22
+   |
+98 |     static FN_TEST4: _ = 145;
+   |                      ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:102:23
+    |
+102 |     static FN_TEST5: (_, _) = (1, 2);
+    |                       ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:102:26
+    |
+102 |     static FN_TEST5: (_, _) = (1, 2);
+    |                          ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:108:20
+    |
+108 |     fn fn_test6(_: _) { }
+    |                    ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:112:20
+    |
+112 |     fn fn_test7(x: _) { let _x: usize = x; }
+    |                    ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:116:29
+    |
+116 |     fn fn_test8(_f: fn() -> _) { }
+    |                             ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:143:12
+    |
+143 |         a: _,
+    |            ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:146:13
+    |
+146 |         b: (_, _),
+    |             ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:146:16
+    |
+146 |         b: (_, _),
+    |                ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:53:24
+   |
+53 |     fn test9(&self) -> _ { () }
+   |                        ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:57:27
+   |
+57 |     fn test10(&self, _x : _) { }
+   |                           ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:63:24
+   |
+63 |     fn clone(&self) -> _ { Test9 }
+   |                        ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:67:37
+   |
+67 |     fn clone_from(&mut self, other: _) { *self = Test9; }
+   |                                     ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:123:31
+    |
+123 |         fn fn_test9(&self) -> _ { () }
+    |                               ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:127:34
+    |
+127 |         fn fn_test10(&self, _x : _) { }
+    |                                  ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:133:28
+    |
+133 |         fn clone(&self) -> _ { FnTest9 }
+    |                            ^ not allowed in type signatures
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+   --> $DIR/typeck_type_placeholder_item.rs:137:41
+    |
+137 |         fn clone_from(&mut self, other: _) { *self = FnTest9; }
+    |                                         ^ not allowed in type signatures
+
+error: aborting due to 34 previous errors
+

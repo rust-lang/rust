@@ -1,0 +1,8 @@
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/issue-23543.rs:17:17
+   |
+17 |         where T<Bogus = Foo>: A;
+   |                 ^^^^^^^^^^^ associated type not allowed here
+
+error: aborting due to previous error
+

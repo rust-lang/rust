@@ -1,0 +1,14 @@
+error[E0061]: this function takes 2 parameters but 1 parameter was supplied
+  --> $DIR/issue-18819.rs:27:13
+   |
+21 | / fn print_x(_: &Foo<Item=bool>, extra: &str) {
+22 | |     //~^ NOTE defined here
+23 | |     println!("{}", extra);
+24 | | }
+   | |_- defined here
+...
+27 |       print_x(X);
+   |               ^ expected 2 parameters
+
+error: aborting due to previous error
+

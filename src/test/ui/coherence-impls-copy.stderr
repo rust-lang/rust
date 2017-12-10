@@ -1,0 +1,59 @@
+error[E0206]: the trait `Copy` may not be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:29:15
+   |
+29 | impl Copy for &'static mut MyType {}
+   |               ^^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
+
+error[E0206]: the trait `Copy` may not be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:34:15
+   |
+34 | impl Copy for (MyType, MyType) {}
+   |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
+
+error[E0206]: the trait `Copy` may not be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:42:15
+   |
+42 | impl Copy for &'static NotSync {}
+   |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
+
+error[E0206]: the trait `Copy` may not be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:46:15
+   |
+46 | impl Copy for [MyType] {}
+   |               ^^^^^^^^ type is not a structure or enumeration
+
+error[E0206]: the trait `Copy` may not be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:54:15
+   |
+54 | impl Copy for &'static [NotSync] {}
+   |               ^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-copy.rs:34:1
+   |
+34 | impl Copy for (MyType, MyType) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   |
+   = note: the impl does not reference any types defined in this crate
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-copy.rs:46:1
+   |
+46 | impl Copy for [MyType] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   |
+   = note: the impl does not reference any types defined in this crate
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-copy.rs:54:1
+   |
+54 | impl Copy for &'static [NotSync] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl doesn't use types inside crate
+   |
+   = note: the impl does not reference any types defined in this crate
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 8 previous errors
+

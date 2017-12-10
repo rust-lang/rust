@@ -1,0 +1,10 @@
+error[E0408]: variable `beta` is not bound in all patterns
+  --> $DIR/issue-2848.rs:22:7
+   |
+22 |       alpha | beta => {} //~  ERROR variable `beta` is not bound in all patterns
+   |       ^^^^^   ---- variable not in all patterns
+   |       |
+   |       pattern doesn't bind `beta`
+
+error: aborting due to previous error
+

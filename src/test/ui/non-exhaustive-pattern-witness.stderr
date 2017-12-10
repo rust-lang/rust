@@ -1,0 +1,44 @@
+error[E0004]: non-exhaustive patterns: `Foo { first: false, second: Some([_, _, _, _]) }` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:20:11
+   |
+20 |     match (Foo { first: true, second: None }) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo { first: false, second: Some([_, _, _, _]) }` not covered
+
+error[E0004]: non-exhaustive patterns: `Red` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:37:11
+   |
+37 |     match Color::Red {
+   |           ^^^^^^^^^^ pattern `Red` not covered
+
+error[E0004]: non-exhaustive patterns: `East`, `South` and `West` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:50:11
+   |
+50 |     match Direction::North {
+   |           ^^^^^^^^^^^^^^^^ patterns `East`, `South` and `West` not covered
+
+error[E0004]: non-exhaustive patterns: `Second`, `Third`, `Fourth` and 8 more not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:62:11
+   |
+62 |     match ExcessiveEnum::First {
+   |           ^^^^^^^^^^^^^^^^^^^^ patterns `Second`, `Third`, `Fourth` and 8 more not covered
+
+error[E0004]: non-exhaustive patterns: `CustomRGBA { a: true, .. }` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:71:11
+   |
+71 |     match Color::Red {
+   |           ^^^^^^^^^^ pattern `CustomRGBA { a: true, .. }` not covered
+
+error[E0004]: non-exhaustive patterns: `[Second(true), Second(false)]` not covered
+  --> $DIR/non-exhaustive-pattern-witness.rs:88:11
+   |
+88 |     match *x {
+   |           ^^ pattern `[Second(true), Second(false)]` not covered
+
+error[E0004]: non-exhaustive patterns: `((), false)` not covered
+   --> $DIR/non-exhaustive-pattern-witness.rs:102:11
+    |
+102 |     match ((), false) {
+    |           ^^^^^^^^^^^ pattern `((), false)` not covered
+
+error: aborting due to 7 previous errors
+

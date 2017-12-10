@@ -1,0 +1,68 @@
+error[E0428]: the name `Foo` is defined multiple times
+  --> $DIR/issue-21546.rs:18:1
+   |
+14 | mod Foo { }
+   | ----------- previous definition of the module `Foo` here
+...
+18 | struct Foo;
+   | ^^^^^^^^^^^ `Foo` redefined here
+   |
+   = note: `Foo` must be defined only once in the type namespace of this module
+
+error[E0428]: the name `Bar` is defined multiple times
+  --> $DIR/issue-21546.rs:28:1
+   |
+24 | mod Bar { }
+   | ----------- previous definition of the module `Bar` here
+...
+28 | struct Bar(i32);
+   | ^^^^^^^^^^^^^^^^ `Bar` redefined here
+   |
+   = note: `Bar` must be defined only once in the type namespace of this module
+
+error[E0428]: the name `Baz` is defined multiple times
+  --> $DIR/issue-21546.rs:39:1
+   |
+35 | struct Baz(i32);
+   | ---------------- previous definition of the type `Baz` here
+...
+39 | mod Baz { }
+   | ^^^^^^^^^^^ `Baz` redefined here
+   |
+   = note: `Baz` must be defined only once in the type namespace of this module
+
+error[E0428]: the name `Qux` is defined multiple times
+  --> $DIR/issue-21546.rs:50:1
+   |
+46 | struct Qux { x: bool }
+   | ---------------------- previous definition of the type `Qux` here
+...
+50 | mod Qux { }
+   | ^^^^^^^^^^^ `Qux` redefined here
+   |
+   = note: `Qux` must be defined only once in the type namespace of this module
+
+error[E0428]: the name `Quux` is defined multiple times
+  --> $DIR/issue-21546.rs:61:1
+   |
+57 | struct Quux;
+   | ------------ previous definition of the type `Quux` here
+...
+61 | mod Quux { }
+   | ^^^^^^^^^^^^ `Quux` redefined here
+   |
+   = note: `Quux` must be defined only once in the type namespace of this module
+
+error[E0428]: the name `Corge` is defined multiple times
+  --> $DIR/issue-21546.rs:72:1
+   |
+68 | enum Corge { A, B }
+   | ------------------- previous definition of the type `Corge` here
+...
+72 | mod Corge { }
+   | ^^^^^^^^^^^^^ `Corge` redefined here
+   |
+   = note: `Corge` must be defined only once in the type namespace of this module
+
+error: aborting due to 6 previous errors
+

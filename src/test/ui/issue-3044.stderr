@@ -1,0 +1,10 @@
+error[E0061]: this function takes 2 parameters but 1 parameter was supplied
+  --> $DIR/issue-3044.rs:14:28
+   |
+14 |       needlesArr.iter().fold(|x, y| {
+   |  ____________________________^
+15 | |     });
+   | |_____^ expected 2 parameters
+
+error: aborting due to previous error
+

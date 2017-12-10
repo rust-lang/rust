@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `&T: std::cmp::PartialEq<T>` is not satisfied
+  --> $DIR/partialeq_help.rs:12:7
+   |
+12 |     a == b; //~ ERROR E0277
+   |       ^^ can't compare `&T` with `T`
+   |
+   = help: the trait `std::cmp::PartialEq<T>` is not implemented for `&T`
+   = help: consider adding a `where &T: std::cmp::PartialEq<T>` bound
+
+error: aborting due to previous error
+

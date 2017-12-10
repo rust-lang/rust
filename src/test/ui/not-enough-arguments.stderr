@@ -1,0 +1,14 @@
+error[E0061]: this function takes 4 parameters but 3 parameters were supplied
+  --> $DIR/not-enough-arguments.rs:21:7
+   |
+15 | / fn foo(a: isize, b: isize, c: isize, d:isize) {
+16 | |   //~^ NOTE defined here
+17 | |   panic!();
+18 | | }
+   | |_- defined here
+...
+21 |     foo(1, 2, 3);
+   |         ^^^^^^^ expected 4 parameters
+
+error: aborting due to previous error
+

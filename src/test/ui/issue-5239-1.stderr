@@ -1,0 +1,10 @@
+error[E0368]: binary assignment operation `+=` cannot be applied to type `&isize`
+  --> $DIR/issue-5239-1.rs:14:30
+   |
+14 |     let x = |ref x: isize| { x += 1; };
+   |                              -^^^^^
+   |                              |
+   |                              cannot use `+=` on type `&isize`
+
+error: aborting due to previous error
+

@@ -1,0 +1,14 @@
+error[E0080]: constant evaluation error
+  --> $DIR/const-fn-error.rs:20:5
+   |
+20 |     sum //~ ERROR E0080
+   |     ^^^ non-constant path in constant expression
+   |
+note: for constant expression here
+  --> $DIR/const-fn-error.rs:26:13
+   |
+26 |     let a : [i32; f(X)]; //~ NOTE for constant expression here
+   |             ^^^^^^^^^^^
+
+error: aborting due to previous error
+

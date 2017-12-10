@@ -1,0 +1,17 @@
+error[E0508]: cannot move out of type `[Foo]`, a non-copy slice
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:30:18
+   |
+30 |                   &[Foo { string: a },
+   |                    ^              - hint: to prevent move, use `ref a` or `ref mut a`
+   |  __________________|
+   | |
+31 | |                 //~^ ERROR cannot move out of type `[Foo]`
+32 | |                 //~| cannot move out
+33 | |                 //~| to prevent move
+34 | |                   Foo { string: b }] => {
+   | |_________________________________-__^ cannot move out of here
+   |                                   |
+   |                                   ...and here (use `ref b` or `ref mut b`)
+
+error: aborting due to previous error
+

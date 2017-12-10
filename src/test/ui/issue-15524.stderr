@@ -1,0 +1,29 @@
+error[E0081]: discriminant value `1isize` already exists
+  --> $DIR/issue-15524.rs:18:9
+   |
+14 |     A = 1,
+   |         - first use of `1isize`
+...
+18 |     B = 1,
+   |         ^ enum already has `1isize`
+
+error[E0081]: discriminant value `1isize` already exists
+  --> $DIR/issue-15524.rs:22:5
+   |
+14 |     A = 1,
+   |         - first use of `1isize`
+...
+22 |     D,
+   |     ^ enum already has `1isize`
+
+error[E0081]: discriminant value `1isize` already exists
+  --> $DIR/issue-15524.rs:26:9
+   |
+14 |     A = 1,
+   |         - first use of `1isize`
+...
+26 |     E = N,
+   |         ^ enum already has `1isize`
+
+error: aborting due to 3 previous errors
+

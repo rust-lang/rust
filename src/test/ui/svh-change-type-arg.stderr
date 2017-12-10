@@ -1,0 +1,13 @@
+error[E0460]: found possibly newer version of crate `a` which `b` depends on
+  --> $DIR/svh-change-type-arg.rs:19:1
+   |
+19 | extern crate b; //~ ERROR: found possibly newer version of crate `a` which `b` depends on
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: perhaps that crate needs to be recompiled?
+   = note: the following crate versions were found:
+           crate `a`: /?/C:/msys64/home/we/rust/build/x86_64-pc-windows-gnu/test/ui/svh-change-type-arg.stage1-x86_64-pc-windows-gnu.aux/a.dll
+           crate `b`: /?/C:/msys64/home/we/rust/build/x86_64-pc-windows-gnu/test/ui/svh-change-type-arg.stage1-x86_64-pc-windows-gnu.aux/b.dll
+
+error: aborting due to previous error
+

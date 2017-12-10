@@ -1,0 +1,22 @@
+error[E0119]: conflicting implementations of trait `Sweet`:
+  --> $DIR/coherence-overlap-downstream.rs:19:1
+   |
+17 | impl<T:Sugar> Sweet for T { }
+   | ----------------------------- first implementation here
+18 | //~^ NOTE first implementation here
+19 | impl<T:Fruit> Sweet for T { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error[E0119]: conflicting implementations of trait `Foo<_>` for type `i32`:
+  --> $DIR/coherence-overlap-downstream.rs:27:1
+   |
+25 | impl<X, T> Foo<X> for T where T: Bar<X> {}
+   | ------------------------------------------ first implementation here
+26 | //~^ NOTE first implementation here
+27 | impl<X> Foo<X> for i32 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `i32`
+   |
+   = note: downstream crates may implement trait `Bar<_>` for type `i32`
+
+error: aborting due to 2 previous errors
+
