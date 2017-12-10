@@ -81,7 +81,7 @@ fn try_rewrite_without_block(
 ) -> Option<String> {
     let expr = get_inner_expr(expr, prefix, context);
 
-    if is_block_closure_forced(expr) {
+    if is_block_closure_forced(context, expr) {
         rewrite_closure_with_block(expr, prefix, context, shape)
     } else {
         rewrite_closure_expr(expr, prefix, context, body_shape)
@@ -107,7 +107,7 @@ fn get_inner_expr<'a>(
 
 // Figure out if a block is necessary.
 fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext) -> bool {
-    is_unsafe_block(block) || block.stmts.len() > 1 || context.inside_macro
+    is_unsafe_block(block) || block.stmts.len() > 1
         || block_contains_comment(block, context.codemap) || prefix.contains('\n')
 }
 
@@ -272,15 +272,11 @@ pub fn rewrite_last_closure(
         if prefix.contains('\n') {
             return None;
         }
-        // If we are inside macro, we do not want to add or remove block from closure body.
-        if context.inside_macro {
-            return expr.rewrite(context, shape);
-        }
 
         let body_shape = shape.offset_left(extra_offset)?;
 
         // We force to use block for the body of the closure for certain kinds of expressions.
-        if is_block_closure_forced(body) {
+        if is_block_closure_forced(context, body) {
             return rewrite_closure_with_block(body, &prefix, context, body_shape).and_then(
                 |body_str| {
                     // If the expression can fit in a single line, we need not force block closure.
@@ -332,7 +328,16 @@ where
         .count() > 1
 }
 
-fn is_block_closure_forced(expr: &ast::Expr) -> bool {
+fn is_block_closure_forced(context: &RewriteContext, expr: &ast::Expr) -> bool {
+    // If we are inside macro, we do not want to add or remove block from closure body.
+    if context.inside_macro {
+        false
+    } else {
+        is_block_closure_forced_inner(expr)
+    }
+}
+
+fn is_block_closure_forced_inner(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::If(..)
         | ast::ExprKind::IfLet(..)
@@ -344,7 +349,7 @@ fn is_block_closure_forced(expr: &ast::Expr) -> bool {
         | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced(expr),
+        | ast::ExprKind::Cast(ref expr, _) => is_block_closure_forced_inner(expr),
         _ => false,
     }
 }
