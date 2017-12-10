@@ -81,6 +81,8 @@ pub struct FmtVisitor<'a> {
     pub config: &'a Config,
     pub is_if_else_block: bool,
     pub snippet_provider: &'a SnippetProvider<'a>,
+    pub line_number: usize,
+    pub skipped_range: Vec<(usize, usize)>,
 }
 
 impl<'b, 'a: 'b> FmtVisitor<'a> {
@@ -100,13 +102,17 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.visit_item(item);
             }
             ast::StmtKind::Local(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
-                let rewrite = stmt.rewrite(&self.get_context(), self.shape());
-                self.push_rewrite(stmt.span(), rewrite)
+                if contains_skip(get_attrs_from_stmt(stmt)) {
+                    self.push_skipped_with_span(stmt.span());
+                } else {
+                    let rewrite = stmt.rewrite(&self.get_context(), self.shape());
+                    self.push_rewrite(stmt.span(), rewrite)
+                }
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, _macro_style, ref attrs) = **mac;
                 if self.visit_attrs(attrs, ast::AttrStyle::Outer) {
-                    self.push_rewrite(stmt.span(), None);
+                    self.push_skipped_with_span(stmt.span());
                 } else {
                     self.visit_mac(mac, None, MacroPosition::Statement);
                 }
@@ -132,7 +138,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         self.last_pos = self.last_pos + brace_compensation;
         self.block_indent = self.block_indent.block_indent(self.config);
-        self.buffer.push_str("{");
+        self.push_str("{");
 
         if self.config.remove_blank_lines_at_start_or_end_of_block() {
             if let Some(first_stmt) = b.stmts.first() {
@@ -195,7 +201,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         if !b.stmts.is_empty() {
             if let Some(expr) = utils::stmt_expr(&b.stmts[b.stmts.len() - 1]) {
                 if utils::semicolon_for_expr(&self.get_context(), expr) {
-                    self.buffer.push_str(";");
+                    self.push_str(";");
                 }
             }
         }
@@ -255,7 +261,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             self.config.tab_spaces()
         };
         self.buffer.truncate(total_len - chars_too_many);
-        self.buffer.push_str("}");
+        self.push_str("}");
         self.block_indent = self.block_indent.block_unindent(self.config);
     }
 
@@ -288,7 +294,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         if let Some(fn_str) = rewrite {
             self.format_missing_with_indent(source!(self, s).lo());
-            self.buffer.push_str(&fn_str);
+            self.push_str(&fn_str);
             if let Some(c) = fn_str.chars().last() {
                 if c == '}' {
                     self.last_pos = source!(self, block.span).hi();
@@ -320,7 +326,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     // Module is inline, in this case we treat modules like any
                     // other item.
                     if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
-                        self.push_rewrite(item.span, None);
+                        self.push_skipped_with_span(item.span());
                         return;
                     }
                 } else if contains_skip(&item.attrs) {
@@ -348,7 +354,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
             _ => {
                 if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
-                    self.push_rewrite(item.span, None);
+                    self.push_skipped_with_span(item.span());
                     return;
                 }
             }
@@ -435,7 +441,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, ti.span);
 
         if self.visit_attrs(&ti.attrs, ast::AttrStyle::Outer) {
-            self.push_rewrite(ti.span, None);
+            self.push_skipped_with_span(ti.span());
             return;
         }
 
@@ -477,7 +483,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, ii.span);
 
         if self.visit_attrs(&ii.attrs, ast::AttrStyle::Outer) {
-            self.push_rewrite(ii.span, None);
+            self.push_skipped_with_span(ii.span());
             return;
         }
 
@@ -519,15 +525,32 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.push_rewrite(mac.span, rewrite);
     }
 
-    pub fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
-        self.format_missing_with_indent(source!(self, span).lo());
+    pub fn push_str(&mut self, s: &str) {
+        self.line_number += count_newlines(s);
+        self.buffer.push_str(s);
+    }
+
+    fn push_rewrite_inner(&mut self, span: Span, rewrite: Option<String>) {
         if let Some(ref s) = rewrite {
-            self.buffer.push_str(s);
+            self.push_str(s);
         } else {
             let snippet = self.snippet(span);
-            self.buffer.push_str(snippet);
+            self.push_str(snippet);
         }
         self.last_pos = source!(self, span).hi();
+    }
+
+    pub fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
+        self.format_missing_with_indent(source!(self, span).lo());
+        self.push_rewrite_inner(span, rewrite);
+    }
+
+    pub fn push_skipped_with_span(&mut self, span: Span) {
+        self.format_missing_with_indent(source!(self, span).lo());
+        let lo = self.line_number + 1;
+        self.push_rewrite_inner(span, None);
+        let hi = self.line_number + 1;
+        self.skipped_range.push((lo, hi));
     }
 
     pub fn from_context(ctx: &'a RewriteContext) -> FmtVisitor<'a> {
@@ -548,6 +571,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             config: config,
             is_if_else_block: false,
             snippet_provider: snippet_provider,
+            line_number: 0,
+            skipped_range: vec![],
         }
     }
 
@@ -692,15 +717,17 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let is_internal = !(inner_span.lo().0 == 0 && inner_span.hi().0 == 0)
             && local_file_name == self.codemap.span_to_filename(inner_span);
 
-        self.buffer.push_str(&*utils::format_visibility(vis));
-        self.buffer.push_str("mod ");
-        self.buffer.push_str(&ident.to_string());
+        self.push_str(&*utils::format_visibility(vis));
+        self.push_str("mod ");
+        self.push_str(&ident.to_string());
 
         if is_internal {
             match self.config.brace_style() {
-                BraceStyle::AlwaysNextLine => self.buffer
-                    .push_str(&format!("\n{}{{", self.block_indent.to_string(self.config))),
-                _ => self.buffer.push_str(" {"),
+                BraceStyle::AlwaysNextLine => {
+                    let sep_str = format!("\n{}{{", self.block_indent.to_string(self.config));
+                    self.push_str(&sep_str);
+                }
+                _ => self.push_str(" {"),
             }
             // Hackery to account for the closing }.
             let mod_lo = self.codemap.span_after(source!(self, s), "{");
@@ -708,7 +735,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.snippet(mk_sp(mod_lo, source!(self, m.inner).hi() - BytePos(1)));
             let body_snippet = body_snippet.trim();
             if body_snippet.is_empty() {
-                self.buffer.push_str("}");
+                self.push_str("}");
             } else {
                 self.last_pos = mod_lo;
                 self.block_indent = self.block_indent.block_indent(self.config);
@@ -719,7 +746,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
             self.last_pos = source!(self, m.inner).hi();
         } else {
-            self.buffer.push_str(";");
+            self.push_str(";");
             self.last_pos = source!(self, s).hi();
         }
     }
@@ -1048,4 +1075,13 @@ pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Optio
         let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
         String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))
     })
+}
+
+fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
+    match stmt.node {
+        ast::StmtKind::Local(ref local) => &local.attrs,
+        ast::StmtKind::Item(ref item) => &item.attrs,
+        ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => &expr.attrs,
+        ast::StmtKind::Mac(ref mac) => &mac.2,
+    }
 }

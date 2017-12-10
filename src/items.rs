@@ -240,12 +240,12 @@ impl<'a> FnSig<'a> {
 
 impl<'a> FmtVisitor<'a> {
     fn format_item(&mut self, item: Item) {
-        self.buffer.push_str(&item.abi);
+        self.push_str(&item.abi);
 
         let snippet = self.snippet(item.span);
         let brace_pos = snippet.find_uncommented("{").unwrap();
 
-        self.buffer.push_str("{");
+        self.push_str("{");
         if !item.body.is_empty() || contains_comment(&snippet[brace_pos..]) {
             // FIXME: this skips comments between the extern keyword and the opening
             // brace.
@@ -255,9 +255,8 @@ impl<'a> FmtVisitor<'a> {
             if item.body.is_empty() {
                 self.format_missing_no_indent(item.span.hi() - BytePos(1));
                 self.block_indent = self.block_indent.block_unindent(self.config);
-
-                self.buffer
-                    .push_str(&self.block_indent.to_string(self.config));
+                let indent_str = self.block_indent.to_string(self.config);
+                self.push_str(&indent_str);
             } else {
                 for item in &item.body {
                     self.format_body_element(item);
@@ -268,7 +267,7 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
-        self.buffer.push_str("}");
+        self.push_str("}");
         self.last_pos = item.span.hi();
     }
 
@@ -423,7 +422,7 @@ impl<'a> FmtVisitor<'a> {
         span: Span,
     ) {
         let enum_header = format_header("enum ", ident, vis);
-        self.buffer.push_str(&enum_header);
+        self.push_str(&enum_header);
 
         let enum_snippet = self.snippet(span);
         let brace_pos = enum_snippet.find_uncommented("{").unwrap();
@@ -441,23 +440,23 @@ impl<'a> FmtVisitor<'a> {
             mk_sp(span.lo(), body_start),
             last_line_width(&enum_header),
         ).unwrap();
-        self.buffer.push_str(&generics_str);
+        self.push_str(&generics_str);
 
         self.last_pos = body_start;
 
         self.block_indent = self.block_indent.block_indent(self.config);
         let variant_list = self.format_variant_list(enum_def, body_start, span.hi() - BytePos(1));
         match variant_list {
-            Some(ref body_str) => self.buffer.push_str(body_str),
+            Some(ref body_str) => self.push_str(body_str),
             None => self.format_missing_no_indent(span.hi() - BytePos(1)),
         }
         self.block_indent = self.block_indent.block_unindent(self.config);
 
         if variant_list.is_some() || contains_comment(&enum_snippet[brace_pos..]) {
-            self.buffer
-                .push_str(&self.block_indent.to_string(self.config));
+            let indent_str = self.block_indent.to_string(self.config);
+            self.push_str(&indent_str);
         }
-        self.buffer.push_str("}");
+        self.push_str("}");
         self.last_pos = span.hi();
     }
 
