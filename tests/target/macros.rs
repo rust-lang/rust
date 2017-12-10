@@ -808,3 +808,17 @@ impl Foo {
     /// foo
     pub fn foo(&self) -> Bar<foo!()> {}
 }
+
+// #819
+fn macro_in_pattern_position() {
+    let x = match y {
+        foo!() => (),
+        bar!(a, b, c) => (),
+        bar!(a, b, c,) => (),
+        baz!(1 + 2 + 3, quux.kaas()) => (),
+        quux!(
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
+            BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+        ) => (),
+    };
+}
