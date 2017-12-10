@@ -147,15 +147,37 @@ fn rewrite_closure_expr(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let mut rewrite = expr.rewrite(context, shape);
-    rewrite = rewrite.and_then(|rw| {
-        if context.config.force_multiline_blocks() && rw.contains('\n') {
-            None
-        } else {
-            Some(rw)
+    fn allow_multi_line(expr: &ast::Expr) -> bool {
+        match expr.node {
+            ast::ExprKind::Match(..)
+            | ast::ExprKind::Block(..)
+            | ast::ExprKind::Catch(..)
+            | ast::ExprKind::Loop(..)
+            | ast::ExprKind::Struct(..) => true,
+
+            ast::ExprKind::AddrOf(_, ref expr)
+            | ast::ExprKind::Box(ref expr)
+            | ast::ExprKind::Try(ref expr)
+            | ast::ExprKind::Unary(_, ref expr)
+            | ast::ExprKind::Cast(ref expr, _) => allow_multi_line(expr),
+
+            _ => false,
         }
-    });
-    rewrite.map(|rw| format!("{} {}", prefix, rw))
+    }
+
+    // When rewriting closure's body without block, we require it to fit in a single line
+    // unless it is a block-like expression or we are inside macro call.
+    let veto_multiline = (!allow_multi_line(expr) && !context.inside_macro)
+        || context.config.force_multiline_blocks();
+    expr.rewrite(context, shape)
+        .and_then(|rw| {
+            if veto_multiline && rw.contains('\n') {
+                None
+            } else {
+                Some(rw)
+            }
+        })
+        .map(|rw| format!("{} {}", prefix, rw))
 }
 
 // Rewrite closure whose body is block.
@@ -341,7 +363,6 @@ fn is_block_closure_forced_inner(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::If(..)
         | ast::ExprKind::IfLet(..)
-        | ast::ExprKind::Loop(..)
         | ast::ExprKind::While(..)
         | ast::ExprKind::WhileLet(..)
         | ast::ExprKind::ForLoop(..) => true,
