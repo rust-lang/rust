@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
+// must-compile-successfully
 
 // This file illustrates how packing is handled; it should cause
 // the elimination of padding that would normally be introduced

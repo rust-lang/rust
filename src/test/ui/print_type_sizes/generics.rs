@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
+// must-compile-successfully
 
 // This file illustrates how generics are handled: types have to be
 // monomorphized, in the MIR of the original function in which they

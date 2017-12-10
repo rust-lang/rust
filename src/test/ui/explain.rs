@@ -9,3 +9,4 @@
 // except according to those terms.
 
 // compile-flags: --explain E0591
+// must-compile-successfully

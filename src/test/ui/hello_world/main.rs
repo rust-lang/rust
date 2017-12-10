@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// must-compile-successfully
+
 // Test that compiling hello world succeeds with no output of any kind.
 
 fn main() {

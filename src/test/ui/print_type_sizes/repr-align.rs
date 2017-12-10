@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
+// must-compile-successfully
 
 // This file illustrates how padding is handled: alignment
 // requirements can lead to the introduction of padding, either before
