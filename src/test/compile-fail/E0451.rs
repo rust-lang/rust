@@ -22,10 +22,8 @@ mod Bar {
 
 fn pat_match(foo: Bar::Foo) {
     let Bar::Foo{a:a, b:b} = foo; //~ ERROR E0451
-                                  //~^ NOTE field `b` is private
 }
 
 fn main() {
     let f = Bar::Foo{ a: 0, b: 0 }; //~ ERROR E0451
-                                    //~^ NOTE field `b` is private
 }

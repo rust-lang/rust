@@ -12,8 +12,6 @@
 
 #[rustc_on_unimplemented]
 //~^ ERROR E0232
-//~| NOTE value required here
-//~| NOTE eg `#[rustc_on_unimplemented = "foo"]`
 trait Bar {}
 
 fn main() {

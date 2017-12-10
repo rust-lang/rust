@@ -14,8 +14,6 @@ fn main() {
     match x {
         Some((y, ref z)) => {},
         //~^ ERROR E0009
-        //~| NOTE by-move pattern here
-        //~| NOTE both by-ref and by-move used
         None => panic!()
     }
 }

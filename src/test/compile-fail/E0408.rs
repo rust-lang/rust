@@ -13,7 +13,6 @@ fn main() {
 
     match x {
         Some(y) | None => {} //~  ERROR variable `y` is not bound in all patterns
-        _ => ()              //~| NOTE pattern doesn't bind `y`
-                             //~| NOTE variable not in all patterns
+        _ => ()
     }
 }

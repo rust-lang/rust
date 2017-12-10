@@ -12,10 +12,7 @@ fn main() {
     match Some("hi".to_string()) {
         ref op_string_ref @ Some(s) => {},
         //~^ ERROR pattern bindings are not allowed after an `@` [E0303]
-        //~| NOTE not allowed after `@`
         //~| ERROR E0009
-        //~| NOTE by-move pattern here
-        //~| NOTE both by-ref and by-move used
         None => {},
     }
 }

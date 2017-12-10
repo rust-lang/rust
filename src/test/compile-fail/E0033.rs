@@ -15,12 +15,9 @@ trait SomeTrait {
 fn main() {
     let trait_obj: &SomeTrait = SomeTrait;
     //~^ ERROR expected value, found trait `SomeTrait`
-    //~| NOTE not a value
     //~| ERROR E0038
     //~| method `foo` has no receiver
-    //~| NOTE the trait `SomeTrait` cannot be made into an object
 
     let &invalid = trait_obj;
     //~^ ERROR E0033
-    //~| NOTE type `&SomeTrait` cannot be dereferenced
 }

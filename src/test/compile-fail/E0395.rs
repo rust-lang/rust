@@ -12,6 +12,5 @@ static FOO: i32 = 42;
 static BAR: i32 = 42;
 
 static BAZ: bool = { (&FOO as *const i32) == (&BAR as *const i32) }; //~ ERROR E0395
-                   //~| NOTE comparing raw pointers in static
 fn main() {
 }

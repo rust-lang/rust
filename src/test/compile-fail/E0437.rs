@@ -12,7 +12,6 @@ trait Foo {}
 
 impl Foo for i32 {
     type Bar = bool; //~ ERROR E0437
-    //~| NOTE not a member of trait `Foo`
 }
 
 fn main () {

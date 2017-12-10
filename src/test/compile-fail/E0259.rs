@@ -12,12 +12,8 @@
 #![allow(unused_extern_crates)]
 
 extern crate alloc;
-//~^ NOTE previous import of the extern crate `alloc` here
 
 extern crate libc as alloc;
 //~^ ERROR E0259
-//~| NOTE `alloc` reimported here
-//~| NOTE `alloc` must be defined only once in the type namespace of this module
-//~| NOTE You can use `as` to change the binding name of the import
 
 fn main() {}

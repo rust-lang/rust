@@ -11,5 +11,4 @@
 fn main() {
     let v: Vec(&str) = vec!["foo"];
     //~^ ERROR E0214
-    //~| NOTE only traits may use parentheses
 }

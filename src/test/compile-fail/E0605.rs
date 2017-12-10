@@ -11,9 +11,7 @@
 fn main() {
     let x = 0u8;
     x as Vec<u8>; //~ ERROR E0605
-                  //~| NOTE an `as` expression can only be used to convert between primitive types
 
     let v = 0 as *const u8;
     v as &u8; //~ ERROR E0605
-              //~| NOTE an `as` expression can only be used to convert between primitive types
 }

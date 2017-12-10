@@ -9,9 +9,7 @@
 // except according to those terms.
 
 #[link(kind = "wonderful_unicorn")] extern {} //~ ERROR E0458
-                                              //~| NOTE unknown kind
                                               //~| ERROR E0459
-                                              //~| NOTE missing `name` argument
 
 fn main() {
 }

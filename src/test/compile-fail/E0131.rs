@@ -10,5 +10,4 @@
 
 fn main<T>() {
     //~^ ERROR E0131
-    //~| NOTE main cannot have type parameters
 }

@@ -12,7 +12,6 @@ trait MyTrait { fn foo() {} }
 
 impl Drop for MyTrait {
               //~^ ERROR E0120
-              //~| NOTE implementing Drop requires a struct
     fn drop(&mut self) {}
 }
 

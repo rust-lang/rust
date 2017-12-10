@@ -20,5 +20,4 @@ fn main() {
     let ref_foo = &&Foo;
     ref_foo.foo();
     //~^ ERROR E0055
-    //~| NOTE deref recursion limit reached
 }
