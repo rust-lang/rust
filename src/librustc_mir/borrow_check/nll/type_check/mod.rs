@@ -36,7 +36,32 @@ use util::liveness::LivenessResults;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
 
+macro_rules! span_mirbug {
+    ($context:expr, $elem:expr, $($message:tt)*) => ({
+        $crate::borrow_check::nll::type_check::mirbug(
+            $context.tcx(),
+            $context.last_span,
+            &format!(
+                "broken MIR in {:?} ({:?}): {}",
+                $context.body_id,
+                $elem,
+                format_args!($($message)*),
+            ),
+        )
+    })
+}
+
+macro_rules! span_mirbug_and_err {
+    ($context:expr, $elem:expr, $($message:tt)*) => ({
+        {
+            span_mirbug!($context, $elem, $($message)*);
+            $context.error()
+        }
+    })
+}
+
 mod liveness;
+mod input_output;
 
 /// Type checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
@@ -88,18 +113,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         &mut |cx| {
             liveness::generate(cx, mir, liveness, flow_inits, move_data);
 
-            // Equate the input and output tys given by the user with
-            // the ones found in the MIR.
-            let &UniversalRegions {
-                unnormalized_output_ty,
-                unnormalized_input_tys,
-                ..
-            } = universal_regions;
-            cx.equate_input_or_output(unnormalized_output_ty, mir.local_decls[RETURN_PLACE].ty);
-            let arg_locals = (1..).map(Local::new);
-            for (&input_ty, local) in unnormalized_input_tys.iter().zip(arg_locals) {
-                cx.equate_input_or_output(input_ty, mir.local_decls[local].ty);
-            }
+            cx.equate_inputs_and_outputs(mir, universal_regions);
         },
     )
 }
@@ -136,31 +150,11 @@ fn type_check_internal<'gcx, 'tcx>(
     checker.constraints
 }
 
-
 fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
     // We sometimes see MIR failures (notably predicate failures) due to
     // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
     // to avoid reporting bugs in those cases.
     tcx.sess.diagnostic().delay_span_bug(span, msg);
-}
-
-macro_rules! span_mirbug {
-    ($context:expr, $elem:expr, $($message:tt)*) => ({
-        mirbug($context.tcx(), $context.last_span,
-               &format!("broken MIR in {:?} ({:?}): {}",
-                        $context.body_id,
-                        $elem,
-                        format_args!($($message)*)))
-    })
-}
-
-macro_rules! span_mirbug_and_err {
-    ($context:expr, $elem:expr, $($message:tt)*) => ({
-        {
-            span_mirbug!($context, $elem, $($message)*);
-            $context.error()
-        }
-    })
 }
 
 enum FieldAccessError {
@@ -712,25 +706,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 .at(&this.misc(this.last_span), this.param_env)
                 .eq(b, a)
         })
-    }
-
-    fn equate_input_or_output(&mut self, unnormalized_a: Ty<'tcx>, b: Ty<'tcx>) {
-        let start_position = Location {
-            block: START_BLOCK,
-            statement_index: 0,
-        };
-        let a = self.normalize(&unnormalized_a, start_position);
-        if let Err(terr) = self.eq_types(a, b, start_position.at_self()) {
-            span_mirbug!(
-                self,
-                start_position,
-                "bad input or output {:?} normalized to {:?} should equal {:?} but got error {:?}",
-                unnormalized_a,
-                a,
-                b,
-                terr
-            );
-        }
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
