@@ -348,7 +348,3 @@ fn is_block_closure_forced(expr: &ast::Expr) -> bool {
         _ => false,
     }
 }
-
-fn and_one_line(x: Option<String>) -> Option<String> {
-    x.and_then(|x| if x.contains('\n') { None } else { Some(x) })
-}
