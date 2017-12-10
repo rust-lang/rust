@@ -116,6 +116,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             fn_ty: FnType<'tcx>,
             fn_ptr: ValueRef,
             llargs: &[ValueRef],
+            force_noinline: bool,
             destination: Option<(ReturnDest<'tcx>, mir::BasicBlock)>,
             cleanup: Option<mir::BasicBlock>
         | {
@@ -140,11 +141,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             } else {
                 let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
                 fn_ty.apply_attrs_callsite(llret);
-                if this.mir[bb].is_cleanup {
-                    // Cleanup is always the cold path. Don't inline
-                    // drop glue. Also, when there is a deeply-nested
-                    // struct, there are "symmetry" issues that cause
-                    // exponential inlining - see issue #41696.
+                if force_noinline {
                     llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
                 }
 
@@ -285,7 +282,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                          FnType::of_instance(bcx.ccx, &drop_fn))
                     }
                 };
-                do_call(self, bcx, fn_ty, drop_fn, args,
+
+                // Cleanup is always the cold path. Don't inline
+                // drop glue. Also, when there is a deeply-nested
+                // struct, there are "symmetry" issues that cause
+                // exponential inlining - see issue #41696.
+                // We have a special exception for `Box`, see #46515.
+                let force_noinline = if ty.is_box() {
+                    ty.boxed_ty().needs_drop(bcx.tcx(), ty::ParamEnv::empty(traits::Reveal::All))
+                } else {
+                    true
+                };
+                do_call(self, bcx, fn_ty, drop_fn, args, force_noinline,
                         Some((ReturnDest::Nothing, target)),
                         unwind);
             }
@@ -420,7 +428,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let llfn = callee::get_fn(bcx.ccx, instance);
 
                 // Translate the actual panic invoke/call.
-                do_call(self, bcx, fn_ty, llfn, &args, None, cleanup);
+                do_call(self, bcx, fn_ty, llfn, &args, false, None, cleanup);
             }
 
             mir::TerminatorKind::DropAndReplace { .. } => {
@@ -597,7 +605,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     _ => span_bug!(span, "no llfn for call"),
                 };
 
-                do_call(self, bcx, fn_ty, fn_ptr, &llargs,
+                do_call(self, bcx, fn_ty, fn_ptr, &llargs, false,
                         destination.as_ref().map(|&(_, target)| (ret_dest, target)),
                         cleanup);
             }
