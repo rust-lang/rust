@@ -9,8 +9,10 @@
 // except according to those terms.
 
 fn takes_imm(x: &isize) { }
+//~^ NOTE found signature
 
 fn takes_mut(x: &mut isize) { }
+//~^ NOTE found signature
 
 fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
     f(t)
@@ -22,12 +24,10 @@ fn main() {
     //~^ ERROR type mismatch
     //~| NOTE required by `apply`
     //~| NOTE expected signature
-    //~| NOTE found signature
 
     apply(&mut 3, takes_mut);
     apply(&mut 3, takes_imm);
     //~^ ERROR type mismatch
     //~| NOTE required by `apply`
     //~| NOTE expected signature
-    //~| NOTE found signature
 }
