@@ -187,9 +187,7 @@ fn rewrite_closure_block(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let block_shape = shape.block();
-    let block_str = block.rewrite(context, block_shape)?;
-    Some(format!("{} {}", prefix, block_str))
+    Some(format!("{} {}", prefix, block.rewrite(context, shape)?))
 }
 
 // Return type is (prefix, extra_offset)

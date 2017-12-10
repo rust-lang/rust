@@ -129,7 +129,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         let offset = trimmed_last_line_width(&parent_rewrite) + prefix_try_num;
         match context.config.indent_style() {
             IndentStyle::Visual => parent_shape.offset_left(overhead)?,
-            IndentStyle::Block => parent_shape.block().offset_left(offset)?,
+            IndentStyle::Block => parent_shape.offset_left(offset)?,
         }
     } else {
         other_child_shape

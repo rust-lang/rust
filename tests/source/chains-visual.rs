@@ -143,3 +143,17 @@ fn issue1434() {
         })?;
     }
 }
+
+fn issue2264() {
+    {
+        something.function()
+            .map(|| {
+                if let a_very_very_very_very_very_very_very_very_long_variable =
+                    compute_this_variable()
+                {
+                    println!("Hello");
+                }
+            })
+            .collect();
+    }
+}

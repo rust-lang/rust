@@ -937,21 +937,16 @@ impl<'a> ControlFlow<'a> {
         let offset = self.keyword.len() + label_string.len() + 1;
 
         let pat_expr_string = match self.cond {
-            Some(cond) => {
-                let cond_shape = match context.config.indent_style() {
-                    IndentStyle::Visual => constr_shape.shrink_left(offset)?,
-                    IndentStyle::Block => constr_shape.offset_left(offset)?,
-                };
-                rewrite_pat_expr(
-                    context,
-                    self.pat,
-                    cond,
-                    self.matcher,
-                    self.connector,
-                    self.keyword,
-                    cond_shape,
-                )?
-            }
+            Some(cond) => rewrite_pat_expr(
+                context,
+                self.pat,
+                cond,
+                self.matcher,
+                self.connector,
+                self.keyword,
+                constr_shape,
+                offset,
+            )?,
             None => String::new(),
         };
 
@@ -967,8 +962,8 @@ impl<'a> ControlFlow<'a> {
             .max_width()
             .checked_sub(constr_shape.used_width() + offset + brace_overhead)
             .unwrap_or(0);
-        let force_newline_brace = context.config.indent_style() == IndentStyle::Block
-            && (pat_expr_string.contains('\n') || pat_expr_string.len() > one_line_budget)
+        let force_newline_brace = (pat_expr_string.contains('\n')
+            || pat_expr_string.len() > one_line_budget)
             && !last_line_extendable(&pat_expr_string);
 
         // Try to format if-else on single line.
@@ -1061,8 +1056,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
 
-        let alt_block_sep =
-            String::from("\n") + &shape.indent.block_only().to_string(context.config);
+        let alt_block_sep = String::from("\n") + &shape.indent.to_string(context.config);
         let (cond_str, used_width) = self.rewrite_cond(context, shape, &alt_block_sep)?;
         // If `used_width` is 0, it indicates that whole control flow is written in a single line.
         if used_width == 0 {
@@ -1268,7 +1262,7 @@ fn rewrite_match(
         IndentStyle::Block => cond_shape.offset_left(6)?,
     };
     let cond_str = cond.rewrite(context, cond_shape)?;
-    let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
+    let alt_block_sep = String::from("\n") + &shape.indent.to_string(context.config);
     let block_sep = match context.config.control_brace_style() {
         ControlBraceStyle::AlwaysNextLine => &alt_block_sep,
         _ if last_line_extendable(&cond_str) => " ",
@@ -1547,7 +1541,7 @@ fn rewrite_match_body(
     };
 
     let comma = arm_comma(context.config, body, is_last);
-    let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
+    let alt_block_sep = String::from("\n") + &shape.indent.to_string(context.config);
     let alt_block_sep = alt_block_sep.as_str();
 
     let combine_orig_body = |body_str: &str| {
@@ -1705,23 +1699,25 @@ fn rewrite_pat_expr(
     connector: &str,
     keyword: &str,
     shape: Shape,
+    offset: usize,
 ) -> Option<String> {
     debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, pat, expr);
+    let cond_shape = shape.offset_left(offset)?;
     if let Some(pat) = pat {
         let matcher = if matcher.is_empty() {
             matcher.to_owned()
         } else {
             format!("{} ", matcher)
         };
-        let pat_shape = shape
+        let pat_shape = cond_shape
             .offset_left(matcher.len())?
             .sub_width(connector.len())?;
         let pat_string = pat.rewrite(context, pat_shape)?;
         let result = format!("{}{}{}", matcher, pat_string, connector);
-        return rewrite_assign_rhs(context, result, expr, shape);
+        return rewrite_assign_rhs(context, result, expr, cond_shape);
     }
 
-    let expr_rw = expr.rewrite(context, shape);
+    let expr_rw = expr.rewrite(context, cond_shape);
     // The expression may (partially) fit on the current line.
     // We do not allow splitting between `if` and condition.
     if keyword == "if" || expr_rw.is_some() {
@@ -2786,10 +2782,9 @@ pub fn choose_rhs<R: Rewrite>(
         _ => {
             // Expression did not fit on the same line as the identifier.
             // Try splitting the line and see if that works better.
-            let new_shape = Shape::indented(
-                shape.block().indent.block_indent(context.config),
-                context.config,
-            ).sub_width(shape.rhs_overhead(context.config))?;
+            let new_shape =
+                Shape::indented(shape.indent.block_indent(context.config), context.config)
+                    .sub_width(shape.rhs_overhead(context.config))?;
             let new_rhs = expr.rewrite(context, new_shape);
             let new_indent_str = &new_shape.indent.to_string(context.config);
 
