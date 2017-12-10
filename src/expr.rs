@@ -1061,8 +1061,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
 
-        let alt_block_sep =
-            String::from("\n") + &shape.indent.block_only().to_string(context.config);
+        let alt_block_sep = String::from("\n") + &shape.indent.to_string(context.config);
         let (cond_str, used_width) = self.rewrite_cond(context, shape, &alt_block_sep)?;
         // If `used_width` is 0, it indicates that whole control flow is written in a single line.
         if used_width == 0 {
@@ -1268,7 +1267,7 @@ fn rewrite_match(
         IndentStyle::Block => cond_shape.offset_left(6)?,
     };
     let cond_str = cond.rewrite(context, cond_shape)?;
-    let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
+    let alt_block_sep = String::from("\n") + &shape.indent.to_string(context.config);
     let block_sep = match context.config.control_brace_style() {
         ControlBraceStyle::AlwaysNextLine => &alt_block_sep,
         _ if last_line_extendable(&cond_str) => " ",
@@ -1547,7 +1546,7 @@ fn rewrite_match_body(
     };
 
     let comma = arm_comma(context.config, body, is_last);
-    let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
+    let alt_block_sep = String::from("\n") + &shape.indent.to_string(context.config);
     let alt_block_sep = alt_block_sep.as_str();
 
     let combine_orig_body = |body_str: &str| {
@@ -2785,10 +2784,9 @@ pub fn choose_rhs<R: Rewrite>(
         _ => {
             // Expression did not fit on the same line as the identifier.
             // Try splitting the line and see if that works better.
-            let new_shape = Shape::indented(
-                shape.block().indent.block_indent(context.config),
-                context.config,
-            ).sub_width(shape.rhs_overhead(context.config))?;
+            let new_shape =
+                Shape::indented(shape.indent.block_indent(context.config), context.config)
+                    .sub_width(shape.rhs_overhead(context.config))?;
             let new_rhs = expr.rewrite(context, new_shape);
             let new_indent_str = &new_shape.indent.to_string(context.config);
 
