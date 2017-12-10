@@ -29,6 +29,7 @@ pub fn check<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, body: &'tcx hir::Body) {
         cx.check_unused_mut_pat(slice::from_ref(&arg.pat));
     }
     cx.visit_expr(&body.value);
+    assert!(bccx.tcx.extra == 0x1234);
 }
 
 struct UsedMutFinder<'a, 'tcx: 'a> {

@@ -765,7 +765,8 @@ impl<'tcx> CommonTypes<'tcx> {
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     gcx: &'a GlobalCtxt<'gcx>,
-    interners: &'a CtxtInterners<'tcx>
+    interners: &'a CtxtInterners<'tcx>,
+    pub extra: usize,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
@@ -868,17 +869,16 @@ pub struct GlobalCtxt<'tcx> {
     output_filenames: Arc<OutputFilenames>,
 }
 
-impl<'tcx> GlobalCtxt<'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Get the global TyCtxt.
-    pub fn global_tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn global_tcx(self) -> TyCtxt<'a, 'gcx, 'gcx> {
         TyCtxt {
-            gcx: self,
-            interners: &self.global_interners
+            gcx: self.gcx,
+            interners: &self.gcx.global_interners,
+            extra: self.extra,
         }
     }
-}
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }
@@ -1250,11 +1250,11 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
 impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
     /// Call the closure with a local `TyCtxt` using the given arena.
-    pub fn enter_local<F, R>(&self, arena: &'tcx DroplessArena, f: F) -> R
+    pub fn enter_local<F, R>(&self, arena: &'tcx DroplessArena, extra: usize, f: F) -> R
         where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
         let interners = CtxtInterners::new(arena);
-        tls::enter(self, &interners, f)
+        tls::enter(self, &interners, extra, f)
     }
 }
 
@@ -1415,7 +1415,8 @@ pub mod tls {
 
     thread_local! {
         static TLS_TCX: Cell<Option<(*const ThreadLocalGlobalCtxt,
-                                     *const ThreadLocalInterners)>> = Cell::new(None)
+                                     *const ThreadLocalInterners,
+                                     usize)>> = Cell::new(None)
     }
 
     fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1430,7 +1431,7 @@ pub mod tls {
         syntax_pos::SPAN_DEBUG.with(|span_dbg| {
             let original_span_debug = span_dbg.get();
             span_dbg.set(span_debug);
-            let result = enter(&gcx, &gcx.global_interners, f);
+            let result = enter(&gcx, &gcx.global_interners, 0x1234, f);
             span_dbg.set(original_span_debug);
             result
         })
@@ -1438,6 +1439,7 @@ pub mod tls {
 
     pub fn enter<'a, 'gcx: 'tcx, 'tcx, F, R>(gcx: &'a GlobalCtxt<'gcx>,
                                              interners: &'a CtxtInterners<'tcx>,
+                                             extra: usize,
                                              f: F) -> R
         where F: FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
@@ -1445,10 +1447,11 @@ pub mod tls {
         let interners_ptr = interners as *const _ as *const ThreadLocalInterners;
         TLS_TCX.with(|tls| {
             let prev = tls.get();
-            tls.set(Some((gcx_ptr, interners_ptr)));
+            tls.set(Some((gcx_ptr, interners_ptr, extra)));
             let ret = f(TyCtxt {
                 gcx,
                 interners,
+                extra,
             });
             tls.set(prev);
             ret
@@ -1459,12 +1462,13 @@ pub mod tls {
         where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
         TLS_TCX.with(|tcx| {
-            let (gcx, interners) = tcx.get().unwrap();
+            let (gcx, interners, extra) = tcx.get().unwrap();
             let gcx = unsafe { &*(gcx as *const GlobalCtxt) };
             let interners = unsafe { &*(interners as *const CtxtInterners) };
             f(TyCtxt {
                 gcx,
                 interners,
+                extra,
             })
         })
     }

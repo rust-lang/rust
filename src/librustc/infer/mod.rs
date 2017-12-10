@@ -435,7 +435,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             ref fresh_tables,
         } = *self;
         let in_progress_tables = fresh_tables.as_ref();
-        global_tcx.enter_local(arena, |tcx| f(InferCtxt {
+        global_tcx.enter_local(arena, global_tcx.extra, |tcx| f(InferCtxt {
             tcx,
             in_progress_tables,
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
