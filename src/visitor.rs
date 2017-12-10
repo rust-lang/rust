@@ -10,7 +10,6 @@
 
 use std::cmp;
 
-use strings::string_buffer::StringBuffer;
 use syntax::{ast, visit};
 use syntax::attr::HasAttrs;
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
@@ -74,7 +73,7 @@ impl<'a> SnippetProvider<'a> {
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
     pub codemap: &'a CodeMap,
-    pub buffer: StringBuffer,
+    pub buffer: String,
     pub last_pos: BytePos,
     // FIXME: use an RAII util or closure for indenting
     pub block_indent: Indent,
@@ -252,7 +251,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     // The closing brace itself, however, should be indented at a shallower
     // level.
     fn close_block(&mut self, unindent_comment: bool) {
-        let total_len = self.buffer.len;
+        let total_len = self.buffer.len();
         let chars_too_many = if unindent_comment {
             0
         } else if self.config.hard_tabs() {
@@ -565,7 +564,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         FmtVisitor {
             parse_session: parse_session,
             codemap: parse_session.codemap(),
-            buffer: StringBuffer::new(),
+            buffer: String::with_capacity(snippet_provider.big_snippet.len() * 2),
             last_pos: BytePos(0),
             block_indent: Indent::empty(),
             config: config,

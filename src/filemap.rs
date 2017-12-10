@@ -13,8 +13,6 @@
 use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
 
-use strings::string_buffer::StringBuffer;
-
 use checkstyle::{output_checkstyle_file, output_footer, output_header};
 use config::{Config, NewlineStyle, WriteMode};
 use rustfmt_diff::{make_diff, print_diff, Mismatch};
@@ -22,10 +20,10 @@ use rustfmt_diff::{make_diff, print_diff, Mismatch};
 // A map of the files of a crate, with their new content
 pub type FileMap = Vec<FileRecord>;
 
-pub type FileRecord = (String, StringBuffer);
+pub type FileRecord = (String, String);
 
 // Append a newline to the end of each file.
-pub fn append_newline(s: &mut StringBuffer) {
+pub fn append_newline(s: &mut String) {
     s.push_str("\n");
 }
 
@@ -47,11 +45,7 @@ where
 }
 
 // Prints all newlines either as `\n` or as `\r\n`.
-pub fn write_system_newlines<T>(
-    writer: T,
-    text: &StringBuffer,
-    config: &Config,
-) -> Result<(), io::Error>
+pub fn write_system_newlines<T>(writer: T, text: &String, config: &Config) -> Result<(), io::Error>
 where
     T: Write,
 {
@@ -71,7 +65,7 @@ where
     match style {
         NewlineStyle::Unix => write!(writer, "{}", text),
         NewlineStyle::Windows => {
-            for (c, _) in text.chars() {
+            for c in text.chars() {
                 match c {
                     '\n' => write!(writer, "\r\n")?,
                     '\r' => continue,
@@ -85,7 +79,7 @@ where
 }
 
 pub fn write_file<T>(
-    text: &StringBuffer,
+    text: &String,
     filename: &str,
     out: &mut T,
     config: &Config,
@@ -94,7 +88,7 @@ where
     T: Write,
 {
     fn source_and_formatted_text(
-        text: &StringBuffer,
+        text: &String,
         filename: &str,
         config: &Config,
     ) -> Result<(String, String), io::Error> {
@@ -109,7 +103,7 @@ where
 
     fn create_diff(
         filename: &str,
-        text: &StringBuffer,
+        text: &String,
         config: &Config,
     ) -> Result<Vec<Mismatch>, io::Error> {
         let (ori, fmt) = source_and_formatted_text(text, filename, config)?;

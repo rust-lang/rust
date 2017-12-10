@@ -17,12 +17,12 @@ use codemap::LineRangeUtils;
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
 use config::WriteMode;
 use shape::{Indent, Shape};
-use utils::{count_newlines, mk_sp};
+use utils::{count_newlines, last_line_width, mk_sp};
 use visitor::FmtVisitor;
 
 impl<'a> FmtVisitor<'a> {
     fn output_at_start(&self) -> bool {
-        self.buffer.len == 0
+        self.buffer.len() == 0
     }
 
     // TODO these format_missing methods are ugly. Refactor and add unit tests
@@ -86,7 +86,11 @@ impl<'a> FmtVisitor<'a> {
 
     fn push_vertical_spaces(&mut self, mut newline_count: usize) {
         // The buffer already has a trailing newline.
-        let offset = if self.buffer.cur_offset() == 0 { 0 } else { 1 };
+        let offset = if last_line_width(&self.buffer) == 0 {
+            0
+        } else {
+            1
+        };
         let newline_upper_bound = self.config.blank_lines_upper_bound() + offset;
         let newline_lower_bound = self.config.blank_lines_lower_bound() + offset;
         if newline_count > newline_upper_bound {
