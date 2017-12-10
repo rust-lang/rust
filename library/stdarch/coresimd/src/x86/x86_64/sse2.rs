@@ -47,6 +47,17 @@ pub unsafe fn _mm_cvttsd_si64x(a: f64x2) -> i64 {
     _mm_cvttsd_si64(a)
 }
 
+/// Stores a 64-bit integer value in the specified memory location.
+/// To minimize caching, the data is flagged as non-temporal (unlikely to be
+/// used again soon).
+#[inline(always)]
+#[target_feature = "+sse2"]
+// FIXME movnti on windows and linux x86_64
+//#[cfg_attr(test, assert_instr(movntiq))]
+pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
+    ::core::intrinsics::nontemporal_store(mem_addr, a);
+}
+
 #[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
@@ -87,5 +98,13 @@ mod tests {
         let a = f64x2::new(f64::NEG_INFINITY, f64::NAN);
         let r = sse2::_mm_cvttsd_si64x(a);
         assert_eq!(r, i64::MIN);
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_stream_si64() {
+        let a: i64 = 7;
+        let mut mem = ::std::boxed::Box::<i64>::new(-1);
+        sse2::_mm_stream_si64(&mut *mem as *mut i64, a);
+        assert_eq!(a, *mem);
     }
 }
