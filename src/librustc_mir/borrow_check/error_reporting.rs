@@ -11,7 +11,7 @@
 use syntax_pos::Span;
 use rustc::mir::{BorrowKind, Field, Local, Location, Operand};
 use rustc::mir::{Place, ProjectionElem, Rvalue, StatementKind};
-use rustc::ty;
+use rustc::ty::{self, RegionKind};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::{MirBorrowckCtxt, Context};
@@ -366,17 +366,32 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 err.emit();
             },
             None => {
-                let mut err = self.tcx
-                    .path_does_not_live_long_enough(drop_span, "borrowed value", Origin::Mir);
-                err.span_label(proper_span, "temporary value created here");
-                err.span_label(drop_span, "temporary value dropped here while still borrowed");
-                err.note("consider using a `let` binding to increase its lifetime");
-
-                if let Some(end) = end_span {
-                    err.span_label(end, "temporary value needs to live until here");
+                match borrow.region {
+                    RegionKind::ReEarlyBound(_) | RegionKind::ReFree(_) => {
+                        let mut err = self.tcx.path_does_not_live_long_enough(proper_span,
+                                                                              "borrowed value",
+                                                                              Origin::Mir);
+                        err.span_label(proper_span, "does not live long enough");
+                        err.span_label(drop_span, "temporary value only lives until here");
+                        self.tcx.note_and_explain_region(scope_tree, &mut err,
+                                                         "borrowed value must be valid for ",
+                                                         borrow.region, "...");
+                        err.emit();
+                    },
+                    _ => {
+                        let mut err = self.tcx.path_does_not_live_long_enough(drop_span,
+                                                                              "borrowed value",
+                                                                              Origin::Mir);
+                        err.span_label(proper_span, "temporary value created here");
+                        err.span_label(drop_span,
+                                       "temporary value dropped here while still borrowed");
+                        err.note("consider using a `let` binding to increase its lifetime");
+                        if let Some(end) = end_span {
+                            err.span_label(end, "temporary value needs to live until here");
+                        }
+                        err.emit();
+                    },
                 }
-
-                err.emit();
             },
         }
     }
