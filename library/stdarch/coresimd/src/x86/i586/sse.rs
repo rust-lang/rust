@@ -682,12 +682,6 @@ pub unsafe fn _mm_cvt_si2ss(a: f32x4, b: i32) -> f32x4 {
     _mm_cvtsi32_ss(a, b)
 }
 
-// Blocked by https://github.com/rust-lang-nursery/stdsimd/issues/74
-// pub unsafe fn _mm_cvtpi32_ps(a: f32x4, b: i32x2) -> f32x4
-// pub unsafe fn _mm_cvt_pi2ps(a: f32x4, b: i32x2) -> f32x4 {
-//     _mm_cvtpi32_ps(a, b)
-// }
-
 /// Construct a `f32x4` with the lowest element set to `a` and the rest set to
 /// zero.
 #[inline(always)]
