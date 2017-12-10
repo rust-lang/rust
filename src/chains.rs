@@ -419,10 +419,12 @@ fn rewrite_chain_subexpr(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let rewrite_element = |expr_str: String| if expr_str.len() <= shape.width {
-        Some(expr_str)
-    } else {
-        None
+    let rewrite_element = |expr_str: String| {
+        if expr_str.len() <= shape.width {
+            Some(expr_str)
+        } else {
+            None
+        }
     };
 
     match expr.node {

@@ -481,10 +481,12 @@ impl<'a> FmtVisitor<'a> {
                 enum_def.variants.iter(),
                 "}",
                 ",",
-                |f| if !f.node.attrs.is_empty() {
-                    f.node.attrs[0].span.lo()
-                } else {
-                    f.span.lo()
+                |f| {
+                    if !f.node.attrs.is_empty() {
+                        f.node.attrs[0].span.lo()
+                    } else {
+                        f.span.lo()
+                    }
                 },
                 |f| f.span.hi(),
                 |f| self.format_variant(f, one_line_width),
@@ -2548,10 +2550,12 @@ fn rewrite_where_clause_rfc_style(
     };
     let preds_str = write_list(&items.collect::<Vec<_>>(), &fmt)?;
 
-    let comment_separator = |comment: &str, shape: Shape| if comment.is_empty() {
-        String::new()
-    } else {
-        format!("\n{}", shape.indent.to_string(context.config))
+    let comment_separator = |comment: &str, shape: Shape| {
+        if comment.is_empty() {
+            String::new()
+        } else {
+            format!("\n{}", shape.indent.to_string(context.config))
+        }
     };
     let newline_before_where = comment_separator(&comment_before, shape);
     let newline_after_where = comment_separator(&comment_after, clause_shape);

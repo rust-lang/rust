@@ -119,6 +119,7 @@ pub fn rewrite_macro(
     context.inside_macro = true;
     if context.config.use_try_shorthand() {
         if let Some(expr) = convert_try_mac(mac, context) {
+            context.inside_macro = false;
             return expr.rewrite(context, shape);
         }
     }
