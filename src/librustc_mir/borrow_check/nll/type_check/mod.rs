@@ -13,6 +13,7 @@
 
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
+use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::MoveData;
@@ -71,28 +72,32 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     body_id: ast::NodeId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
-    region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
-    implicit_region_bound: ty::Region<'tcx>,
-    input_tys: &[Ty<'tcx>],
-    output_ty: Ty<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
     liveness: &LivenessResults,
     flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> MirTypeckRegionConstraints<'tcx> {
+    let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     type_check_internal(
         infcx,
         body_id,
         param_env,
         mir,
-        region_bound_pairs,
+        &universal_regions.region_bound_pairs,
         Some(implicit_region_bound),
         &mut |cx| {
             liveness::generate(cx, mir, liveness, flow_inits, move_data);
 
             // Equate the input and output tys given by the user with
             // the ones found in the MIR.
-            cx.equate_input_or_output(output_ty, mir.local_decls[RETURN_PLACE].ty);
-            for (&input_ty, local) in input_tys.iter().zip((1..).map(Local::new)) {
+            let &UniversalRegions {
+                unnormalized_output_ty,
+                unnormalized_input_tys,
+                ..
+            } = universal_regions;
+            cx.equate_input_or_output(unnormalized_output_ty, mir.local_decls[RETURN_PLACE].ty);
+            let arg_locals = (1..).map(Local::new);
+            for (&input_ty, local) in unnormalized_input_tys.iter().zip(arg_locals) {
                 cx.equate_input_or_output(input_ty, mir.local_decls[local].ty);
             }
         },

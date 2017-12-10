@@ -70,16 +70,18 @@ pub struct UniversalRegions<'tcx> {
     pub defining_ty: DefiningTy<'tcx>,
 
     /// The return type of this function, with all regions replaced by
-    /// their universal `RegionVid` equivalents. This type is **NOT
-    /// NORMALIZED** (i.e., it contains unnormalized associated type
-    /// projections).
-    pub output_ty: Ty<'tcx>,
+    /// their universal `RegionVid` equivalents.
+    ///
+    /// NB. Associated types in this type have not been normalized,
+    /// as the name suggests. =)
+    pub unnormalized_output_ty: Ty<'tcx>,
 
     /// The fully liberated input types of this function, with all
     /// regions replaced by their universal `RegionVid` equivalents.
-    /// This type is **NOT NORMALIZED** (i.e., it contains
-    /// unnormalized associated type projections).
-    pub input_tys: &'tcx [Ty<'tcx>],
+    ///
+    /// NB. Associated types in these types have not been normalized,
+    /// as the name suggests. =)
+    pub unnormalized_input_tys: &'tcx [Ty<'tcx>],
 
     /// Each RBP `('a, GK)` indicates that `GK: 'a` can be assumed to
     /// be true. These encode relationships like `T: 'a` that are
@@ -479,7 +481,8 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             self.relations.relate_universal_regions(fr, fr_fn_body);
         }
 
-        let (output_ty, input_tys) = inputs_and_output.split_last().unwrap();
+        let (unnormalized_output_ty, unnormalized_input_tys) =
+            inputs_and_output.split_last().unwrap();
 
         // we should not have created any more variables
         assert_eq!(self.infcx.num_region_vars(), num_universals);
@@ -508,8 +511,8 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             first_local_index,
             num_universals,
             defining_ty,
-            output_ty,
-            input_tys,
+            unnormalized_output_ty,
+            unnormalized_input_tys,
             region_bound_pairs: self.region_bound_pairs,
             relations: self.relations,
         }
