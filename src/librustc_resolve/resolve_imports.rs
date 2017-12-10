@@ -21,6 +21,7 @@ use rustc::ty;
 use rustc::lint::builtin::PUB_USE_OF_PRIVATE_EXTERN_CRATE;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::*;
+use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use syntax::ast::{Ident, Name, SpannedIdent, NodeId};
@@ -72,7 +73,7 @@ impl<'a> ImportDirective<'a> {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 /// Records information about the resolution of a name in a namespace of a module.
 pub struct NameResolution<'a> {
     /// The single imports that define the name in the namespace.
@@ -867,12 +868,59 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
 
             match binding.kind {
-                NameBindingKind::Import { binding: orig_binding, .. } => {
+                NameBindingKind::Import { binding: orig_binding, directive, .. } => {
                     if ns == TypeNS && orig_binding.is_variant() &&
-                       !orig_binding.vis.is_at_least(binding.vis, &*self) {
-                        let msg = format!("variant `{}` is private, and cannot be reexported, \
-                                           consider declaring its enum as `pub`", ident);
-                        self.session.span_err(binding.span, &msg);
+                        !orig_binding.vis.is_at_least(binding.vis, &*self) {
+                            let msg = match directive.subclass {
+                                ImportDirectiveSubclass::SingleImport { .. } => {
+                                    format!("variant `{}` is private and cannot be reexported",
+                                            ident)
+                                },
+                                ImportDirectiveSubclass::GlobImport { .. } => {
+                                    let msg = "enum is private and its variants \
+                                               cannot be reexported".to_owned();
+                                    let error_id = (DiagnosticMessageId::ErrorId(0), // no code?!
+                                                    Some(binding.span),
+                                                    msg.clone());
+                                    let fresh = self.session.one_time_diagnostics
+                                        .borrow_mut().insert(error_id);
+                                    if !fresh {
+                                        continue;
+                                    }
+                                    msg
+                                },
+                                ref s @ _ => bug!("unexpected import subclass {:?}", s)
+                            };
+                            let mut err = self.session.struct_span_err(binding.span, &msg);
+
+                            let imported_module = directive.imported_module.get()
+                                .expect("module should exist");
+                            let resolutions = imported_module.parent.expect("parent should exist")
+                                .resolutions.borrow();
+                            let enum_path_segment_index = directive.module_path.len() - 1;
+                            let enum_ident = directive.module_path[enum_path_segment_index].node;
+
+                            let enum_resolution = resolutions.get(&(enum_ident, TypeNS))
+                                .expect("resolution should exist");
+                            let enum_span = enum_resolution.borrow()
+                                .binding.expect("binding should exist")
+                                .span;
+                            let enum_def_span = self.session.codemap().def_span(enum_span);
+                            let enum_def_snippet = self.session.codemap()
+                                .span_to_snippet(enum_def_span).expect("snippet should exist");
+                            // potentially need to strip extant `crate`/`pub(path)` for suggestion
+                            let after_vis_index = enum_def_snippet.find("enum")
+                                .expect("`enum` keyword should exist in snippet");
+                            let suggestion = format!("pub {}",
+                                                     &enum_def_snippet[after_vis_index..]);
+
+                            self.session
+                                .diag_span_suggestion_once(&mut err,
+                                                           DiagnosticMessageId::ErrorId(0),
+                                                           enum_def_span,
+                                                           "consider making the enum public",
+                                                           suggestion);
+                            err.emit();
                     }
                 }
                 NameBindingKind::Ambiguity { b1, b2, .. }
