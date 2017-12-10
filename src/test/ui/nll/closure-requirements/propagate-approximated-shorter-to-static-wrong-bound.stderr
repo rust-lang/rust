@@ -1,17 +1,17 @@
 warning: not reporting region error due to -Znll
-  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:50:9
+  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:51:9
    |
-50 |         demand_y(x, y, x.get())
+51 |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:47
+  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:49:47
    |
-48 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+49 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
-49 | |         // Only works if 'x: 'y:
-50 | |         demand_y(x, y, x.get())
-51 | |     });
+50 | |         // Only works if 'x: 'y:
+51 | |         demand_y(x, y, x.get())
+52 | |     });
    | |_____^
    |
    = note: defining type: DefId(0/1:18 ~ propagate_approximated_shorter_to_static_wrong_bound[317d]::supply[0]::{{closure}}[0]) with closure substs [
@@ -22,14 +22,14 @@ note: External requirements
    = note: where '_#1r: '_#0r
 
 note: No external requirements
-  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:47:1
+  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:1
    |
-47 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-48 | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-49 | |         // Only works if 'x: 'y:
-50 | |         demand_y(x, y, x.get())
-51 | |     });
-52 | | }
+48 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+49 | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+50 | |         // Only works if 'x: 'y:
+51 | |         demand_y(x, y, x.get())
+52 | |     });
+53 | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_shorter_to_static_wrong_bound[317d]::supply[0]) with substs []

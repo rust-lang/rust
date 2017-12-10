@@ -1,17 +1,17 @@
 warning: not reporting region error due to -Znll
-  --> $DIR/propagate-approximated-val.rs:48:9
+  --> $DIR/propagate-approximated-val.rs:49:9
    |
-48 |         demand_y(outlives1, outlives2, x.get())
+49 |         demand_y(outlives1, outlives2, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/propagate-approximated-val.rs:46:45
+  --> $DIR/propagate-approximated-val.rs:47:45
    |
-46 |       establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
+47 |       establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
    |  _____________________________________________^
-47 | |         // Only works if 'x: 'y:
-48 | |         demand_y(outlives1, outlives2, x.get())
-49 | |     });
+48 | |         // Only works if 'x: 'y:
+49 | |         demand_y(outlives1, outlives2, x.get())
+50 | |     });
    | |_____^
    |
    = note: defining type: DefId(0/1:18 ~ propagate_approximated_val[317d]::test[0]::{{closure}}[0]) with closure substs [
@@ -22,14 +22,14 @@ note: External requirements
    = note: where '_#1r: '_#2r
 
 note: No external requirements
-  --> $DIR/propagate-approximated-val.rs:45:1
+  --> $DIR/propagate-approximated-val.rs:46:1
    |
-45 | / fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-46 | |     establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
-47 | |         // Only works if 'x: 'y:
-48 | |         demand_y(outlives1, outlives2, x.get())
-49 | |     });
-50 | | }
+46 | / fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+47 | |     establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
+48 | |         // Only works if 'x: 'y:
+49 | |         demand_y(outlives1, outlives2, x.get())
+50 | |     });
+51 | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_val[317d]::test[0]) with substs []

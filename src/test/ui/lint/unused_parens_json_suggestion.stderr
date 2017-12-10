@@ -8,10 +8,10 @@
   "spans": [
     {
       "file_name": "$DIR/unused_parens_json_suggestion.rs",
-      "byte_start": 1027,
-      "byte_end": 1040,
-      "line_start": 24,
-      "line_end": 24,
+      "byte_start": 1056,
+      "byte_end": 1069,
+      "line_start": 25,
+      "line_end": 25,
       "column_start": 14,
       "column_end": 27,
       "is_primary": true,
@@ -35,10 +35,10 @@
       "spans": [
         {
           "file_name": "$DIR/unused_parens_json_suggestion.rs",
-          "byte_start": 873,
-          "byte_end": 886,
-          "line_start": 19,
-          "line_end": 19,
+          "byte_start": 902,
+          "byte_end": 915,
+          "line_start": 20,
+          "line_end": 20,
           "column_start": 9,
           "column_end": 22,
           "is_primary": true,
@@ -64,10 +64,10 @@
       "spans": [
         {
           "file_name": "$DIR/unused_parens_json_suggestion.rs",
-          "byte_start": 1027,
-          "byte_end": 1040,
-          "line_start": 24,
-          "line_end": 24,
+          "byte_start": 1056,
+          "byte_end": 1069,
+          "line_start": 25,
+          "line_end": 25,
           "column_start": 14,
           "column_end": 27,
           "is_primary": true,
@@ -88,15 +88,15 @@
     }
   ],
   "rendered": "warning: unnecessary parentheses around assigned value
-  --> $DIR/unused_parens_json_suggestion.rs:24:14
+  --> $DIR/unused_parens_json_suggestion.rs:25:14
    |
-24 |     let _a = (1 / (2 + 3));
+25 |     let _a = (1 / (2 + 3));
    |              ^^^^^^^^^^^^^ help: remove these parentheses
    |
 note: lint level defined here
-  --> $DIR/unused_parens_json_suggestion.rs:19:9
+  --> $DIR/unused_parens_json_suggestion.rs:20:9
    |
-19 | #![warn(unused_parens)]
+20 | #![warn(unused_parens)]
    |         ^^^^^^^^^^^^^
 
 "
