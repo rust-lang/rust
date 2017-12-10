@@ -324,6 +324,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         borrows: &Borrows<'cx, 'gcx, 'tcx>
     ) {
         let end_span = borrows.opt_region_end_span(&borrow.region);
+        let scope_tree = borrows.scope_tree();
         let root_place = self.prefixes(&borrow.place, PrefixSet::All).last().unwrap();
 
         match root_place {
@@ -359,7 +360,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     borrow_span, &format!("`{}`", description), Origin::Mir);
                 err.span_label(borrow_span, "does not live long enough");
                 err.span_label(drop_span, "borrowed value only lives until here");
-                err.note("borrowed value must be valid for the static lifetime...");
+                self.tcx.note_and_explain_region(scope_tree, &mut err,
+                                                 "borrowed value must be valid for ",
+                                                 borrow.region, "...");
                 err.emit();
             },
             None => {
