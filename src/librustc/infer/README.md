@@ -141,7 +141,7 @@ will make the permanent. Snapshots can be nested as long as you follow
 a stack-like discipline.
 
 Rather than use snapshots directly, it is often helpful to use the
-methods like `commit_if_ok` or `probe` that encapsulte higher-level
+methods like `commit_if_ok` or `probe` that encapsulate higher-level
 patterns.
 
 ## Subtyping obligations
