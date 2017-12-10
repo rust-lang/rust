@@ -93,20 +93,34 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Moreover, it returns a `AnonTypeMap` that would map `?0` to
     /// info about the `impl Iterator<..>` type and `?1` to info about
     /// the `impl Debug` type.
+    ///
+    /// # Parameters
+    ///
+    /// - `parent_def_id` -- we will only instantiate anonymous types
+    ///   with this parent. This is typically the def-id of the function
+    ///   in whose return type anon types are being instantiated.
+    /// - `body_id` -- the body-id with which the resulting obligations should
+    ///   be associated
+    /// - `param_env` -- the in-scope parameter environment to be used for
+    ///   obligations
+    /// - `value` -- the value within which we are instantiating anon types
     pub fn instantiate_anon_types<T: TypeFoldable<'tcx>>(
         &self,
+        parent_def_id: DefId,
         body_id: ast::NodeId,
         param_env: ty::ParamEnv<'tcx>,
         value: &T,
     ) -> InferOk<'tcx, (T, AnonTypeMap<'tcx>)> {
         debug!(
-            "instantiate_anon_types(value={:?}, body_id={:?}, param_env={:?})",
+            "instantiate_anon_types(value={:?}, parent_def_id={:?}, body_id={:?}, param_env={:?})",
             value,
+            parent_def_id,
             body_id,
             param_env,
         );
         let mut instantiator = Instantiator {
             infcx: self,
+            parent_def_id,
             body_id,
             param_env,
             anon_types: DefIdMap(),
@@ -480,6 +494,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
 struct Instantiator<'a, 'gcx: 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    parent_def_id: DefId,
     body_id: ast::NodeId,
     param_env: ty::ParamEnv<'tcx>,
     anon_types: AnonTypeMap<'tcx>,
@@ -489,11 +504,33 @@ struct Instantiator<'a, 'gcx: 'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
     fn instantiate_anon_types_in_map<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
         debug!("instantiate_anon_types_in_map(value={:?})", value);
+        let tcx = self.infcx.tcx;
         value.fold_with(&mut BottomUpFolder {
-            tcx: self.infcx.tcx,
-            fldop: |ty| if let ty::TyAnon(def_id, substs) = ty.sty {
-                self.fold_anon_ty(ty, def_id, substs)
-            } else {
+            tcx,
+            fldop: |ty| {
+                if let ty::TyAnon(def_id, substs) = ty.sty {
+                    // Check that this is `impl Trait` type is declared by
+                    // `parent_def_id`. During the first phase of type-check, this
+                    // is true, but during NLL type-check, we sometimes encounter
+                    // `impl Trait` types in e.g. inferred closure signatures that
+                    // are not 'local' to the current function and hence which
+                    // ought not to be instantiated.
+                    if let Some(anon_node_id) = tcx.hir.as_local_node_id(def_id) {
+                        let anon_parent_node_id = tcx.hir.get_parent(anon_node_id);
+                        let anon_parent_def_id = tcx.hir.local_def_id(anon_parent_node_id);
+                        if self.parent_def_id == anon_parent_def_id {
+                            return self.fold_anon_ty(ty, def_id, substs);
+                        }
+
+                        debug!("instantiate_anon_types_in_map: \
+                                encountered anon with wrong parent \
+                                def_id={:?} \
+                                anon_parent_def_id={:?}",
+                               def_id,
+                               anon_parent_def_id);
+                    }
+                }
+
                 ty
             },
         })

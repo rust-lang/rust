@@ -16,7 +16,7 @@ use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
-pub fn renumber_mir<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>, mir: &mut Mir<'tcx>) {
+pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, '_, 'tcx>, mir: &mut Mir<'tcx>) {
     debug!("renumber_mir()");
     debug!("renumber_mir: mir.arg_count={:?}", mir.arg_count);
 
@@ -24,26 +24,36 @@ pub fn renumber_mir<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>, mir: &mut
     visitor.visit_mir(mir);
 }
 
+/// Replaces all regions appearing in `value` with fresh inference
+/// variables.
+pub fn renumber_regions<'tcx, T>(
+    infcx: &InferCtxt<'_, '_, 'tcx>,
+    ty_context: TyContext,
+    value: &T,
+) -> T
+where
+    T: TypeFoldable<'tcx>,
+{
+    debug!("renumber_regions(value={:?})", value);
+
+    infcx
+        .tcx
+        .fold_regions(value, &mut false, |_region, _depth| {
+            let origin = NLLRegionVariableOrigin::Inferred(ty_context);
+            infcx.next_nll_region_var(origin)
+        })
+}
+
 struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
-    /// Replaces all regions appearing in `value` with fresh inference
-    /// variables. This is what we do for almost the entire MIR, with
-    /// the exception of the declared types of our arguments.
     fn renumber_regions<T>(&mut self, ty_context: TyContext, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
-        debug!("renumber_regions(value={:?})", value);
-
-        self.infcx
-            .tcx
-            .fold_regions(value, &mut false, |_region, _depth| {
-                let origin = NLLRegionVariableOrigin::Inferred(ty_context);
-                self.infcx.next_nll_region_var(origin)
-            })
+        renumber_regions(self.infcx, ty_context, value)
     }
 }
 

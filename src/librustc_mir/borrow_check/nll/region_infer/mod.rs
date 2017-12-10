@@ -246,13 +246,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|origin| RegionDefinition::new(origin))
             .collect();
 
+        let nll_dump_cause = ty::tls::with(|tcx| tcx.sess.opts.debugging_opts.nll_dump_cause);
+
         let mut result = Self {
             definitions,
             elements: elements.clone(),
             liveness_constraints: RegionValues::new(
                 elements,
                 num_region_variables,
-                TrackCauses(true),
+                TrackCauses(nll_dump_cause),
             ),
             inferred_values: None,
             constraints: Vec::new(),

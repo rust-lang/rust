@@ -985,7 +985,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     let ret_ty = fn_sig.output();
     fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::SizedReturnType);
-    let ret_ty = fcx.instantiate_anon_types_from_return_value(&ret_ty);
+    let ret_ty = fcx.instantiate_anon_types_from_return_value(fn_id, &ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
@@ -1880,11 +1880,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// function with type variables and records the `AnonTypeMap` for
     /// later use during writeback. See
     /// `InferCtxt::instantiate_anon_types` for more details.
-    fn instantiate_anon_types_from_return_value<T: TypeFoldable<'tcx>>(&self, value: &T) -> T {
-        debug!("instantiate_anon_types_from_return_value(value={:?})", value);
+    fn instantiate_anon_types_from_return_value<T: TypeFoldable<'tcx>>(
+        &self,
+        fn_id: ast::NodeId,
+        value: &T,
+    ) -> T {
+        let fn_def_id = self.tcx.hir.local_def_id(fn_id);
+        debug!(
+            "instantiate_anon_types_from_return_value(fn_def_id={:?}, value={:?})",
+            fn_def_id,
+            value
+        );
 
         let (value, anon_type_map) = self.register_infer_ok_obligations(
             self.instantiate_anon_types(
+                fn_def_id,
                 self.body_id,
                 self.param_env,
                 value,

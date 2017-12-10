@@ -1,0 +1,14 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/impl-trait-captures.rs:22:5
+   |
+22 |     x
+   |     ^
+
+error: free region `'_#2r` does not outlive free region `ReEarlyBound(0, 'a)`
+  --> $DIR/impl-trait-captures.rs:22:5
+   |
+22 |     x
+   |     ^
+
+error: aborting due to previous error
+

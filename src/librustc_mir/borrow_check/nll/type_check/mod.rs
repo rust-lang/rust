@@ -17,6 +17,7 @@ use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::MoveData;
+use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
 use rustc::traits::{self, FulfillmentContext};
@@ -77,9 +78,9 @@ mod input_output;
 /// # Parameters
 ///
 /// - `infcx` -- inference context to use
-/// - `body_id` -- body-id of the MIR being checked
 /// - `param_env` -- parameter environment to use for trait solving
 /// - `mir` -- MIR to type-check
+/// - `mir_def_id` -- DefId from which the MIR is derived (must be local)
 /// - `region_bound_pairs` -- the implied outlives obligations between type parameters
 ///   and lifetimes (e.g., `&'a T` implies `T: 'a`)
 /// - `implicit_region_bound` -- a region which all generic parameters are assumed
@@ -94,14 +95,15 @@ mod input_output;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 pub(crate) fn type_check<'gcx, 'tcx>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    body_id: ast::NodeId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
+    mir_def_id: DefId,
     universal_regions: &UniversalRegions<'tcx>,
     liveness: &LivenessResults,
     flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> MirTypeckRegionConstraints<'tcx> {
+    let body_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     type_check_internal(
         infcx,
@@ -113,7 +115,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         &mut |cx| {
             liveness::generate(cx, mir, liveness, flow_inits, move_data);
 
-            cx.equate_inputs_and_outputs(mir, universal_regions);
+            cx.equate_inputs_and_outputs(mir, mir_def_id, universal_regions);
         },
     )
 }

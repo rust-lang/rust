@@ -27,6 +27,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::infer::region_constraints::GenericKind;
 use rustc::infer::outlives::bounds::{self, OutlivesBound};
+use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
@@ -484,9 +485,6 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         let (unnormalized_output_ty, unnormalized_input_tys) =
             inputs_and_output.split_last().unwrap();
 
-        // we should not have created any more variables
-        assert_eq!(self.infcx.num_region_vars(), num_universals);
-
         debug!(
             "build: global regions = {}..{}",
             FIRST_GLOBAL_INDEX,
@@ -791,5 +789,18 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
         tcx.fold_regions(value, &mut false, |region, _| {
             tcx.mk_region(ty::ReVar(self.to_region_vid(region)))
         })
+    }
+}
+
+/// This trait is used by the `impl-trait` constraint code to abstract
+/// over the `FreeRegionMap` from lexical regions and
+/// `UniversalRegions` (from NLL)`.
+impl<'tcx> FreeRegionRelations<'tcx> for UniversalRegions<'tcx> {
+    fn sub_free_regions(&self, shorter: ty::Region<'tcx>, longer: ty::Region<'tcx>) -> bool {
+        let shorter = shorter.to_region_vid();
+        assert!(self.is_universal_region(shorter));
+        let longer = longer.to_region_vid();
+        assert!(self.is_universal_region(longer));
+        self.outlives(longer, shorter)
     }
 }
