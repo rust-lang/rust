@@ -685,7 +685,7 @@ create_config! {
     error_on_line_overflow_comments: bool, true, false,
         "Error if unable to get comments within max_width";
     error_on_line_overflow_strings: bool, true, false,
-        "Error if unable to get string letrais within max_width";
+        "Error if unable to get string literals within max_width";
     report_todo: ReportTactic, ReportTactic::Never, false,
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never, false,
