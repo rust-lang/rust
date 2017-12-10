@@ -78,8 +78,7 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match layout.fields {
         layout::FieldPlacement::Union(_) => {
-            let size = layout.size.bytes();
-            let fill = Type::array(&Type::i8(ccx), size);
+            let fill = Type::padding_filler(ccx, layout.size, layout.align);
             match name {
                 None => {
                     Type::struct_(ccx, &[fill], layout.is_packed())
@@ -115,6 +114,7 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let field_count = layout.fields.count();
 
     let mut offset = Size::from_bytes(0);
+    let mut prev_align = layout.align;
     let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
         let field = layout.field(ccx, i);
@@ -123,7 +123,9 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             i, field, offset, target_offset);
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
-        result.push(Type::array(&Type::i8(ccx), padding.bytes()));
+        let padding_align = layout.align.min(prev_align).min(field.align);
+        assert_eq!(offset.abi_align(padding_align) + padding, target_offset);
+        result.push(Type::padding_filler(ccx, padding, padding_align));
         debug!("    padding before: {:?}", padding);
 
         result.push(field.llvm_type(ccx));
@@ -137,6 +139,7 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
 
         offset = target_offset + field.size;
+        prev_align = field.align;
     }
     if !layout.is_unsized() && field_count > 0 {
         if offset > layout.size {
@@ -144,9 +147,11 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                  layout, layout.size, offset);
         }
         let padding = layout.size - offset;
+        let padding_align = layout.align.min(prev_align);
+        assert_eq!(offset.abi_align(padding_align) + padding, layout.size);
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
                padding, offset, layout.size);
-        result.push(Type::array(&Type::i8(ccx), padding.bytes()));
+        result.push(Type::padding_filler(ccx, padding, padding_align));
         assert!(result.len() == 1 + field_count * 2);
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}",

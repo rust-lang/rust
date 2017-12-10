@@ -489,12 +489,25 @@ impl<'a, 'tcx> Integer {
 
         let wanted = align.abi();
         for &candidate in &[I8, I16, I32, I64, I128] {
-            let ty = Int(candidate, false);
-            if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
+            if wanted == candidate.align(dl).abi() && wanted == candidate.size().bytes() {
                 return Some(candidate);
             }
         }
         None
+    }
+
+    /// Find the largest integer with the given alignment or less.
+    pub fn approximate_abi_align<C: HasDataLayout>(cx: C, align: Align) -> Integer {
+        let dl = cx.data_layout();
+
+        let wanted = align.abi();
+        // FIXME(eddyb) maybe include I128 in the future, when it works everywhere.
+        for &candidate in &[I64, I32, I16] {
+            if wanted >= candidate.align(dl).abi() && wanted >= candidate.size().bytes() {
+                return candidate;
+            }
+        }
+        I8
     }
 
     /// Get the Integer type from an attr::IntType.
