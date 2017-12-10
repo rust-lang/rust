@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions: ast mir
+//[mir]compile-flags: -Z borrowck=mir
+
 #![feature(thread_local)]
 
 #[thread_local]
@@ -15,11 +18,12 @@ static FOO: u8 = 3;
 
 fn main() {
     let a = &FOO;
-    //~^ ERROR borrowed value does not live long enough
-    //~| does not live long enough
-    //~| NOTE borrowed value must be valid for the static lifetime
+    //[ast]~^ ERROR borrowed value does not live long enough
+    //[ast]~| does not live long enough
+    //[ast]~| NOTE borrowed value must be valid for the static lifetime
 
     std::thread::spawn(move || {
         println!("{}", a);
     });
-} //~ temporary value only lives until here
+} //[ast]~ temporary value only lives until here
+  //[mir]~^ ERROR borrowed value does not live long enough

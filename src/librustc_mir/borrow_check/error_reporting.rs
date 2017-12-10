@@ -16,7 +16,7 @@ use rustc_data_structures::indexed_vec::Idx;
 
 use super::{MirBorrowckCtxt, Context};
 use super::{InitializationRequiringAction, PrefixSet};
-use dataflow::{BorrowData, FlowAtLocation, MovingOutStatements};
+use dataflow::{BorrowData, Borrows, FlowAtLocation, MovingOutStatements};
 use dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -319,18 +319,43 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     pub(super) fn report_borrowed_value_does_not_live_long_enough(
         &mut self,
         _: Context,
-        (place, span): (&Place<'tcx>, Span),
-        end_span: Option<Span>,
+        borrow: &BorrowData<'tcx>,
+        drop_span: Span,
+        borrows: &Borrows<'cx, 'gcx, 'tcx>
     ) {
-        let root_place = self.prefixes(place, PrefixSet::All).last().unwrap();
+        let end_span = borrows.opt_region_end_span(&borrow.region);
+        let root_place = self.prefixes(&borrow.place, PrefixSet::All).last().unwrap();
+
+        match root_place {
+            &Place::Local(local) => {
+                if let Some(_) = self.storage_dead_or_drop_error_reported_l.replace(local) {
+                    debug!("report_does_not_live_long_enough({:?}): <suppressed>",
+                           (borrow, drop_span));
+                    return
+                }
+            }
+            &Place::Static(ref statik) => {
+                if let Some(_) = self.storage_dead_or_drop_error_reported_s
+                    .replace(statik.def_id)
+                {
+                    debug!("report_does_not_live_long_enough({:?}): <suppressed>",
+                           (borrow, drop_span));
+                    return
+                }
+            },
+            &Place::Projection(_) =>
+                unreachable!("root_place is an unreachable???")
+        };
+
         let proper_span = match *root_place {
             Place::Local(local) => self.mir.local_decls[local].source_info.span,
-            _ => span,
+            _ => drop_span,
         };
+
         let mut err = self.tcx
-            .path_does_not_live_long_enough(span, "borrowed value", Origin::Mir);
+            .path_does_not_live_long_enough(drop_span, "borrowed value", Origin::Mir);
         err.span_label(proper_span, "temporary value created here");
-        err.span_label(span, "temporary value dropped here while still borrowed");
+        err.span_label(drop_span, "temporary value dropped here while still borrowed");
         err.note("consider using a `let` binding to increase its lifetime");
 
         if let Some(end) = end_span {

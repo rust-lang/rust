@@ -233,7 +233,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             hir::BodyOwnerKind::Static(_) => false,
             hir::BodyOwnerKind::Fn => true,
         },
-        storage_dead_or_drop_error_reported: FxHashSet(),
+        storage_dead_or_drop_error_reported_l: FxHashSet(),
+        storage_dead_or_drop_error_reported_s: FxHashSet(),
     };
 
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
@@ -258,7 +259,9 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// This field keeps track of when storage dead or drop errors are reported
     /// in order to stop duplicate error reporting and identify the conditions required
     /// for a "temporary value dropped here while still borrowed" error. See #45360.
-    storage_dead_or_drop_error_reported: FxHashSet<Local>,
+    storage_dead_or_drop_error_reported_l: FxHashSet<Local>,
+    /// Same as the above, but for statics (thread-locals)
+    storage_dead_or_drop_error_reported_s: FxHashSet<DefId>,
 }
 
 // Check that:
@@ -502,19 +505,9 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 flow_state.borrows.with_elems_outgoing(|borrows| {
                     for i in borrows {
                         let borrow = &data[i];
+                        let context = ContextKind::StorageDead.new(loc);
 
-                        if self.place_is_invalidated_at_exit(&borrow.place) {
-                            debug!("borrow conflicts at exit {:?}", borrow);
-                            // FIXME: should be talking about the region lifetime instead
-                            // of just a span here.
-                            let end_span = domain.opt_region_end_span(&borrow.region);
-
-                            self.report_borrowed_value_does_not_live_long_enough(
-                                ContextKind::StorageDead.new(loc),
-                            (&borrow.place, end_span.unwrap_or(span)),
-                                end_span,
-                            )
-                        }
+                        self.check_for_invalidation_at_exit(context, borrow, span, flow_state);
                     }
                 });
             }
@@ -663,33 +656,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) -> AccessErrorsReported {
         let (sd, rw) = kind;
 
-        let storage_dead_or_drop_local = match (place_span.0, rw) {
-            (&Place::Local(local), Write(WriteKind::StorageDeadOrDrop)) => Some(local),
-            _ => None,
-        };
-
-        // Check if error has already been reported to stop duplicate reporting.
-        if let Some(local) = storage_dead_or_drop_local {
-            if self.storage_dead_or_drop_error_reported.contains(&local) {
-                return AccessErrorsReported {
-                    mutability_error: false,
-                    conflict_error: true
-                };
-            }
-        }
-
         let mutability_error =
             self.check_access_permissions(place_span, rw, is_local_mutation_allowed);
         let conflict_error =
             self.check_access_for_conflict(context, place_span, sd, rw, flow_state);
-
-        // A conflict with a storagedead/drop is a "borrow does not live long enough"
-        // error. Avoid reporting such an error multiple times for the same local.
-        if conflict_error {
-            if let Some(local) = storage_dead_or_drop_local {
-                self.storage_dead_or_drop_error_reported.insert(local);
-            }
-        }
 
         AccessErrorsReported { mutability_error, conflict_error }
     }
@@ -749,16 +719,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             )
                         }
                         WriteKind::StorageDeadOrDrop => {
-                            let end_span = flow_state
-                                .borrows
-                                .operator()
-                                .opt_region_end_span(&borrow.region);
                             error_reported = true;
                             this.report_borrowed_value_does_not_live_long_enough(
-                                context,
-                                place_span,
-                                end_span,
-                            )
+                                context, borrow, place_span.1, flow_state.borrows.operator());
                         }
                         WriteKind::Mutate => {
                             error_reported = true;
@@ -947,8 +910,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     /// Returns whether a borrow of this place is invalidated when the function
     /// exits
-    fn place_is_invalidated_at_exit(&mut self, place: &Place<'tcx>) -> bool {
-        debug!("place_is_invalidated_at_exit({:?})", place);
+    fn check_for_invalidation_at_exit(&mut self,
+                                      context: Context,
+                                      borrow: &BorrowData<'tcx>,
+                                      span: Span,
+                                      flow_state: &Flows<'cx, 'gcx, 'tcx>)
+    {
+        debug!("check_for_invalidation_at_exit({:?})", borrow);
+        let place = &borrow.place;
         let root_place = self.prefixes(place, PrefixSet::All).last().unwrap();
 
         // FIXME(nll-rfc#40): do more precise destructor tracking here. For now
@@ -956,7 +925,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // we'll have a memory leak) and assume that all statics have a destructor.
         //
         // FIXME: allow thread-locals to borrow other thread locals?
-        let (might_be_alive, will_be_dropped, local) = match root_place {
+        let (might_be_alive, will_be_dropped) = match root_place {
             Place::Static(statik) => {
                 // Thread-locals might be dropped after the function exits, but
                 // "true" statics will never be.
@@ -965,12 +934,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     .iter()
                     .any(|attr| attr.check_name("thread_local"));
 
-                (true, is_thread_local, None)
+                (true, is_thread_local)
             }
-            Place::Local(local) => {
+            Place::Local(_) => {
                 // Locals are always dropped at function exit, and if they
                 // have a destructor it would've been called already.
-                (false, self.locals_are_invalidated_at_exit, Some(*local))
+                (false, self.locals_are_invalidated_at_exit)
             }
             Place::Projection(..) => {
                 bug!("root of {:?} is a projection ({:?})?", place, root_place)
@@ -982,30 +951,28 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 "place_is_invalidated_at_exit({:?}) - won't be dropped",
                 place
             );
-            return false;
+            return;
         }
 
         // FIXME: replace this with a proper borrow_conflicts_with_place when
         // that is merged.
-        let prefix_set = if might_be_alive {
-            PrefixSet::Supporting
+        let sd = if might_be_alive {
+            Deep
         } else {
-            PrefixSet::Shallow
+            Shallow(None)
         };
 
-        let result =
-            self.prefixes(place, prefix_set).any(|prefix| prefix == root_place);
-
-        if result {
-            if let Some(local) = local {
-                if let Some(_) = self.storage_dead_or_drop_error_reported.replace(local) {
-                    debug!("place_is_invalidated_at_exit({:?}) - suppressed", place);
-                    return false;
-                }
-            }
+        if self.places_conflict(place, root_place, sd) {
+            debug!("check_for_invalidation_at_exit({:?}): INVALID", place);
+            // FIXME: should be talking about the region lifetime instead
+            // of just a span here.
+            self.report_borrowed_value_does_not_live_long_enough(
+                context,
+                borrow,
+                span.end_point(),
+                flow_state.borrows.operator()
+            )
         }
-
-        result
     }
 }
 
@@ -1358,7 +1325,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
                                     hir::MutMutable => {
-                                        let mode = match self.is_upvar_field_projection(&proj.base) {
+                                        let mode = match
+                                            self.is_upvar_field_projection(&proj.base)
+                                        {
                                             Some(field) if {
                                                 self.mir.upvar_decls[field.index()].by_ref
                                             } => is_local_mutation_allowed,
@@ -1485,10 +1454,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Overlap::Disjoint
                 }
             }
-            (Place::Static(..), Place::Static(..)) => {
-                // Borrows of statics do not have to be tracked here.
-                debug!("place_element_conflict: IGNORED-STATIC");
-                Overlap::Disjoint
+            (Place::Static(static1), Place::Static(static2)) => {
+                if static1.def_id != static2.def_id {
+                    debug!("place_element_conflict: DISJOINT-STATIC");
+                    Overlap::Disjoint
+                } else if self.tcx.is_static_mut(static1.def_id) {
+                    // We ignore mutable statics - they can only be unsafe code.
+                    debug!("place_element_conflict: IGNORE-STATIC-MUT");
+                    Overlap::Disjoint
+                } else {
+                    debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
+                    Overlap::EqualOrDisjoint
+                }
             }
             (Place::Local(_), Place::Static(_)) |
             (Place::Static(_), Place::Local(_)) => {
