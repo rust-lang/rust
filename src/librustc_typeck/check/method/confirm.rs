@@ -276,6 +276,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // FIXME: this feels, like, super dubious
         self.fcx
             .autoderef(self.span, self_ty)
+            .include_raw_pointers()
             .filter_map(|(ty, _)| {
                 match ty.sty {
                     ty::TyDynamic(ref data, ..) => data.principal().map(|p| closure(self, ty, p)),
