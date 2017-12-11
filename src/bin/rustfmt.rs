@@ -136,38 +136,24 @@ fn match_cli_path_or_file(
 fn make_opts() -> Options {
     let mut opts = Options::new();
 
-    opts.optflag("h", "help", "Show this message");
-    opts.optflag("V", "version", "Show version information");
-    opts.optflag("v", "verbose", "Print verbose output");
-    opts.optflag("", "skip-children", "Don't reformat child modules");
-    opts.optflag(
+    // Sorted in alphabetical order.
+    opts.optopt(
         "",
-        "unstable-features",
-        "Enables unstable features. Only available on nightly channel",
+        "color",
+        "Use colored output (if supported)",
+        "[always|never|auto]",
     );
     opts.optflag(
         "",
         "config-help",
         "Show details of rustfmt configuration options",
     );
-    opts.optflag(
-        "",
-        "error-on-unformatted",
-        "Error if unable to get comments or string literals within max_width, \
-         or they are left with trailing whitespaces",
-    );
-
     opts.optopt(
         "",
-        "write-mode",
-        "How to write output (not usable when piping from stdin)",
-        "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
-    );
-    opts.optopt(
-        "",
-        "color",
-        "Use colored output (if supported)",
-        "[always|never|auto]",
+        "config-path",
+        "Recursively searches the given path for the rustfmt.toml config file. If not \
+         found reverts to the input file path",
+        "[Path for the configuration file]",
     );
     opts.optopt(
         "",
@@ -181,18 +167,32 @@ fn make_opts() -> Options {
         "Dumps configuration options that were checked during formatting to a file.",
         "PATH",
     );
-    opts.optopt(
+    opts.optflag(
         "",
-        "config-path",
-        "Recursively searches the given path for the rustfmt.toml config file. If not \
-         found reverts to the input file path",
-        "[Path for the configuration file]",
+        "error-on-unformatted",
+        "Error if unable to get comments or string literals within max_width, \
+         or they are left with trailing whitespaces",
     );
     opts.optopt(
         "",
         "file-lines",
         "Format specified line ranges. See README for more detail on the JSON format.",
         "JSON",
+    );
+    opts.optflag("h", "help", "Show this message");
+    opts.optflag("", "skip-children", "Don't reformat child modules");
+    opts.optflag(
+        "",
+        "unstable-features",
+        "Enables unstable features. Only available on nightly channel",
+    );
+    opts.optflag("v", "verbose", "Print verbose output");
+    opts.optflag("V", "version", "Show version information");
+    opts.optopt(
+        "",
+        "write-mode",
+        "How to write output (not usable when piping from stdin)",
+        "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
     );
 
     opts
