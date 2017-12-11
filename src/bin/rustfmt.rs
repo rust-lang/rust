@@ -63,6 +63,7 @@ struct CliOptions {
     color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
     unstable_features: bool,
+    error_on_unformatted: bool,
 }
 
 impl CliOptions {
@@ -104,6 +105,10 @@ impl CliOptions {
             options.file_lines = file_lines.parse()?;
         }
 
+        if matches.opt_present("error-on-unformatted") {
+            options.error_on_unformatted = true;
+        }
+
         Ok(options)
     }
 
@@ -112,6 +117,7 @@ impl CliOptions {
         config.set().verbose(self.verbose);
         config.set().file_lines(self.file_lines);
         config.set().unstable_features(self.unstable_features);
+        config.set().error_on_unformatted_comments_or_strings(self.error_on_unformatted);
         if let Some(write_mode) = self.write_mode {
             config.set().write_mode(write_mode);
         }
