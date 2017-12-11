@@ -20,6 +20,10 @@ fn detect_features_impl<T: FeatureQuery>(x: T) -> usize {
     {
         super::aarch64::detect_features(x)
     }
+    #[cfg(target_arch = "powerpc64")]
+    {
+        super::powerpc64::detect_features(x)
+    }
 }
 
 /// Detects CPU features:
