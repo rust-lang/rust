@@ -917,7 +917,7 @@ pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(movntps))] // FIXME movntdq
 pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
-    ::core::intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
+    ::core::intrinsics::nontemporal_store(mem_addr, a);
 }
 
 /// Stores a 32-bit integer value in the specified memory location.
