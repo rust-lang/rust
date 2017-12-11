@@ -10,3 +10,11 @@ fn main() {
     // nostrud exercitation ullamco laboris nisi
     // ut aliquip ex ea commodo consequat.
 }
+
+fn code_block() {
+    // ```rust
+    // let x = 3;
+    //
+    // println!("x = {}", x);
+    // ```
+}
