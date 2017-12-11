@@ -682,7 +682,7 @@ create_config! {
     disable_all_formatting: bool, false, false, "Don't reformat anything";
     skip_children: bool, false, false, "Don't reformat out of line modules";
     error_on_line_overflow: bool, true, false, "Error if unable to get all lines within max_width";
-    error_on_unformatted_comments_or_strings: bool, false, false,
+    error_on_unformatted: bool, false, false,
         "Error if unable to get comments or string literals within max_width, \
          or they are left with trailing whitespaces";
     report_todo: ReportTactic, ReportTactic::Never, false,

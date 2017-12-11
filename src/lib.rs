@@ -120,7 +120,7 @@ impl FormattingError {
 
     fn msg_suffix(&self) -> &str {
         if self.is_comment || self.is_string {
-            "set `error_on_unformatted_comments_or_strings = false` to suppress \
+            "set `error_on_unformatted = false` to suppress \
              the warning against comments or string literals\n"
         } else {
             ""
@@ -372,7 +372,7 @@ fn should_report_error(
     error_kind: ErrorKind,
 ) -> bool {
     let allow_error_report = if char_kind.is_comment() || is_string {
-        config.error_on_unformatted_comments_or_strings()
+        config.error_on_unformatted()
     } else {
         true
     };
