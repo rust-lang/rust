@@ -405,10 +405,8 @@ fn format_lines(
     let mut line_buffer = String::with_capacity(config.max_width() * 2);
     let mut is_string = false; // true if the current line contains a string literal.
     let mut format_line = config.file_lines().contains_line(name, cur_line);
-    let mut b = 0;
 
-    for (kind, c) in CharClasses::new(text.chars()) {
-        b += 1;
+    for (kind, (b, c)) in CharClasses::new(text.chars().enumerate()) {
         if c == '\r' {
             continue;
         }
