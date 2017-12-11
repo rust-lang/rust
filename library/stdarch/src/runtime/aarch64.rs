@@ -32,11 +32,11 @@ pub enum __Feature {
 }
 
 pub fn detect_features<T: linux::FeatureQuery>(mut x: T) -> usize {
-    let value: usize = 0;
+    let mut value: usize = 0;
     {
         let mut enable_feature = |f| {
             if x.has_feature(&f) {
-                bit::set(value, f as u32);
+                value = bit::set(value, f as u32);
             }
         };
         enable_feature(__Feature::asimd);
