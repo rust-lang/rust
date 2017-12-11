@@ -1451,6 +1451,9 @@ mod tests {
         // two double colons
         let none: Option<Ipv6Addr> = "1:2::6::8".parse().ok();
         assert_eq!(None, none);
+        // `::` indicating zero groups of zeros
+        let none: Option<Ipv6Addr> = "1:2:3:4::5:6:7:8".parse().ok();
+        assert_eq!(None, none);
     }
 
     #[test]
