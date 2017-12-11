@@ -729,27 +729,31 @@ pub(crate) fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trace!("running old const eval");
     let old_result = ConstContext::new(tcx, key.param_env.and(substs), tables).eval(&body.value);
     trace!("old const eval produced {:?}", old_result);
-    let instance = ty::Instance::new(def_id, substs);
-    trace!("const eval instance: {:?}, {:?}", instance, key.param_env);
-    let miri_result = ::rustc::mir::interpret::eval_body(tcx, instance, key.param_env);
-    match (miri_result, old_result) {
-        ((Err(err), ecx), Ok(ok)) => {
-            trace!("miri failed, ctfe returned {:?}", ok);
-            tcx.sess.span_warn(
-                tcx.def_span(key.value.0),
-                "miri failed to eval, while ctfe succeeded",
-            );
-            let () = unwrap_miri(&ecx, Err(err));
-            Ok(ok)
-        },
-        ((Ok(_), _), Err(err)) => {
-            Err(err)
-        },
-        ((Err(_), _), Err(err)) => Err(err),
-        ((Ok((miri_val, miri_ty)), mut ecx), Ok(ctfe)) => {
-            check_ctfe_against_miri(&mut ecx, miri_val, miri_ty, ctfe.val);
-            Ok(ctfe)
+    if tcx.sess.opts.debugging_opts.miri {
+        let instance = ty::Instance::new(def_id, substs);
+        trace!("const eval instance: {:?}, {:?}", instance, key.param_env);
+        let miri_result = ::rustc::mir::interpret::eval_body(tcx, instance, key.param_env);
+        match (miri_result, old_result) {
+            ((Err(err), ecx), Ok(ok)) => {
+                trace!("miri failed, ctfe returned {:?}", ok);
+                tcx.sess.span_warn(
+                    tcx.def_span(key.value.0),
+                    "miri failed to eval, while ctfe succeeded",
+                );
+                let () = unwrap_miri(&ecx, Err(err));
+                Ok(ok)
+            },
+            ((Ok(_), _), Err(err)) => {
+                Err(err)
+            },
+            ((Err(_), _), Err(err)) => Err(err),
+            ((Ok((miri_val, miri_ty)), mut ecx), Ok(ctfe)) => {
+                check_ctfe_against_miri(&mut ecx, miri_val, miri_ty, ctfe.val);
+                Ok(ctfe)
+            }
         }
+    } else {
+        old_result
     }
 }
 
