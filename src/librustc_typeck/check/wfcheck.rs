@@ -539,15 +539,22 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 ExplicitSelf::ByBox => (),
 
                 ExplicitSelf::ByRawPointer(_) => {
-                    feature_gate::feature_err(&fcx.tcx.sess.parse_sess, "arbitrary_self_types", span,
-                        GateIssue::Language, "raw pointer `self` is unstable")
+                    feature_gate::feature_err(
+                        &fcx.tcx.sess.parse_sess,
+                        "arbitrary_self_types",
+                        span,
+                        GateIssue::Language,
+                        "raw pointer `self` is unstable")
                     .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
                     .emit();
                 }
 
                 ExplicitSelf::Other => {
-                    feature_gate::feature_err(&fcx.tcx.sess.parse_sess, "arbitrary_self_types", span,
-                        GateIssue::Language, "arbitrary `self` types are unstable")
+                    feature_gate::feature_err(
+                        &fcx.tcx.sess.parse_sess,
+                        "arbitrary_self_types",
+                        span,
+                        GateIssue::Language,"arbitrary `self` types are unstable")
                     .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
                     .emit();
                 }
