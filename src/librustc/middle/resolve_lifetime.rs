@@ -29,7 +29,6 @@ use syntax::attr;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
-use util::common::ErrorReported;
 use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
 use std::slice;
 
@@ -357,7 +356,7 @@ fn resolve_lifetimes<'tcx>(
 ) -> Rc<ResolveLifetimes> {
     assert_eq!(for_krate, LOCAL_CRATE);
 
-    let named_region_map = krate(tcx).unwrap_or_default();
+    let named_region_map = krate(tcx);
 
     let mut defs = FxHashMap();
     for (k, v) in named_region_map.defs {
@@ -392,7 +391,7 @@ fn resolve_lifetimes<'tcx>(
     })
 }
 
-fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> Result<NamedRegionMap, ErrorReported> {
+fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> NamedRegionMap {
     let krate = tcx.hir.krate();
     let mut map = NamedRegionMap {
         defs: NodeMap(),
@@ -413,7 +412,7 @@ fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> Result<NamedRegionMap, ErrorRepor
             visitor.visit_item(item);
         }
     }
-    Ok(map)
+    map
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
