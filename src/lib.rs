@@ -21,7 +21,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate strings;
 extern crate syntax;
 extern crate term;
 extern crate unicode_segmentation;
@@ -35,7 +34,6 @@ use std::rc::Rc;
 
 use errors::{DiagnosticBuilder, Handler};
 use errors::emitter::{ColorConfig, EmitterWriter};
-use strings::string_buffer::StringBuffer;
 use syntax::ast;
 use syntax::codemap::{CodeMap, FilePathMapping};
 use syntax::parse::{self, ParseSess};
@@ -300,7 +298,7 @@ fn format_ast<F>(
     mut after_file: F,
 ) -> Result<(FileMap, bool), io::Error>
 where
-    F: FnMut(&str, &mut StringBuffer, &[(usize, usize)]) -> Result<bool, io::Error>,
+    F: FnMut(&str, &mut String, &[(usize, usize)]) -> Result<bool, io::Error>,
 {
     let mut result = FileMap::new();
     // diff mode: check if any files are differing
@@ -369,7 +367,7 @@ fn is_skipped_line(line_number: usize, skipped_range: &[(usize, usize)]) -> bool
 // FIXME(#209) warn on bad license
 // FIXME(#20) other stuff for parity with make tidy
 fn format_lines(
-    text: &mut StringBuffer,
+    text: &mut String,
     name: &str,
     skipped_range: &[(usize, usize)],
     config: &Config,
@@ -386,8 +384,10 @@ fn format_lines(
     let mut prev_char: Option<char> = None;
     let mut is_comment = false;
     let mut line_buffer = String::with_capacity(config.max_width() * 2);
+    let mut b = 0;
 
-    for (c, b) in text.chars() {
+    for c in text.chars() {
+        b += 1;
         if c == '\r' {
             continue;
         }
@@ -456,8 +456,8 @@ fn format_lines(
     }
 
     if newline_count > 1 {
-        debug!("track truncate: {} {}", text.len, newline_count);
-        let line = text.len - newline_count + 1;
+        debug!("track truncate: {} {}", text.len(), newline_count);
+        let line = text.len() - newline_count + 1;
         text.truncate(line);
     }
 

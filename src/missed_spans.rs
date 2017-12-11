@@ -17,12 +17,12 @@ use codemap::LineRangeUtils;
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
 use config::WriteMode;
 use shape::{Indent, Shape};
-use utils::{count_newlines, mk_sp};
+use utils::{count_newlines, last_line_width, mk_sp};
 use visitor::FmtVisitor;
 
 impl<'a> FmtVisitor<'a> {
     fn output_at_start(&self) -> bool {
-        self.buffer.len == 0
+        self.buffer.len() == 0
     }
 
     // TODO these format_missing methods are ugly. Refactor and add unit tests
@@ -86,7 +86,11 @@ impl<'a> FmtVisitor<'a> {
 
     fn push_vertical_spaces(&mut self, mut newline_count: usize) {
         // The buffer already has a trailing newline.
-        let offset = if self.buffer.cur_offset() == 0 { 0 } else { 1 };
+        let offset = if last_line_width(&self.buffer) == 0 {
+            0
+        } else {
+            1
+        };
         let newline_upper_bound = self.config.blank_lines_upper_bound() + offset;
         let newline_lower_bound = self.config.blank_lines_lower_bound() + offset;
         if newline_count > newline_upper_bound {
@@ -150,21 +154,21 @@ impl<'a> FmtVisitor<'a> {
         }
 
         if status.rewrite_next_comment {
-            if fix_indent {
+            let comment_indent = if fix_indent {
                 if let Some('{') = last_char {
                     self.push_str("\n");
                 }
                 let indent_str = self.block_indent.to_string(self.config);
                 self.push_str(&indent_str);
+                self.block_indent
             } else {
                 self.push_str(" ");
-            }
-
+                Indent::from_width(self.config, last_line_width(&self.buffer))
+            };
             let comment_width = ::std::cmp::min(
                 self.config.comment_width(),
                 self.config.max_width() - self.block_indent.width(),
             );
-            let comment_indent = Indent::from_width(self.config, self.buffer.cur_offset());
             let comment_shape = Shape::legacy(comment_width, comment_indent);
             let comment_str = rewrite_comment(subslice, false, comment_shape, self.config)
                 .unwrap_or_else(|| String::from(subslice));
