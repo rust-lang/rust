@@ -31,8 +31,9 @@ fn test() {
     {
         let y = 22;
         let mut closure = || p = &y;
+        //~^ ERROR `y` does not live long enough [E0597]
         closure();
-    } //~ ERROR borrowed value does not live long enough
+    }
 
     deref(p);
 }

@@ -24,16 +24,16 @@ note: No external requirements
    |
    = note: defining type: DefId(0/0:3 ~ escape_argument[317d]::test[0]) with substs []
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/escape-argument.rs:38:6
+error[E0597]: `y` does not live long enough
+  --> $DIR/escape-argument.rs:37:25
    |
-35 |         let y = 22;
-   |             - temporary value created here
-...
-38 |     }
-   |      ^ temporary value dropped here while still borrowed
+37 |         closure(&mut p, &y);
+   |                         ^^ does not live long enough
+38 |         //~^ ERROR `y` does not live long enough [E0597]
+39 |     }
+   |      - borrowed value only lives until here
    |
-   = note: consider using a `let` binding to increase its lifetime
+   = note: borrowed value must be valid for lifetime '_#5r...
 
 error: aborting due to previous error
 

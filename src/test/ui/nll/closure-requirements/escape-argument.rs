@@ -35,8 +35,8 @@ fn test() {
         let y = 22;
         let mut closure = expect_sig(|p, y| *p = y);
         closure(&mut p, &y);
+        //~^ ERROR `y` does not live long enough [E0597]
     }
-    //~^ ERROR borrowed value does not live long enough [E0597]
 
     deref(p);
 }

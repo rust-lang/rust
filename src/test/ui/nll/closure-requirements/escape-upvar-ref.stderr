@@ -21,22 +21,22 @@ note: No external requirements
 29 | |     let mut p = &x;
 30 | |
 ...  |
-37 | |     deref(p);
-38 | | }
+38 | |     deref(p);
+39 | | }
    | |_^
    |
    = note: defining type: DefId(0/0:3 ~ escape_upvar_ref[317d]::test[0]) with substs []
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/escape-upvar-ref.rs:35:6
+error[E0597]: `y` does not live long enough
+  --> $DIR/escape-upvar-ref.rs:33:27
    |
-32 |         let y = 22;
-   |             - temporary value created here
+33 |         let mut closure = || p = &y;
+   |                           ^^^^^^^^^ does not live long enough
 ...
-35 |     } //~ ERROR borrowed value does not live long enough
-   |      ^ temporary value dropped here while still borrowed
+36 |     }
+   |      - borrowed value only lives until here
    |
-   = note: consider using a `let` binding to increase its lifetime
+   = note: borrowed value must be valid for lifetime '_#3r...
 
 error: aborting due to previous error
 

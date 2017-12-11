@@ -30,11 +30,11 @@ fn test() {
         let closure = SomeStruct {
             p: &mut p,
             y: &y,
+            //~^ ERROR `y` does not live long enough [E0597]
         };
 
         closure.invoke();
     }
-    //~^ ERROR borrowed value does not live long enough [E0597]
 
     deref(p);
 }
