@@ -1,0 +1,574 @@
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+use syntax_pos::Span;
+use rustc::mir::{BorrowKind, Field, Local, Location, Operand};
+use rustc::mir::{Place, ProjectionElem, Rvalue, StatementKind};
+use rustc::ty;
+use rustc_data_structures::indexed_vec::Idx;
+
+use super::{MirBorrowckCtxt, Context};
+use super::{InitializationRequiringAction, PrefixSet};
+use dataflow::{BorrowData, Borrows, FlowAtLocation, MovingOutStatements};
+use dataflow::move_paths::MovePathIndex;
+use util::borrowck_errors::{BorrowckErrors, Origin};
+
+impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+    pub(super) fn report_use_of_moved_or_uninitialized(
+        &mut self,
+        _context: Context,
+        desired_action: InitializationRequiringAction,
+        (place, span): (&Place<'tcx>, Span),
+        mpi: MovePathIndex,
+        curr_move_out: &FlowAtLocation<MovingOutStatements<'_, 'gcx, 'tcx>>,
+    ) {
+        let mois = self.move_data.path_map[mpi]
+            .iter()
+            .filter(|moi| curr_move_out.contains(moi))
+            .collect::<Vec<_>>();
+
+        if mois.is_empty() {
+            let item_msg = match self.describe_place(place) {
+                Some(name) => format!("`{}`", name),
+                None => "value".to_owned(),
+            };
+            self.tcx
+                .cannot_act_on_uninitialized_variable(
+                    span,
+                    desired_action.as_noun(),
+                    &self.describe_place(place).unwrap_or("_".to_owned()),
+                    Origin::Mir,
+                )
+                .span_label(span, format!("use of possibly uninitialized {}", item_msg))
+                .emit();
+        } else {
+            let msg = ""; //FIXME: add "partially " or "collaterally "
+
+            let mut err = self.tcx.cannot_act_on_moved_value(
+                span,
+                desired_action.as_noun(),
+                msg,
+                &self.describe_place(place).unwrap_or("_".to_owned()),
+                Origin::Mir,
+            );
+
+            err.span_label(
+                span,
+                format!(
+                    "value {} here after move",
+                    desired_action.as_verb_in_past_tense()
+                ),
+            );
+            for moi in mois {
+                let move_msg = ""; //FIXME: add " (into closure)"
+                let move_span = self.mir.source_info(self.move_data.moves[*moi].source).span;
+                if span == move_span {
+                    err.span_label(
+                        span,
+                        format!("value moved{} here in previous iteration of loop", move_msg),
+                    );
+                } else {
+                    err.span_label(move_span, format!("value moved{} here", move_msg));
+                };
+            }
+            //FIXME: add note for closure
+            err.emit();
+        }
+    }
+
+    pub(super) fn report_move_out_while_borrowed(
+        &mut self,
+        _context: Context,
+        (place, span): (&Place<'tcx>, Span),
+        borrow: &BorrowData<'tcx>,
+    ) {
+        let value_msg = match self.describe_place(place) {
+            Some(name) => format!("`{}`", name),
+            None => "value".to_owned(),
+        };
+        let borrow_msg = match self.describe_place(&borrow.place) {
+            Some(name) => format!("`{}`", name),
+            None => "value".to_owned(),
+        };
+        self.tcx
+            .cannot_move_when_borrowed(
+                span,
+                &self.describe_place(place).unwrap_or("_".to_owned()),
+                Origin::Mir,
+            )
+            .span_label(
+                self.retrieve_borrow_span(borrow),
+                format!("borrow of {} occurs here", borrow_msg),
+            )
+            .span_label(span, format!("move out of {} occurs here", value_msg))
+            .emit();
+    }
+
+    pub(super) fn report_use_while_mutably_borrowed(
+        &mut self,
+        _context: Context,
+        (place, span): (&Place<'tcx>, Span),
+        borrow: &BorrowData<'tcx>,
+    ) {
+        let mut err = self.tcx.cannot_use_when_mutably_borrowed(
+            span,
+            &self.describe_place(place).unwrap_or("_".to_owned()),
+            self.retrieve_borrow_span(borrow),
+            &self.describe_place(&borrow.place).unwrap_or("_".to_owned()),
+            Origin::Mir,
+        );
+
+        err.emit();
+    }
+
+    /// Finds the span of arguments of a closure (within `maybe_closure_span`) and its usage of
+    /// the local assigned at `location`.
+    /// This is done by searching in statements succeeding `location`
+    /// and originating from `maybe_closure_span`.
+    fn find_closure_span(
+        &self,
+        maybe_closure_span: Span,
+        location: Location,
+    ) -> Option<(Span, Span)> {
+        use rustc::hir::ExprClosure;
+        use rustc::mir::AggregateKind;
+
+        let local = if let StatementKind::Assign(Place::Local(local), _) =
+            self.mir[location.block].statements[location.statement_index].kind
+        {
+            local
+        } else {
+            return None;
+        };
+
+        for stmt in &self.mir[location.block].statements[location.statement_index + 1..] {
+            if maybe_closure_span != stmt.source_info.span {
+                break;
+            }
+
+            if let StatementKind::Assign(_, Rvalue::Aggregate(ref kind, ref places)) = stmt.kind {
+                if let AggregateKind::Closure(def_id, _) = **kind {
+                    debug!("find_closure_span: found closure {:?}", places);
+
+                    return if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                        let args_span = if let ExprClosure(_, _, _, span, _) =
+                            self.tcx.hir.expect_expr(node_id).node
+                        {
+                            span
+                        } else {
+                            return None;
+                        };
+
+                        self.tcx
+                            .with_freevars(node_id, |freevars| {
+                                for (v, place) in freevars.iter().zip(places) {
+                                    match *place {
+                                        Operand::Copy(Place::Local(l)) |
+                                        Operand::Move(Place::Local(l)) if local == l =>
+                                        {
+                                            debug!(
+                                                "find_closure_span: found captured local {:?}",
+                                                l
+                                            );
+                                            return Some(v.span);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                                None
+                            })
+                            .map(|var_span| (args_span, var_span))
+                    } else {
+                        None
+                    };
+                }
+            }
+        }
+
+        None
+    }
+
+    pub(super) fn report_conflicting_borrow(
+        &mut self,
+        context: Context,
+        (place, span): (&Place<'tcx>, Span),
+        gen_borrow_kind: BorrowKind,
+        issued_borrow: &BorrowData,
+        end_issued_loan_span: Option<Span>,
+    ) {
+        let issued_span = self.retrieve_borrow_span(issued_borrow);
+
+        let new_closure_span = self.find_closure_span(span, context.loc);
+        let span = new_closure_span.map(|(args, _)| args).unwrap_or(span);
+        let old_closure_span = self.find_closure_span(issued_span, issued_borrow.location);
+        let issued_span = old_closure_span
+            .map(|(args, _)| args)
+            .unwrap_or(issued_span);
+
+        let desc_place = self.describe_place(place).unwrap_or("_".to_owned());
+
+        // FIXME: supply non-"" `opt_via` when appropriate
+        let mut err = match (
+            gen_borrow_kind,
+            "immutable",
+            "mutable",
+            issued_borrow.kind,
+            "immutable",
+            "mutable",
+        ) {
+            (BorrowKind::Shared, lft, _, BorrowKind::Mut, _, rgt) |
+            (BorrowKind::Mut, _, lft, BorrowKind::Shared, rgt, _) => self.tcx
+                .cannot_reborrow_already_borrowed(
+                    span,
+                    &desc_place,
+                    "",
+                    lft,
+                    issued_span,
+                    "it",
+                    rgt,
+                    "",
+                    end_issued_loan_span,
+                    Origin::Mir,
+                ),
+
+            (BorrowKind::Mut, _, _, BorrowKind::Mut, _, _) => self.tcx
+                .cannot_mutably_borrow_multiply(
+                    span,
+                    &desc_place,
+                    "",
+                    issued_span,
+                    "",
+                    end_issued_loan_span,
+                    Origin::Mir,
+                ),
+
+            (BorrowKind::Unique, _, _, BorrowKind::Unique, _, _) => self.tcx
+                .cannot_uniquely_borrow_by_two_closures(
+                    span,
+                    &desc_place,
+                    issued_span,
+                    end_issued_loan_span,
+                    Origin::Mir,
+                ),
+
+            (BorrowKind::Unique, _, _, _, _, _) => self.tcx.cannot_uniquely_borrow_by_one_closure(
+                span,
+                &desc_place,
+                "",
+                issued_span,
+                "it",
+                "",
+                end_issued_loan_span,
+                Origin::Mir,
+            ),
+
+            (BorrowKind::Shared, lft, _, BorrowKind::Unique, _, _) => self.tcx
+                .cannot_reborrow_already_uniquely_borrowed(
+                    span,
+                    &desc_place,
+                    "",
+                    lft,
+                    issued_span,
+                    "",
+                    end_issued_loan_span,
+                    Origin::Mir,
+                ),
+
+            (BorrowKind::Mut, _, lft, BorrowKind::Unique, _, _) => self.tcx
+                .cannot_reborrow_already_uniquely_borrowed(
+                    span,
+                    &desc_place,
+                    "",
+                    lft,
+                    issued_span,
+                    "",
+                    end_issued_loan_span,
+                    Origin::Mir,
+                ),
+
+            (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) => unreachable!(),
+        };
+
+        if let Some((_, var_span)) = old_closure_span {
+            err.span_label(
+                var_span,
+                format!(
+                    "previous borrow occurs due to use of `{}` in closure",
+                    desc_place
+                ),
+            );
+        }
+
+        if let Some((_, var_span)) = new_closure_span {
+            err.span_label(
+                var_span,
+                format!("borrow occurs due to use of `{}` in closure", desc_place),
+            );
+        }
+
+        err.emit();
+    }
+
+    pub(super) fn report_borrowed_value_does_not_live_long_enough(
+        &mut self,
+        _: Context,
+        borrow: &BorrowData<'tcx>,
+        drop_span: Span,
+        borrows: &Borrows<'cx, 'gcx, 'tcx>
+    ) {
+        let end_span = borrows.opt_region_end_span(&borrow.region);
+        let root_place = self.prefixes(&borrow.place, PrefixSet::All).last().unwrap();
+
+        match root_place {
+            &Place::Local(local) => {
+                if let Some(_) = self.storage_dead_or_drop_error_reported_l.replace(local) {
+                    debug!("report_does_not_live_long_enough({:?}): <suppressed>",
+                           (borrow, drop_span));
+                    return
+                }
+            }
+            &Place::Static(ref statik) => {
+                if let Some(_) = self.storage_dead_or_drop_error_reported_s
+                    .replace(statik.def_id)
+                {
+                    debug!("report_does_not_live_long_enough({:?}): <suppressed>",
+                           (borrow, drop_span));
+                    return
+                }
+            },
+            &Place::Projection(_) =>
+                unreachable!("root_place is an unreachable???")
+        };
+
+        let proper_span = match *root_place {
+            Place::Local(local) => self.mir.local_decls[local].source_info.span,
+            _ => drop_span,
+        };
+
+        let mut err = self.tcx
+            .path_does_not_live_long_enough(drop_span, "borrowed value", Origin::Mir);
+        err.span_label(proper_span, "temporary value created here");
+        err.span_label(drop_span, "temporary value dropped here while still borrowed");
+        err.note("consider using a `let` binding to increase its lifetime");
+
+        if let Some(end) = end_span {
+            err.span_label(end, "temporary value needs to live until here");
+        }
+
+        err.emit();
+    }
+
+    pub(super) fn report_illegal_mutation_of_borrowed(
+        &mut self,
+        _: Context,
+        (place, span): (&Place<'tcx>, Span),
+        loan: &BorrowData,
+    ) {
+        let mut err = self.tcx.cannot_assign_to_borrowed(
+            span,
+            self.retrieve_borrow_span(loan),
+            &self.describe_place(place).unwrap_or("_".to_owned()),
+            Origin::Mir,
+        );
+
+        err.emit();
+    }
+
+    pub(super) fn report_illegal_reassignment(
+        &mut self,
+        _context: Context,
+        (place, span): (&Place<'tcx>, Span),
+        assigned_span: Span,
+    ) {
+        let mut err = self.tcx.cannot_reassign_immutable(
+            span,
+            &self.describe_place(place).unwrap_or("_".to_owned()),
+            Origin::Mir,
+        );
+        err.span_label(span, "cannot assign twice to immutable variable");
+        if span != assigned_span {
+            let value_msg = match self.describe_place(place) {
+                Some(name) => format!("`{}`", name),
+                None => "value".to_owned(),
+            };
+            err.span_label(assigned_span, format!("first assignment to {}", value_msg));
+        }
+        err.emit();
+    }
+}
+
+impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+    // End-user visible description of `place` if one can be found. If the
+    // place is a temporary for instance, None will be returned.
+    pub(super) fn describe_place(&self, place: &Place<'tcx>) -> Option<String> {
+        let mut buf = String::new();
+        match self.append_place_to_string(place, &mut buf, false) {
+            Ok(()) => Some(buf),
+            Err(()) => None,
+        }
+    }
+
+    // Appends end-user visible description of `place` to `buf`.
+    fn append_place_to_string(
+        &self,
+        place: &Place<'tcx>,
+        buf: &mut String,
+        mut autoderef: bool,
+    ) -> Result<(), ()> {
+        match *place {
+            Place::Local(local) => {
+                self.append_local_to_string(local, buf)?;
+            }
+            Place::Static(ref static_) => {
+                buf.push_str(&format!("{}", &self.tcx.item_name(static_.def_id)));
+            }
+            Place::Projection(ref proj) => {
+                match proj.elem {
+                    ProjectionElem::Deref => {
+                        if let Some(field) = self.is_upvar_field_projection(&proj.base) {
+                            let var_index = field.index();
+                            let name = self.mir.upvar_decls[var_index].debug_name.to_string();
+                            if self.mir.upvar_decls[var_index].by_ref {
+                                buf.push_str(&name);
+                            } else {
+                                buf.push_str(&format!("*{}", &name));
+                            }
+                        } else {
+                            if autoderef {
+                                self.append_place_to_string(&proj.base, buf, autoderef)?;
+                            } else {
+                                buf.push_str(&"*");
+                                self.append_place_to_string(&proj.base, buf, autoderef)?;
+                            }
+                        }
+                    }
+                    ProjectionElem::Downcast(..) => {
+                        self.append_place_to_string(&proj.base, buf, autoderef)?;
+                    }
+                    ProjectionElem::Field(field, _ty) => {
+                        autoderef = true;
+
+                        if let Some(field) = self.is_upvar_field_projection(place) {
+                            let var_index = field.index();
+                            let name = self.mir.upvar_decls[var_index].debug_name.to_string();
+                            buf.push_str(&name);
+                        } else {
+                            let field_name = self.describe_field(&proj.base, field);
+                            self.append_place_to_string(&proj.base, buf, autoderef)?;
+                            buf.push_str(&format!(".{}", field_name));
+                        }
+                    }
+                    ProjectionElem::Index(index) => {
+                        autoderef = true;
+
+                        self.append_place_to_string(&proj.base, buf, autoderef)?;
+                        buf.push_str("[");
+                        if let Err(_) = self.append_local_to_string(index, buf) {
+                            buf.push_str("..");
+                        }
+                        buf.push_str("]");
+                    }
+                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                        autoderef = true;
+                        // Since it isn't possible to borrow an element on a particular index and
+                        // then use another while the borrow is held, don't output indices details
+                        // to avoid confusing the end-user
+                        self.append_place_to_string(&proj.base, buf, autoderef)?;
+                        buf.push_str(&"[..]");
+                    }
+                };
+            }
+        }
+
+        Ok(())
+    }
+
+    // Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have
+    // a name, then `Err` is returned
+    fn append_local_to_string(&self, local_index: Local, buf: &mut String) -> Result<(), ()> {
+        let local = &self.mir.local_decls[local_index];
+        match local.name {
+            Some(name) => {
+                buf.push_str(&format!("{}", name));
+                Ok(())
+            }
+            None => Err(()),
+        }
+    }
+
+    // End-user visible description of the `field`nth field of `base`
+    fn describe_field(&self, base: &Place, field: Field) -> String {
+        match *base {
+            Place::Local(local) => {
+                let local = &self.mir.local_decls[local];
+                self.describe_field_from_ty(&local.ty, field)
+            }
+            Place::Static(ref static_) => self.describe_field_from_ty(&static_.ty, field),
+            Place::Projection(ref proj) => match proj.elem {
+                ProjectionElem::Deref => self.describe_field(&proj.base, field),
+                ProjectionElem::Downcast(def, variant_index) => {
+                    format!("{}", def.variants[variant_index].fields[field.index()].name)
+                }
+                ProjectionElem::Field(_, field_type) => {
+                    self.describe_field_from_ty(&field_type, field)
+                }
+                ProjectionElem::Index(..) |
+                ProjectionElem::ConstantIndex { .. } |
+                ProjectionElem::Subslice { .. } => {
+                    format!("{}", self.describe_field(&proj.base, field))
+                }
+            },
+        }
+    }
+
+    // End-user visible description of the `field_index`nth field of `ty`
+    fn describe_field_from_ty(&self, ty: &ty::Ty, field: Field) -> String {
+        if ty.is_box() {
+            // If the type is a box, the field is described from the boxed type
+            self.describe_field_from_ty(&ty.boxed_ty(), field)
+        } else {
+            match ty.sty {
+                ty::TyAdt(def, _) => if def.is_enum() {
+                    format!("{}", field.index())
+                } else {
+                    format!("{}", def.struct_variant().fields[field.index()].name)
+                },
+                ty::TyTuple(_, _) => format!("{}", field.index()),
+                ty::TyRef(_, tnm) | ty::TyRawPtr(tnm) => {
+                    self.describe_field_from_ty(&tnm.ty, field)
+                }
+                ty::TyArray(ty, _) | ty::TySlice(ty) => self.describe_field_from_ty(&ty, field),
+                ty::TyClosure(closure_def_id, _) => {
+                    // Convert the def-id into a node-id. node-ids are only valid for
+                    // the local code in the current crate, so this returns an `Option` in case
+                    // the closure comes from another crate. But in that case we wouldn't
+                    // be borrowck'ing it, so we can just unwrap:
+                    let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
+                    let freevar = self.tcx.with_freevars(node_id, |fv| fv[field.index()]);
+
+                    self.tcx.hir.name(freevar.var_id()).to_string()
+                }
+                _ => {
+                    // Might need a revision when the fields in trait RFC is implemented
+                    // (https://github.com/rust-lang/rfcs/pull/1546)
+                    bug!(
+                        "End-user description not implemented for field access on `{:?}`",
+                        ty.sty
+                    );
+                }
+            }
+        }
+    }
+
+    // Retrieve span of given borrow from the current MIR representation
+    fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
+        self.mir.source_info(borrow.location).span
+    }
+}

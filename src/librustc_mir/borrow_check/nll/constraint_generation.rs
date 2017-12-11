@@ -22,7 +22,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::util::common::ErrorReported;
 use rustc_data_structures::fx::FxHashSet;
 use syntax::codemap::DUMMY_SP;
-use borrow_check::FlowInProgress;
+use borrow_check::{FlowAtLocation, FlowsAtLocation};
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::{HasMoveData, MoveData};
 
@@ -36,7 +36,7 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     liveness: &LivenessResults,
-    flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
     let mut cg = ConstraintGeneration {
@@ -61,7 +61,7 @@ struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
     mir: &'cg Mir<'tcx>,
     liveness: &'cg LivenessResults,
     param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &'cg mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
+    flow_inits: &'cg mut FlowAtLocation<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
     move_data: &'cg MoveData<'tcx>,
 }
 
@@ -172,7 +172,6 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
                         "add_liveness_constraints: location={:?} initialized={:?}",
                         location,
                         &self.flow_inits
-                            .base_results
                             .operator()
                             .move_data()
                             .move_paths[mpi_init]
@@ -205,7 +204,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
                 );
                 self.flow_inits.reconstruct_statement_effect(location);
             }
-            self.flow_inits.apply_local_effect();
+            self.flow_inits.apply_local_effect(location);
         }
     }
 

@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     fn bits_per_block(&self) -> usize {
         self.borrows.len()
     }
-    fn start_block_effect(&self, _sets: &mut BlockSets<BorrowIndex>)  {
+    fn start_block_effect(&self, _sets: &mut IdxSet<BorrowIndex>)  {
         // no borrows of code region_scopes have been taken prior to
         // function execution, so this method has no effect on
         // `_sets`.

@@ -30,10 +30,12 @@ pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
 pub use self::impls::{DefinitelyInitializedLvals, MovingOutStatements};
 pub use self::impls::EverInitializedLvals;
 pub use self::impls::borrows::{Borrows, BorrowData, BorrowIndex};
+pub use self::at_location::{FlowAtLocation, FlowsAtLocation};
 pub(crate) use self::drop_flag_effects::*;
 
 use self::move_paths::MoveData;
 
+mod at_location;
 mod drop_flag_effects;
 mod graphviz;
 mod impls;
@@ -169,7 +171,7 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation
 
         {
             let sets = &mut self.flow_state.sets.for_block(mir::START_BLOCK.index());
-            self.flow_state.operator.start_block_effect(sets);
+            self.flow_state.operator.start_block_effect(&mut sets.on_entry);
         }
 
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
@@ -275,7 +277,7 @@ impl<E:Idx> Bits<E> {
 /// where we are combining the results of *multiple* flow analyses
 /// (e.g. borrows + inits + uninits).
 pub trait DataflowResultsConsumer<'a, 'tcx: 'a> {
-    type FlowState;
+    type FlowState: FlowsAtLocation;
 
     // Observation Hooks: override (at least one of) these to get analysis feedback.
     fn visit_block_entry(&mut self,
@@ -297,7 +299,7 @@ pub trait DataflowResultsConsumer<'a, 'tcx: 'a> {
     fn analyze_results(&mut self, flow_uninit: &mut Self::FlowState) {
         let flow = flow_uninit;
         for bb in self.mir().basic_blocks().indices() {
-            self.reset_to_entry_of(bb, flow);
+            flow.reset_to_entry_of(bb);
             self.process_basic_block(bb, flow);
         }
     }
@@ -307,14 +309,14 @@ pub trait DataflowResultsConsumer<'a, 'tcx: 'a> {
             self.mir()[bb];
         let mut location = Location { block: bb, statement_index: 0 };
         for stmt in statements.iter() {
-            self.reconstruct_statement_effect(location, flow_state);
+            flow_state.reconstruct_statement_effect(location);
             self.visit_statement_entry(location, stmt, flow_state);
-            self.apply_local_effect(location, flow_state);
+            flow_state.apply_local_effect(location);
             location.statement_index += 1;
         }
 
         if let Some(ref term) = *terminator {
-            self.reconstruct_terminator_effect(location, flow_state);
+            flow_state.reconstruct_terminator_effect(location);
             self.visit_terminator_entry(location, term, flow_state);
 
             // We don't need to apply the effect of the terminator,
@@ -328,30 +330,6 @@ pub trait DataflowResultsConsumer<'a, 'tcx: 'a> {
     // Delegated Hooks: Provide access to the MIR and process the flow state.
 
     fn mir(&self) -> &'a Mir<'tcx>;
-
-    // reset the state bitvector to represent the entry to block `bb`.
-    fn reset_to_entry_of(&mut self,
-                         bb: BasicBlock,
-                         flow_state: &mut Self::FlowState);
-
-    // build gen + kill sets for statement at `loc`.
-    fn reconstruct_statement_effect(&mut self,
-                                    loc: Location,
-                                    flow_state: &mut Self::FlowState);
-
-    // build gen + kill sets for terminator for `loc`.
-    fn reconstruct_terminator_effect(&mut self,
-                                     loc: Location,
-                                     flow_state: &mut Self::FlowState);
-
-    // apply current gen + kill sets to `flow_state`.
-    //
-    // (`bb` and `stmt_idx` parameters can be ignored if desired by
-    // client. For the terminator, the `stmt_idx` will be the number
-    // of statements in the block.)
-    fn apply_local_effect(&mut self,
-                          loc: Location,
-                          flow_state: &mut Self::FlowState);
 }
 
 pub fn state_for_location<T: BitDenotation>(loc: Location,
@@ -578,16 +556,13 @@ pub trait BitDenotation: DataflowOperator {
     /// Size of each bitvector allocated for each block in the analysis.
     fn bits_per_block(&self) -> usize;
 
-    /// Mutates the block-sets (the flow sets for the given
-    /// basic block) according to the effects that have been
-    /// established *prior* to entering the start block.
+    /// Mutates the entry set according to the effects that
+    /// have been established *prior* to entering the start
+    /// block. This can't access the gen/kill sets, because
+    /// these won't be accounted for correctly.
     ///
     /// (For example, establishing the call arguments.)
-    ///
-    /// (Typically this should only modify `sets.on_entry`, since the
-    /// gen and kill sets should reflect the effects of *executing*
-    /// the start block itself.)
-    fn start_block_effect(&self, sets: &mut BlockSets<Self::Idx>);
+    fn start_block_effect(&self, entry_set: &mut IdxSet<Self::Idx>);
 
     /// Mutates the block-sets (the flow sets for the given
     /// basic block) according to the effects of evaluating statement.

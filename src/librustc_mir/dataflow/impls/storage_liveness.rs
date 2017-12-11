@@ -36,7 +36,7 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
         self.mir.local_decls.len()
     }
 
-    fn start_block_effect(&self, _sets: &mut BlockSets<Local>) {
+    fn start_block_effect(&self, _sets: &mut IdxSet<Local>) {
         // Nothing is live on function entry
     }
 
