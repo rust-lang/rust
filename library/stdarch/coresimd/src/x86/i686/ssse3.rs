@@ -5,7 +5,6 @@ use stdsimd_test::assert_instr;
 
 use core::mem;
 use v64::*;
-use x86::__m64;
 
 /// Compute the absolute value of packed 8-bit integers in `a` and
 /// return the unsigned results.

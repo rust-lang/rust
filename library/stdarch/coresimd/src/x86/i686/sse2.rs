@@ -2,8 +2,7 @@
 
 use core::mem;
 use v128::*;
-use v64::i32x2;
-use x86::__m64;
+use v64::{__m64, i32x2};
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
