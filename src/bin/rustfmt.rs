@@ -20,7 +20,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use getopts::{HasArg, Matches, Occur, Options};
+use getopts::{Matches, Options};
 
 use rustfmt::{run, Input, Summary};
 use rustfmt::file_lines::FileLines;
