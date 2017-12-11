@@ -4503,7 +4503,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (&hir::FunctionRetTy::DefaultReturn(span), true, true) => {
                 err.span_suggestion(span,
                                     "try adding a return type",
-                                    format!("-> {} ", found));
+                                    format!("-> {} ",
+                                            self.resolve_type_vars_with_obligations(found)));
             }
             (&hir::FunctionRetTy::DefaultReturn(span), false, true) => {
                 err.span_label(span, "possibly return type missing here?");

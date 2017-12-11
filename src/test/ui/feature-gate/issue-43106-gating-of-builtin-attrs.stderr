@@ -548,7 +548,7 @@ warning: function is marked #[no_mangle], but not exported
 426 |     #[no_mangle = "3500"] fn f() { }
     |                           -^^^^^^^^^
     |                           |
-    |                           help: try making it public: `pub `
+    |                           help: try making it public: `pub`
     |
     = note: #[warn(private_no_mangle_fns)] on by default
 

@@ -46,7 +46,7 @@ impl Emitter for EmitterWriter {
                sugg.msg.split_whitespace().count() < 10 &&
                // don't display multiline suggestions as labels
                !sugg.substitutions[0].parts[0].snippet.contains('\n') {
-                let substitution = &sugg.substitutions[0].parts[0].snippet;
+                let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
                 let msg = if substitution.len() == 0 || !sugg.show_code_when_inline {
                     // This substitution is only removal or we explicitly don't want to show the
                     // code inline, don't show it
