@@ -163,6 +163,12 @@ fn make_opts() -> Options {
         "config-help",
         "show details of rustfmt configuration options",
     );
+    opts.optflag(
+        "",
+        "error-on-unformatted",
+        "Error if unable to get comments or string literals within max_width, \
+         or they are left with trailing whitespaces",
+    );
     opts.opt(
         "",
         "dump-default-config",
