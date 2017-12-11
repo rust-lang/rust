@@ -332,7 +332,11 @@ fn rewrite_comment_inner(
             inside_code_block = !inside_code_block;
         }
         if inside_code_block {
-            result.push_str(line);
+            if line.is_empty() && result.ends_with(' ') {
+                result.pop();
+            } else {
+                result.push_str(line);
+            }
             continue;
         }
 
