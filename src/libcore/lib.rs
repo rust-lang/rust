@@ -168,6 +168,7 @@ pub mod slice;
 pub mod str;
 pub mod hash;
 pub mod fmt;
+pub mod time;
 
 // note: does not need to be public
 mod char_private;
