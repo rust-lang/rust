@@ -822,6 +822,7 @@ span.since {
 		margin-left: -15px;
 		padding: 0 15px;
 		position: static;
+		z-index: 1;
 	}
 
 	.sidebar > .location {
@@ -848,23 +849,32 @@ span.since {
 	}
 
 	.sidebar-menu {
-		position: absolute;
+		position: fixed;
+		z-index: 10;
 		font-size: 2rem;
 		cursor: pointer;
-		margin-top: 2px;
+		width: 45px;
+		left: 0;
+		text-align: center;
 		display: block;
+		border-bottom: 1px solid;
+		border-right: 1px solid;
 	}
 
 	.sidebar-elems {
-		background-color: #F1F1F1;
 		position: fixed;
 		z-index: 1;
 		left: 0;
 		top: 45px;
 		bottom: 0;
 		overflow-y: auto;
-		border-right: 1px solid #000;
+		border-right: 1px solid;
 		display: none;
+	}
+
+	.sidebar > .block.version {
+		border-bottom: none;
+		margin-top: 12px;
 	}
 
 	nav.sub {
