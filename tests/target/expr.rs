@@ -70,6 +70,12 @@ fn foo() -> bool {
     ) = 1 + 2 + 3
     {}
 
+    if let ast::ItemKind::Trait(_, unsafety, ref generics, ref type_param_bounds, ref trait_items) =
+        item.node
+    {
+        // nothing
+    }
+
     let test = if true { 5 } else { 3 };
 
     if cond() {

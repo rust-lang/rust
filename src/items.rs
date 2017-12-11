@@ -945,7 +945,9 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
         if !type_param_bounds.is_empty() {
-            let ident_hi = context.codemap.span_after(item.span, &format!("{}", item.ident));
+            let ident_hi = context
+                .codemap
+                .span_after(item.span, &format!("{}", item.ident));
             let bound_hi = type_param_bounds.last().unwrap().span().hi();
             let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
             if contains_comment(&snippet) {
