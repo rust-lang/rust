@@ -119,12 +119,9 @@ impl FormattingError {
     }
 
     fn msg_suffix(&self) -> &str {
-        if self.is_comment {
-            "use `error_on_line_overflow_comments = false` to suppress \
-             the warning against comments\n"
-        } else if self.is_string {
-            "use `error_on_line_overflow_strings = false` to suppress \
-             the warning against string literals\n"
+        if self.is_comment || self.is_string {
+            "set `error_on_unformatted_comments_or_strings = false` to suppress \
+             the warning against comments or string literals\n"
         } else {
             ""
         }
@@ -374,10 +371,8 @@ fn should_report_error(
     is_string: bool,
     error_kind: ErrorKind,
 ) -> bool {
-    let allow_error_report = if char_kind.is_comment() {
-        config.error_on_line_overflow_comments()
-    } else if is_string {
-        config.error_on_line_overflow_strings()
+    let allow_error_report = if char_kind.is_comment() || is_string {
+        config.error_on_unformatted_comments_or_strings()
     } else {
         true
     };
@@ -443,8 +438,7 @@ fn format_lines(
 
                 // Check for any line width errors we couldn't correct.
                 let error_kind = ErrorKind::LineOverflow(line_len, config.max_width());
-                if line_len > config.max_width()
-                    && !is_skipped_line(cur_line, skipped_range)
+                if line_len > config.max_width() && !is_skipped_line(cur_line, skipped_range)
                     && should_report_error(config, kind, is_string, error_kind)
                 {
                     errors.push(FormattingError {
