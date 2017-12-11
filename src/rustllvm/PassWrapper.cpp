@@ -969,11 +969,19 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // linkage will stay as external, and internal will stay as internal.
   std::set<GlobalValue::GUID> ExportedGUIDs;
   for (auto &List : Ret->Index) {
+#if LLVM_VERSION_GE(5, 0)
+    for (auto &GVS: List.second.SummaryList) {
+#else
     for (auto &GVS: List.second) {
+#endif
       if (GlobalValue::isLocalLinkage(GVS->linkage()))
         continue;
       auto GUID = GVS->getOriginalName();
+#if LLVM_VERSION_GE(5, 0)
+      if (GVS->flags().Live)
+#else
       if (!DeadSymbols.count(GUID))
+#endif
         ExportedGUIDs.insert(GUID);
     }
   }
