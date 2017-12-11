@@ -1,0 +1,10 @@
+error: the `#[used]` attribute is an experimental feature (see issue #40289)
+  --> $DIR/feature-gate-linker-flavor.rs:16:1
+   |
+16 | #[used]
+   | ^^^^^^^
+   |
+   = help: add #![feature(used)] to the crate attributes to enable
+
+error: aborting due to previous error
+

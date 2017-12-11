@@ -28,18 +28,18 @@ fn main() {
 // START rustc.main.nll.0.mir
 //    | Live variables on entry to bb0: []
 //    bb0: {
-//            | Live variables at bb0[0]: []
+//            | Live variables on entry to bb0[0]: []
 //        StorageLive(_1);
-//            | Live variables at bb0[1]: []
+//            | Live variables on entry to bb0[1]: []
 //        _1 = const <std::boxed::Box<T>>::new(const 22usize) -> [return: bb2, unwind: bb1];
 //    }
 // END rustc.main.nll.0.mir
 // START rustc.main.nll.0.mir
 //    | Live variables on entry to bb2: [_1 (drop)]
 //    bb2: {
-//            | Live variables at bb2[0]: [_1 (drop)]
+//            | Live variables on entry to bb2[0]: [_1 (drop)]
 //        StorageLive(_2);
-//            | Live variables at bb2[1]: [_1 (drop)]
+//            | Live variables on entry to bb2[1]: [_1 (drop)]
 //        _2 = const can_panic() -> [return: bb3, unwind: bb4];
 //    }
 // END rustc.main.nll.0.mir

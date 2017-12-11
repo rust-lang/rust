@@ -11,7 +11,8 @@
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
-use rustc::ty::TyCtxt;
+use rustc::mir::visit::Visitor;
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::item_path;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -56,9 +57,19 @@ pub enum PassWhere {
 /// where `<filter>` takes the following forms:
 ///
 /// - `all` -- dump MIR for all fns, all passes, all everything
-/// - `substring1&substring2,...` -- `&`-separated list of substrings
-///   that can appear in the pass-name or the `item_path_str` for the given
-///   node-id. If any one of the substrings match, the data is dumped out.
+/// - a filter defined by a set of substrings combined with `&` and `|`
+///   (`&` has higher precedence). At least one of the `|`-separated groups
+///   must match; an `|`-separated group matches if all of its `&`-separated
+///   substrings are matched.
+///
+/// Example:
+///
+/// - `nll` == match if `nll` appears in the name
+/// - `foo & nll` == match if `foo` and `nll` both appear in the name
+/// - `foo & nll | typeck` == match if `foo` and `nll` both appear in the name
+///   or `typeck` appears in the name.
+/// - `foo & nll | bar & typeck` == match if `foo` and `nll` both appear in the name
+///   or `typeck` and `bar` both appear in the name.
 pub fn dump_mir<'a, 'gcx, 'tcx, F>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pass_num: Option<&Display>,
@@ -103,8 +114,10 @@ pub fn dump_enabled<'a, 'gcx, 'tcx>(
         // see notes on #41697 below
         tcx.item_path_str(source.def_id)
     });
-    filters.split("&").any(|filter| {
-        filter == "all" || pass_name.contains(filter) || node_path.contains(filter)
+    filters.split("|").any(|or_filter| {
+        or_filter.split("&").all(|and_filter| {
+            and_filter == "all" || pass_name.contains(and_filter) || node_path.contains(and_filter)
+        })
     })
 }
 
@@ -125,14 +138,7 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
     F: FnMut(PassWhere, &mut Write) -> io::Result<()>,
 {
     let _: io::Result<()> = do catch {
-        let mut file = create_dump_file(
-            tcx,
-            "mir",
-            pass_num,
-            pass_name,
-            disambiguator,
-            source,
-        )?;
+        let mut file = create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, source)?;
         writeln!(file, "// MIR for `{}`", node_path)?;
         writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
@@ -148,15 +154,9 @@ fn dump_matched_mir_node<'a, 'gcx, 'tcx, F>(
     };
 
     if tcx.sess.opts.debugging_opts.dump_mir_graphviz {
-    let _: io::Result<()> = do catch {
-            let mut file = create_dump_file(
-                tcx,
-                "dot",
-                pass_num,
-                pass_name,
-                disambiguator,
-                source,
-            )?;
+        let _: io::Result<()> = do catch {
+            let mut file =
+                create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
             write_mir_fn_graphviz(tcx, source.def_id, mir, &mut file)?;
             Ok(())
         };
@@ -297,10 +297,10 @@ where
 }
 
 /// Write out a human-readable textual representation for the given basic block.
-pub fn write_basic_block<F>(
-    tcx: TyCtxt,
+pub fn write_basic_block<'cx, 'gcx, 'tcx, F>(
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     block: BasicBlock,
-    mir: &Mir,
+    mir: &Mir<'tcx>,
     extra_data: &mut F,
     w: &mut Write,
 ) -> io::Result<()>
@@ -330,6 +330,11 @@ where
             comment(tcx, statement.source_info),
             A = ALIGN,
         )?;
+
+        write_extra(tcx, w, |visitor| {
+            visitor.visit_statement(current_location.block, statement, current_location);
+        })?;
+
         extra_data(PassWhere::AfterLocation(current_location), w)?;
 
         current_location.statement_index += 1;
@@ -346,9 +351,92 @@ where
         comment(tcx, data.terminator().source_info),
         A = ALIGN,
     )?;
+
+    write_extra(tcx, w, |visitor| {
+        visitor.visit_terminator(current_location.block, data.terminator(), current_location);
+    })?;
+
     extra_data(PassWhere::AfterLocation(current_location), w)?;
 
     writeln!(w, "{}}}", INDENT)
+}
+
+/// After we print the main statement, we sometimes dump extra
+/// information. There's often a lot of little things "nuzzled up" in
+/// a statement.
+fn write_extra<'cx, 'gcx, 'tcx, F>(
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    write: &mut Write,
+    mut visit_op: F,
+) -> io::Result<()>
+where
+    F: FnMut(&mut ExtraComments<'cx, 'gcx, 'tcx>),
+{
+    let mut extra_comments = ExtraComments {
+        _tcx: tcx,
+        comments: vec![],
+    };
+    visit_op(&mut extra_comments);
+    for comment in extra_comments.comments {
+        writeln!(write, "{:A$} // {}", "", comment, A = ALIGN)?;
+    }
+    Ok(())
+}
+
+struct ExtraComments<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+    _tcx: TyCtxt<'cx, 'gcx, 'tcx>, // don't need it now, but bet we will soon
+    comments: Vec<String>,
+}
+
+impl<'cx, 'gcx, 'tcx> ExtraComments<'cx, 'gcx, 'tcx> {
+    fn push(&mut self, lines: &str) {
+        for line in lines.split("\n") {
+            self.comments.push(line.to_string());
+        }
+    }
+}
+
+impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
+    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+        self.super_constant(constant, location);
+        let Constant { span, ty, literal } = constant;
+        self.push(&format!("mir::Constant"));
+        self.push(&format!("└ span: {:?}", span));
+        self.push(&format!("└ ty: {:?}", ty));
+        self.push(&format!("└ literal: {:?}", literal));
+    }
+
+    fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
+        self.super_const(constant);
+        let ty::Const { ty, val } = constant;
+        self.push(&format!("ty::Const"));
+        self.push(&format!("└ ty: {:?}", ty));
+        self.push(&format!("└ val: {:?}", val));
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        self.super_rvalue(rvalue, location);
+        match rvalue {
+            Rvalue::Aggregate(kind, _) => match **kind {
+                AggregateKind::Closure(def_id, substs) => {
+                    self.push(&format!("closure"));
+                    self.push(&format!("└ def_id: {:?}", def_id));
+                    self.push(&format!("└ substs: {:#?}", substs));
+                }
+
+                AggregateKind::Generator(def_id, substs, interior) => {
+                    self.push(&format!("generator"));
+                    self.push(&format!("└ def_id: {:?}", def_id));
+                    self.push(&format!("└ substs: {:#?}", substs));
+                    self.push(&format!("└ interior: {:?}", interior));
+                }
+
+                _ => {}
+            },
+
+            _ => {}
+        }
+    }
 }
 
 fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {

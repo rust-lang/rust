@@ -425,15 +425,13 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
         Some(&(ref fqp, shortty)) => {
             (fqp, shortty, repeat("../").take(loc.len()).collect())
         }
-        None => match cache.external_paths.get(&did) {
-            Some(&(ref fqp, shortty)) => {
-                (fqp, shortty, match cache.extern_locations[&did.krate] {
-                    (.., render::Remote(ref s)) => s.to_string(),
-                    (.., render::Local) => repeat("../").take(loc.len()).collect(),
-                    (.., render::Unknown) => return None,
-                })
-            }
-            None => return None,
+        None => {
+            let &(ref fqp, shortty) = cache.external_paths.get(&did)?;
+            (fqp, shortty, match cache.extern_locations[&did.krate] {
+                (.., render::Remote(ref s)) => s.to_string(),
+                (.., render::Local) => repeat("../").take(loc.len()).collect(),
+                (.., render::Unknown) => return None,
+            })
         }
     };
     for component in &fqp[..fqp.len() - 1] {
@@ -638,7 +636,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
             fmt::Display::fmt(t, f)?;
             primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))
         }
-        clean::Never => f.write_str("!"),
+        clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
         clean::RawPointer(m, ref t) => {
             match **t {
                 clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {

@@ -578,10 +578,7 @@ impl Wtf8 {
     fn next_surrogate(&self, mut pos: usize) -> Option<(usize, u16)> {
         let mut iter = self.bytes[pos..].iter();
         loop {
-            let b = match iter.next() {
-                None => return None,
-                Some(&b) => b,
-            };
+            let b = *iter.next()?;
             if b < 0x80 {
                 pos += 1;
             } else if b < 0xE0 {

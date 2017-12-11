@@ -17,23 +17,18 @@
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]
 
-#[cfg(cfail1)]
-pub fn foo() {
-    pub fn bar() { }
-    pub fn baz() { }
-}
-
-#[cfg(cfail2)]
 #[rustc_clean(label="Hir", cfg="cfail2")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 pub fn foo() {
-    #[rustc_clean(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="HirBody", cfg="cfail2")]
+    #[cfg(cfail1)]
     pub fn baz() { } // order is different...
 
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="HirBody", cfg="cfail2")]
     pub fn bar() { } // but that doesn't matter.
+
+    #[cfg(cfail2)]
+    pub fn baz() { } // order is different...
 
     pub fn bap() { } // neither does adding a new item
 }

@@ -978,9 +978,8 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
         // chain, then returns `None`.
         fn find_first_mod_parent<'a>(map: &'a Map, mut id: NodeId) -> Option<(NodeId, Name)> {
             loop {
-                match map.find(id) {
-                    None => return None,
-                    Some(NodeItem(item)) if item_is_mod(&item) =>
+                match map.find(id)? {
+                    NodeItem(item) if item_is_mod(&item) =>
                         return Some((id, item.name)),
                     _ => {}
                 }

@@ -150,9 +150,7 @@ impl<T, F: FnOnce(T) + Send + 'static> FnBox<T> for F {
 pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
-    StaticMetricFn(fn(&mut MetricMap)),
     DynTestFn(Box<FnBox<()>>),
-    DynMetricFn(Box<for<'a> FnBox<&'a mut MetricMap>>),
     DynBenchFn(Box<TDynBenchFn + 'static>),
 }
 
@@ -161,9 +159,7 @@ impl TestFn {
         match *self {
             StaticTestFn(..) => PadNone,
             StaticBenchFn(..) => PadOnRight,
-            StaticMetricFn(..) => PadOnRight,
             DynTestFn(..) => PadNone,
-            DynMetricFn(..) => PadOnRight,
             DynBenchFn(..) => PadOnRight,
         }
     }
@@ -174,9 +170,7 @@ impl fmt::Debug for TestFn {
         f.write_str(match *self {
             StaticTestFn(..) => "StaticTestFn(..)",
             StaticBenchFn(..) => "StaticBenchFn(..)",
-            StaticMetricFn(..) => "StaticMetricFn(..)",
             DynTestFn(..) => "DynTestFn(..)",
-            DynMetricFn(..) => "DynMetricFn(..)",
             DynBenchFn(..) => "DynBenchFn(..)",
         })
     }
@@ -242,16 +236,6 @@ impl Metric {
             value,
             noise,
         }
-    }
-}
-
-#[derive(PartialEq)]
-pub struct MetricMap(BTreeMap<String, Metric>);
-
-impl Clone for MetricMap {
-    fn clone(&self) -> MetricMap {
-        let MetricMap(ref map) = *self;
-        MetricMap(map.clone())
     }
 }
 
@@ -528,7 +512,6 @@ pub enum TestResult {
     TrFailedMsg(String),
     TrIgnored,
     TrAllowedFail,
-    TrMetrics(MetricMap),
     TrBench(BenchSamples),
 }
 
@@ -603,10 +586,6 @@ impl<T: Write> ConsoleTestState<T> {
 
     pub fn write_allowed_fail(&mut self) -> io::Result<()> {
         self.write_short_result("FAILED (allowed)", "a", term::color::YELLOW)
-    }
-
-    pub fn write_metric(&mut self) -> io::Result<()> {
-        self.write_pretty("metric", term::color::CYAN)
     }
 
     pub fn write_bench(&mut self) -> io::Result<()> {
@@ -688,10 +667,6 @@ impl<T: Write> ConsoleTestState<T> {
             TrFailed | TrFailedMsg(_) => self.write_failed(),
             TrIgnored => self.write_ignored(),
             TrAllowedFail => self.write_allowed_fail(),
-            TrMetrics(ref mm) => {
-                self.write_metric()?;
-                self.write_plain(&format!(": {}\n", mm.fmt_metrics()))
-            }
             TrBench(ref bs) => {
                 self.write_bench()?;
                 self.write_plain(&format!(": {}\n", fmt_bench_samples(bs)))
@@ -722,7 +697,6 @@ impl<T: Write> ConsoleTestState<T> {
                         TrFailedMsg(ref msg) => format!("failed: {}", msg),
                         TrIgnored => "ignored".to_owned(),
                         TrAllowedFail => "failed (allowed)".to_owned(),
-                        TrMetrics(ref mm) => mm.fmt_metrics(),
                         TrBench(ref bs) => fmt_bench_samples(bs),
                     },
                     test.name))
@@ -872,7 +846,6 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 
     let mut ntest = 0;
     let mut nbench = 0;
-    let mut nmetric = 0;
 
     for test in filter_tests(&opts, tests) {
         use TestFn::*;
@@ -882,7 +855,6 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         let fntype = match testfn {
             StaticTestFn(..) | DynTestFn(..) => { ntest += 1; "test" },
             StaticBenchFn(..) | DynBenchFn(..) => { nbench += 1; "benchmark" },
-            StaticMetricFn(..) | DynMetricFn(..) => { nmetric += 1; "metric" },
         };
 
         st.write_plain(format!("{}: {}\n", name, fntype))?;
@@ -897,13 +869,12 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     }
 
     if !opts.quiet {
-        if ntest != 0 || nbench != 0 || nmetric != 0 {
+        if ntest != 0 || nbench != 0 {
             st.write_plain("\n")?;
         }
-        st.write_plain(format!("{}, {}, {}\n",
+        st.write_plain(format!("{}, {}\n",
             plural(ntest, "test"),
-            plural(nbench, "benchmark"),
-            plural(nmetric, "metric")))?;
+            plural(nbench, "benchmark")))?;
     }
 
     Ok(())
@@ -928,15 +899,6 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
                     }
                     TrIgnored => st.ignored += 1,
                     TrAllowedFail => st.allowed_fail += 1,
-                    TrMetrics(mm) => {
-                        let tname = test.name;
-                        let MetricMap(mm) = mm;
-                        for (k, v) in &mm {
-                            st.metrics
-                              .insert_metric(&format!("{}.{}", tname, k), v.value, v.noise);
-                        }
-                        st.measured += 1
-                    }
                     TrBench(bs) => {
                         st.metrics.insert_metric(test.name.as_slice(),
                                                  bs.ns_iter_summ.median,
@@ -1095,7 +1057,7 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
 
     callback(TeFiltered(filtered_descs))?;
 
-    let (filtered_tests, filtered_benchs_and_metrics): (Vec<_>, _) =
+    let (filtered_tests, filtered_benchs): (Vec<_>, _) =
         filtered_tests.into_iter().partition(|e| {
             match e.testfn {
                 StaticTestFn(_) | DynTestFn(_) => true,
@@ -1182,8 +1144,7 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
 
     if opts.bench_benchmarks {
         // All benchmarks run at the end, in serial.
-        // (this includes metric fns)
-        for b in filtered_benchs_and_metrics {
+        for b in filtered_benchs {
             callback(TeWait(b.desc.clone(), b.testfn.padding()))?;
             run_test(opts, false, b, tx.clone());
             let (test, result, stdout) = rx.recv().unwrap();
@@ -1487,18 +1448,6 @@ pub fn run_test(opts: &TestOpts,
             monitor_ch.send((desc, TrBench(bs), Vec::new())).unwrap();
             return;
         }
-        DynMetricFn(f) => {
-            let mut mm = MetricMap::new();
-            f.call_box(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm), Vec::new())).unwrap();
-            return;
-        }
-        StaticMetricFn(f) => {
-            let mut mm = MetricMap::new();
-            f(&mut mm);
-            monitor_ch.send((desc, TrMetrics(mm), Vec::new())).unwrap();
-            return;
-        }
         DynTestFn(f) => {
             let cb = move |()| {
                 __rust_begin_short_backtrace(|| f.call_box(()))
@@ -1540,6 +1489,9 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> Tes
     }
 }
 
+#[derive(Clone, PartialEq)]
+pub struct MetricMap(BTreeMap<String, Metric>);
+
 impl MetricMap {
     pub fn new() -> MetricMap {
         MetricMap(BTreeMap::new())
@@ -1563,15 +1515,14 @@ impl MetricMap {
             value,
             noise,
         };
-        let MetricMap(ref mut map) = *self;
-        map.insert(name.to_owned(), m);
+        self.0.insert(name.to_owned(), m);
     }
 
     pub fn fmt_metrics(&self) -> String {
-        let MetricMap(ref mm) = *self;
-        let v: Vec<String> = mm.iter()
-                               .map(|(k, v)| format!("{}: {} (+/- {})", *k, v.value, v.noise))
-                               .collect();
+        let v = self.0
+                   .iter()
+                   .map(|(k, v)| format!("{}: {} (+/- {})", *k, v.value, v.noise))
+                   .collect::<Vec<_>>();
         v.join(", ")
     }
 }

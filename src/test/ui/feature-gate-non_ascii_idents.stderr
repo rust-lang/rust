@@ -1,0 +1,122 @@
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:11:1
+   |
+11 | extern crate core as bäz; //~ ERROR non-ascii idents
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:13:5
+   |
+13 | use föö::bar; //~ ERROR non-ascii idents
+   |     ^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:15:1
+   |
+15 | / mod föö { //~ ERROR non-ascii idents
+16 | |     pub fn bar() {}
+17 | | }
+   | |_^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:19:1
+   |
+19 | / fn bär( //~ ERROR non-ascii idents
+20 | |     bäz: isize //~ ERROR non-ascii idents
+21 | |     ) {
+22 | |     let _ö: isize; //~ ERROR non-ascii idents
+...  |
+26 | |     }
+27 | | }
+   | |_^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:20:5
+   |
+20 |     bäz: isize //~ ERROR non-ascii idents
+   |     ^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:22:9
+   |
+22 |     let _ö: isize; //~ ERROR non-ascii idents
+   |         ^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:25:10
+   |
+25 |         (_ä, _) => {} //~ ERROR non-ascii idents
+   |          ^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:29:1
+   |
+29 | / struct Föö { //~ ERROR non-ascii idents
+30 | |     föö: isize //~ ERROR non-ascii idents
+31 | | }
+   | |_^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:30:5
+   |
+30 |     föö: isize //~ ERROR non-ascii idents
+   |     ^^^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:33:1
+   |
+33 | / enum Bär { //~ ERROR non-ascii idents
+34 | |     Bäz { //~ ERROR non-ascii idents
+35 | |         qüx: isize //~ ERROR non-ascii idents
+36 | |     }
+37 | | }
+   | |_^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:34:5
+   |
+34 | /     Bäz { //~ ERROR non-ascii idents
+35 | |         qüx: isize //~ ERROR non-ascii idents
+36 | |     }
+   | |_____^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:35:9
+   |
+35 |         qüx: isize //~ ERROR non-ascii idents
+   |         ^^^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: non-ascii idents are not fully supported. (see issue #28979)
+  --> $DIR/feature-gate-non_ascii_idents.rs:40:5
+   |
+40 |     fn qüx();  //~ ERROR non-ascii idents
+   |     ^^^^^^^^^
+   |
+   = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
+
+error: aborting due to 13 previous errors
+

@@ -8,15 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! try_opt {
-    ($e:expr) => {
-        match $e {
-            Some(v) => v,
-            None => return None,
-        }
-    };
-}
-
 pub mod printf {
     use super::strcursor::StrCursor as Cur;
 
@@ -173,7 +164,7 @@ pub mod printf {
             s.push_str("{");
 
             if let Some(arg) = self.parameter {
-                try_opt!(write!(s, "{}", try_opt!(arg.checked_sub(1))).ok());
+                write!(s, "{}", arg.checked_sub(1)?).ok()?;
             }
 
             if has_options {
@@ -203,12 +194,12 @@ pub mod printf {
                 }
 
                 if let Some(width) = width {
-                    try_opt!(width.translate(&mut s).ok());
+                    width.translate(&mut s).ok()?;
                 }
 
                 if let Some(precision) = precision {
                     s.push_str(".");
-                    try_opt!(precision.translate(&mut s).ok());
+                    precision.translate(&mut s).ok()?;
                 }
 
                 if let Some(type_) = type_ {
@@ -277,13 +268,9 @@ pub mod printf {
     impl<'a> Iterator for Substitutions<'a> {
         type Item = Substitution<'a>;
         fn next(&mut self) -> Option<Self::Item> {
-            match parse_next_substitution(self.s) {
-                Some((sub, tail)) => {
-                    self.s = tail;
-                    Some(sub)
-                },
-                None => None,
-            }
+            let (sub, tail) = parse_next_substitution(self.s)?;
+            self.s = tail;
+            Some(sub)
         }
     }
 
@@ -303,11 +290,10 @@ pub mod printf {
         use self::State::*;
 
         let at = {
-            let start = try_opt!(s.find('%'));
-            match s[start+1..].chars().next() {
-                Some('%') => return Some((Substitution::Escape, &s[start+2..])),
-                Some(_) => {/* fall-through */},
-                None => return None,
+            let start = s.find('%')?;
+            match s[start+1..].chars().next()? {
+                '%' => return Some((Substitution::Escape, &s[start+2..])),
+                _ => {/* fall-through */},
             }
 
             Cur::new_at_start(&s[start..])
@@ -335,16 +321,16 @@ pub mod printf {
         // Used to establish the full span at the end.
         let start = at;
         // The current position within the string.
-        let mut at = try_opt!(at.at_next_cp());
+        let mut at = at.at_next_cp()?;
         // `c` is the next codepoint, `next` is a cursor after it.
-        let (mut c, mut next) = try_opt!(at.next_cp());
+        let (mut c, mut next) = at.next_cp()?;
 
         // Update `at`, `c`, and `next`, exiting if we're out of input.
         macro_rules! move_to {
             ($cur:expr) => {
                 {
                     at = $cur;
-                    let (c_, next_) = try_opt!(at.next_cp());
+                    let (c_, next_) = at.next_cp()?;
                     c = c_;
                     next = next_;
                 }
@@ -801,31 +787,27 @@ pub mod shell {
     /// Parse the next substitution from the input string.
     pub fn parse_next_substitution(s: &str) -> Option<(Substitution, &str)> {
         let at = {
-            let start = try_opt!(s.find('$'));
-            match s[start+1..].chars().next() {
-                Some('$') => return Some((Substitution::Escape, &s[start+2..])),
-                Some(c @ '0' ... '9') => {
+            let start = s.find('$')?;
+            match s[start+1..].chars().next()? {
+                '$' => return Some((Substitution::Escape, &s[start+2..])),
+                c @ '0' ... '9' => {
                     let n = (c as u8) - b'0';
                     return Some((Substitution::Ordinal(n), &s[start+2..]));
                 },
-                Some(_) => {/* fall-through */},
-                None => return None,
+                _ => {/* fall-through */},
             }
 
             Cur::new_at_start(&s[start..])
         };
 
-        let at = try_opt!(at.at_next_cp());
-        match at.next_cp() {
-            Some((c, inner)) => {
-                if !is_ident_head(c) {
-                    None
-                } else {
-                    let end = at_next_cp_while(inner, is_ident_tail);
-                    Some((Substitution::Name(at.slice_between(end).unwrap()), end.slice_after()))
-                }
-            },
-            _ => None
+        let at = at.at_next_cp()?;
+        let (c, inner) = at.next_cp()?;
+
+        if !is_ident_head(c) {
+            None
+        } else {
+            let end = at_next_cp_while(inner, is_ident_tail);
+            Some((Substitution::Name(at.slice_between(end).unwrap()), end.slice_after()))
         }
     }
 
@@ -946,10 +928,7 @@ mod strcursor {
         }
 
         pub fn next_cp(mut self) -> Option<(char, StrCursor<'a>)> {
-            let cp = match self.cp_after() {
-                Some(cp) => cp,
-                None => return None,
-            };
+            let cp = self.cp_after()?;
             self.seek_right(cp.len_utf8());
             Some((cp, self))
         }

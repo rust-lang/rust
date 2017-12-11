@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::hir;
+use rustc::hir::def_id::DefId;
+use rustc::middle::region;
 use rustc::mir::{self, Location, Mir};
 use rustc::mir::visit::Visitor;
 use rustc::ty::{self, Region, TyCtxt};
@@ -27,6 +30,7 @@ use borrow_check::nll::ToRegionVid;
 use syntax_pos::Span;
 
 use std::fmt;
+use std::rc::Rc;
 
 // `Borrows` maps each dataflow bit to an `Rvalue::Ref`, which can be
 // uniquely identified in the MIR by the `Location` of the assigment
@@ -34,9 +38,12 @@ use std::fmt;
 pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
+    scope_tree: Rc<region::ScopeTree>,
+    root_scope: Option<region::Scope>,
     borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+    local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
     region_span_map: FxHashMap<RegionKind, Span>,
     nonlexical_regioncx: Option<RegionInferenceContext<'tcx>>,
 }
@@ -69,22 +76,32 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                mir: &'a Mir<'tcx>,
-               nonlexical_regioncx: Option<RegionInferenceContext<'tcx>>)
+               nonlexical_regioncx: Option<RegionInferenceContext<'tcx>>,
+               def_id: DefId,
+               body_id: Option<hir::BodyId>)
                -> Self {
+        let scope_tree = tcx.region_scope_tree(def_id);
+        let root_scope = body_id.map(|body_id| {
+            region::Scope::CallSite(tcx.hir.body(body_id).value.hir_id.local_id)
+        });
         let mut visitor = GatherBorrows {
             tcx,
             mir,
             idx_vec: IndexVec::new(),
             location_map: FxHashMap(),
             region_map: FxHashMap(),
+            local_map: FxHashMap(),
             region_span_map: FxHashMap()
         };
         visitor.visit_mir(mir);
         return Borrows { tcx: tcx,
                          mir: mir,
                          borrows: visitor.idx_vec,
+                         scope_tree,
+                         root_scope,
                          location_map: visitor.location_map,
                          region_map: visitor.region_map,
+                         local_map: visitor.local_map,
                          region_span_map: visitor.region_span_map,
                          nonlexical_regioncx };
 
@@ -94,6 +111,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
             location_map: FxHashMap<Location, BorrowIndex>,
             region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+            local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
             region_span_map: FxHashMap<RegionKind, Span>,
         }
 
@@ -101,6 +119,14 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             fn visit_rvalue(&mut self,
                             rvalue: &mir::Rvalue<'tcx>,
                             location: mir::Location) {
+                fn root_local(mut p: &mir::Place<'_>) -> Option<mir::Local> {
+                    loop { match p {
+                        mir::Place::Projection(pi) => p = &pi.base,
+                        mir::Place::Static(_) => return None,
+                        mir::Place::Local(l) => return Some(*l)
+                    }}
+                }
+
                 if let mir::Rvalue::Ref(region, kind, ref place) = *rvalue {
                     if is_unsafe_place(self.tcx, self.mir, place) { return; }
 
@@ -109,8 +135,14 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     };
                     let idx = self.idx_vec.push(borrow);
                     self.location_map.insert(location, idx);
+
                     let borrows = self.region_map.entry(region).or_insert(FxHashSet());
                     borrows.insert(idx);
+
+                    if let Some(local) = root_local(place) {
+                        let borrows = self.local_map.entry(local).or_insert(FxHashSet());
+                        borrows.insert(idx);
+                    }
                 }
             }
 
@@ -199,7 +231,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::EndRegion(region_scope) => {
                 if let Some(borrow_indexes) = self.region_map.get(&ReScope(region_scope)) {
                     assert!(self.nonlexical_regioncx.is_none());
-                    for idx in borrow_indexes { sets.kill(&idx); }
+                    sets.kill_all(borrow_indexes);
                 } else {
                     // (if there is no entry, then there are no borrows to be tracked)
                 }
@@ -224,10 +256,19 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 }
             }
 
+            mir::StatementKind::StorageDead(local) => {
+                // Make sure there are no remaining borrows for locals that
+                // are gone out of scope.
+                //
+                // FIXME: expand this to variables that are assigned over.
+                if let Some(borrow_indexes) = self.local_map.get(&local) {
+                    sets.kill_all(borrow_indexes);
+                }
+            }
+
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::SetDiscriminant { .. } |
             mir::StatementKind::StorageLive(..) |
-            mir::StatementKind::StorageDead(..) |
             mir::StatementKind::Validate(..) |
             mir::StatementKind::Nop => {}
 
@@ -253,8 +294,17 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 // like unwind paths, we do not always emit `EndRegion` statements, so we
                 // add some kills here as a "backup" and to avoid spurious error messages.
                 for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
-                    if let ReScope(..) = borrow_data.region {
-                        sets.kill(&borrow_index);
+                    if let ReScope(scope) = borrow_data.region {
+                        // Check that the scope is not actually a scope from a function that is
+                        // a parent of our closure. Note that the CallSite scope itself is
+                        // *outside* of the closure, for some weird reason.
+                        if let Some(root_scope) = self.root_scope {
+                            if *scope != root_scope &&
+                                self.scope_tree.is_subscope_of(*scope, root_scope)
+                            {
+                                sets.kill(&borrow_index);
+                            }
+                        }
                     }
                 }
             }

@@ -1067,21 +1067,15 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
 
     fn next(&mut self) -> Option<&'a T> {
         loop {
-            let o_cmp = match (self.a.peek(), self.b.peek()) {
-                (None, _) => None,
-                (_, None) => None,
-                (Some(a1), Some(b1)) => Some(a1.cmp(b1)),
-            };
-            match o_cmp {
-                None => return None,
-                Some(Less) => {
+            match Ord::cmp(self.a.peek()?, self.b.peek()?) {
+                Less => {
                     self.a.next();
                 }
-                Some(Equal) => {
+                Equal => {
                     self.b.next();
                     return self.a.next();
                 }
-                Some(Greater) => {
+                Greater => {
                     self.b.next();
                 }
             }

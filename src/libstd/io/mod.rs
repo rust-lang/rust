@@ -2019,10 +2019,9 @@ impl<R: Read> Iterator for Chars<R> {
     type Item = result::Result<char, CharsError>;
 
     fn next(&mut self) -> Option<result::Result<char, CharsError>> {
-        let first_byte = match read_one_byte(&mut self.inner) {
-            None => return None,
-            Some(Ok(b)) => b,
-            Some(Err(e)) => return Some(Err(CharsError::Other(e))),
+        let first_byte = match read_one_byte(&mut self.inner)? {
+            Ok(b) => b,
+            Err(e) => return Some(Err(CharsError::Other(e))),
         };
         let width = core_str::utf8_char_width(first_byte);
         if width == 1 { return Some(Ok(first_byte as char)) }

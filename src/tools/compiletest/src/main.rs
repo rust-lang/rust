@@ -9,22 +9,20 @@
 // except according to those terms.
 
 #![crate_name = "compiletest"]
-
 #![feature(test)]
 #![feature(slice_rotate)]
-
 #![deny(warnings)]
 
-#[cfg(unix)]
-extern crate libc;
-extern crate test;
-extern crate getopts;
-extern crate rustc_serialize;
-#[macro_use]
-extern crate log;
+extern crate diff;
 extern crate env_logger;
 extern crate filetime;
-extern crate diff;
+extern crate getopts;
+#[cfg(unix)]
+extern crate libc;
+#[macro_use]
+extern crate log;
+extern crate rustc_serialize;
+extern crate test;
 
 use std::env;
 use std::ffi::OsString;
@@ -35,8 +33,9 @@ use std::process::Command;
 use filetime::FileTime;
 use getopts::Options;
 use common::Config;
-use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Mode};
-use test::{TestPaths, ColorConfig};
+use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
+use common::{expected_output_path, UI_EXTENSIONS};
+use test::{ColorConfig, TestPaths};
 use util::logv;
 
 use self::header::EarlyProps;
@@ -63,53 +62,168 @@ fn main() {
     run_tests(&config);
 }
 
-pub fn parse_config(args: Vec<String> ) -> Config {
-
+pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
-    opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
-        .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
-        .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
-        .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
-        .reqopt("", "lldb-python", "path to python to use for doc tests", "PATH")
-        .reqopt("", "docck-python", "path to python to use for doc tests", "PATH")
-        .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
-        .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
-        .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
+    opts.reqopt(
+        "",
+        "compile-lib-path",
+        "path to host shared libraries",
+        "PATH",
+    ).reqopt(
+            "",
+            "run-lib-path",
+            "path to target shared libraries",
+            "PATH",
+        )
+        .reqopt(
+            "",
+            "rustc-path",
+            "path to rustc to use for compiling",
+            "PATH",
+        )
+        .optopt(
+            "",
+            "rustdoc-path",
+            "path to rustdoc to use for compiling",
+            "PATH",
+        )
+        .reqopt(
+            "",
+            "lldb-python",
+            "path to python to use for doc tests",
+            "PATH",
+        )
+        .reqopt(
+            "",
+            "docck-python",
+            "path to python to use for doc tests",
+            "PATH",
+        )
+        .optopt(
+            "",
+            "valgrind-path",
+            "path to Valgrind executable for Valgrind tests",
+            "PROGRAM",
+        )
+        .optflag(
+            "",
+            "force-valgrind",
+            "fail if Valgrind tests cannot be run under Valgrind",
+        )
+        .optopt(
+            "",
+            "llvm-filecheck",
+            "path to LLVM's FileCheck binary",
+            "DIR",
+        )
         .reqopt("", "src-base", "directory to scan for test files", "PATH")
-        .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
-        .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
-        .reqopt("", "mode", "which sort of compile tests to run",
-                "(compile-fail|parse-fail|run-fail|run-pass|\
-                 run-pass-valgrind|pretty|debug-info|incremental|mir-opt)")
+        .reqopt(
+            "",
+            "build-base",
+            "directory to deposit test outputs",
+            "PATH",
+        )
+        .reqopt(
+            "",
+            "stage-id",
+            "the target-stage identifier",
+            "stageN-TARGET",
+        )
+        .reqopt(
+            "",
+            "mode",
+            "which sort of compile tests to run",
+            "(compile-fail|parse-fail|run-fail|run-pass|\
+             run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+        )
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "exact", "filters match exactly")
-        .optopt("", "runtool", "supervisor program to run tests under \
-                                (eg. emulator, valgrind)", "PROGRAM")
-        .optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
-        .optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
+        .optopt(
+            "",
+            "runtool",
+            "supervisor program to run tests under \
+             (eg. emulator, valgrind)",
+            "PROGRAM",
+        )
+        .optopt(
+            "",
+            "host-rustcflags",
+            "flags to pass to rustc for host",
+            "FLAGS",
+        )
+        .optopt(
+            "",
+            "target-rustcflags",
+            "flags to pass to rustc for target",
+            "FLAGS",
+        )
         .optflag("", "verbose", "run tests verbosely, showing all output")
-        .optflag("", "quiet", "print one character per test instead of one line")
+        .optflag(
+            "",
+            "quiet",
+            "print one character per test instead of one line",
+        )
         .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optopt("", "logfile", "file to log test execution to", "FILE")
         .optopt("", "target", "the target to build for", "TARGET")
         .optopt("", "host", "the host to build for", "HOST")
-        .optopt("", "gdb", "path to GDB to use for GDB debuginfo tests", "PATH")
-        .optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING")
-        .optopt("", "llvm-version", "the version of LLVM used", "VERSION STRING")
+        .optopt(
+            "",
+            "gdb",
+            "path to GDB to use for GDB debuginfo tests",
+            "PATH",
+        )
+        .optopt(
+            "",
+            "lldb-version",
+            "the version of LLDB used",
+            "VERSION STRING",
+        )
+        .optopt(
+            "",
+            "llvm-version",
+            "the version of LLVM used",
+            "VERSION STRING",
+        )
         .optflag("", "system-llvm", "is LLVM the system LLVM")
-        .optopt("", "android-cross-path", "Android NDK standalone path", "PATH")
+        .optopt(
+            "",
+            "android-cross-path",
+            "Android NDK standalone path",
+            "PATH",
+        )
         .optopt("", "adb-path", "path to the android debugger", "PATH")
-        .optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH")
-        .optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH")
+        .optopt(
+            "",
+            "adb-test-dir",
+            "path to tests for the android debugger",
+            "PATH",
+        )
+        .optopt(
+            "",
+            "lldb-python-dir",
+            "directory containing LLDB's python module",
+            "PATH",
+        )
         .reqopt("", "cc", "path to a C compiler", "PATH")
         .reqopt("", "cxx", "path to a C++ compiler", "PATH")
         .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
         .optopt("", "ar", "path to an archiver", "PATH")
         .optopt("", "linker", "path to a linker", "PATH")
-        .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
+        .reqopt(
+            "",
+            "llvm-components",
+            "list of LLVM components built in",
+            "LIST",
+        )
         .reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS")
         .optopt("", "nodejs", "the name of nodejs", "PATH")
-        .optopt("", "remote-test-client", "path to the remote test client", "PATH")
+        .optopt(
+            "",
+            "remote-test-client",
+            "path to the remote test client",
+            "PATH",
+        )
         .optflag("h", "help", "show this message");
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -120,11 +234,10 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         panic!()
     }
 
-    let matches =
-        &match opts.parse(args_) {
-          Ok(m) => m,
-          Err(f) => panic!("{:?}", f)
-        };
+    let matches = &match opts.parse(args_) {
+        Ok(m) => m,
+        Err(f) => panic!("{:?}", f),
+    };
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
@@ -154,7 +267,10 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         Some("auto") | None => ColorConfig::AutoColor,
         Some("always") => ColorConfig::AlwaysColor,
         Some("never") => ColorConfig::NeverColor,
-        Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
+        Some(x) => panic!(
+            "argument for --color must be auto, always, or never, but found `{}`",
+            x
+        ),
     };
 
     Config {
@@ -170,7 +286,11 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
-        mode: matches.opt_str("mode").unwrap().parse().expect("invalid mode"),
+        mode: matches
+            .opt_str("mode")
+            .unwrap()
+            .parse()
+            .expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
@@ -189,10 +309,9 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         android_cross_path: opt_path(matches, "android-cross-path"),
         adb_path: opt_str2(matches.opt_str("adb-path")),
         adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
-        adb_device_status:
-            opt_str2(matches.opt_str("target")).contains("android") &&
-            "(none)" != opt_str2(matches.opt_str("adb-test-dir")) &&
-            !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
+        adb_device_status: opt_str2(matches.opt_str("target")).contains("android")
+            && "(none)" != opt_str2(matches.opt_str("adb-test-dir"))
+            && !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
@@ -213,7 +332,10 @@ pub fn parse_config(args: Vec<String> ) -> Config {
 pub fn log_config(config: &Config) {
     let c = config;
     logv(c, "configuration:".to_string());
-    logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
+    logv(
+        c,
+        format!("compile_lib_path: {:?}", config.compile_lib_path),
+    );
     logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
@@ -222,24 +344,38 @@ pub fn log_config(config: &Config) {
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
-    logv(c, format!("filter: {}",
-                    opt_str(&config.filter
-                                   .as_ref()
-                                   .map(|re| re.to_owned()))));
+    logv(
+        c,
+        format!(
+            "filter: {}",
+            opt_str(&config.filter.as_ref().map(|re| re.to_owned()))
+        ),
+    );
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
-    logv(c, format!("host-rustcflags: {}",
-                    opt_str(&config.host_rustcflags)));
-    logv(c, format!("target-rustcflags: {}",
-                    opt_str(&config.target_rustcflags)));
+    logv(
+        c,
+        format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)),
+    );
+    logv(
+        c,
+        format!("target-rustcflags: {}", opt_str(&config.target_rustcflags)),
+    );
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
-    logv(c, format!("android-cross-path: {:?}",
-                    config.android_cross_path.display()));
+    logv(
+        c,
+        format!(
+            "android-cross-path: {:?}",
+            config.android_cross_path.display()
+        ),
+    );
     logv(c, format!("adb_path: {:?}", config.adb_path));
     logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
-    logv(c, format!("adb_device_status: {}",
-                    config.adb_device_status));
+    logv(
+        c,
+        format!("adb_device_status: {}", config.adb_device_status),
+    );
     logv(c, format!("ar: {}", config.ar));
     logv(c, format!("linker: {:?}", config.linker));
     logv(c, format!("verbose: {}", config.verbose));
@@ -264,8 +400,11 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 pub fn run_tests(config: &Config) {
     if config.target.contains("android") {
         if let DebugInfoGdb = config.mode {
-            println!("{} debug-info test uses tcp 5039 port.\
-                     please reserve it", config.target);
+            println!(
+                "{} debug-info test uses tcp 5039 port.\
+                 please reserve it",
+                config.target
+            );
 
             // android debug-info test uses remote debugger so, we test 1 thread
             // at once as they're all sharing the same TCP port to communicate
@@ -281,12 +420,14 @@ pub fn run_tests(config: &Config) {
         DebugInfoLldb => {
             if let Some(lldb_version) = config.lldb_version.as_ref() {
                 if is_blacklisted_lldb_version(&lldb_version[..]) {
-                    println!("WARNING: The used version of LLDB ({}) has a \
-                              known issue that breaks debuginfo tests. See \
-                              issue #32520 for more information. Skipping all \
-                              LLDB-based tests!",
-                             lldb_version);
-                    return
+                    println!(
+                        "WARNING: The used version of LLDB ({}) has a \
+                         known issue that breaks debuginfo tests. See \
+                         issue #32520 for more information. Skipping all \
+                         LLDB-based tests!",
+                        lldb_version
+                    );
+                    return;
                 }
             }
 
@@ -297,11 +438,12 @@ pub fn run_tests(config: &Config) {
         }
 
         DebugInfoGdb => {
-            if config.remote_test_client.is_some() &&
-               !config.target.contains("android"){
-                println!("WARNING: debuginfo tests are not available when \
-                          testing with remote");
-                return
+            if config.remote_test_client.is_some() && !config.target.contains("android") {
+                println!(
+                    "WARNING: debuginfo tests are not available when \
+                     testing with remote"
+                );
+                return;
             }
         }
         _ => { /* proceed */ }
@@ -317,7 +459,9 @@ pub fn run_tests(config: &Config) {
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
-    unsafe { raise_fd_limit::raise_fd_limit(); }
+    unsafe {
+        raise_fd_limit::raise_fd_limit();
+    }
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
     env::set_var("__COMPAT_LAYER", "RunAsInvoker");
@@ -346,7 +490,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         bench_benchmarks: true,
         nocapture: match env::var("RUST_TEST_NOCAPTURE") {
             Ok(val) => &val != "0",
-            Err(_) => false
+            Err(_) => false,
         },
         color: config.color,
         test_threads: None,
@@ -357,24 +501,25 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 }
 
 pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
-    debug!("making tests from {:?}",
-           config.src_base.display());
+    debug!("making tests from {:?}", config.src_base.display());
     let mut tests = Vec::new();
-    collect_tests_from_dir(config,
-                           &config.src_base,
-                           &config.src_base,
-                           &PathBuf::new(),
-                           &mut tests)
-        .unwrap();
+    collect_tests_from_dir(
+        config,
+        &config.src_base,
+        &config.src_base,
+        &PathBuf::new(),
+        &mut tests,
+    ).unwrap();
     tests
 }
 
-fn collect_tests_from_dir(config: &Config,
-                          base: &Path,
-                          dir: &Path,
-                          relative_dir_path: &Path,
-                          tests: &mut Vec<test::TestDescAndFn>)
-                          -> io::Result<()> {
+fn collect_tests_from_dir(
+    config: &Config,
+    base: &Path,
+    dir: &Path,
+    relative_dir_path: &Path,
+    tests: &mut Vec<test::TestDescAndFn>,
+) -> io::Result<()> {
     // Ignore directories that contain a file
     // `compiletest-ignore-dir`.
     for file in fs::read_dir(dir)? {
@@ -390,7 +535,7 @@ fn collect_tests_from_dir(config: &Config,
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
             };
             tests.push(make_test(config, &paths));
-            return Ok(())
+            return Ok(());
         }
     }
 
@@ -430,11 +575,7 @@ fn collect_tests_from_dir(config: &Config,
                 fs::create_dir_all(&build_dir).unwrap();
             } else {
                 debug!("found directory: {:?}", file_path.display());
-                collect_tests_from_dir(config,
-                                       base,
-                                       &file_path,
-                                       &relative_file_path,
-                                       tests)?;
+                collect_tests_from_dir(config, base, &file_path, &relative_file_path, tests)?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
@@ -467,13 +608,13 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
             test::ShouldPanic::Yes
         } else {
             test::ShouldPanic::No
-        }
+        },
     };
 
     // Debugging emscripten code doesn't make sense today
-    let ignore = early_props.ignore || !up_to_date(config, testpaths, &early_props) ||
-                 (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb) &&
-                  config.target.contains("emscripten");
+    let ignore = early_props.ignore || !up_to_date(config, testpaths, &early_props)
+        || (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
+            && config.target.contains("emscripten");
 
     test::TestDescAndFn {
         desc: test::TestDesc {
@@ -487,28 +628,32 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
 }
 
 fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
-    let stamp_name = format!("{}-{}.stamp",
-                             testpaths.file.file_name().unwrap()
-                                           .to_str().unwrap(),
-                             config.stage_id);
-    config.build_base.canonicalize()
-          .unwrap_or_else(|_| config.build_base.clone())
-          .join(&testpaths.relative_dir)
-          .join(stamp_name)
+    let stamp_name = format!(
+        "{}-{}.stamp",
+        testpaths.file.file_name().unwrap().to_str().unwrap(),
+        config.stage_id
+    );
+    config
+        .build_base
+        .canonicalize()
+        .unwrap_or_else(|_| config.build_base.clone())
+        .join(&testpaths.relative_dir)
+        .join(stamp_name)
 }
 
 fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> bool {
-    let rust_src_dir = config.find_rust_src_root().expect(
-        "Could not find Rust source root",
-    );
+    let rust_src_dir = config
+        .find_rust_src_root()
+        .expect("Could not find Rust source root");
     let stamp = mtime(&stamp(config, testpaths));
     let mut inputs = vec![mtime(&testpaths.file), mtime(&config.rustc_path)];
     for aux in props.aux.iter() {
-        inputs.push(mtime(
-            &testpaths.file.parent().unwrap().join("auxiliary").join(
-                aux,
-            ),
-        ));
+        inputs.push(mtime(&testpaths
+            .file
+            .parent()
+            .unwrap()
+            .join("auxiliary")
+            .join(aux)));
     }
     // Relevant pretty printer files
     let pretty_printer_files = [
@@ -529,21 +674,34 @@ fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> boo
         inputs.push(mtime(&rustdoc_path));
         inputs.push(mtime(&rust_src_dir.join("src/etc/htmldocck.py")));
     }
+
+    // UI test files.
+    for extension in UI_EXTENSIONS {
+        for revision in &props.revisions {
+            let path = &expected_output_path(testpaths, Some(revision), extension);
+            inputs.push(mtime(path));
+        }
+
+        if props.revisions.is_empty() {
+            let path = &expected_output_path(testpaths, None, extension);
+            inputs.push(mtime(path));
+        }
+    }
+
     inputs.iter().any(|input| *input > stamp)
 }
 
 fn mtime(path: &Path) -> FileTime {
-    fs::metadata(path).map(|f| {
-        FileTime::from_last_modification_time(&f)
-    }).unwrap_or_else(|_| FileTime::zero())
+    fs::metadata(path)
+        .map(|f| FileTime::from_last_modification_time(&f))
+        .unwrap_or_else(|_| FileTime::zero())
 }
 
 pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
     // Convert a complete path to something like
     //
     //    run-pass/foo/bar/baz.rs
-    let path =
-        PathBuf::from(config.src_base.file_name().unwrap())
+    let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
     test::DynTestName(format!("[{}] {}", config.mode, path.display()))
@@ -552,9 +710,7 @@ pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName 
 pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {
     let config = config.clone();
     let testpaths = testpaths.clone();
-    test::DynTestFn(Box::new(move |()| {
-        runtest::run(config, &testpaths)
-    }))
+    test::DynTestFn(Box::new(move |()| runtest::run(config, &testpaths)))
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)
@@ -572,9 +728,17 @@ fn analyze_gdb(gdb: Option<String>) -> (Option<String>, Option<u32>, bool) {
         Some(ref s) => s,
     };
 
-    let version_line = Command::new(gdb).arg("--version").output().map(|output| {
-        String::from_utf8_lossy(&output.stdout).lines().next().unwrap().to_string()
-    }).ok();
+    let version_line = Command::new(gdb)
+        .arg("--version")
+        .output()
+        .map(|output| {
+            String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()
+                .unwrap()
+                .to_string()
+        })
+        .ok();
 
     let version = match version_line {
         Some(line) => extract_gdb_version(&line),
@@ -600,7 +764,7 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     for (pos, c) in full_version_line.char_indices() {
         if prev_was_digit || !c.is_digit(10) {
             prev_was_digit = c.is_digit(10);
-            continue
+            continue;
         }
 
         prev_was_digit = true;
@@ -623,10 +787,15 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
             Some(idx) => if line.as_bytes()[idx] == b'.' {
                 let patch = &line[idx + 1..];
 
-                let patch_len = patch.find(|c: char| !c.is_digit(10))
-                                                       .unwrap_or_else(|| patch.len());
+                let patch_len = patch
+                    .find(|c: char| !c.is_digit(10))
+                    .unwrap_or_else(|| patch.len());
                 let patch = &patch[..patch_len];
-                let patch = if patch_len > 3 || patch_len == 0 { None } else { Some(patch) };
+                let patch = if patch_len > 3 || patch_len == 0 {
+                    None
+                } else {
+                    Some(patch)
+                };
 
                 (&line[..idx], patch)
             } else {
@@ -666,21 +835,36 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
             let full_version_line = full_version_line.trim();
 
             for (pos, l) in full_version_line.char_indices() {
-                if l != 'l' && l != 'L' { continue }
-                if pos + 5 >= full_version_line.len() { continue }
+                if l != 'l' && l != 'L' {
+                    continue;
+                }
+                if pos + 5 >= full_version_line.len() {
+                    continue;
+                }
                 let l = full_version_line[pos + 1..].chars().next().unwrap();
-                if l != 'l' && l != 'L' { continue }
+                if l != 'l' && l != 'L' {
+                    continue;
+                }
                 let d = full_version_line[pos + 2..].chars().next().unwrap();
-                if d != 'd' && d != 'D' { continue }
+                if d != 'd' && d != 'D' {
+                    continue;
+                }
                 let b = full_version_line[pos + 3..].chars().next().unwrap();
-                if b != 'b' && b != 'B' { continue }
+                if b != 'b' && b != 'B' {
+                    continue;
+                }
                 let dash = full_version_line[pos + 4..].chars().next().unwrap();
-                if dash != '-' { continue }
+                if dash != '-' {
+                    continue;
+                }
 
-                let vers = full_version_line[pos + 5..].chars().take_while(|c| {
-                    c.is_digit(10)
-                }).collect::<String>();
-                if !vers.is_empty() { return Some(vers) }
+                let vers = full_version_line[pos + 5..]
+                    .chars()
+                    .take_while(|c| c.is_digit(10))
+                    .collect::<String>();
+                if !vers.is_empty() {
+                    return Some(vers);
+                }
             }
         }
     }

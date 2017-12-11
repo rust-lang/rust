@@ -1641,14 +1641,14 @@ impl Foo {
 These attributes do not work on typedefs, since typedefs are just aliases.
 
 Representations like `#[repr(u8)]`, `#[repr(i64)]` are for selecting the
-discriminant size for C-like enums (when there is no associated data, e.g.
-`enum Color {Red, Blue, Green}`), effectively setting the size of the enum to
+discriminant size for enums with no data fields on any of the variants, e.g.
+`enum Color {Red, Blue, Green}`, effectively setting the size of the enum to
 the size of the provided type. Such an enum can be cast to a value of the same
 type as well. In short, `#[repr(u8)]` makes the enum behave like an integer
 with a constrained set of allowed values.
 
-Only C-like enums can be cast to numerical primitives, so this attribute will
-not apply to structs.
+Only field-less enums can be cast to numerical primitives, so this attribute
+will not apply to structs.
 
 `#[repr(packed)]` reduces padding to make the struct size smaller. The
 representation of enums isn't strictly defined in Rust, and this attribute

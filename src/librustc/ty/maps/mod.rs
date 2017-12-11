@@ -190,8 +190,10 @@ define_maps! { <'tcx>
     [] fn coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
     [] fn borrowck: BorrowCheck(DefId) -> Rc<BorrowCheckResult>,
-    // FIXME: shouldn't this return a `Result<(), BorrowckErrors>` instead?
-    [] fn mir_borrowck: MirBorrowCheck(DefId) -> (),
+
+    /// Borrow checks the function body. If this is a closure, returns
+    /// additional requirements that the closure's creator must verify.
+    [] fn mir_borrowck: MirBorrowCheck(DefId) -> Option<mir::ClosureRegionRequirements>,
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.

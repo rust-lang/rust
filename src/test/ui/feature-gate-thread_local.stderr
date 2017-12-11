@@ -1,0 +1,10 @@
+error: `#[thread_local]` is an experimental feature, and does not currently handle destructors. There is no corresponding `#[task_local]` mapping to the task model (see issue #29594)
+  --> $DIR/feature-gate-thread_local.rs:18:1
+   |
+18 | #[thread_local] //~ ERROR `#[thread_local]` is an experimental feature
+   | ^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(thread_local)] to the crate attributes to enable
+
+error: aborting due to previous error
+

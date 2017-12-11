@@ -65,6 +65,7 @@ r##"<!DOCTYPE html>
     {before_content}
 
     <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
         {logo}
         {sidebar}
     </nav>

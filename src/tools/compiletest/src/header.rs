@@ -26,6 +26,7 @@ pub struct EarlyProps {
     pub ignore: bool,
     pub should_fail: bool,
     pub aux: Vec<String>,
+    pub revisions: Vec<String>,
 }
 
 impl EarlyProps {
@@ -34,6 +35,7 @@ impl EarlyProps {
             ignore: false,
             should_fail: false,
             aux: Vec::new(),
+            revisions: vec![],
         };
 
         iter_header(testfile,
@@ -48,6 +50,10 @@ impl EarlyProps {
 
             if let Some(s) = config.parse_aux_build(ln) {
                 props.aux.push(s);
+            }
+
+            if let Some(r) = config.parse_revisions(ln) {
+                props.revisions.extend(r);
             }
 
             props.should_fail = props.should_fail || config.parse_name_directive(ln, "should-fail");

@@ -620,10 +620,7 @@ fn prepend_attrs(sess: &ParseSess,
                  span: syntax_pos::Span)
     -> Option<tokenstream::TokenStream>
 {
-    let tokens = match tokens {
-        Some(tokens) => tokens,
-        None => return None,
-    };
+    let tokens = tokens?;
     if attrs.len() == 0 {
         return Some(tokens.clone())
     }

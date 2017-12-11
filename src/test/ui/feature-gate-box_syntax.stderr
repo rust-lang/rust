@@ -1,0 +1,10 @@
+error: box expression syntax is experimental; you can call `Box::new` instead. (see issue #27779)
+  --> $DIR/feature-gate-box_syntax.rs:14:13
+   |
+14 |     let x = box 3;
+   |             ^^^^^
+   |
+   = help: add #![feature(box_syntax)] to the crate attributes to enable
+
+error: aborting due to previous error
+

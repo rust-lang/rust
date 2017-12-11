@@ -14,7 +14,6 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Mir, Location};
-use rustc_data_structures::bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
 use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
@@ -504,7 +503,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
         let stmt = &mir[location.block].statements[location.statement_index];
         let loc_map = &move_data.loc_map;
         let path_map = &move_data.path_map;
-        let bits_per_block = self.bits_per_block();
 
         match stmt.kind {
             // this analysis only tries to find moves explicitly
@@ -515,21 +513,15 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
             _ => {
                 debug!("stmt {:?} at loc {:?} moves out of move_indexes {:?}",
                        stmt, location, &loc_map[location]);
-                for move_index in &loc_map[location] {
-                    // Every path deinitialized by a *particular move*
-                    // has corresponding bit, "gen'ed" (i.e. set)
-                    // here, in dataflow vector
-                    zero_to_one(sets.gen_set.words_mut(), *move_index);
-                }
+                // Every path deinitialized by a *particular move*
+                // has corresponding bit, "gen'ed" (i.e. set)
+                // here, in dataflow vector
+                sets.gen_all_and_assert_dead(&loc_map[location]);
             }
         }
 
         for_location_inits(tcx, mir, move_data, location,
-            |mpi| for moi in &path_map[mpi] {
-                assert!(moi.index() < bits_per_block);
-                sets.kill_set.add(&moi);
-            }
-        );
+                           |mpi| sets.kill_all(&path_map[mpi]));
     }
 
     fn terminator_effect(&self,
@@ -543,18 +535,10 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
 
         debug!("terminator {:?} at loc {:?} moves out of move_indexes {:?}",
                term, location, &loc_map[location]);
-        let bits_per_block = self.bits_per_block();
-        for move_index in &loc_map[location] {
-            assert!(move_index.index() < bits_per_block);
-            zero_to_one(sets.gen_set.words_mut(), *move_index);
-        }
+        sets.gen_all_and_assert_dead(&loc_map[location]);
 
         for_location_inits(tcx, mir, move_data, location,
-            |mpi| for moi in &path_map[mpi] {
-                assert!(moi.index() < bits_per_block);
-                sets.kill_set.add(&moi);
-            }
-        );
+                           |mpi| sets.kill_all(&path_map[mpi]));
     }
 
     fn propagate_call_return(&self,
@@ -585,11 +569,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
     }
 
     fn start_block_effect(&self, sets: &mut BlockSets<InitIndex>) {
-        let bits_per_block = self.bits_per_block();
-        for init_index in (0..self.mir.arg_count).map(InitIndex::new) {
-            assert!(init_index.index() < bits_per_block);
-            sets.gen_set.add(&init_index);
-        }
+        sets.gen_all((0..self.mir.arg_count).map(InitIndex::new));
     }
     fn statement_effect(&self,
                         sets: &mut BlockSets<InitIndex>,
@@ -599,26 +579,39 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
         let init_path_map = &move_data.init_path_map;
         let init_loc_map = &move_data.init_loc_map;
         let rev_lookup = &move_data.rev_lookup;
-        let bits_per_block = self.bits_per_block();
 
         debug!("statement {:?} at loc {:?} initializes move_indexes {:?}",
                stmt, location, &init_loc_map[location]);
-        for init_index in &init_loc_map[location] {
-            assert!(init_index.index() < bits_per_block);
-            sets.gen_set.add(init_index);
-        }
+        sets.gen_all(&init_loc_map[location]);
 
         match stmt.kind {
-            mir::StatementKind::StorageDead(local) => {
-                // End inits for StorageDead, so that an immutable variable can
-                // be reinitialized on the next iteration of the loop.
+            mir::StatementKind::StorageDead(local) |
+            mir::StatementKind::StorageLive(local) => {
+                // End inits for StorageDead and StorageLive, so that an immutable
+                // variable can be reinitialized on the next iteration of the loop.
+                //
+                // FIXME(#46525): We *need* to do this for StorageLive as well as
+                // StorageDead, because lifetimes of match bindings with guards are
+                // weird - i.e. this code
+                //
+                // ```
+                //     fn main() {
+                //         match 0 {
+                //             a | a
+                //             if { println!("a={}", a); false } => {}
+                //             _ => {}
+                //         }
+                //     }
+                // ```
+                //
+                // runs the guard twice, using the same binding for `a`, and only
+                // storagedeads after everything ends, so if we don't regard the
+                // storagelive as killing storage, we would have a multiple assignment
+                // to immutable data error.
                 if let LookupResult::Exact(mpi) = rev_lookup.find(&mir::Place::Local(local)) {
                     debug!("stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
-                        stmt, location, &init_path_map[mpi]);
-                    for ii in &init_path_map[mpi] {
-                        assert!(ii.index() < bits_per_block);
-                        sets.kill_set.add(&ii);
-                    }
+                           stmt, location, &init_path_map[mpi]);
+                    sets.kill_all(&init_path_map[mpi]);
                 }
             }
             _ => {}
@@ -634,13 +627,11 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
         let init_loc_map = &move_data.init_loc_map;
         debug!("terminator {:?} at loc {:?} initializes move_indexes {:?}",
                term, location, &init_loc_map[location]);
-        let bits_per_block = self.bits_per_block();
-        for init_index in &init_loc_map[location] {
-            if move_data.inits[*init_index].kind != InitKind::NonPanicPathOnly {
-                assert!(init_index.index() < bits_per_block);
-                sets.gen_set.add(init_index);
-            }
-        }
+        sets.gen_all(
+            init_loc_map[location].iter().filter(|init_index| {
+                move_data.inits[**init_index].kind != InitKind::NonPanicPathOnly
+            })
+        );
     }
 
     fn propagate_call_return(&self,
@@ -661,11 +652,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
             in_out.add(init_index);
         }
     }
-}
-
-fn zero_to_one(bitvec: &mut [usize], move_index: MoveOutIndex) {
-    let retval = bitvec.set_bit(move_index.index());
-    assert!(retval);
 }
 
 impl<'a, 'gcx, 'tcx> BitwiseOperator for MaybeInitializedLvals<'a, 'gcx, 'tcx> {

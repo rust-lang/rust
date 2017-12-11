@@ -421,8 +421,18 @@ impl ToJson for IndexItemFunctionType {
 thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
                     RefCell::new(Vec::new()));
-thread_local!(static USED_ID_MAP: RefCell<FxHashMap<String, usize>> =
+thread_local!(pub static USED_ID_MAP: RefCell<FxHashMap<String, usize>> =
                     RefCell::new(init_ids()));
+
+pub fn render_text<F: FnMut(RenderType) -> String>(mut render: F) -> (String, String) {
+    // Save the state of USED_ID_MAP so it only gets updated once even
+    // though we're rendering twice.
+    let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
+    let hoedown_output = render(RenderType::Hoedown);
+    USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
+    let pulldown_output = render(RenderType::Pulldown);
+    (hoedown_output, pulldown_output)
+}
 
 fn init_ids() -> FxHashMap<String, usize> {
     [
@@ -699,7 +709,10 @@ fn print_message(msg: &str, intro_msg: &mut bool, span: &Span, text: &str) {
     println!("{}", msg);
 }
 
-fn render_difference(diff: &html_diff::Difference, intro_msg: &mut bool, span: &Span, text: &str) {
+pub fn render_difference(diff: &html_diff::Difference,
+                         intro_msg: &mut bool,
+                         span: &Span,
+                         text: &str) {
     match *diff {
         html_diff::Difference::NodeType { ref elem, ref opposite_elem } => {
             print_message(&format!("    {} Types differ: expected: `{}`, found: `{}`",
@@ -1659,11 +1672,8 @@ impl<'a> Item<'a> {
         let mut path = String::new();
         let (krate, path) = if self.item.def_id.is_local() {
             let path = PathBuf::from(&self.item.source.filename);
-            if let Some(path) = self.cx.shared.local_sources.get(&path) {
-                (&self.cx.shared.layout.krate, path)
-            } else {
-                return None;
-            }
+            let path = self.cx.shared.local_sources.get(&path)?;
+            (&self.cx.shared.layout.krate, path)
         } else {
             // Macros from other libraries get special filenames which we can
             // safely ignore.
@@ -1853,12 +1863,7 @@ fn render_markdown(w: &mut fmt::Formatter,
                    prefix: &str,
                    scx: &SharedContext)
                    -> fmt::Result {
-    // Save the state of USED_ID_MAP so it only gets updated once even
-    // though we're rendering twice.
-    let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
-    let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
-    USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
-    let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
+    let (hoedown_output, pulldown_output) = render_text(|ty| format!("{}", Markdown(md_text, ty)));
     let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
     differences.retain(|s| {
         match *s {
@@ -3542,6 +3547,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let cx = self.cx;
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
+        let mut should_close = false;
 
         if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
             || it.is_enum() || it.is_mod() || it.is_typedef()
@@ -3575,6 +3581,8 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 }
             }
 
+            write!(fmt, "<div class=\"sidebar-elems\">")?;
+            should_close = true;
             match it.inner {
                 clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
                 clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,
@@ -3624,6 +3632,10 @@ impl<'a> fmt::Display for Sidebar<'a> {
         } else {
             write!(fmt, "<script defer src=\"{path}sidebar-items.js\"></script>",
                    path = relpath)?;
+        }
+        if should_close {
+            // Closes sidebar-elems div.
+            write!(fmt, "</div>")?;
         }
 
         Ok(())

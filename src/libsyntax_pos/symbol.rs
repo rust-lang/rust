@@ -35,6 +35,10 @@ impl Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
     }
 
+    pub fn without_first_quote(&self) -> Ident {
+        Ident { name: Symbol::from(self.name.as_str().trim_left_matches('\'')), ctxt: self.ctxt }
+    }
+
     pub fn modern(self) -> Ident {
         Ident { name: self.name, ctxt: self.ctxt.modern() }
     }
@@ -123,7 +127,12 @@ impl<'a> From<&'a str> for Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}({})", self, self.0)
+        let is_gensymed = with_interner(|interner| interner.is_gensymed(*self));
+        if is_gensymed {
+            write!(f, "{}({})", self, self.0)
+        } else {
+            write!(f, "{}", self)
+        }
     }
 }
 
@@ -199,6 +208,10 @@ impl Interner {
     fn gensymed(&mut self, symbol: Symbol) -> Symbol {
         self.gensyms.push(symbol);
         Symbol(!0 - self.gensyms.len() as u32 + 1)
+    }
+
+    fn is_gensymed(&mut self, symbol: Symbol) -> bool {
+        symbol.0 as usize >= self.strings.len()
     }
 
     pub fn get(&self, symbol: Symbol) -> &str {
@@ -427,5 +440,11 @@ mod tests {
         assert_eq!(i.gensym("zebra"), Symbol(4294967294));
         // gensym of *existing* string gets new number:
         assert_eq!(i.gensym("dog"), Symbol(4294967293));
+    }
+
+    #[test]
+    fn without_first_quote_test() {
+        let i = Ident::from_str("'break");
+        assert_eq!(i.without_first_quote().name, keywords::Break.name());
     }
 }

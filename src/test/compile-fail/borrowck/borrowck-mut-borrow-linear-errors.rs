@@ -23,15 +23,9 @@ fn main() {
             1 => { addr = &mut x; } //[ast]~ ERROR [E0499]
             //[mir]~^ ERROR [E0499]
             2 => { addr = &mut x; } //[ast]~ ERROR [E0499]
-            //[mir]~^ ERROR [E0506]
-            //[mir]~| ERROR [E0499]
-            //[mir]~| ERROR [E0499]
+            //[mir]~^ ERROR [E0499]
             _ => { addr = &mut x; } //[ast]~ ERROR [E0499]
-            //[mir]~^ ERROR [E0506]
-            //[mir]~| ERROR [E0499]
-            //[mir]~| ERROR [E0499]
+            //[mir]~^ ERROR [E0499]
         }
     }
 }
-
-

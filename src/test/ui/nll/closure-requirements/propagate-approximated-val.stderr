@@ -1,0 +1,36 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/propagate-approximated-val.rs:48:9
+   |
+48 |         demand_y(outlives1, outlives2, x.get())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: External requirements
+  --> $DIR/propagate-approximated-val.rs:46:45
+   |
+46 |       establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
+   |  _____________________________________________^
+47 | |         // Only works if 'x: 'y:
+48 | |         demand_y(outlives1, outlives2, x.get())
+49 | |     });
+   | |_____^
+   |
+   = note: defining type: DefId(0/1:18 ~ propagate_approximated_val[317d]::test[0]::{{closure}}[0]) with closure substs [
+               i16,
+               for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) &'_#2r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) u32>))
+           ]
+   = note: number of external vids: 3
+   = note: where '_#1r: '_#2r
+
+note: No external requirements
+  --> $DIR/propagate-approximated-val.rs:45:1
+   |
+45 | / fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+46 | |     establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
+47 | |         // Only works if 'x: 'y:
+48 | |         demand_y(outlives1, outlives2, x.get())
+49 | |     });
+50 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:6 ~ propagate_approximated_val[317d]::test[0]) with substs []
+

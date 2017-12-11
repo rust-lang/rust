@@ -503,6 +503,8 @@ pub enum NonNarrowChar {
     ZeroWidth(BytePos),
     /// Represents a wide (fullwidth) character
     Wide(BytePos),
+    /// Represents a tab character, represented visually with a width of 4 characters
+    Tab(BytePos),
 }
 
 impl NonNarrowChar {
@@ -510,6 +512,7 @@ impl NonNarrowChar {
         match width {
             0 => NonNarrowChar::ZeroWidth(pos),
             2 => NonNarrowChar::Wide(pos),
+            4 => NonNarrowChar::Tab(pos),
             _ => panic!("width {} given for non-narrow character", width),
         }
     }
@@ -518,7 +521,8 @@ impl NonNarrowChar {
     pub fn pos(&self) -> BytePos {
         match *self {
             NonNarrowChar::ZeroWidth(p) |
-            NonNarrowChar::Wide(p) => p,
+            NonNarrowChar::Wide(p) |
+            NonNarrowChar::Tab(p) => p,
         }
     }
 
@@ -527,6 +531,7 @@ impl NonNarrowChar {
         match *self {
             NonNarrowChar::ZeroWidth(_) => 0,
             NonNarrowChar::Wide(_) => 2,
+            NonNarrowChar::Tab(_) => 4,
         }
     }
 }
@@ -538,6 +543,7 @@ impl Add<BytePos> for NonNarrowChar {
         match self {
             NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos + rhs),
             NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos + rhs),
+            NonNarrowChar::Tab(pos) => NonNarrowChar::Tab(pos + rhs),
         }
     }
 }
@@ -549,6 +555,7 @@ impl Sub<BytePos> for NonNarrowChar {
         match self {
             NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos - rhs),
             NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos - rhs),
+            NonNarrowChar::Tab(pos) => NonNarrowChar::Tab(pos - rhs),
         }
     }
 }
@@ -868,8 +875,10 @@ impl FileMap {
 
     pub fn record_width(&self, pos: BytePos, ch: char) {
         let width = match ch {
-            '\t' | '\n' =>
-                // Tabs will consume one column.
+            '\t' =>
+                // Tabs will consume 4 columns.
+                4,
+            '\n' =>
                 // Make newlines take one column so that displayed spans can point them.
                 1,
             ch =>

@@ -9,12 +9,13 @@
 // except according to those terms.
 
 use super::universal_regions::UniversalRegions;
+use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::infer::RegionVariableOrigin;
 use rustc::infer::NLLRegionVariableOrigin;
+use rustc::infer::RegionVariableOrigin;
+use rustc::infer::SubregionOrigin;
 use rustc::infer::region_constraints::VarOrigins;
-use rustc::infer::outlives::free_region_map::FreeRegionMap;
-use rustc::mir::{Location, Mir};
+use rustc::mir::{ClosureOutlivesRequirement, ClosureRegionRequirements, Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
@@ -23,6 +24,10 @@ use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeMap;
 use std::fmt;
 use syntax_pos::Span;
+
+mod annotation;
+mod dump_mir;
+mod graphviz;
 
 pub struct RegionInferenceContext<'tcx> {
     /// Contains the definition for every region variable.  Region
@@ -52,12 +57,9 @@ pub struct RegionInferenceContext<'tcx> {
     /// the free regions.)
     point_indices: BTreeMap<Location, usize>,
 
-    /// Number of universally quantified regions. This is used to
-    /// determine the meaning of the bits in `inferred_values` and
-    /// friends.
-    num_universal_regions: usize,
-
-    free_region_map: &'tcx FreeRegionMap<'tcx>,
+    /// Information about the universally quantified regions in scope
+    /// on this function and their (known) relations to one another.
+    universal_regions: UniversalRegions<'tcx>,
 }
 
 struct RegionDefinition<'tcx> {
@@ -67,9 +69,15 @@ struct RegionDefinition<'tcx> {
     /// late-bound-regions).
     origin: RegionVariableOrigin,
 
-    /// If this is a free-region, then this is `Some(X)` where `X` is
-    /// the name of the region.
-    name: Option<ty::Region<'tcx>>,
+    /// True if this is a universally quantified region. This means a
+    /// lifetime parameter that appears in the function signature (or,
+    /// in the case of a closure, in the closure environment, which of
+    /// course is also in the function signature).
+    is_universal: bool,
+
+    /// If this is 'static or an early-bound region, then this is
+    /// `Some(X)` where `X` is the name of the region.
+    external_name: Option<ty::Region<'tcx>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -98,11 +106,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// regions defined in `universal_regions`.
     pub fn new(
         var_origins: VarOrigins,
-        universal_regions: &UniversalRegions<'tcx>,
+        universal_regions: UniversalRegions<'tcx>,
         mir: &Mir<'tcx>,
     ) -> Self {
         let num_region_variables = var_origins.len();
-        let num_universal_regions = universal_regions.indices.len();
+        let num_universal_regions = universal_regions.len();
 
         let mut num_points = 0;
         let mut point_indices = BTreeMap::new();
@@ -133,11 +141,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             inferred_values: None,
             constraints: Vec::new(),
             point_indices,
-            num_universal_regions,
-            free_region_map: universal_regions.free_region_map,
+            universal_regions,
         };
 
-        result.init_universal_regions(universal_regions);
+        result.init_universal_regions();
 
         result
     }
@@ -159,25 +166,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///     R1 = { CFG, R0, R1 } // 'b
     ///
     /// Here, R0 represents `'a`, and it contains (a) the entire CFG
-    /// and (b) any free regions that it outlives, which in this case
-    /// is just itself. R1 (`'b`) in contrast also outlives `'a` and
-    /// hence contains R0 and R1.
-    fn init_universal_regions(&mut self, universal_regions: &UniversalRegions<'tcx>) {
-        let UniversalRegions {
-            indices,
-            free_region_map: _,
-        } = universal_regions;
+    /// and (b) any universally quantified regions that it outlives,
+    /// which in this case is just itself. R1 (`'b`) in contrast also
+    /// outlives `'a` and hence contains R0 and R1.
+    fn init_universal_regions(&mut self) {
+        // Update the names (if any)
+        for (external_name, variable) in self.universal_regions.named_universal_regions() {
+            self.definitions[variable].external_name = Some(external_name);
+        }
 
         // For each universally quantified region X:
-        for (free_region, &variable) in indices {
+        for variable in self.universal_regions.universal_regions() {
             // These should be free-region variables.
             assert!(match self.definitions[variable].origin {
                 RegionVariableOrigin::NLL(NLLRegionVariableOrigin::FreeRegion) => true,
                 _ => false,
             });
 
-            // Initialize the name and a few other details.
-            self.definitions[variable].name = Some(free_region);
+            self.definitions[variable].is_universal = true;
 
             // Add all nodes in the CFG to liveness constraints
             for (_location, point_index) in &self.point_indices {
@@ -194,6 +200,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Returns an iterator over all the region indices.
     pub fn regions(&self) -> impl Iterator<Item = RegionVid> {
         self.definitions.indices()
+    }
+
+    /// Given a universal region in scope on the MIR, returns the
+    /// corresponding index.
+    ///
+    /// (Panics if `r` is not a registered universal region.)
+    pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
+        self.universal_regions.to_region_vid(r)
     }
 
     /// Returns true if the region `r` contains the point `p`.
@@ -237,19 +251,25 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .as_ref()
             .expect("region values not yet inferred");
 
+        self.region_value_str_from_matrix(inferred_values, r)
+    }
+
+    fn region_value_str_from_matrix(&self,
+                                    matrix: &BitMatrix,
+                                    r: RegionVid) -> String {
         let mut result = String::new();
         result.push_str("{");
         let mut sep = "";
 
         for &point in self.point_indices.keys() {
-            if self.region_contains_point_in_matrix(inferred_values, r, point) {
+            if self.region_contains_point_in_matrix(matrix, r, point) {
                 result.push_str(&format!("{}{:?}", sep, point));
                 sep = ", ";
             }
         }
 
-        for fr in (0..self.num_universal_regions).map(RegionVid::new) {
-            if self.region_contains_region_in_matrix(inferred_values, r, fr) {
+        for fr in (0..self.universal_regions.len()).map(RegionVid::new) {
+            if self.region_contains_region_in_matrix(matrix, r, fr) {
                 result.push_str(&format!("{}{:?}", sep, fr));
                 sep = ", ";
             }
@@ -289,8 +309,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Perform region inference.
-    pub(super) fn solve(&mut self, infcx: &InferCtxt<'_, '_, 'tcx>, mir: &Mir<'tcx>) {
+    pub(super) fn solve(
+        &mut self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
+        mir_def_id: DefId,
+    ) -> Option<ClosureRegionRequirements> {
         assert!(self.inferred_values.is_none(), "values already inferred");
+        let tcx = infcx.tcx;
 
         // Find the minimal regions that can solve the constraints. This is infallible.
         self.propagate_constraints(mir);
@@ -310,55 +336,133 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // The universal regions are always found in a prefix of the
         // full list.
-        let free_region_definitions = self.definitions
+        let universal_definitions = self.definitions
             .iter_enumerated()
-            .take_while(|(_, fr_definition)| fr_definition.name.is_some());
+            .take_while(|(_, fr_definition)| fr_definition.is_universal);
 
-        for (fr, fr_definition) in free_region_definitions {
-            self.check_free_region(infcx, fr, fr_definition);
+        // Go through each of the universal regions `fr` and check that
+        // they did not grow too large, accumulating any requirements
+        // for our caller into the `outlives_requirements` vector.
+        let mut outlives_requirements = vec![];
+        for (fr, _) in universal_definitions {
+            self.check_universal_region(infcx, fr, &mut outlives_requirements);
         }
+
+        // If this is not a closure, then there is no caller to which we can
+        // "pass the buck". So if there are any outlives-requirements that were
+        // not satisfied, we just have to report a hard error here.
+        if !tcx.is_closure(mir_def_id) {
+            for outlives_requirement in outlives_requirements {
+                self.report_error(
+                    infcx,
+                    outlives_requirement.free_region,
+                    outlives_requirement.outlived_free_region,
+                    outlives_requirement.blame_span,
+                );
+            }
+            return None;
+        }
+
+        let num_external_vids = self.universal_regions.num_global_and_external_regions();
+
+        Some(ClosureRegionRequirements {
+            num_external_vids,
+            outlives_requirements,
+        })
     }
 
-    fn check_free_region(
+    /// Check the final value for the free region `fr` to see if it
+    /// grew too large. In particular, examine what `end(X)` points
+    /// wound up in `fr`'s final value; for each `end(X)` where `X !=
+    /// fr`, we want to check that `fr: X`. If not, that's either an
+    /// error, or something we have to propagate to our creator.
+    ///
+    /// Things that are to be propagated are accumulated into the
+    /// `outlives_requirements` vector.
+    fn check_universal_region(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
         longer_fr: RegionVid,
-        longer_definition: &RegionDefinition<'tcx>,
+        outlives_requirements: &mut Vec<ClosureOutlivesRequirement>,
     ) {
         let inferred_values = self.inferred_values.as_ref().unwrap();
-        let longer_name = longer_definition.name.unwrap();
         let longer_value = inferred_values.iter(longer_fr.index());
 
-        // Find every region `shorter` such that `longer: shorter`
-        // (because `longer` includes `end(shorter)`).
-        for shorter_fr in longer_value.take_while(|&i| i < self.num_universal_regions) {
-            let shorter_fr = RegionVid::new(shorter_fr);
+        debug!("check_universal_region(fr={:?})", longer_fr);
 
-            // `fr` includes `end(fr)`, that's not especially
-            // interesting.
-            if longer_fr == shorter_fr {
+        // Find every region `o` such that `fr: o`
+        // (because `fr` includes `end(o)`).
+        let shorter_frs = longer_value
+            .take_while(|&i| i < self.universal_regions.len())
+            .map(RegionVid::new);
+        for shorter_fr in shorter_frs {
+            // If it is known that `fr: o`, carry on.
+            if self.universal_regions.outlives(longer_fr, shorter_fr) {
                 continue;
             }
 
-            let shorter_definition = &self.definitions[shorter_fr];
-            let shorter_name = shorter_definition.name.unwrap();
+            debug!(
+                "check_universal_region: fr={:?} does not outlive shorter_fr={:?}",
+                longer_fr,
+                shorter_fr,
+            );
 
-            // Check that `o <= fr`. If not, report an error.
-            if !self.free_region_map
-                .sub_free_regions(shorter_name, longer_name)
-            {
-                // FIXME: worst error msg ever
-                let blame_span = self.blame_span(longer_fr, shorter_fr);
-                infcx.tcx.sess.span_err(
-                    blame_span,
-                    &format!(
-                        "free region `{}` does not outlive `{}`",
-                        longer_name,
-                        shorter_name
-                    ),
+            let blame_span = self.blame_span(longer_fr, shorter_fr);
+
+            // Shrink `fr` until we find a non-local region (if we do).
+            // We'll call that `fr-` -- it's ever so slightly smaller than `fr`.
+            if let Some(fr_minus) = self.universal_regions.non_local_lower_bound(longer_fr) {
+                debug!("check_universal_region: fr_minus={:?}", fr_minus);
+
+                // Grow `shorter_fr` until we find a non-local
+                // regon. (We always will.)  We'll call that
+                // `shorter_fr+` -- it's ever so slightly larger than
+                // `fr`.
+                let shorter_fr_plus = self.universal_regions.non_local_upper_bound(shorter_fr);
+                debug!(
+                    "check_universal_region: shorter_fr_plus={:?}",
+                    shorter_fr_plus
                 );
+
+                // Push the constraint `fr-: shorter_fr+`
+                outlives_requirements.push(ClosureOutlivesRequirement {
+                    free_region: fr_minus,
+                    outlived_free_region: shorter_fr_plus,
+                    blame_span: blame_span,
+                });
+                return;
             }
+
+            // If we could not shrink `fr` to something smaller that
+            // the external users care about, then we can't pass the
+            // buck; just report an error.
+            self.report_error(infcx, longer_fr, shorter_fr, blame_span);
         }
+    }
+
+    fn report_error(
+        &self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        fr: RegionVid,
+        outlived_fr: RegionVid,
+        blame_span: Span,
+    ) {
+        // Obviously uncool error reporting.
+
+        let fr_string = match self.definitions[fr].external_name {
+            Some(r) => format!("free region `{}`", r),
+            None => format!("free region `{:?}`", fr),
+        };
+
+        let outlived_fr_string = match self.definitions[outlived_fr].external_name {
+            Some(r) => format!("free region `{}`", r),
+            None => format!("free region `{:?}`", outlived_fr),
+        };
+
+        infcx.tcx.sess.span_err(
+            blame_span,
+            &format!("{} does not outlive {}", fr_string, outlived_fr_string,),
+        );
     }
 
     /// Propagate the region constraints: this will grow the values
@@ -421,8 +525,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         stack.push(start_point);
         while let Some(p) = stack.pop() {
-            debug!("        copy: p={:?}", p);
-
             if !self.region_contains_point_in_matrix(inferred_values, from_region, p) {
                 debug!("            not in from-region");
                 continue;
@@ -464,7 +566,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // and make sure they are included in the `to_region`.
                 let universal_region_indices = inferred_values
                     .iter(from_region.index())
-                    .take_while(|&i| i < self.num_universal_regions)
+                    .take_while(|&i| i < self.universal_regions.len())
                     .collect::<Vec<_>>();
                 for fr in &universal_region_indices {
                     changed |= inferred_values.add(to_region.index(), *fr);
@@ -535,7 +637,11 @@ impl<'tcx> RegionDefinition<'tcx> {
         // Create a new region definition. Note that, for free
         // regions, these fields get updated later in
         // `init_universal_regions`.
-        Self { origin, name: None }
+        Self {
+            origin,
+            is_universal: false,
+            external_name: None,
+        }
     }
 }
 
@@ -549,5 +655,72 @@ impl fmt::Debug for Constraint {
             self.point,
             self.span
         )
+    }
+}
+
+pub trait ClosureRegionRequirementsExt {
+    fn apply_requirements<'tcx>(
+        &self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        location: Location,
+        closure_def_id: DefId,
+        closure_substs: ty::ClosureSubsts<'tcx>,
+    );
+}
+
+impl ClosureRegionRequirementsExt for ClosureRegionRequirements {
+    /// Given an instance T of the closure type, this method
+    /// instantiates the "extra" requirements that we computed for the
+    /// closure into the inference context. This has the effect of
+    /// adding new subregion obligations to existing variables.
+    ///
+    /// As described on `ClosureRegionRequirements`, the extra
+    /// requirements are expressed in terms of regionvids that index
+    /// into the free regions that appear on the closure type. So, to
+    /// do this, we first copy those regions out from the type T into
+    /// a vector. Then we can just index into that vector to extract
+    /// out the corresponding region from T and apply the
+    /// requirements.
+    fn apply_requirements<'tcx>(
+        &self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        location: Location,
+        closure_def_id: DefId,
+        closure_substs: ty::ClosureSubsts<'tcx>,
+    ) {
+        let tcx = infcx.tcx;
+
+        debug!(
+            "apply_requirements(location={:?}, closure_def_id={:?}, closure_substs={:?})",
+            location,
+            closure_def_id,
+            closure_substs
+        );
+
+        // Get Tu.
+        let user_closure_ty = tcx.mk_closure(closure_def_id, closure_substs);
+        debug!("apply_requirements: user_closure_ty={:?}", user_closure_ty);
+
+        // Extract the values of the free regions in `user_closure_ty`
+        // into a vector.  These are the regions that we will be
+        // relating to one another.
+        let closure_mapping =
+            UniversalRegions::closure_mapping(infcx, user_closure_ty, self.num_external_vids);
+        debug!("apply_requirements: closure_mapping={:?}", closure_mapping);
+
+        // Create the predicates.
+        for outlives_requirement in &self.outlives_requirements {
+            let region = closure_mapping[outlives_requirement.free_region];
+            let outlived_region = closure_mapping[outlives_requirement.outlived_free_region];
+            debug!(
+                "apply_requirements: region={:?} outlived_region={:?} outlives_requirements={:?}",
+                region,
+                outlived_region,
+                outlives_requirement
+            );
+            // FIXME, this origin is not entirely suitable.
+            let origin = SubregionOrigin::CallRcvr(outlives_requirement.blame_span);
+            infcx.sub_regions(origin, outlived_region, region);
+        }
     }
 }

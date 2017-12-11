@@ -29,7 +29,7 @@ use value::Value;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
-use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::subst::{Kind, Substs};
 use rustc::hir;
 
 use libc::{c_uint, c_char};
@@ -393,7 +393,7 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::TyFnPtr(_) => ty.fn_sig(ccx.tcx()),
         ty::TyClosure(def_id, substs) => {
             let tcx = ccx.tcx();
-            let sig = tcx.fn_sig(def_id).subst(tcx, substs.substs);
+            let sig = substs.closure_sig(def_id, tcx);
 
             let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
             sig.map_bound(|sig| tcx.mk_fn_sig(

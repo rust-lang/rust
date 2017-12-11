@@ -13,7 +13,7 @@ use std::fmt;
 use std::str::FromStr;
 use std::path::PathBuf;
 
-use test::ColorConfig;
+use test::{ColorConfig, TestPaths};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -221,3 +221,17 @@ pub struct Config {
     pub llvm_cxxflags: String,
     pub nodejs: Option<String>,
 }
+
+/// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
+pub fn expected_output_path(testpaths: &TestPaths, revision: Option<&str>, kind: &str) -> PathBuf {
+    assert!(UI_EXTENSIONS.contains(&kind));
+    let extension = match revision {
+        Some(r) => format!("{}.{}", r, kind),
+        None => kind.to_string(),
+    };
+    testpaths.file.with_extension(extension)
+}
+
+pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT];
+pub const UI_STDERR: &str = "stderr";
+pub const UI_STDOUT: &str = "stdout";

@@ -89,7 +89,9 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
     let mut contents = String::new();
 
-    super::walk_many(&[&path.join("test/compile-fail"),
+    super::walk_many(&[&path.join("test/ui-fulldeps"),
+                       &path.join("test/ui"),
+                       &path.join("test/compile-fail"),
                        &path.join("test/compile-fail-fulldeps"),
                        &path.join("test/parse-fail"),],
                      &mut |path| super::filter_dirs(path),
@@ -150,9 +152,9 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
     for &(name, _) in gate_untested.iter() {
         println!("Expected a gate test for the feature '{}'.", name);
-        println!("Hint: create a file named 'feature-gate-{}.rs' in the compile-fail\
-                \n      test suite, with its failures due to missing usage of\
-                \n      #![feature({})].", name, name);
+        println!("Hint: create a failing test file named 'feature-gate-{}.rs'\
+                \n      in the 'ui' test suite, with its failures due to\
+                \n      missing usage of #![feature({})].", name, name);
         println!("Hint: If you already have such a test and don't want to rename it,\
                 \n      you can also add a // gate-test-{} line to the test file.",
                  name);

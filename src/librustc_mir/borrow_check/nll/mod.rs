@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::Mir;
+use rustc::mir::{ClosureRegionRequirements, Mir};
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
+use std::io;
 use transform::MirSource;
 use transform::type_check;
 use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
@@ -22,6 +23,7 @@ use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::MoveData;
 
 use util as mir_util;
+use util::pretty::{self, ALIGN};
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
@@ -35,19 +37,25 @@ use self::region_infer::RegionInferenceContext;
 mod renumber;
 
 /// Rewrites the regions in the MIR to use NLL variables, also
-/// scraping out the set of free regions (e.g., region parameters)
+/// scraping out the set of universal regions (e.g., region parameters)
 /// declared on the function. That set will need to be given to
 /// `compute_regions`.
 pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     def_id: DefId,
+    param_env: ty::ParamEnv<'tcx>,
     mir: &mut Mir<'tcx>,
 ) -> UniversalRegions<'tcx> {
-    // Compute named region information.
-    let universal_regions = universal_regions::universal_regions(infcx, def_id);
+    debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
-    // Replace all regions with fresh inference variables.
+    // Compute named region information. This also renumbers the inputs/outputs.
+    let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
+
+    // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, &universal_regions, mir);
+
+    let source = MirSource::item(def_id);
+    mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, mir, |_, _| Ok(()));
 
     universal_regions
 }
@@ -63,7 +71,10 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     param_env: ty::ParamEnv<'gcx>,
     flow_inits: &mut FlowInProgress<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
-) -> RegionInferenceContext<'tcx> {
+) -> (
+    RegionInferenceContext<'tcx>,
+    Option<ClosureRegionRequirements>,
+) {
     // Run the MIR type-checker.
     let mir_node_id = infcx.tcx.hir.as_local_node_id(def_id).unwrap();
     let constraint_sets = &type_check::type_check(infcx, mir_node_id, param_env, mir);
@@ -71,13 +82,8 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // Create the region inference context, taking ownership of the region inference
     // data that was contained in `infcx`.
     let var_origins = infcx.take_region_var_origins();
-    let mut regioncx = RegionInferenceContext::new(var_origins, &universal_regions, mir);
-    subtype_constraint_generation::generate(
-        &mut regioncx,
-        &universal_regions,
-        mir,
-        constraint_sets,
-    );
+    let mut regioncx = RegionInferenceContext::new(var_origins, universal_regions, mir);
+    subtype_constraint_generation::generate(&mut regioncx, mir, constraint_sets);
 
     // Compute what is live where.
     let liveness = &LivenessResults {
@@ -110,13 +116,24 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     );
 
     // Solve the region constraints.
-    regioncx.solve(infcx, &mir);
+    let closure_region_requirements = regioncx.solve(infcx, &mir, def_id);
 
     // Dump MIR results into a file, if that is enabled. This let us
-    // write unit-tests.
-    dump_mir_results(infcx, liveness, MirSource::item(def_id), &mir, &regioncx);
+    // write unit-tests, as well as helping with debugging.
+    dump_mir_results(
+        infcx,
+        liveness,
+        MirSource::item(def_id),
+        &mir,
+        &regioncx,
+        &closure_region_requirements,
+    );
 
-    regioncx
+    // We also have a `#[rustc_nll]` annotation that causes us to dump
+    // information
+    dump_annotation(infcx, &mir, def_id, &regioncx, &closure_region_requirements);
+
+    (regioncx, closure_region_requirements)
 }
 
 struct LivenessResults {
@@ -130,6 +147,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     source: MirSource,
     mir: &Mir<'tcx>,
     regioncx: &RegionInferenceContext,
+    closure_region_requirements: &Option<ClosureRegionRequirements>,
 ) {
     if !mir_util::dump_enabled(infcx.tcx, "nll", source) {
         return;
@@ -164,9 +182,17 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     mir_util::dump_mir(infcx.tcx, None, "nll", &0, source, mir, |pass_where, out| {
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
-            PassWhere::BeforeCFG => for region in regioncx.regions() {
-                writeln!(out, "| {:?}: {}", region, regioncx.region_value_str(region))?;
-            },
+            PassWhere::BeforeCFG => {
+                regioncx.dump_mir(out)?;
+
+                if let Some(closure_region_requirements) = closure_region_requirements {
+                    writeln!(out, "|")?;
+                    writeln!(out, "| Free Region Constraints")?;
+                    for_each_region_constraint(closure_region_requirements, &mut |msg| {
+                        writeln!(out, "| {}", msg)
+                    })?;
+                }
+            }
 
             // Before each basic block, dump out the values
             // that are live on entry to the basic block.
@@ -180,19 +206,96 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                     &regular_liveness_per_location[&location],
                     &drop_liveness_per_location[&location],
                 );
-                writeln!(out, "            | Live variables at {:?}: {}", location, s)?;
+                writeln!(
+                    out,
+                    "{:ALIGN$} | Live variables on entry to {:?}: {}",
+                    "",
+                    location,
+                    s,
+                    ALIGN = ALIGN
+                )?;
             }
 
             PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
         }
         Ok(())
     });
+
+    // Also dump the inference graph constraints as a graphviz file.
+    let _: io::Result<()> = do catch {
+        let mut file =
+            pretty::create_dump_file(infcx.tcx, "regioncx.dot", None, "nll", &0, source)?;
+        regioncx.dump_graphviz(&mut file)
+    };
+}
+
+fn dump_annotation<'a, 'gcx, 'tcx>(
+    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    mir_def_id: DefId,
+    regioncx: &RegionInferenceContext,
+    closure_region_requirements: &Option<ClosureRegionRequirements>,
+) {
+    let tcx = infcx.tcx;
+    let base_def_id = tcx.closure_base_def_id(mir_def_id);
+    if !tcx.has_attr(base_def_id, "rustc_regions") {
+        return;
+    }
+
+    // When the enclosing function is tagged with `#[rustc_regions]`,
+    // we dump out various bits of state as warnings. This is useful
+    // for verifying that the compiler is behaving as expected.  These
+    // warnings focus on the closure region requirements -- for
+    // viewing the intraprocedural state, the -Zdump-mir output is
+    // better.
+
+    if let Some(closure_region_requirements) = closure_region_requirements {
+        let mut err = tcx.sess
+            .diagnostic()
+            .span_note_diag(mir.span, "External requirements");
+
+        regioncx.annotate(&mut err);
+
+        err.note(&format!(
+            "number of external vids: {}",
+            closure_region_requirements.num_external_vids
+        ));
+
+        // Dump the region constraints we are imposing *between* those
+        // newly created variables.
+        for_each_region_constraint(closure_region_requirements, &mut |msg| {
+            err.note(msg);
+            Ok(())
+        }).unwrap();
+
+        err.emit();
+    } else {
+        let mut err = tcx.sess
+            .diagnostic()
+            .span_note_diag(mir.span, "No external requirements");
+        regioncx.annotate(&mut err);
+        err.emit();
+    }
+}
+
+fn for_each_region_constraint(
+    closure_region_requirements: &ClosureRegionRequirements,
+    with_msg: &mut FnMut(&str) -> io::Result<()>,
+) -> io::Result<()> {
+    for req in &closure_region_requirements.outlives_requirements {
+        with_msg(&format!(
+            "where {:?}: {:?}",
+            req.free_region,
+            req.outlived_free_region,
+        ))?;
+    }
+    Ok(())
 }
 
 /// Right now, we piggy back on the `ReVar` to store our NLL inference
 /// regions. These are indexed with `RegionVid`. This method will
 /// assert that the region is a `ReVar` and extract its interal index.
-/// This is reasonable because in our MIR we replace all free regions
+/// This is reasonable because in our MIR we replace all universal regions
 /// with inference variables.
 pub trait ToRegionVid {
     fn to_region_vid(&self) -> RegionVid;

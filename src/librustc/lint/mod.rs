@@ -37,7 +37,7 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit::{self, FnKind};
 use hir;
-use session::Session;
+use session::{Session, DiagnosticMessageId};
 use std::hash;
 use syntax::ast;
 use syntax::codemap::MultiSpan;
@@ -423,7 +423,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
         LintSource::Default => {
             sess.diag_note_once(
                 &mut err,
-                lint,
+                DiagnosticMessageId::from(lint),
                 &format!("#[{}({})] on by default", level.as_str(), name));
         }
         LintSource::CommandLine(lint_flag_val) => {
@@ -437,24 +437,25 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             if lint_flag_val.as_str() == name {
                 sess.diag_note_once(
                     &mut err,
-                    lint,
+                    DiagnosticMessageId::from(lint),
                     &format!("requested on the command line with `{} {}`",
                              flag, hyphen_case_lint_name));
             } else {
                 let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
                 sess.diag_note_once(
                     &mut err,
-                    lint,
+                    DiagnosticMessageId::from(lint),
                     &format!("`{} {}` implied by `{} {}`",
                              flag, hyphen_case_lint_name, flag,
                              hyphen_case_flag_val));
             }
         }
         LintSource::Node(lint_attr_name, src) => {
-            sess.diag_span_note_once(&mut err, lint, src, "lint level defined here");
+            sess.diag_span_note_once(&mut err, DiagnosticMessageId::from(lint),
+                                     src, "lint level defined here");
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
-                sess.diag_note_once(&mut err, lint,
+                sess.diag_note_once(&mut err, DiagnosticMessageId::from(lint),
                                     &format!("#[{}({})] implied by #[{}({})]",
                                              level_str, name, level_str, lint_attr_name));
             }

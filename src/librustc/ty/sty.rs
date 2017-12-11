@@ -356,6 +356,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// Returns the closure kind for this closure; only usable outside
     /// of an inference context, because in that context we know that
     /// there are no type variables.
+    ///
+    /// If you have an inference context, use `infcx.closure_kind()`.
     pub fn closure_kind(self, def_id: DefId, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> ty::ClosureKind {
         self.split(def_id, tcx).closure_kind_ty.to_opt_closure_kind().unwrap()
     }
@@ -363,6 +365,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// Extracts the signature from the closure; only usable outside
     /// of an inference context, because in that context we know that
     /// there are no type variables.
+    ///
+    /// If you have an inference context, use `infcx.closure_sig()`.
     pub fn closure_sig(self, def_id: DefId, tcx: TyCtxt<'_, 'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
         match self.closure_sig_ty(def_id, tcx).sty {
             ty::TyFnPtr(sig) => sig,
@@ -646,6 +650,17 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 pub struct Binder<T>(pub T);
 
 impl<T> Binder<T> {
+    /// Wraps `value` in a binder, asserting that `value` does not
+    /// contain any bound regions that would be bound by the
+    /// binder. This is commonly used to 'inject' a value T into a
+    /// different binding level.
+    pub fn dummy<'tcx>(value: T) -> Binder<T>
+        where T: TypeFoldable<'tcx>
+    {
+        assert!(!value.has_escaping_regions());
+        Binder(value)
+    }
+
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
     /// debruijn indices and the like. It is usually better to
@@ -699,6 +714,32 @@ impl<T> Binder<T> {
         } else {
             Some(self.skip_binder().clone())
         }
+    }
+
+    /// Given two things that have the same binder level,
+    /// and an operation that wraps on their contents, execute the operation
+    /// and then wrap its result.
+    ///
+    /// `f` should consider bound regions at depth 1 to be free, and
+    /// anything it produces with bound regions at depth 1 will be
+    /// bound in the resulting return value.
+    pub fn fuse<U,F,R>(self, u: Binder<U>, f: F) -> Binder<R>
+        where F: FnOnce(T, U) -> R
+    {
+        ty::Binder(f(self.0, u.0))
+    }
+
+    /// Split the contents into two things that share the same binder
+    /// level as the original, returning two distinct binders.
+    ///
+    /// `f` should consider bound regions at depth 1 to be free, and
+    /// anything it produces with bound regions at depth 1 will be
+    /// bound in the resulting return values.
+    pub fn split<U,V,F>(self, f: F) -> (Binder<U>, Binder<V>)
+        where F: FnOnce(T) -> (U, V)
+    {
+        let (u, v) = f(self.0);
+        (ty::Binder(u), ty::Binder(v))
     }
 }
 
@@ -798,6 +839,9 @@ impl<'tcx> PolyFnSig<'tcx> {
     }
     pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
+    }
+    pub fn inputs_and_output(&self) -> ty::Binder<&'tcx Slice<Ty<'tcx>>> {
+        self.map_bound_ref(|fn_sig| fn_sig.inputs_and_output)
     }
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output().clone())

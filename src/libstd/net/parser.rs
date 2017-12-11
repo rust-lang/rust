@@ -170,11 +170,7 @@ impl<'a> Parser<'a> {
                 return None;
             }
 
-            let octet = self.read_number(10, 3, 0x100).map(|n| n as u8);
-            match octet {
-                Some(d) => bs[i] = d,
-                None => return None,
-            };
+            bs[i] = self.read_number(10, 3, 0x100).map(|n| n as u8)?;
             i += 1;
         }
         Some(Ipv4Addr::new(bs[0], bs[1], bs[2], bs[3]))

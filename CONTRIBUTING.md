@@ -336,7 +336,7 @@ will run all the tests on every platform we support. If it all works out,
 
 Speaking of tests, Rust has a comprehensive test suite. More information about
 it can be found
-[here](https://github.com/rust-lang/rust-wiki-backup/blob/master/Note-testsuite.md).
+[here](https://github.com/rust-lang/rust/blob/master/src/test/COMPILER_TESTS.md).
 
 ### External Dependencies
 [external-dependencies]: #external-dependencies

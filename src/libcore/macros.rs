@@ -596,9 +596,9 @@ mod builtin {
 
     /// Unconditionally causes compilation to fail with the given error message when encountered.
     ///
-    /// For more information, see the [RFC].
+    /// For more information, see the documentation for [`std::compile_error!`].
     ///
-    /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
+    /// [`std::compile_error!`]: ../std/macro.compile_error.html
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
     #[cfg(dox)]
@@ -736,7 +736,7 @@ mod builtin {
     #[cfg(dox)]
     macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
-    /// Boolean evaluation of configuration flags.
+    /// Boolean evaluation of configuration flags, at compile-time.
     ///
     /// For more information, see the documentation for [`std::cfg!`].
     ///

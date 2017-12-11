@@ -1,0 +1,10 @@
+error: exclusive range pattern syntax is experimental (see issue #37854)
+  --> $DIR/feature-gate-exclusive-range-pattern.rs:13:9
+   |
+13 |         0 .. 3 => {} //~ ERROR exclusive range pattern syntax is experimental
+   |         ^^^^^^
+   |
+   = help: add #![feature(exclusive_range_pattern)] to the crate attributes to enable
+
+error: aborting due to previous error
+
