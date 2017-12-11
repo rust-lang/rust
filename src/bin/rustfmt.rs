@@ -20,7 +20,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use getopts::{HasArg, Matches, Occur, Options};
+use getopts::{Matches, Options};
 
 use rustfmt::{run, Input, Summary};
 use rustfmt::file_lines::FileLines;
@@ -63,6 +63,7 @@ struct CliOptions {
     color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
     unstable_features: bool,
+    error_on_unformatted: bool,
 }
 
 impl CliOptions {
@@ -104,6 +105,10 @@ impl CliOptions {
             options.file_lines = file_lines.parse()?;
         }
 
+        if matches.opt_present("error-on-unformatted") {
+            options.error_on_unformatted = true;
+        }
+
         Ok(options)
     }
 
@@ -112,6 +117,7 @@ impl CliOptions {
         config.set().verbose(self.verbose);
         config.set().file_lines(self.file_lines);
         config.set().unstable_features(self.unstable_features);
+        config.set().error_on_unformatted(self.error_on_unformatted);
         if let Some(write_mode) = self.write_mode {
             config.set().write_mode(write_mode);
         }
@@ -135,47 +141,18 @@ fn match_cli_path_or_file(
 
 fn make_opts() -> Options {
     let mut opts = Options::new();
-    opts.optflag("h", "help", "show this message");
-    opts.optflag("V", "version", "show version information");
-    opts.optflag("v", "verbose", "print verbose output");
-    opts.optopt(
-        "",
-        "write-mode",
-        "how to write output (not usable when piping from stdin)",
-        "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
-    );
+
+    // Sorted in alphabetical order.
     opts.optopt(
         "",
         "color",
-        "use colored output (if supported)",
+        "Use colored output (if supported)",
         "[always|never|auto]",
     );
-    opts.optflag("", "skip-children", "don't reformat child modules");
-
-    opts.optflag(
-        "",
-        "unstable-features",
-        "Enables unstable features. Only available on nightly channel",
-    );
-
     opts.optflag(
         "",
         "config-help",
-        "show details of rustfmt configuration options",
-    );
-    opts.opt(
-        "",
-        "dump-default-config",
-        "Dumps default configuration to PATH. PATH defaults to stdout, if omitted.",
-        "PATH",
-        HasArg::Maybe,
-        Occur::Optional,
-    );
-    opts.optopt(
-        "",
-        "dump-minimal-config",
-        "Dumps configuration options that were checked during formatting to a file.",
-        "PATH",
+        "Show details of rustfmt configuration options",
     );
     opts.optopt(
         "",
@@ -186,9 +163,42 @@ fn make_opts() -> Options {
     );
     opts.optopt(
         "",
+        "dump-default-config",
+        "Dumps default configuration to PATH. PATH defaults to stdout, if omitted.",
+        "PATH",
+    );
+    opts.optopt(
+        "",
+        "dump-minimal-config",
+        "Dumps configuration options that were checked during formatting to a file.",
+        "PATH",
+    );
+    opts.optflag(
+        "",
+        "error-on-unformatted",
+        "Error if unable to get comments or string literals within max_width, \
+         or they are left with trailing whitespaces",
+    );
+    opts.optopt(
+        "",
         "file-lines",
         "Format specified line ranges. See README for more detail on the JSON format.",
         "JSON",
+    );
+    opts.optflag("h", "help", "Show this message");
+    opts.optflag("", "skip-children", "Don't reformat child modules");
+    opts.optflag(
+        "",
+        "unstable-features",
+        "Enables unstable features. Only available on nightly channel",
+    );
+    opts.optflag("v", "verbose", "Print verbose output");
+    opts.optflag("V", "version", "Show version information");
+    opts.optopt(
+        "",
+        "write-mode",
+        "How to write output (not usable when piping from stdin)",
+        "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
     );
 
     opts

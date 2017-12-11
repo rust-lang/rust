@@ -39,6 +39,7 @@ use syntax::codemap::{CodeMap, FilePathMapping};
 use syntax::parse::{self, ParseSess};
 
 use checkstyle::{output_footer, output_header};
+use comment::{CharClasses, FullCodeCharKind};
 use config::Config;
 use filemap::FileMap;
 use issues::{BadIssueSeeker, Issue};
@@ -76,6 +77,7 @@ mod patterns;
 mod summary;
 mod vertical;
 
+#[derive(Clone, Copy)]
 pub enum ErrorKind {
     // Line has exceeded character limit (found, maximum)
     LineOverflow(usize, usize),
@@ -104,6 +106,7 @@ pub struct FormattingError {
     line: usize,
     kind: ErrorKind,
     is_comment: bool,
+    is_string: bool,
     line_buffer: String,
 }
 
@@ -116,12 +119,11 @@ impl FormattingError {
     }
 
     fn msg_suffix(&self) -> &str {
-        match self.kind {
-            ErrorKind::LineOverflow(..) if self.is_comment => {
-                "use `error_on_line_overflow_comments = false` to suppress \
-                 the warning against line comments\n"
-            }
-            _ => "",
+        if self.is_comment || self.is_string {
+            "set `error_on_unformatted = false` to suppress \
+             the warning against comments or string literals\n"
+        } else {
+            ""
         }
     }
 
@@ -363,6 +365,25 @@ fn is_skipped_line(line_number: usize, skipped_range: &[(usize, usize)]) -> bool
         .any(|&(lo, hi)| lo <= line_number && line_number <= hi)
 }
 
+fn should_report_error(
+    config: &Config,
+    char_kind: FullCodeCharKind,
+    is_string: bool,
+    error_kind: ErrorKind,
+) -> bool {
+    let allow_error_report = if char_kind.is_comment() || is_string {
+        config.error_on_unformatted()
+    } else {
+        true
+    };
+
+    match error_kind {
+        ErrorKind::LineOverflow(..) => config.error_on_line_overflow() && allow_error_report,
+        ErrorKind::TrailingWhitespace => allow_error_report,
+        _ => true,
+    }
+}
+
 // Formatting done on a char by char or line by line basis.
 // FIXME(#209) warn on bad license
 // FIXME(#20) other stuff for parity with make tidy
@@ -381,18 +402,14 @@ fn format_lines(
     let mut newline_count = 0;
     let mut errors = vec![];
     let mut issue_seeker = BadIssueSeeker::new(config.report_todo(), config.report_fixme());
-    let mut prev_char: Option<char> = None;
-    let mut is_comment = false;
     let mut line_buffer = String::with_capacity(config.max_width() * 2);
-    let mut b = 0;
+    let mut is_string = false; // true if the current line contains a string literal.
+    let mut format_line = config.file_lines().contains_line(name, cur_line);
 
-    for c in text.chars() {
-        b += 1;
+    for (kind, (b, c)) in CharClasses::new(text.chars().enumerate()) {
         if c == '\r' {
             continue;
         }
-
-        let format_line = config.file_lines().contains_line(name, cur_line as usize);
 
         if format_line {
             // Add warnings for bad todos/ fixmes
@@ -401,6 +418,7 @@ fn format_lines(
                     line: cur_line,
                     kind: ErrorKind::BadIssue(issue),
                     is_comment: false,
+                    is_string: false,
                     line_buffer: String::new(),
                 });
             }
@@ -409,20 +427,23 @@ fn format_lines(
         if c == '\n' {
             if format_line {
                 // Check for (and record) trailing whitespace.
-                if let Some(lw) = last_wspace {
-                    trims.push((cur_line, lw, b, line_buffer.clone()));
+                if let Some(..) = last_wspace {
+                    if should_report_error(config, kind, is_string, ErrorKind::TrailingWhitespace) {
+                        trims.push((cur_line, kind, line_buffer.clone()));
+                    }
                     line_len -= 1;
                 }
 
                 // Check for any line width errors we couldn't correct.
-                let report_error_on_line_overflow = config.error_on_line_overflow()
-                    && !is_skipped_line(cur_line, skipped_range)
-                    && (config.error_on_line_overflow_comments() || !is_comment);
-                if report_error_on_line_overflow && line_len > config.max_width() {
+                let error_kind = ErrorKind::LineOverflow(line_len, config.max_width());
+                if line_len > config.max_width() && !is_skipped_line(cur_line, skipped_range)
+                    && should_report_error(config, kind, is_string, error_kind)
+                {
                     errors.push(FormattingError {
                         line: cur_line,
-                        kind: ErrorKind::LineOverflow(line_len, config.max_width()),
-                        is_comment: is_comment,
+                        kind: error_kind,
+                        is_comment: kind.is_comment(),
+                        is_string: is_string,
                         line_buffer: line_buffer.clone(),
                     });
                 }
@@ -430,11 +451,11 @@ fn format_lines(
 
             line_len = 0;
             cur_line += 1;
+            format_line = config.file_lines().contains_line(name, cur_line);
             newline_count += 1;
             last_wspace = None;
-            prev_char = None;
-            is_comment = false;
             line_buffer.clear();
+            is_string = false;
         } else {
             newline_count = 0;
             line_len += 1;
@@ -442,16 +463,13 @@ fn format_lines(
                 if last_wspace.is_none() {
                     last_wspace = Some(b);
                 }
-            } else if c == '/' {
-                if let Some('/') = prev_char {
-                    is_comment = true;
-                }
-                last_wspace = None;
             } else {
                 last_wspace = None;
             }
-            prev_char = Some(c);
             line_buffer.push(c);
+            if kind.is_string() {
+                is_string = true;
+            }
         }
     }
 
@@ -461,12 +479,13 @@ fn format_lines(
         text.truncate(line);
     }
 
-    for &(l, _, _, ref b) in &trims {
+    for &(l, kind, ref b) in &trims {
         if !is_skipped_line(l, skipped_range) {
             errors.push(FormattingError {
                 line: l,
                 kind: ErrorKind::TrailingWhitespace,
-                is_comment: false,
+                is_comment: kind.is_comment(),
+                is_string: kind.is_string(),
                 line_buffer: b.clone(),
             });
         }
