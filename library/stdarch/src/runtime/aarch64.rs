@@ -45,6 +45,25 @@ pub fn detect_features<T: linux::FeatureQuery>(mut x: T) -> usize {
     value
 }
 
+/// Probe the ELF Auxiliary vector for hardware capabilities
+///
+/// The values are part of the platform-specific [asm/hwcap.h][hwcap]
+///
+/// [hwcap]: https://github.com/torvalds/linux/blob/master/arch/arm64/include/uapi/asm/hwcap.h
+impl linux::FeatureQuery for linux::AuxVec {
+    fn has_feature(&mut self, x: &__Feature) -> bool {
+        use self::__Feature::*;
+        if let Some(caps) = self.lookup(linux::AT::HWCAP) {
+            match *x {
+                asimd => caps & (1 << 1) != 0,
+                pmull => caps & (1 << 4) != 0,
+            }
+        } else {
+            false
+        }
+    }
+}
+
 impl linux::FeatureQuery for linux::CpuInfo {
     fn has_feature(&mut self, x: &__Feature) -> bool {
         use self::__Feature::*;
