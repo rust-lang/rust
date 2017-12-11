@@ -16,6 +16,7 @@
 // anonymous regions as well.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
+// must-compile-successfully
 
 #![feature(rustc_attrs)]
 

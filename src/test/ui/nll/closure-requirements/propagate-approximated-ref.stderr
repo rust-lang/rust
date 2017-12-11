@@ -1,17 +1,17 @@
 warning: not reporting region error due to -Znll
-  --> $DIR/propagate-approximated-ref.rs:60:9
+  --> $DIR/propagate-approximated-ref.rs:61:9
    |
-60 |         demand_y(x, y, x.get())
+61 |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/propagate-approximated-ref.rs:58:47
+  --> $DIR/propagate-approximated-ref.rs:59:47
    |
-58 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+59 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
-59 | |         // Only works if 'x: 'y:
-60 | |         demand_y(x, y, x.get())
-61 | |     });
+60 | |         // Only works if 'x: 'y:
+61 | |         demand_y(x, y, x.get())
+62 | |     });
    | |_____^
    |
    = note: defining type: DefId(0/1:18 ~ propagate_approximated_ref[317d]::supply[0]::{{closure}}[0]) with closure substs [
@@ -22,14 +22,14 @@ note: External requirements
    = note: where '_#1r: '_#2r
 
 note: No external requirements
-  --> $DIR/propagate-approximated-ref.rs:57:1
+  --> $DIR/propagate-approximated-ref.rs:58:1
    |
-57 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-58 | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-59 | |         // Only works if 'x: 'y:
-60 | |         demand_y(x, y, x.get())
-61 | |     });
-62 | | }
+58 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+59 | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+60 | |         // Only works if 'x: 'y:
+61 | |         demand_y(x, y, x.get())
+62 | |     });
+63 | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_ref[317d]::supply[0]) with substs []

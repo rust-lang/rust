@@ -17,6 +17,7 @@
 // these errors are not (yet) reported.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
+// must-compile-successfully
 
 #![feature(rustc_attrs)]
 

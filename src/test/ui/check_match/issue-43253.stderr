@@ -1,24 +1,24 @@
 warning: unreachable pattern
-  --> $DIR/issue-43253.rs:37:9
+  --> $DIR/issue-43253.rs:39:9
    |
-37 |         9 => {},
+39 |         9 => {},
    |         ^
    |
 note: lint level defined here
-  --> $DIR/issue-43253.rs:12:9
+  --> $DIR/issue-43253.rs:14:9
    |
-12 | #![warn(unreachable_patterns)]
+14 | #![warn(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 warning: unreachable pattern
-  --> $DIR/issue-43253.rs:43:9
+  --> $DIR/issue-43253.rs:45:9
    |
-43 |         8...9 => {},
+45 |         8...9 => {},
    |         ^^^^^
 
 warning: unreachable pattern
-  --> $DIR/issue-43253.rs:49:9
+  --> $DIR/issue-43253.rs:51:9
    |
-49 |         9...9 => {},
+51 |         9...9 => {},
    |         ^^^^^
 

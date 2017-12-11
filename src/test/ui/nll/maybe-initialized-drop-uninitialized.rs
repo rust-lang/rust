@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //compile-flags: -Z emit-end-regions -Zborrowck=mir -Z nll
+// must-compile-successfully
 
 #![allow(warnings)]
 

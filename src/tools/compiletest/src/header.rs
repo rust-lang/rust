@@ -218,7 +218,7 @@ pub struct TestProps {
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
-    // Specifies that a cfail test must actually compile without errors.
+    // Specifies that a test must actually compile without errors.
     pub must_compile_successfully: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
@@ -359,16 +359,18 @@ impl TestProps {
                 self.forbid_output.push(of);
             }
 
-            if !self.must_compile_successfully {
-                self.must_compile_successfully = config.parse_must_compile_successfully(ln);
-            }
-
             if !self.check_test_line_numbers_match {
                 self.check_test_line_numbers_match = config.parse_check_test_line_numbers_match(ln);
             }
 
             if !self.run_pass {
                 self.run_pass = config.parse_run_pass(ln);
+            }
+
+            if !self.must_compile_successfully {
+                // run-pass implies must_compile_sucessfully
+                self.must_compile_successfully =
+                    config.parse_must_compile_successfully(ln) || self.run_pass;
             }
 
             if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {

@@ -28,6 +28,7 @@
 // requirement, as you can see from the `#[rustc_regions]` output.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
+// must-compile-successfully
 
 #![feature(rustc_attrs)]
 

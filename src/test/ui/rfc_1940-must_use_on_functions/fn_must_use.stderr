@@ -1,48 +1,48 @@
 warning: unused return value of `need_to_use_this_value` which must be used: it's important
-  --> $DIR/fn_must_use.rs:59:5
+  --> $DIR/fn_must_use.rs:61:5
    |
-59 |     need_to_use_this_value(); //~ WARN unused return value
+61 |     need_to_use_this_value(); //~ WARN unused return value
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/fn_must_use.rs:12:9
+  --> $DIR/fn_must_use.rs:14:9
    |
-12 | #![warn(unused_must_use)]
+14 | #![warn(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
 
 warning: unused return value of `MyStruct::need_to_use_this_method_value` which must be used
-  --> $DIR/fn_must_use.rs:64:5
+  --> $DIR/fn_must_use.rs:66:5
    |
-64 |     m.need_to_use_this_method_value(); //~ WARN unused return value
+66 |     m.need_to_use_this_method_value(); //~ WARN unused return value
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused return value of `EvenNature::is_even` which must be used: no side effects
-  --> $DIR/fn_must_use.rs:65:5
+  --> $DIR/fn_must_use.rs:67:5
    |
-65 |     m.is_even(); // trait method!
+67 |     m.is_even(); // trait method!
    |     ^^^^^^^^^^^^
 
 warning: unused return value of `std::cmp::PartialEq::eq` which must be used
-  --> $DIR/fn_must_use.rs:71:5
+  --> $DIR/fn_must_use.rs:73:5
    |
-71 |     2.eq(&3); //~ WARN unused return value
+73 |     2.eq(&3); //~ WARN unused return value
    |     ^^^^^^^^^
 
 warning: unused return value of `std::cmp::PartialEq::eq` which must be used
-  --> $DIR/fn_must_use.rs:72:5
+  --> $DIR/fn_must_use.rs:74:5
    |
-72 |     m.eq(&n); //~ WARN unused return value
+74 |     m.eq(&n); //~ WARN unused return value
    |     ^^^^^^^^^
 
 warning: unused comparison which must be used
-  --> $DIR/fn_must_use.rs:75:5
+  --> $DIR/fn_must_use.rs:77:5
    |
-75 |     2 == 3; //~ WARN unused comparison
+77 |     2 == 3; //~ WARN unused comparison
    |     ^^^^^^
 
 warning: unused comparison which must be used
-  --> $DIR/fn_must_use.rs:76:5
+  --> $DIR/fn_must_use.rs:78:5
    |
-76 |     m == n; //~ WARN unused comparison
+78 |     m == n; //~ WARN unused comparison
    |     ^^^^^^
 
