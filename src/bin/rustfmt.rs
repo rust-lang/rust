@@ -135,33 +135,20 @@ fn match_cli_path_or_file(
 
 fn make_opts() -> Options {
     let mut opts = Options::new();
-    opts.optflag("h", "help", "show this message");
-    opts.optflag("V", "version", "show version information");
-    opts.optflag("v", "verbose", "print verbose output");
-    opts.optopt(
-        "",
-        "write-mode",
-        "how to write output (not usable when piping from stdin)",
-        "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
-    );
-    opts.optopt(
-        "",
-        "color",
-        "use colored output (if supported)",
-        "[always|never|auto]",
-    );
-    opts.optflag("", "skip-children", "don't reformat child modules");
 
+    opts.optflag("h", "help", "Show this message");
+    opts.optflag("V", "version", "Show version information");
+    opts.optflag("v", "verbose", "Print verbose output");
+    opts.optflag("", "skip-children", "Don't reformat child modules");
     opts.optflag(
         "",
         "unstable-features",
         "Enables unstable features. Only available on nightly channel",
     );
-
     opts.optflag(
         "",
         "config-help",
-        "show details of rustfmt configuration options",
+        "Show details of rustfmt configuration options",
     );
     opts.optflag(
         "",
@@ -169,13 +156,24 @@ fn make_opts() -> Options {
         "Error if unable to get comments or string literals within max_width, \
          or they are left with trailing whitespaces",
     );
-    opts.opt(
+
+    opts.optopt(
+        "",
+        "write-mode",
+        "How to write output (not usable when piping from stdin)",
+        "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
+    );
+    opts.optopt(
+        "",
+        "color",
+        "Use colored output (if supported)",
+        "[always|never|auto]",
+    );
+    opts.optopt(
         "",
         "dump-default-config",
         "Dumps default configuration to PATH. PATH defaults to stdout, if omitted.",
         "PATH",
-        HasArg::Maybe,
-        Occur::Optional,
     );
     opts.optopt(
         "",
