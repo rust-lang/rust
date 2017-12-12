@@ -29,7 +29,7 @@ use util::elaborate_drops::{DropElaborator, DropStyle, DropFlagMode};
 use syntax::ast;
 use syntax_pos::Span;
 
-use std::fmt;
+use std::{fmt, u32};
 
 pub struct ElaborateDrops;
 
@@ -74,6 +74,7 @@ impl MirPass for ElaborateDrops {
                 flow_inits,
                 flow_uninits,
                 drop_flags: FxHashMap(),
+                array_items_drop_flags: FxHashMap(),
                 patch: MirPatch::new(mir),
             }.elaborate()
         };
@@ -224,6 +225,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
                 ((some_live, some_dead), children_count != 1)
             }
         };
+
         match (maybe_live, maybe_dead, multipart) {
             (false, _, _) => DropStyle::Dead,
             (true, false, _) => DropStyle::Static,
@@ -232,7 +234,16 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         }
     }
 
-    fn clear_drop_flag(&mut self, loc: Location, path: Self::Path, mode: DropFlagMode) {
+    fn clear_drop_flag(
+        &mut self,
+        loc: Location,
+        path: Self::Path,
+        mode: DropFlagMode,
+        opt_flag: Option<Local>) {
+        if let Some(flag) = opt_flag {
+            self.ctxt.set_drop_flag_impl(loc, flag, DropFlagState::Absent);
+            return;
+        }
         match mode {
             DropFlagMode::Shallow => {
                 self.ctxt.set_drop_flag(loc, path, DropFlagState::Absent);
@@ -257,18 +268,37 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         })
     }
 
-    fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                &Projection {
-                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: false}, ..
-                } => offset == index,
-                &Projection {
-                    elem: ProjectionElem::ConstantIndex{offset, min_length: _, from_end: true}, ..
-                } => size - offset == index,
-                _ => false
-            }
-        })
+    fn array_subpaths(&self, path: Self::Path, size: u64)
+                      -> Vec<(Place<'tcx>, Option<Self::Path>, Option<Local>)> {
+        if dataflow::move_path_children_matching(self.ctxt.move_data(), path, |_| {
+                assert!(size <= (u32::MAX as u64),
+                        "move out check doesn't implemented for array bigger then u32");
+                true
+            }).is_none() {
+            return vec![];
+        }
+
+        let size = size as u32;
+        let flags =  self.ctxt.array_items_drop_flags.get(&path);
+        (0..size).map(|i| {
+            let place = &self.ctxt.move_data().move_paths[path].place;
+            (place.clone().elem(ProjectionElem::ConstantIndex{
+                offset: i,
+                min_length: size,
+                from_end: false
+            }),
+            dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p|
+                match p.elem {
+                    ProjectionElem::ConstantIndex{offset, min_length: _, from_end: false} =>
+                        offset == i,
+                    ProjectionElem::ConstantIndex{offset, min_length: _, from_end: true} =>
+                        size - offset == i,
+                    ProjectionElem::Subslice{from, to} => from <= i && i < size - to,
+                    _ => false
+                }
+            ),
+            flags.map(|f| f[i as usize]))
+        }).collect()
     }
 
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path> {
@@ -291,9 +321,18 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         })
     }
 
-    fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>> {
-        self.ctxt.drop_flag(path).map(Operand::Copy)
+    fn get_drop_flags(&mut self, path: Self::Path) -> Option<Operand<'tcx>> {
+        self.ctxt.drop_flag(path).map(|f| match f{
+            DropFlag::Single(l) => Operand::Copy(Place::Local(*l)),
+            DropFlag::Subslice(_) =>
+                panic!("get_drop_flags shouldn't be calles for sublice move path")
+        })
     }
+}
+
+enum DropFlag {
+    Single(Local),
+    Subslice(Vec<Local>),
 }
 
 struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
@@ -302,7 +341,8 @@ struct ElaborateDropsCtxt<'a, 'tcx: 'a> {
     env: &'a MoveDataParamEnv<'tcx, 'tcx>,
     flow_inits: DataflowResults<MaybeInitializedLvals<'a, 'tcx, 'tcx>>,
     flow_uninits:  DataflowResults<MaybeUninitializedLvals<'a, 'tcx, 'tcx>>,
-    drop_flags: FxHashMap<MovePathIndex, Local>,
+    drop_flags: FxHashMap<MovePathIndex, DropFlag>,
+    array_items_drop_flags: FxHashMap<MovePathIndex, Vec<Local>>,
     patch: MirPatch<'tcx>,
 }
 
@@ -329,15 +369,48 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn create_drop_flag(&mut self, index: MovePathIndex, span: Span) {
         let tcx = self.tcx;
+        if let Place::Projection(
+            box Projection{ref base, elem: ProjectionElem::Subslice{from, to}}) =
+            self.move_data().move_paths[index].place {
+            let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
+            if let ty::TyArray(_, n) = base_ty.sty {
+                let flags = {
+                    let n = n.val.to_const_int().and_then(|v| v.to_u64())
+                        .expect("expected u64 size") as usize;
+                    let span = self.mir.span;
+                    let parent_index = self.move_data().move_paths[index].parent
+                        .expect("subslice has parent");
+                    let patch = &mut self.patch;
+                    let array_flags = self.array_items_drop_flags.entry(parent_index)
+                        .or_insert_with(|| {
+                            let flags = (0..n).map(|_| patch.new_internal(tcx.types.bool, span))
+                                .collect();
+                            debug!("create_drop_flags for array with subslice({:?}, {:?}, {:?})",
+                                parent_index, span, flags);
+                            flags
+                        });
+                    let from = from as usize;
+                    let to = to as usize;
+                    array_flags[from .. n-to].iter().map(|x| *x).collect()
+                };
+
+                let span = self.mir.span;
+                self.drop_flags.entry(index).or_insert_with(|| {
+                    debug!("create_drop_flags for subslice({:?}, {:?}, {:?})", index, span, flags);
+                    DropFlag::Subslice(flags)
+                });
+                return;
+            }
+        }
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.mir.span);
         self.drop_flags.entry(index).or_insert_with(|| {
-            patch.new_internal(tcx.types.bool, span)
+            DropFlag::Single(patch.new_internal(tcx.types.bool, span))
         });
     }
 
-    fn drop_flag(&mut self, index: MovePathIndex) -> Option<Place<'tcx>> {
-        self.drop_flags.get(&index).map(|t| Place::Local(*t))
+    fn drop_flag(&mut self, index: MovePathIndex) -> Option<&DropFlag> {
+        self.drop_flags.get(&index)
     }
 
     /// create a patch that elaborates all drops in the input
@@ -388,6 +461,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     continue
                 }
             };
+
 
             on_all_drop_children_bits(self.tcx, self.mir, self.env, path, |child| {
                 let (maybe_live, maybe_dead) = init_data.state(child);
@@ -548,11 +622,20 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         })))
     }
 
+    fn set_drop_flag_impl(&mut self, loc: Location, flag: Local, val: DropFlagState) {
+        let span = self.patch.source_info_for_location(self.mir, loc).span;
+        let val = self.constant_bool(span, val.value());
+        self.patch.add_assign(loc, Place::Local(flag), val);
+    }
+
     fn set_drop_flag(&mut self, loc: Location, path: MovePathIndex, val: DropFlagState) {
-        if let Some(&flag) = self.drop_flags.get(&path) {
-            let span = self.patch.source_info_for_location(self.mir, loc).span;
-            let val = self.constant_bool(span, val.value());
-            self.patch.add_assign(loc, Place::Local(flag), val);
+        match self.drop_flags.get(&path) {
+            Some(DropFlag::Single(flag)) => self.set_drop_flag_impl(loc, *flag, val),
+            Some(DropFlag::Subslice(flags)) =>
+                for flag in flags {
+                    self.set_drop_flag_impl(loc, *flag, val);
+                }
+            _ => {}
         }
     }
 
@@ -561,7 +644,14 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let span = self.patch.source_info_for_location(self.mir, loc).span;
         let false_ = self.constant_bool(span, false);
         for flag in self.drop_flags.values() {
-            self.patch.add_assign(loc, Place::Local(*flag), false_.clone());
+            match flag {
+                DropFlag::Single(flag) =>
+                    self.patch.add_assign(loc, Place::Local(*flag), false_.clone()),
+                DropFlag::Subslice(flags) =>
+                    for flag in flags {
+                        self.patch.add_assign(loc, Place::Local(*flag), false_.clone());
+                    },
+            }
         }
     }
 

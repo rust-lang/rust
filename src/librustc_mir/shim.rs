@@ -264,11 +264,15 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
         }
     }
 
-    fn get_drop_flag(&mut self, _path: Self::Path) -> Option<Operand<'tcx>> {
+    fn get_drop_flags(&mut self, _path: Self::Path) -> Option<Operand<'tcx>> {
         None
     }
 
-    fn clear_drop_flag(&mut self, _location: Location, _path: Self::Path, _mode: DropFlagMode) {
+    fn clear_drop_flag(&mut self,
+                       _location: Location,
+                       _path: Self::Path,
+                       _mode: DropFlagMode,
+                       _opt_flag: Option<Local>) {
     }
 
     fn field_subpath(&self, _path: Self::Path, _field: Field) -> Option<Self::Path> {
@@ -280,8 +284,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn downcast_subpath(&self, _path: Self::Path, _variant: usize) -> Option<Self::Path> {
         Some(())
     }
-    fn array_subpath(&self, _path: Self::Path, _index: u32, _size: u32) -> Option<Self::Path> {
-        None
+    fn array_subpaths(&self, _path: Self::Path, _size: u64)
+                      -> Vec<(Place<'tcx>, Option<Self::Path>, Option<Local>)> {
+        vec![]
     }
 }
 
