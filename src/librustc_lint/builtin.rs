@@ -297,6 +297,54 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
 }
 
 declare_lint! {
+    EXTERNAL_DOC_ERROR,
+    Warn,
+    "errors that occur when loading external documentation"
+}
+
+pub struct ExternalDocError;
+
+impl LintPass for ExternalDocError {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(EXTERNAL_DOC_ERROR)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExternalDocError {
+    fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
+        //in libsyntax, failures to read a file transform a #[doc(include = "filename")] into a
+        //#[doc(include(file="filename", error="error message"))], so we need to pick that up here
+
+        if !attr.check_name("doc") {
+            return;
+        }
+
+        if let Some(list) = attr.meta_item_list() {
+            for it in list {
+                if !it.check_name("include") {
+                    continue;
+                }
+
+                if let Some(inner_list) = it.meta_item_list() {
+                    let mut error: Option<String> = None;
+
+                    for it in inner_list {
+                        if it.check_name("error") {
+                            error = it.value_str().map(|s| s.to_string());
+                            break;
+                        }
+                    }
+
+                    if let Some(error) = error {
+                        cx.span_lint(EXTERNAL_DOC_ERROR, attr.span(), &error);
+                    }
+                }
+            }
+        }
+    }
+}
+
+declare_lint! {
     MISSING_DOCS,
     Allow,
     "detects missing documentation for public members"

@@ -139,6 +139,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  MutableTransmutes,
                  UnionsWithDropFields,
                  UnreachablePub,
+                 ExternalDocError,
                  );
 
     add_builtin_with_new!(sess,
