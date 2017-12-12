@@ -91,10 +91,7 @@ extern crate jobserver;
 extern crate serialize as rustc_serialize; // used by deriving
 
 extern crate rustc_apfloat;
-extern crate log_settings;
 extern crate byteorder;
-#[macro_use]
-extern crate lazy_static;
 extern crate regex;
 extern crate backtrace;
 

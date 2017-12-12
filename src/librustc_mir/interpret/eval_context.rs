@@ -1,21 +1,24 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
-use hir::def_id::DefId;
-use hir::map::definitions::DefPathData;
-use middle::const_val::ConstVal;
-use middle::region;
-use mir;
-use traits::Reveal;
-use ty::layout::{self, Size, Align, HasDataLayout, LayoutOf, TyLayout};
-use ty::subst::{Subst, Substs, Kind};
-use ty::{self, Ty, TyCtxt};
+use rustc::hir::def_id::DefId;
+use rustc::hir::map::definitions::DefPathData;
+use rustc::middle::const_val::ConstVal;
+use rustc::mir;
+use rustc::traits::Reveal;
+use rustc::ty::layout::{self, Size, Align, HasDataLayout, LayoutOf, TyLayout};
+use rustc::ty::subst::{Subst, Substs, Kind};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP};
 use syntax::ast::Mutability;
+use rustc::mir::interpret::{
+    PtrAndAlign, DynamicLifetime, GlobalId, Value, Pointer, PrimVal, PrimValKind,
+    EvalError, EvalResult, EvalErrorKind, MemoryPointer,
+};
 
-use super::{EvalError, EvalResult, EvalErrorKind, GlobalId, Place, PlaceExtra, Memory,
-            MemoryPointer, HasMemory, MemoryKind, operator, PrimVal, PrimValKind, Value, Pointer,
+use super::{Place, PlaceExtra, Memory,
+            HasMemory, MemoryKind, operator,
             ValidationQuery, Machine};
 
 pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
@@ -102,12 +105,6 @@ pub enum StackPopCleanup {
     None,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DynamicLifetime {
-    pub frame: usize,
-    pub region: Option<region::Scope>, // "None" indicates "until the function ends"
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct ResourceLimits {
     pub memory_size: u64,
@@ -141,25 +138,6 @@ impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
     type Target = Value;
     fn deref(&self) -> &Value {
         &self.value
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct PtrAndAlign {
-    pub ptr: Pointer,
-    /// Remember whether this place is *supposed* to be aligned.
-    pub aligned: bool,
-}
-
-impl PtrAndAlign {
-    pub fn to_ptr<'tcx>(self) -> EvalResult<'tcx, MemoryPointer> {
-        self.ptr.to_ptr()
-    }
-    pub fn offset<'tcx, C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
-        Ok(PtrAndAlign {
-            ptr: self.ptr.offset(i, cx)?,
-            aligned: self.aligned,
-        })
     }
 }
 
@@ -268,7 +246,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal<'tcx>) -> EvalResult<'tcx, Value> {
-        use middle::const_val::ConstVal::*;
+        use rustc::middle::const_val::ConstVal::*;
 
         let primval = match *const_val {
             Integral(const_int) => PrimVal::Bytes(const_int.to_u128_unchecked()),
@@ -410,14 +388,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Ok((size.abi_align(align), align))
                 }
                 ty::TyDynamic(..) => {
-                    let (_, vtable) = value.into_ptr_vtable_pair(&mut self.memory)?;
+                    let (_, vtable) = self.into_ptr_vtable_pair(value)?;
                     // the second entry in the vtable is the dynamic size of the object.
                     self.read_size_and_align_from_vtable(vtable)
                 }
 
                 ty::TySlice(_) | ty::TyStr => {
                     let (elem_size, align) = layout.field(&self, 0)?.size_and_align();
-                    let (_, len) = value.into_slice(&mut self.memory)?;
+                    let (_, len) = self.into_slice(value)?;
                     Ok((elem_size * len, align))
                 }
 
@@ -438,7 +416,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         /// Return the set of locals that have a storage annotation anywhere
         fn collect_storage_annotations<'tcx>(mir: &'tcx mir::Mir<'tcx>) -> HashSet<mir::Local> {
-            use mir::StatementKind::*;
+            use rustc::mir::StatementKind::*;
 
             let mut set = HashSet::new();
             for block in mir.basic_blocks() {
@@ -546,7 +524,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let dest = self.eval_place(place)?;
         let dest_ty = self.place_ty(place);
 
-        use mir::Rvalue::*;
+        use rustc::mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
                 let value = self.eval_operand(operand)?.value;
@@ -700,7 +678,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             Cast(kind, ref operand, cast_ty) => {
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
-                use mir::CastKind::*;
+                use rustc::mir::CastKind::*;
                 match kind {
                     Unsize => {
                         let src = self.eval_operand(operand)?;
@@ -841,7 +819,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, ValTy<'tcx>> {
-        use mir::Operand::*;
+        use rustc::mir::Operand::*;
         let ty = self.monomorphize(op.ty(self.mir(), self.tcx), self.substs());
         match *op {
             // FIXME: do some more logic on `move` to invalidate the old location
@@ -854,7 +832,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             },
 
             Constant(ref constant) => {
-                use mir::Literal;
+                use rustc::mir::Literal;
                 let mir::Constant { ref literal, .. } = **constant;
                 let value = match *literal {
                     Literal::Value { ref value } => self.const_to_value(&value.val)?,
@@ -1271,7 +1249,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             ty::TyAdt(..) => {
                 match self.layout_of(ty)?.abi {
                     layout::Abi::Scalar(ref scalar) => {
-                        use ty::layout::Primitive::*;
+                        use rustc::ty::layout::Primitive::*;
                         match scalar.value {
                             Int(i, false) => PrimValKind::from_uint_size(i.size().bytes()),
                             Int(i, true) => PrimValKind::from_int_size(i.size().bytes()),
@@ -1448,7 +1426,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                let ptr = src.into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(src)?;
                 // u64 cast is from usize to u64, which is always good
                 let valty = ValTy {
                     value: ptr.to_value_with_len(length.val.to_const_int().unwrap().to_u64().unwrap() ),
@@ -1473,7 +1451,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 );
                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                 let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
-                let ptr = src.into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(src)?;
                 let valty = ValTy {
                     value: ptr.to_value_with_vtable(vtable),
                     ty: dest_ty,
@@ -1759,7 +1737,7 @@ pub fn resolve_drop_in_place<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>,
 ) -> ty::Instance<'tcx> {
-    let def_id = tcx.require_lang_item(::middle::lang_items::DropInPlaceFnLangItem);
+    let def_id = tcx.require_lang_item(::rustc::middle::lang_items::DropInPlaceFnLangItem);
     let substs = tcx.intern_substs(&[Kind::from(ty)]);
     ty::Instance::resolve(tcx, ty::ParamEnv::empty(Reveal::All), def_id, substs).unwrap()
 }

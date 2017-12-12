@@ -2,18 +2,37 @@
 
 use ty::layout::HasDataLayout;
 
-use super::{EvalResult, Memory, MemoryPointer, HasMemory, PointerArithmetic, Machine, PtrAndAlign};
+use super::{EvalResult, MemoryPointer, PointerArithmetic};
 use syntax::ast::FloatTy;
 use rustc_const_math::ConstFloat;
 
-pub(super) fn bytes_to_f32(bits: u128) -> ConstFloat {
+#[derive(Copy, Clone, Debug)]
+pub struct PtrAndAlign {
+    pub ptr: Pointer,
+    /// Remember whether this place is *supposed* to be aligned.
+    pub aligned: bool,
+}
+
+impl PtrAndAlign {
+    pub fn to_ptr<'tcx>(self) -> EvalResult<'tcx, MemoryPointer> {
+        self.ptr.to_ptr()
+    }
+    pub fn offset<'tcx, C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+        Ok(PtrAndAlign {
+            ptr: self.ptr.offset(i, cx)?,
+            aligned: self.aligned,
+        })
+    }
+}
+
+pub fn bytes_to_f32(bits: u128) -> ConstFloat {
     ConstFloat {
         bits,
         ty: FloatTy::F32,
     }
 }
 
-pub(super) fn bytes_to_f64(bits: u128) -> ConstFloat {
+pub fn bytes_to_f64(bits: u128) -> ConstFloat {
     ConstFloat {
         bits,
         ty: FloatTy::F64,
@@ -167,76 +186,6 @@ impl<'a, 'tcx: 'a> Value {
     #[inline]
     pub fn by_ref(ptr: Pointer) -> Self {
         Value::ByRef(PtrAndAlign { ptr, aligned: true })
-    }
-
-    /// Convert the value into a pointer (or a pointer-sized integer).  If the value is a ByRef,
-    /// this may have to perform a load.
-    pub fn into_ptr<M: Machine<'tcx>>(
-        &self,
-        mem: &Memory<'a, 'tcx, M>,
-    ) -> EvalResult<'tcx, Pointer> {
-        use self::Value::*;
-        Ok(match *self {
-            ByRef(PtrAndAlign { ptr, aligned }) => {
-                mem.read_maybe_aligned(aligned, |mem| mem.read_ptr_sized_unsigned(ptr.to_ptr()?))?
-            }
-            ByVal(ptr) |
-            ByValPair(ptr, _) => ptr,
-        }.into())
-    }
-
-    pub(super) fn into_ptr_vtable_pair<M: Machine<'tcx>>(
-        &self,
-        mem: &Memory<'a, 'tcx, M>,
-    ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
-        use self::Value::*;
-        match *self {
-            ByRef(PtrAndAlign {
-                      ptr: ref_ptr,
-                      aligned,
-                  }) => {
-                mem.read_maybe_aligned(aligned, |mem| {
-                    let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
-                    let vtable = mem.read_ptr_sized_unsigned(
-                        ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
-                    )?.to_ptr()?;
-                    Ok((ptr, vtable))
-                })
-            }
-
-            ByValPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
-
-            ByVal(PrimVal::Undef) => err!(ReadUndefBytes),
-            _ => bug!("expected ptr and vtable, got {:?}", self),
-        }
-    }
-
-    pub(super) fn into_slice<M: Machine<'tcx>>(
-        &self,
-        mem: &Memory<'a, 'tcx, M>,
-    ) -> EvalResult<'tcx, (Pointer, u64)> {
-        use self::Value::*;
-        match *self {
-            ByRef(PtrAndAlign {
-                      ptr: ref_ptr,
-                      aligned,
-                  }) => {
-                mem.read_maybe_aligned(aligned, |mem| {
-                    let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
-                    let len = mem.read_ptr_sized_unsigned(
-                        ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
-                    )?.to_bytes()? as u64;
-                    Ok((ptr, len))
-                })
-            }
-            ByValPair(ptr, val) => {
-                let len = val.to_u128()?;
-                assert_eq!(len as u64 as u128, len);
-                Ok((ptr.into(), len as u64))
-            }
-            ByVal(PrimVal::Undef) => err!(ReadUndefBytes),
-            ByVal(_) => bug!("expected ptr and length, got {:?}", self),
-        }
     }
 }
 

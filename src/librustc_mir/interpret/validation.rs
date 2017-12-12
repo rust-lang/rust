@@ -1,17 +1,18 @@
-use hir::{self, Mutability};
-use hir::Mutability::*;
-use mir::{self, ValidationOp, ValidationOperand};
-use ty::{self, Ty, TypeFoldable, TyCtxt};
-use ty::layout::LayoutOf;
-use ty::subst::{Substs, Subst};
-use traits;
-use infer::InferCtxt;
-use traits::Reveal;
-use middle::region;
+use rustc::hir::{self, Mutability};
+use rustc::hir::Mutability::*;
+use rustc::mir::{self, ValidationOp, ValidationOperand};
+use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
+use rustc::ty::layout::LayoutOf;
+use rustc::ty::subst::{Substs, Subst};
+use rustc::traits;
+use rustc::infer::InferCtxt;
+use rustc::traits::Reveal;
+use rustc::middle::region;
 use rustc_data_structures::indexed_vec::Idx;
+use interpret::memory::HasMemory;
 
-use super::{EvalError, EvalResult, EvalErrorKind, EvalContext, DynamicLifetime, AccessKind, Value,
-            Place, PlaceExtra, Machine, ValTy};
+use super::{EvalContext, Place, PlaceExtra, Machine, ValTy};
+use rustc::mir::interpret::{DynamicLifetime, AccessKind, EvalErrorKind, Value, EvalError, EvalResult};
 
 pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, (AbsPlace<'tcx>, Place)>;
 
@@ -407,7 +408,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             // ADTs.
             ty::TyAdt(def, substs) => {
-                use ty::layout::Variants;
+                use rustc::ty::layout::Variants;
                 match layout.variants {
                     Variants::Single { index } => {
                         def.variants[index].fields[i].ty(tcx, substs)
@@ -469,7 +470,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     ) -> EvalResult<'tcx> {
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
-        let ptr = val.into_ptr(&self.memory)?;
+        let ptr = self.into_ptr(val)?;
         self.memory.check_align(ptr, align.abi(), None)?;
 
         // Recurse
@@ -491,9 +492,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         mut query: ValidationQuery<'tcx>,
         mode: ValidationMode,
     ) -> EvalResult<'tcx> {
-        use ty::TypeVariants::*;
-        use ty::RegionKind::*;
-        use ty::AdtKind;
+        use rustc::ty::TypeVariants::*;
+        use rustc::ty::RegionKind::*;
+        use rustc::ty::AdtKind;
 
         // No point releasing shared stuff.
         if !mode.acquiring() && query.mutbl == MutImmutable {
@@ -645,9 +646,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     self.validate_ptr(val, query.place.0, query.ty.boxed_ty(), query.re, query.mutbl, mode)
                 }
                 TyFnPtr(_sig) => {
-                    let ptr = self.read_place(query.place.1)?
-                        .into_ptr(&self.memory)?
-                        .to_ptr()?;
+                    let ptr = self.read_place(query.place.1)?;
+                    let ptr = self.into_ptr(ptr)?.to_ptr()?;
                     self.memory.get_fn(ptr)?;
                     // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
                     Ok(())

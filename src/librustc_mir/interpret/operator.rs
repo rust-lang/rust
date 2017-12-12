@@ -1,12 +1,12 @@
-use mir;
-use ty::Ty;
+use rustc::mir;
+use rustc::ty::Ty;
 use rustc_const_math::ConstFloat;
 use syntax::ast::FloatTy;
 use std::cmp::Ordering;
 
-use super::{EvalResult, EvalContext, Place, Machine, ValTy};
+use super::{EvalContext, Place, Machine, ValTy};
 
-use super::value::{PrimVal, PrimValKind, Value, bytes_to_f32, bytes_to_f64};
+use rustc::mir::interpret::{EvalResult, PrimVal, PrimValKind, Value, bytes_to_f32, bytes_to_f64};
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn binop_with_overflow(
@@ -67,7 +67,7 @@ macro_rules! int_arithmetic {
     ($kind:expr, $int_op:ident, $l:expr, $r:expr) => ({
         let l = $l;
         let r = $r;
-        use super::PrimValKind::*;
+        use rustc::mir::interpret::PrimValKind::*;
         match $kind {
             I8  => overflow!($int_op, l as i8,  r as i8),
             I16 => overflow!($int_op, l as i16, r as i16),
@@ -115,8 +115,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         right: PrimVal,
         right_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, (PrimVal, bool)> {
-        use mir::BinOp::*;
-        use super::PrimValKind::*;
+        use rustc::mir::BinOp::*;
+        use rustc::mir::interpret::PrimValKind::*;
 
         let left_kind = self.ty_to_primval_kind(left_ty)?;
         let right_kind = self.ty_to_primval_kind(right_ty)?;
@@ -228,8 +228,8 @@ pub fn unary_op<'tcx>(
     val: PrimVal,
     val_kind: PrimValKind,
 ) -> EvalResult<'tcx, PrimVal> {
-    use mir::UnOp::*;
-    use super::PrimValKind::*;
+    use rustc::mir::UnOp::*;
+    use rustc::mir::interpret::PrimValKind::*;
 
     let bytes = val.to_bytes()?;
 

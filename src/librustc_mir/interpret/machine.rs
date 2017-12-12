@@ -2,10 +2,11 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use super::{EvalResult, EvalContext, Place, PrimVal, ValTy};
+use rustc::mir::interpret::{EvalResult, PrimVal};
+use super::{EvalContext, Place, ValTy};
 
-use mir;
-use ty::{self, Ty};
+use rustc::mir;
+use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
 

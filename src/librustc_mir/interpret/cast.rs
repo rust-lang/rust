@@ -1,8 +1,9 @@
-use ty::Ty;
+use rustc::ty::Ty;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use rustc_const_math::ConstFloat;
-use super::{PrimVal, EvalContext, EvalResult, MemoryPointer, PointerArithmetic, Machine};
+use super::{EvalContext, Machine};
+use rustc::mir::interpret::{PrimVal, EvalResult, MemoryPointer, PointerArithmetic};
 use rustc_apfloat::ieee::{Single, Double};
 use rustc_apfloat::Float;
 
@@ -20,7 +21,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             PrimVal::Undef => Ok(PrimVal::Undef),
             PrimVal::Ptr(ptr) => self.cast_from_ptr(ptr, dest_ty),
             val @ PrimVal::Bytes(_) => {
-                use super::PrimValKind::*;
+                use rustc::mir::interpret::PrimValKind::*;
                 match src_kind {
                     F32 => self.cast_from_float(val.to_f32()?, dest_ty),
                     F64 => self.cast_from_float(val.to_f64()?, dest_ty),
@@ -75,7 +76,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         negative: bool,
     ) -> EvalResult<'tcx, PrimVal> {
         trace!("cast_from_int: {}, {}, {}", v, ty, negative);
-        use ty::TypeVariants::*;
+        use rustc::ty::TypeVariants::*;
         match ty.sty {
             // Casts to bool are not permitted by rustc, no need to handle them here.
             TyInt(ty) => Ok(PrimVal::Bytes(self.int_to_int(v as i128, ty))),
@@ -95,7 +96,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     fn cast_from_float(&self, val: ConstFloat, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
-        use ty::TypeVariants::*;
+        use rustc::ty::TypeVariants::*;
         match ty.sty {
             TyUint(t) => {
                 let width = t.bit_width().unwrap_or(self.memory.pointer_size() as usize * 8);
@@ -119,7 +120,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     fn cast_from_ptr(&self, ptr: MemoryPointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
-        use ty::TypeVariants::*;
+        use rustc::ty::TypeVariants::*;
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
             TyRawPtr(_) |

@@ -1,9 +1,12 @@
-use mir;
-use ty::{self, Ty};
-use ty::layout::{LayoutOf, TyLayout};
+use rustc::mir;
+use rustc::ty::{self, Ty};
+use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc::mir::interpret::{GlobalId, PtrAndAlign};
 
-use super::{EvalResult, EvalContext, MemoryPointer, PrimVal, Value, Pointer, Machine, PtrAndAlign, ValTy};
+use rustc::mir::interpret::{Value, PrimVal, EvalResult, Pointer, MemoryPointer};
+use super::{EvalContext, Machine, ValTy};
+use interpret::memory::HasMemory;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Place {
@@ -27,17 +30,6 @@ pub enum PlaceExtra {
     Length(u64),
     Vtable(MemoryPointer),
     DowncastVariant(usize),
-}
-
-/// Uniquely identifies a specific constant or static.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub struct GlobalId<'tcx> {
-    /// For a constant or static, the `Instance` of the item itself.
-    /// For a promoted global, the `Instance` of the function they belong to.
-    pub instance: ty::Instance<'tcx>,
-
-    /// The index for promoted globals within their function's `Mir`.
-    pub promoted: Option<mir::Promoted>,
 }
 
 impl<'tcx> Place {
@@ -101,7 +93,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         place: &mir::Place<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
-        use mir::Place::*;
+        use rustc::mir::Place::*;
         match *place {
             // Might allow this in the future, right now there's no way to do this from Rust code anyway
             Local(mir::RETURN_PLACE) => err!(ReadFromReturnPointer),
@@ -126,7 +118,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         proj: &mir::PlaceProjection<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
-        use mir::ProjectionElem::*;
+        use rustc::mir::ProjectionElem::*;
         let base = match self.try_read_place(&proj.base)? {
             Some(base) => base,
             None => return Ok(None),
@@ -186,7 +178,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn eval_place(&mut self, mir_place: &mir::Place<'tcx>) -> EvalResult<'tcx, Place> {
-        use mir::Place::*;
+        use rustc::mir::Place::*;
         let place = match *mir_place {
             Local(mir::RETURN_PLACE) => self.frame().return_place,
             Local(local) => Place::Local {
@@ -289,20 +281,20 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(super) fn val_to_place(&self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Place> {
         Ok(match self.tcx.struct_tail(ty).sty {
             ty::TyDynamic(..) => {
-                let (ptr, vtable) = val.into_ptr_vtable_pair(&self.memory)?;
+                let (ptr, vtable) = self.into_ptr_vtable_pair(val)?;
                 Place::Ptr {
                     ptr: PtrAndAlign { ptr, aligned: true },
                     extra: PlaceExtra::Vtable(vtable),
                 }
             }
             ty::TyStr | ty::TySlice(_) => {
-                let (ptr, len) = val.into_slice(&self.memory)?;
+                let (ptr, len) = self.into_slice(val)?;
                 Place::Ptr {
                     ptr: PtrAndAlign { ptr, aligned: true },
                     extra: PlaceExtra::Length(len),
                 }
             }
-            _ => Place::from_primval_ptr(val.into_ptr(&self.memory)?),
+            _ => Place::from_primval_ptr(self.into_ptr(val)?),
         })
     }
 
@@ -349,7 +341,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         base_ty: Ty<'tcx>,
         proj_elem: &mir::ProjectionElem<'tcx, mir::Local, Ty<'tcx>>,
     ) -> EvalResult<'tcx, Place> {
-        use mir::ProjectionElem::*;
+        use rustc::mir::ProjectionElem::*;
         let (ptr, extra) = match *proj_elem {
             Field(field, _) => {
                 let layout = self.layout_of(base_ty)?;

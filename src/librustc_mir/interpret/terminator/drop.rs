@@ -1,9 +1,9 @@
-use mir::BasicBlock;
-use ty::{self, Ty};
+use rustc::mir::BasicBlock;
+use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 
-use mir::interpret::{EvalResult, EvalContext, Place, PlaceExtra, PrimVal, Value,
-                Machine, ValTy};
+use rustc::mir::interpret::{EvalResult, PrimVal, Value};
+use interpret::{Machine, ValTy, EvalContext, Place, PlaceExtra};
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn drop_place(

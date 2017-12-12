@@ -1,13 +1,15 @@
-use mir;
-use ty::{self, Ty};
-use ty::layout::LayoutOf;
+use rustc::mir;
+use rustc::ty::{self, Ty};
+use rustc::ty::layout::LayoutOf;
 use syntax::codemap::Span;
 use syntax::abi::Abi;
 
-use super::{EvalResult, EvalContext, eval_context,
-            PtrAndAlign, Place, PrimVal, Value, Machine, ValTy};
+use rustc::mir::interpret::{PtrAndAlign, EvalResult, PrimVal, Value};
+use super::{EvalContext, eval_context,
+            Place, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
+use interpret::memory::HasMemory;
 
 mod drop;
 
@@ -21,7 +23,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         terminator: &mir::Terminator<'tcx>,
     ) -> EvalResult<'tcx> {
-        use mir::TerminatorKind::*;
+        use rustc::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
                 self.dump_local(self.frame().return_place);
@@ -138,7 +140,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
-                    use mir::AssertMessage::*;
+                    use rustc::mir::AssertMessage::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
                             let span = terminator.source_info.span;
@@ -401,7 +403,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
-                let (ptr, vtable) = args[0].into_ptr_vtable_pair(&self.memory)?;
+                let (ptr, vtable) = self.into_ptr_vtable_pair(args[0].value)?;
                 let fn_ptr = self.memory.read_ptr_sized_unsigned(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?
                 )?.to_ptr()?;

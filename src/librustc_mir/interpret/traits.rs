@@ -1,8 +1,9 @@
-use ty::{self, Ty};
-use ty::layout::{Size, Align, LayoutOf};
+use rustc::ty::{self, Ty};
+use rustc::ty::layout::{Size, Align, LayoutOf};
 use syntax::ast::Mutability;
 
-use super::{EvalResult, EvalContext, eval_context, MemoryPointer, Value, PrimVal,
+use rustc::mir::interpret::{PrimVal, Value, MemoryPointer, EvalResult};
+use super::{EvalContext, eval_context,
             Machine};
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {

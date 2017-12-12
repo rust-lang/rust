@@ -24,8 +24,6 @@ rustc_errors = { path = "../librustc_errors" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-log_settings = "0.1.1"
-lazy_static = "0.2.8"
 regex = "0.2.2"
 backtrace = "0.3.3"
 byteorder = { version = "1.1", features = ["i128"]}

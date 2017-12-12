@@ -2,15 +2,16 @@
 //!
 //! The main entry point is the `step` method.
 
-use hir;
-use mir::visit::{Visitor, PlaceContext};
-use mir;
-use ty::{self, Instance};
-use ty::layout::LayoutOf;
-use middle::const_val::ConstVal;
+use rustc::hir;
+use rustc::mir::visit::{Visitor, PlaceContext};
+use rustc::mir;
+use rustc::ty::{self, Instance};
+use rustc::ty::layout::LayoutOf;
+use rustc::middle::const_val::ConstVal;
+use rustc::mir::interpret::{PtrAndAlign, GlobalId};
 
-use super::{EvalResult, EvalContext, StackPopCleanup, PtrAndAlign, GlobalId, Place,
-            Machine, EvalErrorKind};
+use rustc::mir::interpret::{EvalResult, EvalErrorKind};
+use super::{EvalContext, StackPopCleanup, Place, Machine};
 
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
@@ -92,7 +93,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx> {
         trace!("{:?}", stmt);
 
-        use mir::StatementKind::*;
+        use rustc::mir::StatementKind::*;
 
         // Some statements (e.g. box) push new stack frames.  We have to record the stack frame number
         // *before* executing the statement.
