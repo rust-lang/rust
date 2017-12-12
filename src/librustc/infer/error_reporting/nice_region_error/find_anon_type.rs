@@ -13,7 +13,7 @@ use infer::InferCtxt;
 use ty::{self, Region};
 use hir::map as hir_map;
 use middle::resolve_lifetime as rl;
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
+use hir::intravisit::{self, NestedVisitorMap, Visitor};
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// This function calls the `visit_ty` method for the parameters

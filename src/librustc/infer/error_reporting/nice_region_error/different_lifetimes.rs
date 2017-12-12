@@ -72,22 +72,28 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         let ty_sub = or_false!(self.find_anon_type(sub, &bregion_sub));
 
-        debug!("try_report_anon_anon_conflict: found_arg1={:?} sup={:?} br1={:?}",
-               ty_sub,
-               sup,
-               bregion_sup);
-        debug!("try_report_anon_anon_conflict: found_arg2={:?} sub={:?} br2={:?}",
-               ty_sup,
-               sub,
-               bregion_sub);
+        debug!(
+            "try_report_anon_anon_conflict: found_arg1={:?} sup={:?} br1={:?}",
+            ty_sub,
+            sup,
+            bregion_sup
+        );
+        debug!(
+            "try_report_anon_anon_conflict: found_arg2={:?} sub={:?} br2={:?}",
+            ty_sup,
+            sub,
+            bregion_sub
+        );
 
         let (ty_sup, ty_fndecl_sup) = ty_sup;
         let (ty_sub, ty_fndecl_sub) = ty_sub;
 
-        let AnonymousArgInfo { arg: anon_arg_sup, .. } =
-            or_false!(self.find_arg_with_region(sup, sup));
-        let AnonymousArgInfo { arg: anon_arg_sub, .. } =
-            or_false!(self.find_arg_with_region(sub, sub));
+        let AnonymousArgInfo {
+            arg: anon_arg_sup, ..
+        } = or_false!(self.find_arg_with_region(sup, sup));
+        let AnonymousArgInfo {
+            arg: anon_arg_sub, ..
+        } = or_false!(self.find_arg_with_region(sub, sub));
 
         let sup_is_ret_type =
             self.is_return_type_anon(scope_def_id_sup, bregion_sup, ty_fndecl_sup);
@@ -110,34 +116,45 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let (span_1, span_2, main_label, span_label) = match (sup_is_ret_type, sub_is_ret_type) {
             (None, None) => {
                 let (main_label_1, span_label_1) = if ty_sup == ty_sub {
-
-                    (format!("this type is declared with multiple lifetimes..."),
-                     format!("...but data{} flows{} here",
-                             format!(" with one lifetime"),
-                             format!(" into the other")))
+                    (
+                        format!("this type is declared with multiple lifetimes..."),
+                        format!(
+                            "...but data{} flows{} here",
+                            format!(" with one lifetime"),
+                            format!(" into the other")
+                        ),
+                    )
                 } else {
-                    (format!("these two types are declared with different lifetimes..."),
-                     format!("...but data{} flows{} here",
-                             span_label_var1,
-                             span_label_var2))
+                    (
+                        format!("these two types are declared with different lifetimes..."),
+                        format!(
+                            "...but data{} flows{} here",
+                            span_label_var1,
+                            span_label_var2
+                        ),
+                    )
                 };
                 (ty_sup.span, ty_sub.span, main_label_1, span_label_1)
             }
 
-            (Some(ret_span), _) => {
-                (ty_sub.span,
-                 ret_span,
-                 format!("this parameter and the return type are declared \
-                          with different lifetimes...",),
-                 format!("...but data{} is returned here", span_label_var1))
-            }
-            (_, Some(ret_span)) => {
-                (ty_sup.span,
-                 ret_span,
-                 format!("this parameter and the return type are declared \
-                          with different lifetimes...",),
-                 format!("...but data{} is returned here", span_label_var1))
-            }
+            (Some(ret_span), _) => (
+                ty_sub.span,
+                ret_span,
+                format!(
+                    "this parameter and the return type are declared \
+                     with different lifetimes...",
+                ),
+                format!("...but data{} is returned here", span_label_var1),
+            ),
+            (_, Some(ret_span)) => (
+                ty_sup.span,
+                ret_span,
+                format!(
+                    "this parameter and the return type are declared \
+                     with different lifetimes...",
+                ),
+                format!("...but data{} is returned here", span_label_var1),
+            ),
         };
 
 
@@ -149,4 +166,3 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         return true;
     }
 }
-
