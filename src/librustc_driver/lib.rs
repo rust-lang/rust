@@ -810,9 +810,8 @@ impl RustcDefaultCalls {
                 PrintRequest::TargetCPUs | PrintRequest::TargetFeatures => {
                     rustc_trans::print(*req, sess);
                 }
-                PrintRequest::NativeStaticLibs => {
-                    println!("Native static libs can be printed only during linking");
-                }
+                // Any output here interferes with Cargo's parsing of other printed output
+                PrintRequest::NativeStaticLibs => {}
             }
         }
         return Compilation::Stop;
