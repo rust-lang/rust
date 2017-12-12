@@ -208,6 +208,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Indicates that the region variable `v` is live at the point `point`.
+    ///
+    /// Returns `true` if this constraint is new and `false` is the
+    /// constraint was already present.
     pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location) -> bool {
         debug!("add_live_point({:?}, {:?})", v, point);
         assert!(self.inferred_values.is_none(), "values already inferred");
