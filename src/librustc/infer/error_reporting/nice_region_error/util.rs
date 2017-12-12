@@ -17,18 +17,6 @@ use hir::def_id::DefId;
 use hir::map as hir_map;
 use syntax_pos::Span;
 
-macro_rules! or_false {
-     ($v:expr) => {
-         match $v {
-             Some(v) => v,
-             None => {
-                 debug!("or_false failed: {}", stringify!($v));
-                 return false;
-             }
-         }
-     }
-}
-
 // The struct contains the information about the anonymous region
 // we are searching for.
 #[derive(Debug)]

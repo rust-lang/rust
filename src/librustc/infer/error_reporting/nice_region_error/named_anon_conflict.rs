@@ -12,11 +12,12 @@
 //! where one region is named and the other is anonymous.
 use infer::error_reporting::nice_region_error::NiceRegionError;
 use ty;
+use util::common::ErrorReported;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
     /// an anonymous region, emit an descriptive diagnostic error.
-    pub(super) fn try_report_named_anon_conflict(&self) -> bool {
+    pub(super) fn try_report_named_anon_conflict(&self) -> Option<ErrorReported> {
         let NiceRegionError { span, sub, sup, .. } = *self;
 
         debug!(
@@ -51,7 +52,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 self.is_suitable_region(sub).unwrap(),
             )
         } else {
-            return false; // inapplicable
+            return None; // inapplicable
         };
 
         debug!("try_report_named_anon_conflict: named = {:?}", named);
@@ -77,20 +78,20 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             _ => {
                 /* not an anonymous region */
                 debug!("try_report_named_anon_conflict: not an anonymous region");
-                return false;
+                return None;
             }
         }
 
         if is_impl_item {
             debug!("try_report_named_anon_conflict: impl item, bail out");
-            return false;
+            return None;
         }
 
         if let Some((_, fndecl)) = self.find_anon_type(anon, &br) {
             if self.is_return_type_anon(scope_def_id, br, fndecl).is_some()
                 || self.is_self_anon(is_first, scope_def_id)
             {
-                return false;
+                return None;
             }
         }
 
@@ -115,6 +116,6 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         )
             .span_label(span, format!("lifetime `{}` required", named))
             .emit();
-        return true;
+        return Some(ErrorReported);
     }
 }

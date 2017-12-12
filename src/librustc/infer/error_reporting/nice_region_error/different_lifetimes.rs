@@ -10,8 +10,10 @@
 
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where both the regions are anonymous.
+
 use infer::error_reporting::nice_region_error::NiceRegionError;
 use infer::error_reporting::nice_region_error::util::AnonymousArgInfo;
+use util::common::ErrorReported;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// Print the error message for lifetime errors when both the concerned regions are anonymous.
@@ -50,21 +52,21 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// ````
     ///
     /// It will later be extended to trait objects.
-    pub(super) fn try_report_anon_anon_conflict(&self) -> bool {
+    pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorReported> {
         let NiceRegionError { span, sub, sup, .. } = *self;
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
-        let anon_reg_sup = or_false!(self.is_suitable_region(sup));
+        let anon_reg_sup = self.is_suitable_region(sup)?;
 
-        let anon_reg_sub = or_false!(self.is_suitable_region(sub));
+        let anon_reg_sub = self.is_suitable_region(sub)?;
         let scope_def_id_sup = anon_reg_sup.def_id;
         let bregion_sup = anon_reg_sup.boundregion;
         let scope_def_id_sub = anon_reg_sub.def_id;
         let bregion_sub = anon_reg_sub.boundregion;
 
-        let ty_sup = or_false!(self.find_anon_type(sup, &bregion_sup));
+        let ty_sup = self.find_anon_type(sup, &bregion_sup)?;
 
-        let ty_sub = or_false!(self.find_anon_type(sub, &bregion_sub));
+        let ty_sub = self.find_anon_type(sub, &bregion_sub)?;
 
         debug!(
             "try_report_anon_anon_conflict: found_arg1={:?} sup={:?} br1={:?}",
@@ -84,10 +86,10 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 
         let AnonymousArgInfo {
             arg: anon_arg_sup, ..
-        } = or_false!(self.find_arg_with_region(sup, sup));
+        } = self.find_arg_with_region(sup, sup)?;
         let AnonymousArgInfo {
             arg: anon_arg_sub, ..
-        } = or_false!(self.find_arg_with_region(sub, sub));
+        } = self.find_arg_with_region(sub, sub)?;
 
         let sup_is_ret_type =
             self.is_return_type_anon(scope_def_id_sup, bregion_sup, ty_fndecl_sup);
@@ -157,6 +159,6 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             .span_label(span_2, format!(""))
             .span_label(span, span_label)
             .emit();
-        return true;
+        return Some(ErrorReported);
     }
 }

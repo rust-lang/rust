@@ -13,13 +13,12 @@ use infer::lexical_region_resolve::RegionResolutionError;
 use infer::lexical_region_resolve::RegionResolutionError::*;
 use syntax::codemap::Span;
 use ty::{self, TyCtxt};
+use util::common::ErrorReported;
 
-#[macro_use]
-mod util;
-
-mod find_anon_type;
 mod different_lifetimes;
+mod find_anon_type;
 mod named_anon_conflict;
+mod util;
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn try_report_nice_region_error(&self, error: &RegionResolutionError<'tcx>) -> bool {
@@ -31,9 +30,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         if let Some(tables) = self.in_progress_tables {
             let tables = tables.borrow();
-            NiceRegionError::new(self.tcx, span, sub, sup, Some(&tables)).try_report()
+            NiceRegionError::new(self.tcx, span, sub, sup, Some(&tables)).try_report().is_some()
         } else {
-            NiceRegionError::new(self.tcx, span, sub, sup, None).try_report()
+            NiceRegionError::new(self.tcx, span, sub, sup, None).try_report().is_some()
         }
     }
 }
@@ -57,7 +56,8 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
         Self { tcx, span, sub, sup, tables }
     }
 
-    pub fn try_report(&self) -> bool {
-        self.try_report_anon_anon_conflict() || self.try_report_named_anon_conflict()
+    pub fn try_report(&self) -> Option<ErrorReported> {
+        self.try_report_anon_anon_conflict()
+            .or_else(|| self.try_report_named_anon_conflict())
     }
 }
