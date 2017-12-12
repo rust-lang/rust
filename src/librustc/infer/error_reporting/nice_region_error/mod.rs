@@ -10,5 +10,6 @@
 
 #[macro_use] mod util;
 
+mod find_anon_type;
 mod different_lifetimes;
 mod named_anon_conflict;
