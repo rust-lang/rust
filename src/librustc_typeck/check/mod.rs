@@ -4954,39 +4954,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         });
     }
 
-    fn structurally_resolve_type_or_else<F>(&self, sp: Span, ty: Ty<'tcx>, f: F)
-                                            -> Ty<'tcx>
-        where F: Fn() -> Ty<'tcx>
-    {
-        let mut ty = self.resolve_type_vars_with_obligations(ty);
-
-        if ty.is_ty_var() {
-            let alternative = f();
-
-            // If not, error.
-            if alternative.is_ty_var() || alternative.references_error() {
-                if !self.is_tainted_by_errors() {
-                    type_error_struct!(self.tcx.sess, sp, ty, E0619,
-                                       "the type of this value must be known in this context")
-                        .emit();
-                }
-                self.demand_suptype(sp, self.tcx.types.err, ty);
-                ty = self.tcx.types.err;
-            } else {
-                self.demand_suptype(sp, alternative, ty);
-                ty = alternative;
-            }
-        }
-
-        ty
-    }
-
-    // Resolves `typ` by a single level if `typ` is a type variable.  If no
+    // Resolves `typ` by a single level if `typ` is a type variable. If no
     // resolution is possible, then an error is reported.
     pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.structurally_resolve_type_or_else(sp, ty, || {
-            self.tcx.types.err
-        })
+        let mut ty = self.resolve_type_vars_with_obligations(ty);
+        if ty.is_ty_var() {
+            // If not, error.
+            if !self.is_tainted_by_errors() {
+                type_error_struct!(self.tcx.sess, sp, ty, E0619,
+                                    "the type of this value must be known in this context")
+                .emit();
+            }
+            self.demand_suptype(sp, self.tcx.types.err, ty);
+            ty = self.tcx.types.err;
+        }
+        ty
     }
 
     fn with_breakable_ctxt<F: FnOnce() -> R, R>(&self, id: ast::NodeId,
