@@ -6,6 +6,9 @@ error[E0506]: cannot assign to `x` because it is borrowed
 ...
 32 |     x = 1; //~ ERROR cannot assign to `x` because it is borrowed [E0506]
    |     ^^^^^ assignment to borrowed `x` occurs here
+33 |     // FIXME ^ This currently errors and it should not.
+34 | }
+   |  - borrow later used here, when `foo` is dropped
 
 error: aborting due to previous error
 

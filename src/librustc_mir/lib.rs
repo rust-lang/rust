@@ -23,6 +23,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(decl_macro)]
+#![feature(dyn_trait)]
 #![feature(i128_type)]
 #![feature(inclusive_range_syntax)]
 #![feature(inclusive_range)]

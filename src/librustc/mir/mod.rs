@@ -21,6 +21,7 @@ use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
+use mir::visit::MirVisitable;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -866,6 +867,14 @@ impl<'tcx> BasicBlockData<'tcx> {
             if !f(s) {
                 s.kind = StatementKind::Nop;
             }
+        }
+    }
+
+    pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
+        if index < self.statements.len() {
+            &self.statements[index]
+        } else {
+            &self.terminator
         }
     }
 }

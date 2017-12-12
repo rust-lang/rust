@@ -14,7 +14,6 @@ use rustc::mir::{BorrowKind, Field, Local, Location, Operand};
 use rustc::mir::{Place, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty::{self, RegionKind};
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_errors::DiagnosticBuilder;
 
 use std::rc::Rc;
 
@@ -132,19 +131,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         self.explain_why_borrow_contains_point(context, borrow, &mut err);
 
         err.emit();
-    }
-
-    fn explain_why_borrow_contains_point(
-        &self,
-        context: Context,
-        borrow: &BorrowData<'_>,
-        err: &mut DiagnosticBuilder<'_>,
-    ) {
-        if let Some(regioncx) = &self.nonlexical_regioncx {
-            if let Some(cause) = regioncx.why_region_contains_point(borrow.region, context.loc) {
-                cause.label_diagnostic(self.mir, err);
-            }
-        }
     }
 
     /// Finds the span of arguments of a closure (within `maybe_closure_span`) and its usage of
