@@ -18,7 +18,7 @@ use infer::lexical_region_resolve::RegionResolutionError;
 use hir::map as hir_map;
 use middle::resolve_lifetime as rl;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use infer::error_reporting::util::AnonymousArgInfo;
+use infer::error_reporting::nice_region_error::util::AnonymousArgInfo;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Print the error message for lifetime errors when both the concerned regions are anonymous.
