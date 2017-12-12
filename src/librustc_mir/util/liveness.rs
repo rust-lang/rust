@@ -39,6 +39,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 use rustc::ty::item_path;
+use rustc::mir::visit::MirVisitable;
 use std::path::{Path, PathBuf};
 use std::fs;
 use rustc::ty::TyCtxt;
@@ -356,30 +357,6 @@ fn block<'tcx>(mode: LivenessMode, b: &BasicBlockData<'tcx>, locals: usize) -> D
     }
 
     visitor.defs_uses
-}
-
-trait MirVisitable<'tcx> {
-    fn apply<V>(&self, location: Location, visitor: &mut V)
-    where
-        V: Visitor<'tcx>;
-}
-
-impl<'tcx> MirVisitable<'tcx> for Statement<'tcx> {
-    fn apply<V>(&self, location: Location, visitor: &mut V)
-    where
-        V: Visitor<'tcx>,
-    {
-        visitor.visit_statement(location.block, self, location)
-    }
-}
-
-impl<'tcx> MirVisitable<'tcx> for Option<Terminator<'tcx>> {
-    fn apply<V>(&self, location: Location, visitor: &mut V)
-    where
-        V: Visitor<'tcx>,
-    {
-        visitor.visit_terminator(location.block, self.as_ref().unwrap(), location)
-    }
 }
 
 pub fn dump_mir<'a, 'tcx>(
