@@ -372,7 +372,7 @@ macro_rules! create_config {
                             self.$i.2 = val;
                         } else {
                             eprintln!("Warning: can't set `{} = {:?}`, unstable features are only \
-                                      available in nightly channel.", stringify!($i), val);
+                                       available in nightly channel.", stringify!($i), val);
                         }
                     }
                 }
@@ -404,7 +404,9 @@ macro_rules! create_config {
                 }
                 match parsed.try_into() {
                     Ok(parsed_config) => {
-                        eprintln!("{}", err);
+                        if !err.is_empty() {
+                            eprint!("{}", err);
+                        }
                         Ok(Config::default().fill_from_parsed_config(parsed_config))
                     }
                     Err(e) => {
