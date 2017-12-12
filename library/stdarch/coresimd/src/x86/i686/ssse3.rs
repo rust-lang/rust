@@ -45,12 +45,17 @@ pub unsafe fn _mm_shuffle_pi8(a: u8x8, b: u8x8) -> u8x8 {
 
 /// Concatenates the two 64-bit integer vector operands, and right-shifts
 /// the result by the number of bytes specified in the immediate operand.
-/*#[inline(always)]
+#[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(palignr, n = 15))]
-pub unsafe fn _mm_alignr_pi8(a: i8x8, b: i8x8, n: i32) -> i8x8 {
-    mem::transmute(palignrb(mem::transmute(a), mem::transmute(b), n))
-}*/
+pub unsafe fn _mm_alignr_pi8(a: u8x8, b: u8x8, n: u8) -> u8x8 {
+    macro_rules! call {
+        ($imm8:expr) => {
+            mem::transmute(palignrb(mem::transmute(a), mem::transmute(b), $imm8))
+        }
+    }
+    constify_imm8!(n, call)
+}
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
 /// 64-bit vectors of [4 x i16].
@@ -178,8 +183,8 @@ extern "C" {
     #[link_name = "llvm.x86.ssse3.pshuf.b"]
     fn pshufb(a: __m64, b: __m64) -> __m64;
 
-    /*#[link_name = "llvm.x86.mmx.palignr.b"]
-    fn palignrb(a: __m64, b: __m64, n: i32) -> __m64;*/
+    #[link_name = "llvm.x86.mmx.palignr.b"]
+    fn palignrb(a: __m64, b: __m64, n: u8) -> __m64;
 
     #[link_name = "llvm.x86.ssse3.phadd.w"]
     fn phaddw(a: __m64, b: __m64) -> __m64;
@@ -249,27 +254,13 @@ mod tests {
         assert_eq!(r, expected);
     }
 
-    /*#[simd_test = "ssse3"]
+    #[simd_test = "ssse3"]
     unsafe fn _mm_alignr_pi8() {
-        let a = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let b = i8x8::new(4, 63, 4, 3, 24, 12, 6, 19);
-        let r = ssse3::_mm_alignr_pi8(a, b, 33);
-        assert_eq!(r, i8x8::splat(0));
-
-        let r = ssse3::_mm_alignr_pi8(a, b, 17);
-        let expected = i8x8::new(2, 3, 4, 5, 6, 7, 8, 0);
-        assert_eq!(r, expected);
-
-        let r = ssse3::_mm_alignr_pi8(a, b, 16);
-        assert_eq!(r, a);
-
-        let r = ssse3::_mm_alignr_pi8(a, b, 15);
-        let expected = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
-        assert_eq!(r, expected);
-
-        let r = ssse3::_mm_alignr_pi8(a, b, 0);
-        assert_eq!(r, b);
-    }*/
+        let a = u32x2::new(0x89ABCDEF_u32, 0x01234567_u32);
+        let b = u32x2::new(0xBBAA9988_u32, 0xFFDDEECC_u32);
+        let r = ssse3::_mm_alignr_pi8(u8x8::from(a), u8x8::from(b), 4);
+        assert_eq!(r, ::std::mem::transmute(0x89abcdefffddeecc_u64));
+    }
 
     #[simd_test = "ssse3"]
     unsafe fn _mm_hadd_pi16() {
