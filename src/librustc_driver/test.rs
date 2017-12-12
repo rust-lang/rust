@@ -18,7 +18,6 @@ use rustc_lint;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
 use rustc::middle::region;
-use rustc::middle::resolve_lifetime;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -137,7 +136,6 @@ fn test_env<F>(source_string: &str,
     let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
 
     // run just enough stuff to build a tcx:
-    let named_region_map = resolve_lifetime::krate(&sess, &*cstore, &hir_map);
     let (tx, _rx) = mpsc::channel();
     let outputs = OutputFilenames {
         out_directory: PathBuf::new(),
@@ -153,7 +151,6 @@ fn test_env<F>(source_string: &str,
                              &arenas,
                              &arena,
                              resolutions,
-                             named_region_map.unwrap(),
                              hir_map,
                              OnDiskCache::new_empty(sess.codemap()),
                              "test_crate",

@@ -588,9 +588,10 @@ define_dep_nodes!( <'tcx>
     [] NativeLibraryKind(DefId),
     [input] LinkArgs,
 
-    [input] NamedRegion(DefIndex),
-    [input] IsLateBound(DefIndex),
-    [input] ObjectLifetimeDefaults(DefIndex),
+    [] ResolveLifetimes(CrateNum),
+    [] NamedRegion(DefIndex),
+    [] IsLateBound(DefIndex),
+    [] ObjectLifetimeDefaults(DefIndex),
 
     [] Visibility(DefId),
     [] DepKind(CrateNum),

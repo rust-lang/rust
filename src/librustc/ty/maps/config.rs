@@ -443,6 +443,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::link_args<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::resolve_lifetimes<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("resolving lifetimes")
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::named_region_map<'tcx> {
     fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
         format!("looking up a named region")

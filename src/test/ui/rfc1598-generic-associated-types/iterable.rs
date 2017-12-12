@@ -16,8 +16,10 @@ trait Iterable {
     type Item<'a>;
     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
     //~^ ERROR undeclared lifetime
+    //~| ERROR lifetime parameters are not allowed on this type [E0110]
 
     fn iter<'a>(&'a self) -> Self::Iter<'a>;
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
 }
 
 fn main() {}

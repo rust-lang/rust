@@ -19,7 +19,7 @@ use rustc::session::CompileIncomplete;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
-use rustc::middle::{self, stability, reachable};
+use rustc::middle::{self, stability, reachable, resolve_lifetime};
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
@@ -928,6 +928,7 @@ pub fn default_provide(providers: &mut ty::maps::Providers) {
     borrowck::provide(providers);
     mir::provide(providers);
     reachable::provide(providers);
+    resolve_lifetime::provide(providers);
     rustc_privacy::provide(providers);
     DefaultTransCrate::provide(providers);
     typeck::provide(providers);
@@ -984,10 +985,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
         "load query result cache",
         || rustc_incremental::load_query_result_cache(sess));
 
-    let named_region_map = time(time_passes,
-                                "lifetime resolution",
-                                || middle::resolve_lifetime::krate(sess, cstore, &hir_map))?;
-
     time(time_passes,
          "looking for entry point",
          || middle::entry::find_entry_point(sess, &hir_map));
@@ -1022,7 +1019,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
                              arenas,
                              arena,
                              resolutions,
-                             named_region_map,
                              hir_map,
                              query_result_on_disk_cache,
                              name,

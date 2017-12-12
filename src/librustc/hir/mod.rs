@@ -28,7 +28,7 @@ pub use self::UnsafeSource::*;
 pub use self::Visibility::{Public, Inherited};
 
 use hir::def::Def;
-use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -90,6 +90,16 @@ pub mod svh;
 pub struct HirId {
     pub owner: DefIndex,
     pub local_id: ItemLocalId,
+}
+
+impl HirId {
+    pub fn owner_def_id(self) -> DefId {
+        DefId::local(self.owner)
+    }
+
+    pub fn owner_local_def_id(self) -> LocalDefId {
+        LocalDefId::from_def_id(DefId::local(self.owner))
+    }
 }
 
 impl serialize::UseSpecializedEncodable for HirId {

@@ -16,8 +16,9 @@
 // This was fixed by improving the resolution of the `FnOnce` trait
 // selection node.
 
-// revisions:cfail1
+// revisions:cfail1 cfail2 cfail3
 // compile-flags:-Zquery-dep-graph
+// must-compile-successfully
 
 #![feature(rustc_attrs)]
 
@@ -27,16 +28,24 @@ fn main() {
 }
 
 mod a {
-    #[rustc_if_this_changed(HirBody)]
+    #[cfg(cfail1)]
     pub fn foo() {
         let x = vec![1, 2, 3];
+        let v = || ::std::mem::drop(x);
+        v();
+    }
+
+    #[cfg(not(cfail1))]
+    pub fn foo() {
+        let x = vec![1, 2, 3, 4];
         let v = || ::std::mem::drop(x);
         v();
     }
 }
 
 mod b {
-    #[rustc_then_this_would_need(TypeckTables)] //[cfail1]~ ERROR no path
+    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="cfail3")]
     pub fn bar() {
         let x = vec![1, 2, 3];
         let v = || ::std::mem::drop(x);

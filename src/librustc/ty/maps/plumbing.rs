@@ -875,6 +875,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::NativeLibraryKind => { force!(native_library_kind, def_id!()); }
         DepKind::LinkArgs => { force!(link_args, LOCAL_CRATE); }
 
+        DepKind::ResolveLifetimes => { force!(resolve_lifetimes, krate!()); }
         DepKind::NamedRegion => { force!(named_region_map, def_id!().index); }
         DepKind::IsLateBound => { force!(is_late_bound_map, def_id!().index); }
         DepKind::ObjectLifetimeDefaults => {
