@@ -1708,7 +1708,9 @@ slice_interners!(
 );
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Create an unsafe fn ty based on a safe fn ty.
+    /// Given a `fn` type, returns an equivalent `unsafe fn` type;
+    /// that is, a `fn` type that is equivalent in every way for being
+    /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         assert_eq!(sig.unsafety(), hir::Unsafety::Normal);
         self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig {
@@ -1717,7 +1719,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }))
     }
 
-    /// Create an unsafe fn ty based on a safe fn ty.
+    /// Given a closure signature `sig`, returns an equivalent `fn`
+    /// type with the same signature. Detuples and so forth -- so
+    /// e.g. if we have a sig with `Fn<(u32, i32)>` then you would get
+    /// a `fn(u32, i32)`.
     pub fn coerce_closure_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         let converted_sig = sig.map_bound(|s| {
             let params_iter = match s.inputs()[0].sty {
@@ -1731,8 +1736,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 s.output(),
                 s.variadic,
                 hir::Unsafety::Normal,
-                abi::Abi::Rust
-                )
+                abi::Abi::Rust,
+            )
         });
 
         self.mk_fn_ptr(converted_sig)
