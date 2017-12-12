@@ -27,7 +27,7 @@ use std::fmt;
 #[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
 pub struct SyntaxContext(pub(super) u32);
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct SyntaxContextData {
     pub outer_mark: Mark,
     pub prev_ctxt: SyntaxContext,
@@ -35,20 +35,26 @@ pub struct SyntaxContextData {
 }
 
 /// A mark is a unique id associated with a macro expansion.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Mark(u32);
 
-#[derive(Default)]
 struct MarkData {
     parent: Mark,
-    modern: bool,
+    kind: MarkKind,
     expn_info: Option<ExpnInfo>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum MarkKind {
+    Modern,
+    Builtin,
+    Legacy,
 }
 
 impl Mark {
     pub fn fresh(parent: Mark) -> Self {
         HygieneData::with(|data| {
-            data.marks.push(MarkData { parent: parent, modern: false, expn_info: None });
+            data.marks.push(MarkData { parent: parent, kind: MarkKind::Legacy, expn_info: None });
             Mark(data.marks.len() as u32 - 1)
         })
     }
@@ -77,7 +83,7 @@ impl Mark {
     pub fn modern(mut self) -> Mark {
         HygieneData::with(|data| {
             loop {
-                if self == Mark::root() || data.marks[self.0 as usize].modern {
+                if self == Mark::root() || data.marks[self.0 as usize].kind == MarkKind::Modern {
                     return self;
                 }
                 self = data.marks[self.0 as usize].parent;
@@ -85,12 +91,12 @@ impl Mark {
         })
     }
 
-    pub fn is_modern(self) -> bool {
-        HygieneData::with(|data| data.marks[self.0 as usize].modern)
+    pub fn kind(self) -> MarkKind {
+        HygieneData::with(|data| data.marks[self.0 as usize].kind)
     }
 
-    pub fn set_modern(self) {
-        HygieneData::with(|data| data.marks[self.0 as usize].modern = true)
+    pub fn set_kind(self, kind: MarkKind) {
+        HygieneData::with(|data| data.marks[self.0 as usize].kind = kind)
     }
 
     pub fn is_descendant_of(mut self, ancestor: Mark) -> bool {
@@ -116,8 +122,16 @@ struct HygieneData {
 impl HygieneData {
     fn new() -> Self {
         HygieneData {
-            marks: vec![MarkData::default()],
-            syntax_contexts: vec![SyntaxContextData::default()],
+            marks: vec![MarkData {
+                parent: Mark::root(),
+                kind: MarkKind::Builtin,
+                expn_info: None,
+            }],
+            syntax_contexts: vec![SyntaxContextData {
+                outer_mark: Mark::root(),
+                prev_ctxt: SyntaxContext(0),
+                modern: SyntaxContext(0),
+            }],
             markings: HashMap::new(),
             gensym_to_ctxt: HashMap::new(),
         }
@@ -150,7 +164,7 @@ impl SyntaxContext {
         HygieneData::with(|data| {
             data.marks.push(MarkData {
                 parent: Mark::root(),
-                modern: false,
+                kind: MarkKind::Legacy,
                 expn_info: Some(expansion_info)
             });
 
@@ -170,7 +184,7 @@ impl SyntaxContext {
         HygieneData::with(|data| {
             let syntax_contexts = &mut data.syntax_contexts;
             let mut modern = syntax_contexts[self.0 as usize].modern;
-            if data.marks[mark.0 as usize].modern {
+            if data.marks[mark.0 as usize].kind == MarkKind::Modern {
                 modern = *data.markings.entry((modern, mark)).or_insert_with(|| {
                     let len = syntax_contexts.len() as u32;
                     syntax_contexts.push(SyntaxContextData {
