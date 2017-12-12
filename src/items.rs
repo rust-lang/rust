@@ -239,8 +239,8 @@ impl<'a> FnSig<'a> {
 }
 
 impl<'a> FmtVisitor<'a> {
-    fn format_item(&mut self, item: Item) {
-        self.push_str(&item.abi);
+    fn format_item(&mut self, item: &Item) {
+        self.buffer.push_str(&item.abi);
 
         let snippet = self.snippet(item.span);
         let brace_pos = snippet.find_uncommented("{").unwrap();
@@ -279,7 +279,7 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn format_foreign_mod(&mut self, fm: &ast::ForeignMod, span: Span) {
         let item = Item::from_foreign_mod(fm, span, self.config);
-        self.format_item(item);
+        self.format_item(&item);
     }
 
     fn format_foreign_item(&mut self, item: &ast::ForeignItem) {
@@ -950,7 +950,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 .span_after(item.span, &format!("{}", item.ident));
             let bound_hi = type_param_bounds.last().unwrap().span().hi();
             let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
-            if contains_comment(&snippet) {
+            if contains_comment(snippet) {
                 return None;
             }
         }
@@ -1175,7 +1175,7 @@ pub fn format_struct_struct(
             result.push('\n');
             result.push_str(&offset.to_string(context.config));
         } else {
-            result.push_str(&snippet);
+            result.push_str(snippet);
         }
         result.push('}');
         return Some(result);
@@ -1307,7 +1307,7 @@ fn format_tuple_struct(
             result.push('\n');
             result.push_str(&offset.to_string(context.config));
         } else {
-            result.push_str(&snippet);
+            result.push_str(snippet);
         }
         result.push(')');
     } else {
@@ -2718,7 +2718,7 @@ fn format_header(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> S
     format!("{}{}{}", format_visibility(vis), item_name, ident)
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 enum BracePos {
     None,
     Auto,

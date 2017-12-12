@@ -166,7 +166,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.last_pos,
                     attr_lo.unwrap_or(first_stmt.span.lo()),
                 ));
-                let len = CommentCodeSlices::new(&snippet)
+                let len = CommentCodeSlices::new(snippet)
                     .nth(0)
                     .and_then(|(kind, _, s)| {
                         if kind == CodeCharKind::Normal {
@@ -212,7 +212,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     stmt.span.hi(),
                     source!(self, b.span).hi() - brace_compensation,
                 ));
-                let len = CommentCodeSlices::new(&snippet)
+                let len = CommentCodeSlices::new(snippet)
                     .last()
                     .and_then(|(kind, _, s)| {
                         if kind == CodeCharKind::Normal && s.trim().is_empty() {
@@ -430,7 +430,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
             ast::ItemKind::MacroDef(..) => {
                 // FIXME(#1539): macros 2.0
-                let mac_snippet = Some(remove_trailing_white_spaces(&self.snippet(item.span)));
+                let mac_snippet = Some(remove_trailing_white_spaces(self.snippet(item.span)));
                 self.push_rewrite(item.span, mac_snippet);
             }
         }
@@ -684,9 +684,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // Extract leading `use ...;`.
         let items: Vec<_> = stmts
             .iter()
-            .take_while(|stmt| to_stmt_item(stmt).is_some())
+            .take_while(|stmt| to_stmt_item(stmt).map_or(false, is_use_item))
             .filter_map(|stmt| to_stmt_item(stmt))
-            .take_while(|item| is_use_item(item))
             .collect();
 
         if items.is_empty() {
@@ -779,7 +778,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             use_block: false,
             is_if_else_block: false,
             force_one_line_chain: false,
-            snippet_provider: &self.snippet_provider,
+            snippet_provider: self.snippet_provider,
         }
     }
 }
@@ -888,7 +887,7 @@ where
             // Extract comments between two attributes.
             let span_between_attr = mk_sp(attr.span.hi(), next_attr.span.lo());
             let snippet = context.snippet(span_between_attr);
-            if count_newlines(&snippet) >= 2 || snippet.contains('/') {
+            if count_newlines(snippet) >= 2 || snippet.contains('/') {
                 break;
             }
         }
@@ -974,7 +973,7 @@ impl<'a> Rewrite for [ast::Attribute] {
             // Preserve an empty line before/after doc comments.
             if self[0].is_sugared_doc || self[first_group_len].is_sugared_doc {
                 let snippet = context.snippet(missing_span);
-                let (mla, mlb) = has_newlines_before_after_comment(&snippet);
+                let (mla, mlb) = has_newlines_before_after_comment(snippet);
                 let comment = ::comment::recover_missing_comment_in_span(
                     missing_span,
                     shape.with_max_width(context.config),
@@ -1068,7 +1067,7 @@ fn get_derive_args<'a>(context: &'a RewriteContext, attr: &ast::Attribute) -> Op
 pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Option<String> {
     assert!(is_extern_crate(item));
     let new_str = context.snippet(item.span);
-    Some(if contains_comment(&new_str) {
+    Some(if contains_comment(new_str) {
         new_str.to_owned()
     } else {
         let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");

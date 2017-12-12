@@ -45,7 +45,7 @@ where
 }
 
 // Prints all newlines either as `\n` or as `\r\n`.
-pub fn write_system_newlines<T>(writer: T, text: &String, config: &Config) -> Result<(), io::Error>
+pub fn write_system_newlines<T>(writer: T, text: &str, config: &Config) -> Result<(), io::Error>
 where
     T: Write,
 {
@@ -79,7 +79,7 @@ where
 }
 
 pub fn write_file<T>(
-    text: &String,
+    text: &str,
     filename: &str,
     out: &mut T,
     config: &Config,
@@ -88,7 +88,7 @@ where
     T: Write,
 {
     fn source_and_formatted_text(
-        text: &String,
+        text: &str,
         filename: &str,
         config: &Config,
     ) -> Result<(String, String), io::Error> {
@@ -103,7 +103,7 @@ where
 
     fn create_diff(
         filename: &str,
-        text: &String,
+        text: &str,
         config: &Config,
     ) -> Result<Vec<Mismatch>, io::Error> {
         let (ori, fmt) = source_and_formatted_text(text, filename, config)?;

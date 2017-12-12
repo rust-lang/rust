@@ -144,7 +144,7 @@ pub fn rewrite_macro(
     };
 
     let ts: TokenStream = mac.node.stream();
-    if ts.is_empty() && !contains_comment(&context.snippet(mac.span)) {
+    if ts.is_empty() && !contains_comment(context.snippet(mac.span)) {
         return match style {
             MacroStyle::Parens if position == MacroPosition::Item => {
                 Some(format!("{}();", macro_name))
