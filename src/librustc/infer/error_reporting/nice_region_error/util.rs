@@ -11,7 +11,7 @@
 //! Helper functions corresponding to lifetime errors due to
 //! anonymous regions.
 use hir;
-use infer::InferCtxt;
+use infer::error_reporting::nice_region_error::NiceRegionError;
 use ty::{self, Region, Ty};
 use hir::def_id::DefId;
 use hir::map as hir_map;
@@ -56,7 +56,7 @@ pub(super) struct FreeRegionInfo {
     pub is_impl_item: bool,
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     // This method walks the Type of the function body arguments using
     // `fold_regions()` function and returns the
     // &hir::Arg of the function argument corresponding to the anonymous
@@ -86,13 +86,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if let Some(node_id) = hir.as_local_node_id(id) {
             if let Some(body_id) = hir.maybe_body_owned_by(node_id) {
                 let body = hir.body(body_id);
-                if let Some(tables) = self.in_progress_tables {
+                if let Some(tables) = self.tables {
                     body.arguments
                         .iter()
                         .enumerate()
                         .filter_map(|(index, arg)| {
                             // May return None; sometimes the tables are not yet populated.
-                            let ty = tables.borrow().node_id_to_type_opt(arg.hir_id)?;
+                            let ty = tables.node_id_to_type_opt(arg.hir_id)?;
                             let mut found_anon_region = false;
                             let new_arg_ty = self.tcx.fold_regions(&ty, &mut false, |r, _| {
                                 if *r == *anon_region {

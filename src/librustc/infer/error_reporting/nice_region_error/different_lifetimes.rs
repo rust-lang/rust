@@ -10,12 +10,10 @@
 
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where both the regions are anonymous.
-use infer::InferCtxt;
-use infer::lexical_region_resolve::RegionResolutionError::*;
-use infer::lexical_region_resolve::RegionResolutionError;
+use infer::error_reporting::nice_region_error::NiceRegionError;
 use infer::error_reporting::nice_region_error::util::AnonymousArgInfo;
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// Print the error message for lifetime errors when both the concerned regions are anonymous.
     ///
     /// Consider a case where we have
@@ -52,12 +50,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// ````
     ///
     /// It will later be extended to trait objects.
-    pub fn try_report_anon_anon_conflict(&self, error: &RegionResolutionError<'tcx>) -> bool {
-        let (span, sub, sup) = match *error {
-            ConcreteFailure(ref origin, sub, sup) => (origin.span(), sub, sup),
-            SubSupConflict(_, ref origin, sub, _, sup) => (origin.span(), sub, sup),
-            _ => return false, // inapplicable
-        };
+    pub(super) fn try_report_anon_anon_conflict(&self) -> bool {
+        let NiceRegionError { span, sub, sup, .. } = *self;
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
         let anon_reg_sup = or_false!(self.is_suitable_region(sup));

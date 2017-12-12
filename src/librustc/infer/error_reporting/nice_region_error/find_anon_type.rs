@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use hir;
-use infer::InferCtxt;
-use ty::{self, Region};
+use ty::{self, Region, TyCtxt};
 use hir::map as hir_map;
 use middle::resolve_lifetime as rl;
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
+use infer::error_reporting::nice_region_error::NiceRegionError;
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     /// This function calls the `visit_ty` method for the parameters
     /// corresponding to the anonymous regions. The `nested_visitor.found_type`
     /// contains the anonymous type.
@@ -74,8 +74,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         br: &ty::BoundRegion,
     ) -> Option<(&'gcx hir::Ty)> {
         let mut nested_visitor = FindNestedTypeVisitor {
-            infcx: &self,
-            hir_map: &self.tcx.hir,
+            tcx: self.tcx,
             bound_region: *br,
             found_type: None,
             depth: 1,
@@ -93,8 +92,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 // where that lifetime appears. This allows us to highlight the
 // specific part of the type in the error message.
 struct FindNestedTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    hir_map: &'a hir::map::Map<'gcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // The bound_region corresponding to the Refree(freeregion)
     // associated with the anonymous region we are looking for.
     bound_region: ty::BoundRegion,
@@ -106,7 +104,7 @@ struct FindNestedTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.hir_map)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
     fn visit_ty(&mut self, arg: &'gcx hir::Ty) {
@@ -126,8 +124,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 
             hir::TyRptr(ref lifetime, _) => {
                 // the lifetime of the TyRptr
-                let hir_id = self.infcx.tcx.hir.node_to_hir_id(lifetime.id);
-                match (self.infcx.tcx.named_region(hir_id), self.bound_region) {
+                let hir_id = self.tcx.hir.node_to_hir_id(lifetime.id);
+                match (self.tcx.named_region(hir_id), self.bound_region) {
                     // Find the index of the anonymous region that was part of the
                     // error. We will then search the function parameters for a bound
                     // region at the right depth with the same index
@@ -195,10 +193,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
             // Checks if it is of type `hir::TyPath` which corresponds to a struct.
             hir::TyPath(_) => {
                 let subvisitor = &mut TyPathVisitor {
-                    infcx: self.infcx,
+                    tcx: self.tcx,
                     found_it: false,
                     bound_region: self.bound_region,
-                    hir_map: self.hir_map,
                     depth: self.depth,
                 };
                 intravisit::walk_ty(subvisitor, arg); // call walk_ty; as visit_ty is empty,
@@ -222,8 +219,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 // where that lifetime appears. This allows us to highlight the
 // specific part of the type in the error message.
 struct TyPathVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    hir_map: &'a hir::map::Map<'gcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     found_it: bool,
     bound_region: ty::BoundRegion,
     depth: u32,
@@ -231,12 +227,12 @@ struct TyPathVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
-        NestedVisitorMap::OnlyBodies(&self.hir_map)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
     fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) {
-        let hir_id = self.infcx.tcx.hir.node_to_hir_id(lifetime.id);
-        match (self.infcx.tcx.named_region(hir_id), self.bound_region) {
+        let hir_id = self.tcx.hir.node_to_hir_id(lifetime.id);
+        match (self.tcx.named_region(hir_id), self.bound_region) {
             // the lifetime of the TyPath!
             (Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)), ty::BrAnon(br_index)) => {
                 if debruijn_index.depth == self.depth && anon_index == br_index {
