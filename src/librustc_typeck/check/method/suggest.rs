@@ -21,6 +21,7 @@ use namespace::Namespace;
 use rustc::traits::{Obligation, SelectionContext};
 use util::nodemap::FxHashSet;
 
+use rustc_data_structures::sync::LockGuard;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
@@ -29,7 +30,6 @@ use rustc::hir;
 use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
 
-use std::cell;
 use std::cmp::Ordering;
 
 use super::{MethodError, NoMatchData, CandidateSource};
@@ -631,7 +631,7 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
 }
 
 pub struct AllTraits<'a> {
-    borrow: cell::Ref<'a, Option<AllTraitsVec>>,
+    borrow: LockGuard<'a, Option<AllTraitsVec>>,
     idx: usize,
 }
 

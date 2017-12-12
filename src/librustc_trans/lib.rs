@@ -49,7 +49,7 @@ extern crate rustc_apfloat;
 extern crate rustc_back;
 extern crate rustc_binaryen;
 extern crate rustc_const_math;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
 extern crate rustc_demangle;
 extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;
@@ -73,8 +73,8 @@ pub use llvm_util::{init, target_features, print_version, print_passes, print, e
 
 use std::any::Any;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::mpsc;
+use rustc_data_structures::sync::{self, Lrc};
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::CrateNum;
@@ -160,7 +160,7 @@ impl rustc_trans_utils::trans_crate::TransCrate for LlvmTransCrate {
     type OngoingCrateTranslation = back::write::OngoingCrateTranslation;
     type TranslatedCrate = CrateTranslation;
 
-    fn metadata_loader() -> Box<MetadataLoader> {
+    fn metadata_loader() -> Box<MetadataLoader + sync::Sync> {
         box metadata::LlvmMetadataLoader
     }
 
@@ -321,11 +321,11 @@ pub struct CrateInfo {
     profiler_runtime: Option<CrateNum>,
     sanitizer_runtime: Option<CrateNum>,
     is_no_builtins: FxHashSet<CrateNum>,
-    native_libraries: FxHashMap<CrateNum, Rc<Vec<NativeLibrary>>>,
+    native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
     crate_name: FxHashMap<CrateNum, String>,
-    used_libraries: Rc<Vec<NativeLibrary>>,
-    link_args: Rc<Vec<String>>,
-    used_crate_source: FxHashMap<CrateNum, Rc<CrateSource>>,
+    used_libraries: Lrc<Vec<NativeLibrary>>,
+    link_args: Lrc<Vec<String>>,
+    used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     used_crates_static: Vec<(CrateNum, LibSource)>,
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
 }

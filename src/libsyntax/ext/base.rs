@@ -27,6 +27,7 @@ use util::small_vector::SmallVector;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
+use rustc_data_structures::sync::{Send, Sync, Lrc};
 use std::default::Default;
 use tokenstream::{self, TokenStream};
 
@@ -506,7 +507,6 @@ pub enum MacroKind {
     Derive,
 }
 
-/// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
@@ -514,26 +514,26 @@ pub enum SyntaxExtension {
     /// `#[derive(...)]` is a `MultiItemDecorator`.
     ///
     /// Prefer ProcMacro or MultiModifier since they are more flexible.
-    MultiDecorator(Box<MultiItemDecorator>),
+    MultiDecorator(Box<MultiItemDecorator + Sync + Send>),
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place. Also allows decoration, i.e., creating new items.
-    MultiModifier(Box<MultiItemModifier>),
+    MultiModifier(Box<MultiItemModifier + Sync + Send>),
 
     /// A function-like procedural macro. TokenStream -> TokenStream.
-    ProcMacro(Box<ProcMacro>),
+    ProcMacro(Box<ProcMacro + Sync + Send>),
 
     /// An attribute-like procedural macro. TokenStream, TokenStream -> TokenStream.
     /// The first TokenSteam is the attribute, the second is the annotated item.
     /// Allows modification of the input items and adding new items, similar to
     /// MultiModifier, but uses TokenStreams, rather than AST nodes.
-    AttrProcMacro(Box<AttrProcMacro>),
+    AttrProcMacro(Box<AttrProcMacro + Sync + Send>),
 
     /// A normal, function-like syntax extension.
     ///
     /// `bytes!` is a `NormalTT`.
     NormalTT {
-        expander: Box<TTMacroExpander>,
+        expander: Box<TTMacroExpander + Sync + Send>,
         def_info: Option<(ast::NodeId, Span)>,
         /// Whether the contents of the macro can
         /// directly use `#[unstable]` things (true == yes).
@@ -546,13 +546,13 @@ pub enum SyntaxExtension {
     /// A function-like syntax extension that has an extra ident before
     /// the block.
     ///
-    IdentTT(Box<IdentMacroExpander>, Option<Span>, bool),
+    IdentTT(Box<IdentMacroExpander + Sync + Send>, Option<Span>, bool),
 
     /// An attribute-like procedural macro. TokenStream -> TokenStream.
     /// The input is the annotated item.
     /// Allows generating code to implement a Trait for a given struct
     /// or enum item.
-    ProcMacroDerive(Box<MultiItemModifier>, Vec<Symbol> /* inert attribute names */),
+    ProcMacroDerive(Box<MultiItemModifier + Sync + Send>, Vec<Symbol> /* inert attribute names */),
 
     /// An attribute-like procedural macro that derives a builtin trait.
     BuiltinDerive(BuiltinDeriveFn),
@@ -560,7 +560,7 @@ pub enum SyntaxExtension {
     /// A declarative macro, e.g. `macro m() {}`.
     ///
     /// The second element is the definition site span.
-    DeclMacro(Box<TTMacroExpander>, Option<(ast::NodeId, Span)>),
+    DeclMacro(Box<TTMacroExpander + Sync + Send>, Option<(ast::NodeId, Span)>),
 }
 
 impl SyntaxExtension {
@@ -602,15 +602,15 @@ pub trait Resolver {
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool;
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]);
-    fn add_builtin(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>);
+    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
 
     fn resolve_imports(&mut self);
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
     fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
-                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy>;
+                     -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
-                     -> Result<Rc<SyntaxExtension>, Determinacy>;
+                     -> Result<Lrc<SyntaxExtension>, Determinacy>;
     fn check_unused_macros(&self);
 }
 
@@ -629,16 +629,16 @@ impl Resolver for DummyResolver {
     fn is_whitelisted_legacy_custom_derive(&self, _name: Name) -> bool { false }
 
     fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion, _derives: &[Mark]) {}
-    fn add_builtin(&mut self, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
+    fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
 
     fn resolve_imports(&mut self) {}
     fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
     fn resolve_invoc(&mut self, _invoc: &mut Invocation, _scope: Mark, _force: bool)
-                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
+                     -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         Err(Determinacy::Determined)
     }
     fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _kind: MacroKind,
-                     _force: bool) -> Result<Rc<SyntaxExtension>, Determinacy> {
+                     _force: bool) -> Result<Lrc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
     }
     fn check_unused_macros(&self) {}

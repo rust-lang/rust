@@ -219,7 +219,7 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::locator or metadata::creader for all the juicy details!
 
-use cstore::MetadataBlob;
+use cstore::{MetadataRef, MetadataBlob};
 use creader::Library;
 use schema::{METADATA_HEADER, rustc_version};
 
@@ -243,7 +243,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use flate2::read::DeflateDecoder;
-use owning_ref::{ErasedBoxRef, OwningRef};
+use owning_ref::OwningRef;
 
 pub struct CrateMismatch {
     path: PathBuf,
@@ -842,7 +842,7 @@ fn get_metadata_section_imp(target: &Target,
     if !filename.exists() {
         return Err(format!("no such file: '{}'", filename.display()));
     }
-    let raw_bytes: ErasedBoxRef<[u8]> = match flavor {
+    let raw_bytes: MetadataRef = match flavor {
         CrateFlavor::Rlib => loader.get_rlib_metadata(target, filename)?,
         CrateFlavor::Dylib => {
             let buf = loader.get_dylib_metadata(target, filename)?;
@@ -862,7 +862,7 @@ fn get_metadata_section_imp(target: &Target,
             match DeflateDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
                 Ok(_) => {
                     let buf = unsafe { OwningRef::new_assert_stable_address(inflated) };
-                    buf.map_owner_box().erase_owner()
+                    rustc_erase_owner!(buf.map_owner_box())
                 }
                 Err(_) => {
                     return Err(format!("failed to decompress metadata: {}", filename.display()));
@@ -875,7 +875,7 @@ fn get_metadata_section_imp(target: &Target,
             let mut buf = vec![];
             file.read_to_end(&mut buf).map_err(|_|
                 format!("failed to read rmeta metadata: '{}'", filename.display()))?;
-            OwningRef::new(buf).map_owner_box().erase_owner()
+            rustc_erase_owner!(OwningRef::new(buf).map_owner_box())
         }
     };
     let blob = MetadataBlob(raw_bytes);

@@ -593,6 +593,7 @@ impl Hash for ThinTokenStream {
 mod tests {
     use super::*;
     use syntax::ast::Ident;
+    use {Globals, with_globals};
     use syntax_pos::{Span, BytePos, NO_EXPANSION};
     use parse::token::Token;
     use util::parser_testing::string_to_stream;
@@ -607,66 +608,82 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        let test_res = string_to_ts("foo::bar::baz");
-        let test_fst = string_to_ts("foo::bar");
-        let test_snd = string_to_ts("::baz");
-        let eq_res = TokenStream::concat(vec![test_fst, test_snd]);
-        assert_eq!(test_res.trees().count(), 5);
-        assert_eq!(eq_res.trees().count(), 5);
-        assert_eq!(test_res.eq_unspanned(&eq_res), true);
+        with_globals(&Globals::new(), || {
+            let test_res = string_to_ts("foo::bar::baz");
+            let test_fst = string_to_ts("foo::bar");
+            let test_snd = string_to_ts("::baz");
+            let eq_res = TokenStream::concat(vec![test_fst, test_snd]);
+            assert_eq!(test_res.trees().count(), 5);
+            assert_eq!(eq_res.trees().count(), 5);
+            assert_eq!(test_res.eq_unspanned(&eq_res), true);
+        })
     }
 
     #[test]
     fn test_to_from_bijection() {
-        let test_start = string_to_ts("foo::bar(baz)");
-        let test_end = test_start.trees().collect();
-        assert_eq!(test_start, test_end)
+        with_globals(&Globals::new(), || {
+            let test_start = string_to_ts("foo::bar(baz)");
+            let test_end = test_start.trees().collect();
+            assert_eq!(test_start, test_end)
+        })
     }
 
     #[test]
     fn test_eq_0() {
-        let test_res = string_to_ts("foo");
-        let test_eqs = string_to_ts("foo");
-        assert_eq!(test_res, test_eqs)
+        with_globals(&Globals::new(), || {
+            let test_res = string_to_ts("foo");
+            let test_eqs = string_to_ts("foo");
+            assert_eq!(test_res, test_eqs)
+        })
     }
 
     #[test]
     fn test_eq_1() {
-        let test_res = string_to_ts("::bar::baz");
-        let test_eqs = string_to_ts("::bar::baz");
-        assert_eq!(test_res, test_eqs)
+        with_globals(&Globals::new(), || {
+            let test_res = string_to_ts("::bar::baz");
+            let test_eqs = string_to_ts("::bar::baz");
+            assert_eq!(test_res, test_eqs)
+        })
     }
 
     #[test]
     fn test_eq_3() {
-        let test_res = string_to_ts("");
-        let test_eqs = string_to_ts("");
-        assert_eq!(test_res, test_eqs)
+        with_globals(&Globals::new(), || {
+            let test_res = string_to_ts("");
+            let test_eqs = string_to_ts("");
+            assert_eq!(test_res, test_eqs)
+        })
     }
 
     #[test]
     fn test_diseq_0() {
-        let test_res = string_to_ts("::bar::baz");
-        let test_eqs = string_to_ts("bar::baz");
-        assert_eq!(test_res == test_eqs, false)
+        with_globals(&Globals::new(), || {
+            let test_res = string_to_ts("::bar::baz");
+            let test_eqs = string_to_ts("bar::baz");
+            assert_eq!(test_res == test_eqs, false)
+        })
     }
 
     #[test]
     fn test_diseq_1() {
-        let test_res = string_to_ts("(bar,baz)");
-        let test_eqs = string_to_ts("bar,baz");
-        assert_eq!(test_res == test_eqs, false)
+        with_globals(&Globals::new(), || {
+            let test_res = string_to_ts("(bar,baz)");
+            let test_eqs = string_to_ts("bar,baz");
+            assert_eq!(test_res == test_eqs, false)
+        })
     }
 
     #[test]
     fn test_is_empty() {
-        let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
-        let test1: TokenStream =
-            TokenTree::Token(sp(0, 1), Token::Ident(Ident::from_str("a"))).into();
-        let test2 = string_to_ts("foo(bar::baz)");
+        with_globals(&Globals::new(), || {
+            let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
+            let test1: TokenStream =
+                TokenTree::Token(sp(0, 1), Token::Ident(Ident::from_str("a"))).into();
+            let test2 = string_to_ts("foo(bar::baz)");
 
-        assert_eq!(test0.is_empty(), true);
-        assert_eq!(test1.is_empty(), false);
-        assert_eq!(test2.is_empty(), false);
+            assert_eq!(test0.is_empty(), true);
+            assert_eq!(test1.is_empty(), false);
+            assert_eq!(test2.is_empty(), false);
+        })
     }
 }

@@ -15,22 +15,64 @@ use llvm;
 use llvm::{False, ObjectFile, mk_section_iter};
 use llvm::archive_ro::ArchiveRO;
 
-use owning_ref::{ErasedBoxRef, OwningRef};
+use owning_ref::{OwningRef};
 use std::path::Path;
 use std::ptr;
+use std::thread;
 use std::slice;
+use std::ops::Deref;
+
+pub use rustc_data_structures::sync::MetadataRef;
 
 pub const METADATA_FILENAME: &str = "rust.metadata.bin";
+
+/// This is a way to send erased LLVM object across thread.
+/// It is used for metadata which gets stored in the global context.
+/// We must ensure that the metadata gets dropped in the same thread that allocated it.
+// FIXME: How to achieve the above? We probably need to create metadata on the main thread.
+struct SameThread<T> {
+    obj: T,
+    thread_id: thread::ThreadId,
+}
+
+impl<T> SameThread<T> {
+    fn new(obj: T) -> Self {
+        SameThread {
+            obj,
+            thread_id: thread::current().id()
+        }
+    }
+}
+
+impl<T> Deref for SameThread<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        assert!(thread::current().id() == self.thread_id);
+        &self.obj
+    }
+}
+
+// This is safe since there isn't a way to access
+// the inner `obj` on a different thread without panicking
+unsafe impl<T> Send for SameThread<T> {}
+unsafe impl<T> Sync for SameThread<T> {}
+
+impl<T> Drop for SameThread<T> {
+    fn drop(&mut self) {
+        assert!(thread::current().id() == self.thread_id);
+    }
+}
 
 pub struct LlvmMetadataLoader;
 
 impl MetadataLoader for LlvmMetadataLoader {
-    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
         // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
         // internally to read the file. We also avoid even using a memcpy by
         // just keeping the archive along while the metadata is in use.
         let archive = ArchiveRO::open(filename)
-            .map(|ar| OwningRef::new(box ar))
+            .map(|ar| OwningRef::new(box SameThread::new(ar)))
             .map_err(|e| {
                 debug!("llvm didn't like `{}`: {}", filename.display(), e);
                 format!("failed to read rlib metadata in '{}': {}", filename.display(), e)
@@ -47,13 +89,13 @@ impl MetadataLoader for LlvmMetadataLoader {
                                 filename.display())
                     })
             })?;
-        Ok(buf.erase_owner())
+        Ok(rustc_erase_owner!(buf))
     }
 
     fn get_dylib_metadata(&self,
                           target: &Target,
                           filename: &Path)
-                          -> Result<ErasedBoxRef<[u8]>, String> {
+                          -> Result<MetadataRef, String> {
         unsafe {
             let buf = common::path2cstr(filename);
             let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr());
@@ -61,11 +103,11 @@ impl MetadataLoader for LlvmMetadataLoader {
                 return Err(format!("error reading library: '{}'", filename.display()));
             }
             let of = ObjectFile::new(mb)
-                .map(|of| OwningRef::new(box of))
+                .map(|of| OwningRef::new(box SameThread::new(of)))
                 .ok_or_else(|| format!("provided path not an object file: '{}'",
                                         filename.display()))?;
             let buf = of.try_map(|of| search_meta_section(of, target, filename))?;
-            Ok(buf.erase_owner())
+            Ok(rustc_erase_owner!(buf))
         }
     }
 }

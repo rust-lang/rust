@@ -12,7 +12,7 @@ test = false
 [dependencies]
 ar = "0.3.0"
 flate2 = "0.2"
-owning_ref = "0.3.3"
+owning_ref = { git = "https://github.com/Zoxc/owning-ref-rs.git" }
 log = "0.3"
 
 syntax = { path = "../libsyntax" }

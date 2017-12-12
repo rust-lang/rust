@@ -11,7 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 flate2 = "0.2"
 log = "0.3"
-owning_ref = "0.3.3"
+owning_ref = { git = "https://github.com/Zoxc/owning-ref-rs.git" }
 proc_macro = { path = "../libproc_macro" }
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }

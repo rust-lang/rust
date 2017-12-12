@@ -22,7 +22,7 @@ use rustc::lint;
 use rustc::middle::{self, stability, reachable};
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
+use rustc::ty::{self, TyCtxt, Resolutions, AllArenas};
 use rustc::traits;
 use rustc::util::common::{ErrorReported, time};
 use rustc_allocator as allocator;
@@ -51,7 +51,8 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use rustc_data_structures::sync::{Sync, Lrc};
+use rustc::util::common::PROFQ_CHAN;
 use std::sync::mpsc;
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
@@ -61,7 +62,6 @@ use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
 use syntax;
 use syntax_ext;
-use arena::DroplessArena;
 
 use derive_registrar;
 use pretty::ReplaceBodyWithLoop;
@@ -75,6 +75,18 @@ pub fn compile_input(sess: &Session,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: &CompileController) -> CompileResult {
+    PROFQ_CHAN.set(&sess.profile_channel, || {
+        compile_input_impl(sess, cstore, input, outdir, output, addl_plugins, control)
+    })
+}
+
+fn compile_input_impl(sess: &Session,
+                      cstore: &CStore,
+                      input: &Input,
+                      outdir: &Option<PathBuf>,
+                      output: &Option<PathBuf>,
+                      addl_plugins: Option<Vec<String>>,
+                      control: &CompileController) -> CompileResult {
     use rustc::session::config::CrateType;
 
     macro_rules! controller_entry_point {
@@ -168,8 +180,7 @@ pub fn compile_input(sess: &Session,
             return Ok(())
         }
 
-        let arena = DroplessArena::new();
-        let arenas = GlobalArenas::new();
+        let arenas = AllArenas::new();
 
         // Construct the HIR map
         let hir_map = time(sess.time_passes(),
@@ -184,7 +195,6 @@ pub fn compile_input(sess: &Session,
                                                                   sess,
                                                                   outdir,
                                                                   output,
-                                                                  &arena,
                                                                   &arenas,
                                                                   &cstore,
                                                                   &hir_map,
@@ -214,7 +224,6 @@ pub fn compile_input(sess: &Session,
                                     hir_map,
                                     analysis,
                                     resolutions,
-                                    &arena,
                                     &arenas,
                                     &crate_name,
                                     &outputs,
@@ -408,8 +417,7 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub output_filenames: Option<&'a OutputFilenames>,
     pub out_dir: Option<&'a Path>,
     pub out_file: Option<&'a Path>,
-    pub arena: Option<&'tcx DroplessArena>,
-    pub arenas: Option<&'tcx GlobalArenas<'tcx>>,
+    pub arenas: Option<&'tcx AllArenas<'tcx>>,
     pub expanded_crate: Option<&'a ast::Crate>,
     pub hir_crate: Option<&'a hir::Crate>,
     pub hir_map: Option<&'a hir_map::Map<'tcx>>,
@@ -429,7 +437,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             session,
             out_dir: out_dir.as_ref().map(|s| &**s),
             out_file: None,
-            arena: None,
             arenas: None,
             krate: None,
             registry: None,
@@ -484,8 +491,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 session: &'tcx Session,
                                 out_dir: &'a Option<PathBuf>,
                                 out_file: &'a Option<PathBuf>,
-                                arena: &'tcx DroplessArena,
-                                arenas: &'tcx GlobalArenas<'tcx>,
+                                arenas: &'tcx AllArenas<'tcx>,
                                 cstore: &'tcx CStore,
                                 hir_map: &'a hir_map::Map<'tcx>,
                                 analysis: &'a ty::CrateAnalysis,
@@ -497,7 +503,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 -> Self {
         CompileState {
             crate_name: Some(crate_name),
-            arena: Some(arena),
             arenas: Some(arenas),
             cstore: Some(cstore),
             hir_map: Some(hir_map),
@@ -909,7 +914,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         expanded_crate: krate,
         defs: resolver.definitions,
         analysis: ty::CrateAnalysis {
-            access_levels: Rc::new(AccessLevels::default()),
+            access_levels: Lrc::new(AccessLevels::default()),
             name: crate_name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
         },
@@ -951,12 +956,11 @@ pub fn default_provide_extern(providers: &mut ty::maps::Providers) {
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
                                                sess: &'tcx Session,
-                                               cstore: &'tcx CrateStore,
+                                               cstore: &'tcx (CrateStore + Sync),
                                                hir_map: hir_map::Map<'tcx>,
                                                mut analysis: ty::CrateAnalysis,
                                                resolutions: Resolutions,
-                                               arena: &'tcx DroplessArena,
-                                               arenas: &'tcx GlobalArenas<'tcx>,
+                                               arenas: &'tcx AllArenas<'tcx>,
                                                name: &str,
                                                output_filenames: &OutputFilenames,
                                                f: F)
@@ -1020,7 +1024,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
                              local_providers,
                              extern_providers,
                              arenas,
-                             arena,
                              resolutions,
                              named_region_map,
                              hir_map,

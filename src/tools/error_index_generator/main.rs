@@ -205,7 +205,10 @@ fn main() {
         *slot.borrow_mut() = Some((None, String::from("https://play.rust-lang.org/")));
     });
     let (format, dst) = parse_args();
-    if let Err(e) = main_with_result(format, &dst) {
+    let result = syntax::with_globals(&syntax::Globals::new(), move || {
+        main_with_result(format, &dst)
+    });
+    if let Err(e) = result {
         panic!("{}", e.description());
     }
 }

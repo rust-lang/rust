@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::{Ref, RefCell};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::{RwLock, ReadGuard};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use ich::StableHashingContext;
@@ -19,7 +19,7 @@ use rustc_serialize as serialize;
 
 #[derive(Clone, Debug)]
 pub struct Cache {
-    predecessors: RefCell<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>
+    predecessors: RwLock<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>
 }
 
 
@@ -46,7 +46,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Cache {
 impl Cache {
     pub fn new() -> Self {
         Cache {
-            predecessors: RefCell::new(None)
+            predecessors: RwLock::new(None)
         }
     }
 
@@ -55,12 +55,12 @@ impl Cache {
         *self.predecessors.borrow_mut() = None;
     }
 
-    pub fn predecessors(&self, mir: &Mir) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(&self, mir: &Mir) -> ReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
         if self.predecessors.borrow().is_none() {
             *self.predecessors.borrow_mut() = Some(calculate_predecessors(mir));
         }
 
-        Ref::map(self.predecessors.borrow(), |p| p.as_ref().unwrap())
+        ReadGuard::map(self.predecessors.borrow(), |p| p.as_ref().unwrap())
     }
 }
 
