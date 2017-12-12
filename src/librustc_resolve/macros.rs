@@ -25,7 +25,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
 use syntax::ext::expand::{Expansion, ExpansionKind, Invocation, InvocationKind, find_attr_invoc};
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::{Mark, MarkKind};
 use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, emit_feature_err, GateIssue};
@@ -297,16 +297,19 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { attr: None, .. } => return Ok(None),
             _ => self.resolve_invoc_to_def(invoc, scope, force)?,
         };
+        let def_id = def.def_id();
 
-        self.macro_defs.insert(invoc.expansion_data.mark, def.def_id());
+        self.macro_defs.insert(invoc.expansion_data.mark, def_id);
         let normal_module_def_id =
             self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
         self.definitions.add_macro_def_scope(invoc.expansion_data.mark, normal_module_def_id);
 
-        self.unused_macros.remove(&def.def_id());
+        self.unused_macros.remove(&def_id);
         let ext = self.get_macro(def);
         if ext.is_modern() {
-            invoc.expansion_data.mark.set_modern();
+            invoc.expansion_data.mark.set_kind(MarkKind::Modern);
+        } else if def_id.krate == BUILTIN_MACROS_CRATE {
+            invoc.expansion_data.mark.set_kind(MarkKind::Builtin);
         }
         Ok(Some(ext))
     }

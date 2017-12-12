@@ -10,6 +10,7 @@
 
 use ast;
 use attr;
+use std::cell::Cell;
 use ext::hygiene::{Mark, SyntaxContext};
 use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
@@ -34,21 +35,24 @@ fn ignored_span(sp: Span) -> Span {
     sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
 }
 
-pub fn injected_crate_name(krate: &ast::Crate) -> Option<&'static str> {
-    if attr::contains_name(&krate.attrs, "no_core") {
-        None
-    } else if attr::contains_name(&krate.attrs, "no_std") {
-        Some("core")
-    } else {
-        Some("std")
-    }
+pub fn injected_crate_name() -> Option<&'static str> {
+    INJECTED_CRATE_NAME.with(|name| name.get())
+}
+
+thread_local! {
+    static INJECTED_CRATE_NAME: Cell<Option<&'static str>> = Cell::new(None);
 }
 
 pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<String>) -> ast::Crate {
-    let name = match injected_crate_name(&krate) {
-        Some(name) => name,
-        None => return krate,
+    let name = if attr::contains_name(&krate.attrs, "no_core") {
+        return krate;
+    } else if attr::contains_name(&krate.attrs, "no_std") {
+        "core"
+    } else {
+        "std"
     };
+
+    INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
 
     let crate_name = Symbol::intern(&alt_std_name.unwrap_or_else(|| name.to_string()));
 

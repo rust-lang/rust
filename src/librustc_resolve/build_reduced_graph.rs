@@ -40,6 +40,7 @@ use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::parse::token::{self, Token};
+use syntax::std_inject::injected_crate_name;
 use syntax::symbol::keywords;
 use syntax::symbol::Symbol;
 use syntax::visit::{self, Visitor};
@@ -262,7 +263,7 @@ impl<'a> Resolver<'a> {
                 let module =
                     self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(module);
-                if self.injected_crate_name.map_or(false, |name| item.ident.name == name) {
+                if injected_crate_name().map_or(false, |name| item.ident.name == name) {
                     self.injected_crate = Some(module);
                 }
 

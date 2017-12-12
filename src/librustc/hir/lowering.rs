@@ -175,7 +175,7 @@ pub fn lower_crate(sess: &Session,
     let _ignore = dep_graph.in_ignore();
 
     LoweringContext {
-        crate_root: std_inject::injected_crate_name(krate),
+        crate_root: std_inject::injected_crate_name(),
         sess,
         cstore,
         parent_def: None,
