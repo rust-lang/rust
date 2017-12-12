@@ -681,6 +681,9 @@
             }
 
             function checkPath(startsWith, lastElem, ty) {
+                if (startsWith.length === 0) {
+                    return 0;
+                }
                 var ret_lev = MAX_LEV_DISTANCE + 1;
                 var path = ty.path.split("::");
 
@@ -706,18 +709,7 @@
                         lev_total += lev;
                     }
                     if (aborted === false) {
-                        var extra = MAX_LEV_DISTANCE + 1;
-                        if (i + startsWith.length < path.length) {
-                            extra = levenshtein(path[i + startsWith.length], lastElem);
-                        }
-                        if (extra > MAX_LEV_DISTANCE) {
-                            extra = levenshtein(ty.name, lastElem);
-                        }
-                        if (extra < MAX_LEV_DISTANCE + 1) {
-                            lev_total += extra;
-                            ret_lev = Math.min(ret_lev,
-                                               Math.round(lev_total / (startsWith.length + 1)));
-                        }
+                        ret_lev = Math.min(ret_lev, Math.round(lev_total / startsWith.length));
                     }
                 }
                 return ret_lev;
@@ -934,6 +926,9 @@
                     }
 
                     lev += lev_add;
+                    if (searchWords[j].startsWith(val)) {
+                        lev -= 1;
+                    }
                     if (in_args <= MAX_LEV_DISTANCE) {
                         if (results_in_args[fullId] === undefined) {
                             results_in_args[fullId] = {
