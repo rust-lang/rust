@@ -163,7 +163,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 };
             }
 
-            // Newtype of a scalar or scalar pair.
+            // Newtype of a scalar, scalar pair or vector.
             (OperandValue::Immediate(_), _) |
             (OperandValue::Pair(..), _) if field.size == self.layout.size => {
                 assert_eq!(offset.bytes(), 0);
@@ -184,7 +184,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             }
 
             // `#[repr(simd)]` types are also immediate.
-            (OperandValue::Immediate(llval), &layout::Abi::Vector) => {
+            (OperandValue::Immediate(llval), &layout::Abi::Vector { .. }) => {
                 OperandValue::Immediate(
                     bcx.extract_element(llval, C_usize(bcx.ccx, i as u64)))
             }

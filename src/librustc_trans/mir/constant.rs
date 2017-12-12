@@ -122,17 +122,17 @@ impl<'a, 'tcx> Const<'tcx> {
         if field.is_zst() {
             return C_undef(field.immediate_llvm_type(ccx));
         }
+        let offset = layout.fields.offset(i);
         match layout.abi {
-            layout::Abi::Scalar(_) => self.llval,
+            layout::Abi::Scalar(_) |
+            layout::Abi::ScalarPair(..) |
+            layout::Abi::Vector { .. }
+                if offset.bytes() == 0 && field.size == layout.size => self.llval,
+
             layout::Abi::ScalarPair(ref a, ref b) => {
-                let offset = layout.fields.offset(i);
                 if offset.bytes() == 0 {
-                    if field.size == layout.size {
-                        self.llval
-                    } else {
-                        assert_eq!(field.size, a.value.size(ccx));
-                        const_get_elt(self.llval, 0)
-                    }
+                    assert_eq!(field.size, a.value.size(ccx));
+                    const_get_elt(self.llval, 0)
                 } else {
                     assert_eq!(offset, a.value.size(ccx)
                         .abi_align(b.value.align(ccx)));
@@ -1131,9 +1131,7 @@ fn trans_const_adt<'a, 'tcx>(
     match l.variants {
         layout::Variants::Single { index } => {
             assert_eq!(variant_index, index);
-            if let layout::Abi::Vector = l.abi {
-                Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
-            } else if let layout::FieldPlacement::Union(_) = l.fields {
+            if let layout::FieldPlacement::Union(_) = l.fields {
                 assert_eq!(variant_index, 0);
                 assert_eq!(vals.len(), 1);
                 let contents = [
@@ -1143,6 +1141,12 @@ fn trans_const_adt<'a, 'tcx>(
 
                 Const::new(C_struct(ccx, &contents, l.is_packed()), t)
             } else {
+                if let layout::Abi::Vector { .. } = l.abi {
+                    if let layout::FieldPlacement::Array { .. } = l.fields {
+                        return Const::new(C_vector(&vals.iter().map(|x| x.llval)
+                            .collect::<Vec<_>>()), t);
+                    }
+                }
                 build_const_struct(ccx, l, vals, None)
             }
         }
@@ -1206,7 +1210,8 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match layout.abi {
         layout::Abi::Scalar(_) |
-        layout::Abi::ScalarPair(..) if discr.is_none() => {
+        layout::Abi::ScalarPair(..) |
+        layout::Abi::Vector { .. } if discr.is_none() => {
             let mut non_zst_fields = vals.iter().enumerate().map(|(i, f)| {
                 (f, layout.fields.offset(i))
             }).filter(|&(f, _)| !ccx.layout_of(f.ty).is_zst());

@@ -315,7 +315,7 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
         match self.abi {
             layout::Abi::Uninhabited |
             layout::Abi::Scalar(_) |
-            layout::Abi::Vector => false,
+            layout::Abi::Vector { .. } => false,
             layout::Abi::ScalarPair(..) |
             layout::Abi::Aggregate { .. } => true
         }
@@ -339,7 +339,7 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
                 })
             }
 
-            layout::Abi::Vector => {
+            layout::Abi::Vector { .. } => {
                 Some(Reg {
                     kind: RegKind::Vector,
                     size: self.size

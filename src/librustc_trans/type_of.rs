@@ -25,7 +25,7 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 -> Type {
     match layout.abi {
         layout::Abi::Scalar(_) => bug!("handled elsewhere"),
-        layout::Abi::Vector => {
+        layout::Abi::Vector { ref element, count } => {
             // LLVM has a separate type for 64-bit SIMD vectors on X86 called
             // `x86_mmx` which is needed for some SIMD operations. As a bit of a
             // hack (all SIMD definitions are super unstable anyway) we
@@ -33,15 +33,14 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // x86_mmx" type. In general there shouldn't be a need for other
             // one-element SIMD vectors, so it's assumed this won't clash with
             // much else.
-            let use_x86_mmx = layout.fields.count() == 1 &&
-                layout.size.bits() == 64 &&
+            let use_x86_mmx = count == 1 && layout.size.bits() == 64 &&
                 (ccx.sess().target.target.arch == "x86" ||
                  ccx.sess().target.target.arch == "x86_64");
             if use_x86_mmx {
                 return Type::x86_mmx(ccx)
             } else {
-                return Type::vector(&layout.field(ccx, 0).llvm_type(ccx),
-                                    layout.fields.count() as u64);
+                let element = layout.scalar_llvm_type_at(ccx, element, Size::from_bytes(0));
+                return Type::vector(&element, count);
             }
         }
         layout::Abi::ScalarPair(..) => {
@@ -198,6 +197,8 @@ pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_scalar_pair<'a>(&self) -> bool;
     fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
     fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
+    fn scalar_llvm_type_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+                               scalar: &layout::Scalar, offset: Size) -> Type;
     fn scalar_pair_element_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
                                          index: usize) -> Type;
     fn llvm_field_index(&self, index: usize) -> u64;
@@ -210,7 +211,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         match self.abi {
             layout::Abi::Uninhabited |
             layout::Abi::Scalar(_) |
-            layout::Abi::Vector => true,
+            layout::Abi::Vector { .. } => true,
             layout::Abi::ScalarPair(..) => false,
             layout::Abi::Aggregate { .. } => self.is_zst()
         }
@@ -221,7 +222,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             layout::Abi::ScalarPair(..) => true,
             layout::Abi::Uninhabited |
             layout::Abi::Scalar(_) |
-            layout::Abi::Vector |
+            layout::Abi::Vector { .. } |
             layout::Abi::Aggregate { .. } => false
         }
     }
@@ -244,34 +245,19 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             if let Some(&llty) = ccx.scalar_lltypes().borrow().get(&self.ty) {
                 return llty;
             }
-            let llty = match scalar.value {
-                layout::Int(i, _) => Type::from_integer(ccx, i),
-                layout::F32 => Type::f32(ccx),
-                layout::F64 => Type::f64(ccx),
-                layout::Pointer => {
-                    let pointee = match self.ty.sty {
-                        ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-                        ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
-                            ccx.layout_of(ty).llvm_type(ccx)
-                        }
-                        ty::TyAdt(def, _) if def.is_box() => {
-                            ccx.layout_of(self.ty.boxed_ty()).llvm_type(ccx)
-                        }
-                        ty::TyFnPtr(sig) => {
-                            let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
-                            FnType::new(ccx, sig, &[]).llvm_type(ccx)
-                        }
-                        _ => {
-                            // If we know the alignment, pick something better than i8.
-                            if let Some(pointee) = self.pointee_info_at(ccx, Size::from_bytes(0)) {
-                                Type::pointee_for_abi_align(ccx, pointee.align)
-                            } else {
-                                Type::i8(ccx)
-                            }
-                        }
-                    };
-                    pointee.ptr_to()
+            let llty = match self.ty.sty {
+                ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+                ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+                    ccx.layout_of(ty).llvm_type(ccx).ptr_to()
                 }
+                ty::TyAdt(def, _) if def.is_box() => {
+                    ccx.layout_of(self.ty.boxed_ty()).llvm_type(ccx).ptr_to()
+                }
+                ty::TyFnPtr(sig) => {
+                    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                    FnType::new(ccx, sig, &[]).llvm_type(ccx).ptr_to()
+                }
+                _ => self.scalar_llvm_type_at(ccx, scalar, Size::from_bytes(0))
             };
             ccx.scalar_lltypes().borrow_mut().insert(self.ty, llty);
             return llty;
@@ -325,6 +311,24 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         self.llvm_type(ccx)
     }
 
+    fn scalar_llvm_type_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+                               scalar: &layout::Scalar, offset: Size) -> Type {
+        match scalar.value {
+            layout::Int(i, _) => Type::from_integer(ccx, i),
+            layout::F32 => Type::f32(ccx),
+            layout::F64 => Type::f64(ccx),
+            layout::Pointer => {
+                // If we know the alignment, pick something better than i8.
+                let pointee = if let Some(pointee) = self.pointee_info_at(ccx, offset) {
+                    Type::pointee_for_abi_align(ccx, pointee.align)
+                } else {
+                    Type::i8(ccx)
+                };
+                pointee.ptr_to()
+            }
+        }
+    }
+
     fn scalar_pair_element_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
                                          index: usize) -> Type {
         // HACK(eddyb) special-case fat pointers until LLVM removes
@@ -358,25 +362,12 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             return Type::i1(ccx);
         }
 
-        match scalar.value {
-            layout::Int(i, _) => Type::from_integer(ccx, i),
-            layout::F32 => Type::f32(ccx),
-            layout::F64 => Type::f64(ccx),
-            layout::Pointer => {
-                // If we know the alignment, pick something better than i8.
-                let offset = if index == 0 {
-                    Size::from_bytes(0)
-                } else {
-                    a.value.size(ccx).abi_align(b.value.align(ccx))
-                };
-                let pointee = if let Some(pointee) = self.pointee_info_at(ccx, offset) {
-                    Type::pointee_for_abi_align(ccx, pointee.align)
-                } else {
-                    Type::i8(ccx)
-                };
-                pointee.ptr_to()
-            }
-        }
+        let offset = if index == 0 {
+            Size::from_bytes(0)
+        } else {
+            a.value.size(ccx).abi_align(b.value.align(ccx))
+        };
+        self.scalar_llvm_type_at(ccx, scalar, offset)
     }
 
     fn llvm_field_index(&self, index: usize) -> u64 {
