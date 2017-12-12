@@ -30,3 +30,4 @@ fn h(a: &bool, b: bool, c: &S, d: &i32) -> &i32 {
     panic!();
 }
 
+fn main() {}

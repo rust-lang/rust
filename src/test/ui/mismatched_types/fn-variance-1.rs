@@ -9,10 +9,8 @@
 // except according to those terms.
 
 fn takes_imm(x: &isize) { }
-//~^ NOTE found signature
 
 fn takes_mut(x: &mut isize) { }
-//~^ NOTE found signature
 
 fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
     f(t)
