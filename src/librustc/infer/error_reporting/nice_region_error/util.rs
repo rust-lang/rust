@@ -32,7 +32,7 @@ macro_rules! or_false {
 // The struct contains the information about the anonymous region
 // we are searching for.
 #[derive(Debug)]
-pub struct AnonymousArgInfo<'tcx> {
+pub(super) struct AnonymousArgInfo<'tcx> {
     // the argument corresponding to the anonymous region
     pub arg: &'tcx hir::Arg,
     // the type corresponding to the anonymopus region argument
@@ -47,7 +47,7 @@ pub struct AnonymousArgInfo<'tcx> {
 // This struct contains information regarding the
 // Refree((FreeRegion) corresponding to lifetime conflict
 #[derive(Debug)]
-pub struct FreeRegionInfo {
+pub(super) struct FreeRegionInfo {
     // def id corresponding to FreeRegion
     pub def_id: DefId,
     // the bound region corresponding to FreeRegion
@@ -68,7 +68,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // i32, which is the type of y but with the anonymous region replaced
     // with 'a, the corresponding bound region and is_first which is true if
     // the hir::Arg is the first argument in the function declaration.
-    pub fn find_arg_with_region(&self,
+    pub(super) fn find_arg_with_region(&self,
                                 anon_region: Region<'tcx>,
                                 replace_region: Region<'tcx>)
                                 -> Option<AnonymousArgInfo> {
@@ -126,7 +126,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     // This method returns the DefId and the BoundRegion corresponding to the given region.
-    pub fn is_suitable_region(&self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
+    pub(super) fn is_suitable_region(&self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
 
         let (suitable_region_binding_scope, bound_region) = match *region {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
@@ -162,7 +162,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // Here, we check for the case where the anonymous region
     // is in the return type.
     // FIXME(#42703) - Need to handle certain cases here.
-    pub fn is_return_type_anon(&self,
+    pub(super) fn is_return_type_anon(&self,
                                scope_def_id: DefId,
                                br: ty::BoundRegion,
                                decl: &hir::FnDecl)
@@ -185,7 +185,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // corresponds to self and if yes, we display E0312.
     // FIXME(#42700) - Need to format self properly to
     // enable E0621 for it.
-    pub fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
+    pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
         is_first &&
         self.tcx
             .opt_associated_item(scope_def_id)
@@ -193,7 +193,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Here we check if the bound region is in Impl Item.
-    pub fn is_bound_region_in_impl_item(&self, suitable_region_binding_scope: DefId) -> bool {
+    pub(super) fn is_bound_region_in_impl_item(&self, suitable_region_binding_scope: DefId) -> bool {
         let container_id = self.tcx
             .associated_item(suitable_region_binding_scope)
             .container
@@ -211,7 +211,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     // This method returns whether the given Region is Named
-    pub fn is_named_region(&self, region: Region<'tcx>) -> bool {
+    pub(super) fn is_named_region(&self, region: Region<'tcx>) -> bool {
         match *region {
             ty::ReFree(ref free_region) => {
                 match free_region.bound_region {
