@@ -89,7 +89,7 @@ error: `T` does not outlive `'_#5r`
 56 |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+error: free region `ReEarlyBound(0, 'b)` does not outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:17), 'a))`
   --> $DIR/projection-one-region-closure.rs:56:20
    |
 56 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -103,7 +103,7 @@ note: No external requirements
 54 | |     T: Anything<'b>,
 55 | | {
 ...  |
-59 | |     //~| ERROR free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+59 | |     //~| ERROR does not outlive free region
 60 | | }
    | |_^
    |
@@ -132,7 +132,7 @@ note: No external requirements
 65 | |     T: Anything<'b>,
 66 | |     'a: 'a,
 ...  |
-71 | |     //~| ERROR free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
+71 | |     //~| ERROR does not outlive free region
 72 | | }
    | |_^
    |

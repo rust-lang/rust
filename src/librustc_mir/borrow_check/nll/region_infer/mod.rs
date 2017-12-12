@@ -15,11 +15,13 @@ use rustc::infer::NLLRegionVariableOrigin;
 use rustc::infer::RegionObligation;
 use rustc::infer::RegionVariableOrigin;
 use rustc::infer::SubregionOrigin;
+use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::region_constraints::{GenericKind, VarOrigins};
 use rustc::mir::{ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
                  Local, Location, Mir};
 use rustc::traits::ObligationCause;
 use rustc::ty::{self, RegionVid, Ty, TypeFoldable};
+use rustc::util::common::ErrorReported;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::DiagnosticBuilder;
 use std::fmt;
@@ -230,7 +232,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `num_region_variables` valid inference variables; the first N
     /// of those will be constant regions representing the free
     /// regions defined in `universal_regions`.
-    pub fn new(
+    pub(crate) fn new(
         var_origins: VarOrigins,
         universal_regions: UniversalRegions<'tcx>,
         mir: &Mir<'tcx>,
@@ -430,7 +432,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         self.check_type_tests(infcx, mir, outlives_requirements.as_mut());
 
-        self.check_universal_regions(infcx, mir, outlives_requirements.as_mut());
+        self.check_universal_regions(infcx, mir, mir_def_id, outlives_requirements.as_mut());
 
         let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
 
@@ -807,6 +809,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
+        mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
     ) {
         // The universal regions are always found in a prefix of the
@@ -819,7 +822,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // they did not grow too large, accumulating any requirements
         // for our caller into the `outlives_requirements` vector.
         for (fr, _) in universal_definitions {
-            self.check_universal_region(infcx, mir, fr, &mut propagated_outlives_requirements);
+            self.check_universal_region(
+                infcx,
+                mir,
+                mir_def_id,
+                fr,
+                &mut propagated_outlives_requirements,
+            );
         }
     }
 
@@ -835,6 +844,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
+        mir_def_id: DefId,
         longer_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
     ) {
@@ -891,7 +901,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Note: in this case, we use the unapproximated regions
             // to report the error. This gives better error messages
             // in some cases.
-            self.report_error(infcx, mir, longer_fr, shorter_fr, blame_span);
+            self.report_error(infcx, mir, mir_def_id, longer_fr, shorter_fr, blame_span);
         }
     }
 
@@ -907,18 +917,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
+        mir_def_id: DefId,
         fr: RegionVid,
         outlived_fr: RegionVid,
         blame_span: Span,
     ) {
         // Obviously uncool error reporting.
 
-        let fr_string = match self.definitions[fr].external_name {
+        let fr_name = self.definitions[fr].external_name;
+        let outlived_fr_name = self.definitions[outlived_fr].external_name;
+
+        if let (Some(f), Some(o)) = (fr_name, outlived_fr_name) {
+            let tables = infcx.tcx.typeck_tables_of(mir_def_id);
+            let nice = NiceRegionError::new(infcx.tcx, blame_span, o, f, Some(tables));
+            if let Some(ErrorReported) = nice.try_report() {
+                return;
+            }
+        }
+
+        let fr_string = match fr_name {
             Some(r) => format!("free region `{}`", r),
             None => format!("free region `{:?}`", fr),
         };
 
-        let outlived_fr_string = match self.definitions[outlived_fr].external_name {
+        let outlived_fr_string = match outlived_fr_name {
             Some(r) => format!("free region `{}`", r),
             None => format!("free region `{:?}`", outlived_fr),
         };

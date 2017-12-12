@@ -78,7 +78,7 @@ mod note;
 
 mod need_type_info;
 
-mod nice_region_error;
+pub mod nice_region_error;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,

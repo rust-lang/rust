@@ -56,7 +56,7 @@ where
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to -Znll
     //~| ERROR `T` does not outlive
-    //~| ERROR free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+    //~| ERROR does not outlive free region
 }
 
 #[rustc_regions]
@@ -68,7 +68,7 @@ where
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to -Znll
     //~| ERROR `T` does not outlive
-    //~| ERROR free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
+    //~| ERROR does not outlive free region
 }
 
 #[rustc_regions]

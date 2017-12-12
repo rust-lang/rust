@@ -108,7 +108,7 @@ where
 {
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+    //~| ERROR does not outlive free region
 }
 
 #[rustc_regions]

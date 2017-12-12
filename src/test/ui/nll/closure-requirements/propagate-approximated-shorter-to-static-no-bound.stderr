@@ -9,7 +9,7 @@ note: External requirements
    |
 45 |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |  _______________________________________________^
-46 | |         //~^ ERROR free region `'_#1r` does not outlive free region `ReStatic`
+46 | |         //~^ ERROR does not outlive free region
 47 | |
 48 | |         // Only works if 'x: 'y:
 49 | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
@@ -23,12 +23,12 @@ note: External requirements
    = note: number of external vids: 2
    = note: where '_#1r: '_#0r
 
-error: free region `'_#1r` does not outlive free region `ReStatic`
+error: free region `ReFree(DefId(0/0:6 ~ propagate_approximated_shorter_to_static_no_bound[317d]::supply[0]), BrNamed(crate0:DefIndex(1:16), 'a))` does not outlive free region `ReStatic`
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:45:47
    |
 45 |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |  _______________________________________________^
-46 | |         //~^ ERROR free region `'_#1r` does not outlive free region `ReStatic`
+46 | |         //~^ ERROR does not outlive free region
 47 | |
 48 | |         // Only works if 'x: 'y:
 49 | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
@@ -40,7 +40,7 @@ note: No external requirements
    |
 44 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 45 | |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-46 | |         //~^ ERROR free region `'_#1r` does not outlive free region `ReStatic`
+46 | |         //~^ ERROR does not outlive free region
 47 | |
 ...  |
 50 | |     });

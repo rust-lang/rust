@@ -21,7 +21,7 @@ struct Foo<'a: 'b, 'b> {
 
 fn bar<'a, 'b>(x: Cell<&'a u32>, y: Cell<&'b u32>) {
     Foo { x, y };
-    //~^ ERROR free region `'_#1r` does not outlive free region `'_#2r`
+    //~^ ERROR lifetime mismatch [E0623]
     //~| WARNING not reporting region error due to -Znll
 }
 

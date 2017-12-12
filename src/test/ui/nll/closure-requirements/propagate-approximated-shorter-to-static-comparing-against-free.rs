@@ -31,7 +31,7 @@ fn case1() {
     foo(cell, |cell_a, cell_x| {
         //~^ WARNING not reporting region error due to -Znll
         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-        //~^ ERROR free region `'_#2r` does not outlive free region `'_#1r`
+        //~^ ERROR does not outlive free region
     })
 }
 

@@ -21,7 +21,7 @@ impl<'a, T> Foo<'a> for T { }
 fn foo<'a, T>(x: &T) -> impl Foo<'a> {
     x
         //~^ WARNING not reporting region error due to -Znll
-        //~| ERROR free region `'_#2r` does not outlive free region `ReEarlyBound(0, 'a)`
+        //~| ERROR explicit lifetime required in the type of `x` [E0621]
 }
 
 fn main() {}

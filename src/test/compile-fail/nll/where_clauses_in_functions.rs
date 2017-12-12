@@ -21,7 +21,7 @@ where
 
 fn bar<'a, 'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
     foo(x, y)
-    //~^ ERROR free region `'_#1r` does not outlive free region `'_#2r`
+    //~^ ERROR lifetime mismatch [E0623]
     //~| WARNING not reporting region error due to -Znll
 }
 

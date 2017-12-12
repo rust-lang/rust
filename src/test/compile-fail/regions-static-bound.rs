@@ -24,10 +24,10 @@ fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
 fn error(u: &(), v: &()) {
     static_id(&u); //[ll]~ ERROR cannot infer an appropriate lifetime
     //[nll]~^ WARNING not reporting region error due to -Znll
-    //[nll]~| ERROR free region `'_#1r` does not outlive free region `'static`
+    //[nll]~| ERROR free region `` does not outlive free region `'static`
     static_id_indirect(&v); //[ll]~ ERROR cannot infer an appropriate lifetime
     //[nll]~^ WARNING not reporting region error due to -Znll
-    //[nll]~| ERROR free region `'_#2r` does not outlive free region `'static`
+    //[nll]~| ERROR free region `` does not outlive free region `'static`
 }
 
 fn main() {}

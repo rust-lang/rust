@@ -4,7 +4,7 @@ warning: not reporting region error due to -Znll
 47 |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: free region `'_#6r` does not outlive free region `'_#4r`
+error: free region `ReFree(DefId(0/1:18 ~ propagate_fail_to_approximate_longer_no_bounds[317d]::supply[0]::{{closure}}[0]), BrAnon(4))` does not outlive free region `ReFree(DefId(0/1:18 ~ propagate_fail_to_approximate_longer_no_bounds[317d]::supply[0]::{{closure}}[0]), BrAnon(2))`
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:18
    |
 47 |         demand_y(x, y, x.get())
@@ -18,7 +18,7 @@ note: No external requirements
 46 | |         // Only works if 'x: 'y:
 47 | |         demand_y(x, y, x.get())
 48 | |         //~^ WARN not reporting region error due to -Znll
-49 | |         //~| ERROR free region `'_#6r` does not outlive free region `'_#4r`
+49 | |         //~| ERROR does not outlive free region
 50 | |     });
    | |_____^
    |

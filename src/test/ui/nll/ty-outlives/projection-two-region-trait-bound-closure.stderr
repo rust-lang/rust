@@ -264,7 +264,7 @@ note: No external requirements
                 T
             ]
 
-error: free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+error: free region `ReEarlyBound(0, 'b)` does not outlive free region `ReFree(DefId(0/0:13 ~ projection_two_region_trait_bound_closure[317d]::two_regions[0]), BrNamed(crate0:DefIndex(1:44), 'a))`
    --> $DIR/projection-two-region-trait-bound-closure.rs:109:20
     |
 109 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -278,7 +278,7 @@ note: No external requirements
 107 | |     T: Anything<'b, 'b>,
 108 | | {
 ...   |
-111 | |     //~| ERROR free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+111 | |     //~| ERROR does not outlive free region
 112 | | }
     | |_^
     |

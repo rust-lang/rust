@@ -445,7 +445,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         let defining_ty = self.defining_ty();
         debug!("build: defining_ty={:?}", defining_ty);
 
-        let indices = self.compute_indices(fr_static, defining_ty);
+        let mut indices = self.compute_indices(fr_static, defining_ty);
         debug!("build: indices={:?}", indices);
 
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
@@ -453,8 +453,12 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         // "Liberate" the late-bound regions. These correspond to
         // "local" free regions.
         let first_local_index = self.infcx.num_region_vars();
-        let inputs_and_output = self.infcx
-            .replace_bound_regions_with_nll_infer_vars(FR, &bound_inputs_and_output);
+        let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
+            FR,
+            self.mir_def_id,
+            &bound_inputs_and_output,
+            &mut indices,
+        );
         let fr_fn_body = self.infcx.next_nll_region_var(FR).to_region_vid();
         let num_universals = self.infcx.num_region_vars();
 
@@ -717,7 +721,7 @@ impl UniversalRegionRelations {
     }
 }
 
-pub(crate) trait InferCtxtExt<'tcx> {
+trait InferCtxtExt<'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
         origin: NLLRegionVariableOrigin,
@@ -729,7 +733,9 @@ pub(crate) trait InferCtxtExt<'tcx> {
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
         origin: NLLRegionVariableOrigin,
+        all_outlive_scope: DefId,
         value: &ty::Binder<T>,
+        indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where
         T: TypeFoldable<'tcx>;
@@ -752,18 +758,38 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
         origin: NLLRegionVariableOrigin,
+        all_outlive_scope: DefId,
         value: &ty::Binder<T>,
+        indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where
         T: TypeFoldable<'tcx>,
     {
-        let (value, _map) = self.tcx
-            .replace_late_bound_regions(value, |_br| self.next_nll_region_var(origin));
+        let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
+            let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
+                scope: all_outlive_scope,
+                bound_region: br,
+            }));
+            let region_vid = self.next_nll_region_var(origin);
+            indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
+            region_vid
+        });
         value
     }
 }
 
 impl<'tcx> UniversalRegionIndices<'tcx> {
+    /// Initially, the `UniversalRegionIndices` map contains only the
+    /// early-bound regions in scope. Once that is all setup, we come
+    /// in later and instantiate the late-bound regions, and then we
+    /// insert the `ReFree` version of those into the map as
+    /// well. These are used for error reporting.
+    fn insert_late_bound_region(&mut self, r: ty::Region<'tcx>,
+                                vid: ty::RegionVid)
+    {
+        self.indices.insert(r, vid);
+    }
+
     /// Converts `r` into a local inference variable: `r` can either
     /// by a `ReVar` (i.e., already a reference to an inference
     /// variable) or it can be `'static` or some early-bound
