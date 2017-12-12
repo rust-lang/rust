@@ -1,5 +1,64 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.3.1] 2017-12-11
+
+### Added
+
+- Add `error_on_unformatted` configuration option.
+- Add `--error-on-unformatted` command line option.
+
+### Changed
+
+- Do not report formatting errors on comments or strings by default.
+- Rename `error_on_line_overflow_comments` to `error_on_unformatted`.
+
+### Fixed
+
+- Fix formatting bugs.
+- Fix adding a trailing whitespace inside code block when `wrap_comments = true`.
+
+## [0.3.0] 2017-12-11
+
+### Added
+
+- Support nested imports.
+
+### Changed
+
+- Do not report errors on skipped items.
+- Do not format code block inside comments when `wrap_comments = true`.
+- Keep vertical spaces between items within range.
+- Format `format!` and its variants using compressed style.
+- Format `write!` and its variants using compressed style.
+- Format **simple** array using compressed style.
+
+### Fixed
+
+- Fix `rustfmt --package package_name` not working properly.
+- Fix formatting bugs.
+
+## [0.2.17] 2017-12-03
+
+### Added
+
+- Add `blank_lines_lower_bound` and `blank_lines_upper_bound` configuration options.
+
+### Changed
+
+- Combine configuration options related to width heuristic into `width_heuristic`.
+- If the match arm's body is `if` expression, force to use block.
+
+### Fixed
+
+- Fix `cargo fmt --all` being trapped in an infinite loop.
+- Fix many formatting bugs.
+
+### Removed
+
+- Remove legacy configuration options.
+
 ## [0.2.16] 2017-11-21
 
 ### Added
