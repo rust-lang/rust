@@ -1800,7 +1800,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 }
 
-
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // FIXME (#16118): function intended to allow the borrow checker
     // to be less precise in its handling of Box while still allowing

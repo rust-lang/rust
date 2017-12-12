@@ -82,8 +82,8 @@ fn main() {
             //[ast]~^ ERROR `x` does not live long enough
             //[ast]~| ERROR `y` does not live long enough
     });
-    //[mir]~^ ERROR borrowed value does not live long enough
-    //[mir]~| ERROR borrowed value does not live long enough
+    //[mir]~^ ERROR `x` does not live long enough
+    //[mir]~| ERROR `y` does not live long enough
 
     w.handle(); // This works
     // w.handle_ref(); // This doesn't

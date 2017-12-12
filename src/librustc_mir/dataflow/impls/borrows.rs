@@ -160,6 +160,8 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
 
     pub fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> { &self.borrows }
 
+    pub fn scope_tree(&self) -> &Rc<region::ScopeTree> { &self.scope_tree }
+
     pub fn location(&self, idx: BorrowIndex) -> &Location {
         &self.borrows[idx].location
     }

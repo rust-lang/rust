@@ -9,10 +9,13 @@
 // except according to those terms.
 
 use syntax_pos::Span;
+use rustc::middle::region::ScopeTree;
 use rustc::mir::{BorrowKind, Field, Local, Location, Operand};
 use rustc::mir::{Place, ProjectionElem, Rvalue, StatementKind};
-use rustc::ty;
+use rustc::ty::{self, RegionKind};
 use rustc_data_structures::indexed_vec::Idx;
+
+use std::rc::Rc;
 
 use super::{MirBorrowckCtxt, Context};
 use super::{InitializationRequiringAction, PrefixSet};
@@ -324,6 +327,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         borrows: &Borrows<'cx, 'gcx, 'tcx>
     ) {
         let end_span = borrows.opt_region_end_span(&borrow.region);
+        let scope_tree = borrows.scope_tree();
         let root_place = self.prefixes(&borrow.place, PrefixSet::All).last().unwrap();
 
         match root_place {
@@ -347,21 +351,103 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 unreachable!("root_place is an unreachable???")
         };
 
+        let borrow_span = self.mir.source_info(borrow.location).span;
         let proper_span = match *root_place {
             Place::Local(local) => self.mir.local_decls[local].source_info.span,
             _ => drop_span,
         };
 
-        let mut err = self.tcx
-            .path_does_not_live_long_enough(drop_span, "borrowed value", Origin::Mir);
+        match (borrow.region, &self.describe_place(&borrow.place)) {
+            (RegionKind::ReScope(_), Some(name)) => {
+                self.report_scoped_local_value_does_not_live_long_enough(
+                    name, &scope_tree, &borrow, drop_span, borrow_span, proper_span, end_span);
+            },
+            (RegionKind::ReScope(_), None) => {
+                self.report_scoped_temporary_value_does_not_live_long_enough(
+                    &scope_tree, &borrow, drop_span, borrow_span, proper_span, end_span);
+            },
+            (RegionKind::ReEarlyBound(_), Some(name)) |
+            (RegionKind::ReFree(_), Some(name)) |
+            (RegionKind::ReStatic, Some(name)) |
+            (RegionKind::ReEmpty, Some(name)) |
+            (RegionKind::ReVar(_), Some(name)) => {
+                self.report_unscoped_local_value_does_not_live_long_enough(
+                    name, &scope_tree, &borrow, drop_span, borrow_span, proper_span, end_span);
+            },
+            (RegionKind::ReEarlyBound(_), None) |
+            (RegionKind::ReFree(_), None) |
+            (RegionKind::ReStatic, None) |
+            (RegionKind::ReEmpty, None) |
+            (RegionKind::ReVar(_), None) => {
+                self.report_unscoped_temporary_value_does_not_live_long_enough(
+                    &scope_tree, &borrow, drop_span, borrow_span, proper_span, end_span);
+            },
+            (RegionKind::ReLateBound(_, _), _) |
+            (RegionKind::ReSkolemized(_, _), _) |
+            (RegionKind::ReErased, _) => {
+                span_bug!(drop_span, "region does not make sense in this context");
+            },
+        }
+    }
+
+    fn report_scoped_local_value_does_not_live_long_enough(
+        &mut self, name: &String, _scope_tree: &Rc<ScopeTree>, _borrow: &BorrowData<'tcx>,
+        drop_span: Span, borrow_span: Span, _proper_span: Span, end_span: Option<Span>
+    ) {
+        let mut err = self.tcx.path_does_not_live_long_enough(drop_span,
+                                                              &format!("`{}`", name),
+                                                              Origin::Mir);
+        err.span_label(borrow_span, "borrow occurs here");
+        err.span_label(drop_span, format!("`{}` dropped here while still borrowed", name));
+        if let Some(end) = end_span {
+            err.span_label(end, "borrowed value needs to live until here");
+        }
+        err.emit();
+    }
+
+    fn report_scoped_temporary_value_does_not_live_long_enough(
+        &mut self, _scope_tree: &Rc<ScopeTree>, _borrow: &BorrowData<'tcx>,
+        drop_span: Span, borrow_span: Span, proper_span: Span, end_span: Option<Span>
+    ) {
+        let mut err = self.tcx.path_does_not_live_long_enough(borrow_span,
+                                                              "borrowed value",
+                                                              Origin::Mir);
         err.span_label(proper_span, "temporary value created here");
         err.span_label(drop_span, "temporary value dropped here while still borrowed");
         err.note("consider using a `let` binding to increase its lifetime");
-
         if let Some(end) = end_span {
             err.span_label(end, "temporary value needs to live until here");
         }
+        err.emit();
+    }
 
+    fn report_unscoped_local_value_does_not_live_long_enough(
+        &mut self, name: &String, scope_tree: &Rc<ScopeTree>, borrow: &BorrowData<'tcx>,
+        drop_span: Span, borrow_span: Span, _proper_span: Span, _end_span: Option<Span>
+    ) {
+        let mut err = self.tcx.path_does_not_live_long_enough(borrow_span,
+                                                              &format!("`{}`", name),
+                                                              Origin::Mir);
+        err.span_label(borrow_span, "does not live long enough");
+        err.span_label(drop_span, "borrowed value only lives until here");
+        self.tcx.note_and_explain_region(scope_tree, &mut err,
+                                         "borrowed value must be valid for ",
+                                         borrow.region, "...");
+        err.emit();
+    }
+
+    fn report_unscoped_temporary_value_does_not_live_long_enough(
+        &mut self, scope_tree: &Rc<ScopeTree>, borrow: &BorrowData<'tcx>,
+        drop_span: Span, _borrow_span: Span, proper_span: Span, _end_span: Option<Span>
+    ) {
+        let mut err = self.tcx.path_does_not_live_long_enough(proper_span,
+                                                              "borrowed value",
+                                                              Origin::Mir);
+        err.span_label(proper_span, "does not live long enough");
+        err.span_label(drop_span, "temporary value only lives until here");
+        self.tcx.note_and_explain_region(scope_tree, &mut err,
+                                         "borrowed value must be valid for ",
+                                         borrow.region, "...");
         err.emit();
     }
 

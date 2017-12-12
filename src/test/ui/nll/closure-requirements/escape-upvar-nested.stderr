@@ -16,7 +16,7 @@ note: External requirements
 note: External requirements
   --> $DIR/escape-upvar-nested.rs:30:27
    |
-30 |           let mut closure = || {
+30 |           let mut closure = || { //~ ERROR `y` does not live long enough [E0597]
    |  ___________________________^
 31 | |             let mut closure1 = || p = &y;
 32 | |             closure1();
@@ -46,16 +46,20 @@ note: No external requirements
    |
    = note: defining type: DefId(0/0:3 ~ escape_upvar_nested[317d]::test[0]) with substs []
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/escape-upvar-nested.rs:36:6
+error[E0597]: `y` does not live long enough
+  --> $DIR/escape-upvar-nested.rs:30:27
    |
-28 |         let y = 22;
-   |             - temporary value created here
+30 |           let mut closure = || { //~ ERROR `y` does not live long enough [E0597]
+   |  ___________________________^
+31 | |             let mut closure1 = || p = &y;
+32 | |             closure1();
+33 | |         };
+   | |_________^ does not live long enough
 ...
-36 |     } //~ ERROR borrowed value does not live long enough
-   |      ^ temporary value dropped here while still borrowed
+36 |       }
+   |        - borrowed value only lives until here
    |
-   = note: consider using a `let` binding to increase its lifetime
+   = note: borrowed value must be valid for lifetime '_#3r...
 
 error: aborting due to previous error
 

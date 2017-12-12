@@ -18,12 +18,16 @@ static FOO: u8 = 3;
 
 fn main() {
     let a = &FOO;
-    //[ast]~^ ERROR borrowed value does not live long enough
+    //[mir]~^ ERROR `FOO` does not live long enough [E0597]
+    //[mir]~| does not live long enough
+    //[mir]~| NOTE borrowed value must be valid for the static lifetime
+    //[ast]~^^^^ ERROR borrowed value does not live long enough
     //[ast]~| does not live long enough
     //[ast]~| NOTE borrowed value must be valid for the static lifetime
 
     std::thread::spawn(move || {
         println!("{}", a);
     });
-} //[ast]~ temporary value only lives until here
-  //[mir]~^ ERROR borrowed value does not live long enough
+}
+//[mir]~^ borrowed value only lives until here
+//[ast]~^^ temporary value only lives until here

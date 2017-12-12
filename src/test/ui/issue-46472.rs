@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
+// compile-flags: -Z emit-end-regions -Z borrowck=compare
 
-fn cplusplus_mode(x: isize) -> &'static isize {
-    &x
-    //[ast]~^ ERROR `x` does not live long enough [E0597]
-    //[mir]~^^ ERROR `x` does not live long enough [E0597]
+fn bar<'a>() -> &'a mut u32 {
+    &mut 4
+    //~^ ERROR borrowed value does not live long enough (Ast) [E0597]
+    //~| ERROR borrowed value does not live long enough (Mir) [E0597]
 }
 
-fn main() {}
+fn main() { }
