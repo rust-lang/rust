@@ -12,6 +12,5 @@
 
 static mut a: Box<isize> = box 3;
 //~^ ERROR allocations are not allowed in statics
-//~| WARN: constant evaluation error
 
 fn main() {}
