@@ -57,7 +57,7 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
     }
 
     pub fn try_report(&self) -> Option<ErrorReported> {
-        self.try_report_anon_anon_conflict()
-            .or_else(|| self.try_report_named_anon_conflict())
+        self.try_report_named_anon_conflict()
+            .or_else(|| self.try_report_anon_anon_conflict())
     }
 }
