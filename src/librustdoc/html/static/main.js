@@ -911,24 +911,24 @@
                         searchWords[j].replace(/_/g, "").indexOf(val) > -1)
                     {
                         // filter type: ... queries
-                        if (typePassesFilter(typeFilter, ty) && results[fullId] === undefined) {
+                        if (typePassesFilter(typeFilter, ty.ty) && results[fullId] === undefined) {
                             index = searchWords[j].replace(/_/g, "").indexOf(val);
                         }
                     }
                     if ((lev = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
-                        if (typePassesFilter(typeFilter, ty) === false) {
+                        if (typePassesFilter(typeFilter, ty.ty) === false) {
                             lev = MAX_LEV_DISTANCE + 1;
                         } else {
                             lev += 1;
                         }
                     }
                     if ((in_args = findArg(ty, valGenerics)) <= MAX_LEV_DISTANCE) {
-                        if (typePassesFilter(typeFilter, ty) === false) {
+                        if (typePassesFilter(typeFilter, ty.ty) === false) {
                             in_args = MAX_LEV_DISTANCE + 1;
                         }
                     }
                     if ((returned = checkReturned(ty, valGenerics)) <= MAX_LEV_DISTANCE) {
-                        if (typePassesFilter(typeFilter, ty) === false) {
+                        if (typePassesFilter(typeFilter, ty.ty) === false) {
                             returned = MAX_LEV_DISTANCE + 1;
                         }
                     }

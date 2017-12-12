@@ -330,3 +330,16 @@ pre.ignore:hover, .information:hover + pre.ignore {
 .modal-content > .close:hover + .whiter {
 	background-color: #ff1f1f;
 }
+
+@media (max-width: 700px) {
+	.sidebar-menu {
+		background-color: #F1F1F1;
+		border-bottom-color: #e0e0e0;
+		border-right-color: #e0e0e0;
+	}
+
+	.sidebar-elems {
+		background-color: #F1F1F1;
+		border-right-color: #000;
+	}
+}
