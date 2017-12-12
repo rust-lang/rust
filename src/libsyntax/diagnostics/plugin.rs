@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::env;
 
@@ -22,6 +21,7 @@ use ptr::P;
 use symbol::Symbol;
 use tokenstream::{TokenTree};
 use util::small_vector::SmallVector;
+use rustc_data_structures::sync::Lock;
 
 use diagnostics::metadata::output_metadata;
 
@@ -30,9 +30,9 @@ pub use errors::*;
 // Maximum width of any line in an extended error description (inclusive).
 const MAX_DESCRIPTION_WIDTH: usize = 80;
 
-thread_local! {
-    static REGISTERED_DIAGNOSTICS: RefCell<ErrorMap> = {
-        RefCell::new(BTreeMap::new())
+rustc_global! {
+    static REGISTERED_DIAGNOSTICS: Lock<ErrorMap> = {
+        Lock::new(BTreeMap::new())
     }
 }
 
@@ -48,7 +48,7 @@ pub type ErrorMap = BTreeMap<Name, ErrorInfo>;
 fn with_registered_diagnostics<T, F>(f: F) -> T where
     F: FnOnce(&mut ErrorMap) -> T,
 {
-    REGISTERED_DIAGNOSTICS.with(move |slot| {
+    rustc_access_global!(REGISTERED_DIAGNOSTICS, move |slot| {
         f(&mut *slot.borrow_mut())
     })
 }

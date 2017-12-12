@@ -32,6 +32,7 @@ use rustc::session::{self, config};
 use rustc::session::config::{OutputFilenames, OutputTypes};
 use rustc_trans_utils::trans_crate::TransCrate;
 use std::rc::Rc;
+use rustc_data_structures::sync::{Send, Lrc};
 use syntax::ast;
 use syntax::abi::Abi;
 use syntax::codemap::{CodeMap, FilePathMapping};
@@ -41,7 +42,6 @@ use errors::{Level, DiagnosticBuilder};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
-use arena::DroplessArena;
 
 use rustc::hir;
 
@@ -110,7 +110,7 @@ fn test_env<F>(source_string: &str,
     let sess = session::build_session_(options,
                                        None,
                                        diagnostic_handler,
-                                       Rc::new(CodeMap::new(FilePathMapping::empty())));
+                                       Lrc::new(CodeMap::new(FilePathMapping::empty())));
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
@@ -132,8 +132,7 @@ fn test_env<F>(source_string: &str,
             .expect("phase 2 aborted")
     };
 
-    let arena = DroplessArena::new();
-    let arenas = ty::GlobalArenas::new();
+    let arenas = ty::AllArenas::new();
     let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
 
     // run just enough stuff to build a tcx:
@@ -151,7 +150,6 @@ fn test_env<F>(source_string: &str,
                              ty::maps::Providers::default(),
                              ty::maps::Providers::default(),
                              &arenas,
-                             &arena,
                              resolutions,
                              named_region_map.unwrap(),
                              hir_map,

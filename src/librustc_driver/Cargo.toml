@@ -12,7 +12,7 @@ crate-type = ["dylib"]
 arena = { path = "../libarena" }
 graphviz = { path = "../libgraphviz" }
 log = { version = "0.3", features = ["release_max_level_info"] }
-owning_ref = "0.3.3"
+owning_ref = { git = "https://github.com/Zoxc/owning-ref-rs.git" }
 env_logger = { version = "0.4", default-features = false }
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }

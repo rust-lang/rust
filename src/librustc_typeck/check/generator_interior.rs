@@ -18,14 +18,14 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind, Expr};
 use rustc::middle::region;
 use rustc::ty::Ty;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use super::FnCtxt;
 use util::nodemap::FxHashMap;
 
 struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     types: FxHashMap<Ty<'tcx>, usize>,
-    region_scope_tree: Rc<region::ScopeTree>,
+    region_scope_tree: Lrc<region::ScopeTree>,
     expr_count: usize,
 }
 

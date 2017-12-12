@@ -23,6 +23,9 @@
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(i128_type)]
+#![feature(const_atomic_usize_new)]
+
+#![recursion_limit="256"]
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
@@ -34,7 +37,7 @@ extern crate serialize;
 extern crate std_unicode;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
-extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_data_structures;
 
 extern crate serialize as rustc_serialize; // used by deriving
 

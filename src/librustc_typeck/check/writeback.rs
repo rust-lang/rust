@@ -24,7 +24,7 @@ use rustc::util::nodemap::{DefIdSet, FxHashMap};
 use syntax::ast;
 use syntax_pos::Span;
 use std::mem;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
@@ -49,7 +49,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_free_region_map();
 
         let used_trait_imports = mem::replace(&mut self.tables.borrow_mut().used_trait_imports,
-                                              Rc::new(DefIdSet()));
+                                              Lrc::new(DefIdSet()));
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.tables.used_trait_imports = used_trait_imports;
 

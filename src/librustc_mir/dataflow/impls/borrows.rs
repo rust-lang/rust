@@ -21,6 +21,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::{IndexVec};
+use rustc_data_structures::sync::Lrc;
 
 use dataflow::{BitDenotation, BlockSets, DataflowOperator};
 pub use dataflow::indexes::BorrowIndex;
@@ -30,7 +31,6 @@ use borrow_check::nll::ToRegionVid;
 use syntax_pos::Span;
 
 use std::fmt;
-use std::rc::Rc;
 
 // `Borrows` maps each dataflow bit to an `Rvalue::Ref`, which can be
 // uniquely identified in the MIR by the `Location` of the assigment
@@ -38,7 +38,7 @@ use std::rc::Rc;
 pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
-    scope_tree: Rc<region::ScopeTree>,
+    scope_tree: Lrc<region::ScopeTree>,
     root_scope: Option<region::Scope>,
     borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,

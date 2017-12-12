@@ -17,14 +17,13 @@ use hir::map::definitions::DefPathHash;
 use ich::CachingCodemapView;
 use mir;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{Lrc, Lock};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
                       UseSpecializedDecodable, UseSpecializedEncodable};
 use session::{CrateDisambiguator, Session};
-use std::cell::RefCell;
 use std::mem;
-use std::rc::Rc;
 use syntax::ast::NodeId;
 use syntax::codemap::{CodeMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, FileMap};
@@ -56,17 +55,17 @@ pub struct OnDiskCache<'sess> {
 
     // This field collects all Diagnostics emitted during the current
     // compilation session.
-    current_diagnostics: RefCell<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
+    current_diagnostics: Lock<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
 
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
-    cnum_map: RefCell<Option<IndexVec<CrateNum, Option<CrateNum>>>>,
+    cnum_map: Lock<Option<IndexVec<CrateNum, Option<CrateNum>>>>,
 
     codemap: &'sess CodeMap,
     file_index_to_stable_id: FxHashMap<FileMapIndex, StableFilemapId>,
 
     // These two fields caches that are populated lazily during decoding.
-    file_index_to_file: RefCell<FxHashMap<FileMapIndex, Rc<FileMap>>>,
-    synthetic_expansion_infos: RefCell<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
+    file_index_to_file: Lock<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
+    synthetic_expansion_infos: Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
 
     // A map from dep-node to the position of the cached query result in
     // `serialized_data`.
@@ -132,14 +131,14 @@ impl<'sess> OnDiskCache<'sess> {
         OnDiskCache {
             serialized_data: data,
             file_index_to_stable_id: footer.file_index_to_stable_id,
-            file_index_to_file: RefCell::new(FxHashMap()),
+            file_index_to_file: Lock::new(FxHashMap()),
             prev_cnums: footer.prev_cnums,
-            cnum_map: RefCell::new(None),
+            cnum_map: Lock::new(None),
             codemap: sess.codemap(),
-            current_diagnostics: RefCell::new(FxHashMap()),
+            current_diagnostics: Lock::new(FxHashMap()),
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
-            synthetic_expansion_infos: RefCell::new(FxHashMap()),
+            synthetic_expansion_infos: Lock::new(FxHashMap()),
         }
     }
 
@@ -147,14 +146,14 @@ impl<'sess> OnDiskCache<'sess> {
         OnDiskCache {
             serialized_data: Vec::new(),
             file_index_to_stable_id: FxHashMap(),
-            file_index_to_file: RefCell::new(FxHashMap()),
+            file_index_to_file: Lock::new(FxHashMap()),
             prev_cnums: vec![],
-            cnum_map: RefCell::new(None),
+            cnum_map: Lock::new(None),
             codemap,
-            current_diagnostics: RefCell::new(FxHashMap()),
+            current_diagnostics: Lock::new(FxHashMap()),
             query_result_index: FxHashMap(),
             prev_diagnostics_index: FxHashMap(),
-            synthetic_expansion_infos: RefCell::new(FxHashMap()),
+            synthetic_expansion_infos: Lock::new(FxHashMap()),
         }
     }
 
@@ -356,9 +355,9 @@ impl<'sess> OnDiskCache<'sess> {
             opaque: opaque::Decoder::new(&self.serialized_data[..], pos.to_usize()),
             codemap: self.codemap,
             cnum_map: cnum_map.as_ref().unwrap(),
-            file_index_to_file: &mut file_index_to_file,
+            file_index_to_file: &mut *file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
-            synthetic_expansion_infos: &mut synthetic_expansion_infos,
+            synthetic_expansion_infos: &mut *synthetic_expansion_infos,
         };
 
         match decode_tagged(&mut decoder, dep_node_index) {
@@ -418,12 +417,12 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     codemap: &'x CodeMap,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
     synthetic_expansion_infos: &'x mut FxHashMap<AbsoluteBytePos, SyntaxContext>,
-    file_index_to_file: &'x mut FxHashMap<FileMapIndex, Rc<FileMap>>,
+    file_index_to_file: &'x mut FxHashMap<FileMapIndex, Lrc<FileMap>>,
     file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
-    fn file_index_to_file(&mut self, index: FileMapIndex) -> Rc<FileMap> {
+    fn file_index_to_file(&mut self, index: FileMapIndex) -> Lrc<FileMap> {
         let CacheDecoder {
             ref mut file_index_to_file,
             ref file_index_to_stable_id,
@@ -696,7 +695,7 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
 impl<'enc, 'a, 'tcx, E> CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
-    fn filemap_index(&mut self, filemap: Rc<FileMap>) -> FileMapIndex {
+    fn filemap_index(&mut self, filemap: Lrc<FileMap>) -> FileMapIndex {
         self.file_to_file_index[&(&*filemap as *const FileMap)]
     }
 

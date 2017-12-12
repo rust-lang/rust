@@ -25,9 +25,8 @@ use syntax_pos::{self, Span};
 use tokenstream::{TokenStream, TokenTree};
 use tokenstream;
 
-use std::cell::Cell;
 use std::{cmp, fmt};
-use std::rc::Rc;
+use rustc_data_structures::sync::{Lrc, LockCell};
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {
@@ -179,7 +178,7 @@ pub enum Token {
 
     // The `LazyTokenStream` is a pure function of the `Nonterminal`,
     // and so the `LazyTokenStream` can be ignored by Eq, Hash, etc.
-    Interpolated(Rc<(Nonterminal, LazyTokenStream)>),
+    Interpolated(Lrc<(Nonterminal, LazyTokenStream)>),
     // Can be expanded into several tokens.
     /// Doc comment
     DocComment(ast::Name),
@@ -199,7 +198,7 @@ pub enum Token {
 
 impl Token {
     pub fn interpolated(nt: Nonterminal) -> Token {
-        Token::Interpolated(Rc::new((nt, LazyTokenStream::new())))
+        Token::Interpolated(Lrc::new((nt, LazyTokenStream::new())))
     }
 
     /// Returns `true` if the token starts with '>'.
@@ -560,13 +559,13 @@ pub fn is_op(tok: &Token) -> bool {
     }
 }
 
-pub struct LazyTokenStream(Cell<Option<TokenStream>>);
+pub struct LazyTokenStream(LockCell<Option<TokenStream>>);
 
 impl Clone for LazyTokenStream {
     fn clone(&self) -> Self {
         let opt_stream = self.0.take();
         self.0.set(opt_stream.clone());
-        LazyTokenStream(Cell::new(opt_stream))
+        LazyTokenStream(LockCell::new(opt_stream))
     }
 }
 
@@ -585,7 +584,7 @@ impl fmt::Debug for LazyTokenStream {
 
 impl LazyTokenStream {
     pub fn new() -> Self {
-        LazyTokenStream(Cell::new(None))
+        LazyTokenStream(LockCell::new(None))
     }
 
     pub fn force<F: FnOnce() -> TokenStream>(&self, f: F) -> TokenStream {

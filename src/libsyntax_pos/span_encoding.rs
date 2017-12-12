@@ -18,7 +18,7 @@ use {BytePos, SpanData};
 use hygiene::SyntaxContext;
 
 use rustc_data_structures::fx::FxHashMap;
-use std::cell::RefCell;
+use rustc_data_structures::sync::Lock;
 
 /// A compressed span.
 /// Contains either fields of `SpanData` inline if they are small, or index into span interner.
@@ -135,11 +135,11 @@ impl SpanInterner {
     }
 }
 
-// If an interner exists in TLS, return it. Otherwise, prepare a fresh one.
+// If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
 fn with_span_interner<T, F: FnOnce(&mut SpanInterner) -> T>(f: F) -> T {
-    thread_local!(static INTERNER: RefCell<SpanInterner> = {
-        RefCell::new(SpanInterner::default())
+    rustc_global!(static INTERNER: Lock<SpanInterner> = {
+        Lock::new(SpanInterner::default())
     });
-    INTERNER.with(|interner| f(&mut *interner.borrow_mut()))
+    rustc_access_global!(INTERNER, |interner| f(&mut *interner.lock()))
 }

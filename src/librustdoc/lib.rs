@@ -25,6 +25,8 @@
 #![feature(unicode)]
 #![feature(vec_remove_item)]
 
+#![recursion_limit="256"]
+
 extern crate arena;
 extern crate getopts;
 extern crate env_logger;
