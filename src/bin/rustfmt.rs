@@ -350,7 +350,7 @@ fn main() {
             }
         }
         Err(e) => {
-            print_usage_to_stderr(&opts, &e.to_string());
+            eprintln!("{}", e.to_string());
             1
         }
     };
@@ -364,23 +364,18 @@ fn main() {
     std::process::exit(exit_code);
 }
 
-macro_rules! print_usage {
-    ($print:ident, $opts:ident, $reason:expr) => ({
-        let msg = format!(
-            "{}\n\nusage: {} [options] <file>...",
-            $reason,
-            env::args_os().next().unwrap().to_string_lossy()
-        );
-        $print!("{}", $opts.usage(&msg));
-    })
-}
-
 fn print_usage_to_stdout(opts: &Options, reason: &str) {
-    print_usage!(println, opts, reason);
-}
-
-fn print_usage_to_stderr(opts: &Options, reason: &str) {
-    print_usage!(eprintln, opts, reason);
+    let sep = if reason.is_empty() {
+        String::new()
+    } else {
+        format!("{}\n\n", reason)
+    };
+    let msg = format!(
+        "{}Format Rust code\n\nusage: {} [options] <file>...",
+        sep,
+        env::args_os().next().unwrap().to_string_lossy()
+    );
+    println!("{}", opts.usage(&msg));
 }
 
 fn print_version() {
