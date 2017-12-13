@@ -241,34 +241,22 @@ pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 #[doc(hidden)]
 trait CharEq {
     fn matches(&mut self, c: char) -> bool;
-    fn only_ascii(&self) -> bool;
 }
 
 impl CharEq for char {
     #[inline]
     fn matches(&mut self, c: char) -> bool { *self == c }
-
-    #[inline]
-    fn only_ascii(&self) -> bool { (*self as u32) < 128 }
 }
 
 impl<F> CharEq for F where F: FnMut(char) -> bool {
     #[inline]
     fn matches(&mut self, c: char) -> bool { (*self)(c) }
-
-    #[inline]
-    fn only_ascii(&self) -> bool { false }
 }
 
 impl<'a> CharEq for &'a [char] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
         self.iter().any(|&m| { let mut m = m; m.matches(c) })
-    }
-
-    #[inline]
-    fn only_ascii(&self) -> bool {
-        self.iter().all(|m| m.only_ascii())
     }
 }
 
@@ -279,8 +267,6 @@ struct CharEqSearcher<'a, C: CharEq> {
     char_eq: C,
     haystack: &'a str,
     char_indices: super::CharIndices<'a>,
-    #[allow(dead_code)]
-    ascii_only: bool,
 }
 
 impl<'a, C: CharEq> Pattern<'a> for CharEqPattern<C> {
@@ -289,7 +275,6 @@ impl<'a, C: CharEq> Pattern<'a> for CharEqPattern<C> {
     #[inline]
     fn into_searcher(self, haystack: &'a str) -> CharEqSearcher<'a, C> {
         CharEqSearcher {
-            ascii_only: self.0.only_ascii(),
             haystack,
             char_eq: self.0,
             char_indices: haystack.char_indices(),
@@ -499,7 +484,6 @@ impl<'a, F> fmt::Debug for CharPredicateSearcher<'a, F>
         f.debug_struct("CharPredicateSearcher")
             .field("haystack", &self.0.haystack)
             .field("char_indices", &self.0.char_indices)
-            .field("ascii_only", &self.0.ascii_only)
             .finish()
     }
 }
