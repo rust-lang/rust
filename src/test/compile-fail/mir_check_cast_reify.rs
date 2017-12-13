@@ -33,7 +33,7 @@ fn bar<'a>(x: &'a u32) -> &'static u32 {
     // During NLL region analysis, this will get renumbered to `typeof(foo::<'?0>)`
     // where `'?0` is a new region variable.
     //
-    // (Note that if `'a` on `foo` were early-bound, the type would be
+    // (Note that if `'a` on `foo` were late-bound, the type would be
     // `typeof(foo)`, which would interact differently with because
     // the renumbering later.)
     //
