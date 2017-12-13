@@ -13,8 +13,6 @@
 // Checking the interaction with this other feature
 #![feature(associated_type_defaults)]
 
-//FIXME(#44265): "undeclared lifetime" errors will be addressed in a follow-up PR
-
 use std::fmt::{Display, Debug};
 
 trait Foo {
@@ -32,7 +30,6 @@ impl Foo for Bar {
     type Assoc2<T> = Vec<T>;
     type Assoc3<T> where T: Iterator = Vec<T>;
     type WithDefault<'a, T> = &'a Iterator<T>;
-    //~^ ERROR undeclared lifetime
     type NoGenerics = ::std::cell::Cell<i32>;
 }
 

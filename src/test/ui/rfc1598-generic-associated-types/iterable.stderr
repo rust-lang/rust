@@ -1,13 +1,7 @@
-error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/iterable.rs:17:47
-   |
-17 |     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
-   |                                               ^^ undeclared lifetime
-
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:17:47
+  --> $DIR/iterable.rs:18:47
    |
-17 |     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
+18 |     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
    |                                               ^^ lifetime parameter not allowed on this type
 
 error[E0110]: lifetime parameters are not allowed on this type
@@ -16,5 +10,5 @@ error[E0110]: lifetime parameters are not allowed on this type
 21 |     fn iter<'a>(&'a self) -> Self::Iter<'a>;
    |                                         ^^ lifetime parameter not allowed on this type
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
