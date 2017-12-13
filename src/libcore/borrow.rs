@@ -37,10 +37,10 @@
 /// The companion trait [`BorrowMut`] provides the same guarantees for
 /// mutable references.
 ///
-/// [`Box<T>`]: ../boxed/struct.Box.html
-/// [`Rc<T>`]: ../rc/struct.Rc.html
-/// [`Vec<T>`]: ../vec/struct.Vec.html
-/// [`AsRef`]: ../convert/trait.AsRef.html
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
+/// [`Rc<T>`]: ../../std/rc/struct.Rc.html
+/// [`Vec<T>`]: ../../std/vec/struct.Vec.html
+/// [`AsRef`]: ../../std/convert/trait.AsRef.html
 /// [`BorrowMut`]: trait.BorrowMut.html
 ///
 /// # Examples
@@ -144,10 +144,10 @@
 /// others access to the underlying `str`, it can do that via `AsRef<str>`
 /// which doesn’t carry any such restrictions.
 ///
-/// [`Hash`]: ../hash/trait.Hash.html
-/// [`HashMap<K, V>`]: ../collections/struct.HashMap.html
-/// [`String`]: ../string/struct.String.html
-/// [`str`]: ../primitive.str.html
+/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
+/// [`String`]: ../../std/string/struct.String.html
+/// [`str`]: ../../std/primitive.str.html
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Borrow<Borrowed: ?Sized> {
