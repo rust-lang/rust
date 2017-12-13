@@ -120,12 +120,15 @@ pub unsafe fn _mm_extract_ps(a: f32x4, imm8: u8) -> i32 {
     mem::transmute(a.extract(imm8 as u32 & 0b11))
 }
 
-/// Extract an 8-bit integer from `a` selected with `imm8`
+/// Extract an 8-bit integer from `a`, selected with `imm8`. Returns a 32-bit
+/// integer containing the zero-extended integer data.
+/// See: https://reviews.llvm.org/D20468
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pextrb, imm8 = 0))]
-pub unsafe fn _mm_extract_epi8(a: i8x16, imm8: u8) -> i8 {
-    a.extract((imm8 & 0b1111) as u32)
+pub unsafe fn _mm_extract_epi8(a: i8x16, imm8: i32) -> i32 {
+    let imm8 = (imm8 & 15) as u32;
+    (a.extract_unchecked(imm8) as i32) & 0xFF
 }
 
 /// Extract an 32-bit integer from `a` selected with `imm8`
@@ -133,8 +136,9 @@ pub unsafe fn _mm_extract_epi8(a: i8x16, imm8: u8) -> i8 {
 #[target_feature = "+sse4.1"]
 // TODO: Add test for Windows
 #[cfg_attr(all(test, not(windows)), assert_instr(pextrd, imm8 = 1))]
-pub unsafe fn _mm_extract_epi32(a: i32x4, imm8: u8) -> i32 {
-    a.extract((imm8 & 0b11) as u32)
+pub unsafe fn _mm_extract_epi32(a: i32x4, imm8: i32) -> i32 {
+    let imm8 = (imm8 & 3) as u32;
+    a.extract_unchecked(imm8) as i32
 }
 
 /// Select a single value in `a` to store at some position in `b`,
@@ -844,11 +848,11 @@ mod tests {
     #[simd_test = "sse4.1"]
     unsafe fn _mm_extract_epi8() {
         let a =
-            i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-        let r = sse41::_mm_extract_epi8(a, 1);
-        assert_eq!(r, 1);
-        let r = sse41::_mm_extract_epi8(a, 17);
-        assert_eq!(r, 1);
+            i8x16::new(-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r1 = sse41::_mm_extract_epi8(a, 0);
+        let r2 = sse41::_mm_extract_epi8(a, 19);
+        assert_eq!(r1, 0xFF);
+        assert_eq!(r2, 3);
     }
 
     #[simd_test = "sse4.1"]

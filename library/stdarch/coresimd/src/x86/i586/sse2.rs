@@ -971,7 +971,8 @@ pub unsafe fn _mm_packus_epi16(a: i16x8, b: i16x8) -> u8x16 {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(pextrw, imm8 = 9))]
 pub unsafe fn _mm_extract_epi16(a: i16x8, imm8: i32) -> i32 {
-    a.extract(imm8 as u32 & 0b111) as i32
+    let imm8 = (imm8 & 7) as u32;
+    (a.extract_unchecked(imm8) as i32) & 0xFFFF
 }
 
 /// Return a new vector where the `imm8` element of `a` is replaced with `i`.
@@ -3122,9 +3123,11 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn _mm_extract_epi16() {
-        let a = i16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
-        let r = sse2::_mm_extract_epi16(a, 5);
-        assert_eq!(r, 5);
+        let a = i16x8::new(-1, 1, 2, 3, 4, 5, 6, 7);
+        let r1 = sse2::_mm_extract_epi16(a, 0);
+        let r2 = sse2::_mm_extract_epi16(a, 11);
+        assert_eq!(r1, 0xFFFF);
+        assert_eq!(r2, 3);
     }
 
     #[simd_test = "sse2"]

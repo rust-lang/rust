@@ -24,8 +24,9 @@ extern "C" {
 // On x86 this emits 2 pextrd instructions
 #[cfg_attr(all(test, not(windows), target_arch = "x86"),
            assert_instr(pextrd, imm8 = 1))]
-pub unsafe fn _mm_extract_epi64(a: i64x2, imm8: u8) -> i64 {
-    a.extract((imm8 & 0b1) as u32)
+pub unsafe fn _mm_extract_epi64(a: i64x2, imm8: i32) -> i64 {
+    let imm8 = (imm8 & 1) as u32;
+    a.extract_unchecked(imm8)
 }
 
 /// Return a copy of `a` with the 64-bit integer from `i` inserted at a

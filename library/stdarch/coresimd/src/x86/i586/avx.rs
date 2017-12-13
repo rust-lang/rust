@@ -863,20 +863,26 @@ pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
     __m128i::from(dst)
 }
 
-/// Extract an 8-bit integer from `a`, selected with `imm8`.
+/// Extract an 8-bit integer from `a`, selected with `imm8`. Returns a 32-bit
+/// integer containing the zero-extended integer data.
+/// See: https://reviews.llvm.org/D20468
 #[inline(always)]
 #[target_feature = "+avx"]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_extract_epi8(a: i8x32, imm8: i32) -> i32 {
-    a.extract(imm8 as u32 & 31) as i32
+    let imm8 = (imm8 & 31) as u32;
+    (a.extract_unchecked(imm8) as i32) & 0xFF
 }
 
-/// Extract a 16-bit integer from `a`, selected with `imm8`.
+/// Extract a 16-bit integer from `a`, selected with `imm8`. Returns a 32-bit
+/// integer containing the zero-extended integer data.
+/// See: https://reviews.llvm.org/D20468
 #[inline(always)]
 #[target_feature = "+avx"]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_extract_epi16(a: i16x16, imm8: i32) -> i32 {
-    a.extract(imm8 as u32 & 15) as i32
+    let imm8 = (imm8 & 15) as u32;
+    (a.extract_unchecked(imm8) as i32) & 0xFFFF
 }
 
 /// Extract a 32-bit integer from `a`, selected with `imm8`.
@@ -884,15 +890,17 @@ pub unsafe fn _mm256_extract_epi16(a: i16x16, imm8: i32) -> i32 {
 #[target_feature = "+avx"]
 // This intrinsic has no corresponding instruction.
 pub unsafe fn _mm256_extract_epi32(a: i32x8, imm8: i32) -> i32 {
-    a.extract(imm8 as u32 & 7) as i32
+    let imm8 = (imm8 & 7) as u32;
+    a.extract_unchecked(imm8)
 }
 
 /// Extract a 64-bit integer from `a`, selected with `imm8`.
 #[inline(always)]
 #[target_feature = "+avx"]
 // This intrinsic has no corresponding instruction.
-pub unsafe fn _mm256_extract_epi64(a: i64x4, imm8: i32) -> i32 {
-    a.extract(imm8 as u32 & 3) as i32
+pub unsafe fn _mm256_extract_epi64(a: i64x4, imm8: i32) -> i64 {
+    let imm8 = (imm8 & 3) as u32;
+    a.extract_unchecked(imm8)
 }
 
 /// Zero the contents of all XMM or YMM registers.
@@ -3142,28 +3150,34 @@ mod tests {
     unsafe fn _mm256_extract_epi8() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i8x32::new(
-            1, 2, 3, 4, 5, 6, 7, 8,
-            9, 10, 11, 12, 13, 14, 15, 16,
-            17, 18, 19, 20, 21, 22, 23, 24,
-            25, 26, 27, 28, 29, 30, 31, 32,
+            -1, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31
         );
-        let r = avx::_mm256_extract_epi8(a, 0);
-        assert_eq!(r, 1);
+        let r1 = avx::_mm256_extract_epi8(a, 0);
+        let r2 = avx::_mm256_extract_epi8(a, 35);
+        assert_eq!(r1, 0xFF);
+        assert_eq!(r2, 3);
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_extract_epi16() {
         let a =
-            i16x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-        let r = avx::_mm256_extract_epi16(a, 0);
-        assert_eq!(r, 0);
+            i16x16::new(-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let r1 = avx::_mm256_extract_epi16(a, 0);
+        let r2 = avx::_mm256_extract_epi16(a, 19);
+        assert_eq!(r1, 0xFFFF);
+        assert_eq!(r2, 3);
     }
 
     #[simd_test = "avx"]
     unsafe fn _mm256_extract_epi32() {
-        let a = i32x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r = avx::_mm256_extract_epi32(a, 0);
-        assert_eq!(r, 1);
+        let a = i32x8::new(-1, 1, 2, 3, 4, 5, 6, 7);
+        let r1 = avx::_mm256_extract_epi32(a, 0);
+        let r2 = avx::_mm256_extract_epi32(a, 11);
+        assert_eq!(r1, -1);
+        assert_eq!(r2, 3);
     }
 
     #[simd_test = "avx"]
