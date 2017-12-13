@@ -143,6 +143,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         use rustc::hir::ExprClosure;
         use rustc::mir::AggregateKind;
 
+        if location.statement_index == self.mir[location.block].statements.len() {
+            // Code below hasn't been written in a manner to deal with
+            // a terminator location.
+            return None;
+        }
+
         let local = if let StatementKind::Assign(Place::Local(local), _) =
             self.mir[location.block].statements[location.statement_index].kind
         {
