@@ -175,6 +175,14 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
         let expected_ty = match constant.literal {
             Literal::Value { value } => {
+                // FIXME(#46702) -- We need some way to get the predicates
+                // associated with the "pre-evaluated" form of the
+                // constant. For example, consider that the constant
+                // may have associated constant projections (`<Foo as
+                // Trait<'a, 'b>>::SOME_CONST`) that impose
+                // constraints on `'a` and `'b`. These constraints
+                // would be lost if we just look at the normalized
+                // value.
                 if let ConstVal::Function(def_id, ..) = value.val {
                     let tcx = self.tcx();
                     let type_checker = &mut self.cx;
