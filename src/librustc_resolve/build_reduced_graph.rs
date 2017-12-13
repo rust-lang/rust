@@ -40,6 +40,7 @@ use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::parse::token::{self, Token};
+use syntax::std_inject::injected_crate_name;
 use syntax::symbol::keywords;
 use syntax::symbol::Symbol;
 use syntax::visit::{self, Visitor};
@@ -262,6 +263,10 @@ impl<'a> Resolver<'a> {
                 let module =
                     self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(module);
+                if injected_crate_name().map_or(false, |name| item.ident.name == name) {
+                    self.injected_crate = Some(module);
+                }
+
                 let used = self.process_legacy_macro_imports(item, module, expansion);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
@@ -558,8 +563,7 @@ impl<'a> Resolver<'a> {
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
         } else if def_id.krate == BUILTIN_MACROS_CRATE {
-            // FIXME(jseyfried): This happens when `include!()`ing a `$crate::` path, c.f, #40469.
-            self.graph_root
+            self.injected_crate.unwrap_or(self.graph_root)
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
             self.get_module(module_def_id)

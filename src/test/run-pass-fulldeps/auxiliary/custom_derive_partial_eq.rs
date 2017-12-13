@@ -69,7 +69,7 @@ fn expand_deriving_partial_eq(cx: &mut ExtCtxt, span: Span, mitem: &MetaItem, it
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: deriving::generic::ty::Path::new(vec!["std", "cmp", "PartialEq"]),
+        path: deriving::generic::ty::Path::new(vec!["cmp", "PartialEq"]),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

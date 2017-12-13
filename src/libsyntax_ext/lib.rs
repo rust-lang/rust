@@ -16,6 +16,7 @@
 #![deny(warnings)]
 
 #![feature(proc_macro_internals)]
+#![feature(decl_macro)]
 
 extern crate fmt_macros;
 #[macro_use]

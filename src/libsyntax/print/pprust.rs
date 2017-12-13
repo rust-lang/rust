@@ -18,6 +18,7 @@ use util::parser::{self, AssocOp, Fixity};
 use attr;
 use codemap::{self, CodeMap};
 use syntax_pos::{self, BytePos};
+use syntax_pos::hygiene::{Mark, MarkKind, SyntaxContext};
 use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
 use parse::{self, ParseSess};
@@ -93,7 +94,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        is_expanded: bool) -> io::Result<()> {
     let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
 
-    if is_expanded && !std_inject::injected_crate_name(krate).is_none() {
+    if is_expanded && !std_inject::injected_crate_name().is_none() {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
         // However we don't want these attributes in the AST because
@@ -734,6 +735,8 @@ pub trait PrintState<'a> {
                     if segment.identifier.name != keywords::CrateRoot.name() &&
                        segment.identifier.name != keywords::DollarCrate.name() {
                         self.writer().word(&segment.identifier.name.as_str())?;
+                    } else if segment.identifier.name == keywords::DollarCrate.name() {
+                        self.print_dollar_crate(segment.identifier.ctxt)?;
                     }
                 }
                 self.writer().space()?;
@@ -822,6 +825,19 @@ pub trait PrintState<'a> {
     }
 
     fn nbsp(&mut self) -> io::Result<()> { self.writer().word(" ") }
+
+    fn print_dollar_crate(&mut self, mut ctxt: SyntaxContext) -> io::Result<()> {
+        if let Some(mark) = ctxt.adjust(Mark::root()) {
+            // Make a best effort to print something that complies
+            if mark.kind() == MarkKind::Builtin {
+                if let Some(name) = std_inject::injected_crate_name() {
+                    self.writer().word("::")?;
+                    self.writer().word(name)?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<'a> PrintState<'a> for State<'a> {
@@ -2411,6 +2427,8 @@ impl<'a> State<'a> {
             if let Some(ref parameters) = segment.parameters {
                 self.print_path_parameters(parameters, colons_before_params)?;
             }
+        } else if segment.identifier.name == keywords::DollarCrate.name() {
+            self.print_dollar_crate(segment.identifier.ctxt)?;
         }
         Ok(())
     }

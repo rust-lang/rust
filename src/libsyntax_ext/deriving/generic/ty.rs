@@ -21,6 +21,8 @@ use syntax::ext::build::AstBuilder;
 use syntax::codemap::respan;
 use syntax::ptr::P;
 use syntax_pos::Span;
+use syntax_pos::hygiene::SyntaxContext;
+use syntax_pos::symbol::keywords;
 
 /// The types of pointers
 #[derive(Clone, Eq, PartialEq)]
@@ -36,29 +38,36 @@ pub enum PtrTy<'a> {
 /// for type parameters and a lifetime.
 #[derive(Clone, Eq, PartialEq)]
 pub struct Path<'a> {
-    pub path: Vec<&'a str>,
-    pub lifetime: Option<&'a str>,
-    pub params: Vec<Box<Ty<'a>>>,
-    pub global: bool,
+    path: Vec<&'a str>,
+    lifetime: Option<&'a str>,
+    params: Vec<Box<Ty<'a>>>,
+    kind: PathKind,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub enum PathKind {
+    Local,
+    Global,
+    Std,
 }
 
 impl<'a> Path<'a> {
     pub fn new<'r>(path: Vec<&'r str>) -> Path<'r> {
-        Path::new_(path, None, Vec::new(), true)
+        Path::new_(path, None, Vec::new(), PathKind::Std)
     }
     pub fn new_local<'r>(path: &'r str) -> Path<'r> {
-        Path::new_(vec![path], None, Vec::new(), false)
+        Path::new_(vec![path], None, Vec::new(), PathKind::Local)
     }
     pub fn new_<'r>(path: Vec<&'r str>,
                     lifetime: Option<&'r str>,
                     params: Vec<Box<Ty<'r>>>,
-                    global: bool)
+                    kind: PathKind)
                     -> Path<'r> {
         Path {
             path,
             lifetime,
             params,
-            global,
+            kind,
         }
     }
 
@@ -76,11 +85,20 @@ impl<'a> Path<'a> {
                    self_ty: Ident,
                    self_generics: &Generics)
                    -> ast::Path {
-        let idents = self.path.iter().map(|s| cx.ident_of(*s)).collect();
+        let mut idents = self.path.iter().map(|s| cx.ident_of(*s)).collect();
         let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
 
-        cx.path_all(span, self.global, idents, lt, tys, Vec::new())
+        match self.kind {
+            PathKind::Global => cx.path_all(span, true, idents, lt, tys, Vec::new()),
+            PathKind::Local => cx.path_all(span, false, idents, lt, tys, Vec::new()),
+            PathKind::Std => {
+                let def_site = SyntaxContext::empty().apply_mark(cx.current_expansion.mark);
+                idents.insert(0, Ident { ctxt: def_site, ..keywords::DollarCrate.ident() });
+                cx.path_all(span, false, idents, lt, tys, Vec::new())
+            }
+        }
+
     }
 }
 

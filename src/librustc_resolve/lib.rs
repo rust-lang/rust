@@ -1338,6 +1338,8 @@ pub struct Resolver<'a> {
 
     // Only used for better errors on `fn(): fn()`
     current_type_ascription: Vec<Span>,
+
+    injected_crate: Option<Module<'a>>,
 }
 
 pub struct ResolverArenas<'a> {
@@ -1537,6 +1539,7 @@ impl<'a> Resolver<'a> {
             found_unresolved_macro: false,
             unused_macros: FxHashSet(),
             current_type_ascription: Vec::new(),
+            injected_crate: None,
         }
     }
 

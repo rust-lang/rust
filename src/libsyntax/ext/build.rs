@@ -319,9 +319,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 types: Vec<P<ast::Ty>>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
+        use syntax::parse::token;
+
         let last_identifier = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = Vec::new();
-        if global {
+        if global &&
+           !idents.first().map_or(false, |&ident| token::Ident(ident).is_path_segment_keyword()) {
             segments.push(ast::PathSegment::crate_root(span));
         }
 
