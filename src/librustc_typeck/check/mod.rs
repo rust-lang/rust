@@ -2127,34 +2127,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Apply "fallbacks" to some types
-    /// unconstrained types get replaced with ! or () (depending on whether
-    /// feature(never_type) is enabled), unconstrained ints with i32, and
-    /// unconstrained floats with f64.
-    fn default_type_parameters(&self) {
-        // Defaulting inference variables becomes very dubious if we have
-        // encountered type-checking errors. Therefore, if we think we saw
-        // some errors in this function, just resolve all uninstanted type
-        // varibles to TyError.
-        if self.is_tainted_by_errors() {
-            for ty in &self.unsolved_variables() {
-                if let ty::TyInfer(_) = self.shallow_resolve(ty).sty {
-                    debug!("default_type_parameters: defaulting `{:?}` to error", ty);
-                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx().types.err);
-                }
-            }
-            return;
-        }
-
-        for ty in &self.unsolved_variables() {
-            let resolved = self.resolve_type_vars_if_possible(ty);
-            if resolved.is_ty_infer() {
-                self.apply_diverging_fallback_to_type(ty);
-                self.apply_numeric_fallback_to_type(ty);
-            }
-        }
-    }
-
     fn apply_diverging_fallback_to_type(&self, ty: Ty<'tcx>) {
         assert!(ty.is_ty_infer());
         if self.type_var_diverges(ty) {
@@ -2185,7 +2157,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(self.deferred_call_resolutions.borrow().is_empty());
 
         self.select_obligations_where_possible();
-        self.default_type_parameters();
+
+        // Apply fallbacks to unsolved variables.
+        // Non-numerics get replaced with ! or () (depending on whether
+        // feature(never_type) is enabled), unconstrained ints with i32,
+        // unconstrained floats with f64.
+        for ty in &self.unsolved_variables() {
+            if self.is_tainted_by_errors() {
+                // Defaulting inference variables becomes very dubious if we have
+                // encountered type-checking errors. In that case,
+                // just resolve all uninstanted type variables to TyError.
+                debug!("default_type_parameters: defaulting `{:?}` to error", ty);
+                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx().types.err);
+            } else {
+                self.apply_diverging_fallback_to_type(ty);
+                self.apply_numeric_fallback_to_type(ty);
+            }
+        }
 
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
 
