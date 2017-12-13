@@ -294,13 +294,31 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             assert_eq!(cnum, LOCAL_CRATE);
             let mut visible_parent_map: DefIdMap<DefId> = DefIdMap();
 
+            // Issue 46112: We want the map to prefer the shortest
+            // paths when reporting the path to an item. Therefore we
+            // build up the map via a breadth-first search (BFS),
+            // which naturally yields minimal-length paths.
+            //
+            // Note that it needs to be a BFS over the whole forest of
+            // crates, not just each individual crate; otherwise you
+            // only get paths that are locally minimal with respect to
+            // whatever crate we happened to encounter first in this
+            // traversal, but not globally minimal across all crates.
+            let bfs_queue = &mut VecDeque::new();
             for &cnum in tcx.crates().iter() {
                 // Ignore crates without a corresponding local `extern crate` item.
                 if tcx.missing_extern_crate_item(cnum) {
                     continue
                 }
 
-                let bfs_queue = &mut VecDeque::new();
+                bfs_queue.push_back(DefId {
+                    krate: cnum,
+                    index: CRATE_DEF_INDEX
+                });
+            }
+
+            // (restrict scope of mutable-borrow of `visible_parent_map`)
+            {
                 let visible_parent_map = &mut visible_parent_map;
                 let mut add_child = |bfs_queue: &mut VecDeque<_>,
                                      child: &def::Export,
@@ -326,10 +344,6 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                     }
                 };
 
-                bfs_queue.push_back(DefId {
-                    krate: cnum,
-                    index: CRATE_DEF_INDEX
-                });
                 while let Some(def) = bfs_queue.pop_front() {
                     for child in tcx.item_children(def).iter() {
                         add_child(bfs_queue, child, def);
