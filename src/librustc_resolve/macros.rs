@@ -746,8 +746,13 @@ impl<'a> Resolver<'a> {
             }));
             if attr::contains_name(&item.attrs, "macro_export") {
                 let def = Def::Macro(def_id, MacroKind::Bang);
-                self.macro_exports
-                    .push(Export { ident: ident.modern(), def: def, span: item.span });
+                self.macro_exports.push(Export {
+                    ident: ident.modern(),
+                    def: def,
+                    vis: ty::Visibility::Public,
+                    span: item.span,
+                    is_import: false,
+                });
             } else {
                 self.unused_macros.insert(def_id);
             }

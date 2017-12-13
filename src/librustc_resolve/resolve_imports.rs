@@ -898,8 +898,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 None => continue,
             };
 
-            if binding.vis == ty::Visibility::Public &&
-               (binding.is_import() || binding.is_macro_def()) {
+            if binding.is_import() || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
                     if !def.def_id().is_local() {
@@ -915,7 +914,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                 .emit();
                         }
                     }
-                    reexports.push(Export { ident: ident.modern(), def: def, span: binding.span });
+                    reexports.push(Export {
+                        ident: ident.modern(),
+                        def: def,
+                        span: binding.span,
+                        vis: binding.vis,
+                        is_import: true,
+                    });
                 }
             }
 

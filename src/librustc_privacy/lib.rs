@@ -331,7 +331,9 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             if let Some(exports) = self.tcx.module_exports(def_id) {
                 for export in exports.iter() {
                     if let Some(node_id) = self.tcx.hir.as_local_node_id(export.def.def_id()) {
-                        self.update(node_id, Some(AccessLevel::Exported));
+                        if export.vis == ty::Visibility::Public {
+                            self.update(node_id, Some(AccessLevel::Exported));
+                        }
                     }
                 }
             }
@@ -365,6 +367,15 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             for id in &module.item_ids {
                 self.update(id.id, level);
             }
+            let def_id = self.tcx.hir.local_def_id(module_id);
+            if let Some(exports) = self.tcx.module_exports(def_id) {
+                for export in exports.iter() {
+                    if let Some(node_id) = self.tcx.hir.as_local_node_id(export.def.def_id()) {
+                        self.update(node_id, level);
+                    }
+                }
+            }
+
             if module_id == ast::CRATE_NODE_ID {
                 break
             }

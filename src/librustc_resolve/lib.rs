@@ -1108,7 +1108,11 @@ impl<'a> NameBinding<'a> {
 
     // We sometimes need to treat variants as `pub` for backwards compatibility
     fn pseudo_vis(&self) -> ty::Visibility {
-        if self.is_variant() { ty::Visibility::Public } else { self.vis }
+        if self.is_variant() && self.def().def_id().is_local() {
+            ty::Visibility::Public
+        } else {
+            self.vis
+        }
     }
 
     fn is_variant(&self) -> bool {
@@ -3613,9 +3617,9 @@ impl<'a> Resolver<'a> {
             self.populate_module_if_necessary(in_module);
 
             in_module.for_each_child_stable(|ident, _, name_binding| {
-                // abort if the module is already found
-                if let Some(_) = result {
-                    return ();
+                // abort if the module is already found or if name_binding is private external
+                if result.is_some() || !name_binding.vis.is_visible_locally() {
+                    return
                 }
                 if let Some(module) = name_binding.module() {
                     // form the path

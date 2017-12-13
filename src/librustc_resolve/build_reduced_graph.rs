@@ -466,11 +466,8 @@ impl<'a> Resolver<'a> {
 
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'a>, child: Export) {
-        let ident = child.ident;
-        let def = child.def;
+        let Export { ident, def, vis, span, .. } = child;
         let def_id = def.def_id();
-        let vis = self.cstore.visibility_untracked(def_id);
-        let span = child.span;
         let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
         match def {
             Def::Mod(..) | Def::Enum(..) => {
@@ -674,7 +671,8 @@ impl<'a> Resolver<'a> {
             let ident = Ident::with_empty_ctxt(name);
             let result = self.resolve_ident_in_module(module, ident, MacroNS, false, false, span);
             if let Ok(binding) = result {
-                self.macro_exports.push(Export { ident: ident, def: binding.def(), span: span });
+                let (def, vis) = (binding.def(), binding.vis);
+                self.macro_exports.push(Export { ident, def, vis, span, is_import: true });
             } else {
                 span_err!(self.session, span, E0470, "reexported macro not found");
             }

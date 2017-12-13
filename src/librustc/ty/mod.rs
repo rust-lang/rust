@@ -307,6 +307,15 @@ impl Visibility {
 
         self.is_accessible_from(vis_restriction, tree)
     }
+
+    // Returns true if this item is visible anywhere in the local crate.
+    pub fn is_visible_locally(self) -> bool {
+        match self {
+            Visibility::Public => true,
+            Visibility::Restricted(def_id) => def_id.is_local(),
+            Visibility::Invisible => false,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Copy)]

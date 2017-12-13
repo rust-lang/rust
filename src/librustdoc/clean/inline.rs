@@ -392,7 +392,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
         let mut visited = FxHashSet();
         for &item in cx.tcx.item_children(did).iter() {
             let def_id = item.def.def_id();
-            if cx.tcx.visibility(def_id) == ty::Visibility::Public {
+            if item.vis == ty::Visibility::Public {
                 if !visited.insert(def_id) { continue }
                 if let Some(i) = try_inline(cx, item.def, item.ident.name) {
                     items.extend(i)
