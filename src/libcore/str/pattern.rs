@@ -19,6 +19,7 @@
 
 use cmp;
 use fmt;
+use slice::memchr;
 use usize;
 
 // Pattern
@@ -241,25 +242,66 @@ pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 
 /// Associated type for `<char as Pattern<'a>>::Searcher`.
 #[derive(Clone, Debug)]
-pub struct CharSearcher<'a>(&'a str);
+pub struct CharSearcher<'a> {
+    haystack: &'a str,
+    // invariant: `finger` must be a valid utf8 byte index of `haystack`
+    finger: usize,
+    needle: char,
+    // For ascii chars
+    // invariant: must be an ASCII byte (no high bit)
+    single_byte: Option<u8>,
+}
 
 unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     #[inline]
     fn haystack(&self) -> &'a str {
-        unimplemented!();
+        self.haystack
     }
     #[inline]
     fn next(&mut self) -> SearchStep {
-        unimplemented!();
+        let old_finger = self.finger;
+        let slice = unsafe { self.haystack.get_unchecked(old_finger..) };
+        let mut iter = slice.chars();
+        let old_len = iter.iter.len();
+        if let Some(ch) = iter.next() {
+            // add byte offset of current character
+            // without recalculating
+            self.finger += iter.iter.len() - old_len;
+            if ch == self.needle {
+                SearchStep::Match(old_finger, self.finger)
+            } else {
+                SearchStep::Reject(old_finger, self.finger)
+            }
+        } else {
+            SearchStep::Done
+        }
     }
     #[inline]
     fn next_match(&mut self) -> Option<(usize, usize)> {
-        unimplemented!();
+        if let Some(byte) = self.single_byte {
+            let old_finger = self.finger;
+            let slice = unsafe { self.haystack.get_unchecked(old_finger..) };
+            let bytes = slice.as_bytes();
+            if let Some(index) = memchr::memchr(byte, bytes) {
+                // index is the index of a valid ASCII byte,
+                // so we can add one to it
+                self.finger += index + 1;
+                Some((index, self.finger))
+            } else {
+                None
+            }
+        } else {
+            loop {
+                match self.next() {
+                    SearchStep::Match(a, b) => break Some((a, b)),
+                    SearchStep::Done => break None,
+                    _ => continue,
+                }
+            }
+        }
     }
-    #[inline]
-    fn next_reject(&mut self) -> Option<(usize, usize)> {
-        unimplemented!();
-    }
+
+    // let next_reject use the default implementation from the Searcher trait
 }
 
 unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
@@ -271,10 +313,8 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
         unimplemented!();
     }
-    #[inline]
-    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
-        unimplemented!();
-    }
+
+    // let next_reject_back use the default implementation from the Searcher trait
 }
 
 impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
@@ -285,7 +325,19 @@ impl<'a> Pattern<'a> for char {
 
     #[inline]
     fn into_searcher(self, haystack: &'a str) -> Self::Searcher {
-        CharSearcher(haystack)
+        let single_byte = if self.len_utf8() == 1 {
+            let mut storage = [0];
+            self.encode_utf8(&mut storage);
+            Some(storage[0])
+        } else {
+            None
+        };
+        CharSearcher {
+            haystack,
+            finger: 0,
+            needle: self,
+            single_byte,
+        }
     }
 
     #[inline]
