@@ -58,6 +58,7 @@ use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
+use syntax::parse::token;
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -2958,6 +2959,16 @@ impl<'a> Resolver<'a> {
                 } else if i == 0 && name == keywords::DollarCrate.name() {
                     // `$crate::a::b`
                     module = Some(self.resolve_crate_root(ident.node.ctxt));
+                    continue
+                } else if i == 1 && self.session.features.borrow().extern_absolute_paths &&
+                                    path[0].node.name == keywords::CrateRoot.name() &&
+                                    !token::Ident(ident.node).is_path_segment_keyword() {
+                    // `::extern_crate::a::b`
+                    let crate_id = self.crate_loader.resolve_crate_from_path(name, ident.span);
+                    let crate_root =
+                        self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                    self.populate_module_if_necessary(crate_root);
+                    module = Some(crate_root);
                     continue
                 }
             }

@@ -12,14 +12,14 @@ use self::ImportDirectiveSubclass::*;
 
 use {AmbiguityError, Module, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
-use {NameBinding, NameBindingKind, PathResult, PrivacyError};
+use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
 use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
 use rustc::ty;
 use rustc::lint::builtin::PUB_USE_OF_PRIVATE_EXTERN_CRATE;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::def::*;
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -602,8 +602,60 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     // If appropriate, returns an error to report.
     fn finalize_import(&mut self, directive: &'b ImportDirective<'b>) -> Option<(Span, String)> {
         self.current_module = directive.parent;
-
         let ImportDirective { ref module_path, span, .. } = *directive;
+
+        // Extern crate mode for absolute paths needs some
+        // special support for single-segment imports.
+        let extern_absolute_paths = self.session.features.borrow().extern_absolute_paths;
+        if module_path.len() == 1 && module_path[0].node.name == keywords::CrateRoot.name() {
+            match directive.subclass {
+                GlobImport { .. } if extern_absolute_paths => {
+                    return Some((directive.span,
+                                 "cannot glob-import all possible crates".to_string()));
+                }
+                SingleImport { source, target, .. } => {
+                    let crate_root = if source.name == keywords::Crate.name() {
+                        if target.name == keywords::Crate.name() {
+                            return Some((directive.span,
+                                         "crate root imports need to be explicitly named: \
+                                          `use crate as name;`".to_string()));
+                        } else {
+                            Some(self.resolve_crate_root(source.ctxt.modern()))
+                        }
+                    } else if extern_absolute_paths &&
+                              !token::Ident(source).is_path_segment_keyword() {
+                        let crate_id =
+                            self.crate_loader.resolve_crate_from_path(source.name, directive.span);
+                        let crate_root =
+                            self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                        self.populate_module_if_necessary(crate_root);
+                        Some(crate_root)
+                    } else {
+                        None
+                    };
+
+                    if let Some(crate_root) = crate_root {
+                        let binding = (crate_root, ty::Visibility::Public, directive.span,
+                                       directive.expansion).to_name_binding(self.arenas);
+                        let binding = self.arenas.alloc_name_binding(NameBinding {
+                            kind: NameBindingKind::Import {
+                                binding,
+                                directive,
+                                used: Cell::new(false),
+                                legacy_self_import: false,
+                            },
+                            vis: directive.vis.get(),
+                            span: directive.span,
+                            expansion: directive.expansion,
+                        });
+                        let _ = self.try_define(directive.parent, target, TypeNS, binding);
+                        return None;
+                    }
+                }
+                _ => {}
+            }
+        }
+
         let module_result = self.resolve_path(&module_path, None, true, span);
         let module = match module_result {
             PathResult::Module(module) => module,

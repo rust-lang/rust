@@ -357,6 +357,7 @@ impl CrateStore for DummyCrateStore {
 pub trait CrateLoader {
     fn process_item(&mut self, item: &ast::Item, defs: &Definitions);
     fn postprocess(&mut self, krate: &ast::Crate);
+    fn resolve_crate_from_path(&mut self, name: Symbol, span: Span) -> CrateNum;
 }
 
 // This method is used when generating the command line to pass through to

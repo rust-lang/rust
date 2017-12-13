@@ -71,14 +71,6 @@ fn dump_crates(cstore: &CStore) {
     });
 }
 
-#[derive(Debug)]
-struct ExternCrateInfo {
-    ident: Symbol,
-    name: Symbol,
-    id: ast::NodeId,
-    dep_kind: DepKind,
-}
-
 // Extra info about a crate loaded for plugins or exported macros.
 struct ExtensionCrate {
     metadata: PMDSource,
@@ -114,34 +106,6 @@ impl<'a> CrateLoader<'a> {
             cstore,
             next_crate_num: cstore.next_crate_num(),
             local_crate_name: Symbol::intern(local_crate_name),
-        }
-    }
-
-    fn extract_crate_info(&self, i: &ast::Item) -> Option<ExternCrateInfo> {
-        match i.node {
-            ast::ItemKind::ExternCrate(ref path_opt) => {
-                debug!("resolving extern crate stmt. ident: {} path_opt: {:?}",
-                       i.ident, path_opt);
-                let name = match *path_opt {
-                    Some(name) => {
-                        validate_crate_name(Some(self.sess), &name.as_str(),
-                                            Some(i.span));
-                        name
-                    }
-                    None => i.ident.name,
-                };
-                Some(ExternCrateInfo {
-                    ident: i.ident.name,
-                    name,
-                    id: i.id,
-                    dep_kind: if attr::contains_name(&i.attrs, "no_link") {
-                        DepKind::UnexportedMacrosOnly
-                    } else {
-                        DepKind::Explicit
-                    },
-                })
-            }
-            _ => None
         }
     }
 
@@ -478,17 +442,17 @@ impl<'a> CrateLoader<'a> {
         })).collect()
     }
 
-    fn read_extension_crate(&mut self, span: Span, info: &ExternCrateInfo) -> ExtensionCrate {
-        info!("read extension crate {} `extern crate {} as {}` dep_kind={:?}",
-              info.id, info.name, info.ident, info.dep_kind);
+    fn read_extension_crate(&mut self, span: Span, orig_name: Symbol, rename: Symbol)
+                            -> ExtensionCrate {
+        info!("read extension crate `extern crate {} as {}`", orig_name, rename);
         let target_triple = &self.sess.opts.target_triple[..];
         let is_cross = target_triple != config::host_triple();
         let mut target_only = false;
         let mut locate_ctxt = locator::Context {
             sess: self.sess,
             span,
-            ident: info.ident,
-            crate_name: info.name,
+            ident: orig_name,
+            crate_name: rename,
             hash: None,
             filesearch: self.sess.host_filesearch(PathKind::Crate),
             target: &self.sess.host,
@@ -625,12 +589,8 @@ impl<'a> CrateLoader<'a> {
                                  span: Span,
                                  name: &str)
                                  -> Option<(PathBuf, CrateDisambiguator, DefIndex)> {
-        let ekrate = self.read_extension_crate(span, &ExternCrateInfo {
-             name: Symbol::intern(name),
-             ident: Symbol::intern(name),
-             id: ast::DUMMY_NODE_ID,
-             dep_kind: DepKind::UnexportedMacrosOnly,
-        });
+        let name = Symbol::intern(name);
+        let ekrate = self.read_extension_crate(span, name, name);
 
         if ekrate.target_only {
             // Need to abort before syntax expansion.
@@ -1098,21 +1058,37 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
 
     fn process_item(&mut self, item: &ast::Item, definitions: &Definitions) {
         match item.node {
-            ast::ItemKind::ExternCrate(_) => {
-                let info = self.extract_crate_info(item).unwrap();
+            ast::ItemKind::ExternCrate(rename) => {
+                debug!("resolving extern crate stmt. ident: {} rename: {:?}", item.ident, rename);
+                let rename = match rename {
+                    Some(rename) => {
+                        validate_crate_name(Some(self.sess), &rename.as_str(), Some(item.span));
+                        rename
+                    }
+                    None => item.ident.name,
+                };
+                let dep_kind = if attr::contains_name(&item.attrs, "no_link") {
+                    DepKind::UnexportedMacrosOnly
+                } else {
+                    DepKind::Explicit
+                };
+
                 let (cnum, ..) = self.resolve_crate(
-                    &None, info.ident, info.name, None, item.span, PathKind::Crate, info.dep_kind,
+                    &None, item.ident.name, rename, None, item.span, PathKind::Crate, dep_kind,
                 );
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();
-                let len = definitions.def_path(def_id.index).data.len();
+                let path_len = definitions.def_path(def_id.index).data.len();
 
-                let extern_crate =
-                    ExternCrate { def_id: def_id, span: item.span, direct: true, path_len: len };
+                let extern_crate = ExternCrate { def_id, span: item.span, direct: true, path_len };
                 self.update_extern_crate(cnum, extern_crate, &mut FxHashSet());
-                self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
+                self.cstore.add_extern_mod_stmt_cnum(item.id, cnum);
             }
             _ => {}
         }
+    }
+
+    fn resolve_crate_from_path(&mut self, name: Symbol, span: Span) -> CrateNum {
+        self.resolve_crate(&None, name, name, None, span, PathKind::Crate, DepKind::Explicit).0
     }
 }

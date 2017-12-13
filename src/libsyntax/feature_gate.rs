@@ -430,6 +430,9 @@ declare_features! (
 
     // generic associated types (RFC 1598)
     (active, generic_associated_types, "1.23.0", Some(44265)),
+
+    // Resolve absolute paths as paths from other crates
+    (active, extern_absolute_paths, "1.24.0", Some(44660)),
 );
 
 declare_features! (
