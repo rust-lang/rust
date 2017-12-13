@@ -1796,6 +1796,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         unreachable!("iter::repeat returned None")
     }
 
+    /// This function iterates over all of the current borrows
+    /// (represented by 1-bits in `flow_state.borrows`) that conflict
+    /// with an access to a place, invoking the `op` callback for each
+    /// one.
+    ///
+    /// "Current borrow" here means a borrow that reaches the point in
+    /// the control-flow where the access occurs.
+    ///
+    /// The borrow's phase is represented by the ReserveOrActivateIndex
+    /// passed to the callback: one can call `is_reservation()` and
+    /// `is_activation()` to determine what phase the borrow is
+    /// currently in, when such distinction matters.
     fn each_borrow_involving_path<F>(
         &mut self,
         _context: Context,
