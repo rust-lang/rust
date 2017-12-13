@@ -33,6 +33,12 @@ fn contains_zero_byte(x: usize) -> bool {
     x.wrapping_sub(LO_USIZE) & !x & HI_USIZE != 0
 }
 
+#[cfg(target_pointer_width = "16")]
+#[inline]
+fn repeat_byte(b: u8) -> usize {
+    (b as usize) << 8 | b as usize
+}
+
 #[cfg(target_pointer_width = "32")]
 #[inline]
 fn repeat_byte(b: u8) -> usize {
