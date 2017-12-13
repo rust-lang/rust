@@ -624,7 +624,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn contains(&self, x: &T) -> bool where T: PartialEq {
-        self.iter().any(|elt| *x == *elt)
+        x.slice_contains(self)
     }
 
     #[inline]
@@ -2618,4 +2618,20 @@ unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
         &mut *self.ptr.offset(i as isize)
     }
     fn may_have_side_effect() -> bool { false }
+}
+
+trait SliceContains: Sized {
+    fn slice_contains(&self, x: &[Self]) -> bool;
+}
+
+impl<T> SliceContains for T where T: PartialEq {
+    default fn slice_contains(&self, x: &[Self]) -> bool {
+        x.iter().any(|y| *y == *self)
+    }
+}
+
+impl SliceContains for u8 {
+    fn slice_contains(&self, x: &[Self]) -> bool {
+        memchr::memchr(*self, x).is_some()
+    }
 }
