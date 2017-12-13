@@ -18,7 +18,9 @@ trait Alias2<T: Clone = ()> = Default;
     //~^^^ERROR trait aliases are not yet fully implemented
 
 impl Alias1 { //~ERROR expected type, found trait alias
-    fn foo() {}
+}
+
+impl Alias1 for () { //~ERROR expected trait, found trait alias
 }
 
 fn main() {}
