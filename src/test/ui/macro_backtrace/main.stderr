@@ -4,10 +4,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 18 | / macro_rules! pong {
 19 | |     () => { syntax error };
    | |                    ^^^^^ expected one of 8 possible tokens here
-20 | |     //~^ ERROR expected one of
-21 | |     //~| ERROR expected one of
-22 | |     //~| ERROR expected one of
-23 | | }
+20 | | }
    | |_- in this expansion of `pong!`
 ...
 26 |       pong!();
@@ -19,10 +16,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 18 | / macro_rules! pong {
 19 | |     () => { syntax error };
    | |                    ^^^^^ expected one of 8 possible tokens here
-20 | |     //~^ ERROR expected one of
-21 | |     //~| ERROR expected one of
-22 | |     //~| ERROR expected one of
-23 | | }
+20 | | }
    | |_- in this expansion of `pong!`
 ...
 27 |       ping!();
@@ -42,10 +36,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 18 | / macro_rules! pong {
 19 | |     () => { syntax error };
    | |                    ^^^^^ expected one of 8 possible tokens here
-20 | |     //~^ ERROR expected one of
-21 | |     //~| ERROR expected one of
-22 | |     //~| ERROR expected one of
-23 | | }
+20 | | }
    | |_- in this expansion of `pong!` (#5)
 ...
 28 |       deep!();
