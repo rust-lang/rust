@@ -234,6 +234,90 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
 /// `"[aa]a"` or `"a[aa]"`, depending from which side it is searched.
 pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 
+
+/////////////////////////////////////////////////////////////////////////////
+// Impl for char
+/////////////////////////////////////////////////////////////////////////////
+
+/// Associated type for `<char as Pattern<'a>>::Searcher`.
+#[derive(Clone, Debug)]
+pub struct CharSearcher<'a>(&'a str);
+
+unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
+    #[inline]
+    fn haystack(&self) -> &'a str {
+        unimplemented!();
+    }
+    #[inline]
+    fn next(&mut self) -> SearchStep {
+        unimplemented!();
+    }
+    #[inline]
+    fn next_match(&mut self) -> Option<(usize, usize)> {
+        unimplemented!();
+    }
+    #[inline]
+    fn next_reject(&mut self) -> Option<(usize, usize)> {
+        unimplemented!();
+    }
+}
+
+unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
+    #[inline]
+    fn next_back(&mut self) -> SearchStep {
+        unimplemented!();
+    }
+    #[inline]
+    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+        unimplemented!();
+    }
+    #[inline]
+    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
+        unimplemented!();
+    }
+}
+
+impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
+
+/// Searches for chars that are equal to a given char
+impl<'a> Pattern<'a> for char {
+    type Searcher = CharSearcher<'a>;
+
+    #[inline]
+    fn into_searcher(self, haystack: &'a str) -> Self::Searcher {
+        CharSearcher(haystack)
+    }
+
+    #[inline]
+    fn is_contained_in(self, haystack: &'a str) -> bool {
+        if (self as u32) < 128 {
+            haystack.as_bytes().contains(&(self as u8))
+        } else {
+            let mut buffer = [0u8; 4];
+            self.encode_utf8(&mut buffer).is_contained_in(haystack)
+        }
+    }
+
+    #[inline]
+    fn is_prefix_of(self, haystack: &'a str) -> bool {
+        if let Some(ch) = haystack.chars().next() {
+            self == ch
+        } else {
+            false
+        }
+    }
+
+    #[inline]
+    fn is_suffix_of(self, haystack: &'a str) -> bool where Self::Searcher: ReverseSearcher<'a>
+    {
+        if let Some(ch) = haystack.chars().next_back() {
+            self == ch
+        } else {
+            false
+        }
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // Impl for a MultiCharEq wrapper
 /////////////////////////////////////////////////////////////////////////////
@@ -385,89 +469,6 @@ macro_rules! searcher_methods {
         #[inline]
         fn next_reject_back(&mut self) -> Option<(usize, usize)> {
             self.0.next_reject_back()
-        }
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// Impl for char
-/////////////////////////////////////////////////////////////////////////////
-
-/// Associated type for `<char as Pattern<'a>>::Searcher`.
-#[derive(Clone, Debug)]
-pub struct CharSearcher<'a>(&'a str);
-
-unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
-    #[inline]
-    fn haystack(&self) -> &'a str {
-        unimplemented!();
-    }
-    #[inline]
-    fn next(&mut self) -> SearchStep {
-        unimplemented!();
-    }
-    #[inline]
-    fn next_match(&mut self) -> Option<(usize, usize)> {
-        unimplemented!();
-    }
-    #[inline]
-    fn next_reject(&mut self) -> Option<(usize, usize)> {
-        unimplemented!();
-    }
-}
-
-unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
-    #[inline]
-    fn next_back(&mut self) -> SearchStep {
-        unimplemented!();
-    }
-    #[inline]
-    fn next_match_back(&mut self) -> Option<(usize, usize)> {
-        unimplemented!();
-    }
-    #[inline]
-    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
-        unimplemented!();
-    }
-}
-
-impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
-
-/// Searches for chars that are equal to a given char
-impl<'a> Pattern<'a> for char {
-    type Searcher = CharSearcher<'a>;
-
-    #[inline]
-    fn into_searcher(self, haystack: &'a str) -> Self::Searcher {
-        CharSearcher(haystack)
-    }
-
-    #[inline]
-    fn is_contained_in(self, haystack: &'a str) -> bool {
-        if (self as u32) < 128 {
-            haystack.as_bytes().contains(&(self as u8))
-        } else {
-            let mut buffer = [0u8; 4];
-            self.encode_utf8(&mut buffer).is_contained_in(haystack)
-        }
-    }
-
-    #[inline]
-    fn is_prefix_of(self, haystack: &'a str) -> bool {
-        if let Some(ch) = haystack.chars().next() {
-            self == ch
-        } else {
-            false
-        }
-    }
-
-    #[inline]
-    fn is_suffix_of(self, haystack: &'a str) -> bool where Self::Searcher: ReverseSearcher<'a>
-    {
-        if let Some(ch) = haystack.chars().next_back() {
-            self == ch
-        } else {
-            false
         }
     }
 }
