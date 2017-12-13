@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait)]
+#![feature(conservative_impl_trait, underscore_lifetimes, universal_impl_trait)]
 #![allow(warnings)]
 
 use std::fmt::Debug;
@@ -32,12 +32,36 @@ fn no_params_or_lifetimes_is_static() -> impl Debug + 'static {
 fn static_input_type_is_static<T: Debug + 'static>(x: T) -> impl Debug + 'static { x }
 
 fn type_outlives_reference_lifetime<'a, T: Debug>(x: &'a T) -> impl Debug + 'a { x }
+fn type_outlives_reference_lifetime_elided<T: Debug>(x: &T) -> impl Debug + '_ { x }
 
 trait SingleRegionTrait<'a> {}
 impl<'a> SingleRegionTrait<'a> for u32 {}
+impl<'a> SingleRegionTrait<'a> for &'a u32 {}
+struct SingleRegionStruct<'a>(&'a u32);
 
 fn simple_type_hrtb<'b>() -> impl for<'a> SingleRegionTrait<'a> { 5 }
+// FIXME(cramertj) add test after #45992 lands to ensure lint is triggered
+fn elision_single_region_trait(x: &u32) -> impl SingleRegionTrait { x }
+fn elision_single_region_struct(x: SingleRegionStruct) -> impl Into<SingleRegionStruct> { x }
+
 fn closure_hrtb() -> impl for<'a> Fn(&'a u32) { |_| () }
+fn closure_hr_elided() -> impl Fn(&u32) { |_| () }
+fn closure_hr_elided_return() -> impl Fn(&u32) -> &u32 { |x| x }
+fn closure_pass_through_elided_return(x: impl Fn(&u32) -> &u32) -> impl Fn(&u32) -> &u32 { x }
+fn closure_pass_through_reference_elided(x: &impl Fn(&u32) -> &u32) -> &impl Fn(&u32) -> &u32 { x }
+
+fn pass_through_elision(x: &u32) -> impl Into<&u32> { x }
+fn pass_through_elision_with_fn_ptr(x: &fn(&u32) -> &u32) -> impl Into<&fn(&u32) -> &u32> { x }
+
+fn pass_through_elision_with_fn_path<T: Fn(&u32) -> &u32>(
+    x: &T
+) -> impl Into<&impl Fn(&u32) -> &u32> { x }
+
+// FIXME(cramertj) Currently ICEing, part of issue #46685:
+// fn foo(x: &impl Debug) -> impl Into<&impl Debug> { x }
+// Works:
+fn foo_no_outer_impl(x: &impl Debug) -> &impl Debug { x }
+fn foo_explicit_arg<T: Debug>(x: &T) -> impl Into<&impl Debug> { x }
 
 fn mixed_lifetimes<'a>() -> impl for<'b: 'a> Fn(&'b u32) { |_| () }
 fn mixed_as_static() -> impl Fn(&'static u32) { mixed_lifetimes() }
