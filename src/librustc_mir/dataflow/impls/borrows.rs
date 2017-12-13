@@ -33,17 +33,36 @@ use std::fmt;
 use std::hash::Hash;
 use std::rc::Rc;
 
-// `Borrows` maps each dataflow bit to an `Rvalue::Ref`, which can be
-// uniquely identified in the MIR by the `Location` of the assigment
-// statement in which it appears on the right hand side.
+/// `Borrows` stores the data used in the analyses that track the flow
+/// of borrows.
+///
+/// It uniquely identifies every borrow (`Rvalue::Ref`) by a
+/// `BorrowIndex`, and maps each such index to a `BorrowData`
+/// describing the borrow. These indexes are used for representing the
+/// borrows in compact bitvectors.
 pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     scope_tree: Rc<region::ScopeTree>,
     root_scope: Option<region::Scope>,
+
+    /// The fundamental map relating bitvector indexes to the borrows
+    /// in the MIR.
     borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
+
+    /// Each borrow is also uniquely identified in the MIR by the
+    /// `Location` of the assignment statement in which it appears on
+    /// the right hand side; we map each such location to the
+    /// corresponding `BorrowIndex`.
     location_map: FxHashMap<Location, BorrowIndex>,
+
+    /// Every borrow in MIR is immediately stored into a place via an
+    /// assignment statement. This maps each such assigned place back
+    /// to its borrow-indexes.
     assigned_map: FxHashMap<Place<'tcx>, FxHashSet<BorrowIndex>>,
+
+    /// Every borrow has a region; this maps each such regions back to
+    /// its borrow-indexes.
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
     local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
     region_span_map: FxHashMap<RegionKind, Span>,
