@@ -858,9 +858,8 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             fcx
         };
 
-        fcx.select_all_obligations_and_apply_defaults();
-        fcx.closure_analyze(body);
         fcx.select_obligations_where_possible();
+        fcx.closure_analyze(body);
         fcx.check_casts();
         fcx.resolve_generator_interiors(def_id);
         fcx.select_all_obligations_or_error();
@@ -2129,13 +2128,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Apply "fallbacks" to some types
-    /// unconstrained types get replaced with ! or  () (depending on whether
+    /// unconstrained types get replaced with ! or () (depending on whether
     /// feature(never_type) is enabled), unconstrained ints with i32, and
     /// unconstrained floats with f64.
     fn default_type_parameters(&self) {
-        use rustc::ty::error::UnconstrainedNumeric::Neither;
-        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
-
         // Defaulting inference variables becomes very dubious if we have
         // encountered type-checking errors. Therefore, if we think we saw
         // some errors in this function, just resolve all uninstanted type
@@ -2152,34 +2148,33 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         for ty in &self.unsolved_variables() {
             let resolved = self.resolve_type_vars_if_possible(ty);
-            if self.type_var_diverges(resolved) {
-                debug!("default_type_parameters: defaulting `{:?}` to `!` because it diverges",
-                       resolved);
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
-                                   self.tcx.mk_diverging_default());
-            } else {
-                match self.type_is_unconstrained_numeric(resolved) {
-                    UnconstrainedInt => {
-                        debug!("default_type_parameters: defaulting `{:?}` to `i32`",
-                               resolved);
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.i32)
-                    },
-                    UnconstrainedFloat => {
-                        debug!("default_type_parameters: defaulting `{:?}` to `f32`",
-                               resolved);
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.f64)
-                    }
-                    Neither => { }
-                }
+            if resolved.is_ty_infer() {
+                self.apply_diverging_fallback_to_type(ty);
+                self.apply_numeric_fallback_to_type(ty);
             }
         }
     }
 
-    // Implements type inference fallback algorithm
-    fn select_all_obligations_and_apply_defaults(&self) {
-        self.select_obligations_where_possible();
-        self.default_type_parameters();
-        self.select_obligations_where_possible();
+    fn apply_diverging_fallback_to_type(&self, ty: Ty<'tcx>) {
+        assert!(ty.is_ty_infer());
+        if self.type_var_diverges(ty) {
+            debug!("default_type_parameters: defaulting `{:?}` to `!` because it diverges", ty);
+            self.demand_eqtype(syntax_pos::DUMMY_SP, ty, self.tcx.mk_diverging_default());
+        }
+    }
+
+    fn apply_numeric_fallback_to_type(&self, ty: Ty<'tcx>) {
+        use rustc::ty::error::UnconstrainedNumeric::Neither;
+        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
+
+        assert!(ty.is_ty_infer());
+        let fallback = match self.type_is_unconstrained_numeric(ty) {
+            UnconstrainedInt => self.tcx.types.i32,
+            UnconstrainedFloat => self.tcx.types.f64,
+            Neither => return,
+        };
+        debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);
+        self.demand_eqtype(syntax_pos::DUMMY_SP, ty, fallback);
     }
 
     fn select_all_obligations_or_error(&self) {
@@ -2189,7 +2184,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // resolutions are handled by now.
         assert!(self.deferred_call_resolutions.borrow().is_empty());
 
-        self.select_all_obligations_and_apply_defaults();
+        self.select_obligations_where_possible();
+        self.default_type_parameters();
 
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
 
@@ -4954,21 +4950,51 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         });
     }
 
-    // Resolves `typ` by a single level if `typ` is a type variable. If no
-    // resolution is possible, then an error is reported.
+    // Resolves `typ` by a single level if `typ` is a type variable.
+    // If no resolution is possible, then an error is reported.
+    // Numeric inference variables may be left unresolved.
     pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let mut ty = self.resolve_type_vars_with_obligations(ty);
-        if ty.is_ty_var() {
-            // If not, error.
-            if !self.is_tainted_by_errors() {
-                type_error_struct!(self.tcx.sess, sp, ty, E0619,
-                                    "the type of this value must be known in this context")
-                .emit();
+        if !ty.is_ty_var() {
+            ty
+        } else {
+            // Try divering fallback.
+            self.apply_diverging_fallback_to_type(ty);
+            ty = self.resolve_type_vars_with_obligations(ty);
+            if !ty.is_ty_var() {
+                ty
+            } else { // Fallback failed, error.
+                self.must_be_known_in_context(sp, ty)
             }
-            self.demand_suptype(sp, self.tcx.types.err, ty);
-            ty = self.tcx.types.err;
         }
-        ty
+    }
+
+    // Same as `structurally_resolved_type` but also resolves numeric vars, with fallback.
+    pub fn resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let mut ty = self.resolve_type_vars_with_obligations(ty);
+        if !ty.is_ty_infer() {
+            return ty;
+        } else {
+            // Try diverging or numeric fallback.
+            self.apply_diverging_fallback_to_type(ty);
+            self.apply_numeric_fallback_to_type(ty);
+            ty = self.resolve_type_vars_with_obligations(ty);
+            if !ty.is_ty_infer() {
+                ty
+            } else { // Fallback failed, error.
+                self.must_be_known_in_context(sp, ty)
+            }
+        }
+    }
+
+    fn must_be_known_in_context(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !self.is_tainted_by_errors() {
+            type_error_struct!(self.tcx.sess, sp, ty, E0619,
+                                "the type of this value must be known in this context")
+            .emit();
+        }
+        self.demand_suptype(sp, self.tcx.types.err, ty);
+        self.tcx.types.err
     }
 
     fn with_breakable_ctxt<F: FnOnce() -> R, R>(&self, id: ast::NodeId,
