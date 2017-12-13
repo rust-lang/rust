@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use sys_common::memchr::fallback::{memchr, memrchr};
+pub use core::slice::memchr::{memchr, memrchr};

@@ -50,6 +50,11 @@ use mem;
 use marker::{Copy, Send, Sync, Sized, self};
 use iter_private::TrustedRandomAccess;
 
+#[unstable(feature = "slice_internals", issue = "0",
+           reason = "exposed from core to be reused in std; use the memchr crate")]
+/// Pure rust memchr implementation, taken from rust-memchr
+pub mod memchr;
+
 mod rotate;
 mod sort;
 
