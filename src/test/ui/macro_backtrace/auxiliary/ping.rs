@@ -18,3 +18,24 @@ macro_rules! ping {
     }
 }
 
+#[macro_export]
+macro_rules! deep {
+    () => {
+        foo!();
+    }
+}
+
+#[macro_export]
+macro_rules! foo {
+    () => {
+        bar!();
+    }
+}
+
+#[macro_export]
+macro_rules! bar {
+    () => {
+        ping!();
+    }
+}
+

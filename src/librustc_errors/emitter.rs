@@ -64,11 +64,11 @@ impl Emitter for EmitterWriter {
             }
         }
 
-        if !db.handler.flags.external_macro_backtrace {
-            self.fix_multispans_in_std_macros(&mut primary_span, &mut children);
-        }
+        self.fix_multispans_in_std_macros(&mut primary_span,
+                                          &mut children,
+                                          db.handler.flags.external_macro_backtrace);
+
         self.emit_messages_default(&db.level,
-                                   db.handler.flags.external_macro_backtrace,
                                    &db.styled_message(),
                                    &db.code,
                                    &primary_span,
@@ -726,7 +726,9 @@ impl EmitterWriter {
     // This "fixes" MultiSpans that contain Spans that are pointing to locations inside of
     // <*macros>. Since these locations are often difficult to read, we move these Spans from
     // <*macros> to their corresponding use site.
-    fn fix_multispan_in_std_macros(&mut self, span: &mut MultiSpan) -> bool {
+    fn fix_multispan_in_std_macros(&mut self,
+                                   span: &mut MultiSpan,
+                                   always_backtrace: bool) -> bool {
         let mut spans_updated = false;
 
         if let Some(ref cm) = self.cm {
@@ -739,22 +741,45 @@ impl EmitterWriter {
                     continue;
                 }
                 let call_sp = cm.call_span_if_macro(*sp);
-                if call_sp != *sp {
-                    before_after.push((sp.clone(), call_sp));
+                if call_sp != *sp && !always_backtrace {
+                    before_after.push((*sp, call_sp));
                 }
-                for trace in sp.macro_backtrace().iter().rev() {
+                let backtrace_len = sp.macro_backtrace().len();
+                for (i, trace) in sp.macro_backtrace().iter().rev().enumerate() {
                     // Only show macro locations that are local
                     // and display them like a span_note
                     if let Some(def_site) = trace.def_site_span {
                         if def_site == DUMMY_SP {
                             continue;
                         }
+                        if always_backtrace {
+                            new_labels.push((def_site,
+                                             format!("in this expansion of `{}`{}",
+                                                     trace.macro_decl_name,
+                                                     if backtrace_len > 2 {
+                                                         // if backtrace_len == 1 it'll be pointed
+                                                         // at by "in this macro invocation"
+                                                         format!(" (#{})", i + 1)
+                                                     } else {
+                                                         "".to_string()
+                                                     })));
+                        }
                         // Check to make sure we're not in any <*macros>
                         if !cm.span_to_filename(def_site).contains("macros>") &&
-                           !trace.macro_decl_name.starts_with("#[") {
+                           !trace.macro_decl_name.starts_with("#[") ||
+                           always_backtrace {
                             new_labels.push((trace.call_site,
-                                             "in this macro invocation".to_string()));
-                            break;
+                                             format!("in this macro invocation{}",
+                                                     if backtrace_len > 2 && always_backtrace {
+                                                         // only specify order when the macro
+                                                         // backtrace is multiple levels deep
+                                                         format!(" (#{})", i + 1)
+                                                     } else {
+                                                         "".to_string()
+                                                     })));
+                            if !always_backtrace {
+                                break;
+                            }
                         }
                     }
                 }
@@ -766,7 +791,9 @@ impl EmitterWriter {
                 if sp_label.span == DUMMY_SP {
                     continue;
                 }
-                if cm.span_to_filename(sp_label.span.clone()).contains("macros>") {
+                if cm.span_to_filename(sp_label.span.clone()).contains("macros>") &&
+                    !always_backtrace
+                {
                     let v = sp_label.span.macro_backtrace();
                     if let Some(use_site) = v.last() {
                         before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
@@ -788,18 +815,19 @@ impl EmitterWriter {
     // will change the span to point at the use site.
     fn fix_multispans_in_std_macros(&mut self,
                                     span: &mut MultiSpan,
-                                    children: &mut Vec<SubDiagnostic>) {
-        let mut spans_updated = self.fix_multispan_in_std_macros(span);
+                                    children: &mut Vec<SubDiagnostic>,
+                                    backtrace: bool) {
+        let mut spans_updated = self.fix_multispan_in_std_macros(span, backtrace);
         for child in children.iter_mut() {
-            spans_updated |= self.fix_multispan_in_std_macros(&mut child.span);
+            spans_updated |= self.fix_multispan_in_std_macros(&mut child.span, backtrace);
         }
         if spans_updated {
             children.push(SubDiagnostic {
                 level: Level::Note,
                 message: vec![
-                    (["this error originates in a macro outside of the current crate",
-                      "(in Nightly builds, run with -Z external-macro-backtrace for more info)"]
-                      .join(" "),
+                    ("this error originates in a macro outside of the current crate \
+                      (in Nightly builds, run with -Z external-macro-backtrace \
+                       for more info)".to_string(),
                      Style::NoStyle),
                 ],
                 span: MultiSpan::new(),
@@ -861,7 +889,7 @@ impl EmitterWriter {
         //       ("see?", Style::Highlight),
         //     ];
         //
-        // the expected output on a note is (* surround the  highlighted text)
+        // the expected output on a note is (* surround the highlighted text)
         //
         //        = note: highlighted multiline
         //                string to
@@ -889,7 +917,6 @@ impl EmitterWriter {
                             msg: &Vec<(String, Style)>,
                             code: &Option<DiagnosticId>,
                             level: &Level,
-                            external_macro_backtrace: bool,
                             max_line_num_len: usize,
                             is_secondary: bool)
                             -> io::Result<()> {
@@ -1087,18 +1114,13 @@ impl EmitterWriter {
             }
         }
 
-        if external_macro_backtrace {
-            if let Some(ref primary_span) = msp.primary_span().as_ref() {
-                self.render_macro_backtrace_old_school(primary_span, &mut buffer)?;
-            }
-        }
-
         // final step: take our styled buffer, render it, then output it
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
 
         Ok(())
 
     }
+
     fn emit_suggestion_default(&mut self,
                                suggestion: &CodeSuggestion,
                                level: &Level,
@@ -1182,9 +1204,9 @@ impl EmitterWriter {
         }
         Ok(())
     }
+
     fn emit_messages_default(&mut self,
                              level: &Level,
-                             external_macro_backtrace: bool,
                              message: &Vec<(String, Style)>,
                              code: &Option<DiagnosticId>,
                              span: &MultiSpan,
@@ -1197,7 +1219,6 @@ impl EmitterWriter {
                                         message,
                                         code,
                                         level,
-                                        external_macro_backtrace,
                                         max_line_num_len,
                                         false) {
             Ok(()) => {
@@ -1219,7 +1240,6 @@ impl EmitterWriter {
                                                         &child.styled_message(),
                                                         &None,
                                                         &child.level,
-                                                        external_macro_backtrace,
                                                         max_line_num_len,
                                                         true) {
                             Err(e) => panic!("failed to emit error: {}", e),
@@ -1247,30 +1267,6 @@ impl EmitterWriter {
                 }
             }
         }
-    }
-
-    fn render_macro_backtrace_old_school(&self,
-                                         sp: &Span,
-                                         buffer: &mut StyledBuffer) -> io::Result<()> {
-        if let Some(ref cm) = self.cm {
-            for trace in sp.macro_backtrace().iter().rev() {
-                let line_offset = buffer.num_lines();
-
-                let mut diag_string =
-                    format!("in this expansion of {}", trace.macro_decl_name);
-                if let Some(def_site_span) = trace.def_site_span {
-                    diag_string.push_str(
-                        &format!(" (defined in {})",
-                            cm.span_to_filename(def_site_span)));
-                }
-                let snippet = cm.span_to_string(trace.call_site);
-                buffer.append(line_offset, &format!("{} ", snippet), Style::NoStyle);
-                buffer.append(line_offset, "note", Style::Level(Level::Note));
-                buffer.append(line_offset, ": ", Style::NoStyle);
-                buffer.append(line_offset, &diag_string, Style::OldSchoolNoteText);
-            }
-        }
-        Ok(())
     }
 }
 
