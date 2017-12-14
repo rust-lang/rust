@@ -21,14 +21,8 @@
 //
 // Note: the use of `Cell` here is to introduce invariance. One less
 // variable.
-//
-// FIXME(#45827): The `supply` function *ought* to generate an error, but it
-// currently does not. This is I believe a shortcoming of the MIR type
-// checker: the closure inference is expressing the correct
-// requirement, as you can see from the `#[rustc_regions]` output.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
-// must-compile-successfully
 
 #![feature(rustc_attrs)]
 
@@ -57,8 +51,10 @@ fn demand_y<'x, 'y>(_cell_x: &Cell<&'x u32>, _cell_y: &Cell<&'y u32>, _y: &'y u3
 #[rustc_regions]
 fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+        //~^ ERROR free region `'_#1r` does not outlive free region `'_#2r`
+
         // Only works if 'x: 'y:
-        demand_y(x, y, x.get())
+        demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
     });
 }
 

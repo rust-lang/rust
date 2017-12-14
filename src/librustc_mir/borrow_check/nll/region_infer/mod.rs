@@ -19,15 +19,15 @@ use rustc::mir::{ClosureOutlivesRequirement, ClosureRegionRequirements, Location
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::bitvec::BitMatrix;
-use rustc_data_structures::indexed_vec::Idx;
-use std::collections::BTreeMap;
 use std::fmt;
+use std::rc::Rc;
 use syntax_pos::Span;
 
 mod annotation;
 mod dump_mir;
 mod graphviz;
+mod values;
+use self::values::{RegionValueElements, RegionValues};
 
 pub struct RegionInferenceContext<'tcx> {
     /// Contains the definition for every region variable.  Region
@@ -36,26 +36,21 @@ pub struct RegionInferenceContext<'tcx> {
     /// from as well as its final inferred value.
     definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
 
+    /// Maps from points/universal-regions to a `RegionElementIndex`.
+    elements: Rc<RegionValueElements>,
+
     /// The liveness constraints added to each region. For most
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    ///
-    /// In this `BitMatrix` representation, the rows are the region
-    /// variables and the columns are the free regions and MIR locations.
-    liveness_constraints: BitMatrix,
+    liveness_constraints: RegionValues,
 
     /// The final inferred values of the inference variables; `None`
     /// until `solve` is invoked.
-    inferred_values: Option<BitMatrix>,
+    inferred_values: Option<RegionValues>,
 
     /// The constraints we have accumulated and used during solving.
     constraints: Vec<Constraint>,
-
-    /// A map from each MIR Location to its column index in
-    /// `liveness_constraints`/`inferred_values`. (The first N columns are
-    /// the free regions.)
-    point_indices: BTreeMap<Location, usize>,
 
     /// Information about the universally quantified regions in scope
     /// on this function and their (known) relations to one another.
@@ -112,19 +107,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let num_region_variables = var_origins.len();
         let num_universal_regions = universal_regions.len();
 
-        let mut num_points = 0;
-        let mut point_indices = BTreeMap::new();
-
-        for (block, block_data) in mir.basic_blocks().iter_enumerated() {
-            for statement_index in 0..block_data.statements.len() + 1 {
-                let location = Location {
-                    block,
-                    statement_index,
-                };
-                point_indices.insert(location, num_universal_regions + num_points);
-                num_points += 1;
-            }
-        }
+        let elements = &Rc::new(RegionValueElements::new(mir, num_universal_regions));
 
         // Create a RegionDefinition for each inference variable.
         let definitions = var_origins
@@ -134,13 +117,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let mut result = Self {
             definitions,
-            liveness_constraints: BitMatrix::new(
-                num_region_variables,
-                num_universal_regions + num_points,
-            ),
+            elements: elements.clone(),
+            liveness_constraints: RegionValues::new(elements, num_region_variables),
             inferred_values: None,
             constraints: Vec::new(),
-            point_indices,
             universal_regions,
         };
 
@@ -186,14 +166,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.definitions[variable].is_universal = true;
 
             // Add all nodes in the CFG to liveness constraints
-            for (_location, point_index) in &self.point_indices {
-                self.liveness_constraints
-                    .add(variable.index(), *point_index);
+            for point_index in self.elements.all_point_indices() {
+                self.liveness_constraints.add(variable, point_index);
             }
 
             // Add `end(X)` into the set for X.
-            self.liveness_constraints
-                .add(variable.index(), variable.index());
+            self.liveness_constraints.add(variable, variable);
         }
     }
 
@@ -217,32 +195,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let inferred_values = self.inferred_values
             .as_ref()
             .expect("region values not yet inferred");
-        self.region_contains_point_in_matrix(inferred_values, r, p)
-    }
-
-    /// True if given region `r` contains the point `p`, when
-    /// evaluated in the set of region values `matrix`.
-    fn region_contains_point_in_matrix(
-        &self,
-        matrix: &BitMatrix,
-        r: RegionVid,
-        p: Location,
-    ) -> bool {
-        let point_index = self.point_indices
-            .get(&p)
-            .expect("point index should be known");
-        matrix.contains(r.index(), *point_index)
-    }
-
-    /// True if given region `r` contains the `end(s)`, when
-    /// evaluated in the set of region values `matrix`.
-    fn region_contains_region_in_matrix(
-        &self,
-        matrix: &BitMatrix,
-        r: RegionVid,
-        s: RegionVid,
-    ) -> bool {
-        matrix.contains(r.index(), s.index())
+        inferred_values.contains(r, p)
     }
 
     /// Returns access to the value of `r` for debugging purposes.
@@ -251,43 +204,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .as_ref()
             .expect("region values not yet inferred");
 
-        self.region_value_str_from_matrix(inferred_values, r)
-    }
-
-    fn region_value_str_from_matrix(&self,
-                                    matrix: &BitMatrix,
-                                    r: RegionVid) -> String {
-        let mut result = String::new();
-        result.push_str("{");
-        let mut sep = "";
-
-        for &point in self.point_indices.keys() {
-            if self.region_contains_point_in_matrix(matrix, r, point) {
-                result.push_str(&format!("{}{:?}", sep, point));
-                sep = ", ";
-            }
-        }
-
-        for fr in (0..self.universal_regions.len()).map(RegionVid::new) {
-            if self.region_contains_region_in_matrix(matrix, r, fr) {
-                result.push_str(&format!("{}{:?}", sep, fr));
-                sep = ", ";
-            }
-        }
-
-        result.push_str("}");
-
-        result
+        inferred_values.region_value_str(r)
     }
 
     /// Indicates that the region variable `v` is live at the point `point`.
+    ///
+    /// Returns `true` if this constraint is new and `false` is the
+    /// constraint was already present.
     pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location) -> bool {
         debug!("add_live_point({:?}, {:?})", v, point);
         assert!(self.inferred_values.is_none(), "values already inferred");
-        let point_index = self.point_indices
-            .get(&point)
-            .expect("point index should be known");
-        self.liveness_constraints.add(v.index(), *point_index)
+        debug!("add_live_point: @{:?}", point);
+
+        let element = self.elements.index(point);
+        if self.liveness_constraints.add(v, element) {
+            true
+        } else {
+            false
+        }
     }
 
     /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
@@ -386,16 +320,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         outlives_requirements: &mut Vec<ClosureOutlivesRequirement>,
     ) {
         let inferred_values = self.inferred_values.as_ref().unwrap();
-        let longer_value = inferred_values.iter(longer_fr.index());
 
         debug!("check_universal_region(fr={:?})", longer_fr);
 
         // Find every region `o` such that `fr: o`
         // (because `fr` includes `end(o)`).
-        let shorter_frs = longer_value
-            .take_while(|&i| i < self.universal_regions.len())
-            .map(RegionVid::new);
-        for shorter_fr in shorter_frs {
+        for shorter_fr in inferred_values.universal_regions_outlived_by(longer_fr) {
             // If it is known that `fr: o`, carry on.
             if self.universal_regions.outlives(longer_fr, shorter_fr) {
                 continue;
@@ -512,20 +442,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     fn copy(
         &self,
-        inferred_values: &mut BitMatrix,
+        inferred_values: &mut RegionValues,
         mir: &Mir<'tcx>,
         from_region: RegionVid,
         to_region: RegionVid,
-        start_point: Location,
+        constraint_point: Location,
     ) -> bool {
         let mut changed = false;
 
         let mut stack = vec![];
         let mut visited = FxHashSet();
 
-        stack.push(start_point);
+        stack.push(constraint_point);
         while let Some(p) = stack.pop() {
-            if !self.region_contains_point_in_matrix(inferred_values, from_region, p) {
+            let point_index = self.elements.index(p);
+
+            if !inferred_values.contains(from_region, point_index) {
                 debug!("            not in from-region");
                 continue;
             }
@@ -535,8 +467,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 continue;
             }
 
-            let point_index = self.point_indices.get(&p).unwrap();
-            changed |= inferred_values.add(to_region.index(), *point_index);
+            let new = inferred_values.add(to_region, point_index);
+            changed |= new;
 
             let block_data = &mir[p.block];
             let successor_points = if p.statement_index < block_data.statements.len() {
@@ -564,13 +496,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // If we reach the END point in the graph, then copy
                 // over any skolemized end points in the `from_region`
                 // and make sure they are included in the `to_region`.
-                let universal_region_indices = inferred_values
-                    .iter(from_region.index())
-                    .take_while(|&i| i < self.universal_regions.len())
-                    .collect::<Vec<_>>();
-                for fr in &universal_region_indices {
-                    changed |= inferred_values.add(to_region.index(), *fr);
-                }
+                changed |=
+                    inferred_values.add_universal_regions_outlived_by(from_region, to_region);
             } else {
                 stack.extend(successor_points);
             }

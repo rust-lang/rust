@@ -17,7 +17,7 @@ use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::traits::{self, FulfillmentContext};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
+use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::tcx::PlaceTy;
@@ -59,7 +59,10 @@ pub fn type_check<'a, 'gcx, 'tcx>(
 }
 
 fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
-    tcx.sess.diagnostic().span_bug(span, msg);
+    // We sometimes see MIR failures (notably predicate failures) due to
+    // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
+    // to avoid reporting bugs in those cases.
+    tcx.sess.diagnostic().delay_span_bug(span, msg);
 }
 
 macro_rules! span_mirbug {
@@ -171,7 +174,50 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         );
 
         let expected_ty = match constant.literal {
-            Literal::Value { value } => value.ty,
+            Literal::Value { value } => {
+                // FIXME(#46702) -- We need some way to get the predicates
+                // associated with the "pre-evaluated" form of the
+                // constant. For example, consider that the constant
+                // may have associated constant projections (`<Foo as
+                // Trait<'a, 'b>>::SOME_CONST`) that impose
+                // constraints on `'a` and `'b`. These constraints
+                // would be lost if we just look at the normalized
+                // value.
+                if let ConstVal::Function(def_id, ..) = value.val {
+                    let tcx = self.tcx();
+                    let type_checker = &mut self.cx;
+
+                    // FIXME -- For now, use the substitutions from
+                    // `value.ty` rather than `value.val`. The
+                    // renumberer will rewrite them to independent
+                    // sets of regions; in principle, we ought to
+                    // derive the type of the `value.val` from "first
+                    // principles" and equate with value.ty, but as we
+                    // are transitioning to the miri-based system, we
+                    // don't have a handy function for that, so for
+                    // now we just ignore `value.val` regions.
+                    let substs = match value.ty.sty {
+                        ty::TyFnDef(ty_def_id, substs) => {
+                            assert_eq!(def_id, ty_def_id);
+                            substs
+                        }
+                        _ => span_bug!(
+                            self.last_span,
+                            "unexpected type for constant function: {:?}",
+                            value.ty
+                        ),
+                    };
+
+                    let instantiated_predicates =
+                        tcx.predicates_of(def_id).instantiate(tcx, substs);
+                    let predicates =
+                        type_checker.normalize(&instantiated_predicates.predicates, location);
+                    type_checker.prove_predicates(&predicates, location);
+                }
+
+                value.ty
+            }
+
             Literal::Promoted { .. } => {
                 // FIXME -- promoted MIR return types reference
                 // various "free regions" (e.g., scopes and things)
@@ -544,6 +590,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         if let Err(e) = fulfill_cx.select_all_or_error(self.infcx) {
             span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
         }
+
+        self.infcx
+            .process_registered_region_obligations(&[], None, self.param_env, self.body_id);
 
         let data = self.infcx.take_and_reset_region_constraints();
         if !data.is_empty() {
@@ -1110,21 +1159,123 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     }
 
     fn check_rvalue(&mut self, mir: &Mir<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+        let tcx = self.tcx();
+
         match rvalue {
             Rvalue::Aggregate(ak, ops) => {
                 self.check_aggregate_rvalue(mir, rvalue, ak, ops, location)
             }
+
+            Rvalue::Repeat(operand, const_usize) => if const_usize.as_u64() > 1 {
+                let operand_ty = operand.ty(mir, tcx);
+
+                let trait_ref = ty::TraitRef {
+                    def_id: tcx.lang_items().copy_trait().unwrap(),
+                    substs: tcx.mk_substs_trait(operand_ty, &[]),
+                };
+
+                self.prove_trait_ref(trait_ref, location);
+            },
+
+            Rvalue::NullaryOp(_, ty) => {
+                let trait_ref = ty::TraitRef {
+                    def_id: tcx.lang_items().sized_trait().unwrap(),
+                    substs: tcx.mk_substs_trait(ty, &[]),
+                };
+
+                self.prove_trait_ref(trait_ref, location);
+            }
+
+            Rvalue::Cast(cast_kind, op, ty) => match cast_kind {
+                CastKind::ReifyFnPointer => {
+                    let fn_sig = op.ty(mir, tcx).fn_sig(tcx);
+
+                    // The type that we see in the fcx is like
+                    // `foo::<'a, 'b>`, where `foo` is the path to a
+                    // function definition. When we extract the
+                    // signature, it comes from the `fn_sig` query,
+                    // and hence may contain unnormalized results.
+                    let fn_sig = self.normalize(&fn_sig, location);
+
+                    let ty_fn_ptr_from = tcx.mk_fn_ptr(fn_sig);
+
+                    if let Err(terr) = self.eq_types(ty_fn_ptr_from, ty, location.at_self()) {
+                        span_mirbug!(
+                            self,
+                            rvalue,
+                            "equating {:?} with {:?} yields {:?}",
+                            ty_fn_ptr_from,
+                            ty,
+                            terr
+                        );
+                    }
+                }
+
+                CastKind::ClosureFnPointer => {
+                    let sig = match op.ty(mir, tcx).sty {
+                        ty::TyClosure(def_id, substs) => {
+                            substs.closure_sig_ty(def_id, tcx).fn_sig(tcx)
+                        }
+                        _ => bug!(),
+                    };
+                    let ty_fn_ptr_from = tcx.coerce_closure_fn_ty(sig);
+
+                    if let Err(terr) = self.eq_types(ty_fn_ptr_from, ty, location.at_self()) {
+                        span_mirbug!(
+                            self,
+                            rvalue,
+                            "equating {:?} with {:?} yields {:?}",
+                            ty_fn_ptr_from,
+                            ty,
+                            terr
+                        );
+                    }
+                }
+
+                CastKind::UnsafeFnPointer => {
+                    let fn_sig = op.ty(mir, tcx).fn_sig(tcx);
+
+                    // The type that we see in the fcx is like
+                    // `foo::<'a, 'b>`, where `foo` is the path to a
+                    // function definition. When we extract the
+                    // signature, it comes from the `fn_sig` query,
+                    // and hence may contain unnormalized results.
+                    let fn_sig = self.normalize(&fn_sig, location);
+
+                    let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
+
+                    if let Err(terr) = self.eq_types(ty_fn_ptr_from, ty, location.at_self()) {
+                        span_mirbug!(
+                            self,
+                            rvalue,
+                            "equating {:?} with {:?} yields {:?}",
+                            ty_fn_ptr_from,
+                            ty,
+                            terr
+                        );
+                    }
+                }
+
+                CastKind::Unsize => {
+                    let trait_ref = ty::TraitRef {
+                        def_id: tcx.lang_items().coerce_unsized_trait().unwrap(),
+                        substs: tcx.mk_substs_trait(op.ty(mir, tcx), &[ty]),
+                    };
+
+                    self.prove_trait_ref(trait_ref, location);
+                }
+
+                CastKind::Misc => {}
+            },
+
             // FIXME: These other cases have to be implemented in future PRs
             Rvalue::Use(..) |
-            Rvalue::Repeat(..) |
             Rvalue::Ref(..) |
             Rvalue::Len(..) |
-            Rvalue::Cast(..) |
             Rvalue::BinaryOp(..) |
             Rvalue::CheckedBinaryOp(..) |
             Rvalue::UnaryOp(..) |
-            Rvalue::Discriminant(..) |
-            Rvalue::NullaryOp(..) => {}
+            Rvalue::Discriminant(..) => {}
         }
     }
 
@@ -1138,41 +1289,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     ) {
         let tcx = self.tcx();
 
-        match aggregate_kind {
+        self.prove_aggregate_predicates(aggregate_kind, location);
+
+        if *aggregate_kind == AggregateKind::Tuple {
             // tuple rvalue field type is always the type of the op. Nothing to check here.
-            AggregateKind::Tuple => return,
-
-            // For closures, we have some **extra requirements** we
-            // have to check. In particular, in their upvars and
-            // signatures, closures often reference various regions
-            // from the surrounding function -- we call those the
-            // closure's free regions. When we borrow-check (and hence
-            // region-check) closures, we may find that the closure
-            // requires certain relationships between those free
-            // regions. However, because those free regions refer to
-            // portions of the CFG of their caller, the closure is not
-            // in a position to verify those relationships. In that
-            // case, the requirements get "propagated" to us, and so
-            // we have to solve them here where we instantiate the
-            // closure.
-            //
-            // Despite the opacity of the previous parapgrah, this is
-            // actually relatively easy to understand in terms of the
-            // desugaring. A closure gets desugared to a struct, and
-            // these extra requirements are basically like where
-            // clauses on the struct.
-            AggregateKind::Closure(def_id, substs) => {
-                if let Some(closure_region_requirements) = tcx.mir_borrowck(*def_id) {
-                    closure_region_requirements.apply_requirements(
-                        self.infcx,
-                        location,
-                        *def_id,
-                        *substs,
-                    );
-                }
-            }
-
-            _ => {}
+            return;
         }
 
         for (i, operand) in operands.iter().enumerate() {
@@ -1203,6 +1324,99 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 );
             }
         }
+    }
+
+    fn prove_aggregate_predicates(
+        &mut self,
+        aggregate_kind: &AggregateKind<'tcx>,
+        location: Location,
+    ) {
+        let tcx = self.tcx();
+
+        debug!(
+            "prove_aggregate_predicates(aggregate_kind={:?}, location={:?})",
+            aggregate_kind,
+            location
+        );
+
+        let instantiated_predicates = match aggregate_kind {
+            AggregateKind::Adt(def, _, substs, _) => {
+                tcx.predicates_of(def.did).instantiate(tcx, substs)
+            }
+
+            // For closures, we have some **extra requirements** we
+            //
+            // have to check. In particular, in their upvars and
+            // signatures, closures often reference various regions
+            // from the surrounding function -- we call those the
+            // closure's free regions. When we borrow-check (and hence
+            // region-check) closures, we may find that the closure
+            // requires certain relationships between those free
+            // regions. However, because those free regions refer to
+            // portions of the CFG of their caller, the closure is not
+            // in a position to verify those relationships. In that
+            // case, the requirements get "propagated" to us, and so
+            // we have to solve them here where we instantiate the
+            // closure.
+            //
+            // Despite the opacity of the previous parapgrah, this is
+            // actually relatively easy to understand in terms of the
+            // desugaring. A closure gets desugared to a struct, and
+            // these extra requirements are basically like where
+            // clauses on the struct.
+            AggregateKind::Closure(def_id, substs) => {
+                if let Some(closure_region_requirements) = tcx.mir_borrowck(*def_id) {
+                    closure_region_requirements.apply_requirements(
+                        self.infcx,
+                        location,
+                        *def_id,
+                        *substs,
+                    );
+                }
+
+                tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
+            }
+
+            AggregateKind::Generator(def_id, substs, _) => {
+                tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
+            }
+
+            AggregateKind::Array(_) | AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
+        };
+
+        let predicates = self.normalize(&instantiated_predicates.predicates, location);
+        debug!("prove_aggregate_predicates: predicates={:?}", predicates);
+        self.prove_predicates(&predicates, location);
+    }
+
+    fn prove_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>, location: Location) {
+        self.prove_predicates(
+            &[
+                ty::Predicate::Trait(trait_ref.to_poly_trait_ref().to_poly_trait_predicate()),
+            ],
+            location,
+        );
+    }
+
+    fn prove_predicates(&mut self, predicates: &[ty::Predicate<'tcx>], location: Location) {
+        debug!(
+            "prove_predicates(predicates={:?}, location={:?})",
+            predicates,
+            location
+        );
+        self.fully_perform_op(location.at_self(), |this| {
+            let cause = this.misc(this.last_span);
+            let obligations = predicates
+                .iter()
+                .map(|&p| {
+                    traits::Obligation::new(cause.clone(), this.param_env, p)
+                })
+                .collect();
+            Ok(InferOk {
+                value: (),
+                obligations,
+            })
+        }).unwrap()
     }
 
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
@@ -1237,7 +1451,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     {
         self.fully_perform_op(location.at_self(), |this| {
             let mut selcx = traits::SelectionContext::new(this.infcx);
-            let cause = traits::ObligationCause::misc(this.last_span, ast::CRATE_NODE_ID);
+            let cause = this.misc(this.last_span);
             let traits::Normalized { value, obligations } =
                 traits::normalize(&mut selcx, this.param_env, cause, value);
             Ok(InferOk { value, obligations })

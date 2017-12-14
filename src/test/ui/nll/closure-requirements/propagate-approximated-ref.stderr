@@ -1,17 +1,19 @@
 warning: not reporting region error due to -Znll
-  --> $DIR/propagate-approximated-ref.rs:61:9
+  --> $DIR/propagate-approximated-ref.rs:57:9
    |
-61 |         demand_y(x, y, x.get())
+57 |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/propagate-approximated-ref.rs:59:47
+  --> $DIR/propagate-approximated-ref.rs:53:47
    |
-59 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+53 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
-60 | |         // Only works if 'x: 'y:
-61 | |         demand_y(x, y, x.get())
-62 | |     });
+54 | |         //~^ ERROR free region `'_#1r` does not outlive free region `'_#2r`
+55 | |
+56 | |         // Only works if 'x: 'y:
+57 | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to -Znll
+58 | |     });
    | |_____^
    |
    = note: defining type: DefId(0/1:18 ~ propagate_approximated_ref[317d]::supply[0]::{{closure}}[0]) with closure substs [
@@ -21,16 +23,25 @@ note: External requirements
    = note: number of external vids: 3
    = note: where '_#1r: '_#2r
 
-note: No external requirements
-  --> $DIR/propagate-approximated-ref.rs:58:1
+error: free region `'_#1r` does not outlive free region `'_#2r`
+  --> $DIR/propagate-approximated-ref.rs:53:38
    |
-58 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-59 | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-60 | |         // Only works if 'x: 'y:
-61 | |         demand_y(x, y, x.get())
-62 | |     });
-63 | | }
+53 |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+   |                                      ^^^^^^^
+
+note: No external requirements
+  --> $DIR/propagate-approximated-ref.rs:52:1
+   |
+52 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+53 | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+54 | |         //~^ ERROR free region `'_#1r` does not outlive free region `'_#2r`
+55 | |
+...  |
+58 | |     });
+59 | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_ref[317d]::supply[0]) with substs []
+
+error: aborting due to previous error
 

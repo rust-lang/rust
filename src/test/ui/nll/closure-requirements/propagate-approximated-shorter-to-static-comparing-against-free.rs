@@ -39,12 +39,10 @@ fn case1() {
 fn case2() {
     let a = 0;
     let cell = Cell::new(&a);
+    //~^ ERROR `a` does not live long enough
 
     // As you can see in the stderr output, this closure propoagates a
     // requirement that `'a: 'static'.
-    //
-    // FIXME(#45827) However, because of shortcomings in the MIR type
-    // checker, this does not result in errors later on (yet).
     foo(cell, |cell_a, cell_x| {
         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
     })

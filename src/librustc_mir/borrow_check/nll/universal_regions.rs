@@ -456,6 +456,21 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         }
     }
 
+    /// Returns the "defining type" of the current MIR:
+    ///
+    /// - for functions, this is the `TyFnDef`;
+    /// - for closures, this is the `TyClosure`;
+    /// - for generators, this is the `TyGenerator`;
+    /// - for constants, this is the type of value that gets produced.
+    ///   - FIXME. Constants are handled somewhat inelegantly; this gets
+    ///     patched in a later PR that has already landed on nll-master.
+    ///
+    /// The key feature of the "defining type" is that it contains the
+    /// information needed to derive all the universal regions that
+    /// are in scope as well as the types of the inputs/output from
+    /// the MIR. In general, early-bound universal regions appear free
+    /// in the defining type and late-bound regions appear bound in
+    /// the signature.
     fn defining_ty(&self) -> ty::Ty<'tcx> {
         let tcx = self.infcx.tcx;
         let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
@@ -471,6 +486,10 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             .replace_free_regions_with_nll_infer_vars(FR, &defining_ty)
     }
 
+    /// Builds a hashmap that maps from the universal regions that are
+    /// in scope (as a `ty::Region<'tcx>`) to their indices (as a
+    /// `RegionVid`). The map returned by this function contains only
+    /// the early-bound regions.
     fn compute_indices(
         &self,
         fr_static: RegionVid,
@@ -490,10 +509,31 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 // that correspond to early-bound regions declared on
                 // the `closure_base_def_id`.
                 assert!(substs.substs.len() >= identity_substs.len());
+                assert_eq!(substs.substs.regions().count(), identity_substs.regions().count());
                 substs.substs
             }
             ty::TyFnDef(_, substs) => substs,
-            _ => bug!(),
+
+            // FIXME. When we encounter other sorts of constant
+            // expressions, such as the `22` in `[foo; 22]`, we can
+            // get the type `usize` here. For now, just return an
+            // empty vector of substs in this case, since there are no
+            // generics in scope in such expressions right now.
+            //
+            // Eventually I imagine we could get a wider range of
+            // types.  What is the best way to handle this? Should we
+            // be checking something other than the type of the def-id
+            // to figure out what to do (e.g. the def-key?).
+            ty::TyUint(..) => {
+                assert!(identity_substs.is_empty());
+                identity_substs
+            }
+
+            _ => span_bug!(
+                tcx.def_span(self.mir_def_id),
+                "unknown defining type: {:?}",
+                defining_ty
+            ),
         };
 
         let global_mapping = iter::once((gcx.types.re_static, fr_static));
@@ -551,7 +591,15 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             ty::TyFnDef(def_id, _) => {
                 let sig = tcx.fn_sig(def_id);
                 let sig = indices.fold_to_region_vids(tcx, &sig);
-                return sig.inputs_and_output();
+                sig.inputs_and_output()
+            }
+
+            // FIXME: as above, this happens on things like `[foo;
+            // 22]`. For now, no inputs, one output, but it seems like
+            // we need a more general way to handle this category of
+            // MIR.
+            ty::TyUint(..) => {
+                ty::Binder::dummy(tcx.mk_type_list(iter::once(defining_ty)))
             }
 
             _ => span_bug!(
