@@ -24,13 +24,18 @@ dox() {
 
   cargo build --target $target
 
-  rustdoc --target $target -o target/doc/$arch src/lib.rs --crate-name stdsimd --library-path target/$target/debug/deps
+  rustdoc --target $target \
+          -o target/doc/$arch src/lib.rs \
+          --crate-name stdsimd \
+          --library-path target/$target/debug/deps
 }
 
 dox i686 i686-unknown-linux-gnu
 dox x86_64 x86_64-unknown-linux-gnu
 dox arm armv7-unknown-linux-gnueabihf
 dox aarch64 aarch64-unknown-linux-gnu
+dox powerpc powerpc-unknown-linux-gnu
+dox powerpc64 powerpc64-unknown-linux-gnu
 
 # If we're on travis, not a PR, and on the right branch, publish!
 if [ "$TRAVIS_PULL_REQUEST" = "false" ] && [ "$TRAVIS_BRANCH" = "master" ]; then
