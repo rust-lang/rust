@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::Write;
 
 use rustc::hir::def_id::DefId;
@@ -13,13 +13,13 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
-    PtrAndAlign, DynamicLifetime, GlobalId, Value, Pointer, PrimVal, PrimValKind,
+    PtrAndAlign, GlobalId, Value, Pointer, PrimVal, PrimValKind,
     EvalError, EvalResult, EvalErrorKind, MemoryPointer,
 };
 
 use super::{Place, PlaceExtra, Memory,
             HasMemory, MemoryKind, operator,
-            ValidationQuery, Machine};
+            Machine};
 
 pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
     /// Stores the `Machine` instance.
@@ -33,9 +33,6 @@ pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
 
     /// The virtual memory system.
     pub memory: Memory<'a, 'tcx, M>,
-
-    /// Places that were suspended by the validation subsystem, and will be recovered later
-    pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'tcx>>,
@@ -203,7 +200,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             tcx,
             param_env,
             memory: Memory::new(tcx, limits.memory_size, memory_data),
-            suspended: HashMap::new(),
             stack: Vec::new(),
             stack_limit: limits.stack_limit,
             steps_remaining: limits.step_limit,
@@ -471,7 +467,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation -= 1;
-        self.end_region(None)?;
+        M::end_region(self, None)?;
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
@@ -996,7 +992,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     /// ensures this Value is not a ByRef
-    pub(super) fn follow_by_ref_value(
+    pub fn follow_by_ref_value(
         &self,
         value: Value,
         ty: Ty<'tcx>,
@@ -1396,7 +1392,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.stack.last().expect("no call frames exist")
     }
 
-    pub(super) fn frame_mut(&mut self) -> &mut Frame<'tcx> {
+    pub fn frame_mut(&mut self) -> &mut Frame<'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
 
@@ -1404,7 +1400,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.frame().mir
     }
 
-    pub(super) fn substs(&self) -> &'tcx Substs<'tcx> {
+    pub fn substs(&self) -> &'tcx Substs<'tcx> {
         if let Some(frame) = self.stack.last() {
             frame.instance.substs
         } else {

@@ -52,10 +52,7 @@ extern crate rustc_const_math;
 extern crate rustc_const_eval;
 extern crate core; // for NonZero
 extern crate log_settings;
-#[macro_use]
-extern crate lazy_static;
 extern crate rustc_apfloat;
-extern crate regex;
 extern crate byteorder;
 
 mod diagnostics;
@@ -67,7 +64,7 @@ mod hair;
 mod shim;
 pub mod transform;
 pub mod util;
-mod interpret;
+pub mod interpret;
 
 use rustc::ty::maps::Providers;
 

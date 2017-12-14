@@ -126,11 +126,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // Validity checks.
             Validate(op, ref places) => {
                 for operand in places {
-                    self.validation_op(op, operand)?;
+                    M::validation_op(self, op, operand)?;
                 }
             }
             EndRegion(ce) => {
-                self.end_region(Some(ce))?;
+                M::end_region(self, Some(ce))?;
             }
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the

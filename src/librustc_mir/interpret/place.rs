@@ -278,7 +278,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok((Place::Ptr { ptr, extra }, field))
     }
 
-    pub(super) fn val_to_place(&self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Place> {
+    pub fn val_to_place(&self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Place> {
         Ok(match self.tcx.struct_tail(ty).sty {
             ty::TyDynamic(..) => {
                 let (ptr, vtable) = self.into_ptr_vtable_pair(val)?;
@@ -298,7 +298,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         })
     }
 
-    pub(super) fn place_index(
+    pub fn place_index(
         &mut self,
         base: Place,
         outer_ty: Ty<'tcx>,
@@ -335,7 +335,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(Place::Ptr { ptr, extra })
     }
 
-    pub(super) fn eval_place_projection(
+    pub fn eval_place_projection(
         &mut self,
         base: Place,
         base_ty: Ty<'tcx>,

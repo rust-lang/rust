@@ -2,8 +2,8 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use rustc::mir::interpret::{EvalResult, PrimVal};
-use super::{EvalContext, Place, ValTy};
+use rustc::mir::interpret::{EvalResult, PrimVal, MemoryPointer, AccessKind};
+use super::{EvalContext, Place, ValTy, Memory};
 
 use rustc::mir;
 use rustc::ty::{self, Ty};
@@ -77,4 +77,41 @@ pub trait Machine<'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         mutability: Mutability,
     ) -> EvalResult<'tcx>;
+
+    fn check_locks<'a>(
+        _mem: &Memory<'a, 'tcx, Self>,
+        _ptr: MemoryPointer,
+        _size: u64,
+        _access: AccessKind,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    fn add_lock<'a>(
+        _mem: &mut Memory<'a, 'tcx, Self>,
+        _id: u64,
+    ) {}
+
+    fn free_lock<'a>(
+        _mem: &mut Memory<'a, 'tcx, Self>,
+        _id: u64,
+        _len: u64,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    fn end_region<'a>(
+        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _reg: Option<::rustc::middle::region::Scope>,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    fn validation_op<'a>(
+        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _op: ::rustc::mir::ValidationOp,
+        _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
 }
