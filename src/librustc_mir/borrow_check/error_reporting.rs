@@ -11,7 +11,7 @@
 use syntax_pos::Span;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{BorrowKind, Field, Local, Location, Operand};
-use rustc::mir::{Place, ProjectionElem, Rvalue, StatementKind};
+use rustc::mir::{Place, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty::{self, RegionKind};
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -143,18 +143,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         use rustc::hir::ExprClosure;
         use rustc::mir::AggregateKind;
 
-        if location.statement_index == self.mir[location.block].statements.len() {
-            // Code below hasn't been written in a manner to deal with
-            // a terminator location.
-            return None;
-        }
-
-        let local = if let StatementKind::Assign(Place::Local(local), _) =
-            self.mir[location.block].statements[location.statement_index].kind
-        {
-            local
-        } else {
-            return None;
+        let local = match self.mir[location.block].statements.get(location.statement_index) {
+            Some(&Statement { kind: StatementKind::Assign(Place::Local(local), _), .. }) => local,
+            _ => return None,
         };
 
         for stmt in &self.mir[location.block].statements[location.statement_index + 1..] {
