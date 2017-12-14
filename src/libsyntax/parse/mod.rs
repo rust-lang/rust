@@ -30,6 +30,11 @@ use std::str;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
+/// Like `PResult`, but the `Err` value is a tuple whose first value is a
+/// "partial result" (of some useful work we did before hitting the error), and
+/// whose second value is the error.
+pub type PartialPResult<'a, T> = Result<T, (T, DiagnosticBuilder<'a>)>;
+
 #[macro_use]
 pub mod parser;
 

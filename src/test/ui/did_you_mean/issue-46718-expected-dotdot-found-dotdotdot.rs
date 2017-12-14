@@ -20,8 +20,6 @@ impl PersonalityInventory {
         match *self {
             PersonalityInventory { expressivity: exp, ... } => exp
             //~^ ERROR expected field pattern, found `...`
-            //~| ERROR cannot find value `exp` in this scope [E0425]
-            //~| ERROR pattern does not mention field `expressivity` [E0027]
             //~| ERROR pattern does not mention field `instrumentality` [E0027]
         }
     }

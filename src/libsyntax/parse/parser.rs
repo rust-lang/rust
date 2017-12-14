@@ -52,7 +52,7 @@ use parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
 use util::parser::{AssocOp, Fixity};
 use print::pprust;
 use ptr::P;
-use parse::PResult;
+use parse::{PResult, PartialPResult};
 use tokenstream::{self, Delimited, ThinTokenStream, TokenTree, TokenStream};
 use symbol::{Symbol, keywords};
 use util::ThinVec;
@@ -3426,20 +3426,23 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the fields of a struct-like pattern
-    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<codemap::Spanned<ast::FieldPat>>, bool)> {
+    fn parse_pat_fields(&mut self)
+                        -> PartialPResult<'a, (Vec<codemap::Spanned<ast::FieldPat>>, bool)> {
         let mut fields = Vec::new();
         let mut etc = false;
         let mut first = true;
+
         while self.token != token::CloseDelim(token::Brace) {
             if first {
                 first = false;
             } else {
-                self.expect(&token::Comma)?;
+                self.expect(&token::Comma).map_err(|err| ((fields.clone(), etc), err))?;
                 // accept trailing commas
                 if self.check(&token::CloseDelim(token::Brace)) { break }
             }
 
-            let attrs = self.parse_outer_attributes()?;
+            let attrs = self.parse_outer_attributes()
+                .map_err(|err| ((fields.clone(), etc), err))?;
             let lo = self.span;
             let hi;
 
@@ -3447,8 +3450,9 @@ impl<'a> Parser<'a> {
                 self.bump();
                 if self.token != token::CloseDelim(token::Brace) {
                     let token_str = self.this_token_to_string();
-                    return Err(self.fatal(&format!("expected `{}`, found `{}`", "}",
-                                       token_str)))
+                    let err = self.fatal(&format!("expected `{}`, found `{}`", "}",
+                                                  token_str));
+                    return Err(((fields, etc), err));
                 }
                 etc = true;
                 break;
@@ -3457,15 +3461,17 @@ impl<'a> Parser<'a> {
                 err.span_suggestion(self.span,
                                     "to omit remaining fields, use one fewer `.`",
                                     "..".to_owned());
-                return Err(err);
+                return Err(((fields, false), err));
             }
 
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
                 // Parsing a pattern of the form "fieldname: pat"
-                let fieldname = self.parse_field_name()?;
+                let fieldname = self.parse_field_name()
+                    .map_err(|err| ((fields.clone(), etc), err))?;
                 self.bump();
-                let pat = self.parse_pat()?;
+                let pat = self.parse_pat()
+                    .map_err(|err| ((fields.clone(), etc), err))?;
                 hi = pat.span;
                 (pat, fieldname, false)
             } else {
@@ -3474,7 +3480,8 @@ impl<'a> Parser<'a> {
                 let boxed_span = self.span;
                 let is_ref = self.eat_keyword(keywords::Ref);
                 let is_mut = self.eat_keyword(keywords::Mut);
-                let fieldname = self.parse_ident()?;
+                let fieldname = self.parse_ident()
+                    .map_err(|err| ((fields.clone(), etc), err))?;
                 hi = self.prev_span;
 
                 let bind_type = match (is_ref, is_mut) {
@@ -3652,11 +3659,12 @@ impl<'a> Parser<'a> {
                         }
                         // Parse struct pattern
                         self.bump();
-                        let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
-                            e.emit();
-                            self.recover_stmt();
-                            (vec![], false)
-                        });
+                        let (fields, etc) = self.parse_pat_fields()
+                            .unwrap_or_else(|((fields, etc), mut err)| {
+                                err.emit();
+                                self.recover_stmt();
+                                (fields, etc)
+                            });
                         self.bump();
                         pat = PatKind::Struct(path, fields, etc);
                     }
