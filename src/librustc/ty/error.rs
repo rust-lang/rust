@@ -246,6 +246,22 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyError => "type error".to_string(),
         }
     }
+
+    pub fn span(&self, tcx: &TyCtxt<'a, 'gcx, 'lcx>) -> Option<Span> {
+        match self.sty {
+            ty::TyClosure(def, _) => {
+                if let Some(node_id) = tcx.hir.as_local_node_id(def) {
+                    if let Some(hir::map::NodeExpr(expr)) = tcx.hir.find(node_id) {
+                        if let hir::ExprClosure(_, _, _, sp, _) = expr.node {
+                            return Some(sp);
+                        }
+                    }
+                }
+                None
+            }
+            _ => None,
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -260,10 +276,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let expected_str = values.expected.sort_string(self);
                 let found_str = values.found.sort_string(self);
                 if expected_str == found_str && expected_str == "closure" {
-                    db.span_note(sp,
-                        "no two closures, even if identical, have the same type");
-                    db.span_help(sp,
-                        "consider boxing your closure and/or using it as a trait object");
+                    db.note("no two closures, even if identical, have the same type");
+                    if let Some(sp) = values.expected.span(&self) {
+                        db.span_label(sp, "this closure was expected");
+                    }
+                    db.help("consider boxing your closure and/or using it as a trait object");
                 }
             },
             TyParamDefaultMismatch(values) => {

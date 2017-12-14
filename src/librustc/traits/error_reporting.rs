@@ -938,36 +938,35 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         err
     }
 
+    fn build_fn_sig_string(&self, trait_ref: &ty::TraitRef<'tcx>) -> String {
+        let inputs = trait_ref.substs.type_at(1);
+        let sig = if let ty::TyTuple(inputs, _) = inputs.sty {
+            self.tcx.mk_fn_sig(
+                inputs.iter().map(|&x| x),
+                self.tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
+                false,
+                hir::Unsafety::Normal,
+                ::syntax::abi::Abi::Rust
+            )
+        } else {
+            self.tcx.mk_fn_sig(
+                ::std::iter::once(inputs),
+                self.tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
+                false,
+                hir::Unsafety::Normal,
+                ::syntax::abi::Abi::Rust
+            )
+        };
+        format!("{}", ty::Binder(sig))
+    }
+
     fn report_closure_arg_mismatch(&self,
-                           span: Span,
-                           found_span: Option<Span>,
-                           expected_ref: ty::PolyTraitRef<'tcx>,
-                           found: ty::PolyTraitRef<'tcx>)
+                                   span: Span,
+                                   found_span: Option<Span>,
+                                   expected_ref: ty::PolyTraitRef<'tcx>,
+                                   found: ty::PolyTraitRef<'tcx>)
         -> DiagnosticBuilder<'tcx>
     {
-        fn build_fn_sig_string<'a, 'gcx, 'tcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
-                                               trait_ref: &ty::TraitRef<'tcx>) -> String {
-            let inputs = trait_ref.substs.type_at(1);
-            let sig = if let ty::TyTuple(inputs, _) = inputs.sty {
-                tcx.mk_fn_sig(
-                    inputs.iter().map(|&x| x),
-                    tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
-                    false,
-                    hir::Unsafety::Normal,
-                    ::syntax::abi::Abi::Rust
-                )
-            } else {
-                tcx.mk_fn_sig(
-                    ::std::iter::once(inputs),
-                    tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
-                    false,
-                    hir::Unsafety::Normal,
-                    ::syntax::abi::Abi::Rust
-                )
-            };
-            format!("{}", ty::Binder(sig))
-        }
-
         let argument_is_closure = expected_ref.skip_binder().substs.type_at(0).is_closure();
         let mut err = struct_span_err!(self.tcx.sess, span, E0631,
                                        "type mismatch in {} arguments",
@@ -975,14 +974,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         let found_str = format!(
             "expected signature of `{}`",
-            build_fn_sig_string(self.tcx, found.skip_binder())
+            self.build_fn_sig_string(found.skip_binder())
         );
         err.span_label(span, found_str);
 
         let found_span = found_span.unwrap_or(span);
         let expected_str = format!(
             "found signature of `{}`",
-            build_fn_sig_string(self.tcx, expected_ref.skip_binder())
+            self.build_fn_sig_string(expected_ref.skip_binder())
         );
         err.span_label(found_span, expected_str);
 

@@ -588,6 +588,28 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             s.push_normal(format!("{}", tnm.ty));
         }
 
+        fn push_closure<'tcx>(capture: &hir::CaptureClause,
+                              fn_decl: &hir::FnDecl,
+                              s: &mut DiagnosticStyledString) {
+            let args = fn_decl.inputs.iter()
+                .map(|arg| format!("{}", arg))
+                .collect::<Vec<String>>()
+                .join(", ");
+            s.push_highlighted(
+                format!("{}|{}| -> {}",
+                        if capture == &hir::CaptureByValue {
+                            "move "
+                        } else {
+                            ""
+                        },
+                        args,
+                        if let hir::Return(ref r_ty) = fn_decl.output {
+                            format!("{}", r_ty)
+                        } else {
+                            "_".to_string()
+                        }));
+        }
+
         match (&t1.sty, &t2.sty) {
             (&ty::TyAdt(def1, sub1), &ty::TyAdt(def2, sub2)) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
@@ -723,8 +745,67 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // When encountering &T != &mut T, highlight only the borrow
             (&ty::TyRef(r1, ref tnm1), &ty::TyRef(r2, ref tnm2)) if equals(&tnm1.ty, &tnm2.ty) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                push_ty_ref(&r1, tnm1, &mut values.0);
-                push_ty_ref(&r2, tnm2, &mut values.1);
+                push_ty_ref(& r1, tnm1, & mut values.0);
+                push_ty_ref( & r2, tnm2, &mut values.1);
+                values
+            }
+            // When comparing against a closure, print its signature without location
+            (&ty::TyClosure(did1, _), &ty::TyClosure(did2, _)) => {
+                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                let mut success = false;
+                if let Some(node_id) = self.tcx.hir.as_local_node_id(did1) {
+                    if let Some(hir::map::NodeExpr(expr)) = self.tcx.hir.find(node_id) {
+                        if let hir::ExprClosure(capture, ref fn_decl, _, _, _) = expr.node {
+                            push_closure(&capture, fn_decl, &mut values.0);
+                            success = true;
+                        }
+                    }
+                }
+                if !success { // fallback
+                    values.0.push_highlighted(format!("{}", t1));
+                }
+                success = false;
+                if let Some(node_id) = self.tcx.hir.as_local_node_id(did2) {
+                    if let Some(hir::map::NodeExpr(expr)) = self.tcx.hir.find(node_id) {
+                        if let hir::ExprClosure(capture, ref fn_decl, _, _, _) = expr.node {
+                            push_closure(&capture, fn_decl, &mut values.1);
+                            success = true;
+                        }
+                    }
+                }
+                if !success { // fallback
+                    values.1.push_highlighted(format!("{}", t2));
+                }
+                values
+            }
+            (_, &ty::TyClosure(did, _)) => {
+                let mut values = (DiagnosticStyledString::highlighted(format!("{}", t1)),
+                                  DiagnosticStyledString::new());
+                if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
+                    if let Some(hir::map::NodeExpr(expr)) = self.tcx.hir.find(node_id) {
+                        if let hir::ExprClosure(capture, ref fn_decl, _, _, _) = expr.node {
+                            push_closure(&capture, fn_decl, &mut values.1);
+                            return values;
+                        }
+                    }
+                }
+                // fallback
+                values.1.push_highlighted(format!("{}", t2));
+                values
+            }
+            (&ty::TyClosure(did, _), _) => {
+                let mut values = (DiagnosticStyledString::new(),
+                                  DiagnosticStyledString::highlighted(format!("{}", t2)));
+                if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
+                    if let Some(hir::map::NodeExpr(expr)) = self.tcx.hir.find(node_id) {
+                        if let hir::ExprClosure(capture, ref fn_decl, _, _, _) = expr.node {
+                            push_closure(&capture, fn_decl, &mut values.0);
+                            return values;
+                        }
+                    }
+                }
+                // fallback
+                values.0.push_highlighted(format!("{}", t1));
                 values
             }
 

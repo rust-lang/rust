@@ -7,7 +7,7 @@ error[E0308]: mismatched types
    |     ^^^^^^^^^ expected (), found closure
    |
    = note: expected type `()`
-              found type `[closure@$DIR/issue-20862.rs:12:5: 12:14 x:_]`
+              found type `|_| -> _`
 
 error[E0618]: expected function, found `()`
   --> $DIR/issue-20862.rs:17:13
