@@ -1,6 +1,8 @@
 #![feature(
     i128_type,
     rustc_private,
+    conservative_impl_trait,
+    catch_expr,
 )]
 
 // From rustc.
@@ -8,7 +10,12 @@
 extern crate log;
 #[macro_use]
 extern crate rustc;
+extern crate rustc_mir;
+extern crate rustc_data_structures;
 extern crate syntax;
+extern crate regex;
+#[macro_use]
+extern crate lazy_static;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::{TyLayout, LayoutOf};
@@ -22,6 +29,7 @@ use syntax::codemap::Span;
 use std::collections::{HashMap, BTreeMap};
 
 pub use rustc::mir::interpret::*;
+pub use rustc_mir::interpret::*;
 
 mod fn_call;
 mod operator;
@@ -29,11 +37,19 @@ mod intrinsic;
 mod helpers;
 mod memory;
 mod tls;
+mod locks;
+mod range_map;
+mod validation;
 
 use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
 use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 use tls::EvalContextExt as TlsEvalContextExt;
+use locks::LockInfo;
+use locks::MemoryExt as LockMemoryExt;
+use validation::EvalContextExt as ValidationEvalContextExt;
+use range_map::RangeMap;
+use validation::{ValidationQuery, AbsPlace};
 
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -42,7 +58,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     limits: ResourceLimits,
 ) {
     fn run_main<'a, 'tcx: 'a>(
-        ecx: &mut rustc::mir::interpret::EvalContext<'a, 'tcx, Evaluator>,
+        ecx: &mut rustc_mir::interpret::EvalContext<'a, 'tcx, Evaluator<'tcx>>,
         main_id: DefId,
         start_wrapper: Option<DefId>,
     ) -> EvalResult<'tcx> {
@@ -156,10 +172,13 @@ pub fn eval_main<'a, 'tcx: 'a>(
 }
 
 #[derive(Default)]
-pub struct Evaluator {
+pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
     pub(crate) env_vars: HashMap<Vec<u8>, MemoryPointer>,
+
+    /// Places that were suspended by the validation subsystem, and will be recovered later
+    pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 }
 
 pub type TlsKey = usize;
@@ -177,9 +196,15 @@ pub struct MemoryData<'tcx> {
 
     /// pthreads-style thread-local storage.
     thread_local: BTreeMap<TlsKey, TlsEntry<'tcx>>,
+
+    /// Memory regions that are locked by some function
+    ///
+    /// Only mutable (static mut, heap, stack) allocations have an entry in this map.
+    /// The entry is created when allocating the memory and deleted after deallocation.
+    locks: HashMap<u64, RangeMap<LockInfo<'tcx>>>,
 }
 
-impl<'tcx> Machine<'tcx> for Evaluator {
+impl<'tcx> Machine<'tcx> for Evaluator<'tcx> {
     type MemoryData = MemoryData<'tcx>;
     type MemoryKinds = memory::MemoryKind;
 
@@ -196,7 +221,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
     }
 
     fn call_intrinsic<'a>(
-        ecx: &mut rustc::mir::interpret::EvalContext<'a, 'tcx, Self>,
+        ecx: &mut rustc_mir::interpret::EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
         dest: Place,
@@ -207,7 +232,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
     }
 
     fn try_ptr_op<'a>(
-        ecx: &rustc::mir::interpret::EvalContext<'a, 'tcx, Self>,
+        ecx: &rustc_mir::interpret::EvalContext<'a, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: PrimVal,
         left_ty: ty::Ty<'tcx>,
@@ -302,5 +327,62 @@ impl<'tcx> Machine<'tcx> for Evaluator {
             },
         );
         Ok(())
+    }
+
+    fn check_locks<'a>(
+        mem: &Memory<'a, 'tcx, Self>,
+        ptr: MemoryPointer,
+        size: u64,
+        access: AccessKind,
+    ) -> EvalResult<'tcx> {
+        mem.check_locks(ptr, size, access)
+    }
+
+    fn add_lock<'a>(
+        mem: &mut Memory<'a, 'tcx, Self>,
+        id: u64,
+    ) {
+        mem.data.locks.insert(id, RangeMap::new());
+    }
+
+    fn free_lock<'a>(
+        mem: &mut Memory<'a, 'tcx, Self>,
+        id: u64,
+        len: u64,
+    ) -> EvalResult<'tcx> {
+        mem.data.locks
+            .remove(&id)
+            .expect("allocation has no corresponding locks")
+            .check(
+                Some(mem.cur_frame),
+                0,
+                len,
+                AccessKind::Read,
+            )
+            .map_err(|lock| {
+                EvalErrorKind::DeallocatedLockedMemory {
+                    //ptr, FIXME
+                    ptr: MemoryPointer {
+                        alloc_id: AllocId(0),
+                        offset: 0,
+                    },
+                    lock: lock.active,
+                }.into()
+            })
+    }
+
+    fn end_region<'a>(
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        reg: Option<::rustc::middle::region::Scope>,
+    ) -> EvalResult<'tcx> {
+        ecx.end_region(reg)
+    }
+
+    fn validation_op<'a>(
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        op: ::rustc::mir::ValidationOp,
+        operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
+    ) -> EvalResult<'tcx> {
+        ecx.validation_op(op, operand)
     }
 }

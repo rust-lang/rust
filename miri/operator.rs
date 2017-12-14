@@ -1,7 +1,7 @@
 use rustc::ty;
 use rustc::mir;
 
-use rustc::mir::interpret::*;
+use super::*;
 
 use helpers::EvalContextExt as HelperEvalContextExt;
 
@@ -24,7 +24,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx, (PrimVal, bool)>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
+impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,

@@ -1,5 +1,4 @@
-use rustc::mir::interpret::{Pointer, EvalResult, PrimVal, EvalContext};
-
+use super::{Pointer, EvalResult, PrimVal, EvalContext};
 use rustc::ty::Ty;
 use rustc::ty::layout::LayoutOf;
 
@@ -19,7 +18,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx, Pointer>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
+impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
     fn wrapping_pointer_offset(
         &self,
         ptr: Pointer,

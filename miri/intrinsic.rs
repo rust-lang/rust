@@ -3,8 +3,8 @@ use rustc::traits::Reveal;
 use rustc::ty::layout::{TyLayout, LayoutOf};
 use rustc::ty;
 
-use rustc::mir::interpret::{EvalResult, Place, PlaceExtra, PrimVal, PrimValKind, Value, Pointer,
-                            HasMemory, AccessKind, EvalContext, PtrAndAlign, ValTy};
+use rustc::mir::interpret::{EvalResult, PrimVal, PrimValKind, Value, Pointer, AccessKind, PtrAndAlign};
+use rustc_mir::interpret::{Place, PlaceExtra, HasMemory, EvalContext, ValTy};
 
 use helpers::EvalContextExt as HelperEvalContextExt;
 
@@ -19,7 +19,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
+impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -70,7 +70,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "arith_offset" => {
                 let offset = self.value_to_primval(args[1])?.to_i128()? as i64;
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 let result_ptr = self.wrapping_pointer_offset(ptr, substs.type_at(0), offset)?;
                 self.write_ptr(dest, result_ptr, dest_layout.ty)?;
             }
@@ -86,7 +86,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "atomic_load_relaxed" |
             "atomic_load_acq" |
             "volatile_load" => {
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 let valty = ValTy {
                     value: Value::by_ref(ptr),
                     ty: substs.type_at(0),
@@ -99,7 +99,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "atomic_store_rel" |
             "volatile_store" => {
                 let ty = substs.type_at(0);
-                let dest = args[0].into_ptr(&self.memory)?;
+                let dest = self.into_ptr(args[0].value)?;
                 self.write_value_to_ptr(args[1].value, dest, ty)?;
             }
 
@@ -109,7 +109,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             _ if intrinsic_name.starts_with("atomic_xchg") => {
                 let ty = substs.type_at(0);
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 let change = self.value_to_primval(args[1])?;
                 let old = self.read_value(ptr, ty)?;
                 let old = match old {
@@ -127,7 +127,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
                 let ty = substs.type_at(0);
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 let expect_old = self.value_to_primval(args[1])?;
                 let change = self.value_to_primval(args[2])?;
                 let old = self.read_value(ptr, ty)?;
@@ -175,7 +175,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "atomic_xsub_acqrel" |
             "atomic_xsub_relaxed" => {
                 let ty = substs.type_at(0);
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 let change = self.value_to_primval(args[1])?;
                 let old = self.read_value(ptr, ty)?;
                 let old = match old {
@@ -211,8 +211,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     // TODO: We do not even validate alignment for the 0-bytes case.  libstd relies on this in vec::IntoIter::next.
                     // Also see the write_bytes intrinsic.
                     let elem_align = elem_layout.align.abi();
-                    let src = args[0].into_ptr(&self.memory)?;
-                    let dest = args[1].into_ptr(&self.memory)?;
+                    let src = self.into_ptr(args[0].value)?;
+                    let dest = self.into_ptr(args[1].value)?;
                     self.memory.copy(
                         src,
                         dest,
@@ -240,7 +240,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "discriminant_value" => {
                 let ty = substs.type_at(0);
-                let adt_ptr = args[0].into_ptr(&self.memory)?;
+                let adt_ptr = self.into_ptr(args[0].value)?;
                 let place = Place::from_primval_ptr(adt_ptr);
                 let discr_val = self.read_discriminant_value(place, ty)?;
                 self.write_primval(dest, PrimVal::Bytes(discr_val), dest_layout.ty)?;
@@ -366,7 +366,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "move_val_init" => {
                 let ty = substs.type_at(0);
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 self.write_value_to_ptr(args[1].value, ptr, ty)?;
             }
 
@@ -383,7 +383,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "offset" => {
                 let offset = self.value_to_primval(args[1])?.to_i128()? as i64;
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 let result_ptr = self.pointer_offset(ptr, substs.type_at(0), offset)?;
                 self.write_ptr(dest, result_ptr, dest_layout.ty)?;
             }
@@ -634,7 +634,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let ty = substs.type_at(0);
                 let ty_layout = self.layout_of(ty)?;
                 let val_byte = self.value_to_primval(args[1])?.to_u128()? as u8;
-                let ptr = args[0].into_ptr(&self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 let count = self.value_to_primval(args[2])?.to_u64()?;
                 if count > 0 {
                     // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
