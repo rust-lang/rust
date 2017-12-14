@@ -919,11 +919,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }
 
                 let mut db = self.path_does_not_live_long_enough(error_span, &msg, Origin::Ast);
-                let (value_kind, value_msg) = match err.cmt.cat {
-                    mc::Categorization::Rvalue(..) =>
-                        ("temporary value", "temporary value created here"),
-                    _ =>
-                        ("borrowed value", "borrow occurs here")
+                let value_kind = match err.cmt.cat {
+                    mc::Categorization::Rvalue(..) => "temporary value",
+                    _ => "borrowed value",
                 };
 
                 let is_closure = match cause {
@@ -936,14 +934,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             Some(primary) => {
                                 db.span = MultiSpan::from_span(s);
                                 db.span_label(primary, "capture occurs here");
-                                db.span_label(s, "does not live long enough");
+                                db.span_label(s, format!("{} does not live long enough",
+                                                         value_kind));
                                 true
                             }
                             None => false
                         }
                     }
                     _ => {
-                        db.span_label(error_span, "does not live long enough");
+                        db.span_label(error_span, format!("{} does not live long enough",
+                                                          value_kind));
                         false
                     }
                 };
@@ -954,8 +954,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 match (sub_span, super_span) {
                     (Some(s1), Some(s2)) if s1 == s2 => {
                         if !is_closure {
-                            db.span = MultiSpan::from_span(s1);
-                            db.span_label(error_span, value_msg);
                             let msg = match opt_loan_path(&err.cmt) {
                                 None => value_kind.to_string(),
                                 Some(lp) => {
@@ -971,8 +969,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 they are created");
                     }
                     (Some(s1), Some(s2)) if !is_closure => {
-                        db.span = MultiSpan::from_span(s2);
-                        db.span_label(error_span, value_msg);
                         let msg = match opt_loan_path(&err.cmt) {
                             None => value_kind.to_string(),
                             Some(lp) => {

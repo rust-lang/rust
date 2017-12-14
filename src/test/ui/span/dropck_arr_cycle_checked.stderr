@@ -1,65 +1,66 @@
 error[E0597]: `b2` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:109:1
+   --> $DIR/dropck_arr_cycle_checked.rs:103:25
     |
 103 |     b1.a[0].v.set(Some(&b2));
-    |                         -- borrow occurs here
+    |                         ^^ borrowed value does not live long enough
 ...
-109 | }
-    | ^ `b2` dropped here while still borrowed
+115 | }
+    | - `b2` dropped here while still borrowed
     |
     = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b3` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:109:1
+   --> $DIR/dropck_arr_cycle_checked.rs:105:25
     |
-104 |     b1.a[1].v.set(Some(&b3));
-    |                         -- borrow occurs here
+105 |     b1.a[1].v.set(Some(&b3));
+    |                         ^^ borrowed value does not live long enough
 ...
-109 | }
-    | ^ `b3` dropped here while still borrowed
+115 | }
+    | - `b3` dropped here while still borrowed
     |
     = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b2` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:109:1
+   --> $DIR/dropck_arr_cycle_checked.rs:107:25
     |
-105 |     b2.a[0].v.set(Some(&b2));
-    |                         -- borrow occurs here
+107 |     b2.a[0].v.set(Some(&b2));
+    |                         ^^ borrowed value does not live long enough
 ...
-109 | }
-    | ^ `b2` dropped here while still borrowed
+115 | }
+    | - `b2` dropped here while still borrowed
     |
     = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b3` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:109:1
+   --> $DIR/dropck_arr_cycle_checked.rs:109:25
     |
-106 |     b2.a[1].v.set(Some(&b3));
-    |                         -- borrow occurs here
+109 |     b2.a[1].v.set(Some(&b3));
+    |                         ^^ borrowed value does not live long enough
 ...
-109 | }
-    | ^ `b3` dropped here while still borrowed
+115 | }
+    | - `b3` dropped here while still borrowed
     |
     = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b1` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:109:1
+   --> $DIR/dropck_arr_cycle_checked.rs:111:25
     |
-107 |     b3.a[0].v.set(Some(&b1));
-    |                         -- borrow occurs here
-108 |     b3.a[1].v.set(Some(&b2));
-109 | }
-    | ^ `b1` dropped here while still borrowed
+111 |     b3.a[0].v.set(Some(&b1));
+    |                         ^^ borrowed value does not live long enough
+...
+115 | }
+    | - `b1` dropped here while still borrowed
     |
     = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `b2` does not live long enough
-   --> $DIR/dropck_arr_cycle_checked.rs:109:1
+   --> $DIR/dropck_arr_cycle_checked.rs:113:25
     |
-108 |     b3.a[1].v.set(Some(&b2));
-    |                         -- borrow occurs here
-109 | }
-    | ^ `b2` dropped here while still borrowed
+113 |     b3.a[1].v.set(Some(&b2));
+    |                         ^^ borrowed value does not live long enough
+114 |     //~^ ERROR `b2` does not live long enough
+115 | }
+    | - `b2` dropped here while still borrowed
     |
     = note: values in a scope are dropped in the opposite order they are created
 

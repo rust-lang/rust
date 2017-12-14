@@ -35,4 +35,5 @@ fn main() {
     let (d2, d1);
     d1 = D(34, "d1");
     d2 = D(S(&d1, "inner"), "d2");
-} //~ ERROR `d1` does not live long enough
+}
+//~^^ ERROR `d1` does not live long enough

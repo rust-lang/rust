@@ -1,20 +1,20 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/issue-29106.rs:27:5
+  --> $DIR/issue-29106.rs:26:27
    |
 26 |         y = Arc::new(Foo(&x));
-   |                           - borrow occurs here
-27 |     } //~ ERROR `x` does not live long enough
-   |     ^ `x` dropped here while still borrowed
+   |                           ^ borrowed value does not live long enough
+27 |     }
+   |     - `x` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/issue-29106.rs:33:5
+  --> $DIR/issue-29106.rs:33:26
    |
-32 |         y = Rc::new(Foo(&x));
-   |                          - borrow occurs here
-33 |     } //~ ERROR `x` does not live long enough
-   |     ^ `x` dropped here while still borrowed
+33 |         y = Rc::new(Foo(&x));
+   |                          ^ borrowed value does not live long enough
+34 |     }
+   |     - `x` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

@@ -24,7 +24,8 @@ fn mutex() {
     {
         let z = 2;
         *lock.lock().unwrap() = &z;
-    } //~ ERROR does not live long enough
+    }
+    //~^^ ERROR `z` does not live long enough
 }
 
 fn rwlock() {
@@ -36,7 +37,8 @@ fn rwlock() {
     {
         let z = 2;
         *lock.write().unwrap() = &z;
-    } //~ ERROR does not live long enough
+    }
+    //~^^ ERROR `z` does not live long enough
 }
 
 fn channel() {
@@ -50,7 +52,8 @@ fn channel() {
     {
         let z = 2;
         tx.send(&z).unwrap();
-    } //~ ERROR does not live long enough
+    }
+    //~^^ ERROR `z` does not live long enough
 }
 
 fn main() {}
