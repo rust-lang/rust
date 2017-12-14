@@ -33,10 +33,18 @@ struct Foo<T> {
 trait X<K>: Sized {
     fn foo<'a, L: X<&'a Nested<K>>>();
     //~^ ERROR may not live long enough
+
     // check that we give a sane error for `Self`
     fn bar<'a, L: X<&'a Nested<Self>>>();
     //~^ ERROR may not live long enough
+
+    // check that we give a sane error for nested generics
+    fn baz<'a, L, M: X<&'a Nested<L>>>() {
+        //~^ ERROR may not live long enough
+    }
 }
+
+trait TraitB {}
 
 struct Nested<K>(K);
 impl<K> Nested<K> {
