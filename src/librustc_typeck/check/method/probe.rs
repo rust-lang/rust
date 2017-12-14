@@ -321,9 +321,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // a real method lookup, this is a hard error (it's an
                 // ambiguity and we can't make progress).
                 if !is_suggestion.0 {
-                    // don't report a type error if we dereferenced a raw pointer,
-                    // because that would break backwards compatibility in certain cases
-                    if !reached_raw_pointer {
+                    if reached_raw_pointer
+                    && !self.tcx.sess.features.borrow().arbitrary_self_types {
+                        // only produce a warning in this case, because inference variables used to
+                        // be allowed here in some cases for raw pointers
+                        struct_span_warn!(self.tcx.sess, span, E0619,
+                            "the type of this value must be known in this context")
+                        .note("this will be made into a hard error in a future version of \
+                               the compiler")
+                        .emit();
+                    } else {
                         let t = self.structurally_resolved_type(span, final_ty);
                         assert_eq!(t, self.tcx.types.err);
                         return None
