@@ -441,6 +441,10 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             tcx.at(it.span).super_predicates_of(def_id);
             tcx.predicates_of(def_id);
         },
+        hir::ItemTraitAlias(..) => {
+            span_err!(tcx.sess, it.span, E0645,
+                      "trait aliases are not yet implemented (see issue #41517)");
+        },
         hir::ItemStruct(ref struct_def, _) |
         hir::ItemUnion(ref struct_def, _) => {
             tcx.generics_of(def_id);
@@ -672,6 +676,7 @@ fn super_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let (generics, bounds) = match item.node {
         hir::ItemTrait(.., ref generics, ref supertraits, _) => (generics, supertraits),
+        hir::ItemTraitAlias(ref generics, ref supertraits) => (generics, supertraits),
         _ => span_bug!(item.span,
                        "super_predicates invoked on non-trait"),
     };
@@ -715,6 +720,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let unsafety = match item.node {
         hir::ItemTrait(_, unsafety, ..) => unsafety,
+        hir::ItemTraitAlias(..) => hir::Unsafety::Normal,
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -902,7 +908,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     (generics, None)
                 }
 
-                ItemTrait(_, _, ref generics, ..) => {
+                ItemTrait(_, _, ref generics, ..) | ItemTraitAlias(ref generics, ..) => {
                     // Add in the self type parameter.
                     //
                     // Something of a hack: use the node id for the trait, also as
@@ -1132,7 +1138,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     tcx.mk_adt(def, substs)
                 }
                 ItemAutoImpl(..) |
-                ItemTrait(..) |
+                ItemTrait(..) | ItemTraitAlias(..) |
                 ItemMod(..) |
                 ItemForeignMod(..) |
                 ItemGlobalAsm(..) |

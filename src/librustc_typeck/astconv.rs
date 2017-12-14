@@ -336,6 +336,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let path = &trait_ref.path;
         match path.def {
             Def::Trait(trait_def_id) => trait_def_id,
+            Def::TraitAlias(alias_def_id) => alias_def_id,
             Def::Err => {
                 self.tcx().sess.fatal("cannot continue compilation due to previous error");
             }

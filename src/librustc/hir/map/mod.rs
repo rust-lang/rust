@@ -1185,6 +1185,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemStruct(..) => "struct",
                 ItemUnion(..) => "union",
                 ItemTrait(..) => "trait",
+                ItemTraitAlias(..) => "trait alias",
                 ItemImpl(..) => "impl",
                 ItemAutoImpl(..) => "default impl",
             };

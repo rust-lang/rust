@@ -391,11 +391,17 @@ impl PatternSource {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum AliasPossibility {
+    No,
+    Maybe,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum PathSource<'a> {
     // Type paths `Path`.
     Type,
     // Trait paths in bounds or impls.
-    Trait,
+    Trait(AliasPossibility),
     // Expression paths `path`, with optional parent context.
     Expr(Option<&'a Expr>),
     // Paths in path patterns `Path`.
@@ -415,7 +421,7 @@ enum PathSource<'a> {
 impl<'a> PathSource<'a> {
     fn namespace(self) -> Namespace {
         match self {
-            PathSource::Type | PathSource::Trait | PathSource::Struct |
+            PathSource::Type | PathSource::Trait(_) | PathSource::Struct |
             PathSource::Visibility | PathSource::ImportPrefix => TypeNS,
             PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct => ValueNS,
             PathSource::TraitItem(ns) => ns,
@@ -427,7 +433,7 @@ impl<'a> PathSource<'a> {
             PathSource::Visibility | PathSource::ImportPrefix => true,
             PathSource::Type | PathSource::Expr(..) | PathSource::Pat |
             PathSource::Struct | PathSource::TupleStruct |
-            PathSource::Trait | PathSource::TraitItem(..) => false,
+            PathSource::Trait(_) | PathSource::TraitItem(..) => false,
         }
     }
 
@@ -435,7 +441,7 @@ impl<'a> PathSource<'a> {
         match self {
             PathSource::Type | PathSource::Expr(..) | PathSource::Pat |
             PathSource::Struct | PathSource::TupleStruct => true,
-            PathSource::Trait | PathSource::TraitItem(..) |
+            PathSource::Trait(_) | PathSource::TraitItem(..) |
             PathSource::Visibility | PathSource::ImportPrefix => false,
         }
     }
@@ -443,7 +449,7 @@ impl<'a> PathSource<'a> {
     fn descr_expected(self) -> &'static str {
         match self {
             PathSource::Type => "type",
-            PathSource::Trait => "trait",
+            PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct/variant or constant",
             PathSource::Struct => "struct, variant or union type",
             PathSource::TupleStruct => "tuple struct/variant",
@@ -472,8 +478,13 @@ impl<'a> PathSource<'a> {
                 Def::TyForeign(..) => true,
                 _ => false,
             },
-            PathSource::Trait => match def {
+            PathSource::Trait(AliasPossibility::No) => match def {
                 Def::Trait(..) => true,
+                _ => false,
+            },
+            PathSource::Trait(AliasPossibility::Maybe) => match def {
+                Def::Trait(..) => true,
+                Def::TraitAlias(..) => true,
                 _ => false,
             },
             PathSource::Expr(..) => match def {
@@ -530,8 +541,8 @@ impl<'a> PathSource<'a> {
         __diagnostic_used!(E0577);
         __diagnostic_used!(E0578);
         match (self, has_unexpected_resolution) {
-            (PathSource::Trait, true) => "E0404",
-            (PathSource::Trait, false) => "E0405",
+            (PathSource::Trait(_), true) => "E0404",
+            (PathSource::Trait(_), false) => "E0405",
             (PathSource::Type, true) => "E0573",
             (PathSource::Type, false) => "E0412",
             (PathSource::Struct, true) => "E0574",
@@ -693,7 +704,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                             tref: &'tcx ast::PolyTraitRef,
                             m: &'tcx ast::TraitBoundModifier) {
         self.smart_resolve_path(tref.trait_ref.ref_id, None,
-                                &tref.trait_ref.path, PathSource::Trait);
+                                &tref.trait_ref.path, PathSource::Trait(AliasPossibility::Maybe));
         visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_variant(&mut self,
@@ -1935,6 +1946,17 @@ impl<'a> Resolver<'a> {
                 });
             }
 
+            ItemKind::TraitAlias(ref generics, ref bounds) => {
+                // Create a new rib for the trait-wide type parameters.
+                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+                    let local_def_id = this.definitions.local_def_id(item.id);
+                    this.with_self_rib(Def::SelfTy(Some(local_def_id), None), |this| {
+                        this.visit_generics(generics);
+                        walk_list!(this, visit_ty_param_bound, bounds);
+                    });
+                });
+            }
+
             ItemKind::Mod(_) | ItemKind::ForeignMod(_) => {
                 self.with_scope(item.id, |this| {
                     visit::walk_item(this, item);
@@ -2083,7 +2105,7 @@ impl<'a> Resolver<'a> {
                                                        &path,
                                                        trait_ref.path.span,
                                                        trait_ref.path.segments.last().unwrap().span,
-                                                       PathSource::Trait)
+                                                       PathSource::Trait(AliasPossibility::No))
                 .base_def();
             if def != Def::Err {
                 new_id = Some(def.def_id());
@@ -2635,7 +2657,7 @@ impl<'a> Resolver<'a> {
                         err.span_label(span, format!("did you mean `{}!(...)`?", path_str));
                         return (err, candidates);
                     }
-                    (Def::TyAlias(..), PathSource::Trait) => {
+                    (Def::TyAlias(..), PathSource::Trait(_)) => {
                         err.span_label(span, "type aliases cannot be used for traits");
                         return (err, candidates);
                     }

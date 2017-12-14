@@ -5182,7 +5182,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse trait Foo { ... }
+    /// Parse `trait Foo { ... }` or `trait Foo = Bar;`
     fn parse_item_trait(&mut self, is_auto: IsAuto, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
@@ -5194,23 +5194,34 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
 
-        tps.where_clause = self.parse_where_clause()?;
-
-        self.expect(&token::OpenDelim(token::Brace))?;
-        let mut trait_items = vec![];
-        while !self.eat(&token::CloseDelim(token::Brace)) {
-            let mut at_end = false;
-            match self.parse_trait_item(&mut at_end) {
-                Ok(item) => trait_items.push(item),
-                Err(mut e) => {
-                    e.emit();
-                    if !at_end {
-                        self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
+        if self.eat(&token::Eq) {
+            // it's a trait alias
+            let bounds = self.parse_ty_param_bounds()?;
+            tps.where_clause = self.parse_where_clause()?;
+            self.expect(&token::Semi)?;
+            if unsafety != Unsafety::Normal {
+                self.span_err(self.prev_span, "trait aliases cannot be unsafe");
+            }
+            Ok((ident, ItemKind::TraitAlias(tps, bounds), None))
+        } else {
+            // it's a normal trait
+            tps.where_clause = self.parse_where_clause()?;
+            self.expect(&token::OpenDelim(token::Brace))?;
+            let mut trait_items = vec![];
+            while !self.eat(&token::CloseDelim(token::Brace)) {
+                let mut at_end = false;
+                match self.parse_trait_item(&mut at_end) {
+                    Ok(item) => trait_items.push(item),
+                    Err(mut e) => {
+                        e.emit();
+                        if !at_end {
+                            self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
+                        }
                     }
                 }
             }
+            Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, trait_items), None))
         }
-        Ok((ident, ItemKind::Trait(is_auto, unsafety, tps, bounds, trait_items), None))
     }
 
     /// Parses items implementations variants

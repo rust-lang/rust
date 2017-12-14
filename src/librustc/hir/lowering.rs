@@ -1924,9 +1924,11 @@ impl<'a> LoweringContext<'a> {
                                bounds,
                                items)
             }
-            ItemKind::MacroDef(..) | ItemKind::Mac(..) => {
-                panic!("Shouldn't still be around")
+            ItemKind::TraitAlias(ref generics, ref bounds) => {
+                hir::ItemTraitAlias(self.lower_generics(generics),
+                                    self.lower_bounds(bounds, ImplTraitContext::Disallowed))
             }
+            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
         }
 
         // [1] `defaultness.has_value()` is never called for an `impl`, always `true` in order to

@@ -848,6 +848,7 @@ impl_stable_hash_for!(enum hir::Item_ {
     ItemStruct(variant_data, generics),
     ItemUnion(variant_data, generics),
     ItemTrait(is_auto, unsafety, generics, bounds, item_refs),
+    ItemTraitAlias(generics, bounds),
     ItemAutoImpl(unsafety, trait_ref),
     ItemImpl(unsafety, impl_polarity, impl_defaultness, generics, trait_ref, ty, impl_item_refs)
 });
@@ -1004,6 +1005,7 @@ impl_stable_hash_for!(enum hir::def::Def {
     Variant(def_id),
     Trait(def_id),
     TyAlias(def_id),
+    TraitAlias(def_id),
     AssociatedTy(def_id),
     PrimTy(prim_ty),
     TyParam(def_id),

@@ -1,0 +1,38 @@
+error[E0645]: trait aliases are not yet implemented (see issue #41517)
+  --> $DIR/trait-alias.rs:13:1
+   |
+13 | trait SimpleAlias = Default; //~ERROR E0645
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0645]: trait aliases are not yet implemented (see issue #41517)
+  --> $DIR/trait-alias.rs:14:1
+   |
+14 | trait GenericAlias<T> = Iterator<Item=T>; //~ERROR E0645
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0645]: trait aliases are not yet implemented (see issue #41517)
+  --> $DIR/trait-alias.rs:15:1
+   |
+15 | trait Partial<T> = IntoIterator<Item=T>; //~ERROR E0645
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0645]: trait aliases are not yet implemented (see issue #41517)
+  --> $DIR/trait-alias.rs:24:1
+   |
+24 | trait WithWhere<Art, Thou> = Romeo + Romeo where Fore<(Art, Thou)>: Romeo; //~ERROR E0645
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0645]: trait aliases are not yet implemented (see issue #41517)
+  --> $DIR/trait-alias.rs:25:1
+   |
+25 | trait BareWhere<Wild, Are> = where The<Wild>: Things<Are>; //~ERROR E0645
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0645]: trait aliases are not yet implemented (see issue #41517)
+  --> $DIR/trait-alias.rs:27:1
+   |
+27 | trait CD = Clone + Default; //~ERROR E0645
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

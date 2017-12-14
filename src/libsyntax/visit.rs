@@ -291,6 +291,10 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_trait_item, methods);
         }
+        ItemKind::TraitAlias(ref generics, ref bounds) => {
+            visitor.visit_generics(generics);
+            walk_list!(visitor, visit_ty_param_bound, bounds);
+        }
         ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
         ItemKind::MacroDef(ref ts) => visitor.visit_mac_def(ts, item.id),
     }

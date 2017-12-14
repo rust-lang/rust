@@ -37,6 +37,7 @@ pub enum Def {
     Trait(DefId),
     TyAlias(DefId),
     TyForeign(DefId),
+    TraitAlias(DefId),
     AssociatedTy(DefId),
     PrimTy(hir::PrimTy),
     TyParam(DefId),
@@ -155,7 +156,8 @@ impl Def {
     pub fn def_id(&self) -> DefId {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
-            Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
+            Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) |
+            Def::TyAlias(id) | Def::TraitAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
@@ -186,6 +188,7 @@ impl Def {
             Def::VariantCtor(.., CtorKind::Fictive) => "struct variant",
             Def::Enum(..) => "enum",
             Def::TyAlias(..) => "type alias",
+            Def::TraitAlias(..) => "trait alias",
             Def::AssociatedTy(..) => "associated type",
             Def::Struct(..) => "struct",
             Def::StructCtor(.., CtorKind::Fn) => "tuple struct",

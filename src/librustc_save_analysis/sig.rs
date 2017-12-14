@@ -487,6 +487,25 @@ impl Sig for ast::Item {
 
                 Ok(sig)
             }
+            ast::ItemKind::TraitAlias(ref generics, ref bounds) => {
+                let mut text = String::new();
+                text.push_str("trait ");
+                let mut sig = name_and_generics(text,
+                                                offset,
+                                                generics,
+                                                self.id,
+                                                self.ident,
+                                                scx)?;
+
+                if !bounds.is_empty() {
+                    sig.text.push_str(" = ");
+                    sig.text.push_str(&pprust::bounds_to_string(bounds));
+                }
+                // FIXME where clause
+                sig.text.push_str(";");
+
+                Ok(sig)
+            }
             ast::ItemKind::AutoImpl(unsafety, ref trait_ref) => {
                 let mut text = String::new();
                 if unsafety == ast::Unsafety::Unsafe {
