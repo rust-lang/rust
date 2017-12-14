@@ -32,4 +32,5 @@ clippy = "Testing"
 rls = "Broken"
 
 # ping @nrc
+# when breaking rustfmt, always break rls as well
 rustfmt = "Broken"
