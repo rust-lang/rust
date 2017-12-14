@@ -12,7 +12,7 @@ use hir;
 use hir::def_id::{DefId, DefIndex};
 use hir::map::DefPathHash;
 use hir::map::definitions::Definitions;
-use ich::{self, CachingCodemapView};
+use ich::{self, CachingCodemapView, Fingerprint};
 use middle::cstore::CrateStore;
 use ty::{TyCtxt, fast_reject};
 use session::Session;
@@ -28,12 +28,13 @@ use syntax::codemap::CodeMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::hygiene;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHashingContextProvider,
                                            StableHasher, StableHasherResult,
                                            ToStableHashKey};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 thread_local!(static IGNORED_ATTR_NAMES: RefCell<FxHashSet<Symbol>> =
     RefCell::new(FxHashSet()));
@@ -337,19 +338,46 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Span {
             return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
-        let len = span.hi - span.lo;
-
         std_hash::Hash::hash(&TAG_VALID_SPAN, hasher);
-        std_hash::Hash::hash(&file_lo.name, hasher);
-        std_hash::Hash::hash(&line_lo, hasher);
-        std_hash::Hash::hash(&col_lo, hasher);
-        std_hash::Hash::hash(&len, hasher);
+        // We truncate the stable_id hash and line and col numbers. The chances
+        // of causing a collision this way should be minimal.
+        std_hash::Hash::hash(&(file_lo.stable_id.0 as u64), hasher);
+
+        let col = (col_lo.0 as u64) & 0xFF;
+        let line = ((line_lo as u64) & 0xFF_FF_FF) << 8;
+        let len = ((span.hi - span.lo).0 as u64) << 32;
+        let line_col_len = col | line | len;
+        std_hash::Hash::hash(&line_col_len, hasher);
 
         if span.ctxt == SyntaxContext::empty() {
             TAG_NO_EXPANSION.hash_stable(hcx, hasher);
         } else {
             TAG_EXPANSION.hash_stable(hcx, hasher);
-            span.ctxt.outer().expn_info().hash_stable(hcx, hasher);
+
+            // Since the same expansion context is usually referenced many
+            // times, we cache a stable hash of it and hash that instead of
+            // recursing every time.
+            thread_local! {
+                static CACHE: RefCell<FxHashMap<hygiene::Mark, u64>> =
+                    RefCell::new(FxHashMap());
+            }
+
+            let sub_hash: u64 = CACHE.with(|cache| {
+                let mark = span.ctxt.outer();
+
+                if let Some(&sub_hash) = cache.borrow().get(&mark) {
+                    return sub_hash;
+                }
+
+                let mut hasher = StableHasher::new();
+                mark.expn_info().hash_stable(hcx, &mut hasher);
+                let sub_hash: Fingerprint = hasher.finish();
+                let sub_hash = sub_hash.to_smaller_hash();
+                cache.borrow_mut().insert(mark, sub_hash);
+                sub_hash
+            });
+
+            sub_hash.hash_stable(hcx, hasher);
         }
     }
 }

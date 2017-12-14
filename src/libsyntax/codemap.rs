@@ -23,9 +23,7 @@ pub use syntax_pos::hygiene::{ExpnFormat, ExpnInfo, NameAndSpan};
 pub use self::ExpnFormat::*;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::StableHasher;
 use std::cell::{RefCell, Ref};
-use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -99,24 +97,6 @@ impl FileLoader for RealFileLoader {
         let mut src = String::new();
         fs::File::open(path)?.read_to_string(&mut src)?;
         Ok(src)
-    }
-}
-
-// This is a FileMap identifier that is used to correlate FileMaps between
-// subsequent compilation sessions (which is something we need to do during
-// incremental compilation).
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
-pub struct StableFilemapId(u128);
-
-impl StableFilemapId {
-    pub fn new(filemap: &FileMap) -> StableFilemapId {
-        let mut hasher = StableHasher::new();
-
-        filemap.name.hash(&mut hasher);
-        filemap.name_was_remapped.hash(&mut hasher);
-        filemap.unmapped_path.hash(&mut hasher);
-
-        StableFilemapId(hasher.finish())
     }
 }
 
@@ -217,7 +197,7 @@ impl CodeMap {
 
         self.stable_id_to_filemap
             .borrow_mut()
-            .insert(StableFilemapId::new(&filemap), filemap.clone());
+            .insert(filemap.stable_id, filemap.clone());
 
         filemap
     }
@@ -246,6 +226,7 @@ impl CodeMap {
                                 name_was_remapped: bool,
                                 crate_of_origin: u32,
                                 src_hash: u128,
+                                stable_id: StableFilemapId,
                                 source_len: usize,
                                 mut file_local_lines: Vec<BytePos>,
                                 mut file_local_multibyte_chars: Vec<MultiByteChar>,
@@ -276,6 +257,7 @@ impl CodeMap {
             crate_of_origin,
             src: None,
             src_hash,
+            stable_id,
             external_src: RefCell::new(ExternalSource::AbsentOk),
             start_pos,
             end_pos,
@@ -288,7 +270,7 @@ impl CodeMap {
 
         self.stable_id_to_filemap
             .borrow_mut()
-            .insert(StableFilemapId::new(&filemap), filemap.clone());
+            .insert(stable_id, filemap.clone());
 
         filemap
     }

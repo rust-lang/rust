@@ -678,6 +678,8 @@ pub struct FileMap {
     pub src: Option<Rc<String>>,
     /// The source code's hash
     pub src_hash: u128,
+    /// The stable id used during incr. comp.
+    pub stable_id: StableFilemapId,
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
     pub external_src: RefCell<ExternalSource>,
@@ -693,15 +695,37 @@ pub struct FileMap {
     pub non_narrow_chars: RefCell<Vec<NonNarrowChar>>,
 }
 
+// This is a FileMap identifier that is used to correlate FileMaps between
+// subsequent compilation sessions (which is something we need to do during
+// incremental compilation).
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+pub struct StableFilemapId(pub u128);
+
+impl StableFilemapId {
+    pub fn new(name: &FileName,
+               name_was_remapped: bool,
+               unmapped_path: &FileName)
+               -> StableFilemapId {
+        use std::hash::Hash;
+
+        let mut hasher = StableHasher::new();
+        name.hash(&mut hasher);
+        name_was_remapped.hash(&mut hasher);
+        unmapped_path.hash(&mut hasher);
+        StableFilemapId(hasher.finish())
+    }
+}
+
 impl Encodable for FileMap {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("FileMap", 8, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
             s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
-            s.emit_struct_field("src_hash", 6, |s| self.src_hash.encode(s))?;
-            s.emit_struct_field("start_pos", 2, |s| self.start_pos.encode(s))?;
-            s.emit_struct_field("end_pos", 3, |s| self.end_pos.encode(s))?;
-            s.emit_struct_field("lines", 4, |s| {
+            s.emit_struct_field("src_hash", 2, |s| self.src_hash.encode(s))?;
+            s.emit_struct_field("stable_id", 3, |s| self.stable_id.encode(s))?;
+            s.emit_struct_field("start_pos", 4, |s| self.start_pos.encode(s))?;
+            s.emit_struct_field("end_pos", 5, |s| self.end_pos.encode(s))?;
+            s.emit_struct_field("lines", 6, |s| {
                 let lines = self.lines.borrow();
                 // store the length
                 s.emit_u32(lines.len() as u32)?;
@@ -747,10 +771,10 @@ impl Encodable for FileMap {
 
                 Ok(())
             })?;
-            s.emit_struct_field("multibyte_chars", 5, |s| {
+            s.emit_struct_field("multibyte_chars", 7, |s| {
                 (*self.multibyte_chars.borrow()).encode(s)
             })?;
-            s.emit_struct_field("non_narrow_chars", 7, |s| {
+            s.emit_struct_field("non_narrow_chars", 8, |s| {
                 (*self.non_narrow_chars.borrow()).encode(s)
             })
         })
@@ -765,11 +789,13 @@ impl Decodable for FileMap {
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
             let src_hash: u128 =
-                d.read_struct_field("src_hash", 6, |d| Decodable::decode(d))?;
+                d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
+            let stable_id: StableFilemapId =
+                d.read_struct_field("stable_id", 3, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
-                d.read_struct_field("start_pos", 2, |d| Decodable::decode(d))?;
-            let end_pos: BytePos = d.read_struct_field("end_pos", 3, |d| Decodable::decode(d))?;
-            let lines: Vec<BytePos> = d.read_struct_field("lines", 4, |d| {
+                d.read_struct_field("start_pos", 4, |d| Decodable::decode(d))?;
+            let end_pos: BytePos = d.read_struct_field("end_pos", 5, |d| Decodable::decode(d))?;
+            let lines: Vec<BytePos> = d.read_struct_field("lines", 6, |d| {
                 let num_lines: u32 = Decodable::decode(d)?;
                 let mut lines = Vec::with_capacity(num_lines as usize);
 
@@ -798,9 +824,9 @@ impl Decodable for FileMap {
                 Ok(lines)
             })?;
             let multibyte_chars: Vec<MultiByteChar> =
-                d.read_struct_field("multibyte_chars", 5, |d| Decodable::decode(d))?;
+                d.read_struct_field("multibyte_chars", 7, |d| Decodable::decode(d))?;
             let non_narrow_chars: Vec<NonNarrowChar> =
-                d.read_struct_field("non_narrow_chars", 7, |d| Decodable::decode(d))?;
+                d.read_struct_field("non_narrow_chars", 8, |d| Decodable::decode(d))?;
             Ok(FileMap {
                 name,
                 name_was_remapped,
@@ -813,6 +839,7 @@ impl Decodable for FileMap {
                 end_pos,
                 src: None,
                 src_hash,
+                stable_id,
                 external_src: RefCell::new(ExternalSource::AbsentOk),
                 lines: RefCell::new(lines),
                 multibyte_chars: RefCell::new(multibyte_chars),
@@ -840,6 +867,10 @@ impl FileMap {
         hasher.write(src.as_bytes());
         let src_hash = hasher.finish();
 
+        let stable_id = StableFilemapId::new(&name,
+                                             name_was_remapped,
+                                             &unmapped_path);
+
         let end_pos = start_pos.to_usize() + src.len();
 
         FileMap {
@@ -849,6 +880,7 @@ impl FileMap {
             crate_of_origin: 0,
             src: Some(Rc::new(src)),
             src_hash,
+            stable_id,
             external_src: RefCell::new(ExternalSource::Unneeded),
             start_pos,
             end_pos: Pos::from_usize(end_pos),

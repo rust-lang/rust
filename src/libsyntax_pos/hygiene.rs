@@ -60,22 +60,27 @@ impl Mark {
     }
 
     /// The mark of the theoretical expansion that generates freshly parsed, unexpanded AST.
+    #[inline]
     pub fn root() -> Self {
         Mark(0)
     }
 
+    #[inline]
     pub fn as_u32(self) -> u32 {
         self.0
     }
 
+    #[inline]
     pub fn from_u32(raw: u32) -> Mark {
         Mark(raw)
     }
 
+    #[inline]
     pub fn expn_info(self) -> Option<ExpnInfo> {
         HygieneData::with(|data| data.marks[self.0 as usize].expn_info.clone())
     }
 
+    #[inline]
     pub fn set_expn_info(self, info: ExpnInfo) {
         HygieneData::with(|data| data.marks[self.0 as usize].expn_info = Some(info))
     }
@@ -91,10 +96,12 @@ impl Mark {
         })
     }
 
+    #[inline]
     pub fn kind(self) -> MarkKind {
         HygieneData::with(|data| data.marks[self.0 as usize].kind)
     }
 
+    #[inline]
     pub fn set_kind(self, kind: MarkKind) {
         HygieneData::with(|data| data.marks[self.0 as usize].kind = kind)
     }
@@ -309,10 +316,12 @@ impl SyntaxContext {
         Some(scope)
     }
 
+    #[inline]
     pub fn modern(self) -> SyntaxContext {
         HygieneData::with(|data| data.syntax_contexts[self.0 as usize].modern)
     }
 
+    #[inline]
     pub fn outer(self) -> Mark {
         HygieneData::with(|data| data.syntax_contexts[self.0 as usize].outer_mark)
     }
