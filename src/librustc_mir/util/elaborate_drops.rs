@@ -88,13 +88,12 @@ pub trait DropElaborator<'a, 'tcx: 'a> : fmt::Debug {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle;
-    fn get_drop_flags(&mut self, path: Self::Path) -> Option<Operand<'tcx>>;
+    fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>>;
     fn clear_drop_flag(&mut self,
-                       location: Location, path:
-                       Self::Path,
+                       location: Location,
+                       path: Self::Path,
                        mode: DropFlagMode,
                        opt_drop_flag: Option<Local>);
-
 
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path>;
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path>;
@@ -910,7 +909,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             DropStyle::Conditional | DropStyle::Open => {
                 let flag = opt_flag
                     .map(|l| Operand::Copy(Place::Local(l)))
-                    .or_else(|| self.elaborator.get_drop_flags(self.path))
+                    .or_else(|| self.elaborator.get_drop_flag(self.path))
                     .unwrap();
                 let term = TerminatorKind::if_(self.tcx(), flag, on_set, on_unset);
                 self.new_block(unwind, term)

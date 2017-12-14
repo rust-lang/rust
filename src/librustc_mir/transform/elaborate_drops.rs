@@ -270,24 +270,18 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 
     fn array_subpaths(&self, path: Self::Path, size: u64)
                       -> Vec<(Place<'tcx>, Option<Self::Path>, Option<Local>)> {
-        if dataflow::move_path_children_matching(self.ctxt.move_data(), path, |_| {
-                assert!(size <= (u32::MAX as u64),
-                        "move out check doesn't implemented for array bigger then u32");
-                true
-            }).is_none() {
+        if dataflow::move_path_children_matching(self.ctxt.move_data(), path,
+                                                 |_| true).is_none() {
             return vec![];
         }
 
+        assert!(size <= (u32::MAX as u64),
+                "move out check doesn't implemented for array bigger then u32");
+
         let size = size as u32;
-        let flags =  self.ctxt.array_items_drop_flags.get(&path);
+        let flags = self.ctxt.array_items_drop_flags.get(&path);
         (0..size).map(|i| {
-            let place = &self.ctxt.move_data().move_paths[path].place;
-            (place.clone().elem(ProjectionElem::ConstantIndex{
-                offset: i,
-                min_length: size,
-                from_end: false
-            }),
-            dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p|
+            let move_path = dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p|
                 match p.elem {
                     ProjectionElem::ConstantIndex{offset, min_length: _, from_end: false} =>
                         offset == i,
@@ -296,8 +290,15 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
                     ProjectionElem::Subslice{from, to} => from <= i && i < size - to,
                     _ => false
                 }
-            ),
-            flags.map(|f| f[i as usize]))
+            );
+            let place = &self.ctxt.move_data().move_paths[path].place;
+            (place.clone().elem(ProjectionElem::ConstantIndex{
+                offset: i,
+                min_length: size,
+                from_end: false
+            }),
+            move_path,
+            move_path.and(flags.map(|f| f[i as usize])))
         }).collect()
     }
 
@@ -321,11 +322,11 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         })
     }
 
-    fn get_drop_flags(&mut self, path: Self::Path) -> Option<Operand<'tcx>> {
+    fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>> {
         self.ctxt.drop_flag(path).map(|f| match f{
             DropFlag::Single(l) => Operand::Copy(Place::Local(*l)),
             DropFlag::Subslice(_) =>
-                panic!("get_drop_flags shouldn't be calles for sublice move path")
+                panic!("get_drop_flag shouldn't be calles for sublice move path")
         })
     }
 }
@@ -369,44 +370,73 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn create_drop_flag(&mut self, index: MovePathIndex, span: Span) {
         let tcx = self.tcx;
-        if let Place::Projection(
-            box Projection{ref base, elem: ProjectionElem::Subslice{from, to}}) =
-            self.move_data().move_paths[index].place {
-            let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
-            if let ty::TyArray(_, n) = base_ty.sty {
-                let flags = {
+
+        match self.move_data().move_paths[index].place {
+            Place::Projection(box Projection{ref base,
+                                             elem: ProjectionElem::Subslice{from, to}}) => {
+                let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+                if let ty::TyArray(_, n) = base_ty.sty {
                     let n = n.val.to_const_int().and_then(|v| v.to_u64())
                         .expect("expected u64 size") as usize;
-                    let span = self.mir.span;
-                    let parent_index = self.move_data().move_paths[index].parent
-                        .expect("subslice has parent");
-                    let patch = &mut self.patch;
-                    let array_flags = self.array_items_drop_flags.entry(parent_index)
-                        .or_insert_with(|| {
-                            let flags = (0..n).map(|_| patch.new_internal(tcx.types.bool, span))
-                                .collect();
-                            debug!("create_drop_flags for array with subslice({:?}, {:?}, {:?})",
-                                parent_index, span, flags);
-                            flags
-                        });
                     let from = from as usize;
                     let to = to as usize;
-                    array_flags[from .. n-to].iter().map(|x| *x).collect()
-                };
-
-                let span = self.mir.span;
-                self.drop_flags.entry(index).or_insert_with(|| {
-                    debug!("create_drop_flags for subslice({:?}, {:?}, {:?})", index, span, flags);
-                    DropFlag::Subslice(flags)
-                });
-                return;
+                    let flags = self.drop_flags_for_array(n, index)[from .. n-to]
+                                    .iter()
+                                    .map(|x| *x).collect();
+                    let span = self.mir.span;
+                    self.drop_flags.entry(index).or_insert_with(|| {
+                        debug!("create_drop_flags for subslice({:?}, {:?}, {:?})",
+                               index, span, flags);
+                        DropFlag::Subslice(flags)
+                    });
+                    return;
+                }
             }
+            Place::Projection(box Projection{ref base,
+                                             elem: ProjectionElem::ConstantIndex{offset,
+                                                                                 min_length: _,
+                                                                                 from_end}}) => {
+                let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+                if let ty::TyArray(_, n) = base_ty.sty {
+                    let n = n.val.to_const_int().and_then(|v| v.to_u64())
+                        .expect("expected u64 size") as usize;
+                    let offset = offset as usize;
+                    let offset = if from_end { n-offset } else { offset };
+                    let flag = self.drop_flags_for_array(n, index)[offset];
+
+                    let span = self.mir.span;
+                    self.drop_flags.entry(index).or_insert_with(|| {
+                        debug!("create_drop_flags for const index({:?}, {:?}, {:?})",
+                               (offset, from_end), span, flag);
+                        DropFlag::Single(flag)
+                    });
+                    return;
+                }
+            }
+            _ => {}
         }
+
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.mir.span);
         self.drop_flags.entry(index).or_insert_with(|| {
             DropFlag::Single(patch.new_internal(tcx.types.bool, span))
         });
+    }
+
+    fn drop_flags_for_array(&mut self, n: usize, index: MovePathIndex) -> &Vec<Local> {
+        let tcx = self.tcx;
+        let span = self.mir.span;
+        let parent_index = self.move_data().move_paths[index].parent
+            .expect("subslice has parent");
+        let patch = &mut self.patch;
+        self.array_items_drop_flags.entry(parent_index)
+            .or_insert_with(|| {
+                let flags = (0..n).map(|_| patch.new_internal(tcx.types.bool, span))
+                    .collect();
+                debug!("create_drop_flags for array with subslice({:?}, {:?}, {:?})",
+                parent_index, span, flags);
+                flags
+            })
     }
 
     fn drop_flag(&mut self, index: MovePathIndex) -> Option<&DropFlag> {

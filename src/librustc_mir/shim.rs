@@ -264,7 +264,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
         }
     }
 
-    fn get_drop_flags(&mut self, _path: Self::Path) -> Option<Operand<'tcx>> {
+    fn get_drop_flag(&mut self, _path: Self::Path) -> Option<Operand<'tcx>> {
         None
     }
 
