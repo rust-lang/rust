@@ -536,10 +536,12 @@ impl Collector {
             testfn: testing::DynTestFn(box move |()| {
                 let panic = io::set_panic(None);
                 let print = io::set_print(None);
+                let eprint = io::set_eprint(None);
                 match {
                     rustc_driver::in_rustc_thread(move || {
                         io::set_panic(panic);
                         io::set_print(print);
+                        io::set_eprint(eprint);
                         run_test(&test,
                                  &cratename,
                                  &filename,
