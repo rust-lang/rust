@@ -732,10 +732,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             (sd, place_span.0),
             flow_state,
             |this, index, borrow| match (rw, borrow.kind) {
-                // Obviously an activation is compatible with its own reservation;
-                // so don't check if they interfere.
-                (Activation(_, activating), _) if index.is_reservation() &&
-                    activating == index.borrow_index() => Control::Continue,
+                // Obviously an activation is compatible with its own
+                // reservation (or even prior activating uses of same
+                // borrow); so don't check if they interfere.
+                //
+                // NOTE: *reservations* do conflict with themselves;
+                // thus aren't injecting unsoundenss w/ this check.)
+                (Activation(_, activating), _) if activating == index.borrow_index() =>
+                {
+                    debug!("check_access_for_conflict place_span: {:?} sd: {:?} rw: {:?} \
+                            skipping {:?} b/c activation of same borrow_index: {:?}",
+                           place_span, sd, rw, (index, borrow), index.borrow_index());
+                    Control::Continue
+                }
 
                 (Read(_), BorrowKind::Shared) |
                 (Reservation(..), BorrowKind::Shared) => Control::Continue,
@@ -1086,8 +1095,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let domain = flow_state.borrows.operator();
         let data = domain.borrows();
         flow_state.borrows.each_gen_bit(|gen| {
-            if gen.is_activation() && // must be activation,
-                !flow_state.borrows.contains(&gen) // and newly generated.
+            if gen.is_activation()
             {
                 let borrow_index = gen.borrow_index();
                 let borrow = &data[borrow_index];
