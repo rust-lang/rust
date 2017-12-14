@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use syntax_pos::{self, Pos, Span};
+use syntax_pos::{self, Pos, Span, FileName};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
@@ -23,7 +23,7 @@ use util::small_vector::SmallVector;
 
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 
 // These macros all relate to the file system; they either return
@@ -71,7 +71,7 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.codemap().lookup_char_pos(topmost.lo());
-    base::MacEager::expr(cx.expr_str(topmost, Symbol::intern(&loc.file.name)))
+    base::MacEager::expr(cx.expr_str(topmost, Symbol::intern(&loc.file.name.to_string())))
 }
 
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
@@ -99,7 +99,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
         None => return DummyResult::expr(sp),
     };
     // The file will be added to the code map by the parser
-    let path = res_rel_file(cx, sp, Path::new(&file));
+    let path = res_rel_file(cx, sp, file);
     let directory_ownership = DirectoryOwnership::Owned;
     let p = parse::new_sub_parser_from_file(cx.parse_sess(), &path, directory_ownership, None, sp);
 
@@ -135,7 +135,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
-    let file = res_rel_file(cx, sp, Path::new(&file));
+    let file = res_rel_file(cx, sp, file);
     let mut bytes = Vec::new();
     match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
         Ok(..) => {}
@@ -151,8 +151,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
         Ok(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
-            let filename = format!("{}", file.display());
-            cx.codemap().new_filemap_and_lines(&filename, &src);
+            cx.codemap().new_filemap_and_lines(&file, &src);
 
             base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&src)))
         }
@@ -171,7 +170,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
-    let file = res_rel_file(cx, sp, Path::new(&file));
+    let file = res_rel_file(cx, sp, file);
     let mut bytes = Vec::new();
     match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
         Err(e) => {
@@ -182,8 +181,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
         Ok(..) => {
             // Add this input file to the code map to make it available as
             // dependency information, but don't enter it's contents
-            let filename = format!("{}", file.display());
-            cx.codemap().new_filemap_and_lines(&filename, "");
+            cx.codemap().new_filemap_and_lines(&file, "");
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Rc::new(bytes))))
         }
@@ -192,16 +190,20 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
 
 // resolve a file-system path to an absolute file-system path (if it
 // isn't already)
-fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: &Path) -> PathBuf {
+fn res_rel_file(cx: &mut ExtCtxt, sp: syntax_pos::Span, arg: String) -> PathBuf {
+    let arg = PathBuf::from(arg);
     // Relative paths are resolved relative to the file in which they are found
     // after macro expansion (that is, they are unhygienic).
     if !arg.is_absolute() {
         let callsite = sp.source_callsite();
-        let mut path = cx.codemap().span_to_unmapped_path(callsite);
+        let mut path = match cx.codemap().span_to_unmapped_path(callsite) {
+            FileName::Real(path) => path,
+            other => panic!("cannot resolve relative path in non-file source `{}`", other),
+        };
         path.pop();
         path.push(arg);
         path
     } else {
-        arg.to_path_buf()
+        arg
     }
 }

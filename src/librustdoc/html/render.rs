@@ -54,6 +54,7 @@ use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
 use syntax::{abi, ast};
+use syntax::codemap::FileName;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
@@ -491,9 +492,12 @@ pub fn run(mut krate: clean::Crate,
            css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
            render_type: RenderType) -> Result<(), Error> {
-    let src_root = match krate.src.parent() {
-        Some(p) => p.to_path_buf(),
-        None => PathBuf::new(),
+    let src_root = match krate.src {
+        FileName::Real(ref p) => match p.parent() {
+            Some(p) => p.to_path_buf(),
+            None => PathBuf::new(),
+        },
+        _ => PathBuf::new(),
     };
     let mut scx = SharedContext {
         src_root,
@@ -596,9 +600,12 @@ pub fn run(mut krate: clean::Crate,
 
     // Cache where all our extern crates are located
     for &(n, ref e) in &krate.externs {
-        let src_root = match Path::new(&e.src).parent() {
-            Some(p) => p.to_path_buf(),
-            None => PathBuf::new(),
+        let src_root = match e.src {
+            FileName::Real(ref p) => match p.parent() {
+                Some(p) => p.to_path_buf(),
+                None => PathBuf::new(),
+            },
+            _ => PathBuf::new(),
         };
         cache.extern_locations.insert(n, (e.name.clone(), src_root,
                                           extern_location(e, &cx.dst)));
@@ -1075,14 +1082,10 @@ impl<'a> DocFolder for SourceCollector<'a> {
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem.
         if self.scx.include_sources
-            // skip all invalid spans
-            && item.source.filename != ""
+            // skip all invalid or macro spans
+            && item.source.filename.is_real()
             // skip non-local items
-            && item.def_id.is_local()
-            // Macros from other libraries get special filenames which we can
-            // safely ignore.
-            && !(item.source.filename.starts_with("<")
-                && item.source.filename.ends_with("macros>")) {
+            && item.def_id.is_local() {
 
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
@@ -1107,9 +1110,12 @@ impl<'a> DocFolder for SourceCollector<'a> {
 
 impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
-    fn emit_source(&mut self, filename: &str) -> io::Result<()> {
-        let p = PathBuf::from(filename);
-        if self.scx.local_sources.contains_key(&p) {
+    fn emit_source(&mut self, filename: &FileName) -> io::Result<()> {
+        let p = match *filename {
+            FileName::Real(ref file) => file,
+            _ => return Ok(()),
+        };
+        if self.scx.local_sources.contains_key(&**p) {
             // We've already emitted this source
             return Ok(());
         }
@@ -1158,7 +1164,7 @@ impl<'a> SourceCollector<'a> {
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some())?;
         w.flush()?;
-        self.scx.local_sources.insert(p, href);
+        self.scx.local_sources.insert(p.clone(), href);
         Ok(())
     }
 }
@@ -1670,18 +1676,20 @@ impl<'a> Item<'a> {
 
         let cache = cache();
         let mut path = String::new();
+
+        // We can safely ignore macros from other libraries
+        let file = match self.item.source.filename {
+            FileName::Real(ref path) => path,
+            _ => return None,
+        };
+
         let (krate, path) = if self.item.def_id.is_local() {
-            let path = PathBuf::from(&self.item.source.filename);
-            let path = self.cx.shared.local_sources.get(&path)?;
-            (&self.cx.shared.layout.krate, path)
-        } else {
-            // Macros from other libraries get special filenames which we can
-            // safely ignore.
-            if self.item.source.filename.starts_with("<") &&
-               self.item.source.filename.ends_with("macros>") {
+            if let Some(path) = self.cx.shared.local_sources.get(file) {
+                (&self.cx.shared.layout.krate, path)
+            } else {
                 return None;
             }
-
+        } else {
             let (krate, src_root) = match cache.extern_locations.get(&self.item.def_id.krate) {
                 Some(&(ref name, ref src, Local)) => (name, src),
                 Some(&(ref name, ref src, Remote(ref s))) => {
@@ -1691,7 +1699,6 @@ impl<'a> Item<'a> {
                 Some(&(_, _, Unknown)) | None => return None,
             };
 
-            let file = Path::new(&self.item.source.filename);
             clean_srcpath(&src_root, file, false, |component| {
                 path.push_str(component);
                 path.push('/');

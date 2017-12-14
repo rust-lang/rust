@@ -371,6 +371,17 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
     QuestionMark
 });
 
+impl_stable_hash_for!(enum ::syntax_pos::FileName {
+    Real(pb),
+    Macros(s),
+    QuoteExpansion,
+    Anon,
+    MacroExpansion,
+    ProcMacroSourceCode,
+    CfgSpec,
+    Custom(s)
+});
+
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,

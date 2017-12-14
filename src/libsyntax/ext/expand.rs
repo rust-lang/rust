@@ -27,7 +27,7 @@ use parse::parser::Parser;
 use ptr::P;
 use symbol::Symbol;
 use symbol::keywords;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP, FileName};
 use syntax_pos::hygiene::ExpnFormat;
 use tokenstream::{TokenStream, TokenTree};
 use util::small_vector::SmallVector;
@@ -38,6 +38,7 @@ use std::fs::File;
 use std::io::Read;
 use std::mem;
 use std::rc::Rc;
+use std::path::PathBuf;
 
 macro_rules! expansions {
     ($($kind:ident: $ty:ty [$($vec:ident, $ty_elt:ty)*], $kind_name:expr, .$make:ident,
@@ -220,7 +221,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         let mut module = ModuleData {
             mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
-            directory: self.cx.codemap().span_to_unmapped_path(krate.span),
+            directory: match self.cx.codemap().span_to_unmapped_path(krate.span) {
+                FileName::Real(path) => path,
+                other => PathBuf::from(other.to_string()),
+            },
         };
         module.directory.pop();
         self.cx.root_path = module.directory.clone();
@@ -978,7 +982,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         module.directory.push(&*item.ident.name.as_str());
                     }
                 } else {
-                    let mut path = self.cx.parse_sess.codemap().span_to_unmapped_path(inner);
+                    let path = self.cx.parse_sess.codemap().span_to_unmapped_path(inner);
+                    let mut path = match path {
+                        FileName::Real(path) => path,
+                        other => PathBuf::from(other.to_string()),
+                    };
                     let directory_ownership = match path.file_name().unwrap().to_str() {
                         Some("mod.rs") => DirectoryOwnership::Owned,
                         _ => DirectoryOwnership::UnownedViaMod(false),

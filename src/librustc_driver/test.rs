@@ -33,7 +33,7 @@ use rustc_trans_utils::trans_crate::TransCrate;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::codemap::{CodeMap, FilePathMapping};
+use syntax::codemap::{CodeMap, FilePathMapping, FileName};
 use errors;
 use errors::emitter::Emitter;
 use errors::{Level, DiagnosticBuilder};
@@ -113,7 +113,7 @@ fn test_env<F>(source_string: &str,
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
-        name: driver::anon_src(),
+        name: FileName::Anon,
         input: source_string.to_string(),
     };
     let krate = driver::phase_1_parse_input(&driver::CompileController::basic(),

@@ -1955,7 +1955,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
                 note.extend_from_slice(&prog.stdout);
 
                 sess.struct_err(&format!("linking with `{}` failed: {}",
-                                         pname,
+                                         pname.display(),
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
                     .note(str::from_utf8(&note[..]).unwrap())
@@ -1964,7 +1964,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
             }
         },
         Err(e) => {
-            sess.err(&format!("could not exec the linker `{}`: {}", pname, e));
+            sess.err(&format!("could not exec the linker `{}`: {}", pname.display(), e));
             sess.abort_if_errors();
         }
     }

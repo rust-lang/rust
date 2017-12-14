@@ -38,7 +38,7 @@ use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
-use syntax_pos::{BytePos, DUMMY_SP, Pos, Span};
+use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
 use errors;
 use errors::emitter::ColorConfig;
 
@@ -51,7 +51,7 @@ pub struct TestOptions {
     pub attrs: Vec<String>,
 }
 
-pub fn run(input: &str,
+pub fn run(input_path: &Path,
            cfgs: Vec<String>,
            libs: SearchPaths,
            externs: Externs,
@@ -60,10 +60,9 @@ pub fn run(input: &str,
            maybe_sysroot: Option<PathBuf>,
            render_type: RenderType,
            display_warnings: bool,
-           linker: Option<String>)
+           linker: Option<PathBuf>)
            -> isize {
-    let input_path = PathBuf::from(input);
-    let input = config::Input::File(input_path.clone());
+    let input = config::Input::File(input_path.to_owned());
 
     let sessopts = config::Options {
         maybe_sysroot: maybe_sysroot.clone().or_else(
@@ -85,7 +84,7 @@ pub fn run(input: &str,
 
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
-        sessopts, Some(input_path.clone()), handler, codemap.clone(),
+        sessopts, Some(input_path.to_owned()), handler, codemap.clone(),
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -177,12 +176,12 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     opts
 }
 
-fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs: SearchPaths,
+fn run_test(test: &str, cratename: &str, filename: &FileName, cfgs: Vec<String>, libs: SearchPaths,
             externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
             maybe_sysroot: Option<PathBuf>,
-            linker: Option<String>) {
+            linker: Option<PathBuf>) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = make_test(test, Some(cratename), as_test_harness, opts);
@@ -451,17 +450,17 @@ pub struct Collector {
     maybe_sysroot: Option<PathBuf>,
     position: Span,
     codemap: Option<Rc<CodeMap>>,
-    filename: Option<String>,
+    filename: Option<PathBuf>,
     // to be removed when hoedown will be removed as well
     pub render_type: RenderType,
-    linker: Option<String>,
+    linker: Option<PathBuf>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
-               codemap: Option<Rc<CodeMap>>, filename: Option<String>,
-               render_type: RenderType, linker: Option<String>) -> Collector {
+               codemap: Option<Rc<CodeMap>>, filename: Option<PathBuf>,
+               render_type: RenderType, linker: Option<PathBuf>) -> Collector {
         Collector {
             tests: Vec::new(),
             old_tests: HashMap::new(),
@@ -481,16 +480,16 @@ impl Collector {
         }
     }
 
-    fn generate_name(&self, line: usize, filename: &str) -> String {
+    fn generate_name(&self, line: usize, filename: &FileName) -> String {
         format!("{} - {} (line {})", filename, self.names.join("::"), line)
     }
 
     // to be removed once hoedown is gone
-    fn generate_name_beginning(&self, filename: &str) -> String {
+    fn generate_name_beginning(&self, filename: &FileName) -> String {
         format!("{} - {} (line", filename, self.names.join("::"))
     }
 
-    pub fn add_old_test(&mut self, test: String, filename: String) {
+    pub fn add_old_test(&mut self, test: String, filename: FileName) {
         let name_beg = self.generate_name_beginning(&filename);
         let entry = self.old_tests.entry(name_beg)
                                   .or_insert(Vec::new());
@@ -500,7 +499,7 @@ impl Collector {
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    line: usize, filename: String, allow_fail: bool) {
+                    line: usize, filename: FileName, allow_fail: bool) {
         let name = self.generate_name(line, &filename);
         // to be removed when hoedown is removed
         if self.render_type == RenderType::Pulldown {
@@ -578,21 +577,21 @@ impl Collector {
         self.position = position;
     }
 
-    pub fn get_filename(&self) -> String {
+    pub fn get_filename(&self) -> FileName {
         if let Some(ref codemap) = self.codemap {
             let filename = codemap.span_to_filename(self.position);
-            if let Ok(cur_dir) = env::current_dir() {
-                if let Ok(path) = Path::new(&filename).strip_prefix(&cur_dir) {
-                    if let Some(path) = path.to_str() {
-                        return path.to_owned();
+            if let FileName::Real(ref filename) = filename {
+                if let Ok(cur_dir) = env::current_dir() {
+                    if let Ok(path) = filename.strip_prefix(&cur_dir) {
+                        return path.to_owned().into();
                     }
                 }
             }
             filename
         } else if let Some(ref filename) = self.filename {
-            filename.clone()
+            filename.clone().into()
         } else {
-            "<input>".to_owned()
+            FileName::Custom("input".to_owned())
         }
     }
 

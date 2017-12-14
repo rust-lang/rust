@@ -69,10 +69,10 @@ pub struct Session {
     pub default_sysroot: Option<PathBuf>,
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
-    pub local_crate_source_file: Option<String>,
+    pub local_crate_source_file: Option<PathBuf>,
     /// The directory the compiler has been executed in plus a flag indicating
     /// if the value stored here has been affected by path remapping.
-    pub working_dir: (String, bool),
+    pub working_dir: (PathBuf, bool),
     pub lint_store: RefCell<lint::LintStore>,
     pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
     /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
@@ -864,7 +864,7 @@ pub fn build_session_(sopts: config::Options,
     let file_path_mapping = sopts.file_path_mapping();
 
     let local_crate_source_file = local_crate_source_file.map(|path| {
-        file_path_mapping.map_prefix(path.to_string_lossy().into_owned()).0
+        file_path_mapping.map_prefix(path).0
     });
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
@@ -874,7 +874,7 @@ pub fn build_session_(sopts: config::Options,
     let print_fuel = Cell::new(0);
 
     let working_dir = match env::current_dir() {
-        Ok(dir) => dir.to_string_lossy().into_owned(),
+        Ok(dir) => dir,
         Err(e) => {
             panic!(p_s.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)))
         }

@@ -34,7 +34,7 @@ use syntax::print::{pprust};
 use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::util::small_vector::SmallVector;
-use syntax_pos;
+use syntax_pos::{self, FileName};
 
 use graphviz as dot;
 
@@ -841,7 +841,7 @@ pub fn fold_crate(sess: &Session, krate: ast::Crate, ppm: PpMode) -> ast::Crate 
     }
 }
 
-fn get_source(input: &Input, sess: &Session) -> (Vec<u8>, String) {
+fn get_source(input: &Input, sess: &Session) -> (Vec<u8>, FileName) {
     let src_name = driver::source_name(input);
     let src = sess.codemap()
         .get_filemap(&src_name)
@@ -885,7 +885,7 @@ pub fn print_after_parsing(sess: &Session,
                 pprust::print_crate(sess.codemap(),
                                     &sess.parse_sess,
                                     krate,
-                                    src_name.to_string(),
+                                    src_name,
                                     &mut rdr,
                                     box out,
                                     annotation.pp_ann(),
@@ -944,7 +944,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     pprust::print_crate(sess.codemap(),
                                         &sess.parse_sess,
                                         krate,
-                                        src_name.to_string(),
+                                        src_name,
                                         &mut rdr,
                                         box out,
                                         annotation.pp_ann(),
@@ -969,7 +969,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     pprust_hir::print_crate(sess.codemap(),
                                             &sess.parse_sess,
                                             krate,
-                                            src_name.to_string(),
+                                            src_name,
                                             &mut rdr,
                                             box out,
                                             annotation.pp_ann(),
@@ -1011,7 +1011,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                     let hir_map = annotation.hir_map().expect("--unpretty missing HIR map");
                     let mut pp_state = pprust_hir::State::new_from_input(sess.codemap(),
                                                                          &sess.parse_sess,
-                                                                         src_name.to_string(),
+                                                                         src_name,
                                                                          &mut rdr,
                                                                          box out,
                                                                          annotation.pp_ann(),

@@ -37,7 +37,7 @@ use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, NO_EXPANSION};
+use syntax_pos::{Span, NO_EXPANSION, FileName};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc::hir;
 
@@ -460,7 +460,7 @@ impl CrateStore for cstore::CStore {
         }
 
         let (name, def) = data.get_macro(id.index);
-        let source_name = format!("<{} macros>", name);
+        let source_name = FileName::Macros(name.to_string());
 
         let filemap = sess.parse_sess.codemap().new_filemap(source_name, def.body);
         let local_span = Span::new(filemap.start_pos, filemap.end_pos, NO_EXPANSION);

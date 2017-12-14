@@ -27,7 +27,7 @@ use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
 use symbol::{Symbol, keywords};
-use syntax_pos::DUMMY_SP;
+use syntax_pos::{DUMMY_SP, FileName};
 use tokenstream::{self, TokenStream, TokenTree};
 
 use std::ascii;
@@ -87,7 +87,7 @@ pub const DEFAULT_COLUMNS: usize = 78;
 pub fn print_crate<'a>(cm: &'a CodeMap,
                        sess: &ParseSess,
                        krate: &ast::Crate,
-                       filename: String,
+                       filename: FileName,
                        input: &mut Read,
                        out: Box<Write+'a>,
                        ann: &'a PpAnn,
@@ -120,7 +120,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
                           sess: &ParseSess,
-                          filename: String,
+                          filename: FileName,
                           input: &mut Read,
                           out: Box<Write+'a>,
                           ann: &'a PpAnn,

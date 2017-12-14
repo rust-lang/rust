@@ -17,7 +17,7 @@ use getopts;
 use testing;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::Externs;
-use syntax::codemap::DUMMY_SP;
+use syntax::codemap::{DUMMY_SP, FileName};
 
 use clean::Span;
 
@@ -54,15 +54,14 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 
 /// Render `input` (e.g. "foo.md") into an HTML file in `output`
 /// (e.g. output = "bar" => "bar/foo.html").
-pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
+pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
               external_html: &ExternalHtml, include_toc: bool,
               render_type: RenderType) -> isize {
     // Span used for markdown hoedown/pulldown differences.
     let mut span = Span::empty();
-    span.filename = input.to_owned();
+    span.filename = FileName::Real(input.to_owned());
 
-    let input_p = Path::new(input);
-    output.push(input_p.file_stem().unwrap());
+    output.push(input.file_stem().unwrap());
     output.set_extension("html");
 
     let mut css = String::new();
@@ -175,7 +174,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 /// Run any tests/code examples in the markdown file `input`.
 pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
             mut test_args: Vec<String>, maybe_sysroot: Option<PathBuf>,
-            render_type: RenderType, display_warnings: bool, linker: Option<String>) -> isize {
+            render_type: RenderType, display_warnings: bool, linker: Option<PathBuf>) -> isize {
     let input_str = match load_string(input) {
         Ok(s) => s,
         Err(LoadStringError::ReadFail) => return 1,
@@ -184,9 +183,9 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
 
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
-    let mut collector = Collector::new(input.to_string(), cfgs, libs, externs,
+    let mut collector = Collector::new(input.to_owned(), cfgs, libs, externs,
                                        true, opts, maybe_sysroot, None,
-                                       Some(input.to_owned()),
+                                       Some(PathBuf::from(input)),
                                        render_type, linker);
     if render_type == RenderType::Pulldown {
         old_find_testable_code(&input_str, &mut collector, DUMMY_SP);

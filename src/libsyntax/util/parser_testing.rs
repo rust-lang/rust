@@ -16,16 +16,18 @@ use parse::parser::Parser;
 use ptr::P;
 use tokenstream::TokenStream;
 use std::iter::Peekable;
+use std::path::PathBuf;
 
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_stream(source_str: String) -> TokenStream {
     let ps = ParseSess::new(FilePathMapping::empty());
-    filemap_to_stream(&ps, ps.codemap().new_filemap("bogofile".to_string(), source_str), None)
+    filemap_to_stream(&ps, ps.codemap()
+                             .new_filemap(PathBuf::from("bogofile").into(), source_str), None)
 }
 
 /// Map string to parser (via tts)
 pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a> {
-    new_parser_from_source_str(ps, "bogofile".to_string(), source_str)
+    new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
 }
 
 fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T where

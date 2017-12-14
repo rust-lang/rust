@@ -469,7 +469,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
     let file = span_start(cx, span).file;
     let file_metadata = file_metadata(cx,
-                                      &file.name[..],
+                                      &file.name,
                                       dbg_context.get_ref(span).defining_crate);
 
     let loc = span_start(cx, span);
