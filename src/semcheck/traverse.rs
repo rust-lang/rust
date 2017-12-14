@@ -9,7 +9,7 @@
 //! that have been matched. Trait and inherent impls can't be matched by name, and are processed
 //! in a fourth pass that uses trait bounds to find matching impls.
 
-use rustc::hir::def::{CtorKind, Def};
+use rustc::hir::def::{CtorKind, Def, Export};
 use rustc::hir::def_id::DefId;
 use rustc::ty::{AssociatedItem, Ty, TyCtxt};
 use rustc::ty::subst::{Subst, Substs};
@@ -77,9 +77,9 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
     use rustc::hir::def::Def::*;
 
     // Get the visibility of the inner item, given the outer item's visibility.
-    fn get_vis(tcx: TyCtxt, outer_vis: Visibility, def_id: DefId) -> Visibility {
+    fn get_vis(outer_vis: Visibility, def: Export) -> Visibility {
         if outer_vis == Public {
-            tcx.visibility(def_id)
+            def.vis
         } else {
             outer_vis
         }
@@ -108,8 +108,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                 (Some(o), Some(n)) => {
                     if let (Mod(o_def_id), Mod(n_def_id)) = (o.def, n.def) {
                         if visited.insert((o_def_id, n_def_id)) {
-                            let o_vis = get_vis(tcx, old_vis , o_def_id);
-                            let n_vis = get_vis(tcx, new_vis , n_def_id);
+                            let o_vis = get_vis(old_vis, o);
+                            let n_vis = get_vis(new_vis, n);
 
                             if o_vis != n_vis {
                                 changes.new_change(o_def_id,
@@ -138,8 +138,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
                         let o_def_id = o.def.def_id();
                         let n_def_id = n.def.def_id();
-                        let o_vis = get_vis(tcx, old_vis, o_def_id);
-                        let n_vis = get_vis(tcx, new_vis, n_def_id);
+                        let o_vis = get_vis(old_vis, o);
+                        let n_vis = get_vis(new_vis, n);
 
                         let output = o_vis == Public || n_vis == Public;
                         changes.new_change(o_def_id,
@@ -255,7 +255,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    if get_vis(tcx, old_vis , o.def.def_id()) == Public {
+                    if get_vis(old_vis, o) == Public {
                         // delay the handling of removals until the id mapping is complete
                         removals.push(o);
                     }
@@ -267,7 +267,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    if get_vis(tcx, new_vis , n.def.def_id()) == Public {
+                    if get_vis(new_vis, n) == Public {
+                        debug!("addition: {:?} ({:?})", new_vis, n);
                         // delay the handling of additions until the id mapping is complete
                         additions.push(n);
                     }
