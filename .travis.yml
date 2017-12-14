@@ -294,6 +294,7 @@ before_deploy:
           cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
       fi
   - travis_retry gem update --system
+  - ls -la deploy/$TRAVIS_COMMIT
 
 deploy:
   - provider: s3

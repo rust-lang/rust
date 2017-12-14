@@ -43,6 +43,7 @@ mod cache;
 pub mod tcx;
 pub mod visit;
 pub mod traversal;
+pub mod interpret;
 
 /// Types for locals
 type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;

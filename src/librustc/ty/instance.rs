@@ -180,20 +180,20 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
         result
     }
-}
 
-fn resolve_closure<'a, 'tcx>(
-                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                   def_id: DefId,
-                   substs: ty::ClosureSubsts<'tcx>,
-                   requested_kind: ty::ClosureKind)
--> Instance<'tcx>
-{
-    let actual_kind = substs.closure_kind(def_id, tcx);
+    pub fn resolve_closure(
+                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    def_id: DefId,
+                    substs: ty::ClosureSubsts<'tcx>,
+                    requested_kind: ty::ClosureKind)
+    -> Instance<'tcx>
+    {
+        let actual_kind = substs.closure_kind(def_id, tcx);
 
-    match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
-        Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
-        _ => Instance::new(def_id, substs.substs)
+        match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
+            Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
+            _ => Instance::new(def_id, substs.substs)
+        }
     }
 }
 
@@ -202,8 +202,8 @@ fn resolve_associated_item<'a, 'tcx>(
     trait_item: &ty::AssociatedItem,
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,
-    rcvr_substs: &'tcx Substs<'tcx>
-    ) -> Option<Instance<'tcx>> {
+    rcvr_substs: &'tcx Substs<'tcx>,
+) -> Option<Instance<'tcx>> {
     let def_id = trait_item.def_id;
     debug!("resolve_associated_item(trait_item={:?}, \
                                     trait_id={:?}, \
@@ -230,7 +230,7 @@ fn resolve_associated_item<'a, 'tcx>(
         }
         traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
-            Some(resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
+            Some(Instance::resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
                                  trait_closure_kind))
         }
         traits::VtableFnPointer(ref data) => {

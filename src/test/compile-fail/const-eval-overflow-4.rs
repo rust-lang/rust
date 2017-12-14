@@ -23,6 +23,8 @@ const A_I8_T
     : [u32; (i8::MAX as i8 + 1i8) as usize]
     //~^ ERROR constant evaluation error
     //~^^ NOTE attempt to add with overflow
+    //~| WARNING constant evaluation error
+    //~| NOTE on by default
     = [0; (i8::MAX as usize) + 1];
 
 fn main() {

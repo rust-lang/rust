@@ -23,7 +23,7 @@
 # Each tool has a list of people to ping
 
 # ping @oli-obk @RalfJung @eddyb
-miri = "Broken"
+miri = "Testing"
 
 # ping @Manishearth @llogiq @mcarton @oli-obk
 clippy = "Testing"

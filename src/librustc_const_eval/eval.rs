@@ -682,35 +682,3 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
         compare_const_vals(tcx, span, &a.val, &b.val)
     }
 }
-
-pub(crate) fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
-                        -> EvalResult<'tcx> {
-    let (def_id, substs) = if let Some(resolved) = lookup_const_by_id(tcx, key) {
-        resolved
-    } else {
-        return Err(ConstEvalErr {
-            span: tcx.def_span(key.value.0),
-            kind: TypeckError
-        });
-    };
-
-    let tables = tcx.typeck_tables_of(def_id);
-    let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        let body_id = tcx.hir.body_owned_by(id);
-
-        // Do match-check before building MIR
-        if tcx.check_match(def_id).is_err() {
-            return Err(ConstEvalErr {
-                span: tcx.def_span(key.value.0),
-                kind: CheckMatchError,
-            });
-        }
-
-        tcx.mir_const_qualif(def_id);
-        tcx.hir.body(body_id)
-    } else {
-        tcx.extern_const_body(def_id).body
-    };
-    ConstContext::new(tcx, key.param_env.and(substs), tables).eval(&body.value)
-}

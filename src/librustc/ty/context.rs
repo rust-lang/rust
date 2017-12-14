@@ -30,9 +30,10 @@ use middle::cstore::EncodedMetadata;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
-use mir::Mir;
+use mir::{Mir, interpret};
 use ty::subst::{Kind, Substs};
 use ty::ReprOptions;
+use ty::Instance;
 use traits;
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
@@ -87,6 +88,8 @@ pub struct GlobalArenas<'tcx> {
     steal_mir: TypedArena<Steal<Mir<'tcx>>>,
     mir: TypedArena<Mir<'tcx>>,
     tables: TypedArena<ty::TypeckTables<'tcx>>,
+    /// miri allocations
+    const_allocs: TypedArena<interpret::Allocation>,
 }
 
 impl<'tcx> GlobalArenas<'tcx> {
@@ -99,6 +102,7 @@ impl<'tcx> GlobalArenas<'tcx> {
             steal_mir: TypedArena::new(),
             mir: TypedArena::new(),
             tables: TypedArena::new(),
+            const_allocs: TypedArena::new(),
         }
     }
 }
@@ -847,6 +851,8 @@ pub struct GlobalCtxt<'tcx> {
 
     stability_interner: RefCell<FxHashSet<&'tcx attr::Stability>>,
 
+    pub interpret_interner: RefCell<InterpretInterner<'tcx>>,
+
     layout_interner: RefCell<FxHashSet<&'tcx LayoutDetails>>,
 
     /// A vector of every trait accessible in the whole crate
@@ -864,6 +870,104 @@ pub struct GlobalCtxt<'tcx> {
     pub tx_to_llvm_workers: mpsc::Sender<Box<Any + Send>>,
 
     output_filenames: Arc<OutputFilenames>,
+}
+
+/// Everything needed to efficiently work with interned allocations
+#[derive(Debug, Default)]
+pub struct InterpretInterner<'tcx> {
+    /// Stores the value of constants (and deduplicates the actual memory)
+    allocs: FxHashSet<&'tcx interpret::Allocation>,
+
+    /// Allows obtaining function instance handles via a unique identifier
+    functions: FxHashMap<u64, Instance<'tcx>>,
+
+    /// Inverse map of `interpret_functions`.
+    /// Used so we don't allocate a new pointer every time we need one
+    function_cache: FxHashMap<Instance<'tcx>, u64>,
+
+    /// Allows obtaining const allocs via a unique identifier
+    alloc_by_id: FxHashMap<u64, &'tcx interpret::Allocation>,
+
+    /// The AllocId to assign to the next new regular allocation.
+    /// Always incremented, never gets smaller.
+    next_id: u64,
+
+    /// Allows checking whether a constant already has an allocation
+    ///
+    /// The pointers are to the beginning of an `alloc_by_id` allocation
+    alloc_cache: FxHashMap<interpret::GlobalId<'tcx>, interpret::PtrAndAlign>,
+
+    /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
+    /// allocations for string and bytestring literals.
+    literal_alloc_cache: FxHashMap<Vec<u8>, u64>,
+}
+
+impl<'tcx> InterpretInterner<'tcx> {
+    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> u64 {
+        if let Some(&alloc_id) = self.function_cache.get(&instance) {
+            return alloc_id;
+        }
+        let id = self.reserve();
+        debug!("creating fn ptr: {}", id);
+        self.functions.insert(id, instance);
+        self.function_cache.insert(instance, id);
+        id
+    }
+
+    pub fn get_fn(
+        &self,
+        id: u64,
+    ) -> Option<Instance<'tcx>> {
+        self.functions.get(&id).cloned()
+    }
+
+    pub fn get_alloc(
+        &self,
+        id: u64,
+    ) -> Option<&'tcx interpret::Allocation> {
+        self.alloc_by_id.get(&id).cloned()
+    }
+
+    pub fn get_cached(
+        &self,
+        global_id: interpret::GlobalId<'tcx>,
+    ) -> Option<interpret::PtrAndAlign> {
+        self.alloc_cache.get(&global_id).cloned()
+    }
+
+    pub fn cache(
+        &mut self,
+        global_id: interpret::GlobalId<'tcx>,
+        ptr: interpret::PtrAndAlign,
+    ) {
+        if let Some(old) = self.alloc_cache.insert(global_id, ptr) {
+            bug!("tried to cache {:?}, but was already existing as {:#?}", global_id, old);
+        }
+    }
+
+    pub fn intern_at_reserved(
+        &mut self,
+        id: u64,
+        alloc: &'tcx interpret::Allocation,
+    ) {
+        if let Some(old) = self.alloc_by_id.insert(id, alloc) {
+            bug!("tried to intern allocation at {}, but was already existing as {:#?}", id, old);
+        }
+    }
+
+    /// obtains a new allocation ID that can be referenced but does not
+    /// yet have an allocation backing it.
+    pub fn reserve(
+        &mut self,
+    ) -> u64 {
+        let next = self.next_id;
+        self.next_id = self.next_id
+            .checked_add(1)
+            .expect("You overflowed a u64 by incrementing by 1... \
+                     You've just earned yourself a free drink if we ever meet. \
+                     Seriously, how did you do that?!");
+        next
+    }
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -931,6 +1035,41 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             self.interners.arena.alloc_slice(values)
         }
+    }
+
+    pub fn intern_const_alloc(
+        self,
+        alloc: interpret::Allocation,
+    ) -> &'gcx interpret::Allocation {
+        if let Some(alloc) = self.interpret_interner.borrow().allocs.get(&alloc) {
+            return alloc;
+        }
+
+        let interned = self.global_arenas.const_allocs.alloc(alloc);
+        if let Some(prev) = self.interpret_interner.borrow_mut().allocs.replace(interned) {
+            bug!("Tried to overwrite interned Allocation: {:#?}", prev)
+        }
+        interned
+    }
+
+    /// Allocates a byte or string literal for `mir::interpret`
+    pub fn allocate_cached(self, bytes: &[u8]) -> u64 {
+        // check whether we already allocated this literal or a constant with the same memory
+        if let Some(&alloc_id) = self.interpret_interner.borrow().literal_alloc_cache.get(bytes) {
+            return alloc_id;
+        }
+        // create an allocation that just contains these bytes
+        let alloc = interpret::Allocation::from_bytes(bytes);
+        let alloc = self.intern_const_alloc(alloc);
+
+        let mut int = self.interpret_interner.borrow_mut();
+        // the next unique id
+        let id = int.reserve();
+        // make the allocation identifiable
+        int.alloc_by_id.insert(id, alloc);
+        // cache it for the future
+        int.literal_alloc_cache.insert(bytes.to_owned(), id);
+        id
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
@@ -1079,6 +1218,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
             stability_interner: RefCell::new(FxHashSet()),
+            interpret_interner: Default::default(),
             all_traits: RefCell::new(None),
             tx_to_llvm_workers: tx,
             output_filenames: Arc::new(output_filenames.clone()),
@@ -1525,6 +1665,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
         println!("Stability interner: #{}", self.stability_interner.borrow().len());
+        println!("Interpret interner: #{}", self.interpret_interner.borrow().allocs.len());
         println!("Layout interner: #{}", self.layout_interner.borrow().len());
     }
 }

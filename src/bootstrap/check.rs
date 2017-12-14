@@ -321,6 +321,7 @@ impl Step for Rustfmt {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
+    stage: u32,
     host: Interned<String>,
 }
 
@@ -336,6 +337,7 @@ impl Step for Miri {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Miri {
+            stage: run.builder.top_stage,
             host: run.target,
         });
     }
@@ -343,8 +345,9 @@ impl Step for Miri {
     /// Runs `cargo test` for miri.
     fn run(self, builder: &Builder) {
         let build = builder.build;
+        let stage = self.stage;
         let host = self.host;
-        let compiler = builder.compiler(1, host);
+        let compiler = builder.compiler(stage, host);
 
         if let Some(miri) = builder.ensure(tool::Miri { compiler, target: self.host }) {
             let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
@@ -766,6 +769,7 @@ impl Step for Compiletest {
         if build.config.rust_debuginfo_tests {
             flags.push("-g".to_string());
         }
+        flags.push("-Zmiri -Zunstable-options".to_string());
 
         if let Some(linker) = build.linker(target) {
             cmd.arg("--linker").arg(linker);

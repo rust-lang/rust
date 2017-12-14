@@ -246,6 +246,9 @@ fn main() {
         // When running miri tests, we need to generate MIR for all libraries
         if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
             cmd.arg("-Zalways-encode-mir");
+            if stage != "0" {
+                cmd.arg("-Zmiri");
+            }
             cmd.arg("-Zmir-emit-validate=1");
         }
 

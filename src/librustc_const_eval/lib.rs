@@ -50,7 +50,6 @@ use rustc::ty::maps::Providers;
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        const_eval: eval::const_eval,
         check_match: check_match::check_match,
         ..*providers
     };
