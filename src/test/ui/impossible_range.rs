@@ -17,11 +17,13 @@ pub fn main() {
     0..;
     ..1;
     0..1;
-
     ..=; //~ERROR inclusive range with no end
-    0..=; //~ERROR inclusive range with no end
-    ..=1;
-    0..=1;
+         //~^HELP bounded at the end
 }
 
-
+fn _foo1() {
+    ..=1;
+    0..=1;
+    0..=; //~ERROR inclusive range with no end
+          //~^HELP bounded at the end
+}

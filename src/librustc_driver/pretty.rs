@@ -729,6 +729,7 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
 
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
         fn expr_to_block(rules: ast::BlockCheckMode,
+                         recovered: bool,
                          e: Option<P<ast::Expr>>,
                          sess: &Session) -> P<ast::Block> {
             P(ast::Block {
@@ -744,12 +745,13 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
                 rules,
                 id: sess.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
+                recovered,
             })
         }
 
         if !self.within_static_or_const {
 
-            let empty_block = expr_to_block(BlockCheckMode::Default, None, self.sess);
+            let empty_block = expr_to_block(BlockCheckMode::Default, false, None, self.sess);
             let loop_expr = P(ast::Expr {
                 node: ast::ExprKind::Loop(empty_block, None),
                 id: self.sess.next_node_id(),
@@ -757,7 +759,7 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
                 attrs: ast::ThinVec::new(),
             });
 
-            expr_to_block(b.rules, Some(loop_expr), self.sess)
+            expr_to_block(b.rules, b.recovered, Some(loop_expr), self.sess)
 
         } else {
             fold::noop_fold_block(b, self)

@@ -28,11 +28,5 @@ error: expected expression, found `;`
 14 |     foo(bar(;
    |             ^
 
-error: expected expression, found `)`
-  --> $DIR/token-error-correct.rs:16:1
-   |
-16 | }
-   | ^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

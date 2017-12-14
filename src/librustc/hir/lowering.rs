@@ -1835,6 +1835,7 @@ impl<'a> LoweringContext<'a> {
             rules: self.lower_block_check_mode(&b.rules),
             span: b.span,
             targeted_by_break,
+            recovered: b.recovered,
         })
     }
 
@@ -2691,6 +2692,7 @@ impl<'a> LoweringContext<'a> {
                                 rules: hir::DefaultBlock,
                                 span,
                                 targeted_by_break: false,
+                                recovered: blk.recovered,
                             });
                             P(self.expr_block(blk, ThinVec::new()))
                         }
@@ -3507,6 +3509,7 @@ impl<'a> LoweringContext<'a> {
             rules: hir::DefaultBlock,
             span,
             targeted_by_break: false,
+            recovered: false,
         }
     }
 
@@ -3610,6 +3613,7 @@ impl<'a> LoweringContext<'a> {
             stmts,
             expr: Some(expr),
             targeted_by_break: false,
+            recovered: false,
         });
         self.expr_block(block, attrs)
     }

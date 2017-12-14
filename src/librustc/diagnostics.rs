@@ -359,18 +359,21 @@ lifetime elision rules (see below).
 Here are some simple examples of where you'll run into this error:
 
 ```compile_fail,E0106
-struct Foo { x: &bool }        // error
-struct Foo<'a> { x: &'a bool } // correct
+struct Foo1 { x: &bool }
+              // ^ expected lifetime parameter
+struct Foo2<'a> { x: &'a bool } // correct
 
-struct Bar { x: Foo }
-               ^^^ expected lifetime parameter
-struct Bar<'a> { x: Foo<'a> } // correct
+struct Bar1 { x: Foo2 }
+              // ^^^^ expected lifetime parameter
+struct Bar2<'a> { x: Foo2<'a> } // correct
 
-enum Bar { A(u8), B(&bool), }        // error
-enum Bar<'a> { A(u8), B(&'a bool), } // correct
+enum Baz1 { A(u8), B(&bool), }
+                  // ^ expected lifetime parameter
+enum Baz2<'a> { A(u8), B(&'a bool), } // correct
 
-type MyStr = &str;        // error
-type MyStr<'a> = &'a str; // correct
+type MyStr1 = &str;
+           // ^ expected lifetime parameter
+type MyStr2<'a> = &'a str; // correct
 ```
 
 Lifetime elision is a special, limited kind of inference for lifetimes in
