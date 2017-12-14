@@ -1951,16 +1951,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // borrows of P, P.a.b, etc.
         let mut elems_incoming = flow_state.borrows.elems_incoming();
         while let Some(i) = elems_incoming.next() {
-            // Skip any reservation that has a corresponding current
-            // activation.  This way, the traversal will visit each
-            // borrow_index at most once.
-            if let Some(j) = elems_incoming.peek() {
-                if i.is_reservation() && j.is_activation() {
-                    assert_eq!(i.borrow_index(), j.borrow_index());
-                    continue;
-                }
-            }
-
             let borrowed = &data[i.borrow_index()];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {
