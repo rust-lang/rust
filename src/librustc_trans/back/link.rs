@@ -57,7 +57,7 @@ pub use rustc_trans_utils::link::{find_crate_name, filename_for_input, default_o
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>) {
+pub fn get_linker(sess: &Session) -> (PathBuf, Command, Vec<(OsString, OsString)>) {
     let envs = vec![("PATH".into(), command_path(sess))];
 
     // If our linker looks like a batch script on Windows then to execute this
@@ -68,7 +68,7 @@ pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>
     // This worked historically but is needed manually since #42436 (regression
     // was tagged as #42791) and some more info can be found on #44443 for
     // emscripten itself.
-    let cmd = |linker: &str| {
+    let cmd = |linker: &Path| {
         if cfg!(windows) && linker.ends_with(".bat") {
             let mut cmd = Command::new("cmd");
             cmd.arg("/c").arg(linker);
@@ -82,10 +82,11 @@ pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>
         (linker.clone(), cmd(linker), envs)
     } else if sess.target.target.options.is_like_msvc {
         let (cmd, envs) = msvc_link_exe_cmd(sess);
-        ("link.exe".to_string(), cmd, envs)
+        (PathBuf::from("link.exe"), cmd, envs)
     } else {
-        let linker = &sess.target.target.options.linker;
-        (linker.clone(), cmd(linker), envs)
+        let linker = PathBuf::from(&sess.target.target.options.linker);
+        let cmd = cmd(&linker);
+        (linker, cmd, envs)
     }
 }
 
@@ -696,7 +697,7 @@ fn link_natively(sess: &Session,
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 sess.struct_err(&format!("linking with `{}` failed: {}",
-                                         pname,
+                                         pname.display(),
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
                     .note(&escape_string(&output))
@@ -707,7 +708,7 @@ fn link_natively(sess: &Session,
             info!("linker stdout:\n{}", escape_string(&prog.stdout));
         },
         Err(e) => {
-            sess.struct_err(&format!("could not exec the linker `{}`: {}", pname, e))
+            sess.struct_err(&format!("could not exec the linker `{}`: {}", pname.display(), e))
                 .note(&format!("{:?}", &cmd))
                 .emit();
             if sess.target.target.options.is_like_msvc && e.kind() == io::ErrorKind::NotFound {

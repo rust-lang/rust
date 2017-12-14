@@ -1714,6 +1714,7 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::HashSet;
     use std::io;
+    use std::path::PathBuf;
     use std::rc::Rc;
 
     fn mk_sess(cm: Rc<CodeMap>) -> ParseSess {
@@ -1735,7 +1736,7 @@ mod tests {
                  sess: &'a ParseSess,
                  teststr: String)
                  -> StringReader<'a> {
-        let fm = cm.new_filemap("zebra.rs".to_string(), teststr);
+        let fm = cm.new_filemap(PathBuf::from("zebra.rs").into(), teststr);
         StringReader::new(sess, fm)
     }
 

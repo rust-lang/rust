@@ -41,7 +41,7 @@ use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, respan};
-use syntax_pos::{self, Span, BytePos};
+use syntax_pos::{self, Span, BytePos, FileName, DUMMY_SP};
 use errors::{self, DiagnosticBuilder};
 use parse::{self, classify, token};
 use parse::common::SeqSep;
@@ -527,9 +527,11 @@ impl<'a> Parser<'a> {
 
         if let Some(directory) = directory {
             parser.directory = directory;
-        } else if parser.span != syntax_pos::DUMMY_SP {
-            parser.directory.path = sess.codemap().span_to_unmapped_path(parser.span);
-            parser.directory.path.pop();
+        } else if !parser.span.source_equal(&DUMMY_SP) {
+            if let FileName::Real(path) = sess.codemap().span_to_unmapped_path(parser.span) {
+                parser.directory.path = path;
+                parser.directory.path.pop();
+            }
         }
 
         parser.process_potential_macro_variable();
@@ -5764,15 +5766,17 @@ impl<'a> Parser<'a> {
             let mut err = self.diagnostic().struct_span_err(id_sp,
                 "cannot declare a new module at this location");
             if id_sp != syntax_pos::DUMMY_SP {
-                let src_path = PathBuf::from(self.sess.codemap().span_to_filename(id_sp));
-                if let Some(stem) = src_path.file_stem() {
-                    let mut dest_path = src_path.clone();
-                    dest_path.set_file_name(stem);
-                    dest_path.push("mod.rs");
-                    err.span_note(id_sp,
-                                  &format!("maybe move this module `{}` to its own \
-                                            directory via `{}`", src_path.to_string_lossy(),
-                                           dest_path.to_string_lossy()));
+                let src_path = self.sess.codemap().span_to_filename(id_sp);
+                if let FileName::Real(src_path) = src_path {
+                    if let Some(stem) = src_path.file_stem() {
+                        let mut dest_path = src_path.clone();
+                        dest_path.set_file_name(stem);
+                        dest_path.push("mod.rs");
+                        err.span_note(id_sp,
+                                    &format!("maybe move this module `{}` to its own \
+                                                directory via `{}`", src_path.display(),
+                                            dest_path.display()));
+                    }
                 }
             }
             if paths.path_exists {

@@ -25,7 +25,7 @@ use syntax::attr;
 use syntax::codemap::Spanned;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
-use syntax_pos::{self, DUMMY_SP, Pos};
+use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::privacy::AccessLevels;
@@ -45,7 +45,6 @@ use rustc::hir;
 use rustc_const_math::ConstInt;
 use std::{mem, slice, vec};
 use std::iter::FromIterator;
-use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::u32;
@@ -114,7 +113,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
 pub struct Crate {
     pub name: String,
     pub version: Option<String>,
-    pub src: PathBuf,
+    pub src: FileName,
     pub module: Option<Item>,
     pub externs: Vec<(CrateNum, ExternalCrate)>,
     pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
@@ -200,7 +199,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ExternalCrate {
     pub name: String,
-    pub src: PathBuf,
+    pub src: FileName,
     pub attrs: Attributes,
     pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
 }
@@ -271,7 +270,7 @@ impl Clean<ExternalCrate> for CrateNum {
 
         ExternalCrate {
             name: cx.tcx.crate_name(*self).to_string(),
-            src: PathBuf::from(krate_src),
+            src: krate_src,
             attrs: cx.tcx.get_attrs(root).clean(cx),
             primitives,
         }
@@ -2518,7 +2517,7 @@ impl Clean<VariantKind> for hir::VariantData {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Span {
-    pub filename: String,
+    pub filename: FileName,
     pub loline: usize,
     pub locol: usize,
     pub hiline: usize,
@@ -2528,7 +2527,7 @@ pub struct Span {
 impl Span {
     pub fn empty() -> Span {
         Span {
-            filename: "".to_string(),
+            filename: FileName::Anon,
             loline: 0, locol: 0,
             hiline: 0, hicol: 0,
         }
@@ -2546,7 +2545,7 @@ impl Clean<Span> for syntax_pos::Span {
         let lo = cm.lookup_char_pos(self.lo());
         let hi = cm.lookup_char_pos(self.hi());
         Span {
-            filename: filename.to_string(),
+            filename,
             loline: lo.line,
             locol: lo.col.to_usize(),
             hiline: hi.line,

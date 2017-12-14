@@ -59,6 +59,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
+use syntax_pos::FileName;
 use syntax;
 use syntax_ext;
 use arena::DroplessArena;
@@ -306,17 +307,9 @@ fn keep_hygiene_data(sess: &Session) -> bool {
     sess.opts.debugging_opts.keep_hygiene_data
 }
 
-
-/// The name used for source code that doesn't originate in a file
-/// (e.g. source from stdin or a string)
-pub fn anon_src() -> String {
-    "<anon>".to_string()
-}
-
-pub fn source_name(input: &Input) -> String {
+pub fn source_name(input: &Input) -> FileName {
     match *input {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        Input::File(ref ifile) => ifile.to_str().unwrap().to_string(),
+        Input::File(ref ifile) => ifile.clone().into(),
         Input::Str { ref name, .. } => name.clone(),
     }
 }
@@ -573,7 +566,9 @@ pub fn phase_1_parse_input<'a>(control: &CompileController,
                 parse::parse_crate_from_file(file, &sess.parse_sess)
             }
             Input::Str { ref input, ref name } => {
-                parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
+                parse::parse_crate_from_source_str(name.clone(),
+                                                   input.clone(),
+                                                   &sess.parse_sess)
             }
         }
     })?;
@@ -1135,10 +1130,10 @@ pub fn phase_5_run_llvm_passes<Trans: TransCrate>(sess: &Session,
     (sess.compile_status(), trans)
 }
 
-fn escape_dep_filename(filename: &str) -> String {
+fn escape_dep_filename(filename: &FileName) -> String {
     // Apparently clang and gcc *only* escape spaces:
     // http://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
-    filename.replace(" ", "\\ ")
+    filename.to_string().replace(" ", "\\ ")
 }
 
 fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {

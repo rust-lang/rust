@@ -21,7 +21,7 @@ use ptr::P;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use symbol::keywords;
 use syntax::parse::parse_stream_from_source_str;
-use syntax_pos::{self, Span};
+use syntax_pos::{self, Span, FileName};
 use tokenstream::{TokenStream, TokenTree};
 use tokenstream;
 
@@ -495,9 +495,8 @@ impl Token {
         tokens.unwrap_or_else(|| {
             nt.1.force(|| {
                 // FIXME(jseyfried): Avoid this pretty-print + reparse hack
-                let name = "<macro expansion>".to_owned();
                 let source = pprust::token_to_string(self);
-                parse_stream_from_source_str(name, source, sess, Some(span))
+                parse_stream_from_source_str(FileName::MacroExpansion, source, sess, Some(span))
             })
         })
     }
@@ -629,7 +628,7 @@ fn prepend_attrs(sess: &ParseSess,
         assert_eq!(attr.style, ast::AttrStyle::Outer,
                    "inner attributes should prevent cached tokens from existing");
         // FIXME: Avoid this pretty-print + reparse hack as bove
-        let name = "<macro expansion>".to_owned();
+        let name = FileName::MacroExpansion;
         let source = pprust::attr_to_string(attr);
         let stream = parse_stream_from_source_str(name, source, sess, Some(span));
         builder.push(stream);

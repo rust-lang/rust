@@ -14,7 +14,6 @@ use generated_code;
 
 use std::cell::Cell;
 use std::env;
-use std::path::Path;
 
 use syntax::parse::lexer::{self, StringReader};
 use syntax::parse::token::{self, Token};
@@ -37,16 +36,15 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn make_path_string(file_name: &str) -> String {
-        let path = Path::new(file_name);
-        if path.is_absolute() {
-            path.clone().display().to_string()
-        } else {
-            env::current_dir()
-                .unwrap()
-                .join(&path)
-                .display()
-                .to_string()
+    pub fn make_path_string(path: &FileName) -> String {
+        match *path {
+            FileName::Real(ref path) if !path.is_absolute() =>
+                env::current_dir()
+                    .unwrap()
+                    .join(&path)
+                    .display()
+                    .to_string(),
+            _ => path.to_string(),
         }
     }
 

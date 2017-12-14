@@ -607,7 +607,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let span_key = msp.primary_span().and_then(|sp: Span|
                     if sp != DUMMY_SP {
                         let file = cm.lookup_char_pos(sp.lo()).file;
-                        if file.name.starts_with("<") && file.name.ends_with(" macros>") {
+                        if file.name.is_macros() {
                             None
                         } else {
                             Some(span)

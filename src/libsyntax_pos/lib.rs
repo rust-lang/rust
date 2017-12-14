@@ -54,7 +54,78 @@ pub use span_encoding::{Span, DUMMY_SP};
 
 pub mod symbol;
 
-pub type FileName = String;
+/// Differentiates between real files and common virtual files
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
+pub enum FileName {
+    Real(PathBuf),
+    /// e.g. "std" macros
+    Macros(String),
+    /// call to `quote!`
+    QuoteExpansion,
+    /// Command line
+    Anon,
+    /// Hack in src/libsyntax/parse.rs
+    /// FIXME(jseyfried)
+    MacroExpansion,
+    ProcMacroSourceCode,
+    /// Strings provided as --cfg [cfgspec] stored in a crate_cfg
+    CfgSpec,
+    /// Custom sources for explicit parser calls from plugins and drivers
+    Custom(String),
+}
+
+impl std::fmt::Display for FileName {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use self::FileName::*;
+        match *self {
+            Real(ref path) => write!(fmt, "{}", path.display()),
+            Macros(ref name) => write!(fmt, "<{} macros>", name),
+            QuoteExpansion => write!(fmt, "<quote expansion>"),
+            MacroExpansion => write!(fmt, "<macro expansion>"),
+            Anon => write!(fmt, "<anon>"),
+            ProcMacroSourceCode => write!(fmt, "<proc-macro source code>"),
+            CfgSpec => write!(fmt, "cfgspec"),
+            Custom(ref s) => write!(fmt, "<{}>", s),
+        }
+    }
+}
+
+impl From<PathBuf> for FileName {
+    fn from(p: PathBuf) -> Self {
+        assert!(!p.to_string_lossy().ends_with('>'));
+        FileName::Real(p)
+    }
+}
+
+impl FileName {
+    pub fn is_real(&self) -> bool {
+        use self::FileName::*;
+        match *self {
+            Real(_) => true,
+            Macros(_) |
+            Anon |
+            MacroExpansion |
+            ProcMacroSourceCode |
+            CfgSpec |
+            Custom(_) |
+            QuoteExpansion => false,
+        }
+    }
+
+    pub fn is_macros(&self) -> bool {
+        use self::FileName::*;
+        match *self {
+            Real(_) |
+            Anon |
+            MacroExpansion |
+            ProcMacroSourceCode |
+            CfgSpec |
+            Custom(_) |
+            QuoteExpansion => false,
+            Macros(_) => true,
+        }
+    }
+}
 
 /// Spans represent a region of code, used for error reporting. Positions in spans
 /// are *absolute* positions from the beginning of the codemap, not positions
@@ -600,7 +671,7 @@ pub struct FileMap {
     pub name_was_remapped: bool,
     /// The unmapped path of the file that the source came from.
     /// Set to `None` if the FileMap was imported from an external crate.
-    pub unmapped_path: Option<PathBuf>,
+    pub unmapped_path: Option<FileName>,
     /// Indicates which crate this FileMap was imported from.
     pub crate_of_origin: u32,
     /// The complete source code
@@ -690,7 +761,7 @@ impl Decodable for FileMap {
     fn decode<D: Decoder>(d: &mut D) -> Result<FileMap, D::Error> {
 
         d.read_struct("FileMap", 8, |d| {
-            let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
+            let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
             let name_was_remapped: bool =
                 d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
             let src_hash: u128 =
@@ -760,7 +831,7 @@ impl fmt::Debug for FileMap {
 impl FileMap {
     pub fn new(name: FileName,
                name_was_remapped: bool,
-               unmapped_path: PathBuf,
+               unmapped_path: FileName,
                mut src: String,
                start_pos: BytePos) -> FileMap {
         remove_bom(&mut src);
@@ -893,8 +964,7 @@ impl FileMap {
     }
 
     pub fn is_real_file(&self) -> bool {
-        !(self.name.starts_with("<") &&
-          self.name.ends_with(">"))
+        self.name.is_real()
     }
 
     pub fn is_imported(&self) -> bool {
@@ -1114,18 +1184,18 @@ pub enum SpanSnippetError {
     IllFormedSpan(Span),
     DistinctSources(DistinctSources),
     MalformedForCodemap(MalformedCodemapPositions),
-    SourceNotAvailable { filename: String }
+    SourceNotAvailable { filename: FileName }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct DistinctSources {
-    pub begin: (String, BytePos),
-    pub end: (String, BytePos)
+    pub begin: (FileName, BytePos),
+    pub end: (FileName, BytePos)
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct MalformedCodemapPositions {
-    pub name: String,
+    pub name: FileName,
     pub source_len: usize,
     pub begin_pos: BytePos,
     pub end_pos: BytePos

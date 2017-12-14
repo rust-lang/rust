@@ -98,7 +98,7 @@ use syntax::ast;
 use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
-use syntax_pos::{DUMMY_SP, MultiSpan};
+use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
 
 #[cfg(test)]
 mod test;
@@ -274,7 +274,7 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
         if ifile == "-" {
             let mut src = String::new();
             io::stdin().read_to_string(&mut src).unwrap();
-            Some((Input::Str { name: driver::anon_src(), input: src },
+            Some((Input::Str { name: FileName::Anon, input: src },
                   None))
         } else {
             Some((Input::File(PathBuf::from(ifile)),
@@ -1165,7 +1165,9 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
             parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess)
         }
         Input::Str { ref name, ref input } => {
-            parse::parse_crate_attrs_from_source_str(name.clone(), input.clone(), &sess.parse_sess)
+            parse::parse_crate_attrs_from_source_str(name.clone(),
+                                                     input.clone(),
+                                                     &sess.parse_sess)
         }
     }
 }

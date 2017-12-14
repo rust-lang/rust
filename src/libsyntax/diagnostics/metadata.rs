@@ -20,7 +20,7 @@ use std::io::Write;
 use std::error::Error;
 use rustc_serialize::json::as_json;
 
-use syntax_pos::Span;
+use syntax_pos::{Span, FileName};
 use ext::base::ExtCtxt;
 use diagnostics::plugin::{ErrorMap, ErrorInfo};
 
@@ -40,7 +40,7 @@ pub type ErrorMetadataMap = BTreeMap<String, ErrorMetadata>;
 /// JSON encodable error location type with filename and line number.
 #[derive(PartialEq, RustcDecodable, RustcEncodable)]
 pub struct ErrorLocation {
-    pub filename: String,
+    pub filename: FileName,
     pub line: usize
 }
 

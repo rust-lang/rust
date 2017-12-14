@@ -765,7 +765,7 @@ impl EmitterWriter {
                                                      })));
                         }
                         // Check to make sure we're not in any <*macros>
-                        if !cm.span_to_filename(def_site).contains("macros>") &&
+                        if !cm.span_to_filename(def_site).is_macros() &&
                            !trace.macro_decl_name.starts_with("#[") ||
                            always_backtrace {
                             new_labels.push((trace.call_site,
@@ -791,7 +791,7 @@ impl EmitterWriter {
                 if sp_label.span == DUMMY_SP {
                     continue;
                 }
-                if cm.span_to_filename(sp_label.span.clone()).contains("macros>") &&
+                if cm.span_to_filename(sp_label.span.clone()).is_macros() &&
                     !always_backtrace
                 {
                     let v = sp_label.span.macro_backtrace();
@@ -987,14 +987,20 @@ impl EmitterWriter {
 
                     buffer.prepend(buffer_msg_line_offset, "--> ", Style::LineNumber);
                     buffer.append(buffer_msg_line_offset,
-                                  &format!("{}:{}:{}", loc.file.name, loc.line, loc.col.0 + 1),
+                                  &format!("{}:{}:{}",
+                                           loc.file.name,
+                                           loc.line,
+                                           loc.col.0 + 1),
                                   Style::LineAndColumn);
                     for _ in 0..max_line_num_len {
                         buffer.prepend(buffer_msg_line_offset, " ", Style::NoStyle);
                     }
                 } else {
                     buffer.prepend(0,
-                                   &format!("{}:{}:{} - ", loc.file.name, loc.line, loc.col.0 + 1),
+                                   &format!("{}:{}:{} - ",
+                                            loc.file.name,
+                                            loc.line,
+                                            loc.col.0 + 1),
                                    Style::LineAndColumn);
                 }
             } else if !self.short_message {
@@ -1007,7 +1013,7 @@ impl EmitterWriter {
                 // Then, the secondary file indicator
                 buffer.prepend(buffer_msg_line_offset + 1, "::: ", Style::LineNumber);
                 buffer.append(buffer_msg_line_offset + 1,
-                              &annotated_file.file.name,
+                              &annotated_file.file.name.to_string(),
                               Style::LineAndColumn);
                 for _ in 0..max_line_num_len {
                     buffer.prepend(buffer_msg_line_offset + 1, " ", Style::NoStyle);

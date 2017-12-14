@@ -39,7 +39,7 @@ use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::attr;
 use syntax::symbol::Symbol;
-use syntax_pos;
+use syntax_pos::{self, FileName};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -279,20 +279,22 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // `-Zremap-path-prefix` we assume the user has already set
                 // things up the way they want and don't touch the path values
                 // anymore.
-                let name = Path::new(&filemap.name);
-                if filemap.name_was_remapped ||
-                   (name.is_relative() && working_dir_was_remapped) {
-                    // This path of this FileMap has been modified by
-                    // path-remapping, so we use it verbatim (and avoid cloning
-                    // the whole map in the process).
-                    filemap.clone()
-                } else {
-                    let mut adapted = (**filemap).clone();
-                    let abs_path = Path::new(&working_dir).join(name)
-                                                         .to_string_lossy()
-                                                         .into_owned();
-                    adapted.name = abs_path;
-                    Rc::new(adapted)
+                match filemap.name {
+                    FileName::Real(ref name) => {
+                        if filemap.name_was_remapped ||
+                        (name.is_relative() && working_dir_was_remapped) {
+                            // This path of this FileMap has been modified by
+                            // path-remapping, so we use it verbatim (and avoid cloning
+                            // the whole map in the process).
+                            filemap.clone()
+                        } else {
+                            let mut adapted = (**filemap).clone();
+                            adapted.name = Path::new(&working_dir).join(name).into();
+                            Rc::new(adapted)
+                        }
+                    },
+                    // expanded code, not from a file
+                    _ => filemap.clone(),
                 }
             })
             .collect::<Vec<_>>();

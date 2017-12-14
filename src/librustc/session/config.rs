@@ -27,7 +27,7 @@ use lint;
 use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
-use syntax::codemap::FilePathMapping;
+use syntax::codemap::{FilePathMapping, FileName};
 use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
@@ -440,7 +440,7 @@ pub enum Input {
     File(PathBuf),
     Str {
         /// String that is shown in place of a filename
-        name: String,
+        name: FileName,
         /// Anonymous source string
         input: String,
     },
@@ -733,7 +733,9 @@ macro_rules! options {
             Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
         pub const parse_string: Option<&'static str> = Some("a string");
         pub const parse_string_push: Option<&'static str> = Some("a string");
+        pub const parse_pathbuf_push: Option<&'static str> = Some("a path");
         pub const parse_opt_string: Option<&'static str> = Some("a string");
+        pub const parse_opt_pathbuf: Option<&'static str> = Some("a path");
         pub const parse_list: Option<&'static str> = Some("a space-separated list of strings");
         pub const parse_opt_list: Option<&'static str> = Some("a space-separated list of strings");
         pub const parse_uint: Option<&'static str> = Some("a number");
@@ -757,6 +759,7 @@ macro_rules! options {
     mod $mod_set {
         use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer};
         use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
+        use std::path::PathBuf;
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -797,6 +800,13 @@ macro_rules! options {
             }
         }
 
+        fn parse_opt_pathbuf(slot: &mut Option<PathBuf>, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { *slot = Some(PathBuf::from(s)); true },
+                None => false,
+            }
+        }
+
         fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.to_string(); true },
@@ -807,6 +817,13 @@ macro_rules! options {
         fn parse_string_push(slot: &mut Vec<String>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { slot.push(s.to_string()); true },
+                None => false,
+            }
+        }
+
+        fn parse_pathbuf_push(slot: &mut Vec<PathBuf>, v: Option<&str>) -> bool {
+            match v {
+                Some(s) => { slot.push(PathBuf::from(s)); true },
                 None => false,
             }
         }
@@ -931,7 +948,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          CG_OPTIONS, cg_type_desc, cgsetters,
     ar: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "this option is deprecated and does nothing"),
-    linker: Option<String> = (None, parse_opt_string, [UNTRACKED],
+    linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "system linker to link outputs with"),
     link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
@@ -1151,9 +1168,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "set the optimization fuel quota for a crate"),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make Rustc print the total optimization fuel used by a crate"),
-    remap_path_prefix_from: Vec<String> = (vec![], parse_string_push, [TRACKED],
+    remap_path_prefix_from: Vec<PathBuf> = (vec![], parse_pathbuf_push, [TRACKED],
         "add a source pattern to the file path remapping config"),
-    remap_path_prefix_to: Vec<String> = (vec![], parse_string_push, [TRACKED],
+    remap_path_prefix_to: Vec<PathBuf> = (vec![], parse_pathbuf_push, [TRACKED],
         "add a mapping target to the file path remapping config"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable"),
@@ -1472,7 +1489,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.into_iter().map(|s| {
         let sess = parse::ParseSess::new(FilePathMapping::empty());
         let mut parser =
-            parse::new_parser_from_source_str(&sess, "cfgspec".to_string(), s.to_string());
+            parse::new_parser_from_source_str(&sess, FileName::CfgSpec, s.to_string());
 
         let meta_item = panictry!(parser.parse_meta_item());
 
@@ -1594,13 +1611,13 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         for source in &debugging_opts.remap_path_prefix_from[remap_path_prefix_targets..] {
             early_error(error_format,
                 &format!("option `-Zremap-path-prefix-from='{}'` does not have \
-                         a corresponding `-Zremap-path-prefix-to`", source))
+                         a corresponding `-Zremap-path-prefix-to`", source.display()))
         }
     } else if remap_path_prefix_targets > remap_path_prefix_sources {
         for target in &debugging_opts.remap_path_prefix_to[remap_path_prefix_sources..] {
             early_error(error_format,
                 &format!("option `-Zremap-path-prefix-to='{}'` does not have \
-                          a corresponding `-Zremap-path-prefix-from`", target))
+                          a corresponding `-Zremap-path-prefix-from`", target.display()))
         }
     }
 
@@ -2001,6 +2018,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(usize);
     impl_dep_tracking_hash_via_hash!(u64);
     impl_dep_tracking_hash_via_hash!(String);
+    impl_dep_tracking_hash_via_hash!(PathBuf);
     impl_dep_tracking_hash_via_hash!(lint::Level);
     impl_dep_tracking_hash_via_hash!(Option<bool>);
     impl_dep_tracking_hash_via_hash!(Option<usize>);
@@ -2025,6 +2043,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
+    impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
     impl_dep_tracking_hash_for_sortable_vec_of!(CrateType);
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>,
@@ -2533,7 +2552,7 @@ mod tests {
         opts.cg.ar = Some(String::from("abc"));
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-        opts.cg.linker = Some(String::from("linker"));
+        opts.cg.linker = Some(PathBuf::from("linker"));
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts.cg.link_args = Some(vec![String::from("abc"), String::from("def")]);

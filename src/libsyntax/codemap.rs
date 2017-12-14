@@ -164,7 +164,7 @@ impl CodeMap {
 
     pub fn load_file(&self, path: &Path) -> io::Result<Rc<FileMap>> {
         let src = self.file_loader.read_file(path)?;
-        Ok(self.new_filemap(path.to_str().unwrap().to_string(), src))
+        Ok(self.new_filemap(path.to_owned().into(), src))
     }
 
     pub fn files(&self) -> Ref<Vec<Rc<FileMap>>> {
@@ -196,9 +196,15 @@ impl CodeMap {
         // Note that filename may not be a valid path, eg it may be `<anon>` etc,
         // but this is okay because the directory determined by `path.pop()` will
         // be empty, so the working directory will be used.
-        let unmapped_path = PathBuf::from(filename.clone());
+        let unmapped_path = filename.clone();
 
-        let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
+        let (filename, was_remapped) = match filename {
+            FileName::Real(filename) => {
+                let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
+                (FileName::Real(filename), was_remapped)
+            },
+            other => (other, false),
+        };
         let filemap = Rc::new(FileMap::new(
             filename,
             was_remapped,
@@ -217,8 +223,8 @@ impl CodeMap {
     }
 
     /// Creates a new filemap and sets its line information.
-    pub fn new_filemap_and_lines(&self, filename: &str, src: &str) -> Rc<FileMap> {
-        let fm = self.new_filemap(filename.to_string(), src.to_owned());
+    pub fn new_filemap_and_lines(&self, filename: &Path, src: &str) -> Rc<FileMap> {
+        let fm = self.new_filemap(filename.to_owned().into(), src.to_owned());
         let mut byte_pos: u32 = fm.start_pos.0;
         for line in src.lines() {
             // register the start of this line
@@ -373,7 +379,7 @@ impl CodeMap {
     pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt {
         let loc = self.lookup_char_pos(pos);
         LocWithOpt {
-            filename: loc.file.name.to_string(),
+            filename: loc.file.name.clone(),
             line: loc.line,
             col: loc.col,
             file: Some(loc.file)
@@ -433,7 +439,7 @@ impl CodeMap {
         self.lookup_char_pos(sp.lo()).file.name.clone()
     }
 
-    pub fn span_to_unmapped_path(&self, sp: Span) -> PathBuf {
+    pub fn span_to_unmapped_path(&self, sp: Span) -> FileName {
         self.lookup_char_pos(sp.lo()).file.unmapped_path.clone()
             .expect("CodeMap::span_to_unmapped_path called for imported FileMap?")
     }
@@ -561,9 +567,9 @@ impl CodeMap {
         self.span_until_char(sp, '{')
     }
 
-    pub fn get_filemap(&self, filename: &str) -> Option<Rc<FileMap>> {
+    pub fn get_filemap(&self, filename: &FileName) -> Option<Rc<FileMap>> {
         for fm in self.files.borrow().iter() {
-            if filename == fm.name {
+            if *filename == fm.name {
                 return Some(fm.clone());
             }
         }
@@ -650,7 +656,7 @@ impl CodeMapper for CodeMap {
         self.merge_spans(sp_lhs, sp_rhs)
     }
     fn call_span_if_macro(&self, sp: Span) -> Span {
-        if self.span_to_filename(sp.clone()).contains("macros>") {
+        if self.span_to_filename(sp.clone()).is_macros() {
             let v = sp.macro_backtrace();
             if let Some(use_site) = v.last() {
                 return use_site.call_site;
@@ -660,14 +666,17 @@ impl CodeMapper for CodeMap {
     }
     fn ensure_filemap_source_present(&self, file_map: Rc<FileMap>) -> bool {
         file_map.add_external_src(
-            || self.file_loader.read_file(Path::new(&file_map.name)).ok()
+            || match file_map.name {
+                FileName::Real(ref name) => self.file_loader.read_file(name).ok(),
+                _ => None,
+            }
         )
     }
 }
 
 #[derive(Clone)]
 pub struct FilePathMapping {
-    mapping: Vec<(String, String)>,
+    mapping: Vec<(PathBuf, PathBuf)>,
 }
 
 impl FilePathMapping {
@@ -677,7 +686,7 @@ impl FilePathMapping {
         }
     }
 
-    pub fn new(mapping: Vec<(String, String)>) -> FilePathMapping {
+    pub fn new(mapping: Vec<(PathBuf, PathBuf)>) -> FilePathMapping {
         FilePathMapping {
             mapping,
         }
@@ -686,14 +695,13 @@ impl FilePathMapping {
     /// Applies any path prefix substitution as defined by the mapping.
     /// The return value is the remapped path and a boolean indicating whether
     /// the path was affected by the mapping.
-    pub fn map_prefix(&self, path: String) -> (String, bool) {
+    pub fn map_prefix(&self, path: PathBuf) -> (PathBuf, bool) {
         // NOTE: We are iterating over the mapping entries from last to first
         //       because entries specified later on the command line should
         //       take precedence.
         for &(ref from, ref to) in self.mapping.iter().rev() {
-            if path.starts_with(from) {
-                let mapped = path.replacen(from, to, 1);
-                return (mapped, true);
+            if let Ok(rest) = path.strip_prefix(from) {
+                return (to.join(rest), true);
             }
         }
 
@@ -714,7 +722,7 @@ mod tests {
     #[test]
     fn t1 () {
         let cm = CodeMap::new(FilePathMapping::empty());
-        let fm = cm.new_filemap("blork.rs".to_string(),
+        let fm = cm.new_filemap(PathBuf::from("blork.rs").into(),
                                 "first line.\nsecond line".to_string());
         fm.next_line(BytePos(0));
         // Test we can get lines with partial line info.
@@ -730,7 +738,7 @@ mod tests {
     #[should_panic]
     fn t2 () {
         let cm = CodeMap::new(FilePathMapping::empty());
-        let fm = cm.new_filemap("blork.rs".to_string(),
+        let fm = cm.new_filemap(PathBuf::from("blork.rs").into(),
                                 "first line.\nsecond line".to_string());
         // TESTING *REALLY* BROKEN BEHAVIOR:
         fm.next_line(BytePos(0));
@@ -740,11 +748,11 @@ mod tests {
 
     fn init_code_map() -> CodeMap {
         let cm = CodeMap::new(FilePathMapping::empty());
-        let fm1 = cm.new_filemap("blork.rs".to_string(),
+        let fm1 = cm.new_filemap(PathBuf::from("blork.rs").into(),
                                  "first line.\nsecond line".to_string());
-        let fm2 = cm.new_filemap("empty.rs".to_string(),
+        let fm2 = cm.new_filemap(PathBuf::from("empty.rs").into(),
                                  "".to_string());
-        let fm3 = cm.new_filemap("blork2.rs".to_string(),
+        let fm3 = cm.new_filemap(PathBuf::from("blork2.rs").into(),
                                  "first line.\nsecond line".to_string());
 
         fm1.next_line(BytePos(0));
@@ -762,15 +770,15 @@ mod tests {
         let cm = init_code_map();
 
         let fmabp1 = cm.lookup_byte_offset(BytePos(23));
-        assert_eq!(fmabp1.fm.name, "blork.rs");
+        assert_eq!(fmabp1.fm.name, PathBuf::from("blork.rs").into());
         assert_eq!(fmabp1.pos, BytePos(23));
 
         let fmabp1 = cm.lookup_byte_offset(BytePos(24));
-        assert_eq!(fmabp1.fm.name, "empty.rs");
+        assert_eq!(fmabp1.fm.name, PathBuf::from("empty.rs").into());
         assert_eq!(fmabp1.pos, BytePos(0));
 
         let fmabp2 = cm.lookup_byte_offset(BytePos(25));
-        assert_eq!(fmabp2.fm.name, "blork2.rs");
+        assert_eq!(fmabp2.fm.name, PathBuf::from("blork2.rs").into());
         assert_eq!(fmabp2.pos, BytePos(0));
     }
 
@@ -792,12 +800,12 @@ mod tests {
         let cm = init_code_map();
 
         let loc1 = cm.lookup_char_pos(BytePos(22));
-        assert_eq!(loc1.file.name, "blork.rs");
+        assert_eq!(loc1.file.name, PathBuf::from("blork.rs").into());
         assert_eq!(loc1.line, 2);
         assert_eq!(loc1.col, CharPos(10));
 
         let loc2 = cm.lookup_char_pos(BytePos(25));
-        assert_eq!(loc2.file.name, "blork2.rs");
+        assert_eq!(loc2.file.name, PathBuf::from("blork2.rs").into());
         assert_eq!(loc2.line, 1);
         assert_eq!(loc2.col, CharPos(0));
     }
@@ -806,9 +814,9 @@ mod tests {
         let cm = CodeMap::new(FilePathMapping::empty());
         // € is a three byte utf8 char.
         let fm1 =
-            cm.new_filemap("blork.rs".to_string(),
+            cm.new_filemap(PathBuf::from("blork.rs").into(),
                            "fir€st €€€€ line.\nsecond line".to_string());
-        let fm2 = cm.new_filemap("blork2.rs".to_string(),
+        let fm2 = cm.new_filemap(PathBuf::from("blork2.rs").into(),
                                  "first line€€.\n€ second line".to_string());
 
         fm1.next_line(BytePos(0));
@@ -853,7 +861,7 @@ mod tests {
         let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
         let file_lines = cm.span_to_lines(span).unwrap();
 
-        assert_eq!(file_lines.file.name, "blork.rs");
+        assert_eq!(file_lines.file.name, PathBuf::from("blork.rs").into());
         assert_eq!(file_lines.lines.len(), 1);
         assert_eq!(file_lines.lines[0].line_index, 1);
     }
@@ -876,7 +884,7 @@ mod tests {
         let cm = CodeMap::new(FilePathMapping::empty());
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap_and_lines("blork.rs", inputtext);
+        cm.new_filemap_and_lines(Path::new("blork.rs"), inputtext);
         let span = span_from_selection(inputtext, selection);
 
         // check that we are extracting the text we thought we were extracting
@@ -919,7 +927,7 @@ mod tests {
         let inputtext  = "bbbb BB\ncc CCC\n";
         let selection1 = "     ~~\n      \n";
         let selection2 = "       \n   ~~~\n";
-        cm.new_filemap_and_lines("blork.rs", inputtext);
+        cm.new_filemap_and_lines(Path::new("blork.rs"), inputtext);
         let span1 = span_from_selection(inputtext, selection1);
         let span2 = span_from_selection(inputtext, selection2);
 
