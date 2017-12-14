@@ -495,10 +495,13 @@ impl<'a> Builder<'a> {
         if let Some(target_linker) = self.build.linker(target) {
             cargo.env("RUSTC_TARGET_LINKER", target_linker);
         }
-        cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-            .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
 
         if mode != Mode::Tool {
+            // Tools don't get debuginfo right now, e.g. cargo and rls don't
+            // get compiled with debuginfo.
+            // Adding debuginfo increases their sizes by a factor of 3-4.
+            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
+            cargo.env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");
 
             // Currently the compiler depends on crates from crates.io, and
