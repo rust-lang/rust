@@ -1,0 +1,26 @@
+error: expected field pattern, found `...`
+  --> $DIR/issue-46718-expected-dotdot-found-dotdotdot.rs:21:55
+   |
+21 |             PersonalityInventory { expressivity: exp, ... } => exp
+   |                                                       ^^^ help: to omit remaining fields, use one fewer `.`: `..`
+
+error[E0425]: cannot find value `exp` in this scope
+  --> $DIR/issue-46718-expected-dotdot-found-dotdotdot.rs:21:64
+   |
+21 |             PersonalityInventory { expressivity: exp, ... } => exp
+   |                                                                ^^^ not found in this scope
+
+error[E0027]: pattern does not mention field `expressivity`
+  --> $DIR/issue-46718-expected-dotdot-found-dotdotdot.rs:21:13
+   |
+21 |             PersonalityInventory { expressivity: exp, ... } => exp
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `expressivity`
+
+error[E0027]: pattern does not mention field `instrumentality`
+  --> $DIR/issue-46718-expected-dotdot-found-dotdotdot.rs:21:13
+   |
+21 |             PersonalityInventory { expressivity: exp, ... } => exp
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `instrumentality`
+
+error: aborting due to 4 previous errors
+

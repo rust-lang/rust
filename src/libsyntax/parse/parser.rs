@@ -3452,6 +3452,12 @@ impl<'a> Parser<'a> {
                 }
                 etc = true;
                 break;
+            } else if self.token == token::DotDotDot {
+                let mut err = self.fatal("expected field pattern, found `...`");
+                err.span_suggestion(self.span,
+                                    "to omit remaining fields, use one fewer `.`",
+                                    "..".to_owned());
+                return Err(err);
             }
 
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
