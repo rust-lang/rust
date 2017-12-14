@@ -28,8 +28,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             if let Some(cause) = regioncx.why_region_contains_point(borrow.region, context.loc) {
                 let mir = self.mir;
 
-                cause.label_diagnostic(mir, err);
-
                 match *cause.root_cause() {
                     Cause::LiveVar(local, location) => {
                         match find_regular_use(&mir, regioncx, borrow, location, local) {
@@ -72,7 +70,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         }
                     }
 
-                    _ => (),
+                    _ => {
+                        cause.label_diagnostic(mir, err);
+                    }
                 }
             }
         }
