@@ -52,7 +52,10 @@ impl AuxVec {
 
         mem::forget(raw);
 
-        let mut auxv = AuxVec { hwcap: None, hwcap2: None };
+        let mut auxv = AuxVec {
+            hwcap: None,
+            hwcap2: None,
+        };
 
         for el in buf.chunks(2) {
             if el[0] == AT::HWCAP as usize {

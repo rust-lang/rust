@@ -223,9 +223,9 @@ fn parse_dumpbin(output: &str) -> HashMap<String, Vec<Function>> {
             let parts = instruction
                 .split_whitespace()
                 .skip(1)
-                .skip_while(
-                    |s| s.len() == 2 && usize::from_str_radix(s, 16).is_ok(),
-                )
+                .skip_while(|s| {
+                    s.len() == 2 && usize::from_str_radix(s, 16).is_ok()
+                })
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
             instructions.push(Instruction { parts });
@@ -301,7 +301,10 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
 
     // Help debug by printing out the found disassembly, and then panic as we
     // didn't find the instruction.
-    println!("disassembly for {}: ", sym.as_ref().expect("symbol not found"));
+    println!(
+        "disassembly for {}: ",
+        sym.as_ref().expect("symbol not found")
+    );
     for (i, instr) in function.instrs.iter().enumerate() {
         print!("\t{:2}: ", i);
         for part in &instr.parts {
@@ -311,7 +314,10 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     }
 
     if !found {
-        panic!("failed to find instruction `{}` in the disassembly", expected);
+        panic!(
+            "failed to find instruction `{}` in the disassembly",
+            expected
+        );
     } else if !probably_only_one_instruction {
         panic!("too many instructions in the disassembly");
     }

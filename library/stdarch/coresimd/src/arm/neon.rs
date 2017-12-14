@@ -56,7 +56,6 @@ pub unsafe fn vaddq_s32(a: i32x4, b: i32x4) -> i32x4 {
     simd_add(a, b)
 }
 
-
 /// Vector add.
 #[inline(always)]
 #[target_feature = "+neon"]

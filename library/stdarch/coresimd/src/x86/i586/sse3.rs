@@ -181,9 +181,13 @@ mod tests {
 
     #[simd_test = "sse3"]
     unsafe fn _mm_lddqu_si128() {
-        let a = __m128i::from(
-            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
-        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = __m128i::from(i8x16::new(
+            1, 2, 3, 4,
+            5, 6, 7, 8,
+            9, 10, 11, 12,
+            13, 14, 15, 16,
+        ));
         let r = sse3::_mm_lddqu_si128(&a);
         assert_eq!(a, r);
     }

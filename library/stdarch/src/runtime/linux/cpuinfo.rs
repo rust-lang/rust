@@ -99,7 +99,6 @@ mod tests {
         println!("{}", cpuinfo.raw());
     }
 
-
     const CORE_DUO_T6500: &str = r"processor       : 0
 vendor_id       : GenuineIntel
 cpu family      : 6

@@ -242,7 +242,6 @@ pub unsafe fn _mm_blend_epi32(a: i32x4, b: i32x4, imm8: i32) -> i32x4 {
     }
 }
 
-
 /// Blend packed 32-bit integers from `a` and `b` using control mask `imm8`.
 #[inline(always)]
 #[target_feature = "+avx2"]
@@ -1438,7 +1437,6 @@ pub unsafe fn _mm256_min_epu8(a: u8x32, b: u8x32) -> u8x32 {
     pminub(a, b)
 }
 
-
 /// Create mask from the most significant bit of each 8-bit element in `a`,
 /// return the result.
 #[inline(always)]
@@ -1516,7 +1514,6 @@ pub unsafe fn _mm256_mulhi_epu16(a: u16x16, b: u16x16) -> u16x16 {
 pub unsafe fn _mm256_mullo_epi16(a: i16x16, b: i16x16) -> i16x16 {
     a * b
 }
-
 
 /// Multiply the packed 32-bit integers in `a` and `b`, producing
 /// intermediate 64-bit integers, and return the low 16 bits of the
@@ -2148,7 +2145,6 @@ pub unsafe fn _mm_srav_epi32(a: i32x4, count: i32x4) -> i32x4 {
 pub unsafe fn _mm256_srav_epi32(a: i32x8, count: i32x8) -> i32x8 {
     psravd256(a, count)
 }
-
 
 /// Shift packed 16-bit integers in `a` right by `count` while shifting in
 /// zeros.
@@ -3136,7 +3132,6 @@ mod tests {
         let r = avx2::_mm256_adds_epu8(a, b);
         assert_eq!(r, a);
     }
-
 
     #[simd_test = "avx2"]
     unsafe fn _mm256_adds_epu16() {
@@ -4199,7 +4194,6 @@ mod tests {
         assert_eq!(r, e);
     }
 
-
     #[simd_test = "avx2"]
     unsafe fn _mm256_srlv_epi64() {
         let a = i64x4::splat(2);
@@ -4540,7 +4534,6 @@ mod tests {
         );
     }
 
-
     #[simd_test = "avx2"]
     unsafe fn _mm_i32gather_epi64() {
         let mut arr = [0i64; 128];
@@ -4801,7 +4794,6 @@ mod tests {
         );
         assert_eq!(r, f32x4::new(0.0, 16.0, 64.0, 256.0));
     }
-
 
     #[simd_test = "avx2"]
     unsafe fn _mm_i64gather_epi64() {

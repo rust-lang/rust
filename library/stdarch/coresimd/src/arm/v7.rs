@@ -47,7 +47,6 @@ extern "C" {
     fn rbit_u32(i: i32) -> i32;
 }
 
-
 #[cfg(test)]
 mod tests {
     use arm::v7;

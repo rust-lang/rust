@@ -24,11 +24,13 @@ mod powerpc64;
 pub use self::powerpc64::__Feature;
 
 #[cfg(all(target_os = "linux",
-          any(target_arch = "arm", target_arch = "aarch64", target_arch = "powerpc64")))]
+          any(target_arch = "arm", target_arch = "aarch64",
+              target_arch = "powerpc64")))]
 mod linux;
 
 #[cfg(all(target_os = "linux",
-          any(target_arch = "arm", target_arch = "aarch64", target_arch = "powerpc64")))]
+          any(target_arch = "arm", target_arch = "aarch64",
+              target_arch = "powerpc64")))]
 pub use self::linux::detect_features;
 
 /// Performs run-time feature detection.

@@ -315,7 +315,6 @@ pub unsafe fn _mm256_div_pd(a: f64x4, b: f64x4) -> f64x4 {
     a / b
 }
 
-
 /// Round packed double-precision (64-bit) floating point elements in `a`
 /// according to the flag `b`. The value of `b` may be as follows:
 ///
@@ -865,7 +864,8 @@ pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
 
 /// Extract an 8-bit integer from `a`, selected with `imm8`. Returns a 32-bit
 /// integer containing the zero-extended integer data.
-/// See: https://reviews.llvm.org/D20468
+///
+/// See [LLVM commit D20468][https://reviews.llvm.org/D20468].
 #[inline(always)]
 #[target_feature = "+avx"]
 // This intrinsic has no corresponding instruction.
@@ -876,7 +876,8 @@ pub unsafe fn _mm256_extract_epi8(a: i8x32, imm8: i32) -> i32 {
 
 /// Extract a 16-bit integer from `a`, selected with `imm8`. Returns a 32-bit
 /// integer containing the zero-extended integer data.
-/// See: https://reviews.llvm.org/D20468
+///
+/// See [LLVM commit D20468][https://reviews.llvm.org/D20468].
 #[inline(always)]
 #[target_feature = "+avx"]
 // This intrinsic has no corresponding instruction.
@@ -2983,7 +2984,6 @@ mod tests {
         assert_eq!(r, e);
     }
 
-
     #[simd_test = "avx"]
     unsafe fn _mm256_xor_pd() {
         let a = f64x4::new(4., 9., 16., 25.);
@@ -4210,9 +4210,13 @@ mod tests {
             25, 26, 27, 28,
             29, 30, 31, 32,
         ));
-        let lo = __m128i::from(
-            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
-        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let lo = __m128i::from(i8x16::new(
+            1, 2, 3, 4,
+            5, 6, 7, 8,
+            9, 10, 11, 12,
+            13, 14, 15, 16,
+        ));
         let r = avx::_mm256_set_m128i(hi, lo);
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let e = __m256i::from(i8x32::new(
@@ -4244,9 +4248,13 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn _mm256_setr_m128i() {
-        let lo = __m128i::from(
-            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
-        );
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let lo = __m128i::from(i8x16::new(
+            1, 2, 3, 4,
+            5, 6, 7, 8,
+            9, 10, 11, 12,
+            13, 14, 15, 16,
+        ));
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let hi = __m128i::from(i8x16::new(
             17, 18, 19, 20, 21, 22, 23, 24,

@@ -206,7 +206,8 @@ pub enum __Feature {
     avx512_ifma,
     /// AVX-512 VBMI (Vector Byte Manipulation Instructions)
     avx512_vbmi,
-    /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and Quadword)
+    /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and
+    /// Quadword)
     avx512_vpopcntdq,
     /// FMA (Fused Multiply Add)
     fma,
@@ -301,7 +302,8 @@ pub fn detect_features() -> usize {
     // Contains information about bmi,bmi2, and avx2 support.
     let (extended_features_ebx, extended_features_ecx) = if max_basic_leaf >= 7
     {
-        let CpuidResult { ebx, ecx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
+        let CpuidResult { ebx, ecx, .. } =
+            unsafe { __cpuid(0x0000_0007_u32) };
         (ebx, ecx)
     } else {
         (0, 0) // CPUID does not support "Extended Features"
@@ -318,7 +320,8 @@ pub fn detect_features() -> usize {
     // EAX = 0x8000_0001, ECX=0: Queries "Extended Processor Info and Feature
     // Bits"
     let extended_proc_info_ecx = if extended_max_basic_leaf >= 1 {
-        let CpuidResult { ecx, .. } = unsafe { __cpuid(0x8000_0001_u32) };
+        let CpuidResult { ecx, .. } =
+            unsafe { __cpuid(0x8000_0001_u32) };
         ecx
     } else {
         0
@@ -326,8 +329,10 @@ pub fn detect_features() -> usize {
 
     {
         // borrows value till the end of this scope:
-        let mut enable = |r, rb, f| if bit::test(r as usize, rb) {
-            value = bit::set(value, f as u32);
+        let mut enable = |r, rb, f| {
+            if bit::test(r as usize, rb) {
+                value = bit::set(value, f as u32);
+            }
         };
 
         enable(proc_info_ecx, 0, __Feature::sse3);

@@ -56,7 +56,6 @@ mod example {
         // let r = s::_mm_cmplt_sd(a, b);
         // let r = foobar(a, b);
 
-
         let needle = env::args().nth(1).unwrap();
         let haystack = env::args().nth(2).unwrap();
         println!("{:?}", index(&needle, &haystack));

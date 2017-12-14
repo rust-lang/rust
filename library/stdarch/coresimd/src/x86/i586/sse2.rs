@@ -3921,9 +3921,12 @@ mod tests {
         let r = sse2::_mm_cvtps_pd(f32x4::new(-1.0, 2.0, -3.0, 5.0));
         assert_eq!(r, f64x2::new(-1.0, 2.0));
 
-        let r = sse2::_mm_cvtps_pd(
-            f32x4::new(f32::MAX, f32::INFINITY, f32::NEG_INFINITY, f32::MIN),
-        );
+        let r = sse2::_mm_cvtps_pd(f32x4::new(
+            f32::MAX,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::MIN,
+        ));
         assert_eq!(r, f64x2::new(f32::MAX as f64, f64::INFINITY));
     }
 
@@ -3940,9 +3943,10 @@ mod tests {
         let r = sse2::_mm_cvtpd_epi32(f64x2::new(f64::MAX, f64::MIN));
         assert_eq!(r, i32x4::new(i32::MIN, i32::MIN, 0, 0));
 
-        let r = sse2::_mm_cvtpd_epi32(
-            f64x2::new(f64::INFINITY, f64::NEG_INFINITY),
-        );
+        let r = sse2::_mm_cvtpd_epi32(f64x2::new(
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ));
         assert_eq!(r, i32x4::new(i32::MIN, i32::MIN, 0, 0));
 
         let r = sse2::_mm_cvtpd_epi32(f64x2::new(f64::NAN, f64::NAN));

@@ -1514,7 +1514,6 @@ pub const _MM_HINT_T2: i8 = 1;
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
 pub const _MM_HINT_NTA: i8 = 0;
 
-
 /// Fetch the cache line that contains address `p` using the given `strategy`.
 ///
 /// The `strategy` must be one of:

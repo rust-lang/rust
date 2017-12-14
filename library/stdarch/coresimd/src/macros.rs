@@ -539,7 +539,6 @@ macro_rules! test_bit_arithmetic_ {
     };
 }
 
-
 #[cfg(test)]
 #[macro_export]
 macro_rules! test_ops_si {

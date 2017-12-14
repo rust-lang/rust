@@ -59,7 +59,7 @@ impl linux::FeatureQuery for linux::AuxVec {
             altivec => self.lookup(linux::AT::HWCAP)
                 .map(|caps| caps & 0x10000000 != 0)
                 .unwrap_or(false),
-            vsx  => self.lookup(linux::AT::HWCAP)
+            vsx => self.lookup(linux::AT::HWCAP)
                 .map(|caps| caps & 0x00000080 != 0)
                 .unwrap_or(false),
             power8 => self.lookup(linux::AT::HWCAP2)
@@ -78,7 +78,7 @@ impl linux::FeatureQuery for linux::CpuInfo {
         use self::__Feature::*;
         match *x {
             altivec => self.field("cpu").has("altivec"),
-            _ => false
+            _ => false,
         }
     }
 }
