@@ -54,7 +54,7 @@ fn execute() -> i32 {
     // If there is any invalid argument passed to `cargo fmt`, return without formatting.
     let mut is_package_arg = false;
     for arg in env::args().skip(2).take_while(|a| a != "--") {
-        if arg.starts_with("-") {
+        if arg.starts_with('-') {
             is_package_arg = arg.starts_with("--package");
         } else if !is_package_arg {
             print_usage_to_stderr(&opts, &format!("Invalid argument: `{}`.", arg));
@@ -215,7 +215,7 @@ impl CargoFmtStrategy {
     }
 }
 
-/// Based on the specified CargoFmtStrategy, returns a set of main source files.
+/// Based on the specified `CargoFmtStrategy`, returns a set of main source files.
 fn get_targets(strategy: &CargoFmtStrategy) -> Result<HashSet<Target>, io::Error> {
     let mut targets = HashSet::new();
 
@@ -228,7 +228,7 @@ fn get_targets(strategy: &CargoFmtStrategy) -> Result<HashSet<Target>, io::Error
     if targets.is_empty() {
         Err(io::Error::new(
             io::ErrorKind::Other,
-            format!("Failed to find targets"),
+            "Failed to find targets".to_owned(),
         ))
     } else {
         Ok(targets)
@@ -310,7 +310,7 @@ fn get_targets_with_hitlist(
 
 fn add_targets(target_paths: &[cargo_metadata::Target], targets: &mut HashSet<Target>) {
     for target in target_paths {
-        targets.insert(Target::from_target(&target));
+        targets.insert(Target::from_target(target));
     }
 }
 

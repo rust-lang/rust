@@ -930,7 +930,7 @@ pub fn recover_comment_removed(
     context: &RewriteContext,
 ) -> Option<String> {
     let snippet = context.snippet(span);
-    if snippet != new && changed_comment_content(&snippet, &new) {
+    if snippet != new && changed_comment_content(snippet, &new) {
         // We missed some comments. Keep the original text.
         Some(snippet.to_owned())
     } else {

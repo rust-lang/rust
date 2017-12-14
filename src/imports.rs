@@ -108,10 +108,10 @@ fn compare_use_trees(a: &ast::UseTree, b: &ast::UseTree, nested: bool) -> Orderi
 fn compare_use_items(context: &RewriteContext, a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
     match (&a.node, &b.node) {
         (&ast::ItemKind::Use(ref a_tree), &ast::ItemKind::Use(ref b_tree)) => {
-            Some(compare_use_trees(&a_tree, &b_tree, false))
+            Some(compare_use_trees(a_tree, b_tree, false))
         }
         (&ast::ItemKind::ExternCrate(..), &ast::ItemKind::ExternCrate(..)) => {
-            Some(context.snippet(a.span).cmp(&context.snippet(b.span)))
+            Some(context.snippet(a.span).cmp(context.snippet(b.span)))
         }
         _ => None,
     }
@@ -141,7 +141,7 @@ impl Rewrite for ast::UseTree {
             ast::UseTreeKind::Glob => {
                 let prefix_shape = shape.sub_width(3)?;
 
-                if self.prefix.segments.len() > 0 {
+                if !self.prefix.segments.is_empty() {
                     let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)?;
                     Some(format!("{}::*", path_str))
                 } else {
@@ -476,7 +476,7 @@ fn rewrite_nested_use_tree(
         let mut items = vec![ListItem::from_str("")];
         let iter = itemize_list(
             context.codemap,
-            trees.iter().map(|ref tree| &tree.0),
+            trees.iter().map(|tree| &tree.0),
             "}",
             ",",
             |tree| tree.span.lo(),

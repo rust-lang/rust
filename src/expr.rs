@@ -304,7 +304,7 @@ pub fn format_expr(
         })
 }
 
-#[derive(new)]
+#[derive(new, Clone, Copy)]
 pub struct PairParts<'a> {
     prefix: &'a str,
     infix: &'a str,
@@ -729,7 +729,7 @@ struct ControlFlow<'a> {
     span: Span,
 }
 
-fn to_control_flow<'a>(expr: &'a ast::Expr, expr_type: ExprType) -> Option<ControlFlow<'a>> {
+fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow> {
     match expr.node {
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => Some(ControlFlow::new_if(
             cond,
@@ -2122,16 +2122,12 @@ fn is_every_args_simple<T: ToExpr>(lists: &[&T]) -> bool {
 
 /// In case special-case style is required, returns an offset from which we start horizontal layout.
 fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<usize> {
-    if FORMAT_LIKE_WHITELIST
-        .iter()
-        .find(|s| **s == callee_str)
-        .is_some() && args.len() >= 1 && is_every_args_simple(args)
+    if FORMAT_LIKE_WHITELIST.iter().any(|s| *s == callee_str) && args.len() >= 1
+        && is_every_args_simple(args)
     {
         Some(1)
-    } else if WRITE_LIKE_WHITELIST
-        .iter()
-        .find(|s| **s == callee_str)
-        .is_some() && args.len() >= 2 && is_every_args_simple(args)
+    } else if WRITE_LIKE_WHITELIST.iter().any(|s| *s == callee_str) && args.len() >= 2
+        && is_every_args_simple(args)
     {
         Some(2)
     } else {

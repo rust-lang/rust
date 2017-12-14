@@ -1,5 +1,5 @@
 #[must_use]
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Summary {
     // Encountered e.g. an IO error.
     has_operational_errors: bool,
