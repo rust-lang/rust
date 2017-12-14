@@ -128,6 +128,11 @@ pub unsafe trait Searcher<'a> {
     fn next(&mut self) -> SearchStep;
 
     /// Find the next `Match` result. See `next()`
+    ///
+    /// Unlike next(), there is no guarantee that the returned ranges
+    /// of this and next_reject will overlap. This will return (start_match, end_match),
+    /// where start_match is the index of where the match begins, and end_match is
+    /// the index after the end of the match.
     #[inline]
     fn next_match(&mut self) -> Option<(usize, usize)> {
         loop {
@@ -139,7 +144,10 @@ pub unsafe trait Searcher<'a> {
         }
     }
 
-    /// Find the next `Reject` result. See `next()`
+    /// Find the next `Reject` result. See `next()` and `next_match()`
+    ///
+    /// Unlike next(), there is no guarantee that the returned ranges
+    /// of this and next_match will overlap.
     #[inline]
     fn next_reject(&mut self) -> Option<(usize, usize)> {
         loop {
@@ -244,8 +252,9 @@ pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 #[derive(Clone, Debug)]
 pub struct CharSearcher<'a> {
     haystack: &'a str,
-    // invariant: `finger` must be a valid utf8 byte index of `haystack`
+    // invariant: `finger`/`finger_back` must be a valid utf8 byte index of `haystack`
     finger: usize,
+    finger_back: usize,
     needle: char,
     // For ascii chars
     // invariant: must be an ASCII byte (no high bit)
@@ -266,7 +275,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
         if let Some(ch) = iter.next() {
             // add byte offset of current character
             // without recalculating
-            self.finger += iter.iter.len() - old_len;
+            self.finger += old_len - iter.iter.len();
             if ch == self.needle {
                 SearchStep::Match(old_finger, self.finger)
             } else {
@@ -286,7 +295,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
                 // index is the index of a valid ASCII byte,
                 // so we can add one to it
                 self.finger += index + 1;
-                Some((index, self.finger))
+                Some((self.finger - 1, self.finger))
             } else {
                 None
             }
@@ -307,11 +316,45 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
 unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
-        unimplemented!();
+        let old_finger = self.finger_back;
+        let slice = unsafe { self.haystack.slice_unchecked(0, old_finger) };
+        let mut iter = slice.chars();
+        let old_len = iter.iter.len();
+        if let Some(ch) = iter.next_back() {
+            // subtract byte offset of current character
+            // without recalculating
+            self.finger_back -= old_len - iter.iter.len();
+            if ch == self.needle {
+                SearchStep::Match(self.finger_back, old_finger)
+            } else {
+                SearchStep::Reject(self.finger_back, old_finger)
+            }
+        } else {
+            SearchStep::Done
+        }
     }
     #[inline]
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
-        unimplemented!();
+        if let Some(byte) = self.single_byte {
+            let old_finger = self.finger_back;
+            let slice = unsafe { self.haystack.slice_unchecked(0, old_finger) };
+            let bytes = slice.as_bytes();
+            if let Some(index) = memchr::memrchr(byte, bytes) {
+                // index is the index of a valid ASCII byte
+                self.finger_back = index;
+                Some((self.finger_back, self.finger_back + 1))
+            } else {
+                None
+            }
+        } else {
+            loop {
+                match self.next_back() {
+                    SearchStep::Match(a, b) => break Some((a, b)),
+                    SearchStep::Done => break None,
+                    _ => continue,
+                }
+            }
+        }
     }
 
     // let next_reject_back use the default implementation from the Searcher trait
@@ -335,6 +378,7 @@ impl<'a> Pattern<'a> for char {
         CharSearcher {
             haystack,
             finger: 0,
+            finger_back: haystack.len(),
             needle: self,
             single_byte,
         }
