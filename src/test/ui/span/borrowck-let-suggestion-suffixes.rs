@@ -42,6 +42,7 @@ fn f() {
         //~| NOTE consider using a `let` binding to increase its lifetime
 
     }                       // (statement 7)
+    //~^ NOTE temporary value needs to live until here
 
     let mut v5 = Vec::new(); // statement 8
 

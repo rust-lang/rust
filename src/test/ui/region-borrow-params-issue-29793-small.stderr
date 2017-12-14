@@ -2,7 +2,7 @@ error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:19:34
    |
 19 |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
-   |                 ---------        ^ does not live long enough
+   |                 ---------        ^ borrowed value does not live long enough
    |                 |
    |                 capture occurs here
 ...
@@ -15,7 +15,7 @@ error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:19:45
    |
 19 |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
-   |                 ---------                   ^ does not live long enough
+   |                 ---------                   ^ borrowed value does not live long enough
    |                 |
    |                 capture occurs here
 ...
@@ -28,7 +28,7 @@ error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:34:34
    |
 34 |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
-   |                 ---------        ^ does not live long enough
+   |                 ---------        ^ borrowed value does not live long enough
    |                 |
    |                 capture occurs here
 ...
@@ -41,7 +41,7 @@ error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:34:45
    |
 34 |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
-   |                 ---------                   ^ does not live long enough
+   |                 ---------                   ^ borrowed value does not live long enough
    |                 |
    |                 capture occurs here
 ...

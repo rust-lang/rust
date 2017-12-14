@@ -12,5 +12,5 @@ fn main() {
     let p;
     let a = 42;
     p = &a;
+    //~^ ERROR `a` does not live long enough
 }
-//~^ ERROR `a` does not live long enough

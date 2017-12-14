@@ -31,7 +31,7 @@ error[E0597]: `y` does not live long enough
   --> $DIR/escape-upvar-ref.rs:33:27
    |
 33 |         let mut closure = || p = &y;
-   |                           ^^^^^^^^^ does not live long enough
+   |                           ^^^^^^^^^ borrowed value does not live long enough
 ...
 36 |     }
    |      - borrowed value only lives until here

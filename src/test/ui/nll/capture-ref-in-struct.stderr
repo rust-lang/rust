@@ -2,7 +2,7 @@ error[E0597]: `y` does not live long enough
   --> $DIR/capture-ref-in-struct.rs:32:16
    |
 32 |             y: &y,
-   |                ^^ does not live long enough
+   |                ^^ borrowed value does not live long enough
 ...
 37 |     }
    |      - borrowed value only lives until here

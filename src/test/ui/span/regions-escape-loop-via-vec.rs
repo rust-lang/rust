@@ -15,9 +15,9 @@ fn broken() {
     while x < 10 { //~ ERROR cannot use `x` because it was mutably borrowed
         let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
         _y.push(&mut z);
+        //~^ ERROR `z` does not live long enough
         x += 1; //~ ERROR cannot assign
     }
-    //~^ ERROR `z` does not live long enough
 }
 
 fn main() { }
