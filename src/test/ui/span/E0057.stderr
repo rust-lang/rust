@@ -5,10 +5,10 @@ error[E0057]: this function takes 1 parameter but 0 parameters were supplied
    |             ^^^ expected 1 parameter
 
 error[E0057]: this function takes 1 parameter but 2 parameters were supplied
-  --> $DIR/E0057.rs:15:15
+  --> $DIR/E0057.rs:15:13
    |
 15 |     let c = f(2, 3); //~ ERROR E0057
-   |               ^^^^ expected 1 parameter
+   |             ^^^^^^^ expected 1 parameter
 
 error: aborting due to 2 previous errors
 

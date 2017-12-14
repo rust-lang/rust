@@ -56,5 +56,22 @@ error[E0593]: closure is expected to take a single 2-tuple as argument, but it t
    |                                                     |
    |                                                     expected closure that takes a single 2-tuple as argument
 
-error: aborting due to 7 previous errors
+error[E0593]: function is expected to take a single 2-tuple as argument, but it takes 0 arguments
+  --> $DIR/closure-arg-count.rs:30:53
+   |
+30 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(foo);
+   |                                                     ^^^ expected function that takes a single 2-tuple as argument
+...
+37 | fn foo() {}
+   | -------- takes 0 arguments
+
+error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
+  --> $DIR/closure-arg-count.rs:33:53
+   |
+32 |     let bar = |i, x, y| i;
+   |               --------- takes 3 distinct arguments
+33 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(bar);
+   |                                                     ^^^ expected closure that takes a single 2-tuple as argument
+
+error: aborting due to 9 previous errors
 
