@@ -706,7 +706,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             if self.reservation_error_reported.contains(&place_span.0) {
                 debug!("skipping access_place for activation of invalid reservation \
                         place: {:?} borrow_index: {:?}", place_span.0, borrow_index);
-                return AccessErrorsReported { mutability_error: false, conflict_error: false };
+                return AccessErrorsReported { mutability_error: false, conflict_error: true };
             }
         }
 
