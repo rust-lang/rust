@@ -758,7 +758,10 @@ pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
-    Vector,
+    Vector {
+        element: Scalar,
+        count: u64
+    },
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
@@ -773,7 +776,7 @@ impl Abi {
             Abi::Uninhabited |
             Abi::Scalar(_) |
             Abi::ScalarPair(..) |
-            Abi::Vector => false,
+            Abi::Vector { .. } => false,
             Abi::Aggregate { sized, .. } => !sized
         }
     }
@@ -784,7 +787,7 @@ impl Abi {
             Abi::Uninhabited |
             Abi::Scalar(_) |
             Abi::ScalarPair(..) |
-            Abi::Vector => false,
+            Abi::Vector { .. } => false,
             Abi::Aggregate { packed, .. } => packed
         }
     }
@@ -1083,9 +1086,9 @@ impl<'a, 'tcx> LayoutDetails {
                                align.abi() == field.align.abi() &&
                                size == field.size {
                                 match field.abi {
-                                    // For plain scalars we can't unpack newtypes
-                                    // for `#[repr(C)]`, as that affects C ABIs.
-                                    Abi::Scalar(_) if optimize => {
+                                    // For plain scalars, or vectors of them, we can't unpack
+                                    // newtypes for `#[repr(C)]`, as that affects C ABIs.
+                                    Abi::Scalar(_) | Abi::Vector { .. } if optimize => {
                                         abi = field.abi.clone();
                                     }
                                     // But scalar pairs are Rust-specific and get
@@ -1320,16 +1323,17 @@ impl<'a, 'tcx> LayoutDetails {
 
             // SIMD vector types.
             ty::TyAdt(def, ..) if def.repr.simd() => {
-                let count = ty.simd_size(tcx) as u64;
                 let element = cx.layout_of(ty.simd_type(tcx))?;
-                match element.abi {
-                    Abi::Scalar(_) => {}
+                let count = ty.simd_size(tcx) as u64;
+                assert!(count > 0);
+                let scalar = match element.abi {
+                    Abi::Scalar(ref scalar) => scalar.clone(),
                     _ => {
                         tcx.sess.fatal(&format!("monomorphising SIMD type `{}` with \
                                                 a non-machine element type `{}`",
                                                 ty, element.ty));
                     }
-                }
+                };
                 let size = element.size.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
                 let align = dl.vector_align(size);
@@ -1341,7 +1345,10 @@ impl<'a, 'tcx> LayoutDetails {
                         stride: element.size,
                         count
                     },
-                    abi: Abi::Vector,
+                    abi: Abi::Vector {
+                        element: scalar,
+                        count
+                    },
                     size,
                     align,
                 })
@@ -2266,8 +2273,9 @@ impl<'a, 'tcx> TyLayout<'tcx> {
     pub fn is_zst(&self) -> bool {
         match self.abi {
             Abi::Uninhabited => true,
-            Abi::Scalar(_) | Abi::ScalarPair(..) => false,
-            Abi::Vector => self.size.bytes() == 0,
+            Abi::Scalar(_) |
+            Abi::ScalarPair(..) |
+            Abi::Vector { .. } => false,
             Abi::Aggregate { sized, .. } => sized && self.size.bytes() == 0
         }
     }
@@ -2321,6 +2329,9 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 return Ok(scalar_component(a, Size::from_bytes(0)).or_else(|| {
                     scalar_component(b, a.value.size(cx).abi_align(b.value.align(cx)))
                 }));
+            }
+            Abi::Vector { ref element, .. } => {
+                return Ok(scalar_component(element, Size::from_bytes(0)));
             }
             _ => {}
         }
@@ -2424,7 +2435,10 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Abi {
                 a.hash_stable(hcx, hasher);
                 b.hash_stable(hcx, hasher);
             }
-            Vector => {}
+            Vector { ref element, count } => {
+                element.hash_stable(hcx, hasher);
+                count.hash_stable(hcx, hasher);
+            }
             Aggregate { packed, sized } => {
                 packed.hash_stable(hcx, hasher);
                 sized.hash_stable(hcx, hasher);
