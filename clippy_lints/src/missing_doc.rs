@@ -129,6 +129,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemStatic(..) => "a static",
             hir::ItemStruct(..) => "a struct",
             hir::ItemTrait(..) => "a trait",
+            hir::ItemTraitAlias(..) => "a trait alias",
             hir::ItemGlobalAsm(..) => "an assembly blob",
             hir::ItemTy(..) => "a type alias",
             hir::ItemUnion(..) => "a union",

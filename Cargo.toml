@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.0.175"
+version = "0.0.176"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
@@ -37,7 +37,7 @@ path = "src/driver.rs"
 
 [dependencies]
 # begin automatic update
-clippy_lints = { version = "0.0.175", path = "clippy_lints" }
+clippy_lints = { version = "0.0.176", path = "clippy_lints" }
 # end automatic update
 cargo_metadata = "0.2"
 regex = "0.2"
@@ -45,7 +45,7 @@ regex = "0.2"
 [dev-dependencies]
 compiletest_rs = "0.3"
 duct = "0.8.2"
-lazy_static = "0.2"
+lazy_static = "1.0"
 serde_derive = "1.0"
 clippy-mini-macro-test = { version = "0.1", path = "mini-macro" }
 serde = "1.0"

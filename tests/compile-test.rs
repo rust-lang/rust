@@ -72,21 +72,3 @@ fn compile_test() {
     run_mode("run-pass", "run-pass");
     run_mode("ui", "ui");
 }
-
-#[test]
-fn dogfood() {
-    prepare_env();
-    let files = ["src/main.rs", "src/driver.rs", "src/lib.rs", "clippy_lints/src/lib.rs"];
-    let mut config = config("dogfood", "ui");
-    config.target_rustcflags = config.target_rustcflags.map(|flags| format!("{} -Dclippy -Dclippy_pedantic -Dclippy_internal", flags));
-
-    for file in &files {
-        let paths = test::TestPaths {
-            base: PathBuf::new(),
-            file: PathBuf::from(file),
-            relative_dir: PathBuf::new(),
-        };
-
-        compiletest::runtest::run(config.clone(), &paths);
-    }
-}

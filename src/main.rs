@@ -141,10 +141,12 @@ pub fn main() {
             let args = std::iter::once(format!("--manifest-path={}", manifest_path)).chain(args);
             if let Some(first) = target.kind.get(0) {
                 if target.kind.len() > 1 || first.ends_with("lib") {
+                    println!("lib: {}", target.name);
                     if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args)) {
                         std::process::exit(code);
                     }
                 } else if ["bin", "example", "test", "bench"].contains(&&**first) {
+                    println!("{}: {}", first, target.name);
                     if let Err(code) = process(
                         vec![format!("--{}", first), target.name]
                             .into_iter()

@@ -940,6 +940,7 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
         Def::StructCtor(id, ..) |
         Def::Union(id) |
         Def::Trait(id) |
+        Def::TraitAlias(id) |
         Def::Method(id) |
         Def::Const(id) |
         Def::AssociatedConst(id) |
