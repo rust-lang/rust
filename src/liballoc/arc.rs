@@ -26,7 +26,7 @@ use core::mem::{self, align_of_val, size_of_val, uninitialized};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
-use core::marker::Unsize;
+use core::marker::{Unsize, PhantomData};
 use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
@@ -198,6 +198,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
     ptr: Shared<ArcInner<T>>,
+    phantom: PhantomData<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -285,7 +286,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Arc { ptr: Shared::from(Box::into_unique(x)) }
+        Arc { ptr: Shared::from(Box::into_unique(x)), phantom: PhantomData }
     }
 
     /// Returns the contained value, if the `Arc` has exactly one strong reference.
@@ -397,6 +398,7 @@ impl<T: ?Sized> Arc<T> {
 
         Arc {
             ptr: Shared::new_unchecked(arc_ptr),
+            phantom: PhantomData,
         }
     }
 
@@ -580,7 +582,7 @@ impl<T: ?Sized> Arc<T> {
             // Free the allocation without dropping its contents
             box_free(bptr);
 
-            Arc { ptr: Shared::new_unchecked(ptr) }
+            Arc { ptr: Shared::new_unchecked(ptr), phantom: PhantomData }
         }
     }
 }
@@ -607,7 +609,7 @@ impl<T> Arc<[T]> {
             &mut (*ptr).data as *mut [T] as *mut T,
             v.len());
 
-        Arc { ptr: Shared::new_unchecked(ptr) }
+        Arc { ptr: Shared::new_unchecked(ptr), phantom: PhantomData }
     }
 }
 
@@ -667,7 +669,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
             // All clear. Forget the guard so it doesn't free the new ArcInner.
             mem::forget(guard);
 
-            Arc { ptr: Shared::new_unchecked(ptr) }
+            Arc { ptr: Shared::new_unchecked(ptr), phantom: PhantomData }
         }
     }
 }
@@ -725,7 +727,7 @@ impl<T: ?Sized> Clone for Arc<T> {
             }
         }
 
-        Arc { ptr: self.ptr }
+        Arc { ptr: self.ptr, phantom: PhantomData }
     }
 }
 
@@ -1052,7 +1054,7 @@ impl<T: ?Sized> Weak<T> {
 
             // Relaxed is valid for the same reason it is on Arc's Clone impl
             match inner.strong.compare_exchange_weak(n, n + 1, Relaxed, Relaxed) {
-                Ok(_) => return Some(Arc { ptr: self.ptr }),
+                Ok(_) => return Some(Arc { ptr: self.ptr, phantom: PhantomData }),
                 Err(old) => n = old,
             }
         }

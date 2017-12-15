@@ -2450,16 +2450,11 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     }
 }
 
-/// A wrapper around a raw `*mut T` that indicates that the possessor
-/// of this wrapper has shared ownership of the referent. Useful for
-/// building abstractions like `Rc<T>`, `Arc<T>`, or doubly-linked lists, which
-/// internally use aliased raw pointers to manage the memory that they own.
+/// `*mut T` but non-zero and covariant.
 ///
-/// This is similar to `Unique`, except that it doesn't make any aliasing
-/// guarantees, and doesn't derive Send and Sync. Note that unlike `&T`,
-/// Shared has no special mutability requirements. Shared may mutate data
-/// aliased by other Shared pointers. More precise rules require Rust to
-/// develop an actual aliasing model.
+/// This is often the correct thing to use when building data structures using
+/// raw pointers, but is ultimately more dangerous to use because of its additional
+/// properties. If you're not sure if you should use `Shared<T>`, just use `*mut T`!
 ///
 /// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
 /// is never dereferenced. This is so that enums may use this forbidden value
@@ -2469,20 +2464,14 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
 /// Unlike `*mut T`, `Shared<T>` is covariant over `T`. If this is incorrect
 /// for your use case, you should include some PhantomData in your type to
 /// provide invariance, such as `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
-/// Usually this won't be necessary; covariance is correct for Rc, Arc, and LinkedList
-/// because they provide a public API that follows the normal shared XOR mutable
-/// rules of Rust.
+/// Usually this won't be necessary; covariance is correct for most safe abstractions,
+/// such as Box, Rc, Arc, Vec, and LinkedList. This is the case because they
+/// provide a public API that follows the normal shared XOR mutable rules of Rust.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
            issue = "27730")]
 pub struct Shared<T: ?Sized> {
     pointer: NonZero<*const T>,
-    // NOTE: this marker has no consequences for variance, but is necessary
-    // for dropck to understand that we logically own a `T`.
-    //
-    // For details, see:
-    // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
-    _marker: PhantomData<T>,
 }
 
 /// `Shared` pointers are not `Send` because the data they reference may be aliased.
@@ -2518,12 +2507,12 @@ impl<T: ?Sized> Shared<T> {
     /// `ptr` must be non-null.
     #[unstable(feature = "shared", issue = "27730")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        Shared { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
+        Shared { pointer: NonZero::new_unchecked(ptr) }
     }
 
     /// Creates a new `Shared` if `ptr` is non-null.
     pub fn new(ptr: *mut T) -> Option<Self> {
-        NonZero::new(ptr as *const T).map(|nz| Shared { pointer: nz, _marker: PhantomData })
+        NonZero::new(ptr as *const T).map(|nz| Shared { pointer: nz })
     }
 
     /// Acquires the underlying `*mut` pointer.
@@ -2580,20 +2569,20 @@ impl<T: ?Sized> fmt::Pointer for Shared<T> {
 #[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> From<Unique<T>> for Shared<T> {
     fn from(unique: Unique<T>) -> Self {
-        Shared { pointer: unique.pointer, _marker: PhantomData }
+        Shared { pointer: unique.pointer }
     }
 }
 
 #[unstable(feature = "shared", issue = "27730")]
 impl<'a, T: ?Sized> From<&'a mut T> for Shared<T> {
     fn from(reference: &'a mut T) -> Self {
-        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
+        Shared { pointer: NonZero::from(reference) }
     }
 }
 
 #[unstable(feature = "shared", issue = "27730")]
 impl<'a, T: ?Sized> From<&'a T> for Shared<T> {
     fn from(reference: &'a T) -> Self {
-        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
+        Shared { pointer: NonZero::from(reference) }
     }
 }

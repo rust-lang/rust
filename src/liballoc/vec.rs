@@ -71,6 +71,7 @@ use core::fmt;
 use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
+use core::marker::PhantomData;
 use core::mem;
 #[cfg(not(test))]
 use core::num::Float;
@@ -1743,6 +1744,7 @@ impl<T> IntoIterator for Vec<T> {
             mem::forget(self);
             IntoIter {
                 buf: Shared::new_unchecked(begin),
+                phantom: PhantomData,
                 cap,
                 ptr: begin,
                 end,
@@ -2264,6 +2266,7 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     buf: Shared<T>,
+    phantom: PhantomData<T>,
     cap: usize,
     ptr: *const T,
     end: *const T,
