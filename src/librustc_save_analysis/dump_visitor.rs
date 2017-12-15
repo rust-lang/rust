@@ -1404,6 +1404,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 if !self.span.filter_generated(alias_span, item.span) {
                     let span =
                         self.span_from_span(alias_span.expect("No span found for extern crate"));
+                    let parent = self.save_ctxt.tcx.hir.opt_local_def_id(item.id)
+                        .and_then(|id| self.save_ctxt.tcx.parent_def_id(id))
+                        .map(::id_from_def_id);
                     self.dumper.import(
                         &Access {
                             public: false,
@@ -1415,7 +1418,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                             span,
                             name: item.ident.to_string(),
                             value: String::new(),
-                            parent: None,
+                            parent,
                         },
                     );
                 }
