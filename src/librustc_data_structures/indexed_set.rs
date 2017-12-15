@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::{Borrow, BorrowMut, ToOwned};
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -71,6 +72,25 @@ impl<T: Idx> rustc_serialize::Decodable for IdxSetBuf<T> {
 pub struct IdxSet<T: Idx> {
     _pd: PhantomData<fn(&T)>,
     bits: [Word],
+}
+
+impl<T: Idx> Borrow<IdxSet<T>> for IdxSetBuf<T> {
+    fn borrow(&self) -> &IdxSet<T> {
+        &*self
+    }
+}
+
+impl<T: Idx> BorrowMut<IdxSet<T>> for IdxSetBuf<T> {
+    fn borrow_mut(&mut self) -> &mut IdxSet<T> {
+        &mut *self
+    }
+}
+
+impl<T: Idx> ToOwned for IdxSet<T> {
+    type Owned = IdxSetBuf<T>;
+    fn to_owned(&self) -> Self::Owned {
+        IdxSet::to_owned(self)
+    }
 }
 
 impl<T: Idx> fmt::Debug for IdxSetBuf<T> {

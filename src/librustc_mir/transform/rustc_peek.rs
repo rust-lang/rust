@@ -18,7 +18,7 @@ use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 use transform::{MirPass, MirSource};
 
-use dataflow::do_dataflow;
+use dataflow::{do_dataflow, DebugFormatted};
 use dataflow::MoveDataParamEnv;
 use dataflow::BitDenotation;
 use dataflow::DataflowResults;
@@ -51,15 +51,15 @@ impl MirPass for SanityCheck {
         let flow_inits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
                         MaybeInitializedLvals::new(tcx, mir, &mdpe),
-                        |bd, i| &bd.move_data().move_paths[i]);
+                        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_uninits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
                         MaybeUninitializedLvals::new(tcx, mir, &mdpe),
-                        |bd, i| &bd.move_data().move_paths[i]);
+                        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
         let flow_def_inits =
             do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
                         DefinitelyInitializedLvals::new(tcx, mir, &mdpe),
-                        |bd, i| &bd.move_data().move_paths[i]);
+                        |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]));
 
         if has_rustc_mir_with(&attributes, "rustc_peek_maybe_init").is_some() {
             sanity_check_via_rustc_peek(tcx, mir, id, &attributes, &flow_inits);

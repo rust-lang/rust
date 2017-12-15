@@ -11,7 +11,7 @@
 use syntax_pos::Span;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{BorrowKind, Field, Local, Location, Operand};
-use rustc::mir::{Place, ProjectionElem, Rvalue, StatementKind};
+use rustc::mir::{Place, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty::{self, RegionKind};
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -19,7 +19,7 @@ use std::rc::Rc;
 
 use super::{MirBorrowckCtxt, Context};
 use super::{InitializationRequiringAction, PrefixSet};
-use dataflow::{BorrowData, Borrows, FlowAtLocation, MovingOutStatements};
+use dataflow::{ActiveBorrows, BorrowData, FlowAtLocation, MovingOutStatements};
 use dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -96,7 +96,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Some(name) => format!("`{}`", name),
             None => "value".to_owned(),
         };
-        let borrow_msg = match self.describe_place(&borrow.place) {
+        let borrow_msg = match self.describe_place(&borrow.borrowed_place) {
             Some(name) => format!("`{}`", name),
             None => "value".to_owned(),
         };
@@ -124,7 +124,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             span,
             &self.describe_place(place).unwrap_or("_".to_owned()),
             self.retrieve_borrow_span(borrow),
-            &self.describe_place(&borrow.place).unwrap_or("_".to_owned()),
+            &self.describe_place(&borrow.borrowed_place).unwrap_or("_".to_owned()),
             Origin::Mir,
         );
 
@@ -143,12 +143,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         use rustc::hir::ExprClosure;
         use rustc::mir::AggregateKind;
 
-        let local = if let StatementKind::Assign(Place::Local(local), _) =
-            self.mir[location.block].statements[location.statement_index].kind
-        {
-            local
-        } else {
-            return None;
+        let local = match self.mir[location.block].statements.get(location.statement_index) {
+            Some(&Statement { kind: StatementKind::Assign(Place::Local(local), _), .. }) => local,
+            _ => return None,
         };
 
         for stmt in &self.mir[location.block].statements[location.statement_index + 1..] {
@@ -324,11 +321,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         _: Context,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
-        borrows: &Borrows<'cx, 'gcx, 'tcx>
+        borrows: &ActiveBorrows<'cx, 'gcx, 'tcx>
     ) {
         let end_span = borrows.opt_region_end_span(&borrow.region);
-        let scope_tree = borrows.scope_tree();
-        let root_place = self.prefixes(&borrow.place, PrefixSet::All).last().unwrap();
+        let scope_tree = borrows.0.scope_tree();
+        let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All).last().unwrap();
 
         match root_place {
             &Place::Local(local) => {
@@ -357,7 +354,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => drop_span,
         };
 
-        match (borrow.region, &self.describe_place(&borrow.place)) {
+        match (borrow.region, &self.describe_place(&borrow.borrowed_place)) {
             (RegionKind::ReScope(_), Some(name)) => {
                 self.report_scoped_local_value_does_not_live_long_enough(
                     name, &scope_tree, &borrow, drop_span, borrow_span, proper_span, end_span);

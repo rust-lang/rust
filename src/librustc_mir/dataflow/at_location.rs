@@ -18,6 +18,8 @@ use rustc_data_structures::indexed_vec::Idx;
 use dataflow::{BitDenotation, BlockSets, DataflowResults};
 use dataflow::move_paths::{HasMoveData, MovePathIndex};
 
+use std::iter;
+
 /// A trait for "cartesian products" of multiple FlowAtLocation.
 ///
 /// There's probably a way to auto-impl this, but I think
@@ -94,9 +96,9 @@ where
         self.curr_state.contains(x)
     }
 
-    pub fn elems_incoming(&self) -> indexed_set::Elems<BD::Idx> {
+    pub fn elems_incoming(&self) -> iter::Peekable<indexed_set::Elems<BD::Idx>> {
         let univ = self.base_results.sets().bits_per_block();
-        self.curr_state.elems(univ)
+        self.curr_state.elems(univ).peekable()
     }
 
     pub fn with_elems_outgoing<F>(&self, f: F)
@@ -121,9 +123,8 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     fn reconstruct_statement_effect(&mut self, loc: Location) {
         self.stmt_gen.reset_to_empty();
         self.stmt_kill.reset_to_empty();
-        let mut ignored = IdxSetBuf::new_empty(0);
         let mut sets = BlockSets {
-            on_entry: &mut ignored,
+            on_entry: &mut self.curr_state,
             gen_set: &mut self.stmt_gen,
             kill_set: &mut self.stmt_kill,
         };
@@ -135,9 +136,8 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     fn reconstruct_terminator_effect(&mut self, loc: Location) {
         self.stmt_gen.reset_to_empty();
         self.stmt_kill.reset_to_empty();
-        let mut ignored = IdxSetBuf::new_empty(0);
         let mut sets = BlockSets {
-            on_entry: &mut ignored,
+            on_entry: &mut self.curr_state,
             gen_set: &mut self.stmt_gen,
             kill_set: &mut self.stmt_kill,
         };
