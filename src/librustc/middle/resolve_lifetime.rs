@@ -646,30 +646,77 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
-        let tcx = self.tcx;
-        if let hir::TraitItemKind::Method(ref sig, _) = trait_item.node {
-            self.visit_early_late(
-                Some(tcx.hir.get_parent(trait_item.id)),
-                &sig.decl,
-                &trait_item.generics,
-                |this| intravisit::walk_trait_item(this, trait_item),
-            )
-        } else {
-            intravisit::walk_trait_item(self, trait_item);
+        use self::hir::TraitItemKind::*;
+        match trait_item.node {
+            Method(ref sig, _) => {
+                let tcx = self.tcx;
+                self.visit_early_late(
+                    Some(tcx.hir.get_parent(trait_item.id)),
+                    &sig.decl,
+                    &trait_item.generics,
+                    |this| intravisit::walk_trait_item(this, trait_item),
+                );
+            },
+            Type(ref bounds, ref ty) => {
+                let generics = &trait_item.generics;
+                let mut index = self.next_early_index();
+                debug!("visit_ty: index = {}", index);
+                let lifetimes = generics.lifetimes.iter()
+                    .map(|lt_def| Region::early(&self.tcx.hir, &mut index, lt_def))
+                    .collect();
+
+                let next_early_index = index + generics.ty_params.len() as u32;
+                let scope = Scope::Binder { lifetimes, next_early_index, s: self.scope };
+                self.with(scope, |_old_scope, this| {
+                    this.visit_generics(generics);
+                    for bound in bounds {
+                        this.visit_ty_param_bound(bound);
+                    }
+                    if let Some(ty) = ty {
+                        this.visit_ty(ty);
+                    }
+                });
+            },
+            Const(_, _) => {
+                // Only methods and types support generics.
+                assert!(!trait_item.generics.is_parameterized());
+                intravisit::walk_trait_item(self, trait_item);
+            },
         }
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        let tcx = self.tcx;
-        if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
-            self.visit_early_late(
-                Some(tcx.hir.get_parent(impl_item.id)),
-                &sig.decl,
-                &impl_item.generics,
-                |this| intravisit::walk_impl_item(this, impl_item),
-            )
-        } else {
-            intravisit::walk_impl_item(self, impl_item);
+        use self::hir::ImplItemKind::*;
+        match impl_item.node {
+            Method(ref sig, _) => {
+                let tcx = self.tcx;
+                self.visit_early_late(
+                    Some(tcx.hir.get_parent(impl_item.id)),
+                    &sig.decl,
+                    &impl_item.generics,
+                    |this| intravisit::walk_impl_item(this, impl_item),
+                )
+            },
+            Type(ref ty) => {
+                let generics = &impl_item.generics;
+                let mut index = self.next_early_index();
+                debug!("visit_ty: index = {}", index);
+                let lifetimes = generics.lifetimes.iter()
+                    .map(|lt_def| Region::early(&self.tcx.hir, &mut index, lt_def))
+                    .collect();
+
+                let next_early_index = index + generics.ty_params.len() as u32;
+                let scope = Scope::Binder { lifetimes, next_early_index, s: self.scope };
+                self.with(scope, |_old_scope, this| {
+                    this.visit_generics(generics);
+                    this.visit_ty(ty);
+                });
+            },
+            Const(_, _) => {
+                // Only methods and types support generics.
+                assert!(!impl_item.generics.is_parameterized());
+                intravisit::walk_impl_item(self, impl_item);
+            },
         }
     }
 
