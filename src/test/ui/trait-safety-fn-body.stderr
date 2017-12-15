@@ -1,0 +1,8 @@
+error[E0133]: dereference of raw pointer requires unsafe function or block
+  --> $DIR/trait-safety-fn-body.rs:21:9
+   |
+21 |         *self += 1;
+   |         ^^^^^^^^^^ dereference of raw pointer
+
+error: aborting due to previous error
+

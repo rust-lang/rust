@@ -13,5 +13,4 @@ fn main() {
 
 fn foo<T>(x: T, y: T) {
     let z = x + y; //~ ERROR binary operation `+` cannot be applied to type `T`
-    //~^ NOTE `T` might need a bound for `std::ops::Add`
 }

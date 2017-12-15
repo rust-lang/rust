@@ -12,7 +12,6 @@
 
 #[start]
 fn f< T >() {} //~ ERROR E0132
-             //~| NOTE start function cannot have type parameters
 
 fn main() {
 }

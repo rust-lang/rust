@@ -1,0 +1,42 @@
+error: `bar` is ambiguous
+  --> $DIR/macro-paths.rs:25:5
+   |
+25 |     bar::m! { //~ ERROR ambiguous
+   |     ^^^^^^
+   |
+note: `bar` could refer to the name defined here
+  --> $DIR/macro-paths.rs:26:9
+   |
+26 |         mod bar { pub use two_macros::m; }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `bar` could also refer to the name imported here
+  --> $DIR/macro-paths.rs:24:9
+   |
+24 |     use foo::*;
+   |         ^^^^^^
+   = note: macro-expanded items do not shadow when used in a macro invocation path
+
+error: `baz` is ambiguous
+  --> $DIR/macro-paths.rs:35:5
+   |
+35 |     baz::m! { //~ ERROR ambiguous
+   |     ^^^^^^
+   |
+note: `baz` could refer to the name defined here
+  --> $DIR/macro-paths.rs:36:9
+   |
+36 |         mod baz { pub use two_macros::m; }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `baz` could also refer to the name defined here
+  --> $DIR/macro-paths.rs:30:1
+   |
+30 | / pub mod baz {
+31 | |     pub use two_macros::m;
+32 | | }
+   | |_^
+   = note: macro-expanded items do not shadow when used in a macro invocation path
+
+error[E0601]: main function not found
+
+error: aborting due to 3 previous errors
+

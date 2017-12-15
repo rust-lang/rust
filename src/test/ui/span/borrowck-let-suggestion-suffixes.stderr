@@ -1,49 +1,49 @@
 error[E0597]: `young[..]` does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:54:1
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:43:1
    |
 21 |     v2.push(&young[0]);      // statement 4
    |              -------- borrow occurs here
 ...
-54 | }
+43 | }
    | ^ `young[..]` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:26:22
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:25:22
    |
-26 |     v3.push(&id('x'));           // statement 6
+25 |     v3.push(&id('x'));           // statement 6
    |              ------- ^ temporary value dropped here while still borrowed
    |              |
    |              temporary value created here
 ...
-54 | }
+43 | }
    | - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:36:26
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:32:26
    |
-36 |         v4.push(&id('y'));
+32 |         v4.push(&id('y'));
    |                  ------- ^ temporary value dropped here while still borrowed
    |                  |
    |                  temporary value created here
 ...
-42 |     }                       // (statement 7)
+35 |     }                       // (statement 7)
    |     - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:47:22
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:39:22
    |
-47 |     v5.push(&id('z'));
+39 |     v5.push(&id('z'));
    |              ------- ^ temporary value dropped here while still borrowed
    |              |
    |              temporary value created here
 ...
-54 | }
+43 | }
    | - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime

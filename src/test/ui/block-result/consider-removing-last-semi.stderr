@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 11 |   fn f() -> String {  //~ ERROR mismatched types
    |  __________________^
 12 | |     0u8;
-13 | |     "bla".to_string();  //~ HELP consider removing this semicolon
+13 | |     "bla".to_string();
    | |                      - help: consider removing this semicolon
 14 | | }
    | |_^ expected struct `std::string::String`, found ()
@@ -18,7 +18,7 @@ error[E0308]: mismatched types
 16 |   fn g() -> String {  //~ ERROR mismatched types
    |  __________________^
 17 | |     "this won't work".to_string();
-18 | |     "removeme".to_string(); //~ HELP consider removing this semicolon
+18 | |     "removeme".to_string();
    | |                           - help: consider removing this semicolon
 19 | | }
    | |_^ expected struct `std::string::String`, found ()

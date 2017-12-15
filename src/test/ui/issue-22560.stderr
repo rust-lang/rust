@@ -1,0 +1,34 @@
+error[E0393]: the type parameter `RHS` must be explicitly specified
+  --> $DIR/issue-22560.rs:15:13
+   |
+15 | type Test = Add +
+   |             ^^^ missing reference to `RHS`
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error[E0393]: the type parameter `RHS` must be explicitly specified
+  --> $DIR/issue-22560.rs:18:13
+   |
+18 |             Sub;
+   |             ^^^ missing reference to `RHS`
+   |
+   = note: because of the default `Self` reference, type parameters must be specified on object types
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/issue-22560.rs:18:13
+   |
+18 |             Sub;
+   |             ^^^ non-auto additional trait
+
+error[E0191]: the value of the associated type `Output` (from the trait `std::ops::Add`) must be specified
+  --> $DIR/issue-22560.rs:15:13
+   |
+15 |   type Test = Add +
+   |  _____________^
+16 | |             //~^ ERROR E0393
+17 | |             //~| ERROR E0191
+18 | |             Sub;
+   | |_______________^ missing associated type `Output` value
+
+error: aborting due to 4 previous errors
+

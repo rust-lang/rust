@@ -16,7 +16,6 @@
 extern crate issue_21221_3;
 
 struct Foo;
-//~^ HELP possible candidate is found in another module
 
 // NOTE: This shows only traits accessible from the current
 // crate, thus the two private entities:

@@ -18,5 +18,4 @@ fn foo<F>(f: F) where F: FnMut(Foo) {}
 fn main() {
     foo(|s| s.is_empty());
     //~^ ERROR no method named `is_empty` found
-    //~| HELP items from traits can only be used if the trait is implemented and in scope
 }

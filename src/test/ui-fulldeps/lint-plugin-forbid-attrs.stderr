@@ -1,0 +1,23 @@
+error: item is named 'lintme'
+  --> $DIR/lint-plugin-forbid-attrs.rs:18:1
+   |
+18 | fn lintme() { } //~ ERROR item is named 'lintme'
+   | ^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-plugin-forbid-attrs.rs:16:11
+   |
+16 | #![forbid(test_lint)]
+   |           ^^^^^^^^^
+
+error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+  --> $DIR/lint-plugin-forbid-attrs.rs:20:9
+   |
+16 | #![forbid(test_lint)]
+   |           --------- `forbid` level set here
+...
+20 | #[allow(test_lint)]
+   |         ^^^^^^^^^ overruled by previous forbid
+
+error: aborting due to 2 previous errors
+

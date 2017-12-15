@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/signature.rs:17:1
+   |
+17 | / pub unsafe extern fn foo(a: i32, b: u32) -> u32 {
+18 | |     //~^ ERROR: mismatched types
+19 | |     loop {}
+20 | | }
+   | |_^ expected normal fn, found unsafe fn
+   |
+   = note: expected type `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found type `unsafe extern "C" fn(i32, u32) -> u32 {foo}`
+
+error: aborting due to previous error
+

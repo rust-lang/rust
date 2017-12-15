@@ -1,0 +1,8 @@
+error[E0599]: no associated item named `DOESNOTEXIST` found for type `u32` in the current scope
+  --> $DIR/invalid-path-in-const.rs:12:18
+   |
+12 |     fn f(a: [u8; u32::DOESNOTEXIST]) {}
+   |                  ^^^^^^^^^^^^^^^^^ associated item not found in `u32`
+
+error: aborting due to previous error
+

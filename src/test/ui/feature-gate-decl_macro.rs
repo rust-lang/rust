@@ -11,6 +11,5 @@
 #![allow(unused_macros)]
 
 macro m() {} //~ ERROR `macro` is experimental (see issue #39412)
-//~| HELP add #![feature(decl_macro)] to the crate attributes to enable
 
 fn main() {}

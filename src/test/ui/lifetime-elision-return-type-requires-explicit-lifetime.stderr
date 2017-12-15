@@ -1,0 +1,54 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:12:11
+   |
+12 | fn f() -> &isize {    //~ ERROR missing lifetime specifier
+   |           ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+   = help: consider giving it a 'static lifetime
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:17:33
+   |
+17 | fn g(_x: &isize, _y: &isize) -> &isize {    //~ ERROR missing lifetime specifier
+   |                                 ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `_x` or `_y`
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:27:19
+   |
+27 | fn h(_x: &Foo) -> &isize { //~ ERROR missing lifetime specifier
+   |                   ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of `_x`'s 2 lifetimes it is borrowed from
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:31:20
+   |
+31 | fn i(_x: isize) -> &isize { //~ ERROR missing lifetime specifier
+   |                    ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+   = help: consider giving it an explicit bounded or 'static lifetime
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:44:24
+   |
+44 | fn j(_x: StaticStr) -> &isize { //~ ERROR missing lifetime specifier
+   |                        ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+   = help: consider giving it an explicit bounded or 'static lifetime
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:50:49
+   |
+50 | fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &isize {
+   |                                                 ^ expected lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
+   = help: consider giving it an explicit bounded or 'static lifetime
+
+error: aborting due to 6 previous errors
+

@@ -9,10 +9,8 @@
 // except according to those terms.
 
 #![forbid(non_snake_case)]
-//~^ NOTE `forbid` level set here
 
 #[allow(non_snake_case)]
 //~^ ERROR allow(non_snake_case) overruled by outer forbid(non_snake_case)
-//~| NOTE overruled by previous forbid
 fn main() {
 }

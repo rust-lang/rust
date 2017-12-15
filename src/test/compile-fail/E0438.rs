@@ -13,7 +13,6 @@ trait Bar {}
 
 impl Bar for i32 {
     const BAR: bool = true; //~ ERROR E0438
-        //~| NOTE not a member of trait `Bar`
 }
 
 fn main () {

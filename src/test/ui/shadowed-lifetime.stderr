@@ -1,0 +1,18 @@
+error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scope
+  --> $DIR/shadowed-lifetime.rs:16:25
+   |
+15 | impl<'a> Foo<'a> {
+   |      -- first declared here
+16 |     fn shadow_in_method<'a>(&'a self) -> &'a isize {
+   |                         ^^ lifetime 'a already in scope
+
+error[E0496]: lifetime name `'b` shadows a lifetime name that is already in scope
+  --> $DIR/shadowed-lifetime.rs:22:20
+   |
+21 |     fn shadow_in_type<'b>(&'b self) -> &'b isize {
+   |                       -- first declared here
+22 |         let x: for<'b> fn(&'b isize) = panic!();
+   |                    ^^ lifetime 'b already in scope
+
+error: aborting due to 2 previous errors
+

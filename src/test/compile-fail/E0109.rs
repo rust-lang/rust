@@ -9,7 +9,6 @@
 // except according to those terms.
 
 type X = u32<i32>; //~ ERROR E0109
-                   //~| NOTE type parameter not allowed
 
 fn main() {
 }

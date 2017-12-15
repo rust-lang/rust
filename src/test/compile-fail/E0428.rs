@@ -10,8 +10,6 @@
 
 struct Bar; //~ previous definition of the type `Bar` here
 struct Bar; //~ ERROR E0428
-            //~| NOTE `Bar` redefined here
-            //~| NOTE `Bar` must be defined only once in the type namespace of this module
 
 fn main () {
 }

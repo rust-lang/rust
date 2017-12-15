@@ -19,15 +19,12 @@ impl<T> SpaceLlama for T {
 }
 
 impl<T: Clone> SpaceLlama for T {
-//~^ NOTE parent `impl` is here
     fn fly(&self) {}
 }
 
 impl SpaceLlama for i32 {
     default fn fly(&self) {}
     //~^ ERROR E0520
-    //~| NOTE cannot specialize default item `fly`
-    //~| NOTE `fly` in the parent `impl` must be marked `default`
 }
 
 fn main() {

@@ -1,0 +1,46 @@
+error[E0620]: cast to unsized type: `&[usize; 2]` as `[usize]`
+  --> $DIR/issue-17441.rs:12:16
+   |
+12 |     let _foo = &[1_usize, 2] as [usize];
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using an implicit coercion to `&[usize]` instead
+  --> $DIR/issue-17441.rs:12:16
+   |
+12 |     let _foo = &[1_usize, 2] as [usize];
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0620]: cast to unsized type: `std::boxed::Box<usize>` as `std::fmt::Debug`
+  --> $DIR/issue-17441.rs:15:16
+   |
+15 |     let _bar = Box::new(1_usize) as std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^^---------------
+   |                                     |
+   |                                     help: try casting to a `Box` instead: `Box<std::fmt::Debug>`
+
+error[E0620]: cast to unsized type: `usize` as `std::fmt::Debug`
+  --> $DIR/issue-17441.rs:18:16
+   |
+18 |     let _baz = 1_usize as std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a box or reference as appropriate
+  --> $DIR/issue-17441.rs:18:16
+   |
+18 |     let _baz = 1_usize as std::fmt::Debug;
+   |                ^^^^^^^
+
+error[E0620]: cast to unsized type: `[usize; 2]` as `[usize]`
+  --> $DIR/issue-17441.rs:21:17
+   |
+21 |     let _quux = [1_usize, 2] as [usize];
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using a box or reference as appropriate
+  --> $DIR/issue-17441.rs:21:17
+   |
+21 |     let _quux = [1_usize, 2] as [usize];
+   |                 ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

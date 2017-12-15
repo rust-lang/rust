@@ -17,6 +17,5 @@
 struct Pt<A>(A);
 impl<#[may_dangle] A> Drop for Pt<A> {
     //~^ ERROR may_dangle has unstable semantics and may be removed in the future
-    //~| HELP add #![feature(dropck_eyepatch)] to the crate attributes to enable
     fn drop(&mut self) { }
 }

@@ -10,7 +10,6 @@
 
 #[export_name]
 //~^ ERROR E0558
-//~| NOTE did you mean #[export_name="*"]?
 
 pub fn something() {}
 

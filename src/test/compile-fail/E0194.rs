@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo<T> { //~ NOTE first `T` declared here
+trait Foo<T> {
     fn do_something(&self) -> T;
     fn do_something_else<T: Clone>(&self, bar: T);
     //~^ ERROR E0194
-    //~| NOTE shadows another type parameter
 }
 
 fn main() {

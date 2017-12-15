@@ -20,6 +20,7 @@ use json;
 use header::TestProps;
 use test::TestPaths;
 use util::logv;
+use regex::Regex;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -2677,7 +2678,8 @@ impl<'test> TestCx<'test> {
               .replace("\r\n", "\n") // normalize for linebreaks on windows
               .replace("\t", "\\t"); // makes tabs visible
         for rule in custom_rules {
-            normalized = normalized.replace(&rule.0, &rule.1);
+            let re = Regex::new(&rule.0).expect("bad regex in custom normalization rule");
+            normalized = re.replace_all(&normalized, &rule.1[..]).into_owned();
         }
         normalized
     }

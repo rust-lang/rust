@@ -22,6 +22,7 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate rustc_serialize;
+extern crate regex;
 extern crate test;
 
 use std::env;

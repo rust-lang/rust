@@ -10,7 +10,6 @@
 
 fn foo(_: Self) {
 //~^ ERROR cannot find type `Self`
-//~| NOTE `Self` is only available in traits and impls
 }
 
 fn main() {}

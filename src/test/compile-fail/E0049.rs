@@ -9,14 +9,13 @@
 // except according to those terms.
 
 trait Foo {
-    fn foo<T: Default>(x: T) -> Self; //~ NOTE expected 1 type parameter
+    fn foo<T: Default>(x: T) -> Self;
 }
 
 struct Bar;
 
 impl Foo for Bar {
     fn foo(x: bool) -> Self { Bar } //~ ERROR E0049
-                                    //~| NOTE found 0 type parameters
 }
 
 fn main() {

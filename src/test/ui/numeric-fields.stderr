@@ -1,0 +1,16 @@
+error[E0560]: struct `S` has no field named `0b1`
+  --> $DIR/numeric-fields.rs:14:15
+   |
+14 |     let s = S{0b1: 10, 0: 11};
+   |               ^^^^ `S` does not have this field
+   |
+   = note: available fields are: `0`, `1`
+
+error[E0026]: struct `S` does not have a field named `0x1`
+  --> $DIR/numeric-fields.rs:17:17
+   |
+17 |         S{0: a, 0x1: b, ..} => {}
+   |                 ^^^^^^ struct `S` does not have field `0x1`
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,9 @@
+error: `derive` cannot be used on items with type macros
+  --> $DIR/issue-32950.rs:15:5
+   |
+15 | /     concat_idents!(Foo, Bar) //~ ERROR `derive` cannot be used on items with type macros
+16 | | );
+   | |_^
+
+error: aborting due to previous error
+

@@ -17,7 +17,4 @@ fn main() {
     once::<&str>("str").fuse().filter(|a: &str| true).count();
     //~^ ERROR no method named `count`
     //~| ERROR type mismatch in closure arguments
-    //~| NOTE the method `count` exists but the following trait bounds
-    //~| NOTE expected signature
-    //~| NOTE found signature
 }

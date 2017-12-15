@@ -26,17 +26,9 @@ fn send<T: Send>(_: T) {}
 fn main() {
     send(before());
     //~^ ERROR the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied
-    //~| NOTE `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
-    //~| NOTE required because it appears within the type `[closure
-    //~| NOTE required because it appears within the type `impl std::ops::Fn<(i32,)>`
-    //~| NOTE required by `send`
 
     send(after());
     //~^ ERROR the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied
-    //~| NOTE `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
-    //~| NOTE required because it appears within the type `[closure
-    //~| NOTE required because it appears within the type `impl std::ops::Fn<(i32,)>`
-    //~| NOTE required by `send`
 }
 
 // Deferred path, main has to wait until typeck finishes,
@@ -52,17 +44,12 @@ fn after() -> impl Fn(i32) {
 fn cycle1() -> impl Clone {
     //~^ ERROR unsupported cyclic reference between types/traits detected
     //~| cyclic reference
-    //~| NOTE the cycle begins when processing `cycle1`...
-    //~| NOTE ...which then requires processing `cycle1::{{impl-Trait}}`...
-    //~| NOTE ...which then again requires processing `cycle1`, completing the cycle.
     send(cycle2().clone());
 
     Rc::new(Cell::new(5))
 }
 
 fn cycle2() -> impl Clone {
-    //~^ NOTE ...which then requires processing `cycle2::{{impl-Trait}}`...
-    //~| NOTE ...which then requires processing `cycle2`...
     send(cycle1().clone());
 
     Rc::new(String::from("foo"))

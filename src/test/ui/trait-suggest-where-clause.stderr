@@ -1,0 +1,67 @@
+error[E0277]: the trait bound `U: std::marker::Sized` is not satisfied
+  --> $DIR/trait-suggest-where-clause.rs:17:5
+   |
+17 |     mem::size_of::<U>();
+   |     ^^^^^^^^^^^^^^^^^ `U` does not have a constant size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `U`
+   = help: consider adding a `where U: std::marker::Sized` bound
+   = note: required by `std::mem::size_of`
+
+error[E0277]: the trait bound `U: std::marker::Sized` is not satisfied in `Misc<U>`
+  --> $DIR/trait-suggest-where-clause.rs:20:5
+   |
+20 |     mem::size_of::<Misc<U>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ `U` does not have a constant size known at compile-time
+   |
+   = help: within `Misc<U>`, the trait `std::marker::Sized` is not implemented for `U`
+   = help: consider adding a `where U: std::marker::Sized` bound
+   = note: required because it appears within the type `Misc<U>`
+   = note: required by `std::mem::size_of`
+
+error[E0277]: the trait bound `u64: std::convert::From<T>` is not satisfied
+  --> $DIR/trait-suggest-where-clause.rs:25:5
+   |
+25 |     <u64 as From<T>>::from;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<T>` is not implemented for `u64`
+   |
+   = help: consider adding a `where u64: std::convert::From<T>` bound
+   = note: required by `std::convert::From::from`
+
+error[E0277]: the trait bound `u64: std::convert::From<<T as std::iter::Iterator>::Item>` is not satisfied
+  --> $DIR/trait-suggest-where-clause.rs:28:5
+   |
+28 |     <u64 as From<<T as Iterator>::Item>>::from;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<<T as std::iter::Iterator>::Item>` is not implemented for `u64`
+   |
+   = help: consider adding a `where u64: std::convert::From<<T as std::iter::Iterator>::Item>` bound
+   = note: required by `std::convert::From::from`
+
+error[E0277]: the trait bound `Misc<_>: std::convert::From<T>` is not satisfied
+  --> $DIR/trait-suggest-where-clause.rs:33:5
+   |
+33 |     <Misc<_> as From<T>>::from;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::convert::From<T>` is not implemented for `Misc<_>`
+   |
+   = note: required by `std::convert::From::from`
+
+error[E0277]: the trait bound `[T]: std::marker::Sized` is not satisfied
+  --> $DIR/trait-suggest-where-clause.rs:38:5
+   |
+38 |     mem::size_of::<[T]>();
+   |     ^^^^^^^^^^^^^^^^^^^ `[T]` does not have a constant size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[T]`
+   = note: required by `std::mem::size_of`
+
+error[E0277]: the trait bound `[&U]: std::marker::Sized` is not satisfied
+  --> $DIR/trait-suggest-where-clause.rs:41:5
+   |
+41 |     mem::size_of::<[&U]>();
+   |     ^^^^^^^^^^^^^^^^^^^^ `[&U]` does not have a constant size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[&U]`
+   = note: required by `std::mem::size_of`
+
+error: aborting due to 7 previous errors
+

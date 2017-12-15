@@ -14,8 +14,6 @@ trait Trait {
 
 fn call_foo(x: Box<Trait>) {
     //~^ ERROR E0038
-    //~| NOTE the trait `Trait` cannot be made into an object
-    //~| NOTE method `foo` references the `Self` type in its arguments or return type
     let y = x.foo();
 }
 

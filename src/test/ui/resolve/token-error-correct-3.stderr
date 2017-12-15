@@ -1,28 +1,28 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct-3.rs:31:9
+  --> $DIR/token-error-correct-3.rs:28:9
    |
-31 |         } else { //~ ERROR: incorrect close delimiter: `}`
+28 |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^
    |
 note: unclosed delimiter
-  --> $DIR/token-error-correct-3.rs:23:21
+  --> $DIR/token-error-correct-3.rs:22:21
    |
-23 |             callback(path.as_ref();  //~ NOTE: unclosed delimiter
+22 |             callback(path.as_ref(); //~ ERROR expected one of
    |                     ^
 
 error: expected one of `,`, `.`, `?`, or an operator, found `;`
-  --> $DIR/token-error-correct-3.rs:23:35
+  --> $DIR/token-error-correct-3.rs:22:35
    |
-23 |             callback(path.as_ref();  //~ NOTE: unclosed delimiter
+22 |             callback(path.as_ref(); //~ ERROR expected one of
    |                                   ^ expected one of `,`, `.`, `?`, or an operator here
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
-  --> $DIR/token-error-correct-3.rs:31:9
+  --> $DIR/token-error-correct-3.rs:28:9
    |
-26 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+23 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator here
 ...
-31 |         } else { //~ ERROR: incorrect close delimiter: `}`
+28 |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^ unexpected token
 
 error[E0425]: cannot find function `is_directory` in this scope
@@ -32,9 +32,9 @@ error[E0425]: cannot find function `is_directory` in this scope
    |             ^^^^^^^^^^^^ not found in this scope
 
 error[E0308]: mismatched types
-  --> $DIR/token-error-correct-3.rs:26:13
+  --> $DIR/token-error-correct-3.rs:23:13
    |
-26 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+23 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
    |             |
    |             expected (), found enum `std::result::Result`

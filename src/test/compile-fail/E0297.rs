@@ -13,5 +13,4 @@ fn main() {
 
     for Some(x) in xs {}
     //~^ ERROR E0005
-    //~| NOTE pattern `None` not covered
 }

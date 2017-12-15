@@ -133,13 +133,15 @@ Sometimes these built-in normalizations are not enough. In such cases, you
 may provide custom normalization rules using the header commands, e.g.
 
 ```
-// normalize-stderr-32bit: "fn() (32 bits)" -> "fn() ($PTR bits)"
-// normalize-stderr-64bit: "fn() (64 bits)" -> "fn() ($PTR bits)"
+// normalize-stdout-test: "foo" -> "bar"
+// normalize-stderr-32bit: "fn\(\) \(32 bits\)" -> "fn\(\) \($$PTR bits\)"
+// normalize-stderr-64bit: "fn\(\) \(64 bits\)" -> "fn\(\) \($$PTR bits\)"
 ```
 
 This tells the test, on 32-bit platforms, whenever the compiler writes
 `fn() (32 bits)` to stderr, it should be normalized to read `fn() ($PTR bits)`
-instead. Similar for 64-bit.
+instead. Similar for 64-bit. The replacement is performed by regexes using
+default regex flavor provided by `regex` crate.
 
 The corresponding reference file will use the normalized output to test both
 32-bit and 64-bit platforms:
@@ -156,4 +158,5 @@ Please see `ui/transmute/main.rs` and `.stderr` for a concrete usage example.
 
 Besides `normalize-stderr-32bit` and `-64bit`, one may use any target
 information or stage supported by `ignore-X` here as well (e.g.
-`normalize-stderr-windows`).
+`normalize-stderr-windows` or simply `normalize-stderr-test` for unconditional
+replacement).

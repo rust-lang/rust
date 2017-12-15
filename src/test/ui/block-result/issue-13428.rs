@@ -15,12 +15,12 @@ fn foo() -> String {  //~ ERROR mismatched types
             "world")
     // Put the trailing semicolon on its own line to test that the
     // note message gets the offending semicolon exactly
-    ;   //~ HELP consider removing this semicolon
+    ;
 }
 
 fn bar() -> String {  //~ ERROR mismatched types
     "foobar".to_string()
-    ;   //~ HELP consider removing this semicolon
+    ;
 }
 
 pub fn main() {}

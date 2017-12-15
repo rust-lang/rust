@@ -1,0 +1,17 @@
+error[E0599]: no method named `foo` found for type `i32` in the current scope
+  --> $DIR/issue-25385.rs:13:23
+   |
+13 |     ($e:expr) => { $e.foo() }
+   |                       ^^^
+...
+19 |     foo!(a);
+   |     -------- in this macro invocation
+
+error[E0599]: no method named `foo` found for type `i32` in the current scope
+  --> $DIR/issue-25385.rs:21:15
+   |
+21 |     foo!(1i32.foo());
+   |               ^^^
+
+error: aborting due to 2 previous errors
+

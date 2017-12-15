@@ -1,0 +1,10 @@
+error[E0038]: the trait `Map` cannot be made into an object
+  --> $DIR/issue-26056.rs:30:13
+   |
+30 |         as &Map<Key=u32,MapValue=u32>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Map` cannot be made into an object
+   |
+   = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
+
+error: aborting due to previous error
+

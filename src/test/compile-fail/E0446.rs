@@ -12,7 +12,6 @@ mod Foo {
     struct Bar(u32);
 
     pub fn bar() -> Bar { //~ ERROR E0446
-                          //~| NOTE can't leak private type
         Bar(0)
     }
 }

@@ -22,8 +22,6 @@ fn c(x: Box<Foo+Sync+Send>) {
 
 fn d(x: Box<Foo>) {
     a(x); //~ ERROR mismatched types [E0308]
-          //~| NOTE expected type `std::boxed::Box<Foo + std::marker::Send + 'static>`
-          //~| NOTE expected trait `Foo + std::marker::Send`, found trait `Foo`
 }
 
 fn main() { }

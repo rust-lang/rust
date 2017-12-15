@@ -15,7 +15,5 @@ fn main() {
     x.iter()
         .filter(|&(ref a, _)| foo(a))
         //~^ ERROR non-reference pattern used to match a reference
-        //~| HELP consider using a reference
-        //~| HELP add
         .collect();
 }

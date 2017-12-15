@@ -26,53 +26,42 @@ pub mod a {
 fn h1() -> i32 {
     a.I
     //~^ ERROR expected value, found module `a`
-    //~| NOTE did you mean `a::I`?
 }
 
 fn h2() -> i32 {
     a.g()
     //~^ ERROR expected value, found module `a`
-    //~| NOTE did you mean `a::g(...)`?
 }
 
 fn h3() -> i32 {
     a.b.J
     //~^ ERROR expected value, found module `a`
-    //~| NOTE did you mean `a::b`?
 }
 
 fn h4() -> i32 {
     a::b.J
     //~^ ERROR expected value, found module `a::b`
-    //~| NOTE did you mean `a::b::J`?
-    //~| NOTE did you mean `I`
 }
 
 fn h5() {
     a.b.f();
     //~^ ERROR expected value, found module `a`
-    //~| NOTE did you mean `a::b`?
     let v = Vec::new();
     v.push(a::b);
     //~^ ERROR expected value, found module `a::b`
-    //~| NOTE did you mean `I`
 }
 
 fn h6() -> i32 {
     a::b.f()
     //~^ ERROR expected value, found module `a::b`
-    //~| NOTE did you mean `a::b::f(...)`?
-    //~| NOTE did you mean `I`
 }
 
 fn h7() {
     a::b
     //~^ ERROR expected value, found module `a::b`
-    //~| NOTE did you mean `I`
 }
 
 fn h8() -> i32 {
     a::b()
     //~^ ERROR expected function, found module `a::b`
-    //~| NOTE did you mean `I`
 }

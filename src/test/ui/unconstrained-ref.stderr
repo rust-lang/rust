@@ -1,0 +1,8 @@
+error[E0282]: type annotations needed
+  --> $DIR/unconstrained-ref.rs:16:5
+   |
+16 |     S { o: &None }; //~ ERROR type annotations needed [E0282]
+   |     ^ cannot infer type for `T`
+
+error: aborting due to previous error
+

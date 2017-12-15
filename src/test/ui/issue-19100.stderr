@@ -7,9 +7,9 @@ warning[E0170]: pattern binding `Bar` is named the same as one of the variants o
    = help: if you meant to match on a variant, consider making the path in the pattern qualified: `Foo::Bar`
 
 warning[E0170]: pattern binding `Baz` is named the same as one of the variants of the type `Foo`
-  --> $DIR/issue-19100.rs:32:1
+  --> $DIR/issue-19100.rs:31:1
    |
-32 | Baz if false
+31 | Baz if false
    | ^^^
    |
    = help: if you meant to match on a variant, consider making the path in the pattern qualified: `Foo::Baz`

@@ -16,10 +16,9 @@ fn call<F>(f: F) where F : Fn() {
 }
 
 fn main() {
-    let y = vec![format!("World")];  //~ NOTE captured outer variable
+    let y = vec![format!("World")];
     call(|| {
         y.into_iter();
         //~^ ERROR cannot move out of captured outer variable in an `Fn` closure
-        //~| NOTE cannot move out of
     });
 }

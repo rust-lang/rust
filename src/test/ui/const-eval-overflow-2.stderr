@@ -1,0 +1,14 @@
+error[E0080]: constant evaluation error
+  --> $DIR/const-eval-overflow-2.rs:21:25
+   |
+21 | const NEG_NEG_128: i8 = -NEG_128;
+   |                         ^^^^^^^^ attempt to negate with overflow
+   |
+note: for pattern here
+  --> $DIR/const-eval-overflow-2.rs:27:9
+   |
+27 |         NEG_NEG_128 => println!("A"),
+   |         ^^^^^^^^^^^
+
+error: aborting due to previous error
+

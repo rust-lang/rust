@@ -1,0 +1,38 @@
+error[E0277]: the trait bound `std::fmt::Debug + std::marker::Sync + 'static: std::marker::Sized` is not satisfied
+  --> $DIR/const-unsized.rs:13:29
+   |
+13 | const CONST_0: Debug+Sync = *(&0 as &(Debug+Sync));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^ `std::fmt::Debug + std::marker::Sync + 'static` does not have a constant size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `std::fmt::Debug + std::marker::Sync + 'static`
+   = note: constant expressions must have a statically known size
+
+error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+  --> $DIR/const-unsized.rs:16:24
+   |
+16 | const CONST_FOO: str = *"foo";
+   |                        ^^^^^^ `str` does not have a constant size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: constant expressions must have a statically known size
+
+error[E0277]: the trait bound `std::fmt::Debug + std::marker::Sync + 'static: std::marker::Sized` is not satisfied
+  --> $DIR/const-unsized.rs:19:31
+   |
+19 | static STATIC_1: Debug+Sync = *(&1 as &(Debug+Sync));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^ `std::fmt::Debug + std::marker::Sync + 'static` does not have a constant size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `std::fmt::Debug + std::marker::Sync + 'static`
+   = note: constant expressions must have a statically known size
+
+error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+  --> $DIR/const-unsized.rs:22:26
+   |
+22 | static STATIC_BAR: str = *"bar";
+   |                          ^^^^^^ `str` does not have a constant size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: constant expressions must have a statically known size
+
+error: aborting due to 4 previous errors
+

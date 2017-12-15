@@ -12,9 +12,7 @@
 
 #[start]
 fn foo(argc: isize, argv: *const *const u8) -> isize { 0 }
-//~^ NOTE previous `start` function here
 
 #[start]
 fn f(argc: isize, argv: *const *const u8) -> isize { 0 }
 //~^ ERROR E0138
-//~| NOTE multiple `start` functions

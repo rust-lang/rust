@@ -13,8 +13,6 @@ trait Trait { }
 fn function(t: &mut Trait) {
     t as *mut Trait
  //~^ ERROR: mismatched types
- //~| NOTE: expected type `()`
- //~| NOTE: expected (), found *-ptr
 }
 
 fn main() { }

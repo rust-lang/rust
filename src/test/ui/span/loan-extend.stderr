@@ -3,7 +3,7 @@ error[E0597]: `short` does not live long enough
    |
 19 |     long = borrow(&mut short);
    |                        ----- borrow occurs here
-20 |     //~^ NOTE borrow occurs here
+20 |
 21 | }
    | ^ `short` dropped here while still borrowed
    |

@@ -10,12 +10,10 @@
 
 fn f<F:Nonexist(isize) -> isize>(x: F) {}
 //~^ ERROR cannot find trait `Nonexist`
-//~| NOTE not found in this scope
 
 type Typedef = isize;
 
 fn g<F:Typedef(isize) -> isize>(x: F) {}
 //~^ ERROR expected trait, found type alias `Typedef`
-//~| NOTE type aliases cannot be used for traits
 
 fn main() {}

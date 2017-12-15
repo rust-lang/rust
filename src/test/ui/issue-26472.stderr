@@ -1,0 +1,10 @@
+error[E0616]: field `len` of struct `sub::S` is private
+  --> $DIR/issue-26472.rs:21:13
+   |
+21 |     let v = s.len;
+   |             ^^^^^
+   |
+   = note: a method `len` also exists, perhaps you wish to call it
+
+error: aborting due to previous error
+

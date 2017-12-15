@@ -1,0 +1,13 @@
+error[E0460]: found possibly newer version of crate `a` which `b` depends on
+  --> $DIR/svh-change-type-static.rs:20:1
+   |
+20 | extern crate b; //~ ERROR: found possibly newer version of crate `a` which `b` depends on
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: perhaps that crate needs to be recompiled?
+   = note: the following crate versions were found:
+           crate `a`: $PATH_a
+           crate `b`: $PATH_b
+
+error: aborting due to previous error
+

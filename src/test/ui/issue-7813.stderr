@@ -1,0 +1,10 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-7813.rs:12:13
+   |
+12 |     let v = &[]; //~ ERROR type annotations needed
+   |         -   ^^^ cannot infer type for `_`
+   |         |
+   |         consider giving `v` a type
+
+error: aborting due to previous error
+

@@ -20,15 +20,12 @@ trait Trait2 {
 
 impl Trait1 for Test {
     fn foo() {}
-    //~^ NOTE candidate #1 is defined in an impl of the trait `Trait1` for the type `Test`
 }
 
 impl Trait2 for Test {
     fn foo() {}
-    //~^ NOTE candidate #2 is defined in an impl of the trait `Trait2` for the type `Test`
 }
 
 fn main() {
     Test::foo() //~ ERROR multiple applicable items in scope
-    //~| NOTE multiple `foo` found
 }

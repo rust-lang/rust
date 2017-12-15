@@ -11,9 +11,9 @@ error[E0308]: mismatched types
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:31:8
+  --> $DIR/assignment-in-if.rs:30:8
    |
-31 |     if (x = x) {
+30 |     if (x = x) {
    |        ^^^^^^^
    |        |
    |        expected bool, found ()
@@ -23,9 +23,9 @@ error[E0308]: mismatched types
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:37:8
+  --> $DIR/assignment-in-if.rs:35:8
    |
-37 |     if y = (Foo { foo: x }) {
+35 |     if y = (Foo { foo: x }) {
    |        ^^^^^^^^^^^^^^^^^^^^
    |        |
    |        expected bool, found ()
@@ -35,9 +35,9 @@ error[E0308]: mismatched types
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:43:8
+  --> $DIR/assignment-in-if.rs:40:8
    |
-43 |     if 3 = x {
+40 |     if 3 = x {
    |        ^^^^^
    |        |
    |        expected bool, found ()
@@ -47,9 +47,9 @@ error[E0308]: mismatched types
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/assignment-in-if.rs:48:8
+  --> $DIR/assignment-in-if.rs:44:8
    |
-48 |     if (if true { x = 4 } else { x = 5 }) {
+44 |     if (if true { x = 4 } else { x = 5 }) {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected bool, found ()
    |
    = note: expected type `bool`

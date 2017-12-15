@@ -1,0 +1,8 @@
+error[E0396]: raw pointers cannot be dereferenced in statics
+  --> $DIR/const-deref-ptr.rs:14:29
+   |
+14 |     static C: u64 = unsafe {*(0xdeadbeef as *const u64)}; //~ ERROR E0396
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereference of raw pointer in constant
+
+error: aborting due to previous error
+

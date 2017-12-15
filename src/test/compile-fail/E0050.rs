@@ -9,20 +9,17 @@
 // except according to those terms.
 
 trait Foo {
-    fn foo(&self, x: u8) -> bool; //~ NOTE trait requires 2 parameters
-    fn bar(&self, x: u8, y: u8, z: u8); //~ NOTE trait requires 4 parameters
-    fn less(&self); //~ NOTE trait requires 1 parameter
+    fn foo(&self, x: u8) -> bool;
+    fn bar(&self, x: u8, y: u8, z: u8);
+    fn less(&self);
 }
 
 struct Bar;
 
 impl Foo for Bar {
     fn foo(&self) -> bool { true } //~ ERROR E0050
-                                   //~| NOTE expected 2 parameters, found 1
     fn bar(&self) { } //~ ERROR E0050
-                      //~| NOTE expected 4 parameters, found 1
     fn less(&self, x: u8, y: u8, z: u8) { } //~ ERROR E0050
-                                            //~| NOTE expected 1 parameter, found 4
 }
 
 fn main() {

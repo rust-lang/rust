@@ -1,0 +1,17 @@
+error: denote infinite loops with `loop { ... }`
+  --> $DIR/issue-1962.rs:14:3
+   |
+14 |     while true  { //~ ERROR denote infinite loops with `loop
+   |     ^---------
+   |     |
+   |  ___help: use `loop`
+   | |
+15 | |     i += 1;
+16 | |     if i == 5 { break; }
+17 | |   }
+   | |___^
+   |
+   = note: requested on the command line with `-D while-true`
+
+error: aborting due to previous error
+

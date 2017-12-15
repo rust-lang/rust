@@ -25,10 +25,8 @@ impl Tr for S {
     fn method(&self) {
         let _: field;
         //~^ ERROR cannot find type `field`
-        //~| NOTE not found in this scope
         let field(..);
         //~^ ERROR cannot find tuple struct/variant `field`
-        //~| NOTE not found in this scope
         field;
         //~^ ERROR cannot find value `field`
 
@@ -36,17 +34,13 @@ impl Tr for S {
         //~^ ERROR cannot find type `Type`
         let Type(..);
         //~^ ERROR cannot find tuple struct/variant `Type`
-        //~| NOTE not found in this scope
         Type;
         //~^ ERROR cannot find value `Type`
-        //~| NOTE not found in this scope
 
         let _: method;
         //~^ ERROR cannot find type `method`
-        //~| NOTE not found in this scope
         let method(..);
         //~^ ERROR cannot find tuple struct/variant `method`
-        //~| NOTE not found in this scope
         method;
         //~^ ERROR cannot find value `method`
     }

@@ -26,7 +26,6 @@ impl MaybeDog {
     // If this provides a suggestion, it's a bug as MaybeDog doesn't impl Groom
     shave();
     //~^ ERROR cannot find function `shave`
-    //~| NOTE not found in this scope
   }
 }
 
@@ -49,12 +48,10 @@ impl Groom for cat {
   fn shave(other: usize) {
     whiskers -= other;
     //~^ ERROR cannot find value `whiskers`
-    //~| NOTE `self` value is only available in methods with `self` parameter
     shave(4);
     //~^ ERROR cannot find function `shave`
     purr();
     //~^ ERROR cannot find function `purr`
-    //~| NOTE not found in this scope
   }
 }
 
@@ -64,16 +61,12 @@ impl cat {
     fn purr_louder() {
         static_method();
         //~^ ERROR cannot find function `static_method`
-        //~| NOTE not found in this scope
         purr();
         //~^ ERROR cannot find function `purr`
-        //~| NOTE not found in this scope
         purr();
         //~^ ERROR cannot find function `purr`
-        //~| NOTE not found in this scope
         purr();
         //~^ ERROR cannot find function `purr`
-        //~| NOTE not found in this scope
     }
 }
 
@@ -81,7 +74,6 @@ impl cat {
   fn meow() {
     if self.whiskers > 3 {
         //~^ ERROR expected value, found module `self`
-        //~| NOTE `self` value is only available in methods with `self` parameter
         println!("MEOW");
     }
   }
@@ -89,10 +81,8 @@ impl cat {
   fn purr(&self) {
     grow_older();
     //~^ ERROR cannot find function `grow_older`
-    //~| NOTE not found in this scope
     shave();
     //~^ ERROR cannot find function `shave`
-    //~| NOTE not found in this scope
   }
 
   fn burn_whiskers(&mut self) {
@@ -103,15 +93,12 @@ impl cat {
   pub fn grow_older(other:usize) {
     whiskers = 4;
     //~^ ERROR cannot find value `whiskers`
-    //~| NOTE `self` value is only available in methods with `self` parameter
     purr_louder();
     //~^ ERROR cannot find function `purr_louder`
-    //~| NOTE not found in this scope
   }
 }
 
 fn main() {
     self += 1;
     //~^ ERROR expected value, found module `self`
-    //~| NOTE `self` value is only available in methods with `self` parameter
 }
