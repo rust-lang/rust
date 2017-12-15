@@ -57,9 +57,8 @@ fn pass_through_elision_with_fn_path<T: Fn(&u32) -> &u32>(
     x: &T
 ) -> impl Into<&impl Fn(&u32) -> &u32> { x }
 
-// FIXME(cramertj) Currently ICEing, part of issue #46685:
-// fn foo(x: &impl Debug) -> impl Into<&impl Debug> { x }
-// Works:
+fn foo(x: &impl Debug) -> impl Into<&impl Debug> { x }
+fn foo_explicit_lifetime<'a>(x: &'a impl Debug) -> impl Into<&'a impl Debug> { x }
 fn foo_no_outer_impl(x: &impl Debug) -> &impl Debug { x }
 fn foo_explicit_arg<T: Debug>(x: &T) -> impl Into<&impl Debug> { x }
 

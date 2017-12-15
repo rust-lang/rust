@@ -1070,7 +1070,7 @@ impl<'a> State<'a> {
                 self.print_bounds(prefix, &bounds[..])?;
             }
             ast::TyKind::ImplTrait(ref bounds) => {
-                self.print_bounds("impl ", &bounds[..])?;
+                self.print_bounds("impl", &bounds[..])?;
             }
             ast::TyKind::Array(ref ty, ref v) => {
                 self.s.word("[")?;
