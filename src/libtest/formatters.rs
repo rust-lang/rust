@@ -11,8 +11,8 @@
 use super::*;
 
 pub(crate) trait OutputFormatter {
-    fn write_run_start(&mut self, len: usize) -> io::Result<()>;
-    fn write_test_start(&mut self, test: &TestDesc) -> io::Result<()>;
+    fn write_run_start(&mut self, test_count: usize) -> io::Result<()>;
+    fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()>;
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()>;
     fn write_result(&mut self,
                     desc: &TestDesc,
@@ -26,17 +26,26 @@ pub(crate) struct HumanFormatter<T> {
     terse: bool,
     use_color: bool,
     test_count: usize,
-    max_name_len: usize, // number of columns to fill when aligning names
+
+    /// Number of columns to fill when aligning names
+    max_name_len: usize,
+
+    is_multithreaded: bool,
 }
 
 impl<T: Write> HumanFormatter<T> {
-    pub fn new(out: OutputLocation<T>, use_color: bool, terse: bool, max_name_len: usize) -> Self {
+    pub fn new(out: OutputLocation<T>,
+                use_color: bool,
+                terse: bool,
+                max_name_len: usize,
+                is_multithreaded: bool) -> Self {
         HumanFormatter {
             out,
             terse,
             use_color,
             test_count: 0,
             max_name_len,
+            is_multithreaded,
         }
     }
 
@@ -160,28 +169,42 @@ impl<T: Write> HumanFormatter<T> {
         }
         Ok(())
     }
+
+    fn write_test_name(&mut self, desc: &TestDesc) -> io::Result<()> {
+        if !(self.terse && desc.name.padding() != PadOnRight) {
+            let name = desc.padded_name(self.max_name_len, desc.name.padding());
+            self.write_plain(&format!("test {} ... ", name))?;
+        }
+
+        Ok(())
+    }
 }
 
 impl<T: Write> OutputFormatter for HumanFormatter<T> {
-    fn write_run_start(&mut self, len: usize) -> io::Result<()> {
-        let noun = if len != 1 {
+    fn write_run_start(&mut self, test_count: usize) -> io::Result<()> {
+        let noun = if test_count != 1 {
             "tests"
         } else {
             "test"
         };
-        self.write_plain(&format!("\nrunning {} {}\n", len, noun))
+        self.write_plain(&format!("\nrunning {} {}\n", test_count, noun))
     }
 
-    fn write_test_start(&mut self, _desc: &TestDesc) -> io::Result<()> {
-        // Do not print header, as priting it at this point will result in
-        // an unreadable output when running tests concurrently.
+    fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
+        // When running tests concurrently, we should not print
+        // the test's name as the result will be mis-aligned.
+        // When running the tests serially, we print the name here so
+        // that the user can see which test hangs.
+        if !self.is_multithreaded {
+            self.write_test_name(desc)?;
+        }
+
         Ok(())
     }
 
     fn write_result(&mut self, desc: &TestDesc, result: &TestResult, _: &[u8]) -> io::Result<()> {
-        if !(self.terse && desc.name.padding() != PadOnRight) {
-            let name = desc.padded_name(self.max_name_len, desc.name.padding());
-            self.write_plain(&format!("test {} ... ", name))?;
+        if self.is_multithreaded {
+            self.write_test_name(desc)?;
         }
 
         match *result {
@@ -197,6 +220,10 @@ impl<T: Write> OutputFormatter for HumanFormatter<T> {
     }
 
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
+        if self.is_multithreaded {
+            self.write_test_name(desc)?;
+        }
+
         self.write_plain(&format!("test {} has been running for over {} seconds\n",
                                   desc.name,
                                   TEST_WARN_TIMEOUT_S))
@@ -251,13 +278,14 @@ pub(crate) struct JsonFormatter<T> {
 
 impl<T: Write> JsonFormatter<T> {
     pub fn new(out: OutputLocation<T>) -> Self {
-        Self {
-            out,        }
+        Self { out }
     }
 
-    fn write_str<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
-        self.out.write_all(s.as_ref().as_ref())?;
-        self.out.write_all("\n".as_ref())
+    fn write_message(&mut self, s: &str) -> io::Result<()> {
+        assert!(!s.contains('\n'));
+
+        self.out.write_all(s.as_ref())?;
+        self.out.write_all(b"\n")
     }
 
     fn write_event(&mut self,
@@ -266,14 +294,14 @@ impl<T: Write> JsonFormatter<T> {
                     evt: &str,
                     extra: Option<String>) -> io::Result<()> {
         if let Some(extras) = extra {
-            self.write_str(&*format!(r#"{{ "type": "{}", "name": "{}", "event": "{}", {} }}"#,
+            self.write_message(&*format!(r#"{{ "type": "{}", "name": "{}", "event": "{}", {} }}"#,
                                     ty,
                                     name,
                                     evt,
                                     extras))
         }
         else {
-            self.write_str(&*format!(r#"{{ "type": "{}", "name": "{}", "event": "{}" }}"#,
+            self.write_message(&*format!(r#"{{ "type": "{}", "name": "{}", "event": "{}" }}"#,
                                     ty,
                                     name,
                                     evt))
@@ -282,13 +310,14 @@ impl<T: Write> JsonFormatter<T> {
 }
 
 impl<T: Write> OutputFormatter for JsonFormatter<T> {
-    fn write_run_start(&mut self, len: usize) -> io::Result<()> {
-        self.write_str(
-            &*format!(r#"{{ "type": "suite", "event": "started", "test_count": "{}" }}"#, len))
+    fn write_run_start(&mut self, test_count: usize) -> io::Result<()> {
+        self.write_message(
+            &*format!(r#"{{ "type": "suite", "event": "started", "test_count": "{}" }}"#,
+                        test_count))
     }
 
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
-        self.write_str(&*format!(r#"{{ "type": "test", "event": "started", "name": "{}" }}"#,
+        self.write_message(&*format!(r#"{{ "type": "test", "event": "started", "name": "{}" }}"#,
                                 desc.name))
     }
 
@@ -348,19 +377,19 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                         deviation,
                         mbps);
 
-                self.write_str(&*line)
+                self.write_message(&*line)
             },
         }
     }
 
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
-        self.write_str(&*format!(r#"{{ "type": "test", "event": "timeout", "name": "{}" }}"#,
+        self.write_message(&*format!(r#"{{ "type": "test", "event": "timeout", "name": "{}" }}"#,
                         desc.name))
     }
 
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool> {
 
-        self.write_str(&*format!("{{ \"type\": \"suite\", \
+        self.write_message(&*format!("{{ \"type\": \"suite\", \
             \"event\": \"{}\", \
             \"passed\": {}, \
             \"failed\": {}, \

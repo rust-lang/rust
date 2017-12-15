@@ -719,7 +719,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     };
 
     let quiet = opts.format == OutputFormat::Terse;
-    let mut out = HumanFormatter::new(output, use_color(opts), quiet, 0);
+    let mut out = HumanFormatter::new(output, use_color(opts), quiet, 0, false);
     let mut st = ConsoleTestState::new(opts)?;
 
     let mut ntest = 0;
@@ -820,23 +820,27 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         Some(t) => Pretty(t),
     };
 
-    let max_name_len = if let Some(t) = tests.iter().max_by_key(|t| len_if_padded(*t)) {
-        let n = t.desc.name.as_slice();
-        n.len()
-    }
-    else {
-        0
+    let max_name_len = tests.iter()
+                        .max_by_key(|t| len_if_padded(*t))
+                        .map(|t| t.desc.name.as_slice().len())
+                        .unwrap_or(0);
+
+    let is_multithreaded = match opts.test_threads {
+        Some(n) => n > 1,
+        None => get_concurrency() > 1,
     };
 
     let mut out: Box<OutputFormatter> = match opts.format {
         OutputFormat::Pretty => Box::new(HumanFormatter::new(output,
                                                                 use_color(opts),
                                                                 false,
-                                                                max_name_len)),
+                                                                max_name_len,
+                                                                is_multithreaded)),
         OutputFormat::Terse => Box::new(HumanFormatter::new(output,
                                                                 use_color(opts),
                                                                 true,
-                                                                max_name_len)),
+                                                                max_name_len,
+                                                                is_multithreaded)),
         OutputFormat::Json => Box::new(JsonFormatter::new(output)),
     };
     let mut st = ConsoleTestState::new(opts)?;
