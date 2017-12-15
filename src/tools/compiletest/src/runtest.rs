@@ -1506,7 +1506,7 @@ impl<'test> TestCx<'test> {
 
         if let Some(ref incremental_dir) = self.props.incremental_dir {
             rustc.args(&[
-                "-Z",
+                "-C",
                 &format!("incremental={}", incremental_dir.display()),
             ]);
             rustc.args(&["-Z", "incremental-verify-ich"]);
