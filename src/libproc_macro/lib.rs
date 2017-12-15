@@ -265,10 +265,12 @@ impl Span {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LineColumn {
     /// The 1-indexed line in the source file on which the span starts or ends (inclusive).
-    line: usize,
+    #[unstable(feature = "proc_macro", issue = "38356")]
+    pub line: usize,
     /// The 0-indexed column (in UTF-8 characters) in the source file on which
     /// the span starts or ends (inclusive).
-    column: usize
+    #[unstable(feature = "proc_macro", issue = "38356")]
+    pub column: usize
 }
 
 /// The source file of a given `Span`.
