@@ -1306,8 +1306,34 @@ impl<'a> StringReader<'a> {
                                                    '\'');
 
                 if !self.ch_is('\'') {
+                    let pos = self.pos;
+                    loop {
+                        self.bump();
+                        if self.ch_is('\'') {
+                            let start = self.byte_offset(start).to_usize();
+                            let end = self.byte_offset(self.pos).to_usize();
+                            self.bump();
+                            let span = self.mk_sp(start_with_quote, self.pos);
+                            self.sess.span_diagnostic
+                                .struct_span_err(span,
+                                                 "character literal may only contain one codepoint")
+                                .span_suggestion(span,
+                                                 "if you meant to write a `str` literal, \
+                                                  use double quotes",
+                                                 format!("\"{}\"",
+                                                         &self.source_text[start..end]))
+                                .emit();
+                            return Ok(token::Literal(token::Str_(Symbol::intern("??")), None))
+                        }
+                        if self.ch_is('\n') || self.is_eof() || self.ch_is('/') {
+                            // Only attempt to infer single line string literals. If we encounter
+                            // a slash, bail out in order to avoid nonsensical suggestion when
+                            // involving comments.
+                            break;
+                        }
+                    }
                     panic!(self.fatal_span_verbose(
-                           start_with_quote, self.pos,
+                           start_with_quote, pos,
                            String::from("character literal may only contain one codepoint")));
                 }
 

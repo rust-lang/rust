@@ -23,6 +23,7 @@ use std::rc::Rc;
 use term;
 use std::collections::HashMap;
 use std::cmp::min;
+use unicode_width;
 
 /// Emitter trait for emitting errors.
 pub trait Emitter {
@@ -1182,7 +1183,10 @@ impl EmitterWriter {
                 if show_underline {
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
                     let start = parts[0].snippet.len() - parts[0].snippet.trim_left().len();
-                    let sub_len = parts[0].snippet.trim().len();
+                    // account for substitutions containing unicode characters
+                    let sub_len = parts[0].snippet.trim().chars().fold(0, |acc, ch| {
+                        acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0)
+                    });
                     let underline_start = span_start_pos.col.0 + start;
                     let underline_end = span_start_pos.col.0 + start + sub_len;
                     for p in underline_start..underline_end {
