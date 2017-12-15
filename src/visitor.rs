@@ -373,6 +373,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let rw = format_trait(&self.get_context(), item, self.block_indent);
                 self.push_rewrite(item.span, rw);
             }
+            ast::ItemKind::TraitAlias(..) => {
+                // FIXME: #2283.
+                self.push_rewrite(item.span, None);
+            }
             ast::ItemKind::ExternCrate(_) => {
                 let rw = rewrite_extern_crate(&self.get_context(), item);
                 self.push_rewrite(item.span, rw);
