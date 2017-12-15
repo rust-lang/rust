@@ -1087,6 +1087,22 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
     }
 }
 
+pub fn format_trait_alias(
+    context: &RewriteContext,
+    ident: ast::Ident,
+    generics: &ast::Generics,
+    ty_param_bounds: &ast::TyParamBounds,
+    shape: Shape,
+) -> Option<String> {
+    let alias = ident.name.as_str();
+    // 6 = "trait ", 2 = " ="
+    let g_shape = shape.offset_left(6 + alias.len())?.sub_width(2)?;
+    let generics_str = rewrite_generics(context, generics, g_shape, generics.span)?;
+    let lhs = format!("trait {}{} =", alias, generics_str);
+    // 1 = ";"
+    rewrite_assign_rhs(context, lhs, ty_param_bounds, shape.sub_width(1)?).map(|s| s + ";")
+}
+
 fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent) -> Option<String> {
     let header_str = format_header(p.prefix, p.ident, p.vis);
     let generics_str = if let Some(generics) = p.generics {
