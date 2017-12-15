@@ -152,7 +152,7 @@ note: External requirements
     = note: number of external vids: 3
     = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#1r)>>::AssocType: '_#2r
 
-error: failed type test: TypeTest { generic_kind: ProjectionTy { substs: Slice([T, '_#5r, '_#6r]), item_def_id: DefId(0/0:5 ~ projection_two_region_trait_bound_closure[317d]::Anything[0]::AssocType[0]) }, lower_bound: '_#7r, point: bb0[5], span: $DIR/projection-two-region-trait-bound-closure.rs:49:29: 49:55, test: Any([IsOutlivedByAnyRegionIn(['_#6r, '_#5r]), All([IsOutlivedByAnyRegionIn(['_#4r]), IsOutlivedByAllRegionsIn(['_#5r, '_#6r])])]) }
+error: `<T as Anything<'_#5r, '_#6r>>::AssocType` does not outlive `'_#7r`
   --> $DIR/projection-two-region-trait-bound-closure.rs:49:29
    |
 49 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -166,7 +166,7 @@ note: No external requirements
 47 | |     T: Anything<'b, 'c>,
 48 | | {
 ...  |
-51 | |     //~| ERROR failed type test
+51 | |     //~| ERROR `<T as Anything<'_#5r, '_#6r>>::AssocType` does not outlive `'_#7r`
 52 | | }
    | |_^
    |
@@ -176,7 +176,7 @@ note: No external requirements
                T
            ]
 
-error: failed type test: TypeTest { generic_kind: ProjectionTy { substs: Slice([T, '_#6r, '_#7r]), item_def_id: DefId(0/0:5 ~ projection_two_region_trait_bound_closure[317d]::Anything[0]::AssocType[0]) }, lower_bound: '_#8r, point: bb0[5], span: $DIR/projection-two-region-trait-bound-closure.rs:60:29: 60:55, test: Any([IsOutlivedByAnyRegionIn(['_#7r, '_#6r]), All([IsOutlivedByAnyRegionIn(['_#4r]), IsOutlivedByAllRegionsIn(['_#6r, '_#7r])])]) }
+error: `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
   --> $DIR/projection-two-region-trait-bound-closure.rs:60:29
    |
 60 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -190,7 +190,7 @@ note: No external requirements
 57 | |     T: Anything<'b, 'c>,
 58 | |     'a: 'a,
 ...  |
-62 | |     //~| ERROR failed type test
+62 | |     //~| ERROR `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
 63 | | }
    | |_^
    |
@@ -201,7 +201,7 @@ note: No external requirements
                T
            ]
 
-error: failed type test: TypeTest { generic_kind: ProjectionTy { substs: Slice([T, '_#6r, '_#7r]), item_def_id: DefId(0/0:5 ~ projection_two_region_trait_bound_closure[317d]::Anything[0]::AssocType[0]) }, lower_bound: '_#8r, point: bb0[5], span: $DIR/projection-two-region-trait-bound-closure.rs:81:29: 81:55, test: Any([IsOutlivedByAnyRegionIn(['_#7r, '_#6r]), All([IsOutlivedByAnyRegionIn(['_#4r]), IsOutlivedByAllRegionsIn(['_#6r, '_#7r])])]) }
+error: `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
   --> $DIR/projection-two-region-trait-bound-closure.rs:81:29
    |
 81 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -215,7 +215,7 @@ note: No external requirements
 68 | |     T: Anything<'b, 'c>,
 69 | |     T::AssocType: 'a,
 ...  |
-83 | |     //~| ERROR failed type test
+83 | |     //~| ERROR `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
 84 | | }
    | |_^
    |

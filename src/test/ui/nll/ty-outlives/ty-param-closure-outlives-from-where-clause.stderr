@@ -15,7 +15,7 @@ note: External requirements
    |
 38 |       with_signature(a, b, |x, y| {
    |  __________________________^
-39 | |         //~^ ERROR failed type test
+39 | |         //~^ ERROR `T` does not outlive
 40 | |         //
 41 | |         // See `correct_region`, which explains the point of this
 ...  |
@@ -58,7 +58,7 @@ note: External requirements
    |
 76 |       with_signature(a, b, |x, y| {
    |  __________________________^
-77 | |         //~^ ERROR failed type test
+77 | |         //~^ ERROR `T` does not outlive
 78 | |         // See `correct_region`
 79 | |         require(&x, &y)
 80 | |         //~^ WARNING not reporting region error due to -Znll
@@ -94,12 +94,12 @@ note: External requirements
    = note: number of external vids: 4
    = note: where T: '_#3r
 
-error: failed type test: TypeTest { generic_kind: T/#0, lower_bound: '_#3r, point: bb0[5], span: $DIR/ty-param-closure-outlives-from-where-clause.rs:38:26: 47:6, test: IsOutlivedByAnyRegionIn(['_#2r]) }
+error: `T` does not outlive `'_#3r`
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:38:26
    |
 38 |       with_signature(a, b, |x, y| {
    |  __________________________^
-39 | |         //~^ ERROR failed type test
+39 | |         //~^ ERROR `T` does not outlive
 40 | |         //
 41 | |         // See `correct_region`, which explains the point of this
 ...  |
@@ -112,7 +112,7 @@ note: No external requirements
    |
 37 | / fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
 38 | |     with_signature(a, b, |x, y| {
-39 | |         //~^ ERROR failed type test
+39 | |         //~^ ERROR `T` does not outlive
 40 | |         //
 ...  |
 47 | |     })
@@ -140,12 +140,12 @@ note: No external requirements
                T
            ]
 
-error: failed type test: TypeTest { generic_kind: T/#1, lower_bound: '_#5r, point: bb0[5], span: $DIR/ty-param-closure-outlives-from-where-clause.rs:76:26: 81:6, test: IsOutlivedByAnyRegionIn(['_#1r, '_#3r]) }
+error: `T` does not outlive `'_#5r`
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:76:26
    |
 76 |       with_signature(a, b, |x, y| {
    |  __________________________^
-77 | |         //~^ ERROR failed type test
+77 | |         //~^ ERROR `T` does not outlive
 78 | |         // See `correct_region`
 79 | |         require(&x, &y)
 80 | |         //~^ WARNING not reporting region error due to -Znll

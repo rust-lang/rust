@@ -9,7 +9,7 @@ note: External requirements
    |
 42 |       establish_relationships(value, |value| {
    |  ____________________________________^
-43 | |         //~^ ERROR failed type test
+43 | |         //~^ ERROR `T` does not outlive
 44 | |
 45 | |         // This function call requires that
 ...  |
@@ -26,12 +26,12 @@ note: External requirements
    = note: number of external vids: 2
    = note: where T: '_#1r
 
-error: failed type test: TypeTest { generic_kind: T/#1, lower_bound: '_#3r, point: bb0[3], span: $DIR/propagate-from-trait-match.rs:42:36: 57:6, test: IsOutlivedByAnyRegionIn(['_#2r]) }
+error: `T` does not outlive `'_#3r`
   --> $DIR/propagate-from-trait-match.rs:42:36
    |
 42 |       establish_relationships(value, |value| {
    |  ____________________________________^
-43 | |         //~^ ERROR failed type test
+43 | |         //~^ ERROR `T` does not outlive
 44 | |
 45 | |         // This function call requires that
 ...  |

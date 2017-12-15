@@ -72,7 +72,7 @@ note: External requirements
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#3r
 
-error: failed type test: TypeTest { generic_kind: ProjectionTy { substs: Slice([T]), item_def_id: DefId(2/0:1697 ~ core[2633]::iter[0]::iterator[0]::Iterator[0]::Item[0]) }, lower_bound: '_#4r, point: bb0[5], span: $DIR/projection-no-regions-closure.rs:36:23: 36:49, test: IsOutlivedByAnyRegionIn(['_#2r]) }
+error: `<T as std::iter::Iterator>::Item` does not outlive `'_#4r`
   --> $DIR/projection-no-regions-closure.rs:36:23
    |
 36 |     with_signature(x, |mut y| Box::new(y.next()))
@@ -86,7 +86,7 @@ note: No external requirements
 34 | |     T: Iterator,
 35 | | {
 ...  |
-38 | |     //~| ERROR failed type test
+38 | |     //~| ERROR `<T as std::iter::Iterator>::Item` does not outlive
 39 | | }
    | |_^
    |
@@ -111,7 +111,7 @@ note: No external requirements
                T
            ]
 
-error: failed type test: TypeTest { generic_kind: ProjectionTy { substs: Slice([T]), item_def_id: DefId(2/0:1697 ~ core[2633]::iter[0]::iterator[0]::Iterator[0]::Item[0]) }, lower_bound: '_#6r, point: bb0[5], span: $DIR/projection-no-regions-closure.rs:54:23: 54:49, test: IsOutlivedByAnyRegionIn(['_#2r, '_#3r]) }
+error: `<T as std::iter::Iterator>::Item` does not outlive `'_#6r`
   --> $DIR/projection-no-regions-closure.rs:54:23
    |
 54 |     with_signature(x, |mut y| Box::new(y.next()))
@@ -125,7 +125,7 @@ note: No external requirements
 52 | |     T: 'b + Iterator,
 53 | | {
 ...  |
-56 | |     //~| ERROR failed type test
+56 | |     //~| ERROR `<T as std::iter::Iterator>::Item` does not outlive
 57 | | }
    | |_^
    |

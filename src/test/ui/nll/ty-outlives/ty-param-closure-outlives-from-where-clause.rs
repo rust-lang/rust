@@ -36,7 +36,7 @@ where
 #[rustc_regions]
 fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
     with_signature(a, b, |x, y| {
-        //~^ ERROR failed type test
+        //~^ ERROR `T` does not outlive
         //
         // See `correct_region`, which explains the point of this
         // test.  The only difference is that, in the case of this
@@ -74,7 +74,7 @@ where
     T: 'b,
 {
     with_signature(a, b, |x, y| {
-        //~^ ERROR failed type test
+        //~^ ERROR `T` does not outlive
         // See `correct_region`
         require(&x, &y)
         //~^ WARNING not reporting region error due to -Znll

@@ -466,7 +466,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Oh the humanity. Obviously we will do better than this error eventually.
             tcx.sess.span_err(
                 type_test.span,
-                &format!("failed type test: {:?}", type_test),
+                &format!(
+                    "`{}` does not outlive `{:?}`",
+                    type_test.generic_kind,
+                    type_test.lower_bound,
+                ),
             );
         }
     }

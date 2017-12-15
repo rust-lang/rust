@@ -10,13 +10,13 @@ warning: not reporting region error due to -Znll
 40 |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^
 
-error: failed type test: TypeTest { generic_kind: ProjectionTy { substs: Slice([T]), item_def_id: DefId(2/0:1697 ~ core[2633]::iter[0]::iterator[0]::Iterator[0]::Item[0]) }, lower_bound: '_#4r, point: bb5[0], span: $DIR/projection-no-regions-fn.rs:24:5: 24:23, test: IsOutlivedByAnyRegionIn(['_#2r]) }
+error: `<T as std::iter::Iterator>::Item` does not outlive `'_#4r`
   --> $DIR/projection-no-regions-fn.rs:24:5
    |
 24 |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^
 
-error: failed type test: TypeTest { generic_kind: ProjectionTy { substs: Slice([T]), item_def_id: DefId(2/0:1697 ~ core[2633]::iter[0]::iterator[0]::Iterator[0]::Item[0]) }, lower_bound: '_#5r, point: bb5[0], span: $DIR/projection-no-regions-fn.rs:40:5: 40:23, test: IsOutlivedByAnyRegionIn(['_#2r, '_#3r]) }
+error: `<T as std::iter::Iterator>::Item` does not outlive `'_#5r`
   --> $DIR/projection-no-regions-fn.rs:40:5
    |
 40 |     Box::new(x.next())

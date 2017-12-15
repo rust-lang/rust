@@ -4,7 +4,7 @@ warning: not reporting region error due to -Znll
 30 |     outlives(cell, t)
    |     ^^^^^^^^
 
-error: failed type test: TypeTest { generic_kind: T/#0, lower_bound: '_#4r, point: bb0[4], span: $DIR/ty-param-fn-body.rs:30:5: 30:22, test: IsOutlivedByAnyRegionIn(['_#2r]) }
+error: `T` does not outlive `'_#4r`
   --> $DIR/ty-param-fn-body.rs:30:5
    |
 30 |     outlives(cell, t)

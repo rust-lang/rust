@@ -10,13 +10,13 @@ warning: not reporting region error due to -Znll
 38 |     x
    |     ^
 
-error: failed type test: TypeTest { generic_kind: T/#1, lower_bound: '_#3r, point: bb0[3], span: $DIR/ty-param-fn.rs:22:5: 22:6, test: IsOutlivedByAnyRegionIn(['_#2r]) }
+error: `T` does not outlive `'_#3r`
   --> $DIR/ty-param-fn.rs:22:5
    |
 22 |     x
    |     ^
 
-error: failed type test: TypeTest { generic_kind: T/#2, lower_bound: '_#4r, point: bb0[3], span: $DIR/ty-param-fn.rs:38:5: 38:6, test: IsOutlivedByAnyRegionIn(['_#2r, '_#3r]) }
+error: `T` does not outlive `'_#4r`
   --> $DIR/ty-param-fn.rs:38:5
    |
 38 |     x

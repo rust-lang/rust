@@ -29,7 +29,7 @@ fn region_within_body<T>(t: T) {
 fn region_static<'a, T>(cell: Cell<&'a usize>, t: T) {
     outlives(cell, t)
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR failed type test
+    //~| ERROR `T` does not outlive
 }
 
 fn outlives<'a, T>(x: Cell<&'a usize>, y: T)

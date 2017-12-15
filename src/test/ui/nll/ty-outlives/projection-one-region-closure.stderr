@@ -83,7 +83,7 @@ note: External requirements
     = note: where T: '_#3r
     = note: where '_#2r: '_#3r
 
-error: failed type test: TypeTest { generic_kind: T/#1, lower_bound: '_#5r, point: bb0[5], span: $DIR/projection-one-region-closure.rs:56:29: 56:55, test: IsOutlivedByAnyRegionIn(['_#3r]) }
+error: `T` does not outlive `'_#5r`
   --> $DIR/projection-one-region-closure.rs:56:29
    |
 56 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -112,7 +112,7 @@ note: No external requirements
                T
            ]
 
-error: failed type test: TypeTest { generic_kind: T/#2, lower_bound: '_#6r, point: bb0[5], span: $DIR/projection-one-region-closure.rs:68:29: 68:55, test: IsOutlivedByAnyRegionIn(['_#3r]) }
+error: `T` does not outlive `'_#6r`
   --> $DIR/projection-one-region-closure.rs:68:29
    |
 68 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -142,7 +142,7 @@ note: No external requirements
                T
            ]
 
-error: failed type test: TypeTest { generic_kind: T/#2, lower_bound: '_#6r, point: bb0[5], span: $DIR/projection-one-region-closure.rs:90:29: 90:55, test: IsOutlivedByAnyRegionIn(['_#3r]) }
+error: `T` does not outlive `'_#6r`
   --> $DIR/projection-one-region-closure.rs:90:29
    |
 90 |     with_signature(cell, t, |cell, t| require(cell, t));
