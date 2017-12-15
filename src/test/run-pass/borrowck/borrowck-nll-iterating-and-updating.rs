@@ -10,30 +10,25 @@
 
 // compile-flags: -Z borrowck=mir -Z nll
 
-#![allow(warnings)]
+// This example comes from the NLL RFC.
 
-struct Foo<T> {
-    t: T,
+struct List<T> {
+    value: T,
+    next: Option<Box<List<T>>>,
 }
 
-impl<T: 'static + Copy> Copy for Foo<T> {}
-impl<T: 'static + Copy> Clone for Foo<T> {
-    fn clone(&self) -> Self {
-        *self
+fn to_refs<T>(list: &mut List<T>) -> Vec<&mut T> {
+    let mut list = list;
+    let mut result = vec![];
+    loop {
+        result.push(&mut list.value);
+        if let Some(n) = list.next.as_mut() {
+            list = n;
+        } else {
+            return result;
+        }
     }
 }
 
 fn main() {
-    let mut x = 22;
-
-    {
-        let p = &x;
-        //~^ ERROR `x` does not live long enough
-        let w = Foo { t: p };
-
-        let v = [w; 22];
-    }
-
-    x += 1;
-    //~^ ERROR cannot assign to `x` because it is borrowed [E0506]
 }

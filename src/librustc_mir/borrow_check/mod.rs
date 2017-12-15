@@ -338,15 +338,10 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
 
         match stmt.kind {
             StatementKind::Assign(ref lhs, ref rhs) => {
-                // NOTE: NLL RFC calls for *shallow* write; using Deep
-                // for short-term compat w/ AST-borrowck. Also, switch
-                // to shallow requires to dataflow: "if this is an
-                // assignment `place = <rvalue>`, then any loan for some
-                // path P of which `place` is a prefix is killed."
                 self.mutate_place(
                     ContextKind::AssignLhs.new(location),
                     (lhs, span),
-                    Deep,
+                    Shallow(None),
                     JustWrite,
                     flow_state,
                 );
