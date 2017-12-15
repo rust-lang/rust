@@ -33,7 +33,7 @@ use syntax::parse;
 use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
 
-use errors::{ColorConfig, FatalError, Handler};
+use errors::{self, ColorConfig, FatalError, Handler, ErrorFormat};
 
 use getopts;
 use std::collections::{BTreeMap, BTreeSet};
@@ -1540,14 +1540,15 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     }).collect::<ast::CrateConfig>()
 }
 
-pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
+pub fn build_session_options_and_crate_config(matches: &getopts::Matches,
+                                              defaults: errors::EnvDefaults)
                                               -> (Options, ast::CrateConfig) {
     let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
         Some("auto")   => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
         Some("never")  => ColorConfig::Never,
 
-        None => ColorConfig::Auto,
+        None => defaults.color,
 
         Some(arg) => {
             early_error(ErrorOutputType::default(), &format!("argument for --color must be auto, \
@@ -1574,8 +1575,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                                           enable the short error message option"));
                 }
             }
-            None => ErrorOutputType::HumanReadable(color),
-
+            None => match (defaults.error_format, nightly_options::is_nightly_build()) {
+                (ErrorFormat::Short, true) => ErrorOutputType::Short(color),
+                _ => ErrorOutputType::HumanReadable(color),
+            },
             Some(arg) => {
                 early_error(ErrorOutputType::HumanReadable(color),
                             &format!("argument for --error-format must be `human`, `json` or \
@@ -1584,7 +1587,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             }
         }
     } else {
-        ErrorOutputType::HumanReadable(color)
+        match (defaults.error_format, nightly_options::is_nightly_build()) {
+            (ErrorFormat::Short, true) => ErrorOutputType::Short(color),
+            _ => ErrorOutputType::HumanReadable(color),
+        }
     };
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
@@ -2156,9 +2162,9 @@ mod dep_tracking {
 
 #[cfg(test)]
 mod tests {
-    use errors;
     use getopts;
     use lint;
+    use errors::{self, EnvDefaults, ColorConfig, ErrorFormat};
     use middle::cstore;
     use session::config::{build_configuration, build_session_options_and_crate_config};
     use session::build_session;
@@ -2194,7 +2200,11 @@ mod tests {
               Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
             };
         let registry = errors::registry::Registry::new(&[]);
-        let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+        let defaults = EnvDefaults {
+            error_format: ErrorFormat::Regular,
+            color: ColorConfig::Auto,
+        };
+        let (sessopts, cfg) = build_session_options_and_crate_config(&matches, defaults);
         let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess, cfg);
         assert!(cfg.contains(&(Symbol::intern("test"), None)));
@@ -2212,7 +2222,11 @@ mod tests {
               }
             };
         let registry = errors::registry::Registry::new(&[]);
-        let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+        let defaults = EnvDefaults {
+            error_format: ErrorFormat::Regular,
+            color: ColorConfig::Auto,
+        };
+        let (sessopts, cfg) = build_session_options_and_crate_config(&matches, defaults);
         let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess, cfg);
         let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
@@ -2227,7 +2241,11 @@ mod tests {
                 "-Awarnings".to_string()
             ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
-            let (sessopts, _) = build_session_options_and_crate_config(&matches);
+            let defaults = EnvDefaults {
+                error_format: ErrorFormat::Regular,
+                color: ColorConfig::Auto,
+            };
+            let (sessopts, _) = build_session_options_and_crate_config(&matches, defaults);
             let sess = build_session(sessopts, None, registry);
             assert!(!sess.diagnostic().flags.can_emit_warnings);
         }
@@ -2238,7 +2256,11 @@ mod tests {
                 "-Dwarnings".to_string()
             ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
-            let (sessopts, _) = build_session_options_and_crate_config(&matches);
+            let defaults = EnvDefaults {
+                error_format: ErrorFormat::Regular,
+                color: ColorConfig::Auto,
+            };
+            let (sessopts, _) = build_session_options_and_crate_config(&matches, defaults);
             let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().flags.can_emit_warnings);
         }
@@ -2248,7 +2270,11 @@ mod tests {
                 "-Adead_code".to_string()
             ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
-            let (sessopts, _) = build_session_options_and_crate_config(&matches);
+            let defaults = EnvDefaults {
+                error_format: ErrorFormat::Regular,
+                color: ColorConfig::Auto,
+            };
+            let (sessopts, _) = build_session_options_and_crate_config(&matches, defaults);
             let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().flags.can_emit_warnings);
         }

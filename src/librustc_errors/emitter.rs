@@ -17,12 +17,14 @@ use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledStrin
 use styled_buffer::StyledBuffer;
 
 use std::borrow::Cow;
+use std::env;
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
 use term;
 use std::collections::HashMap;
 use std::cmp::min;
+use std::str::FromStr;
 use unicode_width;
 
 /// Emitter trait for emitting errors.
@@ -85,6 +87,51 @@ pub const MAX_HIGHLIGHT_LINES: usize = 6;
 /// Arbitrary, but taken from trait import suggestion limit
 pub const MAX_SUGGESTIONS: usize = 4;
 
+#[derive(Debug)]
+pub struct EnvDefaults {
+    pub error_format: ErrorFormat,
+    pub color: ColorConfig,
+}
+
+pub trait FromEnv {
+    fn from_env() -> Self;
+}
+
+impl FromEnv for EnvDefaults {
+    fn from_env() -> EnvDefaults {
+        EnvDefaults {
+            error_format: ErrorFormat::from_env(),
+            color: ColorConfig::from_env(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ErrorFormat {
+    Regular,
+    Short,
+}
+
+impl FromEnv for ErrorFormat {
+    fn from_env() -> ErrorFormat {
+        env::var("RUSTC_ERROR_FORMAT")
+            .map(|s| ErrorFormat::from_str(&s).expect(
+                "invalid error format in environment variable `RUSTC_ERROR_FORMAT`"))
+            .unwrap_or(ErrorFormat::Regular)
+    }
+}
+
+impl FromStr for ErrorFormat {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "" | "regular" => Ok(ErrorFormat::Regular),
+            "short" => Ok(ErrorFormat::Short),
+            _ => Err(s.into()),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorConfig {
     Auto,
@@ -98,6 +145,27 @@ impl ColorConfig {
             ColorConfig::Always => true,
             ColorConfig::Never => false,
             ColorConfig::Auto => stderr_isatty(),
+        }
+    }
+}
+
+impl FromEnv for ColorConfig {
+    fn from_env() -> ColorConfig {
+        env::var("RUSTC_COLOR")
+            .map(|s| ColorConfig::from_str(&s).expect(
+                "invalid color configuration in environment variable `RUSTC_COLOR`"))
+            .unwrap_or(ColorConfig::Auto)
+    }
+}
+
+impl FromStr for ColorConfig {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "" | "auto" => Ok(ColorConfig::Auto),
+            "1" | "always" => Ok(ColorConfig::Always),
+            "never" => Ok(ColorConfig::Never),
+            _ => Err(s.into()),
         }
     }
 }

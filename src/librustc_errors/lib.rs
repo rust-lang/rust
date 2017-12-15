@@ -28,7 +28,7 @@ extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
 extern crate unicode_width;
 
-pub use emitter::ColorConfig;
+pub use emitter::{ColorConfig, ErrorFormat, EnvDefaults, FromEnv};
 
 use self::Level::*;
 
