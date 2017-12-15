@@ -22,8 +22,8 @@ use comment::{combine_strs_with_missing_comments, contains_comment, remove_trail
               CodeCharKind, CommentCodeSlices, FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
-use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_associated_type,
-            rewrite_type_alias, FnSig, StaticParts, StructParts};
+use items::{format_impl, format_trait, format_trait_alias, rewrite_associated_impl_type,
+            rewrite_associated_type, rewrite_type_alias, FnSig, StaticParts, StructParts};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
             SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
@@ -373,9 +373,16 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let rw = format_trait(&self.get_context(), item, self.block_indent);
                 self.push_rewrite(item.span, rw);
             }
-            ast::ItemKind::TraitAlias(..) => {
-                // FIXME: #2283.
-                self.push_rewrite(item.span, None);
+            ast::ItemKind::TraitAlias(ref generics, ref ty_param_bounds) => {
+                let shape = Shape::indented(self.block_indent, self.config);
+                let rw = format_trait_alias(
+                    &self.get_context(),
+                    item.ident,
+                    generics,
+                    ty_param_bounds,
+                    shape,
+                );
+                self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::ExternCrate(_) => {
                 let rw = rewrite_extern_crate(&self.get_context(), item);
