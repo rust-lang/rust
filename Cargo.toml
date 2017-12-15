@@ -23,17 +23,15 @@ path = "miri/lib.rs"
 
 [dependencies]
 byteorder = { version = "1.1", features = ["i128"]}
-env_logger = "0.4.3"
-log = "0.3.6"
-log_settings = "0.1.1"
 cargo_metadata = { version = "0.2", optional = true }
-rustc_miri = { path = "src/librustc_mir" }
+regex = "0.2.2"
+lazy_static = "1.0"
 
 [features]
 cargo_miri = ["cargo_metadata"]
 
 [dev-dependencies]
-compiletest_rs = { version = "0.3", features = ["tmp"] }
+compiletest_rs = { version = "0.3.3", features = ["tmp"] }
 
 [workspace]
 exclude = ["xargo", "cargo-miri-test", "rustc_tests"]

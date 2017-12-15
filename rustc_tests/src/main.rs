@@ -90,7 +90,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
                 if let hir::Item_::ItemFn(_, _, _, _, _, body_id) = i.node {
                     if i.attrs.iter().any(|attr| attr.name().map_or(false, |n| n == "test")) {
                         let did = self.1.hir.body_owner_def_id(body_id);
-                        println!("running test: {}", self.1.hir.def_path(did).to_string(self.1));
+                        println!("running test: {}", self.1.def_path_debug_str(did));
                         miri::eval_main(self.1, did, None, self.0);
                         self.2.session.abort_if_errors();
                     }

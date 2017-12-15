@@ -1,6 +1,6 @@
-use rustc_miri::interpret::{Pointer, EvalResult, PrimVal, EvalContext};
-
+use super::{Pointer, EvalResult, PrimVal, EvalContext};
 use rustc::ty::Ty;
+use rustc::ty::layout::LayoutOf;
 
 pub trait EvalContextExt<'tcx> {
     fn wrapping_pointer_offset(
@@ -18,7 +18,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx, Pointer>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
+impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
     fn wrapping_pointer_offset(
         &self,
         ptr: Pointer,
@@ -26,9 +26,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         offset: i64,
     ) -> EvalResult<'tcx, Pointer> {
         // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.type_size(pointee_ty)?.expect(
-            "cannot offset a pointer to an unsized type",
-        ) as i64;
+        let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         let offset = offset.overflowing_mul(pointee_size).0;
         ptr.wrapping_signed_offset(offset, self)
     }
@@ -53,9 +51,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             };
         }
         // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.type_size(pointee_ty)?.expect(
-            "cannot offset a pointer to an unsized type",
-        ) as i64;
+        let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         return if let Some(offset) = offset.checked_mul(pointee_size) {
             let ptr = ptr.signed_offset(offset, self)?;
             // Do not do bounds-checking for integers; they can never alias a normal pointer anyway.

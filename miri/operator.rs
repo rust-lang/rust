@@ -1,7 +1,7 @@
 use rustc::ty;
 use rustc::mir;
 
-use rustc_miri::interpret::*;
+use super::*;
 
 use helpers::EvalContextExt as HelperEvalContextExt;
 
@@ -24,7 +24,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx, (PrimVal, bool)>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
+impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
@@ -33,7 +33,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         right: PrimVal,
         right_ty: ty::Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
-        use rustc_miri::interpret::PrimValKind::*;
+        use rustc::mir::interpret::PrimValKind::*;
         use rustc::mir::BinOp::*;
         let usize = PrimValKind::from_uint_size(self.memory.pointer_size());
         let isize = PrimValKind::from_int_size(self.memory.pointer_size());

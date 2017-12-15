@@ -116,7 +116,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
                         let did = self.1.hir.body_owner_def_id(body_id);
                         println!(
                             "running test: {}",
-                            self.1.hir.def_path(did).to_string(self.1)
+                            self.1.def_path_debug_str(did),
                         );
                         miri::eval_main(self.1, did, None, self.0);
                         self.2.session.abort_if_errors();
@@ -193,14 +193,13 @@ fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits
 fn init_logger() {
     let format = |record: &log::LogRecord| {
         if record.level() == log::LogLevel::Trace {
-            // prepend spaces to indent the final string
+            // prepend frame number
             let indentation = log_settings::settings().indentation;
             format!(
-                "{lvl}:{module}:{indent:<indentation$} {text}",
+                "{indentation}:{lvl}:{module}: {text}",
                 lvl = record.level(),
                 module = record.location().module_path(),
                 indentation = indentation,
-                indent = "",
                 text = record.args(),
             )
         } else {

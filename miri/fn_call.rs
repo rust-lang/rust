@@ -1,4 +1,5 @@
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::LayoutOf;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use syntax::attr;
@@ -7,9 +8,9 @@ use syntax::codemap::Span;
 
 use std::mem;
 
-use rustc_miri::interpret::*;
+use rustc::traits;
 
-use super::{TlsKey, EvalContext};
+use super::*;
 
 use tls::MemoryExt;
 
@@ -20,7 +21,7 @@ pub trait EvalContextExt<'tcx> {
         &mut self,
         def_id: DefId,
         args: &[ValTy<'tcx>],
-        dest: Lvalue,
+        dest: Place,
         dest_ty: Ty<'tcx>,
         dest_block: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
@@ -30,7 +31,7 @@ pub trait EvalContextExt<'tcx> {
     fn call_missing_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         sig: ty::FnSig<'tcx>,
         path: String,
@@ -39,18 +40,20 @@ pub trait EvalContextExt<'tcx> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool>;
+
+    fn write_null(&mut self, dest: Place, dest_ty: Ty<'tcx>) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> {
+impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
@@ -72,16 +75,16 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             Err(other) => return Err(other),
         };
 
-        let (return_lvalue, return_to_block) = match destination {
-            Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
-            None => (Lvalue::undef(), StackPopCleanup::None),
+        let (return_place, return_to_block) = match destination {
+            Some((place, block)) => (place, StackPopCleanup::Goto(block)),
+            None => (Place::undef(), StackPopCleanup::None),
         };
 
         self.push_stack_frame(
             instance,
             span,
             mir,
-            return_lvalue,
+            return_place,
             return_to_block,
         )?;
 
@@ -92,7 +95,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         &mut self,
         def_id: DefId,
         args: &[ValTy<'tcx>],
-        dest: Lvalue,
+        dest: Place,
         dest_ty: Ty<'tcx>,
         dest_block: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
@@ -109,13 +112,13 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     self.write_null(dest, dest_ty)?;
                 } else {
                     let align = self.memory.pointer_size();
-                    let ptr = self.memory.allocate(size, align, MemoryKind::C.into())?;
+                    let ptr = self.memory.allocate(size, align, Some(MemoryKind::C.into()))?;
                     self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
                 }
             }
 
             "free" => {
-                let ptr = args[0].into_ptr(&mut self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 if !ptr.is_null()? {
                     self.memory.deallocate(
                         ptr.to_ptr()?,
@@ -146,8 +149,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "dlsym" => {
-                let _handle = args[0].into_ptr(&mut self.memory)?;
-                let symbol = args[1].into_ptr(&mut self.memory)?.to_ptr()?;
+                let _handle = self.into_ptr(args[0].value)?;
+                let symbol = self.into_ptr(args[1].value)?.to_ptr()?;
                 let symbol_name = self.memory.read_c_str(symbol)?;
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
                 let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
@@ -161,8 +164,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 // fn __rust_maybe_catch_panic(f: fn(*mut u8), data: *mut u8, data_ptr: *mut usize, vtable_ptr: *mut usize) -> u32
                 // We abort on panic, so not much is going on here, but we still have to call the closure
                 let u8_ptr_ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
-                let f = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
-                let data = args[1].into_ptr(&mut self.memory)?;
+                let f = self.into_ptr(args[0].value)?.to_ptr()?;
+                let data = self.into_ptr(args[1].value)?;
                 let f_instance = self.memory.get_fn(f)?;
                 self.write_null(dest, dest_ty)?;
 
@@ -173,7 +176,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     f_instance,
                     mir.span,
                     mir,
-                    Lvalue::undef(),
+                    Place::undef(),
                     StackPopCleanup::Goto(dest_block),
                 )?;
                 let mut args = self.frame().mir.args_iter();
@@ -184,7 +187,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                             .to_owned(),
                     ),
                 )?;
-                let arg_dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                let arg_dest = self.eval_place(&mir::Place::Local(arg_local))?;
                 self.write_ptr(arg_dest, data, u8_ptr_ty)?;
 
                 assert!(args.next().is_none(), "__rust_maybe_catch_panic argument has more arguments than expected");
@@ -201,8 +204,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "memcmp" => {
-                let left = args[0].into_ptr(&mut self.memory)?;
-                let right = args[1].into_ptr(&mut self.memory)?;
+                let left = self.into_ptr(args[0].value)?;
+                let right = self.into_ptr(args[1].value)?;
                 let n = self.value_to_primval(args[2])?.to_u64()?;
 
                 let result = {
@@ -225,7 +228,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "memrchr" => {
-                let ptr = args[0].into_ptr(&mut self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 let val = self.value_to_primval(args[1])?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2])?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(
@@ -240,7 +243,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "memchr" => {
-                let ptr = args[0].into_ptr(&mut self.memory)?;
+                let ptr = self.into_ptr(args[0].value)?;
                 let val = self.value_to_primval(args[1])?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2])?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(
@@ -256,9 +259,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "getenv" => {
                 let result = {
-                    let name_ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
+                    let name_ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                     let name = self.memory.read_c_str(name_ptr)?;
-                    match self.machine_data.env_vars.get(name) {
+                    match self.machine.env_vars.get(name) {
                         Some(&var) => PrimVal::Ptr(var),
                         None => PrimVal::Bytes(0),
                     }
@@ -269,11 +272,11 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "unsetenv" => {
                 let mut success = None;
                 {
-                    let name_ptr = args[0].into_ptr(&mut self.memory)?;
+                    let name_ptr = self.into_ptr(args[0].value)?;
                     if !name_ptr.is_null()? {
                         let name = self.memory.read_c_str(name_ptr.to_ptr()?)?;
                         if !name.is_empty() && !name.contains(&b'=') {
-                            success = Some(self.machine_data.env_vars.remove(name));
+                            success = Some(self.machine.env_vars.remove(name));
                         }
                     }
                 }
@@ -290,8 +293,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "setenv" => {
                 let mut new = None;
                 {
-                    let name_ptr = args[0].into_ptr(&mut self.memory)?;
-                    let value_ptr = args[1].into_ptr(&mut self.memory)?.to_ptr()?;
+                    let name_ptr = self.into_ptr(args[0].value)?;
+                    let value_ptr = self.into_ptr(args[1].value)?.to_ptr()?;
                     let value = self.memory.read_c_str(value_ptr)?;
                     if !name_ptr.is_null()? {
                         let name = self.memory.read_c_str(name_ptr.to_ptr()?)?;
@@ -305,12 +308,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     let value_copy = self.memory.allocate(
                         (value.len() + 1) as u64,
                         1,
-                        MemoryKind::Env.into(),
+                        Some(MemoryKind::Env.into()),
                     )?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
                     let trailing_zero_ptr = value_copy.offset(value.len() as u64, &self)?.into();
                     self.memory.write_bytes(trailing_zero_ptr, &[0])?;
-                    if let Some(var) = self.machine_data.env_vars.insert(
+                    if let Some(var) = self.machine.env_vars.insert(
                         name.to_owned(),
                         value_copy,
                     )
@@ -325,7 +328,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "write" => {
                 let fd = self.value_to_primval(args[0])?.to_u64()?;
-                let buf = args[1].into_ptr(&mut self.memory)?;
+                let buf = self.into_ptr(args[1].value)?;
                 let n = self.value_to_primval(args[2])?.to_u64()?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 {
@@ -354,7 +357,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "strlen" => {
-                let ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
+                let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                 let n = self.memory.read_c_str(ptr)?.len();
                 self.write_primval(dest, PrimVal::Bytes(n as u128), dest_ty)?;
             }
@@ -380,10 +383,11 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                             promoted: None,
                         };
                         // compute global if not cached
-                        let val = match self.globals.get(&cid).cloned() {
-                            Some(ptr) => self.value_to_primval(ValTy { value: Value::ByRef(ptr), ty: args[0].ty })?.to_u64()?,
-                            None => eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
+                        let val = match self.tcx.interpret_interner.borrow().get_cached(cid) {
+                            Some(ptr) => ptr,
+                            None => eval_body(self.tcx, instance, ty::ParamEnv::empty(traits::Reveal::All)).0?.0,
                         };
+                        let val = self.value_to_primval(ValTy { value: Value::ByRef(val), ty: args[0].ty })?.to_u64()?;
                         if val == name {
                             result = Some(path_value);
                             break;
@@ -401,10 +405,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
             "pthread_key_create" => {
-                let key_ptr = args[0].into_ptr(&mut self.memory)?;
+                let key_ptr = self.into_ptr(args[0].value)?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
-                let dtor = match args[1].into_ptr(&mut self.memory)?.into_inner_primval() {
+                let dtor = match self.into_ptr(args[1].value)?.into_inner_primval() {
                     PrimVal::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr)?),
                     PrimVal::Bytes(0) => None,
                     PrimVal::Bytes(_) => return err!(ReadBytesAsPointer),
@@ -414,10 +418,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
                 let key_type = args[0].ty.builtin_deref(true, ty::LvaluePreference::NoPreference)
                                    .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
-                let key_size = {
-                    let layout = self.type_layout(key_type)?;
-                    layout.size(&self.tcx.data_layout)
-                };
+                let key_size = self.layout_of(key_type)?.size;
 
                 // Create key and write it into the memory where key_ptr wants it
                 let key = self.memory.create_tls_key(dtor) as u128;
@@ -450,7 +451,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "pthread_setspecific" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
                 let key = self.value_to_primval(args[0])?.to_u64()? as TlsKey;
-                let new_ptr = args[1].into_ptr(&mut self.memory)?;
+                let new_ptr = self.into_ptr(args[1].value)?;
                 self.memory.store_tls(key, new_ptr)?;
 
                 // Return success (0)
@@ -515,7 +516,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
     fn call_missing_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue, mir::BasicBlock)>,
+        destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
         sig: ty::FnSig<'tcx>,
         path: String,
@@ -558,7 +559,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, MemoryKind::Rust.into())?;
+                let ptr = self.memory.allocate(size, align, Some(MemoryKind::Rust.into()))?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
             "alloc::heap::::__rust_alloc_zeroed" => {
@@ -570,12 +571,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, MemoryKind::Rust.into())?;
+                let ptr = self.memory.allocate(size, align, Some(MemoryKind::Rust.into()))?;
                 self.memory.write_repeat(ptr.into(), 0, size)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
             "alloc::heap::::__rust_dealloc" => {
-                let ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
+                let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                 let old_size = self.value_to_primval(args[1])?.to_u64()?;
                 let align = self.value_to_primval(args[2])?.to_u64()?;
                 if old_size == 0 {
@@ -591,7 +592,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 )?;
             }
             "alloc::heap::::__rust_realloc" => {
-                let ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
+                let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                 let old_size = self.value_to_primval(args[1])?.to_u64()?;
                 let old_align = self.value_to_primval(args[2])?.to_u64()?;
                 let new_size = self.value_to_primval(args[3])?.to_u64()?;
@@ -652,5 +653,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         self.dump_local(dest);
         self.goto_block(dest_block);
         return Ok(());
+    }
+
+    fn write_null(&mut self, dest: Place, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {
+        self.write_primval(dest, PrimVal::Bytes(0), dest_ty)
     }
 }

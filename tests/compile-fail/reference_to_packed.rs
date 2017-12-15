@@ -14,6 +14,6 @@ fn main() {
         x: 42,
         y: 99,
     };
-    let p = &foo.x;
+    let p = unsafe { &foo.x };
     let i = *p; //~ ERROR tried to access memory with alignment 1, but alignment 4 is required
 }

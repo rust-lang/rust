@@ -52,10 +52,10 @@ features in compile-time execution.
 The Rust compiler generates an instance of \rust{Mir} for each function [\autoref{fig:mir}]. Each
 \rust{Mir} structure represents a control-flow graph for a given function, and contains a list of
 ``basic blocks'' which in turn contain a list of statements followed by a single terminator. Each
-statement is of the form \rust{lvalue = rvalue}. An \rust{Lvalue} is used for referencing variables
+statement is of the form \rust{place = rvalue}. An \rust{Place} is used for referencing variables
 and calculating addresses such as when dereferencing pointers, accessing fields, or indexing arrays.
 An \rust{Rvalue} represents the core set of operations possible in MIR, including reading a value
-from an lvalue, performing math operations, creating new pointers, structures, and arrays, and so
+from an place, performing math operations, creating new pointers, structures, and arrays, and so
 on. Finally, a terminator decides where control will flow next, optionally based on the value of a
 boolean or integer.
 
@@ -73,7 +73,7 @@ boolean or integer.
     }
 
     struct Statement {
-        lvalue: Lvalue,
+        place: Place,
         rvalue: Rvalue
     }
 
@@ -99,7 +99,7 @@ boolean or integer.
 To investigate the possibility of executing Rust at compile-time I wrote an interpreter for MIR
 called Miri\footnote{\url{https://github.com/solson/miri}}. The structure of the interpreter closely
 mirrors the structure of MIR itself. It starts executing a function by iterating the statement list
-in the starting basic block, translating the lvalue into a pointer and using the rvalue to decide
+in the starting basic block, translating the place into a pointer and using the rvalue to decide
 what to write into that pointer. Evaluating the rvalue may involve reads (such as for the two sides
 of a binary operation) or construction of new values. When the terminator is reached, it is used to
 decide which basic block to jump to next. Finally, Miri repeats this entire process, reading
@@ -343,7 +343,7 @@ Aggregates include types declared with \rust{struct} or \rust{enum} as well as t
 closures. Miri supports all common usage of all of these types. The main missing piece is to handle
 \texttt{\#[repr(..)]} annotations which adjust the layout of a \rust{struct} or \rust{enum}.
 
-\subsection{Lvalue projections}
+\subsection{Place projections}
 
 This category includes field accesses, dereferencing, accessing data in an \rust{enum} variant, and
 indexing arrays. Miri supports all of these, including nested projections such as

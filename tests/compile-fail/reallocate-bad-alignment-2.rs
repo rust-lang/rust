@@ -5,7 +5,7 @@ extern crate alloc;
 use alloc::heap::Heap;
 use alloc::allocator::*;
 
-// error-pattern: tried to deallocate or reallocate using incorrect alignment or size
+// error-pattern: incorrect alloc info: expected size 1 and align 2, got size 1 and align 1
 
 fn main() {
     unsafe {
