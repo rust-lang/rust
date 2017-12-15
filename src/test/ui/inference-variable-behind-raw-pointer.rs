@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// must-compile-successfully
+
+// tests that the following code compiles, but produces a future-compatibility warning
+
 fn main() {
     let data = std::ptr::null();
     let _ = &data as *const *const ();
