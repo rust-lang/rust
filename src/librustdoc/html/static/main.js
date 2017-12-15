@@ -926,8 +926,12 @@
                     }
 
                     lev += lev_add;
-                    if (searchWords[j].startsWith(val)) {
-                        lev -= 1;
+                    if (lev > 0 && val.length > 3 && searchWords[j].startsWith(val)) {
+                        if (val.length < 6) {
+                            lev -= 1;
+                        } else {
+                            lev = 0;
+                        }
                     }
                     if (in_args <= MAX_LEV_DISTANCE) {
                         if (results_in_args[fullId] === undefined) {
