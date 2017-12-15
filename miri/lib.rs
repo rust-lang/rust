@@ -20,6 +20,7 @@ extern crate lazy_static;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::{TyLayout, LayoutOf};
 use rustc::hir::def_id::DefId;
+use rustc::ty::subst::Substs;
 use rustc::mir;
 use rustc::traits;
 
@@ -157,7 +158,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         Ok(())
     }
 
-    let mut ecx = EvalContext::new(tcx, ty::ParamEnv::empty(traits::Reveal::All), limits, Default::default(), Default::default());
+    let mut ecx = EvalContext::new(tcx, ty::ParamEnv::empty(traits::Reveal::All), limits, Default::default(), Default::default(), Substs::empty());
     match run_main(&mut ecx, main_id, start_wrapper) {
         Ok(()) => {
             let leaks = ecx.memory().leak_report();
