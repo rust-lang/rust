@@ -172,7 +172,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustfmt-nightly"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "cargo_metadata 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "derive-new 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",

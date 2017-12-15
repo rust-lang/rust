@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.3.2] 2017-12-15
+
+### Changed
+
+- Warn when unkown configuration option is used.
+
+### Fixed
+
+- Rustup to `rustc 1.24.0-nightly (0077d128d 2017-12-14)`.
+
 ## [0.3.1] 2017-12-11
 
 ### Added
