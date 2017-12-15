@@ -162,7 +162,7 @@ language: rust
 cache: cargo
 before_script:
 - export PATH="$PATH:$HOME/.cargo/bin"
-- which rustfmt || cargo install rustfmt
+- which rustfmt || cargo install rustfmt-nightly
 script:
 - cargo fmt -- --write-mode=diff
 - cargo build
