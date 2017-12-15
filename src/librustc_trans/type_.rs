@@ -17,7 +17,7 @@ use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 use context::CrateContext;
 
 use syntax::ast;
-use rustc::ty::layout::{self, Align};
+use rustc::ty::layout::{self, Align, Size};
 
 use std::ffi::CString;
 use std::fmt;
@@ -279,12 +279,19 @@ impl Type {
     /// Return a LLVM type that has at most the required alignment,
     /// as a conservative approximation for unknown pointee types.
     pub fn pointee_for_abi_align(ccx: &CrateContext, align: Align) -> Type {
-        if let Some(ity) = layout::Integer::for_abi_align(ccx, align) {
-            Type::from_integer(ccx, ity)
-        } else {
-            // FIXME(eddyb) We could find a better approximation here.
-            Type::i8(ccx)
-        }
+        // FIXME(eddyb) We could find a better approximation if ity.align < align.
+        let ity = layout::Integer::approximate_abi_align(ccx, align);
+        Type::from_integer(ccx, ity)
+    }
+
+    /// Return a LLVM type that has at most the required alignment,
+    /// and exactly the required size, as a best-effort padding array.
+    pub fn padding_filler(ccx: &CrateContext, size: Size, align: Align) -> Type {
+        let unit = layout::Integer::approximate_abi_align(ccx, align);
+        let size = size.bytes();
+        let unit_size = unit.size().bytes();
+        assert_eq!(size % unit_size, 0);
+        Type::array(&Type::from_integer(ccx, unit), size / unit_size)
     }
 
     pub fn x86_mmx(ccx: &CrateContext) -> Type {

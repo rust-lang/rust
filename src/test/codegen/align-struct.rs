@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // compile-flags: -C no-prepopulate-passes
+// ignore-tidy-linelength
+
 #![crate_type = "lib"]
 
 #![feature(attr_literals)]
@@ -16,6 +18,7 @@
 
 #[repr(align(64))]
 pub struct Align64(i32);
+// CHECK: %Align64 = type { [0 x i32], i32, [15 x i32] }
 
 pub struct Nested64 {
     a: Align64,
@@ -23,11 +26,20 @@ pub struct Nested64 {
     c: i32,
     d: i8,
 }
+// CHECK: %Nested64 = type { [0 x i64], %Align64, [0 x i32], i32, [0 x i32], i32, [0 x i8], i8, [55 x i8] }
+
+pub enum Enum4 {
+    A(i32),
+    B(i32),
+}
+// CHECK: %Enum4 = type { [2 x i32] }
 
 pub enum Enum64 {
     A(Align64),
     B(i32),
 }
+// CHECK: %Enum64 = type { [16 x i64] }
+// CHECK: %"Enum64::A" = type { [8 x i64], %Align64, [0 x i64] }
 
 // CHECK-LABEL: @align64
 #[no_mangle]
@@ -44,6 +56,14 @@ pub fn nested64(a: Align64, b: i32, c: i32, d: i8) -> Nested64 {
 // CHECK: %n64 = alloca %Nested64, align 64
     let n64 = Nested64 { a, b, c, d };
     n64
+}
+
+// CHECK-LABEL: @enum4
+#[no_mangle]
+pub fn enum4(a: i32) -> Enum4 {
+// CHECK: %e4 = alloca %Enum4, align 4
+    let e4 = Enum4::A(a);
+    e4
 }
 
 // CHECK-LABEL: @enum64
