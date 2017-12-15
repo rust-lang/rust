@@ -294,6 +294,7 @@ impl NameMapping {
             Trait(_) |
             TyAlias(_) |
             TyForeign(_) |
+            TraitAlias(_) |
             AssociatedTy(_) |
             PrimTy(_) |
             TyParam(_) |
