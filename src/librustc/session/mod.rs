@@ -635,9 +635,13 @@ impl Session {
                  self.perf_stats.incr_comp_hashes_count.get());
         println!("Total number of bytes hashed for incr. comp.:  {}",
                  self.perf_stats.incr_comp_bytes_hashed.get());
-        println!("Average bytes hashed per incr. comp. HIR node: {}",
-                 self.perf_stats.incr_comp_bytes_hashed.get() /
-                 self.perf_stats.incr_comp_hashes_count.get());
+        if self.perf_stats.incr_comp_hashes_count.get() != 0 {
+            println!("Average bytes hashed per incr. comp. HIR node: {}",
+                    self.perf_stats.incr_comp_bytes_hashed.get() /
+                    self.perf_stats.incr_comp_hashes_count.get());
+        } else {
+            println!("Average bytes hashed per incr. comp. HIR node: N/A");
+        }
         println!("Total time spent computing symbol hashes:      {}",
                  duration_to_secs_str(self.perf_stats.symbol_hash_time.get()));
         println!("Total time spent decoding DefPath tables:      {}",
