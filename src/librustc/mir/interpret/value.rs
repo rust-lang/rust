@@ -6,24 +6,6 @@ use super::{EvalResult, MemoryPointer, PointerArithmetic};
 use syntax::ast::FloatTy;
 use rustc_const_math::ConstFloat;
 
-#[derive(Copy, Clone, Debug)]
-pub struct PtrAndAlign {
-    pub ptr: Pointer,
-    pub align: Align,
-}
-
-impl PtrAndAlign {
-    pub fn to_ptr<'tcx>(self) -> EvalResult<'tcx, MemoryPointer> {
-        self.ptr.to_ptr()
-    }
-    pub fn offset<'tcx, C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
-        Ok(PtrAndAlign {
-            ptr: self.ptr.offset(i, cx)?,
-            align: self.align,
-        })
-    }
-}
-
 pub fn bytes_to_f32(bits: u128) -> ConstFloat {
     ConstFloat {
         bits,
@@ -49,7 +31,7 @@ pub fn bytes_to_f64(bits: u128) -> ConstFloat {
 /// operations and fat pointers. This idea was taken from rustc's trans.
 #[derive(Clone, Copy, Debug)]
 pub enum Value {
-    ByRef(PtrAndAlign),
+    ByRef(Pointer, Align),
     ByVal(PrimVal),
     ByValPair(PrimVal, PrimVal),
 }

@@ -4,7 +4,7 @@ use rustc::ty::layout::LayoutOf;
 use syntax::codemap::Span;
 use syntax::abi::Abi;
 
-use rustc::mir::interpret::{PtrAndAlign, EvalResult, PrimVal, Value};
+use rustc::mir::interpret::{EvalResult, PrimVal, Value};
 use super::{EvalContext, eval_context,
             Place, Machine, ValTy};
 
@@ -327,14 +327,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         if let ty::TyTuple(..) = args[1].ty.sty {
                             if self.frame().mir.args_iter().count() == layout.fields.count() + 1 {
                                 match args[1].value {
-                                    Value::ByRef(PtrAndAlign { ptr, align }) => {
+                                    Value::ByRef(ptr, align) => {
                                         for (i, arg_local) in arg_locals.enumerate() {
                                             let field = layout.field(&self, i)?;
                                             let offset = layout.fields.offset(i).bytes();
-                                            let arg = Value::ByRef(PtrAndAlign {
-                                                ptr: ptr.offset(offset, &self)?,
-                                                align: align.min(field.align)
-                                            });
+                                            let arg = Value::ByRef(ptr.offset(offset, &self)?,
+                                                                   align.min(field.align));
                                             let dest =
                                                 self.eval_place(&mir::Place::Local(arg_local))?;
                                             trace!(

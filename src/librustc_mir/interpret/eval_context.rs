@@ -13,7 +13,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
-    PtrAndAlign, GlobalId, Value, Pointer, PrimVal, PrimValKind,
+    GlobalId, Value, Pointer, PrimVal, PrimValKind,
     EvalError, EvalResult, EvalErrorKind, MemoryPointer,
 };
 
@@ -498,7 +498,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn deallocate_local(&mut self, local: Option<Value>) -> EvalResult<'tcx> {
-        if let Some(Value::ByRef(ptr)) = local {
+        if let Some(Value::ByRef(ptr, _align)) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
@@ -637,12 +637,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let src = self.eval_place(place)?;
                 // We ignore the alignment of the place here -- special handling for packed structs ends
                 // at the `&` operator.
-                let (ptr, extra) = self.force_allocation(src)?.to_ptr_align_extra();
+                let (ptr, _align, extra) = self.force_allocation(src)?.to_ptr_align_extra();
 
                 let val = match extra {
-                    PlaceExtra::None => ptr.ptr.to_value(),
-                    PlaceExtra::Length(len) => ptr.ptr.to_value_with_len(len),
-                    PlaceExtra::Vtable(vtable) => ptr.ptr.to_value_with_vtable(vtable),
+                    PlaceExtra::None => ptr.to_value(),
+                    PlaceExtra::Length(len) => ptr.to_value_with_len(len),
+                    PlaceExtra::Vtable(vtable) => ptr.to_value_with_vtable(vtable),
                     PlaceExtra::DowncastVariant(..) => {
                         bug!("attempted to take a reference to an enum downcast place")
                     }
@@ -951,10 +951,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn read_global_as_value(&self, gid: GlobalId, layout: TyLayout) -> Value {
-        Value::ByRef(PtrAndAlign {
-            ptr: self.tcx.interpret_interner.borrow().get_cached(gid).expect("global not cached"),
-            align: layout.align
-        })
+        Value::ByRef(self.tcx.interpret_interner.borrow().get_cached(gid).expect("global not cached"),
+                     layout.align)
     }
 
     fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx> {
@@ -972,9 +970,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // -1 since we don't store the return value
                 match self.stack[frame].locals[local.index() - 1] {
                     None => return err!(DeadLocal),
-                    Some(Value::ByRef(ptr)) => {
+                    Some(Value::ByRef(ptr, align)) => {
                         Place::Ptr {
                             ptr,
+                            align,
                             extra: PlaceExtra::None,
                         }
                     }
@@ -984,10 +983,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         let layout = self.layout_of(ty)?;
                         let ptr = self.alloc_ptr(ty)?;
                         self.stack[frame].locals[local.index() - 1] =
-                            Some(Value::ByRef(PtrAndAlign {
-                                ptr: ptr.into(),
-                                align: layout.align
-                            })); // it stays live
+                            Some(Value::ByRef(ptr.into(), layout.align)); // it stays live
                         self.write_value_to_ptr(val, ptr.into(), ty)?;
                         Place::from_ptr(ptr, layout.align)
                     }
@@ -1005,7 +1001,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         match value {
-            Value::ByRef(PtrAndAlign { ptr, align }) => {
+            Value::ByRef(ptr, align) => {
                 self.read_with_align(align, |ectx| ectx.read_value(ptr, ty))
             }
             other => Ok(other),
@@ -1061,10 +1057,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // correct if we never look at this data with the wrong type.
 
         match dest {
-            Place::Ptr {
-                ptr: PtrAndAlign { ptr, align },
-                extra,
-            } => {
+            Place::Ptr { ptr, align, extra } => {
                 assert_eq!(extra, PlaceExtra::None);
                 self.write_with_align_mut(align,
                     |ectx| ectx.write_value_to_ptr(src_val, ptr, dest_ty))
@@ -1090,11 +1083,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         old_dest_val: Value,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
-        if let Value::ByRef(PtrAndAlign {
-                                ptr: dest_ptr,
-                                align,
-                            }) = old_dest_val
-        {
+        if let Value::ByRef(dest_ptr, align) = old_dest_val {
             // If the value is already `ByRef` (that is, backed by an `Allocation`),
             // then we must write the new value into this allocation, because there may be
             // other pointers into the allocation. These other pointers are logically
@@ -1106,11 +1095,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 ectx.write_value_to_ptr(src_val, dest_ptr, dest_ty)
             })?;
 
-        } else if let Value::ByRef(PtrAndAlign {
-                                       ptr: src_ptr,
-                                       align,
-                                   }) = src_val
-        {
+        } else if let Value::ByRef(src_ptr, align) = src_val {
             // If the value is not `ByRef`, then we know there are no pointers to it
             // and we can simply overwrite the `Value` in the locals array directly.
             //
@@ -1129,10 +1114,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     let dest_ptr = ectx.alloc_ptr(dest_ty)?.into();
                     ectx.copy(src_ptr, dest_ptr, dest_ty)?;
                     let layout = ectx.layout_of(dest_ty)?;
-                    write_dest(ectx, Value::ByRef(PtrAndAlign {
-                        ptr: dest_ptr,
-                        align: layout.align
-                    }))?;
+                    write_dest(ectx, Value::ByRef(dest_ptr, layout.align))?;
                 }
                 Ok(())
             })?;
@@ -1153,7 +1135,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     ) -> EvalResult<'tcx> {
         trace!("write_value_to_ptr: {:#?}", value);
         match value {
-            Value::ByRef(PtrAndAlign { ptr, align }) => {
+            Value::ByRef(ptr, align) => {
                 self.read_with_align_mut(align, |ectx| ectx.copy(ptr, dest, dest_ty))
             }
             Value::ByVal(primval) => {
@@ -1485,7 +1467,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         continue;
                     }
                     let (src_f_value, src_field) = match src {
-                        Value::ByRef(PtrAndAlign { ptr, align }) => {
+                        Value::ByRef(ptr, align) => {
                             let src_place = Place::from_primval_ptr(ptr, align);
                             let (src_f_place, src_field) =
                                 self.place_field(src_place, mir::Field::new(i), src_layout)?;
@@ -1537,7 +1519,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Err(err) => {
                         panic!("Failed to access local: {:?}", err);
                     }
-                    Ok(Value::ByRef(PtrAndAlign { ptr, align })) => {
+                    Ok(Value::ByRef(ptr, align)) => {
                         match ptr.into_inner_primval() {
                             PrimVal::Ptr(ptr) => {
                                 write!(msg, " by align({}) ref:", align.abi()).unwrap();
@@ -1566,7 +1548,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 trace!("{}", msg);
                 self.memory.dump_allocs(allocs);
             }
-            Place::Ptr { ptr: PtrAndAlign { ptr, align }, .. } => {
+            Place::Ptr { ptr, align, .. } => {
                 match ptr.into_inner_primval() {
                     PrimVal::Ptr(ptr) => {
                         trace!("by align({}) ref:", align.abi());

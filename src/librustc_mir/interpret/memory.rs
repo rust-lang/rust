@@ -7,7 +7,7 @@ use rustc::ty::{Instance, TyCtxt};
 use rustc::ty::layout::{self, Align, TargetDataLayout};
 use syntax::ast::Mutability;
 
-use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, UndefMask, PtrAndAlign, Value, Pointer,
+use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, UndefMask, Value, Pointer,
                             EvalResult, PrimVal, EvalErrorKind};
 
 use super::{EvalContext, Machine};
@@ -1046,7 +1046,7 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
         value: Value,
     ) -> EvalResult<'tcx, Pointer> {
         Ok(match value {
-            Value::ByRef(PtrAndAlign { ptr, align }) => {
+            Value::ByRef(ptr, align) => {
                 self.memory().read_with_align(align, |mem| mem.read_ptr_sized_unsigned(ptr.to_ptr()?))?
             }
             Value::ByVal(ptr) |
@@ -1059,10 +1059,7 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
         value: Value,
     ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
         match value {
-            Value::ByRef(PtrAndAlign {
-                      ptr: ref_ptr,
-                      align,
-                  }) => {
+            Value::ByRef(ref_ptr, align) => {
                 self.memory().read_with_align(align, |mem| {
                     let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
                     let vtable = mem.read_ptr_sized_unsigned(
@@ -1084,10 +1081,7 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
         value: Value,
     ) -> EvalResult<'tcx, (Pointer, u64)> {
         match value {
-            Value::ByRef(PtrAndAlign {
-                      ptr: ref_ptr,
-                      align,
-                  }) => {
+            Value::ByRef(ref_ptr, align) => {
                 self.memory().read_with_align(align, |mem| {
                     let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
                     let len = mem.read_ptr_sized_unsigned(

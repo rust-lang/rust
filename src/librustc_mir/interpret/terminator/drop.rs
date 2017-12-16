@@ -21,16 +21,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let val = match self.force_allocation(place)? {
             Place::Ptr {
                 ptr,
+                align: _,
                 extra: PlaceExtra::Vtable(vtable),
-            } => ptr.ptr.to_value_with_vtable(vtable),
+            } => ptr.to_value_with_vtable(vtable),
             Place::Ptr {
                 ptr,
+                align: _,
                 extra: PlaceExtra::Length(len),
-            } => ptr.ptr.to_value_with_len(len),
+            } => ptr.to_value_with_len(len),
             Place::Ptr {
                 ptr,
+                align: _,
                 extra: PlaceExtra::None,
-            } => ptr.ptr.to_value(),
+            } => ptr.to_value(),
             _ => bug!("force_allocation broken"),
         };
         self.drop(val, instance, ty, span, target)
