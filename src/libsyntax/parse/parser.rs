@@ -1212,6 +1212,9 @@ impl<'a> Parser<'a> {
     pub fn span_err(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
+    pub fn struct_span_err(&self, sp: Span, m: &str) -> DiagnosticBuilder<'a> {
+        self.sess.span_diagnostic.struct_span_err(sp, m)
+    }
     pub fn span_err_help(&self, sp: Span, m: &str, h: &str) {
         let mut err = self.sess.span_diagnostic.mut_span_err(sp, m);
         err.help(h);
@@ -3445,7 +3448,16 @@ impl<'a> Parser<'a> {
             let lo = self.span;
             let hi;
 
-            if self.check(&token::DotDot) {
+            if self.check(&token::DotDot) || self.token == token::DotDotDot {
+                if self.token == token::DotDotDot { // Issue #46718
+                    let mut err = self.struct_span_err(self.span,
+                                                       "expected field pattern, found `...`");
+                    err.span_suggestion(self.span,
+                                        "to omit remaining fields, use one fewer `.`",
+                                        "..".to_owned());
+                    err.emit();
+                }
+
                 self.bump();
                 if self.token != token::CloseDelim(token::Brace) {
                     let token_str = self.this_token_to_string();
