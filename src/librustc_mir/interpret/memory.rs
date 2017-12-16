@@ -4,7 +4,7 @@ use std::{ptr, mem, io};
 use std::cell::Cell;
 
 use rustc::ty::{Instance, TyCtxt};
-use rustc::ty::layout::{self, TargetDataLayout};
+use rustc::ty::layout::{self, Align, TargetDataLayout};
 use syntax::ast::Mutability;
 
 use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, UndefMask, PtrAndAlign, Value, Pointer,
@@ -51,10 +51,10 @@ pub struct Memory<'a, 'tcx: 'a, M: Machine<'tcx>> {
     /// Maximum number of virtual bytes that may be allocated.
     memory_size: u64,
 
-    /// To avoid having to pass flags to every single memory access, we have some global state saying whether
+    /// To avoid having to pass flags to every single memory access, we have some global state saying how
     /// alignment checking is currently enforced for read and/or write accesses.
-    reads_are_aligned: Cell<bool>,
-    writes_are_aligned: Cell<bool>,
+    read_align_override: Cell<Option<Align>>,
+    write_align_override: Cell<Option<Align>>,
 
     /// The current stack frame.  Used to check accesses against locks.
     pub cur_frame: usize,
@@ -72,8 +72,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             tcx,
             memory_size: max_memory,
             memory_usage: 0,
-            reads_are_aligned: Cell::new(true),
-            writes_are_aligned: Cell::new(true),
+            read_align_override: Cell::new(None),
+            write_align_override: Cell::new(None),
             cur_frame: usize::max_value(),
         }
     }
@@ -272,14 +272,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             PrimVal::Undef => return err!(ReadUndefBytes),
         };
         // See if alignment checking is disabled
-        let enforce_alignment = match access {
-            Some(AccessKind::Read) => self.reads_are_aligned.get(),
-            Some(AccessKind::Write) => self.writes_are_aligned.get(),
-            None => true,
+        let align_override = match access {
+            Some(AccessKind::Read) => self.read_align_override.get(),
+            Some(AccessKind::Write) => self.write_align_override.get(),
+            None => None,
         };
-        if !enforce_alignment {
-            return Ok(());
-        }
+        let align = align_override.map_or(align, |o| o.abi().min(align));
         // Check alignment
         if alloc_align < align {
             return err!(AlignmentCheckFailed {
@@ -1005,39 +1003,39 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
     fn memory(&self) -> &Memory<'a, 'tcx, M>;
 
     // These are not supposed to be overriden.
-    fn read_maybe_aligned<F, T>(&self, aligned: bool, f: F) -> EvalResult<'tcx, T>
+    fn read_with_align<F, T>(&self, align: Align, f: F) -> EvalResult<'tcx, T>
     where
         F: FnOnce(&Self) -> EvalResult<'tcx, T>,
     {
-        let old = self.memory().reads_are_aligned.get();
-        // Do alignment checking if *all* nested calls say it has to be aligned.
-        self.memory().reads_are_aligned.set(old && aligned);
+        let old = self.memory().read_align_override.get();
+        // Do alignment checking for the minimum align out of *all* nested calls.
+        self.memory().read_align_override.set(Some(old.map_or(align, |old| old.min(align))));
         let t = f(self);
-        self.memory().reads_are_aligned.set(old);
+        self.memory().read_align_override.set(old);
         t
     }
 
-    fn read_maybe_aligned_mut<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
+    fn read_with_align_mut<F, T>(&mut self, align: Align, f: F) -> EvalResult<'tcx, T>
     where
         F: FnOnce(&mut Self) -> EvalResult<'tcx, T>,
     {
-        let old = self.memory().reads_are_aligned.get();
-        // Do alignment checking if *all* nested calls say it has to be aligned.
-        self.memory().reads_are_aligned.set(old && aligned);
+        let old = self.memory().read_align_override.get();
+        // Do alignment checking for the minimum align out of *all* nested calls.
+        self.memory().read_align_override.set(Some(old.map_or(align, |old| old.min(align))));
         let t = f(self);
-        self.memory().reads_are_aligned.set(old);
+        self.memory().read_align_override.set(old);
         t
     }
 
-    fn write_maybe_aligned_mut<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
+    fn write_with_align_mut<F, T>(&mut self, align: Align, f: F) -> EvalResult<'tcx, T>
     where
         F: FnOnce(&mut Self) -> EvalResult<'tcx, T>,
     {
-        let old = self.memory().writes_are_aligned.get();
-        // Do alignment checking if *all* nested calls say it has to be aligned.
-        self.memory().writes_are_aligned.set(old && aligned);
+        let old = self.memory().write_align_override.get();
+        // Do alignment checking for the minimum align out of *all* nested calls.
+        self.memory().write_align_override.set(Some(old.map_or(align, |old| old.min(align))));
         let t = f(self);
-        self.memory().writes_are_aligned.set(old);
+        self.memory().write_align_override.set(old);
         t
     }
 
@@ -1048,8 +1046,8 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
         value: Value,
     ) -> EvalResult<'tcx, Pointer> {
         Ok(match value {
-            Value::ByRef(PtrAndAlign { ptr, aligned }) => {
-                self.memory().read_maybe_aligned(aligned, |mem| mem.read_ptr_sized_unsigned(ptr.to_ptr()?))?
+            Value::ByRef(PtrAndAlign { ptr, align }) => {
+                self.memory().read_with_align(align, |mem| mem.read_ptr_sized_unsigned(ptr.to_ptr()?))?
             }
             Value::ByVal(ptr) |
             Value::ByValPair(ptr, _) => ptr,
@@ -1063,9 +1061,9 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
         match value {
             Value::ByRef(PtrAndAlign {
                       ptr: ref_ptr,
-                      aligned,
+                      align,
                   }) => {
-                self.memory().read_maybe_aligned(aligned, |mem| {
+                self.memory().read_with_align(align, |mem| {
                     let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
                     let vtable = mem.read_ptr_sized_unsigned(
                         ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
@@ -1088,9 +1086,9 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
         match value {
             Value::ByRef(PtrAndAlign {
                       ptr: ref_ptr,
-                      aligned,
+                      align,
                   }) => {
-                self.memory().read_maybe_aligned(aligned, |mem| {
+                self.memory().read_with_align(align, |mem| {
                     let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
                     let len = mem.read_ptr_sized_unsigned(
                         ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,

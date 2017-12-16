@@ -77,7 +77,7 @@ pub fn eval_body<'a, 'tcx>(
             instance,
             mir.span,
             mir,
-            Place::from_ptr(ptr),
+            Place::from_ptr(ptr, layout.align),
             cleanup.clone(),
         )?;
 
@@ -357,10 +357,11 @@ pub fn const_eval_provider<'a, 'tcx>(
             (_, Err(err)) => Err(err),
             (Ok((miri_val, miri_ty)), Ok(ctfe)) => {
                 let mut ecx = mk_eval_cx(tcx, instance, key.param_env).unwrap();
-                check_ctfe_against_miri(&mut ecx, PtrAndAlign {
+                let miri_ptr = PtrAndAlign {
                     ptr: miri_val,
-                    aligned: true
-                }, miri_ty, ctfe.val);
+                    align: ecx.layout_of(miri_ty).unwrap().align
+                };
+                check_ctfe_against_miri(&mut ecx, miri_ptr, miri_ty, ctfe.val);
                 Ok(ctfe)
             }
         }
@@ -380,7 +381,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
     use rustc::ty::TypeVariants::*;
     match miri_ty.sty {
         TyInt(int_ty) => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
+            let value = ecx.read_with_align(miri_val.align, |ectx| {
                 ectx.try_read_value(miri_val.ptr, miri_ty)
             });
             let prim = get_prim(ecx, value);
@@ -391,7 +392,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             assert_eq!(c, ctfe, "miri evaluated to {:?}, but ctfe yielded {:?}", c, ctfe);
         },
         TyUint(uint_ty) => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
+            let value = ecx.read_with_align(miri_val.align, |ectx| {
                 ectx.try_read_value(miri_val.ptr, miri_ty)
             });
             let prim = get_prim(ecx, value);
@@ -402,7 +403,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             assert_eq!(c, ctfe, "miri evaluated to {:?}, but ctfe yielded {:?}", c, ctfe);
         },
         TyFloat(ty) => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
+            let value = ecx.read_with_align(miri_val.align, |ectx| {
                 ectx.try_read_value(miri_val.ptr, miri_ty)
             });
             let prim = get_prim(ecx, value);
@@ -410,7 +411,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             assert_eq!(f, ctfe, "miri evaluated to {:?}, but ctfe yielded {:?}", f, ctfe);
         },
         TyBool => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
+            let value = ecx.read_with_align(miri_val.align, |ectx| {
                 ectx.try_read_value(miri_val.ptr, miri_ty)
             });
             let bits = get_prim(ecx, value);
@@ -421,7 +422,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             assert_eq!(b, ctfe, "miri evaluated to {:?}, but ctfe yielded {:?}", b, ctfe);
         },
         TyChar => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
+            let value = ecx.read_with_align(miri_val.align, |ectx| {
                 ectx.try_read_value(miri_val.ptr, miri_ty)
             });
             let bits = get_prim(ecx, value);
@@ -435,7 +436,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             }
         },
         TyStr => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
+            let value = ecx.read_with_align(miri_val.align, |ectx| {
                 ectx.try_read_value(miri_val.ptr, miri_ty)
             });
             if let Ok(Some(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len)))) = value {
@@ -522,8 +523,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
                     Field::new(field),
                     layout,
                 ).unwrap();
-                let ptr = place.to_ptr_extra_aligned().0;
-                check_ctfe_against_miri(ecx, ptr, elem.ty, elem.val);
+                check_ctfe_against_miri(ecx, place.to_ptr_align(), elem.ty, elem.val);
             }
         },
         TySlice(_) => bug!("miri produced a slice?"),
@@ -543,7 +543,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
         // should be fine
         TyFnDef(..) => {}
         TyFnPtr(_) => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
+            let value = ecx.read_with_align(miri_val.align, |ectx| {
                 ectx.try_read_value(miri_val.ptr, miri_ty)
             });
             let ptr = match value {

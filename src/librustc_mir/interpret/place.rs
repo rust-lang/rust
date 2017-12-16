@@ -1,6 +1,6 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{GlobalId, PtrAndAlign};
 
@@ -35,21 +35,21 @@ pub enum PlaceExtra {
 impl<'tcx> Place {
     /// Produces an Place that will error if attempted to be read from
     pub fn undef() -> Self {
-        Self::from_primval_ptr(PrimVal::Undef.into())
+        Self::from_primval_ptr(PrimVal::Undef.into(), Align::from_bytes(1, 1).unwrap())
     }
 
-    pub fn from_primval_ptr(ptr: Pointer) -> Self {
+    pub fn from_primval_ptr(ptr: Pointer, align: Align) -> Self {
         Place::Ptr {
-            ptr: PtrAndAlign { ptr, aligned: true },
+            ptr: PtrAndAlign { ptr, align },
             extra: PlaceExtra::None,
         }
     }
 
-    pub fn from_ptr(ptr: MemoryPointer) -> Self {
-        Self::from_primval_ptr(ptr.into())
+    pub fn from_ptr(ptr: MemoryPointer, align: Align) -> Self {
+        Self::from_primval_ptr(ptr.into(), align)
     }
 
-    pub fn to_ptr_extra_aligned(self) -> (PtrAndAlign, PlaceExtra) {
+    pub fn to_ptr_align_extra(self) -> (PtrAndAlign, PlaceExtra) {
         match self {
             Place::Ptr { ptr, extra } => (ptr, extra),
             _ => bug!("to_ptr_and_extra: expected Place::Ptr, got {:?}", self),
@@ -57,12 +57,15 @@ impl<'tcx> Place {
         }
     }
 
+    pub fn to_ptr_align(self) -> PtrAndAlign {
+        let (ptr, _extra) = self.to_ptr_align_extra();
+        ptr
+    }
+
     pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
-        let (ptr, extra) = self.to_ptr_extra_aligned();
         // At this point, we forget about the alignment information -- the place has been turned into a reference,
         // and no matter where it came from, it now must be aligned.
-        assert_eq!(extra, PlaceExtra::None);
-        ptr.to_ptr()
+        self.to_ptr_align().to_ptr()
     }
 
     pub(super) fn elem_ty_and_len(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
@@ -102,11 +105,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // Directly reading a static will always succeed
             Static(ref static_) => {
                 let instance = ty::Instance::mono(self.tcx, static_.def_id);
-                let cid = GlobalId {
+                Ok(Some(self.read_global_as_value(GlobalId {
                     instance,
                     promoted: None,
-                };
-                Ok(Some(self.read_global_as_value(cid)))
+                }, self.layout_of(self.place_ty(place))?)))
             }
             Projection(ref proj) => self.try_read_place_projection(proj),
         }
@@ -190,10 +192,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     instance,
                     promoted: None,
                 };
+                let layout = self.layout_of(self.place_ty(mir_place))?;
                 Place::Ptr {
                     ptr: PtrAndAlign {
                         ptr: self.tcx.interpret_interner.borrow().get_cached(gid).expect("uncached global"),
-                        aligned: true
+                        align: layout.align
                     },
                     extra: PlaceExtra::None,
                 }
@@ -241,7 +244,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     {
                         return Ok((base, field));
                     }
-                    _ => self.force_allocation(base)?.to_ptr_extra_aligned(),
+                    _ => self.force_allocation(base)?.to_ptr_align_extra(),
                 }
             }
         };
@@ -258,7 +261,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         };
 
         let mut ptr = base_ptr.offset(offset, &self)?;
-        ptr.aligned &= base_layout.align.abi() >= field.align.abi();
+        ptr.align = ptr.align.min(base_layout.align).min(field.align);
 
         let extra = if !field.is_unsized() {
             PlaceExtra::None
@@ -278,22 +281,23 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn val_to_place(&self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Place> {
+        let layout = self.layout_of(ty)?;
         Ok(match self.tcx.struct_tail(ty).sty {
             ty::TyDynamic(..) => {
                 let (ptr, vtable) = self.into_ptr_vtable_pair(val)?;
                 Place::Ptr {
-                    ptr: PtrAndAlign { ptr, aligned: true },
+                    ptr: PtrAndAlign { ptr, align: layout.align },
                     extra: PlaceExtra::Vtable(vtable),
                 }
             }
             ty::TyStr | ty::TySlice(_) => {
                 let (ptr, len) = self.into_slice(val)?;
                 Place::Ptr {
-                    ptr: PtrAndAlign { ptr, aligned: true },
+                    ptr: PtrAndAlign { ptr, align: layout.align },
                     extra: PlaceExtra::Length(len),
                 }
             }
-            _ => Place::from_primval_ptr(self.into_ptr(val)?),
+            _ => Place::from_primval_ptr(self.into_ptr(val)?, layout.align),
         })
     }
 
@@ -305,7 +309,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     ) -> EvalResult<'tcx, Place> {
         // Taking the outer type here may seem odd; it's needed because for array types, the outer type gives away the length.
         let base = self.force_allocation(base)?;
-        let (base_ptr, _) = base.to_ptr_extra_aligned();
+        let base_ptr = base.to_ptr_align();
 
         let (elem_ty, len) = base.elem_ty_and_len(outer_ty);
         let elem_size = self.layout_of(elem_ty)?.size.bytes();
@@ -329,7 +333,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     ) -> EvalResult<'tcx, Place> {
         // FIXME(solson)
         let base = self.force_allocation(base)?;
-        let (ptr, _) = base.to_ptr_extra_aligned();
+        let ptr = base.to_ptr_align();
         let extra = PlaceExtra::DowncastVariant(variant);
         Ok(Place::Ptr { ptr, extra })
     }
@@ -380,7 +384,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             } => {
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
-                let (base_ptr, _) = base.to_ptr_extra_aligned();
+                let base_ptr = base.to_ptr_align();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
                 let elem_size = self.layout_of(elem_ty)?.size.bytes();
@@ -399,7 +403,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Subslice { from, to } => {
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
-                let (base_ptr, _) = base.to_ptr_extra_aligned();
+                let base_ptr = base.to_ptr_align();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
                 let elem_size = self.layout_of(elem_ty)?.size.bytes();

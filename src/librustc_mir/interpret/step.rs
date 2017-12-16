@@ -197,7 +197,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             instance,
             span,
             mir,
-            Place::from_ptr(ptr),
+            Place::from_ptr(ptr, layout.align),
             cleanup,
         )?;
         Ok(true)
@@ -273,7 +273,7 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                         this.instance,
                         constant.span,
                         mir,
-                        Place::from_ptr(ptr),
+                        Place::from_ptr(ptr, layout.align),
                         StackPopCleanup::MarkStatic(Mutability::Immutable),
                     )?;
                     Ok(true)

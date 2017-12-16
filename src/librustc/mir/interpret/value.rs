@@ -1,6 +1,6 @@
 #![allow(unknown_lints)]
 
-use ty::layout::HasDataLayout;
+use ty::layout::{Align, HasDataLayout};
 
 use super::{EvalResult, MemoryPointer, PointerArithmetic};
 use syntax::ast::FloatTy;
@@ -9,8 +9,7 @@ use rustc_const_math::ConstFloat;
 #[derive(Copy, Clone, Debug)]
 pub struct PtrAndAlign {
     pub ptr: Pointer,
-    /// Remember whether this place is *supposed* to be aligned.
-    pub aligned: bool,
+    pub align: Align,
 }
 
 impl PtrAndAlign {
@@ -20,7 +19,7 @@ impl PtrAndAlign {
     pub fn offset<'tcx, C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
         Ok(PtrAndAlign {
             ptr: self.ptr.offset(i, cx)?,
-            aligned: self.aligned,
+            align: self.align,
         })
     }
 }
@@ -180,13 +179,6 @@ pub enum PrimValKind {
     Ptr, FnPtr,
     Bool,
     Char,
-}
-
-impl<'a, 'tcx: 'a> Value {
-    #[inline]
-    pub fn by_ref(ptr: Pointer) -> Self {
-        Value::ByRef(PtrAndAlign { ptr, aligned: true })
-    }
 }
 
 impl<'tcx> PrimVal {

@@ -327,15 +327,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         if let ty::TyTuple(..) = args[1].ty.sty {
                             if self.frame().mir.args_iter().count() == layout.fields.count() + 1 {
                                 match args[1].value {
-                                    Value::ByRef(PtrAndAlign { ptr, aligned }) => {
-                                        assert!(
-                                            aligned,
-                                            "Unaligned ByRef-values cannot occur as function arguments"
-                                        );
+                                    Value::ByRef(PtrAndAlign { ptr, align }) => {
                                         for (i, arg_local) in arg_locals.enumerate() {
                                             let field = layout.field(&self, i)?;
                                             let offset = layout.fields.offset(i).bytes();
-                                            let arg = Value::by_ref(ptr.offset(offset, &self)?);
+                                            let arg = Value::ByRef(PtrAndAlign {
+                                                ptr: ptr.offset(offset, &self)?,
+                                                align: align.min(field.align)
+                                            });
                                             let dest =
                                                 self.eval_place(&mir::Place::Local(arg_local))?;
                                             trace!(
