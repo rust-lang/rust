@@ -41,54 +41,73 @@ note: ...so that the reference type `&'a Nested<K>` does not outlive the data it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0309]: the parameter type `Self` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:37:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:38:5
    |
-37 |     fn bar<'a, L: X<&'a Nested<Self>>>();
+38 |     fn bar<'a, L: X<&'a Nested<Self>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `Self: 'a`...
 note: ...so that the reference type `&'a Nested<Self>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:37:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:38:5
    |
-37 |     fn bar<'a, L: X<&'a Nested<Self>>>();
+38 |     fn bar<'a, L: X<&'a Nested<Self>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0309]: the parameter type `K` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:43:5
+error[E0309]: the parameter type `L` may not live long enough
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:42:5
    |
-42 |   impl<K> Nested<K> {
+42 |       fn baz<'a, L, M: X<&'a Nested<L>>>() {
+   |       ^          - help: consider adding an explicit lifetime bound `L: 'a`...
+   |  _____|
+   | |
+43 | |         //~^ ERROR may not live long enough
+44 | |     }
+   | |_____^
+   |
+note: ...so that the reference type `&'a Nested<L>` does not outlive the data it points at
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:42:5
+   |
+42 | /     fn baz<'a, L, M: X<&'a Nested<L>>>() {
+43 | |         //~^ ERROR may not live long enough
+44 | |     }
+   | |_____^
+
+error[E0309]: the parameter type `K` may not live long enough
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:51:5
+   |
+50 |   impl<K> Nested<K> {
    |        - help: consider adding an explicit lifetime bound `K: 'a`...
-43 | /     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
-44 | |         //~^ ERROR may not live long enough
-45 | |     }
+51 | /     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
+52 | |         //~^ ERROR may not live long enough
+53 | |     }
    | |_____^
    |
 note: ...so that the reference type `&'a Nested<K>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:43:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:51:5
    |
-43 | /     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
-44 | |         //~^ ERROR may not live long enough
-45 | |     }
+51 | /     fn generic_in_parent<'a, L: X<&'a Nested<K>>>() {
+52 | |         //~^ ERROR may not live long enough
+53 | |     }
    | |_____^
 
 error[E0309]: the parameter type `M` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:46:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:54:5
    |
-46 |       fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
+54 |       fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
    |       ^                                                -- help: consider adding an explicit lifetime bound `M: 'a`...
    |  _____|
    | |
-47 | |         //~^ ERROR may not live long enough
-48 | |     }
+55 | |         //~^ ERROR may not live long enough
+56 | |     }
    | |_____^
    |
 note: ...so that the reference type `&'a Nested<M>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:46:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:54:5
    |
-46 | /     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
-47 | |         //~^ ERROR may not live long enough
-48 | |     }
+54 | /     fn generic_in_child<'a, 'b, L: X<&'a Nested<M>>, M: 'b>() {
+55 | |         //~^ ERROR may not live long enough
+56 | |     }
    | |_____^
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

@@ -787,10 +787,20 @@ impl<'a, 'gcx, 'tcx> Generics {
         if let Some(idx) = param.idx.checked_sub(self.parent_count() as u32) {
             // non-Self type parameters are always offset by exactly
             // `self.regions.len()`. In the absence of a Self, this is obvious,
-            // but even in the absence of a `Self` we just have to "compensate"
+            // but even in the presence of a `Self` we just have to "compensate"
             // for the regions:
             //
-            // For example, for `trait Foo<'a, 'b, T1, T2>`, the
+            // Without a `Self` (or in a nested generics that doesn't have
+            // a `Self` in itself, even through it parent does), for example
+            // for `fn foo<'a, T1, T2>()`, the situation is:
+            //     Substs:
+            //         0  1  2
+            //         'a T1 T2
+            //     generics.types:
+            //         0  1
+            //         T1 T2
+            //
+            // And with a `Self`, for example for `trait Foo<'a, 'b, T1, T2>`, the
             // situation is:
             //     Substs:
             //         0   1  2  3  4
@@ -798,14 +808,20 @@ impl<'a, 'gcx, 'tcx> Generics {
             //     generics.types:
             //         0  1  2
             //       Self T1 T2
-            // And it can be seen that to move from a substs offset to a
-            // generics offset you just have to offset by the number of regions.
+            //
+            // And it can be seen that in both cases, to move from a substs
+            // offset to a generics offset you just have to offset by the
+            // number of regions.
             let type_param_offset = self.regions.len();
+
+            let has_self = self.has_self && self.parent.is_none();
+            let is_separated_self = type_param_offset != 0 && idx == 0 && has_self;
+
             if let Some(idx) = (idx as usize).checked_sub(type_param_offset) {
-                assert!(!(self.has_self && idx == 0));
+                assert!(!is_separated_self, "found a Self after type_param_offset");
                 &self.types[idx]
             } else {
-                assert!(self.has_self && idx == 0);
+                assert!(is_separated_self, "non-Self param before type_param_offset");
                 &self.types[0]
             }
         } else {
