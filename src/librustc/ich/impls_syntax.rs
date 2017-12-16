@@ -394,8 +394,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
             // Do not hash the source as it is not encoded
             src: _,
             src_hash,
-            // The stable id is just a hash of other fields
-            stable_id: _,
             external_src: _,
             start_pos,
             end_pos: _,
