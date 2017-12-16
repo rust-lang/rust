@@ -1,0 +1,14 @@
+error: expected field pattern, found `...`
+  --> $DIR/issue-46718-expected-dotdot-found-dotdotdot.rs:21:55
+   |
+21 |             PersonalityInventory { expressivity: exp, ... } => exp
+   |                                                       ^^^ help: to omit remaining fields, use one fewer `.`: `..`
+
+error[E0027]: pattern does not mention field `instrumentality`
+  --> $DIR/issue-46718-expected-dotdot-found-dotdotdot.rs:21:13
+   |
+21 |             PersonalityInventory { expressivity: exp, ... } => exp
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing field `instrumentality`
+
+error: aborting due to 2 previous errors
+
