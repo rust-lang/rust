@@ -121,7 +121,6 @@ pub struct Config {
     pub docdir: Option<PathBuf>,
     pub bindir: Option<PathBuf>,
     pub libdir: Option<PathBuf>,
-    pub libdir_relative: Option<PathBuf>,
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
@@ -403,7 +402,6 @@ impl Config {
             config.docdir = install.docdir.clone().map(PathBuf::from);
             config.bindir = install.bindir.clone().map(PathBuf::from);
             config.libdir = install.libdir.clone().map(PathBuf::from);
-            config.libdir_relative = install.libdir.clone().map(PathBuf::from);
             config.mandir = install.mandir.clone().map(PathBuf::from);
         }
 
