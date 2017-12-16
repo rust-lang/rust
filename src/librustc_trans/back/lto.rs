@@ -26,6 +26,7 @@ use {ModuleTranslation, ModuleLlvm, ModuleKind, ModuleSource};
 use libc;
 
 use std::ffi::CString;
+use std::ptr;
 use std::slice;
 use std::sync::Arc;
 
@@ -629,6 +630,18 @@ impl ThinModule {
         };
         cgcx.save_temp_bitcode(&mtrans, "thin-lto-input");
 
+        // Before we do much else find the "main" `DICompileUnit` that we'll be
+        // using below. If we find more than one though then rustc has changed
+        // in a way we're not ready for, so generate an ICE by returning
+        // an error.
+        let mut cu1 = ptr::null_mut();
+        let mut cu2 = ptr::null_mut();
+        llvm::LLVMRustThinLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
+        if !cu2.is_null() {
+            let msg = format!("multiple source DICompileUnits found");
+            return Err(write::llvm_err(&diag_handler, msg))
+        }
+
         // Like with "fat" LTO, get some better optimizations if landing pads
         // are disabled by removing all landing pads.
         if cgcx.no_landing_pads {
@@ -669,6 +682,39 @@ impl ThinModule {
         }
         cgcx.save_temp_bitcode(&mtrans, "thin-lto-after-import");
         timeline.record("import");
+
+        // Ok now this is a bit unfortunate. This is also something you won't
+        // find upstream in LLVM's ThinLTO passes! This is a hack for now to
+        // work around bugs in LLVM.
+        //
+        // First discovered in #45511 it was found that as part of ThinLTO
+        // importing passes LLVM will import `DICompileUnit` metadata
+        // information across modules. This means that we'll be working with one
+        // LLVM module that has multiple `DICompileUnit` instances in it (a
+        // bunch of `llvm.dbg.cu` members). Unfortunately there's a number of
+        // bugs in LLVM's backend which generates invalid DWARF in a situation
+        // like this:
+        //
+        //  https://bugs.llvm.org/show_bug.cgi?id=35212
+        //  https://bugs.llvm.org/show_bug.cgi?id=35562
+        //
+        // While the first bug there is fixed the second ended up causing #46346
+        // which was basically a resurgence of #45511 after LLVM's bug 35212 was
+        // fixed.
+        //
+        // This function below is a huge hack around tihs problem. The function
+        // below is defined in `PassWrapper.cpp` and will basically "merge"
+        // all `DICompileUnit` instances in a module. Basically it'll take all
+        // the objects, rewrite all pointers of `DISubprogram` to point to the
+        // first `DICompileUnit`, and then delete all the other units.
+        //
+        // This is probably mangling to the debug info slightly (but hopefully
+        // not too much) but for now at least gets LLVM to emit valid DWARF (or
+        // so it appears). Hopefully we can remove this once upstream bugs are
+        // fixed in LLVM.
+        llvm::LLVMRustThinLTOPatchDICompileUnit(llmod, cu1);
+        cgcx.save_temp_bitcode(&mtrans, "thin-lto-after-patch");
+        timeline.record("patch");
 
         // Alright now that we've done everything related to the ThinLTO
         // analysis it's time to run some optimizations! Here we use the same

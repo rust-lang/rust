@@ -1728,4 +1728,8 @@ extern "C" {
         Identifier: *const c_char,
     ) -> ModuleRef;
     pub fn LLVMGetModuleIdentifier(M: ModuleRef, size: *mut usize) -> *const c_char;
+    pub fn LLVMRustThinLTOGetDICompileUnit(M: ModuleRef,
+                                           CU1: *mut *mut c_void,
+                                           CU2: *mut *mut c_void);
+    pub fn LLVMRustThinLTOPatchDICompileUnit(M: ModuleRef, CU: *mut c_void);
 }
