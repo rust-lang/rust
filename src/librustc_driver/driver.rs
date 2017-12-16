@@ -646,14 +646,11 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         disambiguator,
     );
 
-    let dep_graph = if sess.opts.build_dep_graph() {
-        let prev_dep_graph = time(time_passes, "load prev dep-graph", || {
-            rustc_incremental::load_dep_graph(sess)
-        });
-
-        DepGraph::new(prev_dep_graph)
+    // If necessary, compute the dependency graph (in the background).
+    let future_dep_graph = if sess.opts.build_dep_graph() {
+        Some(rustc_incremental::load_dep_graph(sess, time_passes))
     } else {
-        DepGraph::new_disabled()
+        None
     };
 
     time(time_passes, "recursion limit", || {
@@ -881,6 +878,17 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     })?;
 
     // Lower ast -> hir.
+    // First, we need to collect the dep_graph.
+    let dep_graph = match future_dep_graph {
+        None => DepGraph::new_disabled(),
+        Some(future) => {
+            let prev_graph = future
+                .open()
+                .expect("Could not join with background dep_graph thread")
+                .open(sess);
+            DepGraph::new(prev_graph)
+        }
+    };
     let hir_forest = time(time_passes, "lowering ast -> hir", || {
         let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, &mut resolver);
 

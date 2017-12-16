@@ -330,6 +330,10 @@ pub struct IndexVec<I: Idx, T> {
     _marker: PhantomData<Fn(&I)>
 }
 
+// Whether `IndexVec` is `Send` depends only on the data,
+// not the phantom data.
+unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
+
 impl<I: Idx, T: serialize::Encodable> serialize::Encodable for IndexVec<I, T> {
     fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         serialize::Encodable::encode(&self.raw, s)
