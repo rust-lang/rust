@@ -1360,24 +1360,16 @@ impl<T> [T] {
         core_slice::SliceExt::sort_unstable_by_key(self, f);
     }
 
-    /// Permutes the slice in-place such that `self[mid..]` moves to the
-    /// beginning of the slice while `self[..mid]` moves to the end of the
-    /// slice.  Equivalently, rotates the slice `mid` places to the left
-    /// or `k = self.len() - mid` places to the right.
-    ///
-    /// This is a "k-rotation", a permutation in which item `i` moves to
-    /// position `i + k`, modulo the length of the slice.  See _Elements
-    /// of Programming_ [§10.4][eop].
-    ///
-    /// Rotation by `mid` and rotation by `k` are inverse operations.
-    ///
-    /// [eop]: https://books.google.com/books?id=CO9ULZGINlsC&pg=PA178&q=k-rotation
+    /// Rotates the slice in-place such that the first `mid` elements of the
+    /// slice move to the end while the last `self.len() - mid` elements move to
+    /// the front. After calling `rotate_left`, the element previously at index
+    /// `mid` will become the first element in the slice.
     ///
     /// # Panics
     ///
     /// This function will panic if `mid` is greater than the length of the
-    /// slice.  (Note that `mid == self.len()` does _not_ panic; it's a nop
-    /// rotation with `k == 0`, the inverse of a rotation with `mid == 0`.)
+    /// slice. Note that `mid == self.len()` does _not_ panic and is a no-op
+    /// rotation.
     ///
     /// # Complexity
     ///
@@ -1388,31 +1380,68 @@ impl<T> [T] {
     /// ```
     /// #![feature(slice_rotate)]
     ///
-    /// let mut a = [1, 2, 3, 4, 5, 6, 7];
-    /// let mid = 2;
-    /// a.rotate(mid);
-    /// assert_eq!(&a, &[3, 4, 5, 6, 7, 1, 2]);
-    /// let k = a.len() - mid;
-    /// a.rotate(k);
-    /// assert_eq!(&a, &[1, 2, 3, 4, 5, 6, 7]);
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// a.rotate_left(2);
+    /// assert_eq!(a, ['c', 'd', 'e', 'f', 'a', 'b']);
+    /// ```
     ///
-    /// use std::ops::Range;
-    /// fn slide<T>(slice: &mut [T], range: Range<usize>, to: usize) {
-    ///     if to < range.start {
-    ///         slice[to..range.end].rotate(range.start-to);
-    ///     } else if to > range.end {
-    ///         slice[range.start..to].rotate(range.end-range.start);
-    ///     }
-    /// }
-    /// let mut v: Vec<_> = (0..10).collect();
-    /// slide(&mut v, 1..4, 7);
-    /// assert_eq!(&v, &[0, 4, 5, 6, 1, 2, 3, 7, 8, 9]);
-    /// slide(&mut v, 6..8, 1);
-    /// assert_eq!(&v, &[0, 3, 7, 4, 5, 6, 1, 2, 8, 9]);
+    /// Rotating a subslice:
+    ///
+    /// ```
+    /// #![feature(slice_rotate)]
+    ///
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// a[1..5].rotate_left(1);
+    /// assert_eq!(a, ['a', 'c', 'd', 'e', 'b', 'f']);
     /// ```
     #[unstable(feature = "slice_rotate", issue = "41891")]
+    pub fn rotate_left(&mut self, mid: usize) {
+        core_slice::SliceExt::rotate_left(self, mid);
+    }
+
+    #[unstable(feature = "slice_rotate", issue = "41891")]
+    #[rustc_deprecated(since = "", reason = "renamed to `rotate_left`")]
     pub fn rotate(&mut self, mid: usize) {
-        core_slice::SliceExt::rotate(self, mid);
+        core_slice::SliceExt::rotate_left(self, mid);
+    }
+
+    /// Rotates the slice in-place such that the first `self.len() - k`
+    /// elements of the slice move to the end while the last `k` elements move
+    /// to the front. After calling `rotate_right`, the element previously at
+    /// index `self.len() - k` will become the first element in the slice.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `k` is greater than the length of the
+    /// slice. Note that `k == self.len()` does _not_ panic and is a no-op
+    /// rotation.
+    ///
+    /// # Complexity
+    ///
+    /// Takes linear (in `self.len()`) time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rotate)]
+    ///
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// a.rotate_right(2);
+    /// assert_eq!(a, ['e', 'f', 'a', 'b', 'c', 'd']);
+    /// ```
+    ///
+    /// Rotate a subslice:
+    ///
+    /// ```
+    /// #![feature(slice_rotate)]
+    ///
+    /// let mut a = ['a', 'b', 'c', 'd', 'e', 'f'];
+    /// a[1..5].rotate_right(1);
+    /// assert_eq!(a, ['a', 'e', 'b', 'c', 'd', 'f']);
+    /// ```
+    #[unstable(feature = "slice_rotate", issue = "41891")]
+    pub fn rotate_right(&mut self, k: usize) {
+        core_slice::SliceExt::rotate_right(self, k);
     }
 
     /// Copies the elements from `src` into `self`.

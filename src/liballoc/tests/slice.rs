@@ -494,37 +494,72 @@ fn test_sort_stability() {
 }
 
 #[test]
-fn test_rotate() {
+fn test_rotate_left() {
     let expected: Vec<_> = (0..13).collect();
     let mut v = Vec::new();
 
     // no-ops
     v.clone_from(&expected);
-    v.rotate(0);
+    v.rotate_left(0);
     assert_eq!(v, expected);
-    v.rotate(expected.len());
+    v.rotate_left(expected.len());
     assert_eq!(v, expected);
     let mut zst_array = [(), (), ()];
-    zst_array.rotate(2);
+    zst_array.rotate_left(2);
 
     // happy path
     v = (5..13).chain(0..5).collect();
-    v.rotate(8);
+    v.rotate_left(8);
     assert_eq!(v, expected);
 
     let expected: Vec<_> = (0..1000).collect();
 
     // small rotations in large slice, uses ptr::copy
     v = (2..1000).chain(0..2).collect();
-    v.rotate(998);
+    v.rotate_left(998);
     assert_eq!(v, expected);
     v = (998..1000).chain(0..998).collect();
-    v.rotate(2);
+    v.rotate_left(2);
     assert_eq!(v, expected);
 
     // non-small prime rotation, has a few rounds of swapping
     v = (389..1000).chain(0..389).collect();
-    v.rotate(1000-389);
+    v.rotate_left(1000-389);
+    assert_eq!(v, expected);
+}
+
+#[test]
+fn test_rotate_right() {
+    let expected: Vec<_> = (0..13).collect();
+    let mut v = Vec::new();
+
+    // no-ops
+    v.clone_from(&expected);
+    v.rotate_right(0);
+    assert_eq!(v, expected);
+    v.rotate_right(expected.len());
+    assert_eq!(v, expected);
+    let mut zst_array = [(), (), ()];
+    zst_array.rotate_right(2);
+
+    // happy path
+    v = (5..13).chain(0..5).collect();
+    v.rotate_right(5);
+    assert_eq!(v, expected);
+
+    let expected: Vec<_> = (0..1000).collect();
+
+    // small rotations in large slice, uses ptr::copy
+    v = (2..1000).chain(0..2).collect();
+    v.rotate_right(2);
+    assert_eq!(v, expected);
+    v = (998..1000).chain(0..998).collect();
+    v.rotate_right(998);
+    assert_eq!(v, expected);
+
+    // non-small prime rotation, has a few rounds of swapping
+    v = (389..1000).chain(0..389).collect();
+    v.rotate_right(389);
     assert_eq!(v, expected);
 }
 
