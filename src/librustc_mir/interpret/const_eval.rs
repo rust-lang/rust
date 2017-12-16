@@ -20,11 +20,32 @@ use rustc_const_math::ConstInt;
 use std::fmt;
 use std::error::Error;
 
+
+pub fn mk_eval_cx<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: Instance<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> EvalResult<'tcx, EvalContext<'a, 'tcx, CompileTimeEvaluator>> {
+    debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
+    let limits = super::ResourceLimits::default();
+    let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
+    let mir = ecx.load_mir(instance.def)?;
+    // insert a stack frame so any queries have the correct substs
+    ecx.push_stack_frame(
+        instance,
+        mir.span,
+        mir,
+        Place::undef(),
+        StackPopCleanup::None,
+    )?;
+    Ok(ecx)
+}
+
 pub fn eval_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, (PtrAndAlign, Ty<'tcx>)>, EvalContext<'a, 'tcx, CompileTimeEvaluator>) {
+) -> EvalResult<'tcx, (PtrAndAlign, Ty<'tcx>)> {
     debug!("eval_body: {:?}, {:?}", instance, param_env);
     let limits = super::ResourceLimits::default();
     let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
@@ -33,55 +54,43 @@ pub fn eval_body<'a, 'tcx>(
         promoted: None,
     };
 
-    let try = (|| {
-        if ecx.tcx.has_attr(instance.def_id(), "linkage") {
-            return Err(ConstEvalError::NotConst("extern global".to_string()).into());
-        }
-        // FIXME(eddyb) use `Instance::ty` when it becomes available.
-        let instance_ty =
-            ecx.monomorphize(instance.def.def_ty(tcx), instance.substs);
-        if tcx.interpret_interner.borrow().get_cached(cid).is_none() {
-            let mir = ecx.load_mir(instance.def)?;
-            let layout = ecx.layout_of(instance_ty)?;
-            assert!(!layout.is_unsized());
-            let ptr = ecx.memory.allocate(
-                layout.size.bytes(),
-                layout.align.abi(),
-                None,
-            )?;
-            tcx.interpret_interner.borrow_mut().cache(
-                cid,
-                PtrAndAlign {
-                    ptr: ptr.into(),
-                    aligned: !layout.is_packed(),
-                },
-            );
-            let cleanup = StackPopCleanup::MarkStatic(Mutability::Immutable);
-            let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
-            trace!("const_eval: pushing stack frame for global: {}", name);
-            ecx.push_stack_frame(
-                instance,
-                mir.span,
-                mir,
-                Place::from_ptr(ptr),
-                cleanup.clone(),
-            )?;
+    if ecx.tcx.has_attr(instance.def_id(), "linkage") {
+        return Err(ConstEvalError::NotConst("extern global".to_string()).into());
+    }
+    // FIXME(eddyb) use `Instance::ty` when it becomes available.
+    let instance_ty =
+        ecx.monomorphize(instance.def.def_ty(tcx), instance.substs);
+    if tcx.interpret_interner.borrow().get_cached(cid).is_none() {
+        let mir = ecx.load_mir(instance.def)?;
+        let layout = ecx.layout_of(instance_ty)?;
+        assert!(!layout.is_unsized());
+        let ptr = ecx.memory.allocate(
+            layout.size.bytes(),
+            layout.align.abi(),
+            None,
+        )?;
+        tcx.interpret_interner.borrow_mut().cache(
+            cid,
+            PtrAndAlign {
+                ptr: ptr.into(),
+                aligned: !layout.is_packed(),
+            },
+        );
+        let cleanup = StackPopCleanup::MarkStatic(Mutability::Immutable);
+        let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
+        trace!("const_eval: pushing stack frame for global: {}", name);
+        ecx.push_stack_frame(
+            instance,
+            mir.span,
+            mir,
+            Place::from_ptr(ptr),
+            cleanup.clone(),
+        )?;
 
-            while ecx.step()? {}
-
-            // reinsert the stack frame so any future queries have the correct substs
-            ecx.push_stack_frame(
-                instance,
-                mir.span,
-                mir,
-                Place::from_ptr(ptr),
-                cleanup,
-            )?;
-        }
-        let value = tcx.interpret_interner.borrow().get_cached(cid).expect("global not cached");
-        Ok((value, instance_ty))
-    })();
-    (try, ecx)
+        while ecx.step()? {}
+    }
+    let value = tcx.interpret_interner.borrow().get_cached(cid).expect("global not cached");
+    Ok((value, instance_ty))
 }
 
 pub fn eval_body_as_integer<'a, 'tcx>(
@@ -89,8 +98,9 @@ pub fn eval_body_as_integer<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     instance: Instance<'tcx>,
 ) -> EvalResult<'tcx, ConstInt> {
-    let (ptr_ty, ecx) = eval_body(tcx, instance, param_env);
+    let ptr_ty = eval_body(tcx, instance, param_env);
     let (ptr, ty) = ptr_ty?;
+    let ecx = mk_eval_cx(tcx, instance, param_env)?;
     let prim = match ecx.read_maybe_aligned(ptr.aligned, |ectx| ectx.try_read_value(ptr.ptr, ty))? {
         Some(Value::ByVal(prim)) => prim.to_bytes()?,
         _ => return err!(TypeNotPrimitive(ty)),
@@ -340,20 +350,19 @@ pub fn const_eval_provider<'a, 'tcx>(
         trace!("const eval instance: {:?}, {:?}", instance, key.param_env);
         let miri_result = ::interpret::eval_body(tcx, instance, key.param_env);
         match (miri_result, old_result) {
-            ((Err(err), ecx), Ok(ok)) => {
+            (Err(err), Ok(ok)) => {
                 trace!("miri failed, ctfe returned {:?}", ok);
                 tcx.sess.span_warn(
                     tcx.def_span(key.value.0),
                     "miri failed to eval, while ctfe succeeded",
                 );
+                let ecx = mk_eval_cx(tcx, instance, key.param_env).unwrap();
                 let () = unwrap_miri(&ecx, Err(err));
                 Ok(ok)
             },
-            ((Ok(_), _), Err(err)) => {
-                Err(err)
-            },
-            ((Err(_), _), Err(err)) => Err(err),
-            ((Ok((miri_val, miri_ty)), mut ecx), Ok(ctfe)) => {
+            (_, Err(err)) => Err(err),
+            (Ok((miri_val, miri_ty)), Ok(ctfe)) => {
+                let mut ecx = mk_eval_cx(tcx, instance, key.param_env).unwrap();
                 check_ctfe_against_miri(&mut ecx, miri_val, miri_ty, ctfe.val);
                 Ok(ctfe)
             }
