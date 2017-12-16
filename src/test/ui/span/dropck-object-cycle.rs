@@ -35,6 +35,7 @@ impl<'t> MakerTrait for Box<Trait<'t>+'static> {
 pub fn main() {
     let m : Box<Trait+'static> = make_val();
     assert_eq!(object_invoke1(&*m), (4,5));
+    //~^ ERROR `*m` does not live long enough
 
     // the problem here is that the full type of `m` is
     //
@@ -54,5 +55,4 @@ pub fn main() {
     // the type of `m` *strictly outlives* `'m`. Hence we get an
     // error.
 }
-//~^ ERROR `*m` does not live long enough
 

@@ -16,6 +16,6 @@ pub fn main() {
         let b = 42;
         &a..&b
     };
-    //~^ ERROR `a` does not live long enough
-    //~^^ ERROR `b` does not live long enough
+    //~^^ ERROR `a` does not live long enough
+    //~| ERROR `b` does not live long enough
 }

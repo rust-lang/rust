@@ -25,9 +25,9 @@ fn main() {
     let y: i8 = 4;
 
     v.push(&x);
+    //~^ ERROR `x` does not live long enough
     v.push(&y);
+    //~^ ERROR `y` does not live long enough
 
     assert_eq!(v, [&3, &4]);
 }
-//~^ ERROR `x` does not live long enough
-//~| ERROR `y` does not live long enough

@@ -40,9 +40,9 @@ fn main() {
     last_dropped = ScribbleOnDrop(format!("last"));
     first_dropped = ScribbleOnDrop(format!("first"));
     foo0 = Foo(0, &last_dropped);
+    //~^ ERROR `last_dropped` does not live long enough
     foo1 = Foo(1, &first_dropped);
+    //~^ ERROR `first_dropped` does not live long enough
 
     println!("foo0.1: {:?} foo1.1: {:?}", foo0.1, foo1.1);
 }
-//~^ ERROR `last_dropped` does not live long enough
-//~| ERROR `first_dropped` does not live long enough

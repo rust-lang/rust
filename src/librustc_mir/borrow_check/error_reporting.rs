@@ -391,10 +391,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self, name: &String, _scope_tree: &Rc<ScopeTree>, _borrow: &BorrowData<'tcx>,
         drop_span: Span, borrow_span: Span, _proper_span: Span, end_span: Option<Span>
     ) {
-        let mut err = self.tcx.path_does_not_live_long_enough(drop_span,
+        let mut err = self.tcx.path_does_not_live_long_enough(borrow_span,
                                                               &format!("`{}`", name),
                                                               Origin::Mir);
-        err.span_label(borrow_span, "borrow occurs here");
+        err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(drop_span, format!("`{}` dropped here while still borrowed", name));
         if let Some(end) = end_span {
             err.span_label(end, "borrowed value needs to live until here");
@@ -404,12 +404,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     fn report_scoped_temporary_value_does_not_live_long_enough(
         &mut self, _scope_tree: &Rc<ScopeTree>, _borrow: &BorrowData<'tcx>,
-        drop_span: Span, borrow_span: Span, proper_span: Span, end_span: Option<Span>
+        drop_span: Span, _borrow_span: Span, proper_span: Span, end_span: Option<Span>
     ) {
-        let mut err = self.tcx.path_does_not_live_long_enough(borrow_span,
+        let mut err = self.tcx.path_does_not_live_long_enough(proper_span,
                                                               "borrowed value",
                                                               Origin::Mir);
-        err.span_label(proper_span, "temporary value created here");
+        err.span_label(proper_span, "temporary value does not live long enough");
         err.span_label(drop_span, "temporary value dropped here while still borrowed");
         err.note("consider using a `let` binding to increase its lifetime");
         if let Some(end) = end_span {
@@ -425,7 +425,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut err = self.tcx.path_does_not_live_long_enough(borrow_span,
                                                               &format!("`{}`", name),
                                                               Origin::Mir);
-        err.span_label(borrow_span, "does not live long enough");
+        err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(drop_span, "borrowed value only lives until here");
         self.tcx.note_and_explain_region(scope_tree, &mut err,
                                          "borrowed value must be valid for ",
@@ -440,7 +440,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut err = self.tcx.path_does_not_live_long_enough(proper_span,
                                                               "borrowed value",
                                                               Origin::Mir);
-        err.span_label(proper_span, "does not live long enough");
+        err.span_label(proper_span, "temporary value does not live long enough");
         err.span_label(drop_span, "temporary value only lives until here");
         self.tcx.note_and_explain_region(scope_tree, &mut err,
                                          "borrowed value must be valid for ",

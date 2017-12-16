@@ -75,7 +75,7 @@ error[E0597]: `a` does not live long enough
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:41:26
    |
 41 |     let cell = Cell::new(&a);
-   |                          ^^ does not live long enough
+   |                          ^^ borrowed value does not live long enough
 ...
 49 | }
    | - borrowed value only lives until here

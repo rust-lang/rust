@@ -54,7 +54,7 @@ error[E0597]: `y` does not live long enough
 31 | |             let mut closure1 = || p = &y;
 32 | |             closure1();
 33 | |         };
-   | |_________^ does not live long enough
+   | |_________^ borrowed value does not live long enough
 ...
 36 |       }
    |        - borrowed value only lives until here

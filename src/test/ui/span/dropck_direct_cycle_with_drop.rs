@@ -44,10 +44,10 @@ impl<'a> Drop for D<'a> {
 fn g() {
     let (d1, d2) = (D::new(format!("d1")), D::new(format!("d2")));
     d1.p.set(Some(&d2));
+    //~^ ERROR `d2` does not live long enough
     d2.p.set(Some(&d1));
+    //~^ ERROR `d1` does not live long enough
 }
-//~^ ERROR `d2` does not live long enough
-//~| ERROR `d1` does not live long enough
 
 fn main() {
     g();

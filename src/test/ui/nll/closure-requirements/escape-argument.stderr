@@ -28,7 +28,7 @@ error[E0597]: `y` does not live long enough
   --> $DIR/escape-argument.rs:37:25
    |
 37 |         closure(&mut p, &y);
-   |                         ^^ does not live long enough
+   |                         ^^ borrowed value does not live long enough
 38 |         //~^ ERROR `y` does not live long enough [E0597]
 39 |     }
    |      - borrowed value only lives until here

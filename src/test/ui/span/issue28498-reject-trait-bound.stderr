@@ -1,22 +1,22 @@
 error[E0597]: `last_dropped` does not live long enough
-  --> $DIR/issue28498-reject-trait-bound.rs:48:1
+  --> $DIR/issue28498-reject-trait-bound.rs:44:20
    |
 44 |     foo0 = Foo(0, &last_dropped);
-   |                    ------------ borrow occurs here
+   |                    ^^^^^^^^^^^^ borrowed value does not live long enough
 ...
-48 | }
-   | ^ `last_dropped` dropped here while still borrowed
+50 | }
+   | - `last_dropped` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `first_dropped` does not live long enough
-  --> $DIR/issue28498-reject-trait-bound.rs:48:1
+  --> $DIR/issue28498-reject-trait-bound.rs:46:20
    |
-45 |     foo1 = Foo(1, &first_dropped);
-   |                    ------------- borrow occurs here
+46 |     foo1 = Foo(1, &first_dropped);
+   |                    ^^^^^^^^^^^^^ borrowed value does not live long enough
 ...
-48 | }
-   | ^ `first_dropped` dropped here while still borrowed
+50 | }
+   | - `first_dropped` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

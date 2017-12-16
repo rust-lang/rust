@@ -2,7 +2,7 @@ error[E0597]: `x` does not live long enough (Ast)
   --> $DIR/issue-46471.rs:15:6
    |
 15 |     &x
-   |      ^ does not live long enough
+   |      ^ borrowed value does not live long enough
 ...
 18 | }
    | - borrowed value only lives until here
@@ -13,7 +13,7 @@ error[E0597]: `x` does not live long enough (Mir)
   --> $DIR/issue-46471.rs:15:5
    |
 15 |     &x
-   |     ^^ does not live long enough
+   |     ^^ borrowed value does not live long enough
 ...
 18 | }
    |  - borrowed value only lives until here

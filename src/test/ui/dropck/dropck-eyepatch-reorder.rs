@@ -55,7 +55,9 @@ fn main() {
     dr = Dr("dr", &c_long);
     // Error: destructor order imprecisely modelled
     dt = Dt("dt", &c);
+    //~^ ERROR `c` does not live long enough
     dr = Dr("dr", &c);
+    //~^ ERROR `c` does not live long enough
 
     // No error: Drop impl asserts .1 (A and &'a _) are not accessed
     pt = Pt("pt", &c, &c_long);
@@ -63,7 +65,9 @@ fn main() {
 
     // Error: Drop impl's assertion does not apply to `B` nor `&'b _`
     pt = Pt("pt", &c_long, &c);
+    //~^ ERROR `c` does not live long enough
     pr = Pr("pr", &c_long, &c);
+    //~^ ERROR `c` does not live long enough
 
     // No error: St and Sr have no destructor.
     st = St("st", &c);
@@ -71,7 +75,3 @@ fn main() {
 
     println!("{:?}", (dt.0, dr.0, pt.0, pr.0, st.0, sr.0));
 }
-//~^ ERROR `c` does not live long enough
-//~| ERROR `c` does not live long enough
-//~| ERROR `c` does not live long enough
-//~| ERROR `c` does not live long enough

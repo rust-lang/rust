@@ -49,4 +49,4 @@ fn main() {
     ticking = Bomb { usable: true };
     zook.button = B::BigRedButton(&ticking);
 }
-//~^ ERROR `ticking` does not live long enough
+//~^^ ERROR `ticking` does not live long enough

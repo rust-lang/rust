@@ -78,8 +78,8 @@ impl<'a> Drop for Test<'a> {
 fn main() {
     let container = Container::new();
     let test = Test{test: &container};
+    //~^ ERROR `container` does not live long enough
     println!("container.v[30]: {:?}", container.v.v[30]);
     container.store(test);
+    //~^ ERROR `container` does not live long enough
 }
-//~^ ERROR `container` does not live long enough
-//~| ERROR `container` does not live long enough

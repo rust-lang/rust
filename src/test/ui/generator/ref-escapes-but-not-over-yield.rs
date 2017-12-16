@@ -22,7 +22,8 @@ fn foo(x: &i32) {
         yield();
         let b = 5;
         a = &b;
-    }; //~ ERROR
+        //~^ ERROR `b` does not live long enough
+    };
 }
 
 fn main() { }

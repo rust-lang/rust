@@ -2,7 +2,7 @@ error[E0597]: borrowed value does not live long enough (Ast)
   --> $DIR/issue-46472.rs:14:10
    |
 14 |     &mut 4
-   |          ^ does not live long enough
+   |          ^ temporary value does not live long enough
 ...
 17 | }
    | - temporary value only lives until here
@@ -21,7 +21,7 @@ error[E0597]: borrowed value does not live long enough (Mir)
   --> $DIR/issue-46472.rs:14:10
    |
 14 |     &mut 4
-   |          ^ does not live long enough
+   |          ^ temporary value does not live long enough
 ...
 17 | }
    |  - temporary value only lives until here

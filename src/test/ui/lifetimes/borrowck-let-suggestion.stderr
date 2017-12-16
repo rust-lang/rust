@@ -1,10 +1,10 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion.rs:12:27
+  --> $DIR/borrowck-let-suggestion.rs:12:13
    |
-12 |     let x = vec![1].iter(); //~ ERROR does not live long enough
-   |             -------       ^ temporary value dropped here while still borrowed
+12 |     let x = vec![1].iter();
+   |             ^^^^^^^       - temporary value dropped here while still borrowed
    |             |
-   |             temporary value created here
+   |             temporary value does not live long enough
 13 | }
    | - temporary value needs to live until here
    |
