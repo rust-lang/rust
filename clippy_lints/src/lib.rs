@@ -88,6 +88,7 @@ pub mod derive;
 pub mod doc;
 pub mod double_parens;
 pub mod drop_forget_ref;
+pub mod else_if_without_else;
 pub mod empty_enum;
 pub mod entry;
 pub mod enum_clike;
@@ -329,6 +330,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box formatting::Formatting);
     reg.register_late_lint_pass(box swap::Swap);
     reg.register_early_lint_pass(box if_not_else::IfNotElse);
+    reg.register_early_lint_pass(box else_if_without_else::ElseIfWithoutElse);
     reg.register_early_lint_pass(box int_plus_one::IntPlusOne);
     reg.register_late_lint_pass(box overflow_check_conditional::OverflowCheckConditional);
     reg.register_late_lint_pass(box unused_label::UnusedLabel);
@@ -369,6 +371,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         arithmetic::INTEGER_ARITHMETIC,
         array_indexing::INDEXING_SLICING,
         assign_ops::ASSIGN_OPS,
+        else_if_without_else::ELSE_IF_WITHOUT_ELSE,
         misc::FLOAT_CMP_CONST,
     ]);
 
