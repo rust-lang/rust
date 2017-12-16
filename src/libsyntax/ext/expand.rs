@@ -242,7 +242,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             tokens: None,
         })));
 
-        match self.expand(krate_item).make_items().pop().map(P::unwrap) {
+        match self.expand(krate_item).make_items().pop().map(P::into_inner) {
             Some(ast::Item { attrs, node: ast::ItemKind::Mod(module), .. }) => {
                 krate.attrs = attrs;
                 krate.module = module;
@@ -504,8 +504,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             AttrProcMacro(ref mac) => {
                 let item_tok = TokenTree::Token(DUMMY_SP, Token::interpolated(match item {
                     Annotatable::Item(item) => token::NtItem(item),
-                    Annotatable::TraitItem(item) => token::NtTraitItem(item.unwrap()),
-                    Annotatable::ImplItem(item) => token::NtImplItem(item.unwrap()),
+                    Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
+                    Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),
                 })).into();
                 let tok_result = mac.expand(self.cx, attr.span, attr.tokens, item_tok);
                 self.parse_expansion(tok_result, kind, &attr.path, attr.span)
@@ -863,7 +863,7 @@ pub fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let mut expr = self.cfg.configure_expr(expr).unwrap();
+        let mut expr = self.cfg.configure_expr(expr).into_inner();
         expr.node = self.cfg.configure_expr_kind(expr.node);
 
         if let ast::ExprKind::Mac(mac) = expr.node {
@@ -875,7 +875,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        let mut expr = configure!(self, expr).unwrap();
+        let mut expr = configure!(self, expr).into_inner();
         expr.node = self.cfg.configure_expr_kind(expr.node);
 
         if let ast::ExprKind::Mac(mac) = expr.node {
@@ -906,7 +906,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         };
 
         let (mac, style, attrs) = if let StmtKind::Mac(mac) = stmt.node {
-            mac.unwrap()
+            mac.into_inner()
         } else {
             // The placeholder expander gives ids to statements, so we avoid folding the id here.
             let ast::Stmt { id, node, span } = stmt;
@@ -1056,7 +1056,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
     fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
         let ty = match ty.node {
-            ast::TyKind::Mac(_) => ty.unwrap(),
+            ast::TyKind::Mac(_) => ty.into_inner(),
             _ => return fold::noop_fold_ty(ty, self),
         };
 

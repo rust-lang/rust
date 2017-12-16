@@ -68,7 +68,7 @@ impl<T: 'static> P<T> {
         f(*self.ptr)
     }
     /// Equivalent to and_then(|x| x)
-    pub fn unwrap(self) -> T {
+    pub fn into_inner(self) -> T {
         *self.ptr
     }
 

@@ -2063,9 +2063,9 @@ impl Clean<Type> for hir::Ty {
                         for (i, ty_param) in generics.ty_params.iter().enumerate() {
                             let ty_param_def = Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
                             if let Some(ty) = provided_params.types.get(i).cloned() {
-                                ty_substs.insert(ty_param_def, ty.unwrap().clean(cx));
+                                ty_substs.insert(ty_param_def, ty.into_inner().clean(cx));
                             } else if let Some(default) = ty_param.default.clone() {
-                                ty_substs.insert(ty_param_def, default.unwrap().clean(cx));
+                                ty_substs.insert(ty_param_def, default.into_inner().clean(cx));
                             }
                         }
                         for (i, lt_param) in generics.lifetimes.iter().enumerate() {
