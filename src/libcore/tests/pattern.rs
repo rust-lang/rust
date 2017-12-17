@@ -74,3 +74,27 @@ fn test_simple_iteration() {
         [Rejects(15, 16), Rejects(14, 15), Rejects(13, 14), Rejects(12, 13), Rejects(9, 12), Matches(6, 9), Rejects(3, 6), Rejects(0, 3), Done]
     );
 }
+
+#[test]
+fn test_simple_search() {
+    search_asserts!("abcdeabcdeabcde", 'a', "next_match for ASCII string",
+        [next_match,    next_match,    next_match,      next_match],
+        [InRange(0, 1), InRange(5, 6), InRange(10, 11), Done]
+    );
+
+    search_asserts!("abcdeabcdeabcde", 'a', "next_match_back for ASCII string",
+        [next_match_back, next_match_back, next_match_back, next_match_back],
+        [InRange(10, 11), InRange(5, 6),   InRange(0, 1),   Done]
+    );
+
+    search_asserts!("abcdeab", 'a', "next_reject for ASCII string",
+        [next_reject,   next_reject,   next_match,    next_reject,   next_reject],
+        [InRange(1, 2), InRange(2, 3), InRange(5, 6), InRange(6, 7), Done]
+    );
+
+    search_asserts!("abcdeabcdeabcde", 'a', "next_reject_back for ASCII string",
+        [next_reject_back, next_reject_back, next_match_back, next_reject_back, next_reject_back, next_reject_back],
+        [InRange(14, 15),  InRange(13, 14),  InRange(10, 11), InRange(9, 10),   InRange(8, 9),    InRange(7, 8)]
+    );
+}
+
