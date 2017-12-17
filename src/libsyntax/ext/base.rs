@@ -85,14 +85,14 @@ impl Annotatable {
 
     pub fn expect_trait_item(self) -> ast::TraitItem {
         match self {
-            Annotatable::TraitItem(i) => i.unwrap(),
+            Annotatable::TraitItem(i) => i.into_inner(),
             _ => panic!("expected Item")
         }
     }
 
     pub fn expect_impl_item(self) -> ast::ImplItem {
         match self {
-            Annotatable::ImplItem(i) => i.unwrap(),
+            Annotatable::ImplItem(i) => i.into_inner(),
             _ => panic!("expected Item")
         }
     }

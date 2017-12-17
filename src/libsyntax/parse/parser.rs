@@ -1456,7 +1456,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::CloseDelim(token::Paren))?;
 
             if ts.len() == 1 && !last_comma {
-                let ty = ts.into_iter().nth(0).unwrap().unwrap();
+                let ty = ts.into_iter().nth(0).unwrap().into_inner();
                 let maybe_bounds = allow_plus && self.token == token::BinOp(token::Plus);
                 match ty.node {
                     // `(TY_BOUND_NOPAREN) + BOUND + ...`.
@@ -6077,7 +6077,7 @@ impl<'a> Parser<'a> {
     fn parse_item_(&mut self, attrs: Vec<Attribute>,
                    macros_allowed: bool, attributes_allowed: bool) -> PResult<'a, Option<P<Item>>> {
         maybe_whole!(self, NtItem, |item| {
-            let mut item = item.unwrap();
+            let mut item = item.into_inner();
             let mut attrs = attrs;
             mem::swap(&mut item.attrs, &mut attrs);
             item.attrs.extend(attrs);

@@ -141,7 +141,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             }
         }
 
-        let mut item = i.unwrap();
+        let mut item = i.into_inner();
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
         if let ast::ItemKind::Mod(module) = item.node {

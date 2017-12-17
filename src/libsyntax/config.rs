@@ -284,13 +284,13 @@ impl<'a> fold::Folder for StripUnconfigured<'a> {
     }
 
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
-        let mut expr = self.configure_expr(expr).unwrap();
+        let mut expr = self.configure_expr(expr).into_inner();
         expr.node = self.configure_expr_kind(expr.node);
         P(fold::noop_fold_expr(expr, self))
     }
 
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        let mut expr = configure!(self, expr).unwrap();
+        let mut expr = configure!(self, expr).into_inner();
         expr.node = self.configure_expr_kind(expr.node);
         Some(P(fold::noop_fold_expr(expr, self)))
     }
