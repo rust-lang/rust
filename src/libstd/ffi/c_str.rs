@@ -411,6 +411,115 @@ impl CString {
         CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
     }
 
+    /// Copies up to `maxlen` bytes from a C buffer into a new CString, and then appends
+    /// a null terminator. Copying stops early if a null byte is found before the end of
+    /// the buffer.
+    ///
+    /// # Safety
+    ///
+    /// No bytes past the end of the buffer will be accessed even if no null terminator
+    /// is found.
+    /// 
+    /// Since the data is copied, the buffer may be freed once this function returns.
+    ///
+    /// # Examples
+    ///
+    /// Receive a string into a fixed size buffer, and then extract it as a CString.
+    ///
+    /// ```no_run
+    /// #![feature(cstr_of_fixed_size)]
+    /// 
+    /// use std::ffi::CString;
+    /// use std::os::raw::c_char;
+    /// use std::mem;
+    ///
+    /// extern {
+    ///     fn extern_fill_my_buf(s: *mut c_char, maxlen: usize);
+    /// }
+    ///
+    /// unsafe {
+    ///     let mut buf = mem::uninitialized::<[c_char; 256]>();
+    ///     extern_fill_my_buf(buf.as_mut_ptr(), buf.len());
+    ///     let c_string = CString::of_fixed_size_raw(buf.as_ptr(), buf.len());
+    /// }
+    /// ```
+    #[unstable(feature = "cstr_of_fixed_size", issue = "20475")]
+    pub unsafe fn of_fixed_size_raw(ptr: *const c_char, maxlen: usize) -> CString {
+        let len = sys::strnlen(ptr, maxlen) as usize; // Including the NUL byte
+        let mut result = Vec::with_capacity(len+1);
+        result.extend_from_slice(slice::from_raw_parts(ptr as *const u8, len));
+        CString::from_vec_unchecked(result)
+    }
+
+    /// Copies up to `maxlen` bytes from a buffer into a new CString, and then appends
+    /// a null terminator. Copying stops early if a null byte is found before the end of
+    /// the buffer.
+    ///
+    /// # Examples
+    ///
+    /// Receive a string into a fixed size buffer, and then extract it as a CString.
+    ///
+    /// ```no_run
+    /// #![feature(cstr_of_fixed_size)]
+    /// 
+    /// use std::ffi::CString;
+    /// use std::os::raw::c_char;
+    /// use std::mem;
+    ///
+    /// extern {
+    ///     fn extern_fill_my_buf(s: *mut c_char, maxlen: usize);
+    /// }
+    ///
+    /// unsafe {
+    ///     let mut buf = mem::uninitialized::<[u8; 256]>();
+    ///     extern_fill_my_buf(buf.as_mut_ptr() as *mut c_char, buf.len());
+    ///     let c_string = CString::of_fixed_size(&buf[..]);
+    /// }
+    /// ```
+    #[unstable(feature = "cstr_of_fixed_size", issue = "20475")]
+    pub fn of_fixed_size(slice: &[u8]) -> CString {
+        unsafe {
+            CString::of_fixed_size_raw(slice.as_ptr() as *const c_char, slice.len())
+        }
+    }
+
+    /// Creates a new C-compatible string from a container of bytes.
+    /// 
+    /// The string is terminated at the first null byte present within the
+    /// container.
+    ///
+    /// # Examples
+    ///
+    /// Receive a string into a fixed size buffer, and then extract it as a CString.
+    ///
+    /// ```no_run
+    /// #![feature(cstr_of_fixed_size)]
+    /// 
+    /// use std::ffi::CString;
+    /// use std::os::raw::c_char;
+    ///
+    /// extern {
+    ///     fn extern_fill_my_buf(s: *mut c_char, maxlen: usize);
+    /// }
+    ///
+    /// unsafe {
+    ///     let mut buf = vec![0u8; 256];
+    ///     extern_fill_my_buf(buf.as_mut_ptr() as *mut c_char, buf.len());
+    ///     let c_string = CString::from_fixed_size(buf);
+    /// }
+    /// ```
+    #[unstable(feature = "cstr_of_fixed_size", issue = "20475")]
+    pub fn from_fixed_size<T: Into<Vec<u8>>>(vec: T) -> CString {
+        Self::_from_fixed_size(vec.into())
+    }
+
+    fn _from_fixed_size(mut bytes: Vec<u8>) -> CString {
+        if let Some(i) = memchr::memchr(0, &bytes) {
+            bytes.truncate(i);
+        }
+        unsafe { CString::from_vec_unchecked(bytes) }
+    }
+
     /// Consumes the `CString` and transfers ownership of the string to a C caller.
     ///
     /// The pointer which this function returns must be returned to Rust and reconstituted using
@@ -1274,6 +1383,22 @@ mod tests {
             let s = CString::from_vec_unchecked(vec![0]);
             assert_eq!(s.as_bytes(), b"\0");
         }
+    }
+
+    #[test]
+    fn build_with_zero4() {
+        let s = CString::of_fixed_size(&b"1234\05678"[..]);
+        assert_eq!(s.as_bytes(), b"1234");
+        let s = CString::of_fixed_size(&b"1234"[..]);
+        assert_eq!(s.as_bytes(), b"1234");
+    }
+
+    #[test]
+    fn build_with_zero5() {
+        let s = CString::from_fixed_size(b"1234\05678".to_vec());
+        assert_eq!(s.as_bytes(), b"1234");
+        let s = CString::from_fixed_size(b"1234".to_vec());
+        assert_eq!(s.as_bytes(), b"1234");
     }
 
     #[test]
