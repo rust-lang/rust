@@ -14,12 +14,14 @@ use io;
 use sys::fs::File;
 use sys::pipe::AnonPipe;
 use sys::{unsupported, Void};
+use sys_common::process::{CommandEnv, DefaultEnvKey};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Command {
+    env: CommandEnv<DefaultEnvKey>
 }
 
 // passed back to std::process with the pipes connected to the child, if any
@@ -38,19 +40,16 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(_program: &OsStr) -> Command {
-        Command {}
+        Command {
+            env: Default::default()
+        }
     }
 
     pub fn arg(&mut self, _arg: &OsStr) {
     }
 
-    pub fn env(&mut self, _key: &OsStr, _val: &OsStr) {
-    }
-
-    pub fn env_remove(&mut self, _key: &OsStr) {
-    }
-
-    pub fn env_clear(&mut self) {
+    pub fn env_mut(&mut self) -> &mut CommandEnv<DefaultEnvKey> {
+        &mut self.env
     }
 
     pub fn cwd(&mut self, _dir: &OsStr) {

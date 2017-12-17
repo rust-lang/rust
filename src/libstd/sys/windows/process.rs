@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(feature = "process_internals", issue = "0")]
+
 use ascii::AsciiExt;
-use collections::HashMap;
-use collections;
+use collections::BTreeMap;
 use env::split_paths;
 use env;
 use ffi::{OsString, OsStr};
@@ -28,18 +29,41 @@ use sys::fs::{OpenOptions, File};
 use sys::handle::Handle;
 use sys::pipe::{self, AnonPipe};
 use sys::stdio;
-use sys::{self, cvt};
-use sys_common::{AsInner, FromInner};
+use sys::cvt;
+use sys_common::{AsInner, FromInner, IntoInner};
+use sys_common::process::{CommandEnv, EnvKey};
+use alloc::borrow::Borrow;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
-fn mk_key(s: &OsStr) -> OsString {
-    FromInner::from_inner(sys::os_str::Buf {
-        inner: s.as_inner().inner.to_ascii_uppercase()
-    })
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[doc(hidden)]
+pub struct WindowsEnvKey(OsString);
+
+impl From<OsString> for WindowsEnvKey {
+    fn from(k: OsString) -> Self {
+        let mut buf = k.into_inner().into_inner();
+        buf.make_ascii_uppercase();
+        WindowsEnvKey(FromInner::from_inner(FromInner::from_inner(buf)))
+    }
 }
+
+impl From<WindowsEnvKey> for OsString {
+    fn from(k: WindowsEnvKey) -> Self { k.0 }
+}
+
+impl Borrow<OsStr> for WindowsEnvKey {
+    fn borrow(&self) -> &OsStr { &self.0 }
+}
+
+impl AsRef<OsStr> for WindowsEnvKey {
+    fn as_ref(&self) -> &OsStr { &self.0 }
+}
+
+impl EnvKey for WindowsEnvKey {}
+
 
 fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     if str.as_ref().encode_wide().any(|b| b == 0) {
@@ -52,7 +76,7 @@ fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
 pub struct Command {
     program: OsString,
     args: Vec<OsString>,
-    env: Option<HashMap<OsString, OsString>>,
+    env: CommandEnv<WindowsEnvKey>,
     cwd: Option<OsString>,
     flags: u32,
     detach: bool, // not currently exposed in std::process
@@ -83,7 +107,7 @@ impl Command {
         Command {
             program: program.to_os_string(),
             args: Vec::new(),
-            env: None,
+            env: Default::default(),
             cwd: None,
             flags: 0,
             detach: false,
@@ -96,23 +120,8 @@ impl Command {
     pub fn arg(&mut self, arg: &OsStr) {
         self.args.push(arg.to_os_string())
     }
-    fn init_env_map(&mut self){
-        if self.env.is_none() {
-            self.env = Some(env::vars_os().map(|(key, val)| {
-                (mk_key(&key), val)
-            }).collect());
-        }
-    }
-    pub fn env(&mut self, key: &OsStr, val: &OsStr) {
-        self.init_env_map();
-        self.env.as_mut().unwrap().insert(mk_key(key), val.to_os_string());
-    }
-    pub fn env_remove(&mut self, key: &OsStr) {
-        self.init_env_map();
-        self.env.as_mut().unwrap().remove(&mk_key(key));
-    }
-    pub fn env_clear(&mut self) {
-        self.env = Some(HashMap::new())
+    pub fn env_mut(&mut self) -> &mut CommandEnv<WindowsEnvKey> {
+        &mut self.env
     }
     pub fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(dir.to_os_string())
@@ -132,13 +141,12 @@ impl Command {
 
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
+        let maybe_env = self.env.capture_if_changed();
         // To have the spawning semantics of unix/windows stay the same, we need
         // to read the *child's* PATH if one is provided. See #15149 for more
         // details.
-        let program = self.env.as_ref().and_then(|env| {
-            for (key, v) in env {
-                if OsStr::new("PATH") != &**key { continue }
-
+        let program = maybe_env.as_ref().and_then(|env| {
+            if let Some(v) = env.get(OsStr::new("PATH")) {
                 // Split the value and test each path to see if the
                 // program exists.
                 for path in split_paths(&v) {
@@ -148,7 +156,6 @@ impl Command {
                         return Some(path.into_os_string())
                     }
                 }
-                break
             }
             None
         });
@@ -167,7 +174,7 @@ impl Command {
             flags |= c::DETACHED_PROCESS | c::CREATE_NEW_PROCESS_GROUP;
         }
 
-        let (envp, _data) = make_envp(self.env.as_ref())?;
+        let (envp, _data) = make_envp(maybe_env)?;
         let (dirp, _data) = make_dirp(self.cwd.as_ref())?;
         let mut pi = zeroed_process_information();
 
@@ -488,25 +495,24 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
     }
 }
 
-fn make_envp(env: Option<&collections::HashMap<OsString, OsString>>)
+fn make_envp(maybe_env: Option<BTreeMap<WindowsEnvKey, OsString>>)
              -> io::Result<(*mut c_void, Vec<u16>)> {
     // On Windows we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
-    match env {
-        Some(env) => {
-            let mut blk = Vec::new();
+    if let Some(env) = maybe_env {
+        let mut blk = Vec::new();
 
-            for pair in env {
-                blk.extend(ensure_no_nuls(pair.0)?.encode_wide());
-                blk.push('=' as u16);
-                blk.extend(ensure_no_nuls(pair.1)?.encode_wide());
-                blk.push(0);
-            }
+        for (k, v) in env {
+            blk.extend(ensure_no_nuls(k.0)?.encode_wide());
+            blk.push('=' as u16);
+            blk.extend(ensure_no_nuls(v)?.encode_wide());
             blk.push(0);
-            Ok((blk.as_mut_ptr() as *mut c_void, blk))
         }
-        _ => Ok((ptr::null_mut(), Vec::new()))
+        blk.push(0);
+        Ok((blk.as_mut_ptr() as *mut c_void, blk))
+    } else {
+        Ok((ptr::null_mut(), Vec::new()))
     }
 }
 

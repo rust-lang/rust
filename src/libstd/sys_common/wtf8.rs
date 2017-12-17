@@ -134,6 +134,12 @@ impl ops::Deref for Wtf8Buf {
     }
 }
 
+impl ops::DerefMut for Wtf8Buf {
+    fn deref_mut(&mut self) -> &mut Wtf8 {
+        self.as_mut_slice()
+    }
+}
+
 /// Format the string with double quotes,
 /// and surrogates as `\u` followed by four hexadecimal digits.
 /// Example: `"a\u{D800}"` for a string with code points [U+0061, U+D800]
@@ -219,6 +225,11 @@ impl Wtf8Buf {
     #[inline]
     pub fn as_slice(&self) -> &Wtf8 {
         unsafe { Wtf8::from_bytes_unchecked(&self.bytes) }
+    }
+
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut Wtf8 {
+        unsafe { Wtf8::from_mut_bytes_unchecked(&mut self.bytes) }
     }
 
     /// Reserves capacity for at least `additional` more bytes to be inserted
@@ -483,6 +494,15 @@ impl Wtf8 {
     /// marked unsafe.
     #[inline]
     unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
+        mem::transmute(value)
+    }
+
+    /// Creates a mutable WTF-8 slice from a mutable WTF-8 byte slice.
+    ///
+    /// Since the byte slice is not checked for valid WTF-8, this functions is
+    /// marked unsafe.
+    #[inline]
+    unsafe fn from_mut_bytes_unchecked(value: &mut [u8]) -> &mut Wtf8 {
         mem::transmute(value)
     }
 
