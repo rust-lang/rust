@@ -72,9 +72,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     ty::TyFnPtr(sig) => {
                         let fn_ptr = self.value_to_primval(func)?.to_ptr()?;
                         let instance = self.memory.get_fn(fn_ptr)?;
-                        // FIXME(eddyb) use `Instance::ty` when it becomes available.
-                        let instance_ty =
-                            self.monomorphize(instance.def.def_ty(self.tcx), instance.substs);
+                        let instance_ty = instance.ty(self.tcx);
                         match instance_ty.sty {
                             ty::TyFnDef(..) => {
                                 let real_sig = instance_ty.fn_sig(self.tcx);

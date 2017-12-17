@@ -50,7 +50,7 @@ impl<'a, 'tcx> Instance<'tcx> {
               tcx: TyCtxt<'a, 'tcx, 'tcx>)
               -> Ty<'tcx>
     {
-        let ty = self.def.def_ty(tcx);
+        let ty = tcx.type_of(self.def.def_id());
         tcx.trans_apply_param_substs(self.substs, &ty)
     }
 }
@@ -67,11 +67,6 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::DropGlue(def_id, _) |
             InstanceDef::CloneShim(def_id, _) => def_id
         }
-    }
-
-    #[inline]
-    pub fn def_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.def_id())
     }
 
     #[inline]

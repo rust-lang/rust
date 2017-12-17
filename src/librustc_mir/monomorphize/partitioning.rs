@@ -115,7 +115,6 @@ use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use rustc::mir::mono::MonoItem;
 use monomorphize::item::{MonoItemExt, InstantiationMode};
-use rustc::ty::subst::Subst;
 
 pub use rustc::mir::mono::CodegenUnit;
 
@@ -576,7 +575,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
-                let impl_self_ty = tcx.type_of(impl_def_id).subst(tcx, instance.substs);
+                let impl_self_ty = tcx.trans_impl_self_ty(impl_def_id, instance.substs);
                 if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                     return Some(def_id);
                 }

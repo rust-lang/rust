@@ -24,7 +24,7 @@ use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
 use rustc::hir::def_id::{DefId, CrateNum};
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::Substs;
 
 use abi::Abi;
 use common::CrateContext;
@@ -427,8 +427,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let self_type = cx.tcx().impl_of_method(instance.def_id()).and_then(|impl_def_id| {
             // If the method does *not* belong to a trait, proceed
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
-                let impl_self_ty =
-                    cx.tcx().type_of(impl_def_id).subst(cx.tcx(), instance.substs);
+                let impl_self_ty = cx.tcx().trans_impl_self_ty(impl_def_id, instance.substs);
 
                 // Only "class" methods are generally understood by LLVM,
                 // so avoid methods on other types (e.g. `<*mut T>::null`).

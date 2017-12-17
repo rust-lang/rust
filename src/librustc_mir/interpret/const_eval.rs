@@ -57,9 +57,7 @@ pub fn eval_body<'a, 'tcx>(
     if ecx.tcx.has_attr(instance.def_id(), "linkage") {
         return Err(ConstEvalError::NotConst("extern global".to_string()).into());
     }
-    // FIXME(eddyb) use `Instance::ty` when it becomes available.
-    let instance_ty =
-        ecx.monomorphize(instance.def.def_ty(tcx), instance.substs);
+    let instance_ty = instance.ty(tcx);
     if tcx.interpret_interner.borrow().get_cached(cid).is_none() {
         let mir = ecx.load_mir(instance.def)?;
         let layout = ecx.layout_of(instance_ty)?;
