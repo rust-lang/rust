@@ -129,6 +129,9 @@ pub struct SharedContext {
     /// The directories that have already been created in this doc run. Used to reduce the number
     /// of spurious `create_dir_all` calls.
     pub created_dirs: RefCell<FxHashSet<PathBuf>>,
+    /// This flag indicates whether listings of modules (in the side bar and documentation itself)
+    /// should be ordered alphabetically or in order of appearance (in the source code).
+    pub sort_modules_alphabetically: bool,
 }
 
 impl SharedContext {
@@ -491,7 +494,8 @@ pub fn run(mut krate: clean::Crate,
            passes: FxHashSet<String>,
            css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
-           render_type: RenderType) -> Result<(), Error> {
+           render_type: RenderType,
+           sort_modules_alphabetically: bool) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -514,6 +518,7 @@ pub fn run(mut krate: clean::Crate,
         css_file_extension: css_file_extension.clone(),
         markdown_warnings: RefCell::new(vec![]),
         created_dirs: RefCell::new(FxHashSet()),
+        sort_modules_alphabetically,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -1654,8 +1659,10 @@ impl Context {
                 .push((myname, Some(plain_summary_line(item.doc_value()))));
         }
 
-        for (_, items) in &mut map {
-            items.sort();
+        if self.shared.sort_modules_alphabetically {
+            for (_, items) in &mut map {
+                items.sort();
+            }
         }
         map
     }
@@ -2013,7 +2020,9 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         name_key(lhs).cmp(&name_key(rhs))
     }
 
-    indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
+    if cx.shared.sort_modules_alphabetically {
+        indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
+    }
     // This call is to remove reexport duplicates in cases such as:
     //
     // ```
