@@ -12,8 +12,8 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
-use rustc::mir::interpret::{EvalResult, EvalError, EvalErrorKind, GlobalId, Value, PrimVal, PtrAndAlign};
-use super::{Place, PlaceExtra, EvalContext, StackPopCleanup, ValTy, HasMemory};
+use rustc::mir::interpret::{EvalResult, EvalError, EvalErrorKind, GlobalId, Value, Pointer, PrimVal};
+use super::{Place, EvalContext, StackPopCleanup, ValTy};
 
 use rustc_const_math::ConstInt;
 
@@ -45,7 +45,7 @@ pub fn eval_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, (PtrAndAlign, Ty<'tcx>)> {
+) -> EvalResult<'tcx, (Pointer, Ty<'tcx>)> {
     debug!("eval_body: {:?}, {:?}", instance, param_env);
     let limits = super::ResourceLimits::default();
     let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
@@ -66,16 +66,10 @@ pub fn eval_body<'a, 'tcx>(
         assert!(!layout.is_unsized());
         let ptr = ecx.memory.allocate(
             layout.size.bytes(),
-            layout.align.abi(),
+            layout.align,
             None,
         )?;
-        tcx.interpret_interner.borrow_mut().cache(
-            cid,
-            PtrAndAlign {
-                ptr: ptr.into(),
-                aligned: !layout.is_packed(),
-            },
-        );
+        tcx.interpret_interner.borrow_mut().cache(cid, ptr.into());
         let cleanup = StackPopCleanup::MarkStatic(Mutability::Immutable);
         let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
         trace!("const_eval: pushing stack frame for global: {}", name);
@@ -83,7 +77,7 @@ pub fn eval_body<'a, 'tcx>(
             instance,
             mir.span,
             mir,
-            Place::from_ptr(ptr),
+            Place::from_ptr(ptr, layout.align),
             cleanup.clone(),
         )?;
 
@@ -101,7 +95,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
     let ptr_ty = eval_body(tcx, instance, param_env);
     let (ptr, ty) = ptr_ty?;
     let ecx = mk_eval_cx(tcx, instance, param_env)?;
-    let prim = match ecx.read_maybe_aligned(ptr.aligned, |ectx| ectx.try_read_value(ptr.ptr, ty))? {
+    let prim = match ecx.try_read_value(ptr, ecx.layout_of(ty)?.align, ty)? {
         Some(Value::ByVal(prim)) => prim.to_bytes()?,
         _ => return err!(TypeNotPrimitive(ty)),
     };
@@ -363,7 +357,9 @@ pub fn const_eval_provider<'a, 'tcx>(
             (_, Err(err)) => Err(err),
             (Ok((miri_val, miri_ty)), Ok(ctfe)) => {
                 let mut ecx = mk_eval_cx(tcx, instance, key.param_env).unwrap();
-                check_ctfe_against_miri(&mut ecx, miri_val, miri_ty, ctfe.val);
+                let layout = ecx.layout_of(miri_ty).unwrap();
+                let miri_place = Place::from_primval_ptr(miri_val, layout.align);
+                check_ctfe_against_miri(&mut ecx, miri_place, miri_ty, ctfe.val);
                 Ok(ctfe)
             }
         }
@@ -374,19 +370,20 @@ pub fn const_eval_provider<'a, 'tcx>(
 
 fn check_ctfe_against_miri<'a, 'tcx>(
     ecx: &mut EvalContext<'a, 'tcx, CompileTimeEvaluator>,
-    miri_val: PtrAndAlign,
+    miri_place: Place,
     miri_ty: Ty<'tcx>,
     ctfe: ConstVal<'tcx>,
 ) {
     use rustc::middle::const_val::ConstAggregate::*;
     use rustc_const_math::ConstFloat;
     use rustc::ty::TypeVariants::*;
+    let miri_val = ValTy {
+        value: ecx.read_place(miri_place).unwrap(),
+        ty: miri_ty
+    };
     match miri_ty.sty {
         TyInt(int_ty) => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
-                ectx.try_read_value(miri_val.ptr, miri_ty)
-            });
-            let prim = get_prim(ecx, value);
+            let prim = get_prim(ecx, miri_val);
             let c = ConstInt::new_signed_truncating(prim as i128,
                                                     int_ty,
                                                     ecx.tcx.sess.target.isize_ty);
@@ -394,10 +391,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             assert_eq!(c, ctfe, "miri evaluated to {:?}, but ctfe yielded {:?}", c, ctfe);
         },
         TyUint(uint_ty) => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
-                ectx.try_read_value(miri_val.ptr, miri_ty)
-            });
-            let prim = get_prim(ecx, value);
+            let prim = get_prim(ecx, miri_val);
             let c = ConstInt::new_unsigned_truncating(prim,
                                                      uint_ty,
                                                      ecx.tcx.sess.target.usize_ty);
@@ -405,18 +399,12 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             assert_eq!(c, ctfe, "miri evaluated to {:?}, but ctfe yielded {:?}", c, ctfe);
         },
         TyFloat(ty) => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
-                ectx.try_read_value(miri_val.ptr, miri_ty)
-            });
-            let prim = get_prim(ecx, value);
+            let prim = get_prim(ecx, miri_val);
             let f = ConstVal::Float(ConstFloat { bits: prim, ty });
             assert_eq!(f, ctfe, "miri evaluated to {:?}, but ctfe yielded {:?}", f, ctfe);
         },
         TyBool => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
-                ectx.try_read_value(miri_val.ptr, miri_ty)
-            });
-            let bits = get_prim(ecx, value);
+            let bits = get_prim(ecx, miri_val);
             if bits > 1 {
                 bug!("miri evaluated to {}, but expected a bool {:?}", bits, ctfe);
             }
@@ -424,10 +412,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             assert_eq!(b, ctfe, "miri evaluated to {:?}, but ctfe yielded {:?}", b, ctfe);
         },
         TyChar => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
-                ectx.try_read_value(miri_val.ptr, miri_ty)
-            });
-            let bits = get_prim(ecx, value);
+            let bits = get_prim(ecx, miri_val);
             if let Some(cm) = ::std::char::from_u32(bits as u32) {
                 assert_eq!(
                     ConstVal::Char(cm), ctfe,
@@ -438,10 +423,8 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             }
         },
         TyStr => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
-                ectx.try_read_value(miri_val.ptr, miri_ty)
-            });
-            if let Ok(Some(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len)))) = value {
+            let value = ecx.follow_by_ref_value(miri_val.value, miri_val.ty);
+            if let Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len))) = value {
                 let bytes = ecx
                     .memory
                     .read_bytes(ptr.into(), len as u64)
@@ -465,7 +448,6 @@ fn check_ctfe_against_miri<'a, 'tcx>(
         },
         TyArray(elem_ty, n) => {
             let n = n.val.to_const_int().unwrap().to_u64().unwrap();
-            let size = ecx.layout_of(elem_ty).unwrap().size.bytes();
             let vec: Vec<(ConstVal, Ty<'tcx>)> = match ctfe {
                 ConstVal::ByteStr(arr) => arr.data.iter().map(|&b| {
                     (ConstVal::Integral(ConstInt::U8(b)), ecx.tcx.types.u8)
@@ -478,10 +460,12 @@ fn check_ctfe_against_miri<'a, 'tcx>(
                 },
                 _ => bug!("miri produced {:?}, but ctfe yielded {:?}", miri_ty, ctfe),
             };
+            let layout = ecx.layout_of(miri_ty).unwrap();
             for (i, elem) in vec.into_iter().enumerate() {
                 assert!((i as u64) < n);
-                let ptr = miri_val.offset(size * i as u64, &ecx).unwrap();
-                check_ctfe_against_miri(ecx, ptr, elem_ty, elem.0);
+                let (field_place, _) =
+                    ecx.place_field(miri_place, Field::new(i), layout).unwrap();
+                check_ctfe_against_miri(ecx, field_place, elem_ty, elem.0);
             }
         },
         TyTuple(..) => {
@@ -491,22 +475,22 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             };
             let layout = ecx.layout_of(miri_ty).unwrap();
             for (i, elem) in vec.into_iter().enumerate() {
-                let offset = layout.fields.offset(i);
-                let ptr = miri_val.offset(offset.bytes(), &ecx).unwrap();
-                check_ctfe_against_miri(ecx, ptr, elem.ty, elem.val);
+                let (field_place, _) =
+                    ecx.place_field(miri_place, Field::new(i), layout).unwrap();
+                check_ctfe_against_miri(ecx, field_place, elem.ty, elem.val);
             }
         },
         TyAdt(def, _) => {
-            let (struct_variant, extra) = if def.is_enum() {
-                let discr = ecx.read_discriminant_value(
-                    Place::Ptr { ptr: miri_val, extra: PlaceExtra::None },
-                    miri_ty).unwrap();
+            let mut miri_place = miri_place;
+            let struct_variant = if def.is_enum() {
+                let discr = ecx.read_discriminant_value(miri_place, miri_ty).unwrap();
                 let variant = def.discriminants(ecx.tcx).position(|variant_discr| {
                     variant_discr.to_u128_unchecked() == discr
                 }).expect("miri produced invalid enum discriminant");
-                (&def.variants[variant], PlaceExtra::DowncastVariant(variant))
+                miri_place = ecx.place_downcast(miri_place, variant).unwrap();
+                &def.variants[variant]
             } else {
-                (def.struct_variant(), PlaceExtra::None)
+                def.struct_variant()
             };
             let vec = match ctfe {
                 ConstVal::Aggregate(Struct(v)) => v,
@@ -520,13 +504,9 @@ fn check_ctfe_against_miri<'a, 'tcx>(
             let layout = ecx.layout_of(miri_ty).unwrap();
             for &(name, elem) in vec.into_iter() {
                 let field = struct_variant.fields.iter().position(|f| f.name == name).unwrap();
-                let (place, _) = ecx.place_field(
-                    Place::Ptr { ptr: miri_val, extra },
-                    Field::new(field),
-                    layout,
-                ).unwrap();
-                let ptr = place.to_ptr_extra_aligned().0;
-                check_ctfe_against_miri(ecx, ptr, elem.ty, elem.val);
+                let (field_place, _) =
+                    ecx.place_field(miri_place, Field::new(field), layout).unwrap();
+                check_ctfe_against_miri(ecx, field_place, elem.ty, elem.val);
             }
         },
         TySlice(_) => bug!("miri produced a slice?"),
@@ -546,11 +526,9 @@ fn check_ctfe_against_miri<'a, 'tcx>(
         // should be fine
         TyFnDef(..) => {}
         TyFnPtr(_) => {
-            let value = ecx.read_maybe_aligned(miri_val.aligned, |ectx| {
-                ectx.try_read_value(miri_val.ptr, miri_ty)
-            });
+            let value = ecx.value_to_primval(miri_val);
             let ptr = match value {
-                Ok(Some(Value::ByVal(PrimVal::Ptr(ptr)))) => ptr,
+                Ok(PrimVal::Ptr(ptr)) => ptr,
                 value => bug!("expected fn ptr, got {:?}", value),
             };
             let inst = ecx.memory.get_fn(ptr).unwrap();
@@ -572,13 +550,10 @@ fn check_ctfe_against_miri<'a, 'tcx>(
 
 fn get_prim<'a, 'tcx>(
     ecx: &mut EvalContext<'a, 'tcx, CompileTimeEvaluator>,
-    res: Result<Option<Value>, EvalError<'tcx>>,
+    val: ValTy<'tcx>,
 ) -> u128 {
-    match res {
-        Ok(Some(Value::ByVal(prim))) => unwrap_miri(ecx, prim.to_bytes()),
-        Err(err) => unwrap_miri(ecx, Err(err)),
-        val => bug!("got {:?}", val),
-    }
+    let res = ecx.value_to_primval(val).and_then(|prim| prim.to_bytes());
+    unwrap_miri(ecx, res)
 }
 
 fn unwrap_miri<'a, 'tcx, T>(

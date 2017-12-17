@@ -31,7 +31,7 @@ use syntax_pos::Pos;
 
 use super::{MirContext, LocalRef};
 use super::constant::Const;
-use super::place::{Alignment, PlaceRef};
+use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
@@ -216,7 +216,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     PassMode::Direct(_) | PassMode::Pair(..) => {
                         let op = self.trans_consume(&bcx, &mir::Place::Local(mir::RETURN_PLACE));
                         if let Ref(llval, align) = op.val {
-                            bcx.load(llval, align.non_abi())
+                            bcx.load(llval, align)
                         } else {
                             op.immediate_or_packed_pair(&bcx)
                         }
@@ -228,7 +228,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             LocalRef::Operand(None) => bug!("use of return before def"),
                             LocalRef::Place(tr_place) => {
                                 OperandRef {
-                                    val: Ref(tr_place.llval, tr_place.alignment),
+                                    val: Ref(tr_place.llval, tr_place.align),
                                     layout: tr_place.layout
                                 }
                             }
@@ -240,14 +240,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 scratch.llval
                             }
                             Ref(llval, align) => {
-                                assert_eq!(align, Alignment::AbiAligned,
+                                assert_eq!(align.abi(), op.layout.align.abi(),
                                            "return place is unaligned!");
                                 llval
                             }
                         };
                         bcx.load(
                             bcx.pointercast(llslot, cast_ty.llvm_type(bcx.ccx).ptr_to()),
-                            Some(self.fn_ty.ret.layout.align))
+                            self.fn_ty.ret.layout.align)
                     }
                 };
                 bcx.ret(llval);
@@ -579,7 +579,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         (&mir::Operand::Constant(_), Ref(..)) => {
                             let tmp = PlaceRef::alloca(&bcx, op.layout, "const");
                             op.val.store(&bcx, tmp);
-                            op.val = Ref(tmp.llval, tmp.alignment);
+                            op.val = Ref(tmp.llval, tmp.align);
                         }
                         _ => {}
                     }
@@ -639,38 +639,40 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     PassMode::Indirect(_) | PassMode::Cast(_) => {
                         let scratch = PlaceRef::alloca(bcx, arg.layout, "arg");
                         op.val.store(bcx, scratch);
-                        (scratch.llval, Alignment::AbiAligned, true)
+                        (scratch.llval, scratch.align, true)
                     }
                     _ => {
-                        (op.immediate_or_packed_pair(bcx), Alignment::AbiAligned, false)
+                        (op.immediate_or_packed_pair(bcx), arg.layout.align, false)
                     }
                 }
             }
-            Ref(llval, align @ Alignment::Packed(_)) if arg.is_indirect() => {
-                // `foo(packed.large_field)`. We can't pass the (unaligned) field directly. I
-                // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
-                // have scary latent bugs around.
+            Ref(llval, align) => {
+                if arg.is_indirect() && align.abi() < arg.layout.align.abi() {
+                    // `foo(packed.large_field)`. We can't pass the (unaligned) field directly. I
+                    // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
+                    // have scary latent bugs around.
 
-                let scratch = PlaceRef::alloca(bcx, arg.layout, "arg");
-                base::memcpy_ty(bcx, scratch.llval, llval, op.layout, align.non_abi());
-                (scratch.llval, Alignment::AbiAligned, true)
+                    let scratch = PlaceRef::alloca(bcx, arg.layout, "arg");
+                    base::memcpy_ty(bcx, scratch.llval, llval, op.layout, align);
+                    (scratch.llval, scratch.align, true)
+                } else {
+                    (llval, align, true)
+                }
             }
-            Ref(llval, align) => (llval, align, true)
         };
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast(ty) = arg.mode {
                 llval = bcx.load(bcx.pointercast(llval, ty.llvm_type(bcx.ccx).ptr_to()),
-                                 (align | Alignment::Packed(arg.layout.align))
-                                    .non_abi());
+                                 align.min(arg.layout.align));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
                 // may have a type we don't treat as immediate, but the ABI
                 // used for this call is passing it by-value. In that case,
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
-                llval = bcx.load(llval, align.non_abi());
+                llval = bcx.load(llval, align);
                 if let layout::Abi::Scalar(ref scalar) = arg.layout.abi {
                     if scalar.is_bool() {
                         bcx.range_metadata(llval, 0..2);
@@ -820,21 +822,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             self.trans_place(bcx, dest)
         };
         if fn_ret.is_indirect() {
-            match dest.alignment {
-                Alignment::AbiAligned => {
-                    llargs.push(dest.llval);
-                    ReturnDest::Nothing
-                },
-                Alignment::Packed(_) => {
-                    // Currently, MIR code generation does not create calls
-                    // that store directly to fields of packed structs (in
-                    // fact, the calls it creates write only to temps),
-                    //
-                    // If someone changes that, please update this code path
-                    // to create a temporary.
-                    span_bug!(self.mir.span, "can't directly store to unaligned value");
-                }
+            if dest.align.abi() < dest.layout.align.abi() {
+                // Currently, MIR code generation does not create calls
+                // that store directly to fields of packed structs (in
+                // fact, the calls it creates write only to temps),
+                //
+                // If someone changes that, please update this code path
+                // to create a temporary.
+                span_bug!(self.mir.span, "can't directly store to unaligned value");
             }
+            llargs.push(dest.llval);
+            ReturnDest::Nothing
         } else {
             ReturnDest::Store(dest)
         }
@@ -874,8 +872,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let llty = src.layout.llvm_type(bcx.ccx);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
         let align = src.layout.align.min(dst.layout.align);
-        src.val.store(bcx,
-            PlaceRef::new_sized(cast_ptr, src.layout, Alignment::Packed(align)));
+        src.val.store(bcx, PlaceRef::new_sized(cast_ptr, src.layout, align));
     }
 
 

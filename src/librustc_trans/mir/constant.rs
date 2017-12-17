@@ -42,7 +42,6 @@ use syntax::ast;
 use std::fmt;
 use std::ptr;
 
-use super::place::Alignment;
 use super::operand::{OperandRef, OperandValue};
 use super::MirContext;
 
@@ -182,12 +181,12 @@ impl<'a, 'tcx> Const<'tcx> {
             let align = ccx.align_of(self.ty);
             let ptr = consts::addr_of(ccx, self.llval, align, "const");
             OperandValue::Ref(consts::ptrcast(ptr, layout.llvm_type(ccx).ptr_to()),
-                              Alignment::AbiAligned)
+                              layout.align)
         };
 
         OperandRef {
             val,
-            layout: ccx.layout_of(self.ty)
+            layout
         }
     }
 }
@@ -1134,12 +1133,14 @@ fn trans_const_adt<'a, 'tcx>(
             if let layout::FieldPlacement::Union(_) = l.fields {
                 assert_eq!(variant_index, 0);
                 assert_eq!(vals.len(), 1);
+                let (field_size, field_align) = ccx.size_and_align_of(vals[0].ty);
                 let contents = [
                     vals[0].llval,
-                    padding(ccx, l.size - ccx.size_of(vals[0].ty))
+                    padding(ccx, l.size - field_size)
                 ];
 
-                Const::new(C_struct(ccx, &contents, l.is_packed()), t)
+                let packed = l.align.abi() < field_align.abi();
+                Const::new(C_struct(ccx, &contents, packed), t)
             } else {
                 if let layout::Abi::Vector { .. } = l.abi {
                     if let layout::FieldPlacement::Array { .. } = l.fields {
@@ -1232,28 +1233,33 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     // offset of current value
+    let mut packed = false;
     let mut offset = Size::from_bytes(0);
     let mut cfields = Vec::new();
     cfields.reserve(discr.is_some() as usize + 1 + layout.fields.count() * 2);
 
     if let Some(discr) = discr {
+        let (field_size, field_align) = ccx.size_and_align_of(discr.ty);
+        packed |= layout.align.abi() < field_align.abi();
         cfields.push(discr.llval);
-        offset = ccx.size_of(discr.ty);
+        offset = field_size;
     }
 
     let parts = layout.fields.index_by_increasing_offset().map(|i| {
         (vals[i], layout.fields.offset(i))
     });
     for (val, target_offset) in parts {
+        let (field_size, field_align) = ccx.size_and_align_of(val.ty);
+        packed |= layout.align.abi() < field_align.abi();
         cfields.push(padding(ccx, target_offset - offset));
         cfields.push(val.llval);
-        offset = target_offset + ccx.size_of(val.ty);
+        offset = target_offset + field_size;
     }
 
     // Pad to the size of the whole type, not e.g. the variant.
     cfields.push(padding(ccx, ccx.size_of(layout.ty) - offset));
 
-    Const::new(C_struct(ccx, &cfields, layout.is_packed()), layout.ty)
+    Const::new(C_struct(ccx, &cfields, packed), layout.ty)
 }
 
 fn padding(ccx: &CrateContext, size: Size) -> ValueRef {

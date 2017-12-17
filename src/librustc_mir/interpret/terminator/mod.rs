@@ -4,7 +4,7 @@ use rustc::ty::layout::LayoutOf;
 use syntax::codemap::Span;
 use syntax::abi::Abi;
 
-use rustc::mir::interpret::{PtrAndAlign, EvalResult, PrimVal, Value};
+use rustc::mir::interpret::{EvalResult, PrimVal, Value};
 use super::{EvalContext, eval_context,
             Place, Machine, ValTy};
 
@@ -327,15 +327,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         if let ty::TyTuple(..) = args[1].ty.sty {
                             if self.frame().mir.args_iter().count() == layout.fields.count() + 1 {
                                 match args[1].value {
-                                    Value::ByRef(PtrAndAlign { ptr, aligned }) => {
-                                        assert!(
-                                            aligned,
-                                            "Unaligned ByRef-values cannot occur as function arguments"
-                                        );
+                                    Value::ByRef(ptr, align) => {
                                         for (i, arg_local) in arg_locals.enumerate() {
                                             let field = layout.field(&self, i)?;
                                             let offset = layout.fields.offset(i).bytes();
-                                            let arg = Value::by_ref(ptr.offset(offset, &self)?);
+                                            let arg = Value::ByRef(ptr.offset(offset, &self)?,
+                                                                   align.min(field.align));
                                             let dest =
                                                 self.eval_place(&mir::Place::Local(arg_local))?;
                                             trace!(
@@ -403,9 +400,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
+                let ptr_align = self.tcx.data_layout.pointer_align;
                 let (ptr, vtable) = self.into_ptr_vtable_pair(args[0].value)?;
                 let fn_ptr = self.memory.read_ptr_sized_unsigned(
-                    vtable.offset(ptr_size * (idx as u64 + 3), &self)?
+                    vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
+                    ptr_align
                 )?.to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
                 let mut args = args.to_vec();

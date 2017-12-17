@@ -10,7 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::ty;
-use rustc::ty::layout::{self, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -25,7 +25,7 @@ use std::fmt;
 use std::ptr;
 
 use super::{MirContext, LocalRef};
-use super::place::{Alignment, PlaceRef};
+use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -34,7 +34,7 @@ use super::place::{Alignment, PlaceRef};
 pub enum OperandValue {
     /// A reference to the actual operand. The data is guaranteed
     /// to be valid for the operand's lifetime.
-    Ref(ValueRef, Alignment),
+    Ref(ValueRef, Align),
     /// A single LLVM value.
     Immediate(ValueRef),
     /// A pair of immediate LLVM values. Used by fat pointers too.
@@ -107,11 +107,12 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             OperandValue::Pair(llptr, llextra) => (llptr, llextra),
             OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self)
         };
+        let layout = ccx.layout_of(projected_ty);
         PlaceRef {
             llval: llptr,
             llextra,
-            layout: ccx.layout_of(projected_ty),
-            alignment: Alignment::AbiAligned,
+            layout,
+            align: layout.align,
         }
     }
 
@@ -222,9 +223,9 @@ impl<'a, 'tcx> OperandValue {
         match self {
             OperandValue::Ref(r, source_align) =>
                 base::memcpy_ty(bcx, dest.llval, r, dest.layout,
-                                (source_align | dest.alignment).non_abi()),
+                                source_align.min(dest.align)),
             OperandValue::Immediate(s) => {
-                bcx.store(base::from_immediate(bcx, s), dest.llval, dest.alignment.non_abi());
+                bcx.store(base::from_immediate(bcx, s), dest.llval, dest.align);
             }
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
@@ -233,7 +234,7 @@ impl<'a, 'tcx> OperandValue {
                     if common::val_ty(x) == Type::i1(bcx.ccx) {
                         llptr = bcx.pointercast(llptr, Type::i8p(bcx.ccx));
                     }
-                    bcx.store(base::from_immediate(bcx, x), llptr, dest.alignment.non_abi());
+                    bcx.store(base::from_immediate(bcx, x), llptr, dest.align);
                 }
             }
         }

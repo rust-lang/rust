@@ -69,7 +69,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
             let field_ty = layout.field(ccx, i).ty;
-            let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
+            let (unsized_size, mut unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // FIXME (#26403, #27023): We should be adding padding
             // to `sized_size` (to accommodate the `unsized_align`
@@ -80,6 +80,13 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 
             // Return the sum of sizes and max of aligns.
             let size = bcx.add(sized_size, unsized_size);
+
+            // Packed types ignore the alignment of their fields.
+            if let ty::TyAdt(def, _) = t.sty {
+                if def.repr.packed() {
+                    unsized_align = sized_align;
+                }
+            }
 
             // Choose max of two known alignments (combined value must
             // be aligned according to more restrictive of the two).

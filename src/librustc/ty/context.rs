@@ -895,7 +895,7 @@ pub struct InterpretInterner<'tcx> {
     /// Allows checking whether a constant already has an allocation
     ///
     /// The pointers are to the beginning of an `alloc_by_id` allocation
-    alloc_cache: FxHashMap<interpret::GlobalId<'tcx>, interpret::PtrAndAlign>,
+    alloc_cache: FxHashMap<interpret::GlobalId<'tcx>, interpret::Pointer>,
 
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
     /// allocations for string and bytestring literals.
@@ -931,14 +931,14 @@ impl<'tcx> InterpretInterner<'tcx> {
     pub fn get_cached(
         &self,
         global_id: interpret::GlobalId<'tcx>,
-    ) -> Option<interpret::PtrAndAlign> {
+    ) -> Option<interpret::Pointer> {
         self.alloc_cache.get(&global_id).cloned()
     }
 
     pub fn cache(
         &mut self,
         global_id: interpret::GlobalId<'tcx>,
-        ptr: interpret::PtrAndAlign,
+        ptr: interpret::Pointer,
     ) {
         if let Some(old) = self.alloc_cache.insert(global_id, ptr) {
             bug!("tried to cache {:?}, but was already existing as {:#?}", global_id, old);

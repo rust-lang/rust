@@ -10,14 +10,13 @@ mod value;
 
 pub use self::error::{EvalError, EvalResult, EvalErrorKind};
 
-pub use self::value::{PrimVal, PrimValKind, Value, Pointer, PtrAndAlign, bytes_to_f32, bytes_to_f64};
+pub use self::value::{PrimVal, PrimValKind, Value, Pointer, bytes_to_f32, bytes_to_f64};
 
 use std::collections::BTreeMap;
-use ty::layout::HasDataLayout;
 use std::fmt;
-use ty::layout;
 use mir;
 use ty;
+use ty::layout::{self, Align, HasDataLayout};
 use middle::region;
 use std::iter;
 
@@ -166,7 +165,7 @@ pub struct Allocation {
     /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
-    pub align: u64,
+    pub align: Align,
 }
 
 impl Allocation {
@@ -177,7 +176,7 @@ impl Allocation {
             bytes: slice.to_owned(),
             relocations: BTreeMap::new(),
             undef_mask,
-            align: 1,
+            align: Align::from_bytes(1, 1).unwrap(),
         }
     }
 }

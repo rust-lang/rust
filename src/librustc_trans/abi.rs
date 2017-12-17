@@ -30,7 +30,7 @@ use cabi_sparc64;
 use cabi_nvptx;
 use cabi_nvptx64;
 use cabi_hexagon;
-use mir::place::{Alignment, PlaceRef};
+use mir::place::PlaceRef;
 use mir::operand::OperandValue;
 use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
@@ -561,14 +561,14 @@ impl<'a, 'tcx> ArgType<'tcx> {
         }
         let ccx = bcx.ccx;
         if self.is_indirect() {
-            OperandValue::Ref(val, Alignment::AbiAligned).store(bcx, dst)
+            OperandValue::Ref(val, self.layout.align).store(bcx, dst)
         } else if let PassMode::Cast(cast) = self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
                 let cast_dst = bcx.pointercast(dst.llval, cast.llvm_type(ccx).ptr_to());
-                bcx.store(val, cast_dst, Some(self.layout.align));
+                bcx.store(val, cast_dst, self.layout.align);
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -585,19 +585,20 @@ impl<'a, 'tcx> ArgType<'tcx> {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = bcx.alloca(cast.llvm_type(ccx), "abi_cast", cast.align(ccx));
                 let scratch_size = cast.size(ccx);
+                let scratch_align = cast.align(ccx);
+                let llscratch = bcx.alloca(cast.llvm_type(ccx), "abi_cast", scratch_align);
                 bcx.lifetime_start(llscratch, scratch_size);
 
                 // ...where we first store the value...
-                bcx.store(val, llscratch, None);
+                bcx.store(val, llscratch, scratch_align);
 
                 // ...and then memcpy it to the intended destination.
                 base::call_memcpy(bcx,
                                   bcx.pointercast(dst.llval, Type::i8p(ccx)),
                                   bcx.pointercast(llscratch, Type::i8p(ccx)),
                                   C_usize(ccx, self.layout.size.bytes()),
-                                  self.layout.align.min(cast.align(ccx)));
+                                  self.layout.align.min(scratch_align));
 
                 bcx.lifetime_end(llscratch, scratch_size);
             }

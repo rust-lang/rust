@@ -1,29 +1,10 @@
 #![allow(unknown_lints)]
 
-use ty::layout::HasDataLayout;
+use ty::layout::{Align, HasDataLayout};
 
 use super::{EvalResult, MemoryPointer, PointerArithmetic};
 use syntax::ast::FloatTy;
 use rustc_const_math::ConstFloat;
-
-#[derive(Copy, Clone, Debug)]
-pub struct PtrAndAlign {
-    pub ptr: Pointer,
-    /// Remember whether this place is *supposed* to be aligned.
-    pub aligned: bool,
-}
-
-impl PtrAndAlign {
-    pub fn to_ptr<'tcx>(self) -> EvalResult<'tcx, MemoryPointer> {
-        self.ptr.to_ptr()
-    }
-    pub fn offset<'tcx, C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
-        Ok(PtrAndAlign {
-            ptr: self.ptr.offset(i, cx)?,
-            aligned: self.aligned,
-        })
-    }
-}
 
 pub fn bytes_to_f32(bits: u128) -> ConstFloat {
     ConstFloat {
@@ -50,7 +31,7 @@ pub fn bytes_to_f64(bits: u128) -> ConstFloat {
 /// operations and fat pointers. This idea was taken from rustc's trans.
 #[derive(Clone, Copy, Debug)]
 pub enum Value {
-    ByRef(PtrAndAlign),
+    ByRef(Pointer, Align),
     ByVal(PrimVal),
     ByValPair(PrimVal, PrimVal),
 }
@@ -180,13 +161,6 @@ pub enum PrimValKind {
     Ptr, FnPtr,
     Bool,
     Char,
-}
-
-impl<'a, 'tcx: 'a> Value {
-    #[inline]
-    pub fn by_ref(ptr: Pointer) -> Self {
-        Value::ByRef(PtrAndAlign { ptr, aligned: true })
-    }
 }
 
 impl<'tcx> PrimVal {

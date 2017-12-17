@@ -1,13 +1,12 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{ptr, mem, io};
-use std::cell::Cell;
 
 use rustc::ty::{Instance, TyCtxt};
-use rustc::ty::layout::{self, TargetDataLayout};
+use rustc::ty::layout::{self, Align, TargetDataLayout};
 use syntax::ast::Mutability;
 
-use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, UndefMask, PtrAndAlign, Value, Pointer,
+use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, UndefMask, Value, Pointer,
                             EvalResult, PrimVal, EvalErrorKind};
 
 use super::{EvalContext, Machine};
@@ -51,11 +50,6 @@ pub struct Memory<'a, 'tcx: 'a, M: Machine<'tcx>> {
     /// Maximum number of virtual bytes that may be allocated.
     memory_size: u64,
 
-    /// To avoid having to pass flags to every single memory access, we have some global state saying whether
-    /// alignment checking is currently enforced for read and/or write accesses.
-    reads_are_aligned: Cell<bool>,
-    writes_are_aligned: Cell<bool>,
-
     /// The current stack frame.  Used to check accesses against locks.
     pub cur_frame: usize,
 
@@ -72,8 +66,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             tcx,
             memory_size: max_memory,
             memory_usage: 0,
-            reads_are_aligned: Cell::new(true),
-            writes_are_aligned: Cell::new(true),
             cur_frame: usize::max_value(),
         }
     }
@@ -98,12 +90,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     pub fn allocate(
         &mut self,
         size: u64,
-        align: u64,
+        align: Align,
         kind: Option<MemoryKind<M::MemoryKinds>>,
     ) -> EvalResult<'tcx, MemoryPointer> {
-        assert_ne!(align, 0);
-        assert!(align.is_power_of_two());
-
         if self.memory_size - self.memory_usage < size {
             return err!(OutOfMemory {
                 allocation_size: size,
@@ -139,13 +128,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         ptr: MemoryPointer,
         old_size: u64,
-        old_align: u64,
+        old_align: Align,
         new_size: u64,
-        new_align: u64,
+        new_align: Align,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, MemoryPointer> {
-        use std::cmp::min;
-
         if ptr.offset != 0 {
             return err!(ReallocateNonBasePtr);
         }
@@ -163,9 +150,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let new_ptr = self.allocate(new_size, new_align, Some(kind))?;
         self.copy(
             ptr.into(),
+            old_align,
             new_ptr.into(),
-            min(old_size, new_size),
-            min(old_align, new_align),
+            new_align,
+            old_size.min(new_size),
             /*nonoverlapping*/
             true,
         )?;
@@ -190,7 +178,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     pub fn deallocate(
         &mut self,
         ptr: MemoryPointer,
-        size_and_align: Option<(u64, u64)>,
+        size_and_align: Option<(u64, Align)>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
         if ptr.offset != 0 {
@@ -236,7 +224,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
         if let Some((size, align)) = size_and_align {
             if size != alloc.bytes.len() as u64 || align != alloc.align {
-                return err!(IncorrectAllocationInformation(size, alloc.bytes.len(), align, alloc.align));
+                return err!(IncorrectAllocationInformation(size, alloc.bytes.len(), align.abi(), alloc.align.abi()));
             }
         }
 
@@ -255,7 +243,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     }
 
     /// Check that the pointer is aligned AND non-NULL.
-    pub fn check_align(&self, ptr: Pointer, align: u64, access: Option<AccessKind>) -> EvalResult<'tcx> {
+    pub fn check_align(&self, ptr: Pointer, required_align: Align) -> EvalResult<'tcx> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr.into_inner_primval() {
             PrimVal::Ptr(ptr) => {
@@ -267,32 +255,24 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 if v == 0 {
                     return err!(InvalidNullPointerUsage);
                 }
-                (v, align) // the base address if the "integer allocation" is 0 and hence always aligned
+                // the base address if the "integer allocation" is 0 and hence always aligned
+                (v, required_align)
             }
             PrimVal::Undef => return err!(ReadUndefBytes),
         };
-        // See if alignment checking is disabled
-        let enforce_alignment = match access {
-            Some(AccessKind::Read) => self.reads_are_aligned.get(),
-            Some(AccessKind::Write) => self.writes_are_aligned.get(),
-            None => true,
-        };
-        if !enforce_alignment {
-            return Ok(());
-        }
         // Check alignment
-        if alloc_align < align {
+        if alloc_align.abi() < required_align.abi() {
             return err!(AlignmentCheckFailed {
-                has: alloc_align,
-                required: align,
+                has: alloc_align.abi(),
+                required: required_align.abi(),
             });
         }
-        if offset % align == 0 {
+        if offset % required_align.abi() == 0 {
             Ok(())
         } else {
             err!(AlignmentCheckFailed {
-                has: offset % align,
-                required: align,
+                has: offset % required_align.abi(),
+                required: required_align.abi(),
             })
         }
     }
@@ -437,7 +417,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 "{}({} bytes, alignment {}){}",
                 msg,
                 alloc.bytes.len(),
-                alloc.align,
+                alloc.align.abi(),
                 immutable
             );
 
@@ -482,10 +462,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &self,
         ptr: MemoryPointer,
         size: u64,
-        align: u64,
+        align: Align,
     ) -> EvalResult<'tcx, &[u8]> {
         // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
-        self.check_align(ptr.into(), align, Some(AccessKind::Read))?;
+        self.check_align(ptr.into(), align)?;
         if size == 0 {
             return Ok(&[]);
         }
@@ -502,10 +482,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         ptr: MemoryPointer,
         size: u64,
-        align: u64,
+        align: Align,
     ) -> EvalResult<'tcx, &mut [u8]> {
         // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
-        self.check_align(ptr.into(), align, Some(AccessKind::Write))?;
+        self.check_align(ptr.into(), align)?;
         if size == 0 {
             return Ok(&mut []);
         }
@@ -518,7 +498,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Ok(&mut alloc.bytes[offset..offset + size as usize])
     }
 
-    fn get_bytes(&self, ptr: MemoryPointer, size: u64, align: u64) -> EvalResult<'tcx, &[u8]> {
+    fn get_bytes(&self, ptr: MemoryPointer, size: u64, align: Align) -> EvalResult<'tcx, &[u8]> {
         assert_ne!(size, 0);
         if self.relocations(ptr, size)?.count() != 0 {
             return err!(ReadPointerAsBytes);
@@ -531,7 +511,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         ptr: MemoryPointer,
         size: u64,
-        align: u64,
+        align: Align,
     ) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size, 0);
         self.clear_relocations(ptr, size)?;
@@ -629,14 +609,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     pub fn copy(
         &mut self,
         src: Pointer,
+        src_align: Align,
         dest: Pointer,
+        dest_align: Align,
         size: u64,
-        align: u64,
         nonoverlapping: bool,
     ) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be aligned
-        self.check_align(src, align, Some(AccessKind::Read))?;
-        self.check_align(dest, align, Some(AccessKind::Write))?;
+        self.check_align(src, src_align)?;
+        self.check_align(dest, dest_align)?;
         if size == 0 {
             return Ok(());
         }
@@ -655,8 +636,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             })
             .collect();
 
-        let src_bytes = self.get_bytes_unchecked(src, size, align)?.as_ptr();
-        let dest_bytes = self.get_bytes_mut(dest, size, align)?.as_mut_ptr();
+        let src_bytes = self.get_bytes_unchecked(src, size, src_align)?.as_ptr();
+        let dest_bytes = self.get_bytes_mut(dest, size, dest_align)?.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
@@ -705,41 +686,44 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 
     pub fn read_bytes(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &[u8]> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        self.check_align(ptr, 1, Some(AccessKind::Read))?;
+        let align = Align::from_bytes(1, 1).unwrap();
+        self.check_align(ptr, align)?;
         if size == 0 {
             return Ok(&[]);
         }
-        self.get_bytes(ptr.to_ptr()?, size, 1)
+        self.get_bytes(ptr.to_ptr()?, size, align)
     }
 
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        self.check_align(ptr, 1, Some(AccessKind::Write))?;
+        let align = Align::from_bytes(1, 1).unwrap();
+        self.check_align(ptr, align)?;
         if src.is_empty() {
             return Ok(());
         }
-        let bytes = self.get_bytes_mut(ptr.to_ptr()?, src.len() as u64, 1)?;
+        let bytes = self.get_bytes_mut(ptr.to_ptr()?, src.len() as u64, align)?;
         bytes.clone_from_slice(src);
         Ok(())
     }
 
     pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: u64) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        self.check_align(ptr, 1, Some(AccessKind::Write))?;
+        let align = Align::from_bytes(1, 1).unwrap();
+        self.check_align(ptr, align)?;
         if count == 0 {
             return Ok(());
         }
-        let bytes = self.get_bytes_mut(ptr.to_ptr()?, count, 1)?;
+        let bytes = self.get_bytes_mut(ptr.to_ptr()?, count, align)?;
         for b in bytes {
             *b = val;
         }
         Ok(())
     }
 
-    pub fn read_primval(&self, ptr: MemoryPointer, size: u64, signed: bool) -> EvalResult<'tcx, PrimVal> {
+    pub fn read_primval(&self, ptr: MemoryPointer, ptr_align: Align, size: u64, signed: bool) -> EvalResult<'tcx, PrimVal> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianess = self.endianess();
-        let bytes = self.get_bytes_unchecked(ptr, size, self.int_align(size))?;
+        let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
@@ -767,11 +751,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Ok(PrimVal::Bytes(bytes))
     }
 
-    pub fn read_ptr_sized_unsigned(&self, ptr: MemoryPointer) -> EvalResult<'tcx, PrimVal> {
-        self.read_primval(ptr, self.pointer_size(), false)
+    pub fn read_ptr_sized_unsigned(&self, ptr: MemoryPointer, ptr_align: Align) -> EvalResult<'tcx, PrimVal> {
+        self.read_primval(ptr, ptr_align, self.pointer_size(), false)
     }
 
-    pub fn write_primval(&mut self, ptr: MemoryPointer, val: PrimVal, size: u64, signed: bool) -> EvalResult<'tcx> {
+    pub fn write_primval(&mut self, ptr: MemoryPointer, ptr_align: Align, val: PrimVal, size: u64, signed: bool) -> EvalResult<'tcx> {
         let endianess = self.endianess();
 
         let bytes = match val {
@@ -802,7 +786,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 
         {
             let align = self.int_align(size);
-            let dst = self.get_bytes_mut(ptr, size, align)?;
+            let dst = self.get_bytes_mut(ptr, size, ptr_align.min(align))?;
             if signed {
                 write_target_int(endianess, dst, bytes as i128).unwrap();
             } else {
@@ -824,22 +808,23 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Ok(())
     }
 
-    pub fn write_ptr_sized_unsigned(&mut self, ptr: MemoryPointer, val: PrimVal) -> EvalResult<'tcx> {
+    pub fn write_ptr_sized_unsigned(&mut self, ptr: MemoryPointer, ptr_align: Align, val: PrimVal) -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
-        self.write_primval(ptr, val, ptr_size, false)
+        self.write_primval(ptr, ptr_align, val, ptr_size, false)
     }
 
-    fn int_align(&self, size: u64) -> u64 {
+    fn int_align(&self, size: u64) -> Align {
         // We assume pointer-sized integers have the same alignment as pointers.
         // We also assume signed and unsigned integers of the same size have the same alignment.
-        match size {
-            1 => self.tcx.data_layout.i8_align.abi(),
-            2 => self.tcx.data_layout.i16_align.abi(),
-            4 => self.tcx.data_layout.i32_align.abi(),
-            8 => self.tcx.data_layout.i64_align.abi(),
-            16 => self.tcx.data_layout.i128_align.abi(),
+        let ity = match size {
+            1 => layout::I8,
+            2 => layout::I16,
+            4 => layout::I32,
+            8 => layout::I64,
+            16 => layout::I128,
             _ => bug!("bad integer size: {}", size),
-        }
+        };
+        ity.align(self)
     }
 }
 
@@ -1004,43 +989,6 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
     fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M>;
     fn memory(&self) -> &Memory<'a, 'tcx, M>;
 
-    // These are not supposed to be overriden.
-    fn read_maybe_aligned<F, T>(&self, aligned: bool, f: F) -> EvalResult<'tcx, T>
-    where
-        F: FnOnce(&Self) -> EvalResult<'tcx, T>,
-    {
-        let old = self.memory().reads_are_aligned.get();
-        // Do alignment checking if *all* nested calls say it has to be aligned.
-        self.memory().reads_are_aligned.set(old && aligned);
-        let t = f(self);
-        self.memory().reads_are_aligned.set(old);
-        t
-    }
-
-    fn read_maybe_aligned_mut<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
-    where
-        F: FnOnce(&mut Self) -> EvalResult<'tcx, T>,
-    {
-        let old = self.memory().reads_are_aligned.get();
-        // Do alignment checking if *all* nested calls say it has to be aligned.
-        self.memory().reads_are_aligned.set(old && aligned);
-        let t = f(self);
-        self.memory().reads_are_aligned.set(old);
-        t
-    }
-
-    fn write_maybe_aligned_mut<F, T>(&mut self, aligned: bool, f: F) -> EvalResult<'tcx, T>
-    where
-        F: FnOnce(&mut Self) -> EvalResult<'tcx, T>,
-    {
-        let old = self.memory().writes_are_aligned.get();
-        // Do alignment checking if *all* nested calls say it has to be aligned.
-        self.memory().writes_are_aligned.set(old && aligned);
-        let t = f(self);
-        self.memory().writes_are_aligned.set(old);
-        t
-    }
-
     /// Convert the value into a pointer (or a pointer-sized integer).  If the value is a ByRef,
     /// this may have to perform a load.
     fn into_ptr(
@@ -1048,8 +996,8 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
         value: Value,
     ) -> EvalResult<'tcx, Pointer> {
         Ok(match value {
-            Value::ByRef(PtrAndAlign { ptr, aligned }) => {
-                self.memory().read_maybe_aligned(aligned, |mem| mem.read_ptr_sized_unsigned(ptr.to_ptr()?))?
+            Value::ByRef(ptr, align) => {
+                self.memory().read_ptr_sized_unsigned(ptr.to_ptr()?, align)?
             }
             Value::ByVal(ptr) |
             Value::ByValPair(ptr, _) => ptr,
@@ -1061,17 +1009,14 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
         value: Value,
     ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
         match value {
-            Value::ByRef(PtrAndAlign {
-                      ptr: ref_ptr,
-                      aligned,
-                  }) => {
-                self.memory().read_maybe_aligned(aligned, |mem| {
-                    let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
-                    let vtable = mem.read_ptr_sized_unsigned(
-                        ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
-                    )?.to_ptr()?;
-                    Ok((ptr, vtable))
-                })
+            Value::ByRef(ref_ptr, align) => {
+                let mem = self.memory();
+                let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?, align)?.into();
+                let vtable = mem.read_ptr_sized_unsigned(
+                    ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
+                    align
+                )?.to_ptr()?;
+                Ok((ptr, vtable))
             }
 
             Value::ByValPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
@@ -1086,17 +1031,14 @@ pub trait HasMemory<'a, 'tcx: 'a, M: Machine<'tcx>> {
         value: Value,
     ) -> EvalResult<'tcx, (Pointer, u64)> {
         match value {
-            Value::ByRef(PtrAndAlign {
-                      ptr: ref_ptr,
-                      aligned,
-                  }) => {
-                self.memory().read_maybe_aligned(aligned, |mem| {
-                    let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
-                    let len = mem.read_ptr_sized_unsigned(
-                        ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
-                    )?.to_bytes()? as u64;
-                    Ok((ptr, len))
-                })
+            Value::ByRef(ref_ptr, align) => {
+                let mem = self.memory();
+                let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?, align)?.into();
+                let len = mem.read_ptr_sized_unsigned(
+                    ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
+                    align
+                )?.to_bytes()? as u64;
+                Ok((ptr, len))
             }
             Value::ByValPair(ptr, val) => {
                 let len = val.to_u128()?;

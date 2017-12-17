@@ -14,7 +14,7 @@ use intrinsics::{self, Intrinsic};
 use llvm;
 use llvm::{ValueRef};
 use abi::{Abi, FnType, PassMode};
-use mir::place::{PlaceRef, Alignment};
+use mir::place::PlaceRef;
 use mir::operand::{OperandRef, OperandValue};
 use base::*;
 use common::*;
@@ -106,7 +106,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let name = &*tcx.item_name(def_id);
 
     let llret_ty = ccx.layout_of(ret_ty).llvm_type(ccx);
-    let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, Alignment::AbiAligned);
+    let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, fn_ty.ret.layout.align);
 
     let simple = get_simple_intrinsic(ccx, name);
     let llval = match name {
@@ -254,7 +254,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 bcx.volatile_store(b, dst.project_field(bcx, 1).llval);
             } else {
                 let val = if let OperandValue::Ref(ptr, align) = args[1].val {
-                    bcx.load(ptr, align.non_abi())
+                    bcx.load(ptr, align)
                 } else {
                     if dst.layout.is_zst() {
                         return;
@@ -330,9 +330,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                             let overflow = bcx.zext(bcx.extract_value(pair, 1), Type::bool(ccx));
 
                             let dest = result.project_field(bcx, 0);
-                            bcx.store(val, dest.llval, dest.alignment.non_abi());
+                            bcx.store(val, dest.llval, dest.align);
                             let dest = result.project_field(bcx, 1);
-                            bcx.store(overflow, dest.llval, dest.alignment.non_abi());
+                            bcx.store(overflow, dest.llval, dest.align);
 
                             return;
                         },
@@ -473,9 +473,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         let success = bcx.zext(bcx.extract_value(pair, 1), Type::bool(bcx.ccx));
 
                         let dest = result.project_field(bcx, 0);
-                        bcx.store(val, dest.llval, dest.alignment.non_abi());
+                        bcx.store(val, dest.llval, dest.align);
                         let dest = result.project_field(bcx, 1);
-                        bcx.store(success, dest.llval, dest.alignment.non_abi());
+                        bcx.store(success, dest.llval, dest.align);
                         return;
                     } else {
                         return invalid_monomorphization(ty);
@@ -544,7 +544,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let tp_ty = substs.type_at(0);
             let dst = args[0].deref(bcx.ccx);
             let val = if let OperandValue::Ref(ptr, align) = args[1].val {
-                bcx.load(ptr, align.non_abi())
+                bcx.load(ptr, align)
             } else {
                 from_immediate(bcx, args[1].immediate())
             };
@@ -677,7 +677,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     for i in 0..elems.len() {
                         let dest = result.project_field(bcx, i);
                         let val = bcx.extract_value(val, i as u64);
-                        bcx.store(val, dest.llval, dest.alignment.non_abi());
+                        bcx.store(val, dest.llval, dest.align);
                     }
                     return;
                 }
@@ -688,8 +688,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
     if !fn_ty.ret.is_ignore() {
         if let PassMode::Cast(ty) = fn_ty.ret.mode {
-            let ptr = bcx.pointercast(llresult, ty.llvm_type(ccx).ptr_to());
-            bcx.store(llval, ptr, Some(ccx.align_of(ret_ty)));
+            let ptr = bcx.pointercast(result.llval, ty.llvm_type(ccx).ptr_to());
+            bcx.store(llval, ptr, result.align);
         } else {
             OperandRef::from_immediate_or_packed_pair(bcx, llval, result.layout)
                 .val.store(bcx, result);
@@ -758,7 +758,8 @@ fn try_intrinsic<'a, 'tcx>(
 ) {
     if bcx.sess().no_landing_pads() {
         bcx.call(func, &[data], None);
-        bcx.store(C_null(Type::i8p(&bcx.ccx)), dest, None);
+        let ptr_align = bcx.tcx().data_layout.pointer_align;
+        bcx.store(C_null(Type::i8p(&bcx.ccx)), dest, ptr_align);
     } else if wants_msvc_seh(bcx.sess()) {
         trans_msvc_try(bcx, ccx, func, data, local_ptr, dest);
     } else {
@@ -833,7 +834,8 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         //
         // More information can be found in libstd's seh.rs implementation.
         let i64p = Type::i64(ccx).ptr_to();
-        let slot = bcx.alloca(i64p, "slot", ccx.data_layout().pointer_align);
+        let ptr_align = bcx.tcx().data_layout.pointer_align;
+        let slot = bcx.alloca(i64p, "slot", ptr_align);
         bcx.invoke(func, &[data], normal.llbb(), catchswitch.llbb(),
             None);
 
@@ -848,13 +850,15 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             None => bug!("msvc_try_filter not defined"),
         };
         let tok = catchpad.catch_pad(cs, &[tydesc, C_i32(ccx, 0), slot]);
-        let addr = catchpad.load(slot, None);
-        let arg1 = catchpad.load(addr, None);
+        let addr = catchpad.load(slot, ptr_align);
+
+        let i64_align = bcx.tcx().data_layout.i64_align;
+        let arg1 = catchpad.load(addr, i64_align);
         let val1 = C_i32(ccx, 1);
-        let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]), None);
+        let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]), i64_align);
         let local_ptr = catchpad.bitcast(local_ptr, i64p);
-        catchpad.store(arg1, local_ptr, None);
-        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), None);
+        catchpad.store(arg1, local_ptr, i64_align);
+        catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), i64_align);
         catchpad.catch_ret(tok, caught.llbb());
 
         caught.ret(C_i32(ccx, 1));
@@ -863,7 +867,8 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bcx.call(llfn, &[func, data, local_ptr], None);
-    bcx.store(ret, dest, None);
+    let i32_align = bcx.tcx().data_layout.i32_align;
+    bcx.store(ret, dest, i32_align);
 }
 
 // Definition of the standard "try" function for Rust using the GNU-like model
@@ -923,14 +928,16 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         let vals = catch.landing_pad(lpad_ty, bcx.ccx.eh_personality(), 1, catch.llfn());
         catch.add_clause(vals, C_null(Type::i8p(ccx)));
         let ptr = catch.extract_value(vals, 0);
-        catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(ccx).ptr_to()), None);
+        let ptr_align = bcx.tcx().data_layout.pointer_align;
+        catch.store(ptr, catch.bitcast(local_ptr, Type::i8p(ccx).ptr_to()), ptr_align);
         catch.ret(C_i32(ccx, 1));
     });
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bcx.call(llfn, &[func, data, local_ptr], None);
-    bcx.store(ret, dest, None);
+    let i32_align = bcx.tcx().data_layout.i32_align;
+    bcx.store(ret, dest, i32_align);
 }
 
 // Helper function to give a Block to a closure to translate a shim function.

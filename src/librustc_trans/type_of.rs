@@ -79,13 +79,14 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match layout.fields {
         layout::FieldPlacement::Union(_) => {
             let fill = Type::padding_filler(ccx, layout.size, layout.align);
+            let packed = false;
             match name {
                 None => {
-                    Type::struct_(ccx, &[fill], layout.is_packed())
+                    Type::struct_(ccx, &[fill], packed)
                 }
                 Some(ref name) => {
                     let mut llty = Type::named_struct(ccx, name);
-                    llty.set_struct_body(&[fill], layout.is_packed());
+                    llty.set_struct_body(&[fill], packed);
                     llty
                 }
             }
@@ -96,7 +97,8 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         layout::FieldPlacement::Arbitrary { .. } => {
             match name {
                 None => {
-                    Type::struct_(ccx, &struct_llfields(ccx, layout), layout.is_packed())
+                    let (llfields, packed) = struct_llfields(ccx, layout);
+                    Type::struct_(ccx, &llfields, packed)
                 }
                 Some(ref name) => {
                     let llty = Type::named_struct(ccx, name);
@@ -109,15 +111,19 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                             layout: TyLayout<'tcx>) -> Vec<Type> {
+                             layout: TyLayout<'tcx>)
+                             -> (Vec<Type>, bool) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
+    let mut packed = false;
     let mut offset = Size::from_bytes(0);
     let mut prev_align = layout.align;
     let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
         let field = layout.field(ccx, i);
+        packed |= layout.align.abi() < field.align.abi();
+
         let target_offset = layout.fields.offset(i as usize);
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?}",
             i, field, offset, target_offset);
@@ -129,15 +135,6 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("    padding before: {:?}", padding);
 
         result.push(field.llvm_type(ccx));
-
-        if layout.is_packed() {
-            assert_eq!(padding.bytes(), 0);
-        } else {
-            assert!(field.align.abi() <= layout.align.abi(),
-                    "non-packed type has field with larger align ({}): {:#?}",
-                    field.align.abi(), layout);
-        }
-
         offset = target_offset + field.size;
         prev_align = field.align;
     }
@@ -158,7 +155,7 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                offset, layout.size);
     }
 
-    result
+    (result, packed)
 }
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
@@ -301,7 +298,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         ccx.lltypes().borrow_mut().insert((self.ty, variant_index), llty);
 
         if let Some((mut llty, layout)) = defer {
-            llty.set_struct_body(&struct_llfields(ccx, layout), layout.is_packed())
+            let (llfields, packed) = struct_llfields(ccx, layout);
+            llty.set_struct_body(&llfields, packed)
         }
 
         llty

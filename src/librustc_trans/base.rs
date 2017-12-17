@@ -316,7 +316,7 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
                 if src_f.layout.ty == dst_f.layout.ty {
                     memcpy_ty(bcx, dst_f.llval, src_f.llval, src_f.layout,
-                        (src_f.alignment | dst_f.alignment).non_abi());
+                        src_f.align.min(dst_f.align));
                 } else {
                     coerce_unsized_into(bcx, src_f, dst_f);
                 }
@@ -430,14 +430,13 @@ pub fn memcpy_ty<'a, 'tcx>(
     dst: ValueRef,
     src: ValueRef,
     layout: TyLayout<'tcx>,
-    align: Option<Align>,
+    align: Align,
 ) {
     let size = layout.size.bytes();
     if size == 0 {
         return;
     }
 
-    let align = align.unwrap_or(layout.align);
     call_memcpy(bcx, dst, src, C_usize(bcx.ccx, size), align);
 }
 
