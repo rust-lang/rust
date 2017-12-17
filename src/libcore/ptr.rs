@@ -2330,7 +2330,6 @@ impl<T: ?Sized> PartialOrd for *mut T {
 ///
 /// Unlike `*mut T`, `Unique<T>` is covariant over `T`. This should always be correct
 /// for any type which upholds Unique's aliasing requirements.
-#[allow(missing_debug_implementations)]
 #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
            issue = "27730")]
 pub struct Unique<T: ?Sized> {
@@ -2341,6 +2340,13 @@ pub struct Unique<T: ?Sized> {
     // For details, see:
     // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
     _marker: PhantomData<T>,
+}
+
+#[unstable(feature = "unique", issue = "27730")]
+impl<T: ?Sized> fmt::Debug for Unique<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:p}", self.as_ptr())
+    }
 }
 
 /// `Unique` pointers are `Send` if `T` is `Send` because the data they
@@ -2463,11 +2469,17 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
 /// Usually this won't be necessary; covariance is correct for most safe abstractions,
 /// such as Box, Rc, Arc, Vec, and LinkedList. This is the case because they
 /// provide a public API that follows the normal shared XOR mutable rules of Rust.
-#[allow(missing_debug_implementations)]
 #[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
            issue = "27730")]
 pub struct Shared<T: ?Sized> {
     pointer: NonZero<*const T>,
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> fmt::Debug for Shared<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:p}", self.as_ptr())
+    }
 }
 
 /// `Shared` pointers are not `Send` because the data they reference may be aliased.
