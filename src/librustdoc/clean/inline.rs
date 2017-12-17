@@ -448,8 +448,7 @@ fn build_static(cx: &DocContext, did: DefId, mutable: bool) -> clean::Static {
 ///
 /// The inverse of this filtering logic can be found in the `Clean`
 /// implementation for `AssociatedType`
-fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics)
-                             -> clean::Generics {
+fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean::Generics {
     for pred in &mut g.where_predicates {
         match *pred {
             clean::WherePredicate::BoundPredicate {
