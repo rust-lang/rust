@@ -333,6 +333,9 @@ fn rewrite_comment_inner(
             }
         } else if is_prev_line_multi_line && !line.is_empty() {
             result.push(' ')
+        } else if is_last && !closer.is_empty() && line.is_empty() {
+            result.push('\n');
+            result.push_str(&indent_str);
         } else {
             result.push_str(&comment_line_separator);
             if !has_leading_whitespace && result.ends_with(' ') {
@@ -393,7 +396,7 @@ fn rewrite_comment_inner(
                 Shape::legacy(max_chars, fmt_indent)
             };
         } else {
-            if line.is_empty() && result.ends_with(' ') {
+            if line.is_empty() && result.ends_with(' ') && !is_last {
                 // Remove space if this is an empty comment or a doc comment.
                 result.pop();
             }
