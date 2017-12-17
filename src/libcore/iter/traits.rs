@@ -987,3 +987,22 @@ pub unsafe trait TrustedLen : Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}
+
+/// An iterator that will never return [`None`].
+///
+/// Any iterator implementing this trait will either continue to return
+/// values infinitely, or diverge.
+/// Additionally, its [`.size_hint`] must return `(usize::MAX, None)`.
+///
+/// # Safety
+///
+/// This trait must only be implemented when the contract is upheld.
+///
+/// [`None`]: ../../std/option/enum.Option.html#variant.None
+/// [`.size_hint`]: ../../std/iter/trait.Iterator.html#method.size_hint
+#[unstable(feature="unbounded_iter", issue = "0")]
+pub unsafe trait UnboundedIterator : Iterator {}
+
+#[unstable(feature="unbounded_iter", issue = "0")]
+unsafe impl<'a, I: UnboundedIterator + ?Sized> UnboundedIterator for &'a mut I {}
+

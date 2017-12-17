@@ -331,6 +331,8 @@ pub use self::traits::{ExactSizeIterator, Sum, Product};
 pub use self::traits::FusedIterator;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
+#[unstable(feature = "unbounded_iter", issue = "0")]
+pub use self::traits::UnboundedIterator;
 
 mod iterator;
 mod range;
@@ -497,6 +499,10 @@ impl<I> FusedIterator for Rev<I>
 unsafe impl<I> TrustedLen for Rev<I>
     where I: TrustedLen + DoubleEndedIterator {}
 
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I> UnboundedIterator for Rev<I>
+    where I: UnboundedIterator + DoubleEndedIterator {}
+
 /// An iterator that clones the elements of an underlying iterator.
 ///
 /// This `struct` is created by the [`cloned`] method on [`Iterator`]. See its
@@ -577,6 +583,10 @@ impl<'a, I, T: 'a> FusedIterator for Cloned<I>
     where I: FusedIterator<Item=&'a T>, T: Clone
 {}
 
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<'a, I, T: 'a> UnboundedIterator for Cloned<I>
+    where I: UnboundedIterator<Item=&'a T>, T: Clone {}
+
 #[doc(hidden)]
 default unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
     where I: TrustedRandomAccess<Item=&'a T>, T: Clone
@@ -647,6 +657,12 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
+
+// We can't implement `UnboundedIterator` for all `Cycle`.
+// If the underlying iterator returns `None` as first element, it would
+// break the contract.
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I> UnboundedIterator for Cycle<I> where I: Clone + UnboundedIterator {}
 
 /// An iterator for stepping iterators by a custom amount.
 ///
@@ -1175,6 +1191,10 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
     where A: TrustedLen, B: TrustedLen,
 {}
 
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<A, B> UnboundedIterator for Zip<A, B>
+    where A: UnboundedIterator, B: UnboundedIterator {}
+
 /// An iterator that maps the values of `iter` with `f`.
 ///
 /// This `struct` is created by the [`map`] method on [`Iterator`]. See its
@@ -1315,6 +1335,11 @@ impl<B, I: FusedIterator, F> FusedIterator for Map<I, F>
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<B, I, F> TrustedLen for Map<I, F>
     where I: TrustedLen,
+          F: FnMut(I::Item) -> B {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<B, I, F> UnboundedIterator for Map<I, F>
+    where I: UnboundedIterator,
           F: FnMut(I::Item) -> B {}
 
 #[doc(hidden)]
@@ -1730,6 +1755,9 @@ unsafe impl<I> TrustedLen for Enumerate<I>
     where I: TrustedLen,
 {}
 
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I> UnboundedIterator for Enumerate<I> where I: UnboundedIterator {}
+
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.
@@ -1844,6 +1872,9 @@ impl<I: ExactSizeIterator> ExactSizeIterator for Peekable<I> {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I: FusedIterator> FusedIterator for Peekable<I> {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I: UnboundedIterator> UnboundedIterator for Peekable<I> {}
 
 impl<I: Iterator> Peekable<I> {
     /// Returns a reference to the next() value without advancing the iterator.
@@ -2730,6 +2761,11 @@ impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {
     }
 }
 
+// Actually it's useless to call `.fuse()` on an UnboundedIterator, as the `None`
+// case will never occur. Anyway, this contract still holds.
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I> UnboundedIterator for Fuse<I> where I: UnboundedIterator {}
+
 /// An iterator that calls a function with a reference to each element before
 /// yielding it.
 ///
@@ -2840,4 +2876,8 @@ impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F>
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I: FusedIterator, F> FusedIterator for Inspect<I, F>
+    where F: FnMut(&I::Item) {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I: UnboundedIterator, F> UnboundedIterator for Inspect<I, F>
     where F: FnMut(&I::Item) {}

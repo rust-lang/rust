@@ -13,7 +13,7 @@ use mem;
 use ops::{self, Add, Sub};
 use usize;
 
-use super::{FusedIterator, TrustedLen};
+use super::{FusedIterator, TrustedLen, UnboundedIterator};
 
 /// Objects that can be stepped over in both directions.
 ///
@@ -266,6 +266,12 @@ range_incl_exact_iter_impl!(u8 u16 i8 i16);
 // the upper bound is None when it does not fit the type limits.
 range_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
 range_incl_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
+
+// We can safely implement `UnboundedIterator` for all RangeFrom because
+// `Step::add_one` will always return `Self` or diverge, which is exactly
+// the contract `UnboundedIterator` describes.
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<A: Step> UnboundedIterator for ops::RangeFrom<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step> DoubleEndedIterator for ops::Range<A> {
