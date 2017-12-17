@@ -305,27 +305,42 @@ fn rewrite_comment_inner(
             line
         })
         .map(|s| left_trim_comment_line(s, &style))
-        .map(|line| {
+        .map(|(line, has_leading_whitespace)| {
             if orig.starts_with("/*") && line_breaks == 0 {
-                line.trim_left()
+                (
+                    line.trim_left(),
+                    has_leading_whitespace || config.normalize_comments(),
+                )
             } else {
-                line
+                (line, has_leading_whitespace || config.normalize_comments())
             }
         });
 
-    let mut result = opener.to_owned();
+    let mut result = String::with_capacity(orig.len() * 2);
+    result.push_str(opener);
     let mut is_prev_line_multi_line = false;
     let mut inside_code_block = false;
     let comment_line_separator = format!("\n{}{}", indent_str, line_start);
-    for line in lines {
+    for (i, (line, has_leading_whitespace)) in lines.enumerate() {
+        let is_last = i == count_newlines(orig);
         if result == opener {
+            let force_leading_whitespace = opener == "/* " && count_newlines(orig) == 0;
+            if !has_leading_whitespace && !force_leading_whitespace && result.ends_with(' ') {
+                result.pop();
+            }
             if line.is_empty() {
                 continue;
             }
         } else if is_prev_line_multi_line && !line.is_empty() {
             result.push(' ')
+        } else if is_last && !closer.is_empty() && line.is_empty() {
+            result.push('\n');
+            result.push_str(&indent_str);
         } else {
             result.push_str(&comment_line_separator);
+            if !has_leading_whitespace && result.ends_with(' ') {
+                result.pop();
+            }
         }
 
         if line.starts_with("```") {
@@ -381,7 +396,7 @@ fn rewrite_comment_inner(
                 Shape::legacy(max_chars, fmt_indent)
             };
         } else {
-            if line.is_empty() && result.ends_with(' ') {
+            if line.is_empty() && result.ends_with(' ') && !is_last {
                 // Remove space if this is an empty comment or a doc comment.
                 result.pop();
             }
@@ -473,32 +488,33 @@ fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<
 }
 
 /// Trims comment characters and possibly a single space from the left of a string.
-/// Does not trim all whitespace.
-fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> &'a str {
+/// Does not trim all whitespace. If a single space is trimmed from the left of the string,
+/// this function returns true.
+fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> (&'a str, bool) {
     if line.starts_with("//! ") || line.starts_with("/// ") || line.starts_with("/*! ")
         || line.starts_with("/** ")
     {
-        &line[4..]
+        (&line[4..], true)
     } else if let CommentStyle::Custom(opener) = *style {
         if line.starts_with(opener) {
-            &line[opener.len()..]
+            (&line[opener.len()..], true)
         } else {
-            &line[opener.trim_right().len()..]
+            (&line[opener.trim_right().len()..], false)
         }
     } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!")
         || line.starts_with("///") || line.starts_with("** ")
         || line.starts_with("/*!")
         || (line.starts_with("/**") && !line.starts_with("/**/"))
     {
-        &line[3..]
+        (&line[3..], line.chars().nth(2).unwrap() == ' ')
     } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//")
         || line.starts_with("**")
     {
-        &line[2..]
+        (&line[2..], line.chars().nth(1).unwrap() == ' ')
     } else if line.starts_with('*') {
-        &line[1..]
+        (&line[1..], false)
     } else {
-        line
+        (line, line.starts_with(' '))
     }
 }
 

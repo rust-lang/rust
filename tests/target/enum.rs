@@ -58,7 +58,7 @@ enum X {
 }
 
 pub enum EnumWithAttributes {
-    // This is a pre comment
+    //This is a pre comment
     // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     TupleVar(usize, usize, usize), /* AAAA AAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAA
                                     * AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
