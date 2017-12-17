@@ -271,7 +271,7 @@ struct Foo {
     aaaaaaa: u32, /* multi
                    * line
                    * comment
-                   * */
+                   */
     b: u32, // hi
 
     do_not_push_this_comment1: u32, // comment1
