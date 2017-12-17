@@ -193,6 +193,10 @@ By default, Rustfmt uses a style which conforms to the [Rust style guide][style
 guide] that has been formalized through the [style RFC
 process][fmt rfcs].
 
+Configuration options are either stable or unstable. Stable options can always
+be used, while unstable ones are only available on a nightly toolchain, and opt-in.
+See [Configurations.md](Configurations.md) for details.
+
 
 ## Tips
 
