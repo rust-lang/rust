@@ -260,12 +260,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // Use the callsite's span if this is a macro call. #41858
                     let sp = self.sess().codemap().call_span_if_macro(expr.span);
                     if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
+                        let sugg_expr = match expr.node { // parenthesize if needed (Issue #46756)
+                            hir::ExprCast(_, _) | hir::ExprBinary(_, _, _) => format!("({})", src),
+                            _ => src,
+                        };
                         return Some(match mutability.mutbl {
                             hir::Mutability::MutMutable => {
-                                ("consider mutably borrowing here", format!("&mut {}", src))
+                                ("consider mutably borrowing here", format!("&mut {}", sugg_expr))
                             }
                             hir::Mutability::MutImmutable => {
-                                ("consider borrowing here", format!("&{}", src))
+                                ("consider borrowing here", format!("&{}", sugg_expr))
                             }
                         });
                     }
