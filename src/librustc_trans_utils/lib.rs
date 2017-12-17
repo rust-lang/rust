@@ -29,7 +29,6 @@
 
 extern crate ar;
 extern crate flate2;
-extern crate owning_ref;
 #[macro_use]
 extern crate log;
 

@@ -24,7 +24,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{RefCell, Cell};
 use std::rc::Rc;
-use owning_ref::ErasedBoxRef;
+use rustc_data_structures::owning_ref::ErasedBoxRef;
 use syntax::{ast, attr};
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;

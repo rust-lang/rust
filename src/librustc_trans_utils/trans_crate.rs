@@ -28,7 +28,7 @@ use std::fs::File;
 use std::path::Path;
 use std::sync::mpsc;
 
-use owning_ref::{ErasedBoxRef, OwningRef};
+use rustc_data_structures::owning_ref::{ErasedBoxRef, OwningRef};
 use ar::{Archive, Builder, Header};
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
