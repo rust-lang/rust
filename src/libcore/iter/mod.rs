@@ -1394,8 +1394,7 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (_, upper) = self.iter.size_hint();
-        (0, upper) // can't know a lower bound, due to the predicate
+        FilterImpl::size_hint(self)
     }
 
     // this special case allows the compiler to make `.filter(_).count()`
@@ -1482,8 +1481,41 @@ impl<I: DoubleEndedIterator, P> DoubleEndedIterator for Filter<I, P>
     }
 }
 
+// Filter specialization trait
+#[doc(hidden)]
+trait FilterImpl {
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+// General Filter impl
+impl<I: Iterator, P> FilterImpl for Filter<I, P>
+    where P: FnMut(&I::Item) -> bool
+{
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper) // can't know a lower bound, due to the predicate
+    }
+}
+
+// Specialized Filter impl for an underlying UnboundedIterator
+impl<I: UnboundedIterator, P> FilterImpl for Filter<I, P>
+    where P: FnMut(&I::Item) -> bool
+{
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // If the underlying iterator is unbounded, we will either filter out all items
+        // and thus diverge, or filter some of the infinitely many items out.
+        (usize::MAX, None)
+    }
+}
+
 #[unstable(feature = "fused", issue = "35602")]
 impl<I: FusedIterator, P> FusedIterator for Filter<I, P>
+    where P: FnMut(&I::Item) -> bool {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I: UnboundedIterator, P> UnboundedIterator for Filter<I, P>
     where P: FnMut(&I::Item) -> bool {}
 
 /// An iterator that uses `f` to both filter and map elements from `iter`.
@@ -1976,8 +2008,7 @@ impl<I: Iterator, P> Iterator for SkipWhile<I, P>
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (_, upper) = self.iter.size_hint();
-        (0, upper) // can't know a lower bound, due to the predicate
+        SkipWhileImpl::size_hint(self)
     }
 
     #[inline]
@@ -2007,9 +2038,44 @@ impl<I: Iterator, P> Iterator for SkipWhile<I, P>
     }
 }
 
+// SkipWhile specialization trait
+#[doc(hidden)]
+trait SkipWhileImpl {
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+// General SkipWhile impl
+#[doc(hidden)]
+impl<I: Iterator, P> SkipWhileImpl for SkipWhile<I, P>
+    where P: FnMut(&I::Item) -> bool
+{
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper) // can't know a lower bound, due to the predicate
+    }
+}
+
+// Specialized SkipWhile impl for underlying UnboundedIterator
+#[doc(hidden)]
+impl<I: UnboundedIterator, P> SkipWhileImpl for SkipWhile<I, P>
+    where P: FnMut(&I::Item) -> bool
+{
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // If the underlying iterator is unbounded, we will either skip all items
+        // and thus diverge, or skip the first few of the infinitely many items.
+        (usize::MAX, None)
+    }
+}
+
 #[unstable(feature = "fused", issue = "35602")]
 impl<I, P> FusedIterator for SkipWhile<I, P>
     where I: FusedIterator, P: FnMut(&I::Item) -> bool {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I, P> UnboundedIterator for SkipWhile<I, P>
+    where I: UnboundedIterator, P: FnMut(&I::Item) -> bool {}
 
 /// An iterator that only accepts elements while `predicate` is true.
 ///
@@ -2308,6 +2374,9 @@ impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I: UnboundedIterator> TrustedLen for Take<I> {}
 
 /// An iterator to maintain state while iterating another iterator.
 ///
