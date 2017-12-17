@@ -169,6 +169,13 @@ enum PrevTokenKind {
     Other,
 }
 
+pub(crate) trait RecoverQPath: Sized {
+    fn to_ty(&self) -> Option<P<Ty>>;
+    fn to_recovered(&self, qself: Option<QSelf>, path: ast::Path) -> Self;
+    fn to_string(&self) -> String;
+    const PATH_STYLE: PathStyle = PathStyle::Expr;
+}
+
 /* ident is handled by common.rs */
 
 #[derive(Clone)]
@@ -1567,6 +1574,7 @@ impl<'a> Parser<'a> {
 
         // Try to recover from use of `+` with incorrect priority.
         self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
+        let ty = self.maybe_recover_from_bad_qpath(ty)?;
 
         Ok(P(ty))
     }
@@ -1619,6 +1627,32 @@ impl<'a> Parser<'a> {
         }
         err.emit();
         Ok(())
+    }
+
+    // Try to recover from associated item paths like `[T]::AssocItem`/`(T, U)::AssocItem`.
+    fn maybe_recover_from_bad_qpath<T: RecoverQPath>(&mut self, base: T) -> PResult<'a, T> {
+        // Do not add `::` to expected tokens.
+        if self.token != token::ModSep {
+            return Ok(base);
+        }
+        let ty = match base.to_ty() {
+            Some(ty) => ty,
+            None => return Ok(base),
+        };
+
+        self.bump(); // `::`
+        let mut segments = Vec::new();
+        self.parse_path_segments(&mut segments, T::PATH_STYLE, true)?;
+
+        let span = ty.span.to(self.prev_span);
+        let recovered =
+            base.to_recovered(Some(QSelf { ty, position: 0 }), ast::Path { segments, span });
+
+        self.diagnostic()
+            .struct_span_err(span, "missing angle brackets in associated item path")
+            .span_suggestion(span, "try", recovered.to_string()).emit();
+
+        Ok(recovered)
     }
 
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
@@ -2012,12 +2046,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn mk_expr(&mut self, span: Span, node: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
-        P(Expr {
-            id: ast::DUMMY_NODE_ID,
-            node,
-            span,
-            attrs: attrs.into(),
-        })
+        P(Expr { node, span, attrs, id: ast::DUMMY_NODE_ID })
     }
 
     pub fn mk_unary(&mut self, unop: ast::UnOp, expr: P<Expr>) -> ast::ExprKind {
@@ -2139,12 +2168,11 @@ impl<'a> Parser<'a> {
                 self.bump();
 
                 hi = self.prev_span;
-                let span = lo.to(hi);
-                return if es.len() == 1 && !trailing_comma {
-                    Ok(self.mk_expr(span, ExprKind::Paren(es.into_iter().nth(0).unwrap()), attrs))
+                ex = if es.len() == 1 && !trailing_comma {
+                    ExprKind::Paren(es.into_iter().nth(0).unwrap())
                 } else {
-                    Ok(self.mk_expr(span, ExprKind::Tup(es), attrs))
-                }
+                    ExprKind::Tup(es)
+                };
             }
             token::OpenDelim(token::Brace) => {
                 return self.parse_block_expr(lo, BlockCheckMode::Default, attrs);
@@ -2344,7 +2372,10 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return Ok(self.mk_expr(lo.to(hi), ex, attrs));
+        let expr = Expr { node: ex, span: lo.to(hi), id: ast::DUMMY_NODE_ID, attrs };
+        let expr = self.maybe_recover_from_bad_qpath(expr)?;
+
+        return Ok(P(expr));
     }
 
     fn parse_struct_expr(&mut self, lo: Span, pth: ast::Path, mut attrs: ThinVec<Attribute>)
@@ -3405,7 +3436,7 @@ impl<'a> Parser<'a> {
 
                     if self.check(&token::Comma) ||
                             self.check(&token::CloseDelim(token::Bracket)) {
-                        slice = Some(P(ast::Pat {
+                        slice = Some(P(Pat {
                             id: ast::DUMMY_NODE_ID,
                             node: PatKind::Wild,
                             span: self.span,
@@ -3492,14 +3523,14 @@ impl<'a> Parser<'a> {
                     (false, false) => BindingMode::ByValue(Mutability::Immutable),
                 };
                 let fieldpath = codemap::Spanned{span:self.prev_span, node:fieldname};
-                let fieldpat = P(ast::Pat{
+                let fieldpat = P(Pat {
                     id: ast::DUMMY_NODE_ID,
                     node: PatKind::Ident(bind_type, fieldpath, None),
                     span: boxed_span.to(hi),
                 });
 
                 let subpat = if is_box {
-                    P(ast::Pat{
+                    P(Pat {
                         id: ast::DUMMY_NODE_ID,
                         node: PatKind::Box(fieldpat),
                         span: lo.to(hi),
@@ -3708,11 +3739,10 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(P(ast::Pat {
-            id: ast::DUMMY_NODE_ID,
-            node: pat,
-            span: lo.to(self.prev_span),
-        }))
+        let pat = Pat { node: pat, span: lo.to(self.prev_span), id: ast::DUMMY_NODE_ID };
+        let pat = self.maybe_recover_from_bad_qpath(pat)?;
+
+        Ok(P(pat))
     }
 
     /// Parse ident or ident @ pat

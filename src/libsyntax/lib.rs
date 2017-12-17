@@ -22,6 +22,7 @@
 
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(match_default_bindings)]
 #![feature(i128_type)]
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
