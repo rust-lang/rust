@@ -211,8 +211,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
 
         let size = layout.size.bytes();
-        let align = layout.align.abi();
-        self.memory.allocate(size, align, Some(MemoryKind::Stack))
+        self.memory.allocate(size, layout.align, Some(MemoryKind::Stack))
     }
 
     pub fn memory(&self) -> &Memory<'a, 'tcx, M> {
@@ -612,12 +611,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let elem_size = self.layout_of(elem_ty)?.size.bytes();
                 let value = self.eval_operand(operand)?.value;
 
-                let dest = Pointer::from(self.force_allocation(dest)?.to_ptr()?);
+                let (dest, dest_align) = self.force_allocation(dest)?.to_ptr_align();
 
                 // FIXME: speed up repeat filling
                 for i in 0..length {
                     let elem_dest = dest.offset(i * elem_size, &self)?;
-                    self.write_value_to_ptr(value, elem_dest, elem_ty)?;
+                    self.write_value_to_ptr(value, elem_dest, dest_align, elem_ty)?;
                 }
             }
 
@@ -955,15 +954,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                      layout.align)
     }
 
-    fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx> {
-        let layout = self.layout_of(ty)?;
-        assert!(!layout.is_unsized(), "cannot copy from an unsized type");
-        let size = layout.size.bytes();
-        let align = layout.align.abi();
-        self.memory.copy(src, dest, size, align, false)?;
-        Ok(())
-    }
-
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {
         let new_place = match place {
             Place::Local { frame, local } => {
@@ -984,8 +974,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         let ptr = self.alloc_ptr(ty)?;
                         self.stack[frame].locals[local.index() - 1] =
                             Some(Value::ByRef(ptr.into(), layout.align)); // it stays live
-                        self.write_value_to_ptr(val, ptr.into(), ty)?;
-                        Place::from_ptr(ptr, layout.align)
+                        let place = Place::from_ptr(ptr, layout.align);
+                        self.write_value(ValTy { value: val, ty }, place)?;
+                        place
                     }
                 }
             }
@@ -1002,7 +993,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     ) -> EvalResult<'tcx, Value> {
         match value {
             Value::ByRef(ptr, align) => {
-                self.read_with_align(align, |ectx| ectx.read_value(ptr, ty))
+                self.read_value(ptr, align, ty)
             }
             other => Ok(other),
         }
@@ -1059,8 +1050,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         match dest {
             Place::Ptr { ptr, align, extra } => {
                 assert_eq!(extra, PlaceExtra::None);
-                self.write_with_align_mut(align,
-                    |ectx| ectx.write_value_to_ptr(src_val, ptr, dest_ty))
+                self.write_value_to_ptr(src_val, ptr, align, dest_ty)
             }
 
             Place::Local { frame, local } => {
@@ -1091,10 +1081,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             //
             // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
             // knew for certain that there were no outstanding pointers to this allocation.
-            self.write_with_align_mut(align, |ectx| {
-                ectx.write_value_to_ptr(src_val, dest_ptr, dest_ty)
-            })?;
-
+            self.write_value_to_ptr(src_val, dest_ptr, align, dest_ty)?;
         } else if let Value::ByRef(src_ptr, align) = src_val {
             // If the value is not `ByRef`, then we know there are no pointers to it
             // and we can simply overwrite the `Value` in the locals array directly.
@@ -1107,18 +1094,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // It is a valid optimization to attempt reading a primitive value out of the
             // source and write that into the destination without making an allocation, so
             // we do so here.
-            self.read_with_align_mut(align, |ectx| {
-                if let Ok(Some(src_val)) = ectx.try_read_value(src_ptr, dest_ty) {
-                    write_dest(ectx, src_val)?;
-                } else {
-                    let dest_ptr = ectx.alloc_ptr(dest_ty)?.into();
-                    ectx.copy(src_ptr, dest_ptr, dest_ty)?;
-                    let layout = ectx.layout_of(dest_ty)?;
-                    write_dest(ectx, Value::ByRef(dest_ptr, layout.align))?;
-                }
-                Ok(())
-            })?;
-
+            if let Ok(Some(src_val)) = self.try_read_value(src_ptr, align, dest_ty) {
+                write_dest(self, src_val)?;
+            } else {
+                let dest_ptr = self.alloc_ptr(dest_ty)?.into();
+                let layout = self.layout_of(dest_ty)?;
+                self.memory.copy(src_ptr, align.min(layout.align), dest_ptr, layout.align, layout.size.bytes(), false)?;
+                write_dest(self, Value::ByRef(dest_ptr, layout.align))?;
+            }
         } else {
             // Finally, we have the simple case where neither source nor destination are
             // `ByRef`. We may simply copy the source value over the the destintion.
@@ -1131,26 +1114,26 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         value: Value,
         dest: Pointer,
+        dest_align: Align,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         trace!("write_value_to_ptr: {:#?}", value);
+        let layout = self.layout_of(dest_ty)?;
         match value {
             Value::ByRef(ptr, align) => {
-                self.read_with_align_mut(align, |ectx| ectx.copy(ptr, dest, dest_ty))
+                self.memory.copy(ptr, align.min(layout.align), dest, dest_align.min(layout.align), layout.size.bytes(), false)
             }
             Value::ByVal(primval) => {
-                let layout = self.layout_of(dest_ty)?;
                 match layout.abi {
                     layout::Abi::Scalar(_) => {}
                     _ if primval.is_undef() => {}
                     _ => bug!("write_value_to_ptr: invalid ByVal layout: {:#?}", layout)
                 }
                 // TODO: Do we need signedness?
-                self.memory.write_primval(dest.to_ptr()?, primval, layout.size.bytes(), false)
+                self.memory.write_primval(dest.to_ptr()?, dest_align, primval, layout.size.bytes(), false)
             }
             Value::ByValPair(a_val, b_val) => {
                 let ptr = dest.to_ptr()?;
-                let mut layout = self.layout_of(dest_ty)?;
                 trace!("write_value_to_ptr valpair: {:#?}", layout);
                 let (a, b) = match layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
@@ -1161,9 +1144,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let b_offset = a_size.abi_align(b.align(&self));
                 let b_ptr = ptr.offset(b_offset.bytes(), &self)?.into();
                 // TODO: What about signedess?
-                self.memory.write_primval(a_ptr, a_val, a_size.bytes(), false)?;
-                self.memory.write_primval(b_ptr, b_val, b_size.bytes(), false)?;
-                Ok(())
+                self.memory.write_primval(a_ptr, dest_align, a_val, a_size.bytes(), false)?;
+                self.memory.write_primval(b_ptr, dest_align, b_val, b_size.bytes(), false)
             }
         }
     }
@@ -1246,8 +1228,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    pub fn read_value(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        if let Some(val) = self.try_read_value(ptr, ty)? {
+    pub fn read_value(&self, ptr: Pointer, align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+        if let Some(val) = self.try_read_value(ptr, align, ty)? {
             Ok(val)
         } else {
             bug!("primitive read failed for type: {:?}", ty);
@@ -1257,10 +1239,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn read_ptr(
         &self,
         ptr: MemoryPointer,
+        ptr_align: Align,
         pointee_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         let ptr_size = self.memory.pointer_size();
-        let p : Pointer = self.memory.read_ptr_sized_unsigned(ptr)?.into();
+        let p: Pointer = self.memory.read_ptr_sized_unsigned(ptr, ptr_align)?.into();
         if self.type_is_sized(pointee_ty) {
             Ok(p.to_value())
         } else {
@@ -1268,23 +1251,23 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             let extra = ptr.offset(ptr_size, self)?;
             match self.tcx.struct_tail(pointee_ty).sty {
                 ty::TyDynamic(..) => Ok(p.to_value_with_vtable(
-                    self.memory.read_ptr_sized_unsigned(extra)?.to_ptr()?,
+                    self.memory.read_ptr_sized_unsigned(extra, ptr_align)?.to_ptr()?,
                 )),
                 ty::TySlice(..) | ty::TyStr => Ok(
-                    p.to_value_with_len(self.memory.read_ptr_sized_unsigned(extra)?.to_bytes()? as u64),
+                    p.to_value_with_len(self.memory.read_ptr_sized_unsigned(extra, ptr_align)?.to_bytes()? as u64),
                 ),
                 _ => bug!("unsized primval ptr read from {:?}", pointee_ty),
             }
         }
     }
 
-    pub fn try_read_value(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+    pub fn try_read_value(&self, ptr: Pointer, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         use syntax::ast::FloatTy;
 
         let ptr = ptr.to_ptr()?;
         let val = match ty.sty {
             ty::TyBool => {
-                let val = self.memory.read_primval(ptr, 1, false)?;
+                let val = self.memory.read_primval(ptr, ptr_align, 1, false)?;
                 let val = match val {
                     PrimVal::Bytes(0) => false,
                     PrimVal::Bytes(1) => true,
@@ -1294,7 +1277,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 PrimVal::from_bool(val)
             }
             ty::TyChar => {
-                let c = self.memory.read_primval(ptr, 4, false)?.to_bytes()? as u32;
+                let c = self.memory.read_primval(ptr, ptr_align, 4, false)?.to_bytes()? as u32;
                 match ::std::char::from_u32(c) {
                     Some(ch) => PrimVal::from_char(ch),
                     None => return err!(InvalidChar(c as u128)),
@@ -1311,7 +1294,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     I128 => 16,
                     Is => self.memory.pointer_size(),
                 };
-                self.memory.read_primval(ptr, size, true)?
+                self.memory.read_primval(ptr, ptr_align, size, true)?
             }
 
             ty::TyUint(uint_ty) => {
@@ -1324,19 +1307,23 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     U128 => 16,
                     Us => self.memory.pointer_size(),
                 };
-                self.memory.read_primval(ptr, size, false)?
+                self.memory.read_primval(ptr, ptr_align, size, false)?
             }
 
-            ty::TyFloat(FloatTy::F32) => PrimVal::Bytes(self.memory.read_primval(ptr, 4, false)?.to_bytes()?),
-            ty::TyFloat(FloatTy::F64) => PrimVal::Bytes(self.memory.read_primval(ptr, 8, false)?.to_bytes()?),
+            ty::TyFloat(FloatTy::F32) => {
+                PrimVal::Bytes(self.memory.read_primval(ptr, ptr_align, 4, false)?.to_bytes()?)
+            }
+            ty::TyFloat(FloatTy::F64) => {
+                PrimVal::Bytes(self.memory.read_primval(ptr, ptr_align, 8, false)?.to_bytes()?)
+            }
 
-            ty::TyFnPtr(_) => self.memory.read_ptr_sized_unsigned(ptr)?,
+            ty::TyFnPtr(_) => self.memory.read_ptr_sized_unsigned(ptr, ptr_align)?,
             ty::TyRef(_, ref tam) |
-            ty::TyRawPtr(ref tam) => return self.read_ptr(ptr, tam.ty).map(Some),
+            ty::TyRawPtr(ref tam) => return self.read_ptr(ptr, ptr_align, tam.ty).map(Some),
 
             ty::TyAdt(def, _) => {
                 if def.is_box() {
-                    return self.read_ptr(ptr, ty.boxed_ty()).map(Some);
+                    return self.read_ptr(ptr, ptr_align, ty.boxed_ty()).map(Some);
                 }
 
                 if let layout::Abi::Scalar(ref scalar) = self.layout_of(ty)?.abi {
@@ -1345,7 +1332,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         signed = s;
                     }
                     let size = scalar.value.size(self).bytes();
-                    self.memory.read_primval(ptr, size, signed)?
+                    self.memory.read_primval(ptr, ptr_align, size, signed)?
                 } else {
                     return Ok(None);
                 }

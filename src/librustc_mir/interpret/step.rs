@@ -179,7 +179,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         assert!(!layout.is_unsized());
         let ptr = self.memory.allocate(
             layout.size.bytes(),
-            layout.align.abi(),
+            layout.align,
             None,
         )?;
         self.tcx.interpret_interner.borrow_mut().cache(cid, ptr.into());
@@ -264,7 +264,7 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                     assert!(!layout.is_unsized());
                     let ptr = this.ecx.memory.allocate(
                         layout.size.bytes(),
-                        layout.align.abi(),
+                        layout.align,
                         None,
                     )?;
                     this.ecx.tcx.interpret_interner.borrow_mut().cache(cid, ptr.into());

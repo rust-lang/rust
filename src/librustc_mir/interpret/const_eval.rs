@@ -66,7 +66,7 @@ pub fn eval_body<'a, 'tcx>(
         assert!(!layout.is_unsized());
         let ptr = ecx.memory.allocate(
             layout.size.bytes(),
-            layout.align.abi(),
+            layout.align,
             None,
         )?;
         tcx.interpret_interner.borrow_mut().cache(cid, ptr.into());
@@ -95,7 +95,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
     let ptr_ty = eval_body(tcx, instance, param_env);
     let (ptr, ty) = ptr_ty?;
     let ecx = mk_eval_cx(tcx, instance, param_env)?;
-    let prim = match ecx.try_read_value(ptr, ty)? {
+    let prim = match ecx.try_read_value(ptr, ecx.layout_of(ty)?.align, ty)? {
         Some(Value::ByVal(prim)) => prim.to_bytes()?,
         _ => return err!(TypeNotPrimitive(ty)),
     };
