@@ -105,7 +105,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             // First argument: pointer to main()
             let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
             let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-            let main_ty = main_instance.def.def_ty(ecx.tcx);
+            let main_ty = main_instance.ty(ecx.tcx);
             let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx));
             ecx.write_value(
                 ValTy {
