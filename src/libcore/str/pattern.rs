@@ -252,13 +252,28 @@ pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 #[derive(Clone, Debug)]
 pub struct CharSearcher<'a> {
     haystack: &'a str,
-    // invariant: `finger`/`finger_back` must be a valid utf8 byte index of `haystack`
+    // safety invariant: `finger`/`finger_back` must be a valid utf8 byte index of `haystack`
+    // This invariant can be broken *within* next_match and next_match_back, however
+    // they must exit with fingers on valid code point boundaries.
+
+    /// `finger` is the current byte index of the forward search.
+    /// Imagine that it exists before the byte at its index, i.e.
+    /// haystack[finger] is the first byte of the slice we must inspect during
+    /// forward searching
     finger: usize,
+    /// `finger_back` is the current byte index of the reverse search.
+    /// Imagine that it exists after the byte at its index, i.e.
+    /// haystack[finger_back - 1] is the last byte of the slice we must inspect during
+    /// forward searching (and thus the first byte to be inspected when calling next_back())
     finger_back: usize,
+    /// The character being searched for
     needle: char,
-    // For ascii chars
-    // invariant: must be an ASCII byte (no high bit)
-    single_byte: Option<u8>,
+
+    // safety invariant: `utf8_size` must be less than 5
+    /// The number of bytes `needle` takes up when encoded in utf8
+    utf8_size: usize,
+    /// A utf8 encoded copy of the `needle`
+    utf8_encoded: [u8; 4],
 }
 
 unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
@@ -269,12 +284,12 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next(&mut self) -> SearchStep {
         let old_finger = self.finger;
-        let slice = unsafe { self.haystack.get_unchecked(old_finger..) };
+        let slice = unsafe { self.haystack.get_unchecked(old_finger..self.haystack.len()) };
         let mut iter = slice.chars();
         let old_len = iter.iter.len();
         if let Some(ch) = iter.next() {
             // add byte offset of current character
-            // without recalculating
+            // without re-encoding as utf-8
             self.finger += old_len - iter.iter.len();
             if ch == self.needle {
                 SearchStep::Match(old_finger, self.finger)
@@ -287,25 +302,44 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     }
     #[inline]
     fn next_match(&mut self) -> Option<(usize, usize)> {
-        if let Some(byte) = self.single_byte {
-            let old_finger = self.finger;
-            let slice = unsafe { self.haystack.get_unchecked(old_finger..) };
-            let bytes = slice.as_bytes();
-            if let Some(index) = memchr::memchr(byte, bytes) {
-                // index is the index of a valid ASCII byte,
-                // so we can add one to it
-                self.finger += index + 1;
-                Some((self.finger - 1, self.finger))
+        loop {
+            // get the haystack after the last character found
+            let bytes = if let Some(slice) = self.haystack.as_bytes().get(self.finger..) {
+                slice
             } else {
-                None
-            }
-        } else {
-            loop {
-                match self.next() {
-                    SearchStep::Match(a, b) => break Some((a, b)),
-                    SearchStep::Done => break None,
-                    _ => continue,
+                return None;
+            };
+            // the last byte of the utf8 encoded needle
+            let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
+            if let Some(index) = memchr::memchr(last_byte, bytes) {
+                // The new finger is the index of the byte we found,
+                // plus one, since we memchr'd for the last byte of the character.
+                //
+                // Note that this doesn't always give us a finger on a UTF8 boundary.
+                // If we *didn't* find our character
+                // we may have indexed to the non-last byte of a 3-byte or 4-byte character.
+                // We can't just skip to the next valid starting byte because a character like
+                // ꁁ (U+A041 YI SYLLABLE PA), utf-8 `EA 81 81` will have us always find
+                // the second byte when searching for the third.
+                //
+                // However, this is totally okay. While we have the invariant that
+                // self.finger is on a UTF8 boundary, this invariant is not relid upon
+                // within this method (it is relied upon in CharSearcher::next()).
+                //
+                // We only exit this method when we reach the end of the string, or if we
+                // find something. When we find something the `finger` will be set
+                // to a UTF8 boundary.
+                self.finger += index + 1;
+                let found_char = self.finger - self.utf8_size;
+                if let Some(slice) = self.haystack.as_bytes().get(found_char..self.finger) {
+                    if slice == &self.utf8_encoded[0..self.utf8_size] {
+                        return Some((found_char, self.finger));
+                    }
                 }
+            } else {
+                // found nothing, exit
+                self.finger = self.haystack.len();
+                return None;
             }
         }
     }
@@ -322,7 +356,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
         let old_len = iter.iter.len();
         if let Some(ch) = iter.next_back() {
             // subtract byte offset of current character
-            // without recalculating
+            // without re-encoding as utf-8
             self.finger_back -= old_len - iter.iter.len();
             if ch == self.needle {
                 SearchStep::Match(self.finger_back, old_finger)
@@ -335,24 +369,47 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     }
     #[inline]
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
-        if let Some(byte) = self.single_byte {
-            let old_finger = self.finger_back;
-            let slice = unsafe { self.haystack.slice_unchecked(0, old_finger) };
-            let bytes = slice.as_bytes();
-            if let Some(index) = memchr::memrchr(byte, bytes) {
-                // index is the index of a valid ASCII byte
-                self.finger_back = index;
-                Some((self.finger_back, self.finger_back + 1))
+        let haystack = self.haystack.as_bytes();
+        loop {
+            // get the haystack up to but not including the last character searched
+            let bytes = if let Some(slice) = haystack.get(..self.finger_back) {
+                slice
             } else {
-                None
-            }
-        } else {
-            loop {
-                match self.next_back() {
-                    SearchStep::Match(a, b) => break Some((a, b)),
-                    SearchStep::Done => break None,
-                    _ => continue,
+                return None;
+            };
+            // the last byte of the utf8 encoded needle
+            let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
+            if let Some(index) = memchr::memrchr(last_byte, bytes) {
+                // memrchr will return the index of the byte we wish to
+                // find. In case of an ASCII character, this is indeed
+                // were we wish our new finger to be ("after" the found
+                // char in the paradigm of reverse iteration). For
+                // multibyte chars we need to skip down by the number of more
+                // bytes they have than ASCII
+                let found_char = index - (self.utf8_size - 1);
+                if let Some(slice) = haystack.get(found_char..(found_char + self.utf8_size)) {
+                    if slice == &self.utf8_encoded[0..self.utf8_size] {
+                        // move finger to before the character found (i.e. at its start index)
+                        self.finger_back = found_char;
+                        return Some((self.finger_back, self.finger_back + self.utf8_size));
+                    }
                 }
+                // We can't use finger_back = index - size + 1 here. If we found the last char
+                // of a different-sized character (or the middle byte of a different character)
+                // we need to bump the finger_back down to `index`. This similarly makes
+                // `finger_back` have the potential to no longer be on a boundary,
+                // but this is OK since we only exit this function on a boundary
+                // or when the haystack has been searched completely.
+                //
+                // Unlike next_match this does not
+                // have the problem of repeated bytes in utf-8 because
+                // we're searching for the last byte, and we can only have
+                // found the last byte when searching in reverse.
+                self.finger_back = index;
+            } else {
+                self.finger_back = 0;
+                // found nothing, exit
+                return None;
             }
         }
     }
@@ -368,19 +425,16 @@ impl<'a> Pattern<'a> for char {
 
     #[inline]
     fn into_searcher(self, haystack: &'a str) -> Self::Searcher {
-        let single_byte = if self.len_utf8() == 1 {
-            let mut storage = [0];
-            self.encode_utf8(&mut storage);
-            Some(storage[0])
-        } else {
-            None
-        };
+        let mut utf8_encoded = [0; 4];
+        self.encode_utf8(&mut utf8_encoded);
+        let utf8_size = self.len_utf8();
         CharSearcher {
             haystack,
             finger: 0,
             finger_back: haystack.len(),
             needle: self,
-            single_byte,
+            utf8_size,
+            utf8_encoded
         }
     }
 
