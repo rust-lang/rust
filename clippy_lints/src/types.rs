@@ -13,7 +13,7 @@ use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr::IntType;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
-use utils::{comparisons, higher, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
+use utils::{comparisons, higher, in_constant, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
             multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
             span_lint_and_sugg, span_lint_and_then, type_size};
 use utils::paths;
@@ -608,6 +608,8 @@ fn should_strip_parens(op: &Expr, snip: &str) -> bool {
 }
 
 fn span_lossless_lint(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_to: Ty) {
+    // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
+    if in_constant(cx, expr.id) { return }
     // The suggestion is to use a function call, so if the original expression
     // has parens on the outside, they are no longer needed.
     let opt = snippet_opt(cx, op.span);
