@@ -1,62 +1,71 @@
 error[E0277]: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfied
-  --> $DIR/type-check-defaults.rs:17:1
+  --> $DIR/type-check-defaults.rs:17:19
    |
 17 | struct WellFormed<Z = Foo<i32, i32>>(Z);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+   |                   ^ a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+   |
+   = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
+   = note: required by `Foo`
+
+error[E0277]: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfied
+  --> $DIR/type-check-defaults.rs:18:27
+   |
+18 | struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
+   |                           ^ a collection of type `i32` cannot be built from an iterator over elements of type `i32`
    |
    = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
    = note: required by `Foo`
 
 error[E0277]: the trait bound `A: std::iter::Iterator` is not satisfied
-  --> $DIR/type-check-defaults.rs:19:1
+  --> $DIR/type-check-defaults.rs:20:1
    |
-19 | struct WellFormedProjection<A, T=<A as Iterator>::Item>(A, T);
+20 | struct WellFormedProjection<A, T=<A as Iterator>::Item>(A, T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `A` is not an iterator; maybe try calling `.iter()` or a similar method
    |
    = help: the trait `std::iter::Iterator` is not implemented for `A`
    = help: consider adding a `where A: std::iter::Iterator` bound
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:21:1
+  --> $DIR/type-check-defaults.rs:22:1
    |
-21 | struct Bounds<T:Copy=String>(T);
+22 | struct Bounds<T:Copy=String>(T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
    = note: required by `std::marker::Copy`
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:23:1
+  --> $DIR/type-check-defaults.rs:24:1
    |
-23 | struct WhereClause<T=String>(T) where T: Copy;
+24 | struct WhereClause<T=String>(T) where T: Copy;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
    = note: required by `std::marker::Copy`
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:25:1
+  --> $DIR/type-check-defaults.rs:26:1
    |
-25 | trait TraitBound<T:Copy=String> {}
+26 | trait TraitBound<T:Copy=String> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
    = note: required by `std::marker::Copy`
 
 error[E0277]: the trait bound `Self: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:27:1
+  --> $DIR/type-check-defaults.rs:28:1
    |
-27 | trait SelfBound<T:Copy=Self> {}
+28 | trait SelfBound<T:Copy=Self> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `Self`
    |
    = help: consider adding a `where Self: std::marker::Copy` bound
    = note: required by `std::marker::Copy`
 
 error[E0277]: the trait bound `i32: std::ops::Add<u8>` is not satisfied
-  --> $DIR/type-check-defaults.rs:29:1
+  --> $DIR/type-check-defaults.rs:30:1
    |
-29 | trait FooTrait<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
+30 | trait FooTrait<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `i32 + u8`
    |
    = help: the trait `std::ops::Add<u8>` is not implemented for `i32`
    = note: required by `std::ops::Add`
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 

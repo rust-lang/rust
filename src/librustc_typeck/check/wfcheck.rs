@@ -359,6 +359,16 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         use ty::subst::Subst;
         use ty::Predicate;
 
+        let generics = self.tcx.generics_of(def_id);
+        let defaults = generics.types.iter().filter_map(|p| match p.has_default {
+                                                                true => Some(p.def_id),
+                                                                false => None,
+                                                        });
+        // Defaults must be well-formed.
+        for d in defaults {
+            fcx.register_wf_obligation(fcx.tcx.type_of(d), fcx.tcx.def_span(d), self.code.clone());
+        }
+
         // Check that each default fulfills the bounds on it's parameter.
         // We go over each predicate and duplicate it, substituting defaults in the self type.
         let mut predicates = fcx.tcx.predicates_of(def_id);
@@ -377,7 +387,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
             let mut skip = false;
             let mut no_default = true;
-            let generics = self.tcx.generics_of(def_id);
             let substs = ty::subst::Substs::for_item(fcx.tcx, def_id, |def, _| {
                 // All regions are identity.
                 fcx.tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))

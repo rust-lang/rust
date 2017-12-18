@@ -15,6 +15,7 @@ use std::ops::Add;
 
 struct Foo<T, U: FromIterator<T>>(T, U);
 struct WellFormed<Z = Foo<i32, i32>>(Z);
+struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
 
 struct WellFormedProjection<A, T=<A as Iterator>::Item>(A, T);
 
