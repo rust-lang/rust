@@ -1190,16 +1190,36 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
 pub struct Generics {
     pub lifetimes: Vec<Lifetime>,
     pub type_params: Vec<TyParam>,
-    pub where_predicates: Vec<WherePredicate>
+    pub where_predicates: Vec<WherePredicate>,
 }
 
 impl Clean<Generics> for hir::Generics {
     fn clean(&self, cx: &DocContext) -> Generics {
-        Generics {
+        let mut g = Generics {
             lifetimes: self.lifetimes.clean(cx),
             type_params: self.ty_params.clean(cx),
             where_predicates: self.where_clause.predicates.clean(cx)
+        };
+
+        // Some duplicates are generated for ?Sized bounds between type params and where
+        // predicates. The point in here is to move the bounds definitions from type params
+        // to where predicates when such cases occur.
+        for where_pred in &mut g.where_predicates {
+            match *where_pred {
+                WherePredicate::BoundPredicate { ty: Generic(ref name), ref mut bounds } => {
+                    if bounds.is_empty() {
+                        for type_params in &mut g.type_params {
+                            if &type_params.name == name {
+                                mem::swap(bounds, &mut type_params.bounds);
+                                break
+                            }
+                        }
+                    }
+                }
+                _ => continue,
+            }
         }
+        g
     }
 }
 
@@ -1225,7 +1245,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         let mut where_predicates = preds.predicates.to_vec().clean(cx);
 
         // Type parameters and have a Sized bound by default unless removed with
-        // ?Sized.  Scan through the predicates and mark any type parameter with
+        // ?Sized. Scan through the predicates and mark any type parameter with
         // a Sized bound, removing the bounds as we find them.
         //
         // Note that associated types also have a sized bound by default, but we
