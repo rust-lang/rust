@@ -32,7 +32,7 @@ use rustc::ich::Fingerprint;
 use rustc::ty::Instance;
 use common::CodegenCx;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
+use rustc::ty::layout::{self, Align, LayoutOf, PrimitiveExt, Size, TyLayout};
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
 use rustc::util::common::path2cstr;

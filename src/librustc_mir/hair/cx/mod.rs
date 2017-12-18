@@ -22,6 +22,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
+use rustc::ty::layout::IntegerExt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt, layout};
 use rustc::ty::subst::Substs;

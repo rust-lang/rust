@@ -5,7 +5,7 @@ use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::middle::const_val::{ConstVal, ErrKind};
 use rustc::mir;
-use rustc::ty::layout::{self, Size, Align, HasDataLayout, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, Size, Align, HasDataLayout, IntegerExt, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::TyCtxtAt;

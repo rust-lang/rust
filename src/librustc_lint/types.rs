@@ -13,7 +13,7 @@
 use rustc::hir::map as hir_map;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout::{self, IntegerExt, LayoutOf};
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};

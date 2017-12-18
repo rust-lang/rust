@@ -28,6 +28,8 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(fs_read_write)]
+#![feature(inclusive_range)]
+#![feature(slice_patterns)]
 
 extern crate syntax;
 extern crate rand;
@@ -36,4 +38,5 @@ extern crate serialize;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
+pub mod abi;
 pub mod spec;
