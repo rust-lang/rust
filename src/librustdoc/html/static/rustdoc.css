@@ -1011,6 +1011,26 @@ h4 > .important-traits {
 		left: -22px;
 		top: 24px;
 	}
+
+	#titles > div > div.count {
+		float: left;
+		width: 100%;
+	}
+
+	#titles {
+		height: 50px;
+	}
+}
+
+
+@media (max-width: 416px) {
+	#titles {
+		height: 73px;
+	}
+
+	#titles > div {
+		height: 73px;
+	}
 }
 
 .modal {
