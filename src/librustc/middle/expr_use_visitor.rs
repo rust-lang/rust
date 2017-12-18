@@ -579,7 +579,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         FnOnceOverloadedCall => self.consume_expr(callee),
                     }
                 } else {
-                    self.tcx().sess.delay_span_bug(call.span, "no type-dependent def for overloaded call");
+                    self.tcx().sess.delay_span_bug(call.span,
+                                                   "no type-dependent def for overloaded call");
                 }
             }
         }
