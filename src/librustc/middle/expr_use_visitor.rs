@@ -558,9 +558,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
             ty::TyError => { }
             _ => {
-                let type_dependent_defs = self.mc.tables.type_dependent_defs();
-                if type_dependent_defs.contains_key(call.hir_id) {
-                    let def_id = type_dependent_defs[call.hir_id].def_id();
+                if let Some(def) = self.mc.tables.type_dependent_defs().get(call.hir_id) {
+                    let def_id = def.def_id();
                     let call_scope = region::Scope::Node(call.hir_id.local_id);
                     match OverloadedCallType::from_method_id(self.tcx(), def_id) {
                         FnMutOverloadedCall => {
@@ -579,6 +578,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         }
                         FnOnceOverloadedCall => self.consume_expr(callee),
                     }
+                } else {
+                    self.tcx().sess.delay_span_bug(call.span, "no type-dependent def for overloaded call");
                 }
             }
         }
