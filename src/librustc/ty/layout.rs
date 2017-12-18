@@ -1492,7 +1492,7 @@ impl<'a, 'tcx> LayoutDetails {
                             }).collect::<Result<Vec<_>, _>>()?;
 
                             let offset = st[i].fields.offset(field_index) + offset;
-                            let LayoutDetails { size, mut align, .. } = st[i];
+                            let LayoutDetails { mut size, mut align, .. } = st[i];
 
                             let mut niche_align = niche.value.align(dl);
                             let abi = if offset.bytes() == 0 && niche.value.size(dl) == size {
@@ -1504,6 +1504,7 @@ impl<'a, 'tcx> LayoutDetails {
                                 Abi::Aggregate { sized: true }
                             };
                             align = align.max(niche_align);
+                            size = size.abi_align(align);
 
                             return Ok(tcx.intern_layout(LayoutDetails {
                                 variants: Variants::NicheFilling {
