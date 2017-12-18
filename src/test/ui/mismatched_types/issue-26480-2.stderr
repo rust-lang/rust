@@ -1,0 +1,13 @@
+error[E0605]: non-primitive cast: `i32` as `()`
+  --> $DIR/issue-26480-2.rs:13:19
+   |
+13 |     ($x:expr) => ($x as ()) //~ ERROR non-primitive cast
+   |                   ^^^^^^^^
+...
+17 |     cast!(2);
+   |     --------- in this macro invocation
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+
+error: aborting due to previous error
+

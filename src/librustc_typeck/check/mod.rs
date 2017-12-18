@@ -2127,23 +2127,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn apply_diverging_fallback_to_type(&self, ty: Ty<'tcx>) {
-        assert!(ty.is_ty_infer());
-        if self.type_var_diverges(ty) {
-            debug!("default_type_parameters: defaulting `{:?}` to `!` because it diverges", ty);
-            self.demand_eqtype(syntax_pos::DUMMY_SP, ty, self.tcx.mk_diverging_default());
-        }
-    }
-
-    fn apply_numeric_fallback_to_type(&self, ty: Ty<'tcx>) {
+    // Tries to apply a fallback to `ty` if it is an unsolved variable.
+    // Non-numerics get replaced with ! or () (depending on whether
+    // feature(never_type) is enabled), unconstrained ints with i32,
+    // unconstrained floats with f64.
+    // Defaulting inference variables becomes very dubious if we have
+    // encountered type-checking errors. In that case, fallback to TyError.
+    fn apply_fallback_if_possible(&self, ty: Ty<'tcx>) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
         assert!(ty.is_ty_infer());
         let fallback = match self.type_is_unconstrained_numeric(ty) {
+            _ if self.is_tainted_by_errors() => self.tcx().types.err,
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
-            Neither => return,
+            Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
+            Neither => return
         };
         debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);
         self.demand_eqtype(syntax_pos::DUMMY_SP, ty, fallback);
@@ -2158,21 +2158,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.select_obligations_where_possible();
 
-        // Apply fallbacks to unsolved variables.
-        // Non-numerics get replaced with ! or () (depending on whether
-        // feature(never_type) is enabled), unconstrained ints with i32,
-        // unconstrained floats with f64.
         for ty in &self.unsolved_variables() {
-            if self.is_tainted_by_errors() {
-                // Defaulting inference variables becomes very dubious if we have
-                // encountered type-checking errors. In that case,
-                // just resolve all uninstanted type variables to TyError.
-                debug!("default_type_parameters: defaulting `{:?}` to error", ty);
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx().types.err);
-            } else {
-                self.apply_diverging_fallback_to_type(ty);
-                self.apply_numeric_fallback_to_type(ty);
-            }
+            self.apply_fallback_if_possible(ty);
         }
 
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
@@ -4942,18 +4929,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // If no resolution is possible, then an error is reported.
     // Numeric inference variables may be left unresolved.
     pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let mut ty = self.resolve_type_vars_with_obligations(ty);
+        let ty = self.resolve_type_vars_with_obligations(ty);
         if !ty.is_ty_var() {
             ty
         } else {
-            // Try divering fallback.
-            self.apply_diverging_fallback_to_type(ty);
-            ty = self.resolve_type_vars_with_obligations(ty);
-            if !ty.is_ty_var() {
-                ty
-            } else { // Fallback failed, error.
-                self.must_be_known_in_context(sp, ty)
-            }
+            self.must_be_known_in_context(sp, ty)
         }
     }
 
@@ -4963,9 +4943,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if !ty.is_ty_infer() {
             return ty;
         } else {
-            // Try diverging or numeric fallback.
-            self.apply_diverging_fallback_to_type(ty);
-            self.apply_numeric_fallback_to_type(ty);
+            self.apply_fallback_if_possible(ty);
             ty = self.resolve_type_vars_with_obligations(ty);
             if !ty.is_ty_infer() {
                 ty

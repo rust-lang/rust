@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+// compile-flags: --error-format=human
 
 extern {
     fn write(fildes: i32, buf: *const i8, nbyte: u64) -> i64;
@@ -28,12 +29,7 @@ macro_rules! write {
     }}
 }
 
-macro_rules! cast {
-    ($x:expr) => ($x as ()) //~ ERROR non-primitive cast
-}
-
 fn main() {
     let hello = ['H', 'e', 'y'];
     write!(hello);
-    cast!(2);
 }
