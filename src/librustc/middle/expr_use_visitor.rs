@@ -559,7 +559,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             ty::TyError => { }
             _ => {
                 let type_dependent_defs = self.mc.tables.type_dependent_defs();
-                if !type_dependent_defs.contains_key(call.hir_id) {
+                if type_dependent_defs.contains_key(call.hir_id) {
                     let def_id = type_dependent_defs[call.hir_id].def_id();
                     let call_scope = region::Scope::Node(call.hir_id.local_id);
                     match OverloadedCallType::from_method_id(self.tcx(), def_id) {
@@ -577,7 +577,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                             ty::ImmBorrow,
                                             ClosureInvocation);
                         }
-                        FnOnceOverloadedCall => {self.consume_expr(callee)},
+                        FnOnceOverloadedCall => self.consume_expr(callee),
                     }
                 }
             }
