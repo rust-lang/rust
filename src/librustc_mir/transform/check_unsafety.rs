@@ -388,12 +388,13 @@ fn is_enclosed(tcx: TyCtxt,
 }
 
 fn report_unused_unsafe(tcx: TyCtxt, used_unsafe: &FxHashSet<ast::NodeId>, id: ast::NodeId) {
-    let span = tcx.hir.span(id);
-    let mut db = tcx.struct_span_lint_node(UNUSED_UNSAFE, id, span, "unnecessary `unsafe` block");
-    db.span_label(span, "unnecessary `unsafe` block");
+    let span = tcx.sess.codemap().def_span(tcx.hir.span(id));
+    let msg = "unnecessary `unsafe` block";
+    let mut db = tcx.struct_span_lint_node(UNUSED_UNSAFE, id, span, msg);
+    db.span_label(span, msg);
     if let Some((kind, id)) = is_enclosed(tcx, used_unsafe, id) {
-        db.span_note(tcx.hir.span(id),
-                     &format!("because it's nested under this `unsafe` {}", kind));
+        db.span_label(tcx.sess.codemap().def_span(tcx.hir.span(id)),
+                      format!("because it's nested under this `unsafe` {}", kind));
     }
     db.emit();
 }
