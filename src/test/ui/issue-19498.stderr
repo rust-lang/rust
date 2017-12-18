@@ -5,7 +5,7 @@ error[E0255]: the name `A` is defined multiple times
    |     ------- previous import of the module `A` here
 12 | use self::B;
 13 | mod A {} //~ ERROR the name `A` is defined multiple times
-   | ^^^^^^^^ `A` redefined here
+   | ^^^^^ `A` redefined here
    |
    = note: `A` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
@@ -20,7 +20,7 @@ error[E0255]: the name `B` is defined multiple times
    |     ------- previous import of the module `B` here
 ...
 15 | pub mod B {} //~ ERROR the name `B` is defined multiple times
-   | ^^^^^^^^^^^^ `B` redefined here
+   | ^^^^^^^^^ `B` redefined here
    |
    = note: `B` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
@@ -34,7 +34,7 @@ error[E0255]: the name `D` is defined multiple times
 18 |     use C::D;
    |         ---- previous import of the module `D` here
 19 |     mod D {} //~ ERROR the name `D` is defined multiple times
-   |     ^^^^^^^^ `D` redefined here
+   |     ^^^^^ `D` redefined here
    |
    = note: `D` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import

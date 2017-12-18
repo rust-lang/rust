@@ -5,7 +5,7 @@ error[E0255]: the name `transmute` is defined multiple times
    |     ------------------- previous import of the value `transmute` here
 12 | 
 13 | fn transmute() {}
-   | ^^^^^^^^^^^^^^^^^ `transmute` redefined here
+   | ^^^^^^^^^^^^^^ `transmute` redefined here
    |
    = note: `transmute` must be defined only once in the value namespace of this module
 help: You can use `as` to change the binding name of the import
