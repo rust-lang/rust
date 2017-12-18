@@ -70,6 +70,7 @@ pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
     pub unsatisfied_predicates: Vec<TraitRef<'tcx>>,
     pub out_of_scope_traits: Vec<DefId>,
+    pub whitelist_candidate: Option<ty::AssociatedItem>,
     pub lev_candidate: Option<ty::AssociatedItem>,
     pub mode: probe::Mode,
 }
@@ -78,6 +79,7 @@ impl<'tcx> NoMatchData<'tcx> {
     pub fn new(static_candidates: Vec<CandidateSource>,
                unsatisfied_predicates: Vec<TraitRef<'tcx>>,
                out_of_scope_traits: Vec<DefId>,
+               whitelist_candidate: Option<ty::AssociatedItem>,
                lev_candidate: Option<ty::AssociatedItem>,
                mode: probe::Mode)
                -> Self {
@@ -85,6 +87,7 @@ impl<'tcx> NoMatchData<'tcx> {
             static_candidates,
             unsatisfied_predicates,
             out_of_scope_traits,
+            whitelist_candidate,
             lev_candidate,
             mode,
         }

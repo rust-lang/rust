@@ -164,6 +164,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             MethodError::NoMatch(NoMatchData { static_candidates: static_sources,
                                                unsatisfied_predicates,
                                                out_of_scope_traits,
+                                               whitelist_candidate,
                                                lev_candidate,
                                                mode,
                                                .. }) => {
@@ -284,7 +285,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                               rcvr_expr,
                                               out_of_scope_traits);
 
-                if let Some(lev_candidate) = lev_candidate {
+                if let Some(whitelist_candidate) = whitelist_candidate {
+                    err.help(&format!("did you mean `{}`?", whitelist_candidate.name));
+                } else if let Some(lev_candidate) = lev_candidate {
                     err.help(&format!("did you mean `{}`?", lev_candidate.name));
                 }
                 err.emit();

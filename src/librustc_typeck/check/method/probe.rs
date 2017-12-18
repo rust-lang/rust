@@ -249,6 +249,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                      Vec::new(),
                                                                      Vec::new(),
                                                                      None,
+                                                                     None,
                                                                      mode)))
                 }
             }
@@ -806,11 +807,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         if let Some(def) = private_candidate {
             return Err(MethodError::PrivateMatch(def, out_of_scope_traits));
         }
+        let whitelist_candidate = self.probe_for_whitelist_candidate()?;
         let lev_candidate = self.probe_for_lev_candidate()?;
 
         Err(MethodError::NoMatch(NoMatchData::new(static_candidates,
                                                   unsatisfied_predicates,
                                                   out_of_scope_traits,
+                                                  whitelist_candidate,
                                                   lev_candidate,
                                                   self.mode)))
     }
@@ -1179,6 +1182,29 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                    .find(|method| method.name == best_name))
             }
         })
+    }
+
+    /// Check whether there are methods that are commonly confused. An example
+    /// could be using `Vec::length` instead of `Vec::len`.
+    ///
+    /// In contrast to `probe_for_lev_candidate`, this is based on a manually
+    /// curated whitelist.
+    fn probe_for_whitelist_candidate(&mut self) -> Result<Option<ty::AssociatedItem>, MethodError<'tcx>> {
+        debug!("Probing for method names that are often confused with {:?}",
+               self.method_name);
+
+        let method_name: ast::Name = match self.method_name {
+            Some(name) => name,
+            None => return Ok(None),
+        };
+
+        println!("Method name: {:?}", method_name);
+        println!("Method name str: {:?}", method_name.as_str());
+        println!("Method name ident: {:?}", method_name.to_ident());
+        println!("Method name ident name: {:?}", method_name.to_ident().name);
+        println!("Method name ident name str: {:?}", method_name.to_ident().name.as_str());
+
+        Ok(None)
     }
 
     ///////////////////////////////////////////////////////////////////////////

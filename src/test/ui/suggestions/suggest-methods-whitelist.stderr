@@ -1,0 +1,18 @@
+error[E0599]: no method named `length` found for type `std::vec::Vec<u8>` in the current scope
+  --> $DIR/suggest-methods-whitelist.rs:13:20
+   |
+13 |     let length = v.length();
+   |                    ^^^^^^
+   |
+   = help: did you mean `len`?
+
+error[E0599]: no method named `size` found for type `std::vec::Vec<u8>` in the current scope
+  --> $DIR/suggest-methods-whitelist.rs:14:18
+   |
+14 |     let size = v.size();
+   |                  ^^^^
+   |
+   = help: did you mean `len`?
+
+error: aborting due to 2 previous errors
+
