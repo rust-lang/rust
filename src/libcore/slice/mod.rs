@@ -2635,3 +2635,11 @@ impl SliceContains for u8 {
         memchr::memchr(*self, x).is_some()
     }
 }
+
+impl SliceContains for i8 {
+    fn slice_contains(&self, x: &[Self]) -> bool {
+        let byte = *self as u8;
+        let bytes: &[u8] = unsafe { from_raw_parts(x.as_ptr() as *const u8, x.len()) };
+        memchr::memchr(byte, bytes).is_some()
+    }
+}
