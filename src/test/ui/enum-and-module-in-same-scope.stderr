@@ -1,16 +1,11 @@
 error[E0428]: the name `Foo` is defined multiple times
   --> $DIR/enum-and-module-in-same-scope.rs:15:1
    |
-11 | / enum Foo {
-12 | |     X
-13 | | }
-   | |_- previous definition of the type `Foo` here
-14 | 
-15 | / mod Foo { //~ ERROR the name `Foo` is defined multiple times
-16 | |     pub static X: isize = 42;
-17 | |     fn f() { f() } // Check that this does not result in a resolution error
-18 | | }
-   | |_^ `Foo` redefined here
+11 | enum Foo {
+   | -------- previous definition of the type `Foo` here
+...
+15 | mod Foo { //~ ERROR the name `Foo` is defined multiple times
+   | ^^^^^^^ `Foo` redefined here
    |
    = note: `Foo` must be defined only once in the type namespace of this module
 

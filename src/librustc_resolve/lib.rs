@@ -3840,7 +3840,7 @@ impl<'a> Resolver<'a> {
             false => "defined",
         };
 
-        let (name, span) = (ident.name, new_binding.span);
+        let (name, span) = (ident.name, self.session.codemap().def_span(new_binding.span));
 
         if let Some(s) = self.name_already_seen.get(&name) {
             if s == &span {
@@ -3885,8 +3885,8 @@ impl<'a> Resolver<'a> {
 
         err.span_label(span, format!("`{}` re{} here", name, new_participle));
         if old_binding.span != syntax_pos::DUMMY_SP {
-            err.span_label(old_binding.span, format!("previous {} of the {} `{}` here",
-                                                      old_noun, old_kind, name));
+            err.span_label(self.session.codemap().def_span(old_binding.span),
+                           format!("previous {} of the {} `{}` here", old_noun, old_kind, name));
         }
 
         // See https://github.com/rust-lang/rust/issues/32354
