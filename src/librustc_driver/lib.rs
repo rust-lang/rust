@@ -232,10 +232,24 @@ pub fn run_compiler<'a>(args: &[String],
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
-        sopts, input_file_path, descriptions, codemap, emitter_dest,
+        sopts, input_file_path.clone(), descriptions, codemap, emitter_dest,
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+
+    // Ensure the source file isn't accidentally overwritten during compilation.
+    match input_file_path {
+        Some(input_file_path) => {
+            if driver::build_output_filenames(&input, &odir, &ofile, &[], &sess)
+                .contains_path(&input_file_path) && sess.opts.will_create_output_file() {
+                sess.err(&format!(
+                    "the input file \"{}\" would be overwritten by the generated executable",
+                    input_file_path.display()));
+                return (Err(CompileIncomplete::Stopped), Some(sess));
+            }
+        },
+        None => {}
+    }
 
     let mut cfg = config::build_configuration(&sess, cfg);
     target_features::add_configuration(&mut cfg, &sess);
