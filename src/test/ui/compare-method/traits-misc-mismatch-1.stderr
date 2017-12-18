@@ -5,7 +5,7 @@ error[E0276]: impl has stricter requirements than trait
    |     -------------------------------- definition of `test_error1_fn` from trait
 ...
 36 |     fn test_error1_fn<T: Ord>(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: std::cmp::Ord`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: std::cmp::Ord`
 
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/traits-misc-mismatch-1.rs:40:5
@@ -14,7 +14,7 @@ error[E0276]: impl has stricter requirements than trait
    |     -------------------------------------- definition of `test_error2_fn` from trait
 ...
 40 |     fn test_error2_fn<T: Eq + B>(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: B`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: B`
 
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/traits-misc-mismatch-1.rs:44:5
@@ -23,7 +23,7 @@ error[E0276]: impl has stricter requirements than trait
    |     -------------------------------------- definition of `test_error3_fn` from trait
 ...
 44 |     fn test_error3_fn<T: B + Eq>(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: B`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: B`
 
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/traits-misc-mismatch-1.rs:54:5
@@ -32,7 +32,7 @@ error[E0276]: impl has stricter requirements than trait
    |     ------------------------------- definition of `test_error5_fn` from trait
 ...
 54 |     fn test_error5_fn<T: B>(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: B`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: B`
 
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/traits-misc-mismatch-1.rs:60:5
@@ -41,7 +41,7 @@ error[E0276]: impl has stricter requirements than trait
    |     ------------------------------- definition of `test_error7_fn` from trait
 ...
 60 |     fn test_error7_fn<T: A + Eq>(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: std::cmp::Eq`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: std::cmp::Eq`
 
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/traits-misc-mismatch-1.rs:63:5
@@ -50,7 +50,7 @@ error[E0276]: impl has stricter requirements than trait
    |     ------------------------------- definition of `test_error8_fn` from trait
 ...
 63 |     fn test_error8_fn<T: C>(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: C`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: C`
 
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/traits-misc-mismatch-1.rs:76:5
@@ -59,7 +59,7 @@ error[E0276]: impl has stricter requirements than trait
    |     ---------------------------------- definition of `method` from trait
 ...
 76 |     fn method<G: Getter<usize>>(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `G: Getter<usize>`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `G: Getter<usize>`
 
 error: aborting due to 7 previous errors
 
