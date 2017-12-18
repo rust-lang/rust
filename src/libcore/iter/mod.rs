@@ -332,7 +332,7 @@ pub use self::traits::FusedIterator;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
 #[unstable(feature = "unbounded_iter", issue = "0")]
-pub use self::traits::UnboundedIterator;
+pub use self::traits::{UnboundedIterator, UnboundedIteratorAuto};
 
 mod iterator;
 mod range;
@@ -700,6 +700,20 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
+        StepByImpl::size_hint(self)
+    }
+}
+
+// StepBy specialization trait
+#[doc(hidden)]
+trait StepByImpl {
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+// General StepBy impl
+impl<I: Iterator> StepByImpl for StepBy<I> {
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
         let inner_hint = self.iter.size_hint();
 
         if self.first_take {
@@ -712,11 +726,25 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
     }
 }
 
+// Specialized StepBy impl for an underlying UnboundedIterator
+impl<I: UnboundedIterator> StepByImpl for StepBy<I> {
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // We step over some of the infinitely many elements.
+        (usize::MAX, None)
+    }
+}
+
 // StepBy can only make the iterator shorter, so the len will still fit.
 #[unstable(feature = "iterator_step_by",
            reason = "unstable replacement of Range::step_by",
            issue = "27741")]
 impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
+
+#[unstable(feature = "iterator_step_by",
+           reason = "unstable replacement of Range::step_by",
+           issue = "27741")]
+unsafe impl<I: UnboundedIterator> UnboundedIterator for StepBy<I> {}
 
 /// An iterator that strings two iterators together.
 ///
@@ -883,17 +911,7 @@ impl<A, B> Iterator for Chain<A, B> where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (a_lower, a_upper) = self.a.size_hint();
-        let (b_lower, b_upper) = self.b.size_hint();
-
-        let lower = a_lower.saturating_add(b_lower);
-
-        let upper = match (a_upper, b_upper) {
-            (Some(x), Some(y)) => x.checked_add(y),
-            _ => None
-        };
-
-        (lower, upper)
+        ChainImpl::size_hint(self)
     }
 }
 
@@ -957,6 +975,64 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
 
 }
 
+// Chain specialization trait
+#[doc(hidden)]
+trait ChainImpl {
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+// General Chain impl
+#[doc(hidden)]
+impl<A: Iterator, B: Iterator> ChainImpl for Chain<A, B> {
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let (a_lower, a_upper) = self.a.size_hint();
+        let (b_lower, b_upper) = self.b.size_hint();
+
+        let lower = a_lower.saturating_add(b_lower);
+
+        let upper = match (a_upper, b_upper) {
+            (Some(x), Some(y)) => x.checked_add(y),
+            _ => None
+        };
+
+        (lower, upper)
+    }
+}
+
+// Specialized Chain impls for underlying UnboundedIterators
+// If A or B or both are unbounded, the chain will be unbounded as well.
+// FIXME: #46813
+#[doc(hidden)]
+impl<A, B> ChainImpl for Chain<A, B>
+    where A: UnboundedIterator,
+          B: Iterator<Item=A::Item>,
+//          (A, B): UnboundedIteratorAuto
+{
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
+    }
+}
+//#[doc(hidden)]
+//impl<A, B> ChainImpl for Chain<A, B>
+//    where B: UnboundedIterator, (A, B): UnboundedIteratorAuto
+//{
+//    #[inline]
+//    fn size_hint(&self) -> (usize, Option<usize>) {
+//        (usize::MAX, None)
+//    }
+//}
+//#[doc(hidden)]
+//impl<A, B> ChainImpl for Chain<A, B>
+//    where A: UnboundedIterator, B: UnboundedIterator
+//{
+//    #[inline]
+//    fn size_hint(&self) -> (usize, Option<usize>) {
+//        (usize::MAX, None)
+//    }
+//}
+
 // Note: *both* must be fused to handle double-ended iterators.
 #[unstable(feature = "fused", issue = "35602")]
 impl<A, B> FusedIterator for Chain<A, B>
@@ -968,6 +1044,25 @@ impl<A, B> FusedIterator for Chain<A, B>
 unsafe impl<A, B> TrustedLen for Chain<A, B>
     where A: TrustedLen, B: TrustedLen<Item=A::Item>,
 {}
+
+// FIXME: #46813
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<A, B> UnboundedIterator for Chain<A, B>
+    where A: UnboundedIterator,
+          B: Iterator<Item=A::Item>,
+//          (A, B): UnboundedIteratorAuto
+{}
+//#[unstable(feature = "unbounded_iter", issue = "0")]
+//unsafe impl<A, B> UnboundedIterator for Chain<A, B>
+//    where A: Iterator,
+//          B: UnboundedIterator<Item=A::Item>,
+//          (A, B): UnboundedIteratorAuto
+//{}
+//#[unstable(feature = "unbounded_iter", issue = "0")]
+//unsafe impl<A, B> UnboundedIterator for Chain<A, B>
+//    where A: UnboundedIterator,
+//          B: UnboundedIterator<Item=A::Item>
+//{}
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -1488,6 +1583,7 @@ trait FilterImpl {
 }
 
 // General Filter impl
+#[doc(hidden)]
 impl<I: Iterator, P> FilterImpl for Filter<I, P>
     where P: FnMut(&I::Item) -> bool
 {
@@ -1499,6 +1595,7 @@ impl<I: Iterator, P> FilterImpl for Filter<I, P>
 }
 
 // Specialized Filter impl for an underlying UnboundedIterator
+#[doc(hidden)]
 impl<I: UnboundedIterator, P> FilterImpl for Filter<I, P>
     where P: FnMut(&I::Item) -> bool
 {
@@ -1560,8 +1657,7 @@ impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (_, upper) = self.iter.size_hint();
-        (0, upper) // can't know a lower bound, due to the predicate
+        FilterMapImpl::size_hint(self)
     }
 
     #[inline]
@@ -1624,8 +1720,43 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
     }
 }
 
+// FilterMap specialization trait
+#[doc(hidden)]
+trait FilterMapImpl {
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+// General FilterMap impl
+#[doc(hidden)]
+impl<B, I: Iterator, P> FilterMapImpl for FilterMap<I, P>
+    where P: FnMut(I::Item) -> Option<B>
+{
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper) // can't know a lower bound, due to the predicate
+    }
+}
+
+// Specialized FilterMap impl for an underlying UnboundedIterator
+#[doc(hidden)]
+impl<B, I: UnboundedIterator, P> FilterMapImpl for FilterMap<I, P>
+    where P: FnMut(I::Item) -> Option<B>
+{
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // If the underlying iterator is unbounded, we will either filter out all items
+        // and thus diverge, or filter some of the infinitely many items out.
+        (usize::MAX, None)
+    }
+}
+
 #[unstable(feature = "fused", issue = "35602")]
 impl<B, I: FusedIterator, F> FusedIterator for FilterMap<I, F>
+    where F: FnMut(I::Item) -> Option<B> {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<B, I: UnboundedIterator, F> UnboundedIterator for FilterMap<I, F>
     where F: FnMut(I::Item) -> Option<B> {}
 
 /// An iterator that yields the current count and the element during iteration.
@@ -2224,12 +2355,7 @@ impl<I> Iterator for Skip<I> where I: Iterator {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (lower, upper) = self.iter.size_hint();
-
-        let lower = lower.saturating_sub(self.n);
-        let upper = upper.map(|x| x.saturating_sub(self.n));
-
-        (lower, upper)
+        SkipImpl::size_hint(self)
     }
 
     #[inline]
@@ -2291,8 +2417,41 @@ impl<I> DoubleEndedIterator for Skip<I> where I: DoubleEndedIterator + ExactSize
     }
 }
 
+// Skip specialization trait
+#[doc(hidden)]
+trait SkipImpl {
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+// General Skip impl
+#[doc(hidden)]
+impl<I: Iterator> SkipImpl for Skip<I> {
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lower, upper) = self.iter.size_hint();
+
+        let lower = lower.saturating_sub(self.n);
+        let upper = upper.map(|x| x.saturating_sub(self.n));
+
+        (lower, upper)
+    }
+}
+
+// Specialized Skip impl for an underlying UnboundedIterator
+#[doc(hidden)]
+impl<I: UnboundedIterator> SkipImpl for Skip<I> {
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // We skip the first few of the infinitely many elements.
+        (usize::MAX, None)
+    }
+}
+
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Skip<I> where I: FusedIterator {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I: UnboundedIterator> UnboundedIterator for Skip<I> {}
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
 ///
@@ -2491,13 +2650,7 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
-        let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
-        let lo = flo.saturating_add(blo);
-        match (self.iter.size_hint(), fhi, bhi) {
-            ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
-            _ => (lo, None)
-        }
+        FlatMapImpl::size_hint(self)
     }
 
     #[inline]
@@ -2601,9 +2754,49 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
     }
 }
 
+// FlatMap specialization trait
+#[doc(hidden)]
+trait FlatMapImpl {
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+// General StepBy impl
+impl<I: Iterator, U: IntoIterator, F> FlatMapImpl for FlatMap<I, U, F>
+    where F: FnMut(I::Item) -> U,
+{
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
+        let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
+        let lo = flo.saturating_add(blo);
+        match (self.iter.size_hint(), fhi, bhi) {
+            ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
+            _ => (lo, None)
+        }
+    }
+}
+
+// Specialized FlatMap impl for an underlying UnboundedIterator
+impl<I: UnboundedIterator, U: IntoIterator, F> FlatMapImpl for FlatMap<I, U, F>
+    where F: FnMut(I::Item) -> U,
+{
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // Either inner iterators return values, in which case there'll be infinitely many,
+        // or they don't return any, in which case we diverge.
+        (usize::MAX, None)
+    }
+}
 #[unstable(feature = "fused", issue = "35602")]
 impl<I, U, F> FusedIterator for FlatMap<I, U, F>
     where I: FusedIterator, U: IntoIterator, F: FnMut(I::Item) -> U {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+unsafe impl<I, U, F> UnboundedIterator for FlatMap<I, U, F>
+    where I: UnboundedIterator,
+          U: IntoIterator,
+          F: FnMut(I::Item) -> U,
+{}
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.

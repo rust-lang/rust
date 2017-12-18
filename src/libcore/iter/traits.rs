@@ -1000,9 +1000,18 @@ unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}
 ///
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 /// [`.size_hint`]: ../../std/iter/trait.Iterator.html#method.size_hint
-#[unstable(feature="unbounded_iter", issue = "0")]
+#[unstable(feature = "unbounded_iter", issue = "0")]
 pub unsafe trait UnboundedIterator : Iterator {}
 
-#[unstable(feature="unbounded_iter", issue = "0")]
+#[unstable(feature = "unbounded_iter", issue = "0")]
 unsafe impl<'a, I: UnboundedIterator + ?Sized> UnboundedIterator for &'a mut I {}
 
+// Hacky auto trait to allow specialization of iter::Chain,
+// because it requares either A: UI or B: UI or both.
+#[unstable(feature = "unbounded_iter", issue = "0")]
+#[doc(hidden)]
+pub auto trait UnboundedIteratorAuto {}
+
+#[unstable(feature = "unbounded_iter", issue = "0")]
+impl<A, B> !UnboundedIteratorAuto for (A, B)
+    where A: UnboundedIteratorAuto, B: UnboundedIteratorAuto {}
