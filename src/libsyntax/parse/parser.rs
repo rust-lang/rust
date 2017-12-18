@@ -1467,7 +1467,7 @@ impl<'a> Parser<'a> {
 
     // Parse a type
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(true)
+        self.parse_ty_common(true, true)
     }
 
     /// Parse a type in restricted contexts where `+` is not permitted.
@@ -1476,10 +1476,11 @@ impl<'a> Parser<'a> {
     /// Example 2: `value1 as TYPE + value2`
     ///     `+` is prohibited to avoid interactions with expression grammar.
     fn parse_ty_no_plus(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(false)
+        self.parse_ty_common(false, true)
     }
 
-    fn parse_ty_common(&mut self, allow_plus: bool) -> PResult<'a, P<Ty>> {
+    fn parse_ty_common(&mut self, allow_plus: bool, allow_qpath_recovery: bool)
+                       -> PResult<'a, P<Ty>> {
         maybe_whole!(self, NtTy, |x| x);
 
         let lo = self.span;
@@ -1612,7 +1613,7 @@ impl<'a> Parser<'a> {
 
         // Try to recover from use of `+` with incorrect priority.
         self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
-        let ty = self.maybe_recover_from_bad_qpath(ty)?;
+        let ty = self.maybe_recover_from_bad_qpath(ty, allow_qpath_recovery)?;
 
         Ok(P(ty))
     }
@@ -1668,9 +1669,10 @@ impl<'a> Parser<'a> {
     }
 
     // Try to recover from associated item paths like `[T]::AssocItem`/`(T, U)::AssocItem`.
-    fn maybe_recover_from_bad_qpath<T: RecoverQPath>(&mut self, base: T) -> PResult<'a, T> {
+    fn maybe_recover_from_bad_qpath<T: RecoverQPath>(&mut self, base: T, allow_recovery: bool)
+                                                     -> PResult<'a, T> {
         // Do not add `::` to expected tokens.
-        if self.token != token::ModSep {
+        if !allow_recovery || self.token != token::ModSep {
             return Ok(base);
         }
         let ty = match base.to_ty() {
@@ -2004,7 +2006,7 @@ impl<'a> Parser<'a> {
                     |p| p.parse_ty())?;
                 self.bump(); // `)`
                 let output = if self.eat(&token::RArrow) {
-                    Some(self.parse_ty_no_plus()?)
+                    Some(self.parse_ty_common(false, false)?)
                 } else {
                     None
                 };
@@ -2411,7 +2413,7 @@ impl<'a> Parser<'a> {
         }
 
         let expr = Expr { node: ex, span: lo.to(hi), id: ast::DUMMY_NODE_ID, attrs };
-        let expr = self.maybe_recover_from_bad_qpath(expr)?;
+        let expr = self.maybe_recover_from_bad_qpath(expr, true)?;
 
         return Ok(P(expr));
     }
@@ -3778,7 +3780,7 @@ impl<'a> Parser<'a> {
         }
 
         let pat = Pat { node: pat, span: lo.to(self.prev_span), id: ast::DUMMY_NODE_ID };
-        let pat = self.maybe_recover_from_bad_qpath(pat)?;
+        let pat = self.maybe_recover_from_bad_qpath(pat, true)?;
 
         Ok(P(pat))
     }

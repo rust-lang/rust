@@ -38,11 +38,9 @@ type G = 'static + (Send)::AssocTy;
 //~^ ERROR missing angle brackets in associated item path
 //~| ERROR ambiguous associated type
 
-// FIXME
 // This is actually a legal path with fn-like generic arguments in the middle!
 // Recovery should not apply in this context.
 type H = Fn(u8) -> (u8)::Output;
-//~^ ERROR missing angle brackets in associated item path
-//~| ERROR ambiguous associated type
+//~^ ERROR ambiguous associated type
 
 fn main() {}
