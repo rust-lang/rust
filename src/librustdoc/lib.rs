@@ -254,7 +254,8 @@ pub fn opts() -> Vec<RustcOptGroup> {
             o.optopt("", "linker", "linker used for building executable test code", "PATH")
         }),
         unstable("sort-modules-by-appearance", |o| {
-            o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the program, rather than alphabetically")
+            o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
+                                                         program, rather than alphabetically")
         }),
     ]
 }
