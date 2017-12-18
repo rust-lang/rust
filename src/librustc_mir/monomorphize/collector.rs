@@ -789,7 +789,23 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             target_ty: Ty<'tcx>)
                                             -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
-        tcx.struct_lockstep_tails(inner_source, inner_target)
+        let type_has_metadata = |ty: Ty<'tcx>| -> bool {
+            use syntax_pos::DUMMY_SP;
+            if ty.is_sized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+                return false;
+            }
+            let tail = tcx.struct_tail(ty);
+            match tail.sty {
+                ty::TyForeign(..) => false,
+                ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
+                _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+            }
+        };
+        if type_has_metadata(inner_source) {
+            (inner_source, inner_target)
+        } else {
+            tcx.struct_lockstep_tails(inner_source, inner_target)
+        }
     };
 
     match (&source_ty.sty, &target_ty.sty) {
