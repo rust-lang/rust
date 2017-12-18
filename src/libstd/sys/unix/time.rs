@@ -11,6 +11,7 @@
 use cmp::Ordering;
 use libc;
 use time::Duration;
+use core::hash::{Hash, Hasher};
 
 pub use self::inner::{Instant, SystemTime, UNIX_EPOCH};
 use convert::TryInto;
@@ -111,6 +112,13 @@ impl Ord for Timespec {
     }
 }
 
+impl Hash for Timespec {
+    fn hash<H : Hasher>(&self, state: &mut H) {
+        self.t.tv_sec.hash(state);
+        self.t.tv_nsec.hash(state);
+    }
+}
+
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod inner {
     use fmt;
@@ -123,12 +131,12 @@ mod inner {
     use super::NSEC_PER_SEC;
     use super::Timespec;
 
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
     pub struct Instant {
         t: u64
     }
 
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct SystemTime {
         t: Timespec,
     }
@@ -255,12 +263,12 @@ mod inner {
 
     use super::Timespec;
 
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Instant {
         t: Timespec,
     }
 
-    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct SystemTime {
         t: Timespec,
     }
