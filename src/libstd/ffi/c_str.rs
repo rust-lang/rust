@@ -419,7 +419,7 @@ impl CString {
     ///
     /// No bytes past the end of the buffer will be accessed even if no null terminator
     /// is found.
-    /// 
+    ///
     /// Since the data is copied, the buffer may be freed once this function returns.
     ///
     /// # Examples
@@ -428,7 +428,7 @@ impl CString {
     ///
     /// ```no_run
     /// #![feature(cstr_of_fixed_size)]
-    /// 
+    ///
     /// use std::ffi::CString;
     /// use std::os::raw::c_char;
     /// use std::mem;
@@ -461,7 +461,7 @@ impl CString {
     ///
     /// ```no_run
     /// #![feature(cstr_of_fixed_size)]
-    /// 
+    ///
     /// use std::ffi::CString;
     /// use std::os::raw::c_char;
     /// use std::mem;
@@ -484,7 +484,7 @@ impl CString {
     }
 
     /// Creates a new C-compatible string from a container of bytes.
-    /// 
+    ///
     /// The string is terminated at the first null byte present within the
     /// container.
     ///
@@ -494,7 +494,7 @@ impl CString {
     ///
     /// ```no_run
     /// #![feature(cstr_of_fixed_size)]
-    /// 
+    ///
     /// use std::ffi::CString;
     /// use std::os::raw::c_char;
     ///
