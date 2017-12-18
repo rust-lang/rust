@@ -484,19 +484,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                         -> DiagnosticBuilder<'tcx>
     {
         let msg = "impl has stricter requirements than trait";
-        let mut err = struct_span_err!(self.tcx.sess,
-                                       error_span,
-                                       E0276,
-                                       "{}", msg);
+        let sp = self.tcx.sess.codemap().def_span(error_span);
+
+        let mut err = struct_span_err!(self.tcx.sess, sp, E0276, "{}", msg);
 
         if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
             let span = self.tcx.sess.codemap().def_span(trait_item_span);
             err.span_label(span, format!("definition of `{}` from trait", item_name));
         }
 
-        err.span_label(
-            error_span,
-            format!("impl has extra requirement {}", requirement));
+        err.span_label(sp, format!("impl has extra requirement {}", requirement));
 
         err
     }
