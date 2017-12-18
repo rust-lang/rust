@@ -594,7 +594,7 @@ define_dep_nodes!( <'tcx>
     [] ObjectLifetimeDefaults(DefIndex),
 
     [] Visibility(DefId),
-    [] DepKind(CrateNum),
+    [input] DepKind(CrateNum),
     [input] CrateName(CrateNum),
     [] ItemChildren(DefId),
     [] ExternModStmtCnum(DefId),
