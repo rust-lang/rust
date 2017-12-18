@@ -169,11 +169,49 @@ enum PrevTokenKind {
     Other,
 }
 
-pub(crate) trait RecoverQPath: Sized {
+trait RecoverQPath: Sized {
+    const PATH_STYLE: PathStyle = PathStyle::Expr;
     fn to_ty(&self) -> Option<P<Ty>>;
     fn to_recovered(&self, qself: Option<QSelf>, path: ast::Path) -> Self;
     fn to_string(&self) -> String;
-    const PATH_STYLE: PathStyle = PathStyle::Expr;
+}
+
+impl RecoverQPath for Ty {
+    const PATH_STYLE: PathStyle = PathStyle::Type;
+    fn to_ty(&self) -> Option<P<Ty>> {
+        Some(P(self.clone()))
+    }
+    fn to_recovered(&self, qself: Option<QSelf>, path: ast::Path) -> Self {
+        Self { span: path.span, node: TyKind::Path(qself, path), id: self.id }
+    }
+    fn to_string(&self) -> String {
+        pprust::ty_to_string(self)
+    }
+}
+
+impl RecoverQPath for Pat {
+    fn to_ty(&self) -> Option<P<Ty>> {
+        self.to_ty()
+    }
+    fn to_recovered(&self, qself: Option<QSelf>, path: ast::Path) -> Self {
+        Self { span: path.span, node: PatKind::Path(qself, path), id: self.id }
+    }
+    fn to_string(&self) -> String {
+        pprust::pat_to_string(self)
+    }
+}
+
+impl RecoverQPath for Expr {
+    fn to_ty(&self) -> Option<P<Ty>> {
+        self.to_ty()
+    }
+    fn to_recovered(&self, qself: Option<QSelf>, path: ast::Path) -> Self {
+        Self { span: path.span, node: ExprKind::Path(qself, path),
+               id: self.id, attrs: self.attrs.clone() }
+    }
+    fn to_string(&self) -> String {
+        pprust::expr_to_string(self)
+    }
 }
 
 /* ident is handled by common.rs */
