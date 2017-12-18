@@ -37,6 +37,7 @@ extern crate rustc;
 extern crate rustc_back;
 extern crate syntax;
 extern crate syntax_pos;
+extern crate rustc_data_structures;
 
 use rustc::ty::{TyCtxt, Instance};
 use rustc::hir;
