@@ -273,10 +273,13 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// let n =  0x0123456789ABCDEFi64;
-        /// let m = -0x1032547698BADCFFi64;
+        /// let n: i16 = 0b0000000_01010101;
+        /// assert_eq!(n, 85);
         ///
-        /// assert_eq!(n.swap_bytes(), m);
+        /// let m = n.swap_bytes();
+        ///
+        /// assert_eq!(m, 0b01010101_00000000);
+        /// assert_eq!(m, 21760);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -1466,10 +1469,13 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// let n = 0x0123456789ABCDEFu64;
-        /// let m = 0xEFCDAB8967452301u64;
+        /// let n: u16 = 0b0000000_01010101;
+        /// assert_eq!(n, 85);
         ///
-        /// assert_eq!(n.swap_bytes(), m);
+        /// let m = n.swap_bytes();
+        ///
+        /// assert_eq!(m, 0b01010101_00000000);
+        /// assert_eq!(m, 21760);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
