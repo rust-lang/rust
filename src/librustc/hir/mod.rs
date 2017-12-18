@@ -35,7 +35,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
-use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
+use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
@@ -512,8 +512,6 @@ pub struct WhereEqPredicate {
     pub lhs_ty: P<Ty>,
     pub rhs_ty: P<Ty>,
 }
-
-pub type CrateConfig = HirVec<P<MetaItem>>;
 
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
