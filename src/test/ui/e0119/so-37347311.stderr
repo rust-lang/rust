@@ -1,12 +1,8 @@
 error[E0119]: conflicting implementations of trait `std::convert::From<MyError<_>>` for type `MyError<_>`:
   --> $DIR/so-37347311.rs:21:1
    |
-21 | / impl<S: Storage> From<S::Error> for MyError<S> { //~ ERROR conflicting implementations
-22 | |     fn from(error: S::Error) -> MyError<S> {
-23 | |         MyError::StorageProblem(error)
-24 | |     }
-25 | | }
-   | |_^
+21 | impl<S: Storage> From<S::Error> for MyError<S> { //~ ERROR conflicting implementations
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
            - impl<T> std::convert::From<T> for T;

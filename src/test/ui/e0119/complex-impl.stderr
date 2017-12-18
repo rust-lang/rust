@@ -2,7 +2,7 @@ error[E0119]: conflicting implementations of trait `complex_impl_support::Extern
   --> $DIR/complex-impl.rs:19:1
    |
 19 | impl<R> External for (Q, R) {} //~ ERROR must be used
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `complex_impl_support`:
            - impl<'a, 'b, 'c, T, U, V, W> complex_impl_support::External for (T, complex_impl_support::M<'a, 'b, 'c, std::boxed::Box<U>, V, W>)

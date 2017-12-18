@@ -1,15 +1,11 @@
 error[E0119]: conflicting implementations of trait `Foo` for type `u8`:
   --> $DIR/specialization-feature-gate-overlap.rs:23:1
    |
-19 | / impl<T> Foo for T {
-20 | |     fn foo(&self) {}
-21 | | }
-   | |_- first implementation here
-22 | 
-23 | / impl Foo for u8 { //~ ERROR E0119
-24 | |     fn foo(&self) {}
-25 | | }
-   | |_^ conflicting implementation for `u8`
+19 | impl<T> Foo for T {
+   | ----------------- first implementation here
+...
+23 | impl Foo for u8 { //~ ERROR E0119
+   | ^^^^^^^^^^^^^^^ conflicting implementation for `u8`
 
 error: aborting due to previous error
 

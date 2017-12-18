@@ -2,9 +2,9 @@ error[E0119]: conflicting implementations of trait `Sweet` for type `std::boxed:
   --> $DIR/coherence-overlap-issue-23516.rs:18:1
    |
 17 | impl<T:Sugar> Sweet for T { }
-   | ----------------------------- first implementation here
+   | ------------------------- first implementation here
 18 | impl<U:Sugar> Sweet for Box<U> { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `std::boxed::Box<_>`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `std::boxed::Box<_>`
    |
    = note: downstream crates may implement trait `Sugar` for type `std::boxed::Box<_>`
 
