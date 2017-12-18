@@ -215,9 +215,8 @@ where
             }
             Ok(report) => reports.push(report),
             Err(err) => {
-                match err {
-                    IdempotentCheckError::Mismatch(msg) => print_mismatches(msg),
-                    IdempotentCheckError::Parse => (),
+                if let IdempotentCheckError::Mismatch(msg) = err {
+                    print_mismatches(msg);
                 }
                 fails += 1;
             }
