@@ -1484,27 +1484,25 @@ impl<'a, 'tcx> LayoutDetails {
                                     Some(niche) => niche,
                                     None => continue
                                 };
+                            let mut align = dl.aggregate_align;
                             let st = variants.iter().enumerate().map(|(j, v)| {
                                 let mut st = univariant_uninterned(v,
                                     &def.repr, StructKind::AlwaysSized)?;
                                 st.variants = Variants::Single { index: j };
+
+                                align = align.max(st.align);
+
                                 Ok(st)
                             }).collect::<Result<Vec<_>, _>>()?;
 
                             let offset = st[i].fields.offset(field_index) + offset;
-                            let LayoutDetails { mut size, mut align, .. } = st[i];
+                            let size = st[i].size;
 
-                            let mut niche_align = niche.value.align(dl);
                             let abi = if offset.bytes() == 0 && niche.value.size(dl) == size {
                                 Abi::Scalar(niche.clone())
                             } else {
-                                if offset.abi_align(niche_align) != offset {
-                                    niche_align = dl.i8_align;
-                                }
                                 Abi::Aggregate { sized: true }
                             };
-                            align = align.max(niche_align);
-                            size = size.abi_align(align);
 
                             return Ok(tcx.intern_layout(LayoutDetails {
                                 variants: Variants::NicheFilling {
