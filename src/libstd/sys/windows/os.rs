@@ -295,9 +295,7 @@ pub fn temp_dir() -> PathBuf {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    ::env::var_os("HOME").or_else(|| {
-        ::env::var_os("USERPROFILE")
-    }).map(PathBuf::from).or_else(|| unsafe {
+    unsafe {
         let me = c::GetCurrentProcess();
         let mut token = ptr::null_mut();
         if c::OpenProcessToken(me, c::TOKEN_READ, &mut token) == 0 {
@@ -311,7 +309,7 @@ pub fn home_dir() -> Option<PathBuf> {
                 _ => sz - 1, // sz includes the null terminator
             }
         }, super::os2path).ok()
-    })
+    }
 }
 
 pub fn exit(code: i32) -> ! {
