@@ -108,6 +108,12 @@ fn baz() {
     unsafe {
         foo();
     }
+
+    // #2289
+    let identifier_0 = unsafe { this_is_58_chars_long_and_line_is_93_chars_long_xxxxxxxxxx };
+    let identifier_1 = unsafe { this_is_59_chars_long_and_line_is_94_chars_long_xxxxxxxxxxx };
+    let identifier_2 = unsafe { this_is_65_chars_long_and_line_is_100_chars_long_xxxxxxxxxxxxxxxx };
+    let identifier_3 = unsafe { this_is_66_chars_long_and_line_is_101_chars_long_xxxxxxxxxxxxxxxxx };
 }
 
 // Test some empty blocks.
