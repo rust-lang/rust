@@ -103,6 +103,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
         if *temp == TempState::Undefined {
             match context {
                 PlaceContext::Store |
+                PlaceContext::AsmOutput |
                 PlaceContext::Call => {
                     *temp = TempState::Defined {
                         location,

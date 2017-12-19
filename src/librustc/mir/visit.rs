@@ -376,7 +376,7 @@ macro_rules! make_mir_visitor {
                                                ref $($mutability)* inputs,
                                                asm: _ } => {
                         for output in & $($mutability)* outputs[..] {
-                            self.visit_place(output, PlaceContext::Store, location);
+                            self.visit_place(output, PlaceContext::AsmOutput, location);
                         }
                         for input in & $($mutability)* inputs[..] {
                             self.visit_operand(input, location);
@@ -835,6 +835,11 @@ pub enum PlaceContext<'tcx> {
     // Appears as LHS of an assignment
     Store,
 
+    // Can often be treated as a Store, but needs to be separate because
+    // ASM is allowed to read outputs as well, so a Store-AsmOutput sequence
+    // cannot be simplified the way a Store-Store can be.
+    AsmOutput,
+
     // Dest of a call
     Call,
 
@@ -910,7 +915,7 @@ impl<'tcx> PlaceContext<'tcx> {
     /// Returns true if this place context represents a use that potentially changes the value.
     pub fn is_mutating_use(&self) -> bool {
         match *self {
-            PlaceContext::Store | PlaceContext::Call |
+            PlaceContext::Store | PlaceContext::AsmOutput | PlaceContext::Call |
             PlaceContext::Borrow { kind: BorrowKind::Mut, .. } |
             PlaceContext::Projection(Mutability::Mut) |
             PlaceContext::Drop => true,
@@ -932,6 +937,7 @@ impl<'tcx> PlaceContext<'tcx> {
             PlaceContext::Projection(Mutability::Not) |
             PlaceContext::Copy | PlaceContext::Move => true,
             PlaceContext::Borrow { kind: BorrowKind::Mut, .. } | PlaceContext::Store |
+            PlaceContext::AsmOutput |
             PlaceContext::Call | PlaceContext::Projection(Mutability::Mut) |
             PlaceContext::Drop | PlaceContext::StorageLive | PlaceContext::StorageDead |
             PlaceContext::Validate => false,
