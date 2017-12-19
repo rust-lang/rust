@@ -1352,21 +1352,18 @@ impl<'a, 'tcx> LayoutDetails {
                     }).collect::<Result<Vec<_>, _>>()
                 }).collect::<Result<Vec<_>, _>>()?;
 
-                let (inh_first, inh_second) = {
-                    let mut inh_variants = (0..variants.len()).filter(|&v| {
-                        variants[v].iter().all(|f| f.abi != Abi::Uninhabited)
-                    });
-                    (inh_variants.next(), inh_variants.next())
-                };
-                if inh_first.is_none() {
-                    // Uninhabited because it has no variants, or only uninhabited ones.
-                    return Ok(tcx.intern_layout(LayoutDetails::uninhabited(0)));
-                }
-
                 if def.is_union() {
                     let packed = def.repr.packed();
                     if packed && def.repr.align > 0 {
                         bug!("Union cannot be packed and aligned");
+                    }
+                    if variants.len() != 1 {
+                        bug!("Union must be represented as a single variant");
+                    }
+
+                    if variants[0].iter().all(|f| f.abi == Abi::Uninhabited) {
+                        // Uninhabited because it has only uninhabited variants/fields.
+                        return Ok(tcx.intern_layout(LayoutDetails::uninhabited(0)));
                     }
 
                     let mut align = if def.repr.packed() {
@@ -1398,6 +1395,17 @@ impl<'a, 'tcx> LayoutDetails {
                         align,
                         size: size.abi_align(align)
                     }));
+                }
+
+                let (inh_first, inh_second) = {
+                    let mut inh_variants = (0..variants.len()).filter(|&v| {
+                        variants[v].iter().all(|f| f.abi != Abi::Uninhabited)
+                    });
+                    (inh_variants.next(), inh_variants.next())
+                };
+                if inh_first.is_none() {
+                    // Uninhabited because it has no variants, or only uninhabited ones.
+                    return Ok(tcx.intern_layout(LayoutDetails::uninhabited(0)));
                 }
 
                 let is_struct = !def.is_enum() ||
