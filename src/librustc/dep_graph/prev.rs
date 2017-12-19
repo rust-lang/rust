@@ -62,4 +62,8 @@ impl PreviousDepGraph {
                                 -> Fingerprint {
         self.data.nodes[dep_node_index].1
     }
+
+    pub fn node_count(&self) -> usize {
+        self.index.len()
+    }
 }

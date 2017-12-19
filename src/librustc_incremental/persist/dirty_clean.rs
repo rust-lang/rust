@@ -480,7 +480,8 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     fn assert_dirty(&self, item_span: Span, dep_node: DepNode) {
         debug!("assert_dirty({:?})", dep_node);
 
-        let current_fingerprint = self.tcx.dep_graph.fingerprint_of(&dep_node);
+        let dep_node_index = self.tcx.dep_graph.dep_node_index_of(&dep_node);
+        let current_fingerprint = self.tcx.dep_graph.fingerprint_of(dep_node_index);
         let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
 
         if Some(current_fingerprint) == prev_fingerprint {
@@ -494,7 +495,8 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     fn assert_clean(&self, item_span: Span, dep_node: DepNode) {
         debug!("assert_clean({:?})", dep_node);
 
-        let current_fingerprint = self.tcx.dep_graph.fingerprint_of(&dep_node);
+        let dep_node_index = self.tcx.dep_graph.dep_node_index_of(&dep_node);
+        let current_fingerprint = self.tcx.dep_graph.fingerprint_of(dep_node_index);
         let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
 
         if Some(current_fingerprint) != prev_fingerprint {

@@ -26,6 +26,7 @@ use syntax_pos::Span;
 
 use hir::*;
 use hir::print::Nested;
+use hir::svh::Svh;
 use util::nodemap::{DefIdMap, FxHashMap};
 
 use arena::TypedArena;
@@ -240,6 +241,9 @@ pub struct Map<'hir> {
     /// Same as the dep_graph in forest, just available with one fewer
     /// deref. This is a gratuitous micro-optimization.
     pub dep_graph: DepGraph,
+
+    /// The SVH of the local crate.
+    pub crate_hash: Svh,
 
     /// NodeIds are sequential integers from 0, so we can be
     /// super-compact by storing them in a vector. Not everything with
@@ -1048,7 +1052,7 @@ pub fn map_crate<'hir>(sess: &::session::Session,
                        forest: &'hir mut Forest,
                        definitions: &'hir Definitions)
                        -> Map<'hir> {
-    let map = {
+    let (map, crate_hash) = {
         let hcx = ::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
 
         let mut collector = NodeCollector::root(&forest.krate,
@@ -1087,6 +1091,7 @@ pub fn map_crate<'hir>(sess: &::session::Session,
     let map = Map {
         forest,
         dep_graph: forest.dep_graph.clone(),
+        crate_hash,
         map,
         hir_to_node_id,
         definitions,
