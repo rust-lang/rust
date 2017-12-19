@@ -304,8 +304,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         self.report_concrete_failure(region_scope_tree, origin, sub, sup).emit();
                     }
 
-                    RegionResolutionError::GenericBoundFailure(kind, param_ty, sub) => {
-                        self.report_generic_bound_failure(region_scope_tree, kind, param_ty, sub);
+                    RegionResolutionError::GenericBoundFailure(origin, param_ty, sub) => {
+                        self.report_generic_bound_failure(
+                            region_scope_tree,
+                            origin.span(),
+                            Some(origin),
+                            param_ty,
+                            sub,
+                        );
                     }
 
                     RegionResolutionError::SubSupConflict(var_origin,
@@ -901,11 +907,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
               DiagnosticStyledString::highlighted(format!("{}", exp_found.found))))
     }
 
-    fn report_generic_bound_failure(&self,
-                                    region_scope_tree: &region::ScopeTree,
-                                    origin: SubregionOrigin<'tcx>,
-                                    bound_kind: GenericKind<'tcx>,
-                                    sub: Region<'tcx>)
+    pub fn report_generic_bound_failure(&self,
+                                        region_scope_tree: &region::ScopeTree,
+                                        span: Span,
+                                        origin: Option<SubregionOrigin<'tcx>>,
+                                        bound_kind: GenericKind<'tcx>,
+                                        sub: Region<'tcx>)
     {
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
@@ -953,9 +960,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format!("the associated type `{}`", p),
         };
 
-        if let SubregionOrigin::CompareImplMethodObligation {
+        if let Some(SubregionOrigin::CompareImplMethodObligation {
             span, item_name, impl_item_def_id, trait_item_def_id,
-        } = origin {
+        }) = origin {
             self.report_extra_impl_obligation(span,
                                               item_name,
                                               impl_item_def_id,
@@ -990,7 +997,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(self.tcx.sess,
-                                               origin.span(),
+                                               span,
                                                E0309,
                                                "{} may not live long enough",
                                                labeled_user_string);
@@ -1001,7 +1008,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::ReStatic => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(self.tcx.sess,
-                                               origin.span(),
+                                               span,
                                                E0310,
                                                "{} may not live long enough",
                                                labeled_user_string);
@@ -1012,7 +1019,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             _ => {
                 // If not, be less specific.
                 let mut err = struct_span_err!(self.tcx.sess,
-                                               origin.span(),
+                                               span,
                                                E0311,
                                                "{} may not live long enough",
                                                labeled_user_string);
@@ -1028,7 +1035,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        self.note_region_origin(&mut err, &origin);
+        if let Some(origin) = origin {
+            self.note_region_origin(&mut err, &origin);
+        }
         err.emit();
     }
 
