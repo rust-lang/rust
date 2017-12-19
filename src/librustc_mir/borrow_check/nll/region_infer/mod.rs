@@ -122,10 +122,12 @@ pub struct Constraint {
 /// checks that they meet certain extra criteria.  If not, an error
 /// can be issued.
 ///
-/// One reason for this is that these type tests always boil down to a
-/// check like `'a: 'x` where `'a` is a universally quantified region
-/// -- and therefore not one whose value is really meant to be
-/// *inferred*, precisely. Another reason is that these type tests can
+/// One reason for this is that these type tests typically boil down
+/// to a check like `'a: 'x` where `'a` is a universally quantified
+/// region -- and therefore not one whose value is really meant to be
+/// *inferred*, precisely (this is not always the case: one can have a
+/// type test like `<Foo as Trait<'?0>>::Bar: 'x`, where `'?0` is an
+/// inference variable). Another reason is that these type tests can
 /// involve *disjunction* -- that is, they can be satisfied in more
 /// than one way.
 ///
