@@ -432,18 +432,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Once regions have been propagated, this method is used to see
-    /// whether any of the constraints were too strong. In particular,
-    /// we want to check for a case where a universally quantified
-    /// region exceeded its bounds.  Consider:
-    ///
-    ///     fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
-    ///
-    /// In this case, returning `x` requires `&'a u32 <: &'b u32`
-    /// and hence we establish (transitively) a constraint that
-    /// `'a: 'b`. The `propagate_constraints` code above will
-    /// therefore add `end('a)` into the region for `'b` -- but we
-    /// have no evidence that `'b` outlives `'a`, so we want to report
-    /// an error.
+    /// whether the "type tests" produced by typeck were satisfied;
+    /// type tests encode type-outlives relationships like `T:
+    /// 'a`. See `TypeTest` for more details.
     fn check_type_tests<'gcx>(
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
