@@ -1111,10 +1111,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     match File::open(&filename).and_then(|mut f| f.read_to_end(&mut buf)) {
                         Ok(..) => {}
                         Err(e) => {
-                            self.cx.span_warn(at.span,
-                                              &format!("couldn't read {}: {}",
-                                                       filename.display(),
-                                                       e));
+                            self.cx.span_err(at.span,
+                                             &format!("couldn't read {}: {}",
+                                                      filename.display(),
+                                                      e));
                         }
                     }
 
@@ -1133,9 +1133,9 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                                         attr::mk_list_item("include".into(), include_info))));
                         }
                         Err(_) => {
-                            self.cx.span_warn(at.span,
-                                              &format!("{} wasn't a utf-8 file",
-                                                       filename.display()));
+                            self.cx.span_err(at.span,
+                                             &format!("{} wasn't a utf-8 file",
+                                                      filename.display()));
                         }
                     }
                 } else {
