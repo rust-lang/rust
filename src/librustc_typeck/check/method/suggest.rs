@@ -122,7 +122,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                impl_ty);
                         if let Some(note_span) = note_span {
                             // We have a span pointing to the method. Show note with snippet.
-                            err.span_note(note_span, &note_str);
+                            err.span_note(self.tcx.sess.codemap().def_span(note_span), &note_str);
                         } else {
                             err.note(&note_str);
                         }
@@ -131,7 +131,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let item = self
                             .associated_item(trait_did, item_name, Namespace::Value)
                             .unwrap();
-                        let item_span = self.tcx.def_span(item.def_id);
+                        let item_span = self.tcx.sess.codemap()
+                            .def_span(self.tcx.def_span(item.def_id));
                         span_note!(err,
                                    item_span,
                                    "candidate #{} is defined in the trait `{}`",
