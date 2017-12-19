@@ -11,8 +11,8 @@ use syntax::ast::LitKind;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{expr_block, in_external_macro, is_allowed, is_expn_of, match_type, remove_blocks, snippet,
-            span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};
+use utils::{expr_block, in_external_macro, is_allowed, is_expn_of, match_qpath, match_type, remove_blocks,
+            snippet, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -145,6 +145,27 @@ declare_lint! {
     "a match with `Err(_)` arm and take drastic actions"
 }
 
+/// **What it does:** Checks for match which is used to add a reference to an
+/// `Option` value.
+///
+/// **Why is this bad?** Using `as_ref()` instead is shorter.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let x: Option<()> = None;
+/// let r: Option<&()> = match x {
+///   None => None,
+///   Some(ref v) => Some(v),
+/// };
+/// ```
+declare_lint! {
+    pub MATCH_AS_REF,
+    Warn,
+    "a match on an Option value instead of using `as_ref()`"
+}
+
 #[allow(missing_copy_implementations)]
 pub struct MatchPass;
 
@@ -156,7 +177,8 @@ impl LintPass for MatchPass {
             MATCH_BOOL,
             SINGLE_MATCH_ELSE,
             MATCH_OVERLAPPING_ARM,
-            MATCH_WILD_ERR_ARM
+            MATCH_WILD_ERR_ARM,
+            MATCH_AS_REF
         )
     }
 }
@@ -171,6 +193,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
             check_match_bool(cx, ex, arms, expr);
             check_overlapping_arms(cx, ex, arms);
             check_wild_err_arm(cx, ex, arms);
+            check_match_as_ref(cx, ex, arms, expr);
         }
         if let ExprMatch(ref ex, ref arms, source) = expr.node {
             check_match_ref_pats(cx, ex, arms, source, expr);
@@ -411,6 +434,24 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
     }
 }
 
+fn check_match_as_ref(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
+    if arms.len() == 2 &&
+        arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
+        arms[1].pats.len() == 1 && arms[1].guard.is_none() {
+        if (is_ref_some_arm(&arms[0]) && is_none_arm(&arms[1])) ||
+            (is_ref_some_arm(&arms[1]) && is_none_arm(&arms[0])) {
+            span_lint_and_sugg(
+                cx,
+                MATCH_AS_REF,
+                expr.span,
+                "use as_ref() instead",
+                "try this",
+                format!("{}.as_ref()", snippet(cx, ex.span, "_"))
+            )
+        }
+    }
+}
+
 /// Get all arms that are unbounded `PatRange`s.
 fn all_ranges<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
@@ -522,6 +563,34 @@ fn is_unit_expr(expr: &Expr) -> bool {
         ExprBlock(ref b) if b.stmts.is_empty() && b.expr.is_none() => true,
         _ => false,
     }
+}
+
+// Checks if arm has the form `None => None`
+fn is_none_arm(arm: &Arm) -> bool {
+    match arm.pats[0].node {
+        PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => true,
+        _ => false,
+    }
+}
+
+// Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
+fn is_ref_some_arm(arm: &Arm) -> bool {
+    if_chain! {
+        if let PatKind::TupleStruct(ref path, ref pats, _) = arm.pats[0].node;
+        if pats.len() == 1 && match_qpath(path, &paths::OPTION_SOME);
+        if let PatKind::Binding(rb, _, ref ident, _) = pats[0].node;
+        if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
+        if let ExprCall(ref e, ref args) = remove_blocks(&arm.body).node;
+        if let ExprPath(ref some_path) = e.node;
+        if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
+        if let ExprPath(ref qpath) = args[0].node;
+        if let &QPath::Resolved(_, ref path2) = qpath;
+        if path2.segments.len() == 1;
+        then {
+            return ident.node == path2.segments[0].name
+        }
+    }
+    false
 }
 
 fn has_only_ref_pats(arms: &[Arm]) -> bool {
