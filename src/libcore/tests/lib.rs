@@ -38,6 +38,7 @@
 #![feature(step_trait)]
 #![feature(test)]
 #![feature(trusted_len)]
+#![feature(unbounded_iter)]
 #![feature(try_from)]
 #![feature(try_trait)]
 #![feature(unique)]

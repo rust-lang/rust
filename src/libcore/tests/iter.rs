@@ -952,14 +952,14 @@ fn test_iterator_size_hint() {
     assert_eq!(c.clone().take(5).size_hint(), (5, Some(5)));
     assert_eq!(c.clone().skip(5).size_hint().1, None);
     assert_eq!(c.clone().take_while(|_| false).size_hint(), (0, None));
-    assert_eq!(c.clone().skip_while(|_| false).size_hint(), (0, None));
+    assert_eq!(c.clone().skip_while(|_| false).size_hint(), (usize::MAX, None));
     assert_eq!(c.clone().enumerate().size_hint(), (usize::MAX, None));
     assert_eq!(c.clone().chain(vi.clone().cloned()).size_hint(), (usize::MAX, None));
     assert_eq!(c.clone().zip(vi.clone()).size_hint(), (10, Some(10)));
     assert_eq!(c.clone().scan(0, |_,_| Some(0)).size_hint(), (0, None));
-    assert_eq!(c.clone().filter(|_| false).size_hint(), (0, None));
+    assert_eq!(c.clone().filter(|_| false).size_hint(), (usize::MAX, None));
     assert_eq!(c.clone().map(|_| 0).size_hint(), (usize::MAX, None));
-    assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
+    assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (usize::MAX, None));
 
     assert_eq!(vi.clone().take(5).size_hint(), (5, Some(5)));
     assert_eq!(vi.clone().take(12).size_hint(), (10, Some(10)));
@@ -1700,4 +1700,118 @@ fn test_flat_map_try_folds() {
     assert_eq!(iter.next(), Some(17));
     assert_eq!(iter.try_rfold(0, i8::checked_add), None);
     assert_eq!(iter.next_back(), Some(35));
+}
+
+fn test_unbounded_iterator<I: UnboundedIterator>(iter: I) {
+    assert_eq!(iter.size_hint(), (usize::MAX, None))
+}
+
+fn test_trusted_len<I: TrustedLen>(_: I) {}
+
+#[test]
+fn test_unbounded_iterator_repeat() {
+    test_unbounded_iterator(repeat(0))
+}
+
+#[test]
+fn test_unbounded_iterator_rangefrom() {
+    test_unbounded_iterator(0..)
+}
+
+#[test]
+fn test_unbounded_iterator_rev() {
+    test_unbounded_iterator(repeat(0).rev())
+}
+
+#[test]
+fn test_unbounded_iterator_filter() {
+    test_unbounded_iterator(repeat(0).filter(|_| true))
+}
+
+#[test]
+fn test_unbounded_iterator_cycle() {
+    test_unbounded_iterator(repeat(0).cycle())
+}
+
+#[test]
+fn test_unbounded_iterator_fuse() {
+    test_unbounded_iterator(repeat(0).fuse())
+}
+
+#[test]
+fn test_unbounded_iterator_map() {
+    test_unbounded_iterator(repeat(0).map(|_| 1))
+}
+
+#[test]
+fn test_unbounded_iterator_inspect() {
+    test_unbounded_iterator(repeat(0).inspect(|_| {}))
+}
+
+#[test]
+fn test_unbounded_iterator_skip_while() {
+    test_unbounded_iterator(repeat(0).skip_while(|_| false))
+}
+
+#[test]
+fn test_unbounded_iterator_filter_map() {
+    test_unbounded_iterator(repeat(0).filter_map(|_| Some(1)))
+}
+
+#[test]
+fn test_unbounded_iterator_zip() {
+    test_unbounded_iterator(repeat(0).zip(0..))
+}
+
+#[test]
+fn test_unbounded_iterator_step_by() {
+    test_unbounded_iterator(repeat(0).step_by(5))
+}
+
+#[test]
+fn test_unbounded_iterator_chain() {
+    test_unbounded_iterator(repeat(0).chain(0..));
+    test_unbounded_iterator(repeat(0).chain(Some(1)));
+    // FIXME: #46813
+//    test_unbounded_iterator(Some(1).into_iter().chain(repeat(0)));
+}
+
+#[test]
+fn test_unbounded_iterator_enumerate() {
+    test_unbounded_iterator(repeat(0).enumerate())
+}
+
+#[test]
+fn test_unbounded_iterator_flat_map() {
+    test_unbounded_iterator(repeat(0).flat_map(|_| Some(1)));
+}
+
+#[test]
+fn test_unbounded_iterator_skip() {
+    test_unbounded_iterator(repeat(0).skip(5))
+}
+
+#[test]
+fn test_unbounded_iterator_peekable() {
+    test_unbounded_iterator(repeat(0).peekable())
+}
+
+#[test]
+fn test_unbounded_iterator_cloned() {
+    test_unbounded_iterator(repeat(&0).cloned())
+}
+
+#[test]
+fn test_unbounded_iterator_box() {
+    test_unbounded_iterator(Box::new(repeat(0)))
+}
+
+#[test]
+fn test_trusted_len_repeat_take() {
+    test_trusted_len(repeat(0).take(100))
+}
+
+#[test]
+fn test_trusted_len_rangefrom_take() {
+    test_trusted_len((0..).take(100))
 }
