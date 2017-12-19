@@ -248,7 +248,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|origin| RegionDefinition::new(origin))
             .collect();
 
-        let nll_dump_cause = ty::tls::with(|tcx| tcx.sess.opts.debugging_opts.nll_dump_cause);
+        let nll_dump_cause = ty::tls::with(|tcx| tcx.sess.nll_dump_cause());
 
         let mut result = Self {
             definitions,
@@ -1259,7 +1259,7 @@ impl Cause {
     pub(crate) fn label_diagnostic(&self, mir: &Mir<'_>, diag: &mut DiagnosticBuilder<'_>) {
         // The cause information is pretty messy. Only dump it as an
         // internal debugging aid if -Znll-dump-cause is given.
-        let nll_dump_cause = ty::tls::with(|tcx| tcx.sess.opts.debugging_opts.nll_dump_cause);
+        let nll_dump_cause = ty::tls::with(|tcx| tcx.sess.nll_dump_cause());
         if !nll_dump_cause {
             return;
         }

@@ -437,6 +437,9 @@ impl Session {
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
     }
+    pub fn nll_dump_cause(&self) -> bool {
+        self.opts.debugging_opts.nll_dump_cause
+    }
     pub fn emit_end_regions(&self) -> bool {
         self.opts.debugging_opts.emit_end_regions ||
             (self.opts.debugging_opts.mir_emit_validate > 0) ||
