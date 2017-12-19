@@ -75,18 +75,8 @@ warning: function is marked #[no_mangle], but not exported
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/suggestions.rs:34:5
    |
-34 |       while true { // should suggest `loop`
-   |       ^---------
-   |       |
-   |  _____help: use `loop`
-   | |
-35 | |     //~^ WARN denote infinite loops
-36 | |         let mut a = (1); // should suggest no `mut`, no parens
-37 | |         //~^ WARN does not need to be mutable
-...  |
-44 | |         println!("{}", a);
-45 | |     }
-   | |_____^
+34 |     while true { // should suggest `loop`
+   |     ^^^^^^^^^^ help: use `loop`
    |
    = note: #[warn(while_true)] on by default
 
