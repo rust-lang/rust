@@ -12,6 +12,7 @@
 //
 // gate-test-non_modrs_mods
 // ignore-windows
+// ignore-pretty issue #37195
 pub mod modrs_mod;
 pub mod foors_mod;
 
