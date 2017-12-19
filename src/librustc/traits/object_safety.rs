@@ -59,9 +59,7 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
                 format!("method `{}` has generic type parameters", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::NonStandardSelfType) =>
-                format!("method `{}` has a non-standard `self` type. Only `&self`, \
-                        `&mut self`, and `Box<Self>` are currently supported \
-                        for trait objects", name).into(),
+                format!("method `{}` has a non-standard `self` type", name).into(),
             ObjectSafetyViolation::AssociatedConst(name) =>
                 format!("the trait cannot contain associated consts like `{}`", name).into(),
         }

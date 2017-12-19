@@ -503,7 +503,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             &ty::Binder(self_arg_ty)
         );
 
-        let mut autoderef = fcx.autoderef(span, self_arg_ty);
+        let mut autoderef = fcx.autoderef(span, self_arg_ty).include_raw_pointers();
 
         loop {
             if let Some((potential_self_ty, _)) = autoderef.next() {
@@ -532,12 +532,32 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let is_self_ty = |ty| fcx.infcx.can_eq(fcx.param_env, self_ty, ty).is_ok();
         let self_kind = ExplicitSelf::determine(self_arg_ty, is_self_ty);
 
-        if let ExplicitSelf::Other = self_kind {
-            if !fcx.tcx.sess.features.borrow().arbitrary_self_types {
-                feature_gate::feature_err(&fcx.tcx.sess.parse_sess, "arbitrary_self_types", span,
-                    GateIssue::Language, "arbitrary `self` types are unstable")
-                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
-                .emit();
+        if !fcx.tcx.sess.features.borrow().arbitrary_self_types {
+            match self_kind {
+                ExplicitSelf::ByValue |
+                ExplicitSelf::ByReference(_, _) |
+                ExplicitSelf::ByBox => (),
+
+                ExplicitSelf::ByRawPointer(_) => {
+                    feature_gate::feature_err(
+                        &fcx.tcx.sess.parse_sess,
+                        "arbitrary_self_types",
+                        span,
+                        GateIssue::Language,
+                        "raw pointer `self` is unstable")
+                    .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                    .emit();
+                }
+
+                ExplicitSelf::Other => {
+                    feature_gate::feature_err(
+                        &fcx.tcx.sess.parse_sess,
+                        "arbitrary_self_types",
+                        span,
+                        GateIssue::Language,"arbitrary `self` types are unstable")
+                    .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                    .emit();
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S(String);
+// must-compile-successfully
 
-impl S {
-    fn f(self: *mut S) -> String { self.0 }
-    //~^ ERROR invalid `self` type
+// tests that the following code compiles, but produces a future-compatibility warning
+
+fn main() {
+    let data = std::ptr::null();
+    let _ = &data as *const *const ();
+    if data.is_null() {}
 }
-
-fn main() { S("".to_owned()).f(); }

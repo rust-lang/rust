@@ -1,0 +1,29 @@
+error: raw pointer `self` is unstable (see issue #44874)
+  --> $DIR/feature-gate-arbitrary_self_types-raw-pointer.rs:19:18
+   |
+19 |     fn bar(self: *const Self);
+   |                  ^^^^^^^^^^^
+   |
+   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
+   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+
+error: raw pointer `self` is unstable (see issue #44874)
+  --> $DIR/feature-gate-arbitrary_self_types-raw-pointer.rs:14:18
+   |
+14 |     fn foo(self: *const Self) {}
+   |                  ^^^^^^^^^^^
+   |
+   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
+   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+
+error: raw pointer `self` is unstable (see issue #44874)
+  --> $DIR/feature-gate-arbitrary_self_types-raw-pointer.rs:24:18
+   |
+24 |     fn bar(self: *const Self) {}
+   |                  ^^^^^^^^^^^
+   |
+   = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
+   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+
+error: aborting due to 3 previous errors
+

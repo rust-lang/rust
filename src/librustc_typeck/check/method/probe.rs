@@ -77,6 +77,12 @@ impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
 struct CandidateStep<'tcx> {
     self_ty: Ty<'tcx>,
     autoderefs: usize,
+    // true if the type results from a dereference of a raw pointer.
+    // when assembling candidates, we include these steps, but not when
+    // picking methods. This so that if we have `foo: *const Foo` and `Foo` has methods
+    // `fn by_raw_ptr(self: *const Self)` and `fn by_ref(&self)`, then
+    // `foo.by_raw_ptr()` will work and `foo.by_ref()` won't.
+    from_unsafe_deref: bool,
     unsize: bool,
 }
 
@@ -257,6 +263,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             vec![CandidateStep {
                      self_ty,
                      autoderefs: 0,
+                     from_unsafe_deref: false,
                      unsize: false,
                  }]
         };
@@ -289,14 +296,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     -> Option<Vec<CandidateStep<'tcx>>> {
         // FIXME: we don't need to create the entire steps in one pass
 
-        let mut autoderef = self.autoderef(span, self_ty);
+        let mut autoderef = self.autoderef(span, self_ty).include_raw_pointers();
+        let mut reached_raw_pointer = false;
         let mut steps: Vec<_> = autoderef.by_ref()
             .map(|(ty, d)| {
-                CandidateStep {
+                let step = CandidateStep {
                     self_ty: ty,
                     autoderefs: d,
+                    from_unsafe_deref: reached_raw_pointer,
                     unsize: false,
+                };
+                if let ty::TyRawPtr(_) = ty.sty {
+                    // all the subsequent steps will be from_unsafe_deref
+                    reached_raw_pointer = true;
                 }
+                step
             })
             .collect();
 
@@ -307,9 +321,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // a real method lookup, this is a hard error (it's an
                 // ambiguity and we can't make progress).
                 if !is_suggestion.0 {
-                    let t = self.structurally_resolved_type(span, final_ty);
-                    assert_eq!(t, self.tcx.types.err);
-                    return None
+                    if reached_raw_pointer
+                    && !self.tcx.sess.features.borrow().arbitrary_self_types {
+                        // only produce a warning in this case, because inference variables used to
+                        // be allowed here in some cases for raw pointers
+                        struct_span_warn!(self.tcx.sess, span, E0619,
+                            "the type of this value must be known in this context")
+                        .note("this will be made into a hard error in a future version of \
+                               the compiler")
+                        .emit();
+                    } else {
+                        let t = self.structurally_resolved_type(span, final_ty);
+                        assert_eq!(t, self.tcx.types.err);
+                        return None
+                    }
                 } else {
                     // If we're just looking for suggestions,
                     // though, ambiguity is no big thing, we can
@@ -322,6 +347,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 steps.push(CandidateStep {
                     self_ty: self.tcx.mk_slice(elem_ty),
                     autoderefs: dereferences,
+                    // this could be from an unsafe deref if we had
+                    // a *mut/const [T; N]
+                    from_unsafe_deref: reached_raw_pointer,
                     unsize: true,
                 });
             }
@@ -830,7 +858,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             .iter()
             .filter(|step| {
                 debug!("pick_core: step={:?}", step);
-                !step.self_ty.references_error()
+                // skip types that are from a type error or that would require dereferencing
+                // a raw pointer
+                !step.self_ty.references_error() && !step.from_unsafe_deref
             }).flat_map(|step| {
                 self.pick_by_value_method(step).or_else(|| {
                 self.pick_autorefd_method(step, hir::MutImmutable).or_else(|| {

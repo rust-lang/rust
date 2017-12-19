@@ -1,0 +1,8 @@
+warning[E0619]: the type of this value must be known in this context
+  --> $DIR/inference-variable-behind-raw-pointer.rs:18:13
+   |
+18 |     if data.is_null() {}
+   |             ^^^^^^^
+   |
+   = note: this will be made into a hard error in a future version of the compiler
+
