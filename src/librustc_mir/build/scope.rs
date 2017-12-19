@@ -612,6 +612,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
+    // Schedule an abort block - this is used for some ABIs that cannot unwind
+    pub fn schedule_abort(&mut self) -> BasicBlock {
+        self.scopes[0].needs_cleanup = true;
+        let abortblk = self.cfg.start_new_cleanup_block();
+        let source_info = self.scopes[0].source_info(self.fn_span);
+        self.cfg.terminate(abortblk, source_info, TerminatorKind::Abort);
+        self.cached_resume_block = Some(abortblk);
+        abortblk
+    }
+
     // Scheduling drops
     // ================
     /// Indicates that `place` should be dropped on exit from

@@ -1919,6 +1919,7 @@ dependencies = [
  "log_settings 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_apfloat 0.0.0",
+ "rustc_back 0.0.0",
  "rustc_const_eval 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
