@@ -774,7 +774,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut) => {
                     // Reading from mere reservations of mutable-borrows is OK.
-                    if this.tcx.sess.opts.debugging_opts.two_phase_borrows && index.is_reservation()
+                    if this.tcx.sess.two_phase_borrows() && index.is_reservation()
                     {
                         return Control::Continue;
                     }
@@ -922,7 +922,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if self.tcx.sess.opts.debugging_opts.two_phase_borrows {
+                        if self.tcx.sess.two_phase_borrows() {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))
@@ -1112,7 +1112,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         span: Span,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
-        if !self.tcx.sess.opts.debugging_opts.two_phase_borrows {
+        if !self.tcx.sess.two_phase_borrows() {
             return;
         }
 

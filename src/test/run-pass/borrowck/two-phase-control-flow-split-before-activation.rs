@@ -10,7 +10,9 @@
 
 // revisions: lxl nll
 //[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
-//[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
+//[nll]compile-flags: -Z borrowck=mir
+
+#![cfg_attr(nll, feature(nll))]
 
 fn main() {
     let mut a = 0;
