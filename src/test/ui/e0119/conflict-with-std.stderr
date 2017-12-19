@@ -1,12 +1,8 @@
 error[E0119]: conflicting implementations of trait `std::convert::AsRef<Q>` for type `std::boxed::Box<Q>`:
   --> $DIR/conflict-with-std.rs:17:1
    |
-17 | / impl AsRef<Q> for Box<Q> { //~ ERROR conflicting implementations
-18 | |     fn as_ref(&self) -> &Q {
-19 | |         &**self
-20 | |     }
-21 | | }
-   | |_^
+17 | impl AsRef<Q> for Box<Q> { //~ ERROR conflicting implementations
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `alloc`:
            - impl<T> std::convert::AsRef<T> for std::boxed::Box<T>
@@ -15,12 +11,8 @@ error[E0119]: conflicting implementations of trait `std::convert::AsRef<Q>` for 
 error[E0119]: conflicting implementations of trait `std::convert::From<S>` for type `S`:
   --> $DIR/conflict-with-std.rs:24:1
    |
-24 | / impl From<S> for S { //~ ERROR conflicting implementations
-25 | |     fn from(s: S) -> S {
-26 | |         s
-27 | |     }
-28 | | }
-   | |_^
+24 | impl From<S> for S { //~ ERROR conflicting implementations
+   | ^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
            - impl<T> std::convert::From<T> for T;
@@ -28,13 +20,8 @@ error[E0119]: conflicting implementations of trait `std::convert::From<S>` for t
 error[E0119]: conflicting implementations of trait `std::convert::TryFrom<X>` for type `X`:
   --> $DIR/conflict-with-std.rs:31:1
    |
-31 | / impl TryFrom<X> for X { //~ ERROR conflicting implementations
-32 | |     type Error = ();
-33 | |     fn try_from(u: X) -> Result<X, ()> {
-34 | |         Ok(u)
-35 | |     }
-36 | | }
-   | |_^
+31 | impl TryFrom<X> for X { //~ ERROR conflicting implementations
+   | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
            - impl<T, U> std::convert::TryFrom<U> for T

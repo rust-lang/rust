@@ -406,8 +406,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let zero = C_null(bcx.ccx.isize_ty());
             // `offset == 0`
             let is_zero = bcx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
-            // `if offset == 0 { 0 } else { offset - align }`
-            bcx.select(is_zero, zero, bcx.sub(offset, align))
+            // `if offset == 0 { 0 } else { align - offset }`
+            bcx.select(is_zero, zero, bcx.sub(align, offset))
         }
         name if name.starts_with("simd_") => {
             match generic_simd_intrinsic(bcx, name,

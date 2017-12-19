@@ -484,19 +484,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                         -> DiagnosticBuilder<'tcx>
     {
         let msg = "impl has stricter requirements than trait";
-        let mut err = struct_span_err!(self.tcx.sess,
-                                       error_span,
-                                       E0276,
-                                       "{}", msg);
+        let sp = self.tcx.sess.codemap().def_span(error_span);
+
+        let mut err = struct_span_err!(self.tcx.sess, sp, E0276, "{}", msg);
 
         if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
             let span = self.tcx.sess.codemap().def_span(trait_item_span);
             err.span_label(span, format!("definition of `{}` from trait", item_name));
         }
 
-        err.span_label(
-            error_span,
-            format!("impl has extra requirement {}", requirement));
+        err.span_label(sp, format!("impl has extra requirement {}", requirement));
 
         err
     }
@@ -647,7 +644,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                     ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
                         let found_kind = self.closure_kind(closure_def_id, closure_substs).unwrap();
-                        let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
+                        let closure_span = self.tcx.sess.codemap()
+                            .def_span(self.tcx.hir.span_if_local(closure_def_id).unwrap());
                         let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
                             self.tcx.sess, closure_span, E0525,
@@ -656,6 +654,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             kind,
                             found_kind);
 
+                        err.span_label(
+                            closure_span,
+                            format!("this closure implements `{}`, not `{}`", found_kind, kind));
                         err.span_label(
                             obligation.cause.span,
                             format!("the requirement to implement `{}` derives from here", kind));
@@ -667,12 +668,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             let closure_hir_id = self.tcx.hir.node_to_hir_id(node_id);
                             match (found_kind, tables.closure_kind_origins().get(closure_hir_id)) {
                                 (ty::ClosureKind::FnOnce, Some((span, name))) => {
-                                    err.span_note(*span, &format!(
+                                    err.span_label(*span, format!(
                                         "closure is `FnOnce` because it moves the \
                                          variable `{}` out of its environment", name));
                                 },
                                 (ty::ClosureKind::FnMut, Some((span, name))) => {
-                                    err.span_note(*span, &format!(
+                                    err.span_label(*span, format!(
                                         "closure is `FnMut` because it mutates the \
                                          variable `{}` here", name));
                                 },

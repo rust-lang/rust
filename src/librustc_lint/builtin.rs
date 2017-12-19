@@ -352,7 +352,7 @@ impl MissingDoc {
         let has_doc = attrs.iter().any(|a| a.is_value_str() && a.check_name("doc"));
         if !has_doc {
             cx.span_lint(MISSING_DOCS,
-                         sp,
+                         cx.tcx.sess.codemap().def_span(sp),
                          &format!("missing documentation for {}", desc));
         }
     }
@@ -914,15 +914,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
         // no break */ }`) shouldn't be linted unless it actually
         // recurs.
         if !reached_exit_without_self_call && !self_call_spans.is_empty() {
+            let sp = cx.tcx.sess.codemap().def_span(sp);
             let mut db = cx.struct_span_lint(UNCONDITIONAL_RECURSION,
                                              sp,
                                              "function cannot return without recurring");
+            db.span_label(sp, "cannot return without recurring");
             // offer some help to the programmer.
             for call in &self_call_spans {
-                db.span_note(*call, "recursive call site");
+                db.span_label(*call, "recursive call site");
             }
-            db.help("a `loop` may express intention \
-                     better if this is on purpose");
+            db.help("a `loop` may express intention better if this is on purpose");
             db.emit();
         }
 

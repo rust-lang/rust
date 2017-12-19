@@ -341,15 +341,18 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                         }),
                     if used_to_be_allowed { " (E0119)" } else { "" }
                 );
+                let impl_span = tcx.sess.codemap().def_span(
+                    tcx.span_of_impl(impl_def_id).unwrap()
+                );
                 let mut err = if used_to_be_allowed {
                     tcx.struct_span_lint_node(
                         lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
                         tcx.hir.as_local_node_id(impl_def_id).unwrap(),
-                        tcx.span_of_impl(impl_def_id).unwrap(),
+                        impl_span,
                         &msg)
                 } else {
                     struct_span_err!(tcx.sess,
-                                     tcx.span_of_impl(impl_def_id).unwrap(),
+                                     impl_span,
                                      E0119,
                                      "{}",
                                      msg)
@@ -357,8 +360,9 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
 
                 match tcx.span_of_impl(overlap.with_impl) {
                     Ok(span) => {
-                        err.span_label(span, format!("first implementation here"));
-                        err.span_label(tcx.span_of_impl(impl_def_id).unwrap(),
+                        err.span_label(tcx.sess.codemap().def_span(span),
+                                       format!("first implementation here"));
+                        err.span_label(impl_span,
                                        format!("conflicting implementation{}",
                                                 overlap.self_desc
                                                     .map_or(String::new(),

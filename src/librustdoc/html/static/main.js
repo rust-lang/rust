@@ -681,6 +681,9 @@
             }
 
             function checkPath(startsWith, lastElem, ty) {
+                if (startsWith.length === 0) {
+                    return 0;
+                }
                 var ret_lev = MAX_LEV_DISTANCE + 1;
                 var path = ty.path.split("::");
 
@@ -706,18 +709,7 @@
                         lev_total += lev;
                     }
                     if (aborted === false) {
-                        var extra = MAX_LEV_DISTANCE + 1;
-                        if (i + startsWith.length < path.length) {
-                            extra = levenshtein(path[i + startsWith.length], lastElem);
-                        }
-                        if (extra > MAX_LEV_DISTANCE) {
-                            extra = levenshtein(ty.name, lastElem);
-                        }
-                        if (extra < MAX_LEV_DISTANCE + 1) {
-                            lev_total += extra;
-                            ret_lev = Math.min(ret_lev,
-                                               Math.round(lev_total / (startsWith.length + 1)));
-                        }
+                        ret_lev = Math.min(ret_lev, Math.round(lev_total / startsWith.length));
                     }
                 }
                 return ret_lev;
@@ -934,6 +926,13 @@
                     }
 
                     lev += lev_add;
+                    if (lev > 0 && val.length > 3 && searchWords[j].startsWith(val)) {
+                        if (val.length < 6) {
+                            lev -= 1;
+                        } else {
+                            lev = 0;
+                        }
+                    }
                     if (in_args <= MAX_LEV_DISTANCE) {
                         if (results_in_args[fullId] === undefined) {
                             results_in_args[fullId] = {
@@ -1447,7 +1446,7 @@
 
         // Draw a convenient sidebar of known crates if we have a listing
         if (rootPath === '../') {
-            var sidebar = document.getElementsByClassName('sidebar')[0];
+            var sidebar = document.getElementsByClassName('sidebar-elems')[0];
             var div = document.createElement('div');
             div.className = 'block crate';
             div.innerHTML = '<h3>Crates</h3>';
