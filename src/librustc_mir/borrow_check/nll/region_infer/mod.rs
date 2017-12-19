@@ -430,7 +430,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             None
         };
 
-        self.check_type_tests(infcx, mir, outlives_requirements.as_mut());
+        self.check_type_tests(infcx, mir, mir_def_id, outlives_requirements.as_mut());
 
         self.check_universal_regions(infcx, mir, mir_def_id, outlives_requirements.as_mut());
 
@@ -504,6 +504,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
+        mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
     ) {
         let tcx = infcx.tcx;
@@ -522,14 +523,56 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             // Oh the humanity. Obviously we will do better than this error eventually.
-            tcx.sess.span_err(
-                type_test.span,
-                &format!(
-                    "`{}` does not outlive `{:?}`",
+            let lower_bound_region = self.to_error_region(type_test.lower_bound);
+            if let Some(lower_bound_region) = lower_bound_region {
+                let region_scope_tree = &tcx.region_scope_tree(mir_def_id);
+                infcx.report_generic_bound_failure(
+                    region_scope_tree,
+                    type_test.span,
+                    None,
                     type_test.generic_kind,
-                    type_test.lower_bound,
-                ),
-            );
+                    lower_bound_region,
+                );
+            } else {
+                // FIXME. We should handle this case better. It
+                // indicates that we have e.g. some region variable
+                // whose value is like `'a+'b` where `'a` and `'b` are
+                // distinct unrelated univesal regions that are not
+                // known to outlive one another. It'd be nice to have
+                // some examples where this arises to decide how best
+                // to report it; we could probably handle it by
+                // iterating over the universal regions and reporting
+                // an error that multiple bounds are required.
+                tcx.sess.span_err(
+                    type_test.span,
+                    &format!(
+                        "`{}` does not live long enough",
+                        type_test.generic_kind,
+                    ),
+                );
+            }
+        }
+    }
+
+    /// Converts a region inference variable into a `ty::Region` that
+    /// we can use for error reporting. If `r` is universally bound,
+    /// then we use the name that we have on record for it. If `r` is
+    /// existentially bound, then we check its inferred value and try
+    /// to find a good name from that. Returns `None` if we can't find
+    /// one (e.g., this is just some random part of the CFG).
+    fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
+        if self.universal_regions.is_universal_region(r) {
+            return self.definitions[r].external_name;
+        } else {
+            let inferred_values = self.inferred_values
+                                      .as_ref()
+                                      .expect("region values not yet inferred");
+            let upper_bound = self.universal_upper_bound(r);
+            if inferred_values.contains(r, upper_bound) {
+                self.to_error_region(upper_bound)
+            } else {
+                None
+            }
         }
     }
 
@@ -663,20 +706,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// encoding `T` as part of `try_promote_type_test_subject` (see
     /// that fn for details).
     ///
-    /// Since `r` is (potentially) an existential region, it has some
-    /// value which may include (a) any number of points in the CFG
-    /// and (b) any number of `end('x)` elements of universally
-    /// quantified regions. To convert this into a single universal
-    /// region we do as follows:
-    ///
-    /// - Ignore the CFG points in `'r`. All universally quantified regions
-    ///   include the CFG anyhow.
-    /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
-    ///   a result `'y`.
-    /// - Finally, we take the non-local upper bound of `'y`.
-    ///   - This uses `UniversalRegions::non_local_upper_bound`, which
-    ///     is similar to this method but only works on universal
-    ///     regions).
+    /// This is based on the result `'y` of `universal_upper_bound`,
+    /// except that it converts further takes the non-local upper
+    /// bound of `'y`, so that the final result is non-local.
     fn non_local_universal_upper_bound(&self, r: RegionVid) -> RegionVid {
         let inferred_values = self.inferred_values.as_ref().unwrap();
 
@@ -686,14 +718,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             inferred_values.region_value_str(r)
         );
 
-        // Find the smallest universal region that contains all other
-        // universal regions within `region`.
-        let mut lub = self.universal_regions.fr_fn_body;
-        for ur in inferred_values.universal_regions_outlived_by(r) {
-            lub = self.universal_regions.postdom_upper_bound(lub, ur);
-        }
-
-        debug!("non_local_universal_upper_bound: lub={:?}", lub);
+        let lub = self.universal_upper_bound(r);
 
         // Grow further to get smallest universal region known to
         // creator.
@@ -705,6 +730,41 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         non_local_lub
+    }
+
+    /// Returns a universally quantified region that outlives the
+    /// value of `r` (`r` may be existentially or universally
+    /// quantified).
+    ///
+    /// Since `r` is (potentially) an existential region, it has some
+    /// value which may include (a) any number of points in the CFG
+    /// and (b) any number of `end('x)` elements of universally
+    /// quantified regions. To convert this into a single universal
+    /// region we do as follows:
+    ///
+    /// - Ignore the CFG points in `'r`. All universally quantified regions
+    ///   include the CFG anyhow.
+    /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
+    ///   a result `'y`.
+    fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
+        let inferred_values = self.inferred_values.as_ref().unwrap();
+
+        debug!(
+            "universal_upper_bound(r={:?}={})",
+            r,
+            inferred_values.region_value_str(r)
+        );
+
+        // Find the smallest universal region that contains all other
+        // universal regions within `region`.
+        let mut lub = self.universal_regions.fr_fn_body;
+        for ur in inferred_values.universal_regions_outlived_by(r) {
+            lub = self.universal_regions.postdom_upper_bound(lub, ur);
+        }
+
+        debug!("universal_upper_bound: r={:?} lub={:?}", r, lub);
+
+        lub
     }
 
     /// Test if `test` is true when applied to `lower_bound` at
@@ -924,8 +984,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         // Obviously uncool error reporting.
 
-        let fr_name = self.definitions[fr].external_name;
-        let outlived_fr_name = self.definitions[outlived_fr].external_name;
+        let fr_name = self.to_error_region(fr);
+        let outlived_fr_name = self.to_error_region(outlived_fr);
 
         if let (Some(f), Some(o)) = (fr_name, outlived_fr_name) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);

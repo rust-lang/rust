@@ -10,17 +10,21 @@ warning: not reporting region error due to -Znll
 38 |     x
    |     ^
 
-error: `T` does not outlive `'_#3r`
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-fn.rs:22:5
    |
 22 |     x
    |     ^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
-error: `T` does not outlive `'_#4r`
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-fn.rs:38:5
    |
 38 |     x
    |     ^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'a`...
 
 error: aborting due to 2 previous errors
 

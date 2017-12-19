@@ -40,7 +40,7 @@ where
     T: Trait<'a>,
 {
     establish_relationships(value, |value| {
-        //~^ ERROR `T` does not outlive
+        //~^ ERROR the parameter type `T` may not live long enough
 
         // This function call requires that
         //

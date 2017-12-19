@@ -35,7 +35,7 @@ where
 {
     with_signature(x, |mut y| Box::new(y.next()))
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR `<T as std::iter::Iterator>::Item` does not outlive
+    //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 
 #[rustc_regions]
@@ -53,7 +53,7 @@ where
 {
     with_signature(x, |mut y| Box::new(y.next()))
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR `<T as std::iter::Iterator>::Item` does not outlive
+    //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 
 #[rustc_regions]

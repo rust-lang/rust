@@ -43,7 +43,7 @@ fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
     twice(cell, value, |a, b| invoke(a, b));
     //~^ WARNING not reporting region error
     //~| WARNING not reporting region error
-    //~| ERROR `T` does not outlive
+    //~| ERROR the parameter type `T` may not live long enough
 }
 
 fn invoke<'a, 'x, T>(x: Option<Cell<&'x &'a ()>>, y: &T)

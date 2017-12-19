@@ -60,11 +60,13 @@ note: No external requirements
                T
            ]
 
-error: `T` does not outlive `'_#3r`
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:24
    |
 43 |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(1:16), 'a))`...
 
 note: No external requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:1
@@ -73,7 +75,7 @@ note: No external requirements
 43 | |     twice(cell, value, |a, b| invoke(a, b));
 44 | |     //~^ WARNING not reporting region error
 45 | |     //~| WARNING not reporting region error
-46 | |     //~| ERROR `T` does not outlive
+46 | |     //~| ERROR the parameter type `T` may not live long enough
 47 | | }
    | |_^
    |
