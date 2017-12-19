@@ -74,7 +74,7 @@ fn mir_borrowck<'a, 'tcx>(
 
     if {
         !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.sess.opts.borrowck_mode.use_mir()
-            && !tcx.sess.opts.debugging_opts.nll
+            && !tcx.sess.nll()
     } {
         return None;
     }
@@ -104,7 +104,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     // contain non-lexical lifetimes. It will have a lifetime tied
     // to the inference context.
     let mut mir: Mir<'tcx> = input_mir.clone();
-    let free_regions = if !tcx.sess.opts.debugging_opts.nll {
+    let free_regions = if !tcx.sess.nll() {
         None
     } else {
         let mir = &mut mir;
@@ -207,7 +207,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         );
         (Some(Rc::new(regioncx)), opt_closure_req)
     } else {
-        assert!(!tcx.sess.opts.debugging_opts.nll);
+        assert!(!tcx.sess.nll());
         (None, None)
     };
     let flow_inits = flow_inits; // remove mut

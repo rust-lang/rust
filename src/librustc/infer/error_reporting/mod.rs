@@ -261,7 +261,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 errors: &Vec<RegionResolutionError<'tcx>>) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
-        if self.tcx.sess.opts.debugging_opts.nll {
+        if self.tcx.sess.nll() {
             for error in errors {
                 match *error {
                     RegionResolutionError::ConcreteFailure(ref origin, ..) |

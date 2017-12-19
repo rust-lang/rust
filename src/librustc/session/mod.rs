@@ -437,6 +437,9 @@ impl Session {
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
     }
+    pub fn nll(&self) -> bool {
+        self.features.borrow().nll || self.opts.debugging_opts.nll
+    }
     pub fn nll_dump_cause(&self) -> bool {
         self.opts.debugging_opts.nll_dump_cause
     }

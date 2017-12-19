@@ -186,6 +186,9 @@ declare_features! (
     // Allows the use of rustc_* attributes; RFC 572
     (active, rustc_attrs, "1.0.0", Some(29642)),
 
+    // Allows the use of non lexical lifetimes; RFC 2094
+    (active, nll, "1.0.0", Some(44928)),
+
     // Allows the use of #[allow_internal_unstable]. This is an
     // attribute on macro_rules! and can't use the attribute handling
     // below (it has to be checked before expansion possibly makes
@@ -798,6 +801,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                           libcore functions that are inlined \
                                                           across crates and will never be stable",
                                                           cfg_fn!(rustc_attrs))),
+
+    // RFC #2094
+    ("nll", Whitelisted, Gated(Stability::Unstable,
+                               "nll",
+                               "Non lexical lifetimes",
+                               cfg_fn!(nll))),
     ("compiler_builtins", Whitelisted, Gated(Stability::Unstable,
                                              "compiler_builtins",
                                              "the `#[compiler_builtins]` attribute is used to \
