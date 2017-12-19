@@ -16,8 +16,8 @@ use rustc::hir::map as hir_map;
 use rustc::middle::const_val::ConstEvalErr;
 use debuginfo;
 use base;
-use trans_item::{TransItem, TransItemExt};
-use common::{self, CrateContext, val_ty};
+use monomorphize::{MonoItem, MonoItemExt};
+use common::{CrateContext, val_ty};
 use declare;
 use monomorphize::Instance;
 use type_::Type;
@@ -110,7 +110,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         return g;
     }
 
-    let ty = common::instance_ty(ccx.tcx(), &instance);
+    let ty = instance.ty(ccx.tcx());
     let g = if let Some(id) = ccx.tcx().hir.as_local_node_id(def_id) {
 
         let llty = ccx.layout_of(ty).llvm_type(ccx);
@@ -118,11 +118,11 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
             }) => {
-                let sym = TransItem::Static(id).symbol_name(ccx.tcx());
+                let sym = MonoItem::Static(id).symbol_name(ccx.tcx());
 
                 let defined_in_current_codegen_unit = ccx.codegen_unit()
                                                          .items()
-                                                         .contains_key(&TransItem::Static(id));
+                                                         .contains_key(&MonoItem::Static(id));
                 assert!(!defined_in_current_codegen_unit);
 
                 if declare::get_declared_value(ccx, &sym[..]).is_some() {
@@ -266,7 +266,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         };
 
         let instance = Instance::mono(ccx.tcx(), def_id);
-        let ty = common::instance_ty(ccx.tcx(), &instance);
+        let ty = instance.ty(ccx.tcx());
         let llty = ccx.layout_of(ty).llvm_type(ccx);
         let g = if val_llty == llty {
             g

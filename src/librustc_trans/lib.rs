@@ -43,6 +43,7 @@ extern crate libc;
 #[macro_use] extern crate rustc;
 extern crate jobserver;
 extern crate num_cpus;
+extern crate rustc_mir;
 extern crate rustc_allocator;
 extern crate rustc_apfloat;
 extern crate rustc_back;
@@ -84,8 +85,7 @@ use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
-use rustc_trans_utils::collector;
-use rustc_trans_utils::monomorphize;
+use rustc_mir::monomorphize;
 
 mod diagnostics;
 
@@ -138,7 +138,6 @@ mod llvm_util;
 mod metadata;
 mod meth;
 mod mir;
-mod partitioning;
 mod symbol_names_test;
 mod time_graph;
 mod trans_item;

@@ -22,19 +22,18 @@ use base;
 use declare;
 use monomorphize::Instance;
 
-use partitioning::CodegenUnit;
+use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
 use type_of::PointeeInfo;
 
 use rustc_data_structures::base_n;
-use rustc::middle::trans::Stats;
+use rustc::mir::mono::Stats;
 use rustc_data_structures::stable_hasher::StableHashingContextProvider;
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
-use rustc_trans_utils;
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -325,7 +324,17 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 
     pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        rustc_trans_utils::common::type_has_metadata(self.tcx, ty)
+        use syntax_pos::DUMMY_SP;
+        if ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+            return false;
+        }
+
+        let tail = self.tcx.struct_tail(ty);
+        match tail.sty {
+            ty::TyForeign(..) => false,
+            ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
+            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+        }
     }
 
     pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {

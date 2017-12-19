@@ -172,9 +172,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             M::global_item_with_linkage(self, cid.instance, mutability)?;
             return Ok(false);
         }
-        // FIXME(eddyb) use `Instance::ty` when it becomes available.
-        let instance_ty =
-            self.monomorphize(instance.def.def_ty(self.tcx), instance.substs);
+        let instance_ty = instance.ty(self.tcx);
         let layout = self.layout_of(instance_ty)?;
         assert!(!layout.is_unsized());
         let ptr = self.memory.allocate(

@@ -27,7 +27,7 @@ use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::SymbolExportLevel;
-use middle::trans::{CodegenUnit, Stats};
+use mir::mono::{CodegenUnit, Stats};
 use mir;
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;

@@ -44,6 +44,7 @@ pub mod tcx;
 pub mod visit;
 pub mod traversal;
 pub mod interpret;
+pub mod mono;
 
 /// Types for locals
 type LocalDecls<'tcx> = IndexVec<Local, LocalDecl<'tcx>>;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Translation Item Collection
+//! Mono Item Collection
 //! ===========================
 //!
 //! This module is responsible for discovering all items that will contribute to
@@ -22,7 +22,7 @@
 //! in crate X might produce monomorphizations that are compiled into crate Y.
 //! We also have to collect these here.
 //!
-//! The following kinds of "translation items" are handled here:
+//! The following kinds of "mono items" are handled here:
 //!
 //! - Functions
 //! - Methods
@@ -43,24 +43,24 @@
 //! -----------------
 //! Let's define some terms first:
 //!
-//! - A "translation item" is something that results in a function or global in
-//!   the LLVM IR of a codegen unit. Translation items do not stand on their
-//!   own, they can reference other translation items. For example, if function
-//!   `foo()` calls function `bar()` then the translation item for `foo()`
-//!   references the translation item for function `bar()`. In general, the
-//!   definition for translation item A referencing a translation item B is that
+//! - A "mono item" is something that results in a function or global in
+//!   the LLVM IR of a codegen unit. Mono items do not stand on their
+//!   own, they can reference other mono items. For example, if function
+//!   `foo()` calls function `bar()` then the mono item for `foo()`
+//!   references the mono item for function `bar()`. In general, the
+//!   definition for mono item A referencing a mono item B is that
 //!   the LLVM artifact produced for A references the LLVM artifact produced
 //!   for B.
 //!
-//! - Translation items and the references between them form a directed graph,
-//!   where the translation items are the nodes and references form the edges.
-//!   Let's call this graph the "translation item graph".
+//! - Mono items and the references between them form a directed graph,
+//!   where the mono items are the nodes and references form the edges.
+//!   Let's call this graph the "mono item graph".
 //!
-//! - The translation item graph for a program contains all translation items
+//! - The mono item graph for a program contains all mono items
 //!   that are needed in order to produce the complete LLVM IR of the program.
 //!
 //! The purpose of the algorithm implemented in this module is to build the
-//! translation item graph for the current crate. It runs in two phases:
+//! mono item graph for the current crate. It runs in two phases:
 //!
 //! 1. Discover the roots of the graph by traversing the HIR of the crate.
 //! 2. Starting from the roots, find neighboring nodes by inspecting the MIR
@@ -69,26 +69,26 @@
 //!
 //! ### Discovering roots
 //!
-//! The roots of the translation item graph correspond to the non-generic
+//! The roots of the mono item graph correspond to the non-generic
 //! syntactic items in the source code. We find them by walking the HIR of the
 //! crate, and whenever we hit upon a function, method, or static item, we
-//! create a translation item consisting of the items DefId and, since we only
+//! create a mono item consisting of the items DefId and, since we only
 //! consider non-generic items, an empty type-substitution set.
 //!
 //! ### Finding neighbor nodes
-//! Given a translation item node, we can discover neighbors by inspecting its
+//! Given a mono item node, we can discover neighbors by inspecting its
 //! MIR. We walk the MIR and any time we hit upon something that signifies a
-//! reference to another translation item, we have found a neighbor. Since the
-//! translation item we are currently at is always monomorphic, we also know the
+//! reference to another mono item, we have found a neighbor. Since the
+//! mono item we are currently at is always monomorphic, we also know the
 //! concrete type arguments of its neighbors, and so all neighbors again will be
 //! monomorphic. The specific forms a reference to a neighboring node can take
 //! in MIR are quite diverse. Here is an overview:
 //!
 //! #### Calling Functions/Methods
-//! The most obvious form of one translation item referencing another is a
+//! The most obvious form of one mono item referencing another is a
 //! function or method call (represented by a CALL terminator in MIR). But
 //! calls are not the only thing that might introduce a reference between two
-//! function translation items, and as we will see below, they are just a
+//! function mono items, and as we will see below, they are just a
 //! specialized of the form described next, and consequently will don't get any
 //! special treatment in the algorithm.
 //!
@@ -112,10 +112,10 @@
 //! }
 //! ```
 //! The MIR of none of these functions will contain an explicit call to
-//! `print_val::<i32>`. Nonetheless, in order to translate this program, we need
+//! `print_val::<i32>`. Nonetheless, in order to mono this program, we need
 //! an instance of this function. Thus, whenever we encounter a function or
 //! method in operand position, we treat it as a neighbor of the current
-//! translation item. Calls are just a special case of that.
+//! mono item. Calls are just a special case of that.
 //!
 //! #### Closures
 //! In a way, closures are a simple case. Since every closure object needs to be
@@ -124,8 +124,8 @@
 //! true for closures inlined from other crates.
 //!
 //! #### Drop glue
-//! Drop glue translation items are introduced by MIR drop-statements. The
-//! generated translation item will again have drop-glue item neighbors if the
+//! Drop glue mono items are introduced by MIR drop-statements. The
+//! generated mono item will again have drop-glue item neighbors if the
 //! type to be dropped contains nested values that also need to be dropped. It
 //! might also have a function item neighbor for the explicit `Drop::drop`
 //! implementation of its type.
@@ -150,8 +150,8 @@
 //! defined in the source code of that crate. It will also contain monomorphic
 //! instantiations of any extern generic functions and of functions marked with
 //! #[inline].
-//! The collection algorithm handles this more or less transparently. If it is
-//! about to create a translation item for something with an external `DefId`,
+//! The collection algorithm handles this more or less mono. If it is
+//! about to create a mono item for something with an external `DefId`,
 //! it will take a look if the MIR for that item is available, and if so just
 //! proceed normally. If the MIR is not available, it assumes that the item is
 //! just linked to and no node is created; which is exactly what we want, since
@@ -159,14 +159,14 @@
 //!
 //! Eager and Lazy Collection Mode
 //! ------------------------------
-//! Translation item collection can be performed in one of two modes:
+//! Mono item collection can be performed in one of two modes:
 //!
 //! - Lazy mode means that items will only be instantiated when actually
 //!   referenced. The goal is to produce the least amount of machine code
 //!   possible.
 //!
 //! - Eager mode is meant to be used in conjunction with incremental compilation
-//!   where a stable set of translation items is more important than a minimal
+//!   where a stable set of mono items is more important than a minimal
 //!   one. Thus, eager mode will instantiate drop-glue for every drop-able type
 //!   in the crate, even of no drop call for that type exists (yet). It will
 //!   also instantiate default implementations of trait methods, something that
@@ -183,9 +183,9 @@
 //! statics we cannot inspect these properly.
 //!
 //! ### Const Fns
-//! Ideally, no translation item should be generated for const fns unless there
+//! Ideally, no mono item should be generated for const fns unless there
 //! is a call to them that cannot be evaluated at compile time. At the moment
-//! this is not implemented however: a translation item will be produced
+//! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
 use rustc::hir;
@@ -195,42 +195,41 @@ use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
-use rustc::middle::trans::TransItem;
 use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::{self, Location};
 use rustc::mir::visit::Visitor as MirVisitor;
+use rustc::mir::mono::MonoItem;
 
-use common::{def_ty, instance_ty, type_has_metadata};
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
-use trans_item::{TransItemExt, DefPathBasedNames, InstantiationMode};
+use monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
 
 use syntax::attr;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub enum TransItemCollectionMode {
+pub enum MonoItemCollectionMode {
     Eager,
     Lazy
 }
 
-/// Maps every translation item to all translation items it references in its
+/// Maps every mono item to all mono items it references in its
 /// body.
 pub struct InliningMap<'tcx> {
-    // Maps a source translation item to the range of translation items
+    // Maps a source mono item to the range of mono items
     // accessed by it.
     // The two numbers in the tuple are the start (inclusive) and
     // end index (exclusive) within the `targets` vecs.
-    index: FxHashMap<TransItem<'tcx>, (usize, usize)>,
-    targets: Vec<TransItem<'tcx>>,
+    index: FxHashMap<MonoItem<'tcx>, (usize, usize)>,
+    targets: Vec<MonoItem<'tcx>>,
 
-    // Contains one bit per translation item in the `targets` field. That bit
-    // is true if that translation item needs to be inlined into every CGU.
+    // Contains one bit per mono item in the `targets` field. That bit
+    // is true if that mono item needs to be inlined into every CGU.
     inlines: BitVector,
 }
 
@@ -245,9 +244,9 @@ impl<'tcx> InliningMap<'tcx> {
     }
 
     fn record_accesses<I>(&mut self,
-                          source: TransItem<'tcx>,
+                          source: MonoItem<'tcx>,
                           new_targets: I)
-        where I: Iterator<Item=(TransItem<'tcx>, bool)> + ExactSizeIterator
+        where I: Iterator<Item=(MonoItem<'tcx>, bool)> + ExactSizeIterator
     {
         assert!(!self.index.contains_key(&source));
 
@@ -271,8 +270,8 @@ impl<'tcx> InliningMap<'tcx> {
 
     // Internally iterate over all items referenced by `source` which will be
     // made available for inlining.
-    pub fn with_inlining_candidates<F>(&self, source: TransItem<'tcx>, mut f: F)
-        where F: FnMut(TransItem<'tcx>)
+    pub fn with_inlining_candidates<F>(&self, source: MonoItem<'tcx>, mut f: F)
+        where F: FnMut(MonoItem<'tcx>)
     {
         if let Some(&(start_index, end_index)) = self.index.get(&source) {
             for (i, candidate) in self.targets[start_index .. end_index]
@@ -287,7 +286,7 @@ impl<'tcx> InliningMap<'tcx> {
 
     // Internally iterate over all items and the things each accesses.
     pub fn iter_accesses<F>(&self, mut f: F)
-        where F: FnMut(TransItem<'tcx>, &[TransItem<'tcx>])
+        where F: FnMut(MonoItem<'tcx>, &[MonoItem<'tcx>])
     {
         for (&accessor, &(start_index, end_index)) in &self.index {
             f(accessor, &self.targets[start_index .. end_index])
@@ -295,13 +294,13 @@ impl<'tcx> InliningMap<'tcx> {
     }
 }
 
-pub fn collect_crate_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 mode: TransItemCollectionMode)
-                                                 -> (FxHashSet<TransItem<'tcx>>,
+pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                          mode: MonoItemCollectionMode)
+                                          -> (FxHashSet<MonoItem<'tcx>>,
                                                      InliningMap<'tcx>) {
     let roots = collect_roots(tcx, mode);
 
-    debug!("Building translation item graph, beginning at roots");
+    debug!("Building mono item graph, beginning at roots");
     let mut visited = FxHashSet();
     let mut recursion_depths = DefIdMap();
     let mut inlining_map = InliningMap::new();
@@ -320,8 +319,8 @@ pub fn collect_crate_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           mode: TransItemCollectionMode)
-                           -> Vec<TransItem<'tcx>> {
+                           mode: MonoItemCollectionMode)
+                           -> Vec<MonoItem<'tcx>> {
     debug!("Collecting roots");
     let mut roots = Vec::new();
 
@@ -348,10 +347,10 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     roots
 }
 
-// Collect all monomorphized translation items reachable from `starting_point`
+// Collect all monomorphized items reachable from `starting_point`
 fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   starting_point: TransItem<'tcx>,
-                                   visited: &mut FxHashSet<TransItem<'tcx>>,
+                                   starting_point: MonoItem<'tcx>,
+                                   visited: &mut FxHashSet<MonoItem<'tcx>>,
                                    recursion_depths: &mut DefIdMap<usize>,
                                    inlining_map: &mut InliningMap<'tcx>) {
     if !visited.insert(starting_point.clone()) {
@@ -364,23 +363,23 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let recursion_depth_reset;
 
     match starting_point {
-        TransItem::Static(node_id) => {
+        MonoItem::Static(node_id) => {
             let def_id = tcx.hir.local_def_id(node_id);
             let instance = Instance::mono(tcx, def_id);
 
             // Sanity check whether this ended up being collected accidentally
-            debug_assert!(should_trans_locally(tcx, &instance));
+            debug_assert!(should_monomorphize_locally(tcx, &instance));
 
-            let ty = instance_ty(tcx, &instance);
+            let ty = instance.ty(tcx);
             visit_drop_use(tcx, ty, true, &mut neighbors);
 
             recursion_depth_reset = None;
 
             collect_neighbours(tcx, instance, true, &mut neighbors);
         }
-        TransItem::Fn(instance) => {
+        MonoItem::Fn(instance) => {
             // Sanity check whether this ended up being collected accidentally
-            debug_assert!(should_trans_locally(tcx, &instance));
+            debug_assert!(should_monomorphize_locally(tcx, &instance));
 
             // Keep track of the monomorphization recursion depth
             recursion_depth_reset = Some(check_recursion_limit(tcx,
@@ -390,7 +389,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             collect_neighbours(tcx, instance, false, &mut neighbors);
         }
-        TransItem::GlobalAsm(..) => {
+        MonoItem::GlobalAsm(..) => {
             recursion_depth_reset = None;
         }
     }
@@ -409,16 +408,16 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             caller: TransItem<'tcx>,
-                             callees: &[TransItem<'tcx>],
+                             caller: MonoItem<'tcx>,
+                             callees: &[MonoItem<'tcx>],
                              inlining_map: &mut InliningMap<'tcx>) {
-    let is_inlining_candidate = |trans_item: &TransItem<'tcx>| {
-        trans_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
+    let is_inlining_candidate = |mono_item: &MonoItem<'tcx>| {
+        mono_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
     };
 
     let accesses = callees.into_iter()
-                          .map(|trans_item| {
-                             (*trans_item, is_inlining_candidate(trans_item))
+                          .map(|mono_item| {
+                             (*mono_item, is_inlining_candidate(mono_item))
                           });
 
     inlining_map.record_accesses(caller, accesses);
@@ -495,7 +494,7 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 struct MirNeighborCollector<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a mir::Mir<'tcx>,
-    output: &'a mut Vec<TransItem<'tcx>>,
+    output: &'a mut Vec<MonoItem<'tcx>>,
     param_substs: &'tcx Substs<'tcx>,
     const_context: bool,
 }
@@ -522,10 +521,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 // from a fixed sized array to a slice. But we are only
                 // interested in things that produce a vtable.
                 if target_ty.is_trait() && !source_ty.is_trait() {
-                    create_trans_items_for_vtable_methods(self.tcx,
-                                                          target_ty,
-                                                          source_ty,
-                                                          self.output);
+                    create_mono_items_for_vtable_methods(self.tcx,
+                                                         target_ty,
+                                                         source_ty,
+                                                         self.output);
                 }
             }
             mir::Rvalue::Cast(mir::CastKind::ReifyFnPointer, ref operand, _) => {
@@ -542,7 +541,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::TyClosure(def_id, substs) => {
                         let instance = monomorphize::resolve_closure(
                             self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
-                        self.output.push(create_fn_trans_item(instance));
+                        self.output.push(create_fn_mono_item(instance));
                     }
                     _ => bug!(),
                 }
@@ -554,8 +553,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     .require(ExchangeMallocFnLangItem)
                     .unwrap_or_else(|e| tcx.sess.fatal(&e));
                 let instance = Instance::mono(tcx, exchange_malloc_fn_def_id);
-                if should_trans_locally(tcx, &instance) {
-                    self.output.push(create_fn_trans_item(instance));
+                if should_monomorphize_locally(tcx, &instance) {
+                    self.output.push(create_fn_mono_item(instance));
                 }
             }
             _ => { /* not interesting */ }
@@ -645,9 +644,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
         let tcx = self.tcx;
         let instance = Instance::mono(tcx, static_.def_id);
-        if should_trans_locally(tcx, &instance) {
+        if should_monomorphize_locally(tcx, &instance) {
             let node_id = tcx.hir.as_local_node_id(static_.def_id).unwrap();
-            self.output.push(TransItem::Static(node_id));
+            self.output.push(MonoItem::Static(node_id));
         }
 
         self.super_static(static_, context, location);
@@ -657,7 +656,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 fn visit_drop_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             ty: Ty<'tcx>,
                             is_direct_call: bool,
-                            output: &mut Vec<TransItem<'tcx>>)
+                            output: &mut Vec<MonoItem<'tcx>>)
 {
     let instance = monomorphize::resolve_drop_in_place(tcx, ty);
     visit_instance_use(tcx, instance, is_direct_call, output);
@@ -666,7 +665,7 @@ fn visit_drop_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn visit_fn_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           ty: Ty<'tcx>,
                           is_direct_call: bool,
-                          output: &mut Vec<TransItem<'tcx>>)
+                          output: &mut Vec<MonoItem<'tcx>>)
 {
     if let ty::TyFnDef(def_id, substs) = ty.sty {
         let instance = ty::Instance::resolve(tcx,
@@ -680,10 +679,10 @@ fn visit_fn_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 instance: ty::Instance<'tcx>,
                                 is_direct_call: bool,
-                                output: &mut Vec<TransItem<'tcx>>)
+                                output: &mut Vec<MonoItem<'tcx>>)
 {
     debug!("visit_item_use({:?}, is_direct_call={:?})", instance, is_direct_call);
-    if !should_trans_locally(tcx, &instance) {
+    if !should_monomorphize_locally(tcx, &instance) {
         return
     }
 
@@ -697,26 +696,26 @@ fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::InstanceDef::DropGlue(_, None) => {
             // don't need to emit shim if we are calling directly.
             if !is_direct_call {
-                output.push(create_fn_trans_item(instance));
+                output.push(create_fn_mono_item(instance));
             }
         }
         ty::InstanceDef::DropGlue(_, Some(_)) => {
-            output.push(create_fn_trans_item(instance));
+            output.push(create_fn_mono_item(instance));
         }
         ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Item(..) |
         ty::InstanceDef::FnPtrShim(..) |
         ty::InstanceDef::CloneShim(..) => {
-            output.push(create_fn_trans_item(instance));
+            output.push(create_fn_mono_item(instance));
         }
     }
 }
 
 // Returns true if we should translate an instance in the local crate.
 // Returns false if we can just link to the upstream crate and therefore don't
-// need a translation item.
-fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instance<'tcx>)
-                                  -> bool {
+// need a mono item.
+fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instance<'tcx>)
+                                         -> bool {
     let def_id = match instance.def {
         ty::InstanceDef::Item(def_id) => def_id,
         ty::InstanceDef::ClosureOnceShim { .. } |
@@ -740,7 +739,7 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instan
                 false
             } else {
                 if !tcx.is_mir_available(def_id) {
-                    bug!("Cannot create local trans-item for {:?}", def_id)
+                    bug!("Cannot create local mono-item for {:?}", def_id)
                 }
                 true
             }
@@ -790,12 +789,25 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             target_ty: Ty<'tcx>)
                                             -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
-        if type_has_metadata(tcx, inner_source) {
+        let type_has_metadata = |ty: Ty<'tcx>| -> bool {
+            use syntax_pos::DUMMY_SP;
+            if ty.is_sized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+                return false;
+            }
+            let tail = tcx.struct_tail(ty);
+            match tail.sty {
+                ty::TyForeign(..) => false,
+                ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
+                _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+            }
+        };
+        if type_has_metadata(inner_source) {
             (inner_source, inner_target)
         } else {
             tcx.struct_lockstep_tails(inner_source, inner_target)
         }
     };
+
     match (&source_ty.sty, &target_ty.sty) {
         (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
          &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
@@ -838,17 +850,17 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn create_fn_trans_item<'a, 'tcx>(instance: Instance<'tcx>) -> TransItem<'tcx> {
-    debug!("create_fn_trans_item(instance={})", instance);
-    TransItem::Fn(instance)
+fn create_fn_mono_item<'a, 'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
+    debug!("create_fn_mono_item(instance={})", instance);
+    MonoItem::Fn(instance)
 }
 
-/// Creates a `TransItem` for each method that is referenced by the vtable for
+/// Creates a `MonoItem` for each method that is referenced by the vtable for
 /// the given trait/impl pair.
-fn create_trans_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                   trait_ty: Ty<'tcx>,
-                                                   impl_ty: Ty<'tcx>,
-                                                   output: &mut Vec<TransItem<'tcx>>) {
+fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                  trait_ty: Ty<'tcx>,
+                                                  impl_ty: Ty<'tcx>,
+                                                  output: &mut Vec<MonoItem<'tcx>>) {
     assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_regions() &&
             !impl_ty.needs_subst() && !impl_ty.has_escaping_regions());
 
@@ -865,8 +877,8 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         ty::ParamEnv::empty(traits::Reveal::All),
                         def_id,
                         substs).unwrap())
-                .filter(|&instance| should_trans_locally(tcx, &instance))
-                .map(|instance| create_fn_trans_item(instance));
+                .filter(|&instance| should_monomorphize_locally(tcx, &instance))
+                .map(|instance| create_fn_mono_item(instance));
             output.extend(methods);
         }
         // Also add the destructor
@@ -880,8 +892,8 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mode: TransItemCollectionMode,
-    output: &'b mut Vec<TransItem<'tcx>>,
+    mode: MonoItemCollectionMode,
+    output: &'b mut Vec<MonoItem<'tcx>>,
     entry_fn: Option<DefId>,
 }
 
@@ -900,10 +912,10 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             }
 
             hir::ItemImpl(..) => {
-                if self.mode == TransItemCollectionMode::Eager {
-                    create_trans_items_for_default_impls(self.tcx,
-                                                         item,
-                                                         self.output);
+                if self.mode == MonoItemCollectionMode::Eager {
+                    create_mono_items_for_default_impls(self.tcx,
+                                                        item,
+                                                        self.output);
                 }
             }
 
@@ -911,12 +923,12 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemStruct(_, ref generics) |
             hir::ItemUnion(_, ref generics) => {
                 if !generics.is_parameterized() {
-                    if self.mode == TransItemCollectionMode::Eager {
+                    if self.mode == MonoItemCollectionMode::Eager {
                         let def_id = self.tcx.hir.local_def_id(item.id);
                         debug!("RootCollector: ADT drop-glue for {}",
                                def_id_to_string(self.tcx, def_id));
 
-                        let ty = def_ty(self.tcx, def_id, Substs::empty());
+                        let ty = Instance::new(def_id, Substs::empty()).ty(self.tcx);
                         visit_drop_use(self.tcx, ty, true, self.output);
                     }
                 }
@@ -925,16 +937,16 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 debug!("RootCollector: ItemGlobalAsm({})",
                        def_id_to_string(self.tcx,
                                         self.tcx.hir.local_def_id(item.id)));
-                self.output.push(TransItem::GlobalAsm(item.id));
+                self.output.push(MonoItem::GlobalAsm(item.id));
             }
             hir::ItemStatic(..) => {
                 debug!("RootCollector: ItemStatic({})",
                        def_id_to_string(self.tcx,
                                         self.tcx.hir.local_def_id(item.id)));
-                self.output.push(TransItem::Static(item.id));
+                self.output.push(MonoItem::Static(item.id));
             }
             hir::ItemConst(..) => {
-                // const items only generate translation items if they are
+                // const items only generate mono items if they are
                 // actually used somewhere. Just declaring them is insufficient.
             }
             hir::ItemFn(..) => {
@@ -946,7 +958,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                            def_id_to_string(tcx, def_id));
 
                     let instance = Instance::mono(tcx, def_id);
-                    self.output.push(TransItem::Fn(instance));
+                    self.output.push(MonoItem::Fn(instance));
                 }
             }
         }
@@ -968,7 +980,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                            def_id_to_string(tcx, def_id));
 
                     let instance = Instance::mono(tcx, def_id);
-                    self.output.push(TransItem::Fn(instance));
+                    self.output.push(MonoItem::Fn(instance));
                 }
             }
             _ => { /* Nothing to do here */ }
@@ -979,10 +991,10 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
 impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
     fn is_root(&self, def_id: DefId) -> bool {
         !item_has_type_parameters(self.tcx, def_id) && match self.mode {
-            TransItemCollectionMode::Eager => {
+            MonoItemCollectionMode::Eager => {
                 true
             }
-            TransItemCollectionMode::Lazy => {
+            MonoItemCollectionMode::Lazy => {
                 self.entry_fn == Some(def_id) ||
                 self.tcx.is_exported_symbol(def_id) ||
                 attr::contains_name(&self.tcx.get_attrs(def_id),
@@ -997,9 +1009,9 @@ fn item_has_type_parameters<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     generics.parent_types as usize + generics.types.len() > 0
 }
 
-fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                  item: &'tcx hir::Item,
-                                                  output: &mut Vec<TransItem<'tcx>>) {
+fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                 item: &'tcx hir::Item,
+                                                 output: &mut Vec<MonoItem<'tcx>>) {
     match item.node {
         hir::ItemImpl(_,
                       _,
@@ -1013,7 +1025,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             let impl_def_id = tcx.hir.local_def_id(item.id);
 
-            debug!("create_trans_items_for_default_impls(item={})",
+            debug!("create_mono_items_for_default_impls(item={})",
                    def_id_to_string(tcx, impl_def_id));
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
@@ -1036,9 +1048,10 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                          method.def_id,
                                                          callee_substs).unwrap();
 
-                    let trans_item = create_fn_trans_item(instance);
-                    if trans_item.is_instantiable(tcx) && should_trans_locally(tcx, &instance) {
-                        output.push(trans_item);
+                    let mono_item = create_fn_mono_item(instance);
+                    if mono_item.is_instantiable(tcx)
+                        && should_monomorphize_locally(tcx, &instance) {
+                        output.push(mono_item);
                     }
                 }
             }
@@ -1053,7 +1066,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 instance: Instance<'tcx>,
                                 const_context: bool,
-                                output: &mut Vec<TransItem<'tcx>>)
+                                output: &mut Vec<MonoItem<'tcx>>)
 {
     let mir = tcx.instance_mir(instance.def);
 

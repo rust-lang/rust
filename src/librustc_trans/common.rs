@@ -16,7 +16,6 @@ use llvm;
 use llvm::{ValueRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::DefPathData;
 use rustc::middle::lang_items::LangItem;
 use abi;
 use base;
@@ -29,7 +28,7 @@ use value::Value;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
-use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::subst::Kind;
 use rustc::hir;
 
 use libc::{c_uint, c_char};
@@ -430,38 +429,3 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn is_inline_instance<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: &ty::Instance<'tcx>
-) -> bool {
-    let def_id = match instance.def {
-        ty::InstanceDef::Item(def_id) => def_id,
-        ty::InstanceDef::DropGlue(_, Some(_)) => return false,
-        _ => return true
-    };
-    match tcx.def_key(def_id).disambiguated_data.data {
-        DefPathData::StructCtor |
-        DefPathData::EnumVariant(..) |
-        DefPathData::ClosureExpr => true,
-        _ => false
-    }
-}
-
-/// Given a DefId and some Substs, produces the monomorphic item type.
-pub fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        def_id: DefId,
-                        substs: &'tcx Substs<'tcx>)
-                        -> Ty<'tcx>
-{
-    let ty = tcx.type_of(def_id);
-    tcx.trans_apply_param_substs(substs, &ty)
-}
-
-/// Return the substituted type of an instance.
-pub fn instance_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             instance: &ty::Instance<'tcx>)
-                             -> Ty<'tcx>
-{
-    let ty = instance.def.def_ty(tcx);
-    tcx.trans_apply_param_substs(instance.substs, &ty)
-}

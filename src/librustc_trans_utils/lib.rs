@@ -35,9 +35,9 @@ extern crate log;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_back;
-extern crate rustc_data_structures;
 extern crate syntax;
 extern crate syntax_pos;
+extern crate rustc_data_structures;
 
 use rustc::ty::{TyCtxt, Instance};
 use rustc::hir;
@@ -45,11 +45,7 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir::map as hir_map;
 use rustc::util::nodemap::NodeSet;
 
-pub mod common;
 pub mod link;
-pub mod collector;
-pub mod trans_item;
-pub mod monomorphize;
 pub mod trans_crate;
 
 /// check for the #[rustc_error] annotation, which forces an
@@ -107,7 +103,7 @@ pub fn find_exported_symbols<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> NodeSet {
                 (generics.parent_types == 0 && generics.types.is_empty()) &&
                 // Functions marked with #[inline] are only ever translated
                 // with "internal" linkage and are never exported.
-                !common::requests_inline(tcx, &Instance::mono(tcx, def_id))
+                !Instance::mono(tcx, def_id).def.requires_local(tcx)
             }
 
             _ => false

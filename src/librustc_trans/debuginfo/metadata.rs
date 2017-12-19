@@ -27,10 +27,10 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ty::fold::TypeVisitor;
-use rustc::ty::subst::Substs;
 use rustc::ty::util::TypeIdHasher;
 use rustc::ich::Fingerprint;
-use common::{self, CrateContext};
+use rustc::ty::Instance;
+use common::CrateContext;
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc::session::{Session, config};
@@ -1656,7 +1656,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = common::def_ty(cx.tcx(), node_def_id, Substs::empty());
+    let variable_type = Instance::mono(cx.tcx(), node_def_id).ty(cx.tcx());
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(node_def_id).to_string();
     let linkage_name = mangled_name_of_item(cx, node_def_id, "");

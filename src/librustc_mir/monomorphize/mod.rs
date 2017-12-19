@@ -16,6 +16,11 @@ use rustc::ty::subst::Kind;
 use rustc::ty::{self, Ty, TyCtxt};
 
 pub use rustc::ty::Instance;
+pub use self::item::{MonoItem, MonoItemExt};
+
+pub mod collector;
+pub mod item;
+pub mod partitioning;
 
 fn fn_once_adapter_instance<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -124,4 +129,3 @@ pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 }
-

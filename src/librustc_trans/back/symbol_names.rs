@@ -98,10 +98,10 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 use monomorphize::Instance;
-use trans_item::{BaseTransItemExt, InstantiationMode};
+use trans_item::{BaseMonoItemExt, InstantiationMode};
 
 use rustc::middle::weak_lang_items;
-use rustc::middle::trans::TransItem;
+use rustc::mir::mono::MonoItem;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -211,7 +211,7 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // codegen units) then this symbol may become an exported (but hidden
         // visibility) symbol. This means that multiple crates may do the same
         // and we want to be sure to avoid any symbol conflicts here.
-        match TransItem::Fn(instance).instantiation_mode(tcx) {
+        match MonoItem::Fn(instance).instantiation_mode(tcx) {
             InstantiationMode::GloballyShared { may_conflict: true } => {
                 avoid_cross_crate_conflicts = true;
             }

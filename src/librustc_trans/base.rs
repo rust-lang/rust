@@ -38,8 +38,8 @@ use llvm;
 use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
-use rustc::middle::trans::{Linkage, Visibility, Stats};
-use rustc::middle::cstore::EncodedMetadata;
+use rustc::mir::mono::{Linkage, Visibility, Stats};
+use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::ty::maps::Providers;
@@ -55,7 +55,7 @@ use attributes;
 use builder::Builder;
 use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
-use collector::{self, TransItemCollectionMode};
+use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use common::{self, C_struct_in_context, C_array, CrateContext, val_ty};
 use consts;
 use context::{self, LocalCrateContext, SharedCrateContext};
@@ -64,10 +64,10 @@ use declare;
 use meth;
 use mir;
 use monomorphize::Instance;
-use partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
+use monomorphize::partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use symbol_names_test;
 use time_graph;
-use trans_item::{TransItem, BaseTransItemExt, TransItemExt, DefPathBasedNames};
+use trans_item::{MonoItem, BaseMonoItemExt, MonoItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
@@ -89,7 +89,7 @@ use syntax::ast;
 use mir::operand::OperandValue;
 
 pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
-pub use rustc_trans_utils::trans_item::linkage_by_name;
+pub use rustc_mir::monomorphize::item::linkage_by_name;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
@@ -468,7 +468,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     // release builds.
     info!("trans_instance({})", instance);
 
-    let fn_ty = common::instance_ty(ccx.tcx(), &instance);
+    let fn_ty = instance.ty(ccx.tcx());
     let sig = common::ty_fn_sig(ccx, fn_ty);
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
 
@@ -530,7 +530,7 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
     let instance = Instance::mono(ccx.tcx(), main_def_id);
 
-    if !ccx.codegen_unit().contains_item(&TransItem::Fn(instance)) {
+    if !ccx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main
         // function.
         return;
@@ -943,7 +943,7 @@ fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 #[inline(never)] // give this a place in the profiler
 fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_items: I)
-    where I: Iterator<Item=&'a TransItem<'tcx>>
+    where I: Iterator<Item=&'a MonoItem<'tcx>>
 {
     let mut symbols: Vec<_> = trans_items.map(|trans_item| {
         (trans_item, trans_item.symbol_name(tcx))
@@ -1002,7 +1002,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
             let mode_string = s.to_lowercase();
             let mode_string = mode_string.trim();
             if mode_string == "eager" {
-                TransItemCollectionMode::Eager
+                MonoItemCollectionMode::Eager
             } else {
                 if mode_string != "lazy" {
                     let message = format!("Unknown codegen-item collection mode '{}'. \
@@ -1011,15 +1011,15 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
                     tcx.sess.warn(&message);
                 }
 
-                TransItemCollectionMode::Lazy
+                MonoItemCollectionMode::Lazy
             }
         }
-        None => TransItemCollectionMode::Lazy
+        None => MonoItemCollectionMode::Lazy
     };
 
     let (items, inlining_map) =
         time(time_passes, "translation item collection", || {
-            collector::collect_crate_translation_items(tcx, collection_mode)
+            collector::collect_crate_mono_items(tcx, collection_mode)
     });
 
     assert_symbols_are_distinct(tcx, items.iter());
@@ -1042,7 +1042,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
 
     let translation_items: DefIdSet = items.iter().filter_map(|trans_item| {
         match *trans_item {
-            TransItem::Fn(ref instance) => Some(instance.def_id()),
+            MonoItem::Fn(ref instance) => Some(instance.def_id()),
             _ => None,
         }
     }).collect();

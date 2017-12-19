@@ -14,11 +14,9 @@
 //! item-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use common;
 use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::trans::Linkage;
 use rustc::session::config::OptLevel;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -27,11 +25,12 @@ use syntax::ast;
 use syntax::attr::{self, InlineAttr};
 use std::fmt::{self, Write};
 use std::iter;
-
-pub use rustc::middle::trans::TransItem;
+use rustc::mir::mono::Linkage;
+use syntax_pos::symbol::Symbol;
+pub use rustc::mir::mono::MonoItem;
 
 pub fn linkage_by_name(name: &str) -> Option<Linkage> {
-    use rustc::middle::trans::Linkage::*;
+    use rustc::mir::mono::Linkage::*;
 
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for
@@ -60,7 +59,7 @@ pub fn linkage_by_name(name: &str) -> Option<Linkage> {
 /// Describes how a translation item will be instantiated in object files.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum InstantiationMode {
-    /// There will be exactly one instance of the given TransItem. It will have
+    /// There will be exactly one instance of the given MonoItem. It will have
     /// external linkage so that it can be linked to from other codegen units.
     GloballyShared {
         /// In some compilation scenarios we may decide to take functions that
@@ -77,14 +76,39 @@ pub enum InstantiationMode {
         may_conflict: bool,
     },
 
-    /// Each codegen unit containing a reference to the given TransItem will
+    /// Each codegen unit containing a reference to the given MonoItem will
     /// have its own private copy of the function (with internal linkage).
     LocalCopy,
 }
 
-pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
-    fn as_trans_item(&self) -> &TransItem<'tcx>;
+pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
+    fn as_mono_item(&self) -> &MonoItem<'tcx>;
 
+    fn is_generic_fn(&self) -> bool {
+        match *self.as_mono_item() {
+            MonoItem::Fn(ref instance) => {
+                instance.substs.types().next().is_some()
+            }
+            MonoItem::Static(..) |
+            MonoItem::GlobalAsm(..) => false,
+        }
+    }
+
+    fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
+        match *self.as_mono_item() {
+            MonoItem::Fn(instance) => tcx.symbol_name(instance),
+            MonoItem::Static(node_id) => {
+                let def_id = tcx.hir.local_def_id(node_id);
+                tcx.symbol_name(Instance::mono(tcx, def_id))
+            }
+            MonoItem::GlobalAsm(node_id) => {
+                let def_id = tcx.hir.local_def_id(node_id);
+                ty::SymbolName {
+                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_str()
+                }
+            }
+        }
+    }
     fn instantiation_mode(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>)
                           -> InstantiationMode {
@@ -93,12 +117,12 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
                 tcx.sess.opts.optimize != OptLevel::No
             });
 
-        match *self.as_trans_item() {
-            TransItem::Fn(ref instance) => {
+        match *self.as_mono_item() {
+            MonoItem::Fn(ref instance) => {
                 // If this function isn't inlined or otherwise has explicit
                 // linkage, then we'll be creating a globally shared version.
                 if self.explicit_linkage(tcx).is_some() ||
-                    !common::requests_inline(tcx, instance)
+                    !instance.def.requires_local(tcx)
                 {
                     return InstantiationMode::GloballyShared  { may_conflict: false }
                 }
@@ -123,20 +147,20 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
                     }
                 }
             }
-            TransItem::Static(..) => {
+            MonoItem::Static(..) => {
                 InstantiationMode::GloballyShared { may_conflict: false }
             }
-            TransItem::GlobalAsm(..) => {
+            MonoItem::GlobalAsm(..) => {
                 InstantiationMode::GloballyShared { may_conflict: false }
             }
         }
     }
 
     fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Linkage> {
-        let def_id = match *self.as_trans_item() {
-            TransItem::Fn(ref instance) => instance.def_id(),
-            TransItem::Static(node_id) => tcx.hir.local_def_id(node_id),
-            TransItem::GlobalAsm(..) => return None,
+        let def_id = match *self.as_mono_item() {
+            MonoItem::Fn(ref instance) => instance.def_id(),
+            MonoItem::Static(node_id) => tcx.hir.local_def_id(node_id),
+            MonoItem::GlobalAsm(..) => return None,
         };
 
         let attributes = tcx.get_attrs(def_id);
@@ -183,11 +207,11 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
     /// which will never be accessed) in its place.
     fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
-        let (def_id, substs) = match *self.as_trans_item() {
-            TransItem::Fn(ref instance) => (instance.def_id(), instance.substs),
-            TransItem::Static(node_id) => (tcx.hir.local_def_id(node_id), Substs::empty()),
+        let (def_id, substs) = match *self.as_mono_item() {
+            MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
+            MonoItem::Static(node_id) => (tcx.hir.local_def_id(node_id), Substs::empty()),
             // global asm never has predicates
-            TransItem::GlobalAsm(..) => return true
+            MonoItem::GlobalAsm(..) => return true
         };
 
         let predicates = tcx.predicates_of(def_id).predicates.subst(tcx, substs);
@@ -197,16 +221,16 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
     fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         let hir_map = &tcx.hir;
 
-        return match *self.as_trans_item() {
-            TransItem::Fn(instance) => {
+        return match *self.as_mono_item() {
+            MonoItem::Fn(instance) => {
                 to_string_internal(tcx, "fn ", instance)
             },
-            TransItem::Static(node_id) => {
+            MonoItem::Static(node_id) => {
                 let def_id = hir_map.local_def_id(node_id);
                 let instance = Instance::new(def_id, tcx.intern_substs(&[]));
                 to_string_internal(tcx, "static ", instance)
             },
-            TransItem::GlobalAsm(..) => {
+            MonoItem::GlobalAsm(..) => {
                 "global_asm".to_string()
             }
         };
@@ -224,14 +248,14 @@ pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
     }
 }
 
-impl<'a, 'tcx> TransItemExt<'a, 'tcx> for TransItem<'tcx> {
-    fn as_trans_item(&self) -> &TransItem<'tcx> {
+impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
+    fn as_mono_item(&self) -> &MonoItem<'tcx> {
         self
     }
 }
 
 //=-----------------------------------------------------------------------------
-// TransItem String Keys
+// MonoItem String Keys
 //=-----------------------------------------------------------------------------
 
 // The code below allows for producing a unique string key for a trans item.
