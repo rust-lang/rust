@@ -18,7 +18,7 @@ use lint;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::DebugInfoLevel;
+use session::config::{BorrowckMode, DebugInfoLevel};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -440,16 +440,34 @@ impl Session {
     pub fn nll(&self) -> bool {
         self.features.borrow().nll || self.opts.debugging_opts.nll
     }
+    pub fn use_mir(&self) -> bool {
+        self.features.borrow().nll || self.opts.borrowck_mode.use_mir()
+    }
     pub fn nll_dump_cause(&self) -> bool {
         self.opts.debugging_opts.nll_dump_cause
     }
     pub fn two_phase_borrows(&self) -> bool {
         self.features.borrow().nll || self.opts.debugging_opts.two_phase_borrows
     }
+    pub fn borrowck_mode(&self) -> BorrowckMode {
+        match self.opts.borrowck_mode {
+            mode @ BorrowckMode::Mir |
+            mode @ BorrowckMode::Compare => mode,
+
+            mode @ BorrowckMode::Ast => {
+                if self.features.borrow().nll {
+                    BorrowckMode::Mir
+                } else {
+                    mode
+                }
+            }
+
+        }
+    }
     pub fn emit_end_regions(&self) -> bool {
         self.opts.debugging_opts.emit_end_regions ||
             (self.opts.debugging_opts.mir_emit_validate > 0) ||
-            self.opts.borrowck_mode.use_mir()
+            self.use_mir()
     }
     pub fn lto(&self) -> bool {
         self.opts.cg.lto || self.target.target.options.requires_lto

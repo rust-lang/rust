@@ -10,7 +10,6 @@
 
 // revisions: lxl nll
 //[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
-//[nll]compile-flags: -Z borrowck=mir
 
 #![cfg_attr(nll, feature(nll))]
 

@@ -509,7 +509,7 @@ impl<'b, 'gcx, 'tcx> BorrowckErrors for TyCtxt<'b, 'gcx, 'tcx> {
                                 o: Origin)
                                 -> DiagnosticBuilder<'a>
     {
-        if !o.should_emit_errors(self.sess.opts.borrowck_mode) {
+        if !o.should_emit_errors(self.sess.borrowck_mode()) {
             self.sess.diagnostic().cancel(&mut diag);
         }
         diag
