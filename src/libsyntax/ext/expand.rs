@@ -1120,6 +1120,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                     match String::from_utf8(buf) {
                         Ok(src) => {
+                            // Add this input file to the code map to make it available as
+                            // dependency information
+                            self.cx.codemap().new_filemap_and_lines(&filename, &src);
+
                             let include_info = vec![
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
                                         attr::mk_name_value_item_str("file".into(),

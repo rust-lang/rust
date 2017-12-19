@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(external_doc)]
+
+#[doc(include="input.md")]
+pub struct SomeStruct;
+
 pub fn main() {
     const INPUT_TXT: &'static str = include_str!("input.txt");
     const INPUT_BIN: &'static [u8] = include_bytes!("input.bin");
