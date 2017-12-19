@@ -249,23 +249,6 @@ impl<'tcx> UniversalRegions<'tcx> {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::new)
     }
 
-    /// True if `r` is classified as a global region.
-    pub fn is_global_free_region(&self, r: RegionVid) -> bool {
-        self.region_classification(r) == Some(RegionClassification::Global)
-    }
-
-    /// True if `r` is classified as an external region.
-    pub fn is_extern_free_region(&self, r: RegionVid) -> bool {
-        self.region_classification(r) == Some(RegionClassification::External)
-    }
-
-    /// True if `r` is a free region that is classified as global or
-    /// extern.  This is an important category, because these regions
-    /// can be referenced in `ClosureRegionRequirements`.
-    pub fn is_non_local_free_region(&self, r: RegionVid) -> bool {
-        self.region_classification(r) == Some(RegionClassification::Local)
-    }
-
     /// True if `r` is classified as an local region.
     pub fn is_local_free_region(&self, r: RegionVid) -> bool {
         self.region_classification(r) == Some(RegionClassification::Local)
