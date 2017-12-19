@@ -28,8 +28,10 @@ use rustc::ty::codec::{self as ty_codec, TyEncoder};
 use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::{FxHashMap, NodeSet};
 
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
 
+use std::hash::Hash;
 use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::Path;
@@ -290,6 +292,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         } else {
                             let mut adapted = (**filemap).clone();
                             adapted.name = Path::new(&working_dir).join(name).into();
+                            adapted.name_hash = {
+                                let mut hasher: StableHasher<u128> = StableHasher::new();
+                                adapted.name.hash(&mut hasher);
+                                hasher.finish()
+                            };
                             Rc::new(adapted)
                         }
                     },
