@@ -237,20 +237,6 @@ pub fn run_compiler<'a>(args: &[String],
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-    // Ensure the source file isn't accidentally overwritten during compilation.
-    match input_file_path {
-        Some(input_file_path) => {
-            if driver::build_output_filenames(&input, &odir, &ofile, &[], &sess)
-                .contains_path(&input_file_path) && sess.opts.will_create_output_file() {
-                sess.err(&format!(
-                    "the input file \"{}\" would be overwritten by the generated executable",
-                    input_file_path.display()));
-                return (Err(CompileIncomplete::Stopped), Some(sess));
-            }
-        },
-        None => {}
-    }
-
     let mut cfg = config::build_configuration(&sess, cfg);
     target_features::add_configuration(&mut cfg, &sess);
     sess.parse_sess.config = cfg;
@@ -266,6 +252,7 @@ pub fn run_compiler<'a>(args: &[String],
     let control = callbacks.build_controller(&sess, &matches);
     (driver::compile_input(&sess,
                            &cstore,
+                           &input_file_path,
                            &input,
                            &odir,
                            &ofile,
