@@ -71,12 +71,14 @@ pub struct UniversalRegions<'tcx> {
 
     /// The return type of this function, with all regions replaced by
     /// their universal `RegionVid` equivalents. This type is **NOT
-    /// NORMALIZED**.
+    /// NORMALIZED** (i.e., it contains unnormalized associated type
+    /// projections).
     pub output_ty: Ty<'tcx>,
 
     /// The fully liberated input types of this function, with all
     /// regions replaced by their universal `RegionVid` equivalents.
-    /// This type is **NOT NORMALIZED**.
+    /// This type is **NOT NORMALIZED** (i.e., it contains
+    /// unnormalized associated type projections).
     pub input_tys: &'tcx [Ty<'tcx>],
 
     /// Each RBP `('a, GK)` indicates that `GK: 'a` can be assumed to
