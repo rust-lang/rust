@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -87,7 +87,7 @@ pub mod test {
 pub mod stats;
 mod formatters;
 
-use formatters::*;
+use formatters::{OutputFormatter, PrettyFormatter, TerseFormatter, JsonFormatter};
 
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e. it should be a series of identifiers separated by double
@@ -475,7 +475,7 @@ Test Attributes:
     );
 }
 
-// FIXME: Copied from libsyntax until linkage errors are resolved.
+// FIXME: Copied from libsyntax until linkage errors are resolved. Issue #47566
 fn is_nightly() -> bool {
     // Whether this is a feature-staged build, i.e. on the beta or stable channel
     let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
@@ -769,13 +769,12 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
 
 // List the tests to console, and optionally to logfile. Filters are honored.
 pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
-    let output = match term::stdout() {
+    let mut output = match term::stdout() {
         None => Raw(io::stdout()),
         Some(t) => Pretty(t),
     };
 
     let quiet = opts.format == OutputFormat::Terse;
-    let mut out = HumanFormatter::new(output, use_color(opts), quiet, 0, false);
     let mut st = ConsoleTestState::new(opts)?;
 
     let mut ntest = 0;
@@ -801,7 +800,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
             }
         };
 
-        out.write_plain(format!("{}: {}\n", name, fntype))?;
+        writeln!(output, "{}: {}", name, fntype)?;
         st.write_log(format!("{} {}\n", fntype, name))?;
     }
 
@@ -814,13 +813,14 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 
     if !quiet {
         if ntest != 0 || nbench != 0 {
-            out.write_plain("\n")?;
+            writeln!(output, "")?;
         }
-        out.write_plain(format!(
-            "{}, {}\n",
+
+        writeln!(output,
+            "{}, {}",
             plural(ntest, "test"),
             plural(nbench, "benchmark")
-        ))?;
+        )?;
     }
 
     Ok(())
@@ -828,15 +828,6 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
-    let tests = {
-        let mut tests = tests;
-        for test in tests.iter_mut() {
-            test.desc.name = test.desc.name.with_padding(test.testfn.padding());
-        }
-
-        tests
-    };
-
     fn callback(
         event: &TestEvent,
         st: &mut ConsoleTestState,
@@ -902,17 +893,15 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     };
 
     let mut out: Box<OutputFormatter> = match opts.format {
-        OutputFormat::Pretty => Box::new(HumanFormatter::new(
+        OutputFormat::Pretty => Box::new(PrettyFormatter::new(
             output,
             use_color(opts),
-            false,
             max_name_len,
             is_multithreaded,
         )),
-        OutputFormat::Terse => Box::new(HumanFormatter::new(
+        OutputFormat::Terse => Box::new(TerseFormatter::new(
             output,
             use_color(opts),
-            true,
             max_name_len,
             is_multithreaded,
         )),
@@ -949,7 +938,7 @@ fn should_sort_failures_before_printing_them() {
         allow_fail: false,
     };
 
-    let mut out = HumanFormatter::new(Raw(Vec::new()), false, false, 10, false);
+    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false);
 
     let st = ConsoleTestState {
         log_out: None,
@@ -1039,6 +1028,15 @@ where
     if !opts.bench_benchmarks {
         filtered_tests = convert_benchmarks_to_tests(filtered_tests);
     }
+
+    let filtered_tests = {
+        let mut filtered_tests = filtered_tests;
+        for test in filtered_tests.iter_mut() {
+            test.desc.name = test.desc.name.with_padding(test.testfn.padding());
+        }
+
+        filtered_tests
+    };
 
     let filtered_out = tests_len - filtered_tests.len();
     callback(TeFilteredOut(filtered_out))?;
