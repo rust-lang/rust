@@ -509,12 +509,40 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             tcx,
             fldop: |ty| {
                 if let ty::TyAnon(def_id, substs) = ty.sty {
-                    // Check that this is `impl Trait` type is declared by
-                    // `parent_def_id`. During the first phase of type-check, this
-                    // is true, but during NLL type-check, we sometimes encounter
-                    // `impl Trait` types in e.g. inferred closure signatures that
-                    // are not 'local' to the current function and hence which
-                    // ought not to be instantiated.
+                    // Check that this is `impl Trait` type is
+                    // declared by `parent_def_id` -- i.e., one whose
+                    // value we are inferring.  At present, this is
+                    // always true during the first phase of
+                    // type-check, but not always true later on during
+                    // NLL. Once we support named abstract types more fully,
+                    // this same scenario will be able to arise during all phases.
+                    //
+                    // Here is an example using `abstract type` that indicates
+                    // the distinction we are checking for:
+                    //
+                    // ```rust
+                    // mod a {
+                    //   pub abstract type Foo: Iterator;
+                    //   pub fn make_foo() -> Foo { .. }
+                    // }
+                    //
+                    // mod b {
+                    //   fn foo() -> a::Foo { a::make_foo() }
+                    // }
+                    // ```
+                    //
+                    // Here, the return type of `foo` references a
+                    // `TyAnon` indeed, but not one whose value is
+                    // presently being inferred. You can get into a
+                    // similar situation with closure return types
+                    // today:
+                    //
+                    // ```rust
+                    // fn foo() -> impl Iterator { .. }
+                    // fn bar() {
+                    //     let x = || foo(); // returns the Anon assoc with `foo`
+                    // }
+                    // ```
                     if let Some(anon_node_id) = tcx.hir.as_local_node_id(def_id) {
                         let anon_parent_node_id = tcx.hir.get_parent(anon_node_id);
                         let anon_parent_def_id = tcx.hir.local_def_id(anon_parent_node_id);
