@@ -134,7 +134,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 None
             });
 
-        // Finally
+        // Finally, if we instantiated the anon types successfully, we
+        // have to solve any bounds (e.g., `-> impl Iterator` needs to
+        // prove that `T: Iterator` where `T` is the type we
+        // instantiated it with).
         if let Some(anon_type_map) = anon_type_map {
             self.fully_perform_op(start_position.at_self(), |_cx| {
                 infcx.constrain_anon_types(&anon_type_map, universal_regions);
