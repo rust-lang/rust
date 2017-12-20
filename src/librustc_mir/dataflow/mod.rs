@@ -612,11 +612,10 @@ pub trait BitDenotation: BitwiseOperator {
     /// `sets.on_entry` to that local clone into `statement_effect` and
     /// `terminator_effect`).
     ///
-    /// When its false, no local clone is constucted; instead a
-    /// reference directly into `on_entry` is passed along via
-    /// `sets.on_entry` instead, which represents the flow state at
-    /// the block's start, not necessarily the state immediately prior
-    /// to the statement/terminator under analysis.
+    /// When its false, no local clone is constucted; instead it is
+    /// undefined what `on_entry` points to (in practice, it will
+    /// frequently be a reference the flow state at the block's start,
+    /// but you should not rely on that).
     ///
     /// In either case, the passed reference is mutable; but this is a
     /// wart from using the `BlockSets` type in the API; the intention
