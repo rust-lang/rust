@@ -17,9 +17,11 @@
 #![feature(repr_align)]
 
 #[repr(align(64))]
+#[derive(Copy, Clone)]
 pub struct Align64(i32);
 // CHECK: %Align64 = type { [0 x i32], i32, [15 x i32] }
 
+#[derive(Copy, Clone)]
 pub struct Nested64 {
     a: Align64,
     b: i32,
@@ -34,6 +36,7 @@ pub enum Enum4 {
 }
 // CHECK: %Enum4 = type { [2 x i32] }
 
+#[derive(Copy, Clone)]
 pub enum Enum64 {
     A(Align64),
     B(i32),
