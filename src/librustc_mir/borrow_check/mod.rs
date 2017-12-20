@@ -72,10 +72,7 @@ fn mir_borrowck<'a, 'tcx>(
     let input_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
-    if {
-        !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.sess.use_mir()
-            && !tcx.sess.nll()
-    } {
+    if !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.sess.use_mir() {
         return None;
     }
 
