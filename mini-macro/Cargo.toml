@@ -1,6 +1,6 @@
 [package]
 name = "clippy-mini-macro-test"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
@@ -14,6 +14,6 @@ repository = "https://github.com/rust-lang-nursery/rust-clippy"
 
 [lib]
 name = "clippy_mini_macro_test"
-plugin = true
+proc-macro = true
 
 [dependencies]
