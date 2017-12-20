@@ -173,6 +173,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     ty::TyAdt(adt, _) => {
                         if adt.is_union() {
                             if context == PlaceContext::Store ||
+                                context == PlaceContext::AsmOutput ||
                                 context == PlaceContext::Drop
                             {
                                 let elem_ty = match elem {

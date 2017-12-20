@@ -273,6 +273,9 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
 
             PlaceContext::Store |
 
+            // This is potentially both a def and a use...
+            PlaceContext::AsmOutput |
+
             // We let Call define the result in both the success and
             // unwind cases. This is not really correct, however it
             // does not seem to be observable due to the way that we

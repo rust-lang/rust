@@ -193,6 +193,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
             PlaceContext::Inspect |
             PlaceContext::Store |
+            PlaceContext::AsmOutput |
             PlaceContext::Borrow { .. } |
             PlaceContext::Projection(..) => {
                 self.mark_as_memory(index);
