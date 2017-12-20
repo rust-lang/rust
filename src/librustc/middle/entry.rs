@@ -170,7 +170,7 @@ fn configure_main(this: &mut EntryContext) {
                       defined at the crate level. Either move the definition or \
                       attach the `#[main]` attribute to override this behavior.");
             for &(_, span) in &this.non_main_fns {
-                err.span_note(span, "here is a function named 'main'");
+                err.span_label(span, "here is a function named 'main'");
             }
             err.emit();
             this.session.abort_if_errors();

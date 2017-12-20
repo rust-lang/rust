@@ -260,10 +260,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let expected_str = values.expected.sort_string(self);
                 let found_str = values.found.sort_string(self);
                 if expected_str == found_str && expected_str == "closure" {
-                    db.span_note(sp,
-                        "no two closures, even if identical, have the same type");
-                    db.span_help(sp,
-                        "consider boxing your closure and/or using it as a trait object");
+                    db.note("no two closures, even if identical, have the same type");
+                    db.help("consider boxing your closure and/or using it as a trait object");
                 }
             },
             TyParamDefaultMismatch(values) => {
