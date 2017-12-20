@@ -253,6 +253,10 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable("linker", |o| {
             o.optopt("", "linker", "linker used for building executable test code", "PATH")
         }),
+        unstable("sort-modules-by-appearance", |o| {
+            o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
+                                                         program, rather than alphabetically")
+        }),
     ]
 }
 
@@ -369,6 +373,7 @@ pub fn main_args(args: &[String]) -> isize {
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
     let display_warnings = matches.opt_present("display-warnings");
     let linker = matches.opt_str("linker").map(PathBuf::from);
+    let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
 
     match (should_test, markdown_input) {
         (true, true) => {
@@ -398,7 +403,8 @@ pub fn main_args(args: &[String]) -> isize {
                                   passes.into_iter().collect(),
                                   css_file_extension,
                                   renderinfo,
-                                  render_type)
+                                  render_type,
+                                  sort_modules_alphabetically)
                     .expect("failed to generate documentation");
                 0
             }

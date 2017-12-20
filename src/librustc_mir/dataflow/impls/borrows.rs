@@ -540,6 +540,10 @@ impl<'a, 'b, 'tcx> FindPlaceUses<'a, 'b, 'tcx> {
             // "deep" does validation go?
             PlaceContext::Validate => false,
 
+            // FIXME: This is here to not change behaviour from before
+            // AsmOutput existed, but it's not necessarily a pure overwrite.
+            // so it's possible this should activate the place.
+            PlaceContext::AsmOutput |
             // pure overwrites of an place do not activate it. (note
             // PlaceContext::Call is solely about dest place)
             PlaceContext::Store | PlaceContext::Call => false,
