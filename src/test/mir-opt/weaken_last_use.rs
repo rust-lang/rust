@@ -20,6 +20,11 @@ fn assign_op(mut x: u8) -> u8 {
     x
 }
 
+fn array_indexing(i: usize) {
+    let a = [1, 2, 3];
+    let _x = a[i]; // can remove the read, but need to keep the length assert
+}
+
 fn copy_to_locals(x: u8) -> u8 {
     let y = x; // cannot move
     let z = x; // last use; can move
@@ -57,11 +62,11 @@ fn unneeded_drop_flag_update(b: bool) {
     }
 }
 
-fn loop_body_is_not_last_use(mut x: u8) {
+fn loop_body(mut x: u8) {
     let mut y = 0;
     while y != 10 {
         x += 1;
-        y = x;
+        y = x; // not the last use because loop
     }
 }
 
@@ -69,13 +74,14 @@ fn main() {
     // Make sure the functions actually get instantiated.
     return_arg(0);
     assign_op(0);
+    array_indexing(0);
     copy_to_locals(0);
     use_on_both_paths(true, 1);
     unneeded_rvalue(0);
     unneeded_complex_rvalue(0);
     call_with_unneeded_result(0);
     unneeded_drop_flag_update(true);
-    loop_body_is_not_last_use(0);
+    loop_body(0);
 }
 
 // END RUST SOURCE
@@ -95,6 +101,27 @@ fn main() {
 // START rustc.assign_op.WeakenLastUse.after.mir
 //     _1 = Add(move _1, const 1u8);
 // END rustc.assign_op.WeakenLastUse.after.mir
+
+// START rustc.array_indexing.WeakenLastUse.before.mir
+//     _5 = _1;
+//     _6 = const 3usize;
+//     _7 = Lt(_5, _6);
+//     assert(move _7, "index out of bounds: the len is {} but the index is {}", move _6, _5) -> bb1;
+// }
+// bb1: {
+//     _4 = _2[_5];
+//     _3 = move _4;
+// END rustc.array_indexing.WeakenLastUse.before.mir
+// START rustc.array_indexing.WeakenLastUse.after.mir
+//     _5 = move _1;
+//     _6 = const 3usize;
+//     _7 = Lt(_5, _6);
+//     assert(move _7, "index out of bounds: the len is {} but the index is {}", move _6, move _5) -> bb1;
+// }
+// bb1: {
+//     nop;
+//     nop;
+// END rustc.array_indexing.WeakenLastUse.after.mir
 
 // START rustc.copy_to_locals.WeakenLastUse.before.mir
 //     _3 = _1;
@@ -239,11 +266,11 @@ fn main() {
 //     return;
 // END rustc.unneeded_drop_flag_update.WeakenLastUse.after.mir
 
-// START rustc.loop_body_is_not_last_use.WeakenLastUse.before.mir
+// START rustc.loop_body.WeakenLastUse.before.mir
 //     _6 = _1;
 //     _2 = move _6;
-// END rustc.loop_body_is_not_last_use.WeakenLastUse.before.mir
-// START rustc.loop_body_is_not_last_use.WeakenLastUse.after.mir
+// END rustc.loop_body.WeakenLastUse.before.mir
+// START rustc.loop_body.WeakenLastUse.after.mir
 //     _6 = _1;
 //     _2 = move _6;
-// END rustc.loop_body_is_not_last_use.WeakenLastUse.after.mir
+// END rustc.loop_body.WeakenLastUse.after.mir
