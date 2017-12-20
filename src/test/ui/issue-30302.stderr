@@ -10,10 +10,10 @@ error: unreachable pattern
   --> $DIR/issue-30302.rs:25:9
    |
 23 |         Nil => true,
-   |         --- this pattern matches any value
+   |         --- matches any value
 24 | //~^ WARN pattern binding `Nil` is named the same as one of the variants of the type `Stack`
 25 |         _ => false
-   |         ^ this is an unreachable pattern
+   |         ^ unreachable pattern
    |
 note: lint level defined here
   --> $DIR/issue-30302.rs:14:9

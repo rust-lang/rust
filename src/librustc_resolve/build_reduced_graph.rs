@@ -220,7 +220,7 @@ impl<'a> Resolver<'a> {
                         ResolutionError::SelfImportCanOnlyAppearOnceInTheList);
 
                     for other_span in self_spans.iter().skip(1) {
-                        e.span_note(*other_span, "another `self` import appears here");
+                        e.span_label(*other_span, "another `self` import appears here");
                     }
 
                     e.emit();

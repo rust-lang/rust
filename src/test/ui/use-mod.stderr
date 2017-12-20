@@ -1,20 +1,17 @@
-error[E0430]: `self` import can only appear once in the list
+error[E0430]: `self` import can only appear once in an import list
   --> $DIR/use-mod.rs:12:5
    |
 12 |     self,
-   |     ^^^^
-   |
-note: another `self` import appears here
-  --> $DIR/use-mod.rs:15:5
-   |
+   |     ^^^^ can only appear once in an import list
+...
 15 |     self
-   |     ^^^^
+   |     ---- another `self` import appears here
 
 error[E0431]: `self` import can only appear in an import list with a non-empty prefix
   --> $DIR/use-mod.rs:19:6
    |
 19 | use {self};
-   |      ^^^^
+   |      ^^^^ can only appear in an import list with a non-empty prefix
 
 error[E0252]: the name `bar` is defined multiple times
   --> $DIR/use-mod.rs:15:5
