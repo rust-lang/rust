@@ -1,8 +1,12 @@
-#![feature(plugin)]
-#![plugin(clippy_mini_macro_test)]
+#[macro_use]
+extern crate clippy_mini_macro_test;
 
 #[deny(warnings)]
-#[mini_macro_attr]
 fn main() {
-    let _ = mini_macro!();
+    let x = Foo;
+    println!("{:?}", x);
 }
+
+
+#[derive(ClippyMiniMacroTest, Debug)]
+struct Foo;
