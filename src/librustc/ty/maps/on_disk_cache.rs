@@ -217,6 +217,7 @@ impl<'sess> OnDiskCache<'sess> {
             encode_query_results::<contains_extern_indicator, _>(tcx, enc, qri)?;
             encode_query_results::<symbol_name, _>(tcx, enc, qri)?;
             encode_query_results::<trans_fulfill_obligation, _>(tcx, enc, qri)?;
+            encode_query_results::<check_match, _>(tcx, enc, qri)?;
         }
 
         // Encode diagnostics

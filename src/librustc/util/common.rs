@@ -29,7 +29,7 @@ pub const FN_OUTPUT_NAME: &'static str = "Output";
 
 // Useful type to use with `Result<>` indicate that an error has already
 // been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable)]
 pub struct ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
