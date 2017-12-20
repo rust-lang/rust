@@ -48,7 +48,7 @@ where
 {
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR `<T as Anything<'_#5r, '_#6r>>::AssocType` does not outlive `'_#7r`
+    //~| ERROR associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may not live long enough
 }
 
 #[rustc_regions]
@@ -59,7 +59,7 @@ where
 {
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
+    //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
 }
 
 #[rustc_regions]
@@ -80,7 +80,7 @@ where
 
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
+    //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
 }
 
 #[rustc_regions]
@@ -108,7 +108,7 @@ where
 {
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+    //~| ERROR does not outlive free region
 }
 
 #[rustc_regions]

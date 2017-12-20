@@ -27,6 +27,7 @@ use util::pretty::{self, ALIGN};
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
+pub mod explain_borrow;
 pub(crate) mod region_infer;
 mod renumber;
 mod subtype_constraint_generation;
@@ -77,17 +78,13 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     Option<ClosureRegionRequirements<'gcx>>,
 ) {
     // Run the MIR type-checker.
-    let mir_node_id = infcx.tcx.hir.as_local_node_id(def_id).unwrap();
     let liveness = &LivenessResults::compute(mir);
-    let fr_fn_body = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let constraint_sets = &type_check::type_check(
         infcx,
-        mir_node_id,
         param_env,
         mir,
-        fr_fn_body,
-        universal_regions.input_tys,
-        universal_regions.output_ty,
+        def_id,
+        &universal_regions,
         &liveness,
         flow_inits,
         move_data,
@@ -285,16 +282,22 @@ fn for_each_region_constraint(
 /// This is reasonable because in our MIR we replace all universal regions
 /// with inference variables.
 pub trait ToRegionVid {
-    fn to_region_vid(&self) -> RegionVid;
+    fn to_region_vid(self) -> RegionVid;
 }
 
-impl ToRegionVid for RegionKind {
-    fn to_region_vid(&self) -> RegionVid {
-        if let &ty::ReVar(vid) = self {
-            vid
+impl<'tcx> ToRegionVid for &'tcx RegionKind {
+    fn to_region_vid(self) -> RegionVid {
+        if let ty::ReVar(vid) = self {
+            *vid
         } else {
             bug!("region is not an ReVar: {:?}", self)
         }
+    }
+}
+
+impl ToRegionVid for RegionVid {
+    fn to_region_vid(self) -> RegionVid {
+        self
     }
 }
 

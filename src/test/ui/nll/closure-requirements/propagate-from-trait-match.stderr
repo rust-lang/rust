@@ -9,7 +9,7 @@ note: External requirements
    |
 42 |       establish_relationships(value, |value| {
    |  ____________________________________^
-43 | |         //~^ ERROR `T` does not outlive
+43 | |         //~^ ERROR the parameter type `T` may not live long enough
 44 | |
 45 | |         // This function call requires that
 ...  |
@@ -26,18 +26,20 @@ note: External requirements
    = note: number of external vids: 2
    = note: where T: '_#1r
 
-error: `T` does not outlive `'_#3r`
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/propagate-from-trait-match.rs:42:36
    |
 42 |       establish_relationships(value, |value| {
    |  ____________________________________^
-43 | |         //~^ ERROR `T` does not outlive
+43 | |         //~^ ERROR the parameter type `T` may not live long enough
 44 | |
 45 | |         // This function call requires that
 ...  |
 56 | |         //~^ WARNING not reporting region error due to -Znll
 57 | |     });
    | |_____^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
 note: No external requirements
   --> $DIR/propagate-from-trait-match.rs:38:1

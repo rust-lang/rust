@@ -275,7 +275,7 @@ impl<'b, 'tcx: 'b> BorrowckErrors for BorrowckCtxt<'b, 'tcx> {
                                 o: Origin)
                                 -> DiagnosticBuilder<'a>
     {
-        if !o.should_emit_errors(self.tcx.sess.opts.borrowck_mode) {
+        if !o.should_emit_errors(self.tcx.sess.borrowck_mode()) {
             self.tcx.sess.diagnostic().cancel(&mut diag);
         }
         diag

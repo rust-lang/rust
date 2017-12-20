@@ -78,10 +78,7 @@ mod note;
 
 mod need_type_info;
 
-mod named_anon_conflict;
-#[macro_use]
-mod util;
-mod different_lifetimes;
+pub mod nice_region_error;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
@@ -261,10 +258,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_region_errors(&self,
                                 region_scope_tree: &region::ScopeTree,
-                                errors: &Vec<RegionResolutionError<'tcx>>) {
+                                errors: &Vec<RegionResolutionError<'tcx>>,
+                                will_later_be_reported_by_nll: bool) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
-        if self.tcx.sess.opts.debugging_opts.nll {
+        if will_later_be_reported_by_nll && self.tcx.sess.nll() {
+            // With `#![feature(nll)]`, we want to present a nice user
+            // experience, so don't even mention the errors from the
+            // AST checker.
+            if self.tcx.sess.features.borrow().nll {
+                return;
+            }
+
+            // But with -Znll, it's nice to have some note for later.
             for error in errors {
                 match *error {
                     RegionResolutionError::ConcreteFailure(ref origin, ..) |
@@ -294,9 +300,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         for error in errors {
             debug!("report_region_errors: error = {:?}", error);
 
-            if !self.try_report_named_anon_conflict(&error) &&
-                !self.try_report_anon_anon_conflict(&error)
-            {
+            if !self.try_report_nice_region_error(&error) {
                 match error.clone() {
                     // These errors could indicate all manner of different
                     // problems with many different solutions. Rather
@@ -309,8 +313,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         self.report_concrete_failure(region_scope_tree, origin, sub, sup).emit();
                     }
 
-                    RegionResolutionError::GenericBoundFailure(kind, param_ty, sub) => {
-                        self.report_generic_bound_failure(region_scope_tree, kind, param_ty, sub);
+                    RegionResolutionError::GenericBoundFailure(origin, param_ty, sub) => {
+                        self.report_generic_bound_failure(
+                            region_scope_tree,
+                            origin.span(),
+                            Some(origin),
+                            param_ty,
+                            sub,
+                        );
                     }
 
                     RegionResolutionError::SubSupConflict(var_origin,
@@ -906,11 +916,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
               DiagnosticStyledString::highlighted(format!("{}", exp_found.found))))
     }
 
-    fn report_generic_bound_failure(&self,
-                                    region_scope_tree: &region::ScopeTree,
-                                    origin: SubregionOrigin<'tcx>,
-                                    bound_kind: GenericKind<'tcx>,
-                                    sub: Region<'tcx>)
+    pub fn report_generic_bound_failure(&self,
+                                        region_scope_tree: &region::ScopeTree,
+                                        span: Span,
+                                        origin: Option<SubregionOrigin<'tcx>>,
+                                        bound_kind: GenericKind<'tcx>,
+                                        sub: Region<'tcx>)
     {
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
@@ -958,9 +969,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format!("the associated type `{}`", p),
         };
 
-        if let SubregionOrigin::CompareImplMethodObligation {
+        if let Some(SubregionOrigin::CompareImplMethodObligation {
             span, item_name, impl_item_def_id, trait_item_def_id,
-        } = origin {
+        }) = origin {
             self.report_extra_impl_obligation(span,
                                               item_name,
                                               impl_item_def_id,
@@ -995,7 +1006,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(self.tcx.sess,
-                                               origin.span(),
+                                               span,
                                                E0309,
                                                "{} may not live long enough",
                                                labeled_user_string);
@@ -1006,7 +1017,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ty::ReStatic => {
                 // Does the required lifetime have a nice name we can print?
                 let mut err = struct_span_err!(self.tcx.sess,
-                                               origin.span(),
+                                               span,
                                                E0310,
                                                "{} may not live long enough",
                                                labeled_user_string);
@@ -1017,7 +1028,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             _ => {
                 // If not, be less specific.
                 let mut err = struct_span_err!(self.tcx.sess,
-                                               origin.span(),
+                                               span,
                                                E0311,
                                                "{} may not live long enough",
                                                labeled_user_string);
@@ -1033,7 +1044,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        self.note_region_origin(&mut err, &origin);
+        if let Some(origin) = origin {
+            self.note_region_origin(&mut err, &origin);
+        }
         err.emit();
     }
 

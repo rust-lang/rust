@@ -15,7 +15,7 @@ note: External requirements
    |
 38 |       with_signature(a, b, |x, y| {
    |  __________________________^
-39 | |         //~^ ERROR `T` does not outlive
+39 | |         //~^ ERROR the parameter type `T` may not live long enough
 40 | |         //
 41 | |         // See `correct_region`, which explains the point of this
 ...  |
@@ -58,7 +58,7 @@ note: External requirements
    |
 76 |       with_signature(a, b, |x, y| {
    |  __________________________^
-77 | |         //~^ ERROR `T` does not outlive
+77 | |         //~^ ERROR the parameter type `T` may not live long enough
 78 | |         // See `correct_region`
 79 | |         require(&x, &y)
 80 | |         //~^ WARNING not reporting region error due to -Znll
@@ -94,25 +94,27 @@ note: External requirements
    = note: number of external vids: 4
    = note: where T: '_#3r
 
-error: `T` does not outlive `'_#3r`
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:38:26
    |
 38 |       with_signature(a, b, |x, y| {
    |  __________________________^
-39 | |         //~^ ERROR `T` does not outlive
+39 | |         //~^ ERROR the parameter type `T` may not live long enough
 40 | |         //
 41 | |         // See `correct_region`, which explains the point of this
 ...  |
 46 | |         //~^ WARNING not reporting region error due to -Znll
 47 | |     })
    | |_____^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(crate0:DefIndex(1:15), 'a))`...
 
 note: No external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:37:1
    |
 37 | / fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
 38 | |     with_signature(a, b, |x, y| {
-39 | |         //~^ ERROR `T` does not outlive
+39 | |         //~^ ERROR the parameter type `T` may not live long enough
 40 | |         //
 ...  |
 47 | |     })
@@ -140,17 +142,19 @@ note: No external requirements
                T
            ]
 
-error: `T` does not outlive `'_#5r`
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:76:26
    |
 76 |       with_signature(a, b, |x, y| {
    |  __________________________^
-77 | |         //~^ ERROR `T` does not outlive
+77 | |         //~^ ERROR the parameter type `T` may not live long enough
 78 | |         // See `correct_region`
 79 | |         require(&x, &y)
 80 | |         //~^ WARNING not reporting region error due to -Znll
 81 | |     })
    | |_____^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(crate0:DefIndex(1:21), 'a))`...
 
 note: No external requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:72:1

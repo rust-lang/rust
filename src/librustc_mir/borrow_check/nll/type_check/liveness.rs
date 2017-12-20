@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use dataflow::{FlowAtLocation, FlowsAtLocation};
+use borrow_check::nll::region_infer::Cause;
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use rustc::mir::{BasicBlock, Location, Mir};
@@ -79,7 +80,8 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             .simulate_block(self.mir, bb, |location, live_locals| {
                 for live_local in live_locals.iter() {
                     let live_local_ty = self.mir.local_decls[live_local].ty;
-                    self.push_type_live_constraint(live_local_ty, location);
+                    let cause = Cause::LiveVar(live_local, location);
+                    self.push_type_live_constraint(live_local_ty, location, cause);
                 }
             });
 
@@ -121,7 +123,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                     );
 
                     let live_local_ty = self.mir.local_decls[live_local].ty;
-                    self.add_drop_live_constraint(live_local_ty, location);
+                    self.add_drop_live_constraint(live_local, live_local_ty, location);
                 }
             }
 
@@ -146,7 +148,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     /// `location` -- i.e., it may be used later. This means that all
     /// regions appearing in the type `live_ty` must be live at
     /// `location`.
-    fn push_type_live_constraint<T>(&mut self, value: T, location: Location)
+    fn push_type_live_constraint<T>(&mut self, value: T, location: Location, cause: Cause)
     where
         T: TypeFoldable<'tcx>,
     {
@@ -160,7 +162,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             self.cx
                 .constraints
                 .liveness_set
-                .push((live_region, location));
+                .push((live_region, location, cause.clone()));
         });
     }
 
@@ -169,9 +171,15 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     /// the regions in its type must be live at `location`. The
     /// precise set will depend on the dropck constraints, and in
     /// particular this takes `#[may_dangle]` into account.
-    fn add_drop_live_constraint(&mut self, dropped_ty: Ty<'tcx>, location: Location) {
+    fn add_drop_live_constraint(
+        &mut self,
+        dropped_local: Local,
+        dropped_ty: Ty<'tcx>,
+        location: Location,
+    ) {
         debug!(
-            "add_drop_live_constraint(dropped_ty={:?}, location={:?})",
+            "add_drop_live_constraint(dropped_local={:?}, dropped_ty={:?}, location={:?})",
+            dropped_local,
             dropped_ty,
             location
         );
@@ -196,7 +204,8 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             // All things in the `outlives` array may be touched by
             // the destructor and must be live at this point.
             for outlive in outlives {
-                self.push_type_live_constraint(outlive, location);
+                let cause = Cause::DropVar(dropped_local, location);
+                self.push_type_live_constraint(outlive, location, cause);
             }
 
             // However, there may also be some types that
@@ -207,7 +216,8 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                 let ty = self.cx.normalize(&ty, location);
                 match ty.sty {
                     ty::TyParam(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
-                        self.push_type_live_constraint(ty, location);
+                        let cause = Cause::DropVar(dropped_local, location);
+                        self.push_type_live_constraint(ty, location, cause);
                     }
 
                     _ => if known.insert(ty) {

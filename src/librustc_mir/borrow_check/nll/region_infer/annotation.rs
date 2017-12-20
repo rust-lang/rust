@@ -15,32 +15,40 @@
 //! handle the part about dumping the inference context internal
 //! state.
 
-use rustc::ty;
+use borrow_check::nll::region_infer::RegionInferenceContext;
+use borrow_check::nll::universal_regions::DefiningTy;
 use rustc_errors::DiagnosticBuilder;
-use super::RegionInferenceContext;
 
 impl<'gcx, 'tcx> RegionInferenceContext<'tcx> {
     /// Write out our state into the `.mir` files.
     pub(crate) fn annotate(&self, err: &mut DiagnosticBuilder<'_>) {
-        match self.universal_regions.defining_ty.sty {
-            ty::TyClosure(def_id, substs) => {
+        match self.universal_regions.defining_ty {
+            DefiningTy::Closure(def_id, substs) => {
                 err.note(&format!(
                     "defining type: {:?} with closure substs {:#?}",
                     def_id,
                     &substs.substs[..]
                 ));
             }
-            ty::TyFnDef(def_id, substs) => {
+            DefiningTy::Generator(def_id, substs, interior) => {
+                err.note(&format!(
+                    "defining type: {:?} with closure substs {:#?} and interior {:?}",
+                    def_id,
+                    &substs.substs[..],
+                    interior
+                ));
+            }
+            DefiningTy::FnDef(def_id, substs) => {
                 err.note(&format!(
                     "defining type: {:?} with substs {:#?}",
                     def_id,
                     &substs[..]
                 ));
             }
-            _ => {
+            DefiningTy::Const(ty) => {
                 err.note(&format!(
                     "defining type: {:?}",
-                    self.universal_regions.defining_ty
+                    ty
                 ));
             }
         }

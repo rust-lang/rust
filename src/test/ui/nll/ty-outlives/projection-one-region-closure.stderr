@@ -83,13 +83,15 @@ note: External requirements
     = note: where T: '_#3r
     = note: where '_#2r: '_#3r
 
-error: `T` does not outlive `'_#5r`
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:56:29
    |
 56 |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:17), 'a))`...
 
-error: free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+error: free region `ReEarlyBound(0, 'b)` does not outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:17), 'a))`
   --> $DIR/projection-one-region-closure.rs:56:20
    |
 56 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -103,7 +105,7 @@ note: No external requirements
 54 | |     T: Anything<'b>,
 55 | | {
 ...  |
-59 | |     //~| ERROR free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+59 | |     //~| ERROR does not outlive free region
 60 | | }
    | |_^
    |
@@ -112,11 +114,13 @@ note: No external requirements
                T
            ]
 
-error: `T` does not outlive `'_#6r`
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:68:29
    |
 68 |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
 error: free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
   --> $DIR/projection-one-region-closure.rs:68:20
@@ -132,7 +136,7 @@ note: No external requirements
 65 | |     T: Anything<'b>,
 66 | |     'a: 'a,
 ...  |
-71 | |     //~| ERROR free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
+71 | |     //~| ERROR does not outlive free region
 72 | | }
    | |_^
    |
@@ -142,11 +146,13 @@ note: No external requirements
                T
            ]
 
-error: `T` does not outlive `'_#6r`
+error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/projection-one-region-closure.rs:90:29
    |
 90 |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
 
 error: free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
   --> $DIR/projection-one-region-closure.rs:90:20

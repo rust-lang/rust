@@ -35,6 +35,9 @@ error[E0597]: `y` does not live long enough
 ...
 36 |     }
    |      - borrowed value only lives until here
+37 | 
+38 |     deref(p);
+   |           - borrow later used here
    |
    = note: borrowed value must be valid for lifetime '_#4r...
 

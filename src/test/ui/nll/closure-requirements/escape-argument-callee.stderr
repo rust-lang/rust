@@ -4,7 +4,7 @@ warning: not reporting region error due to -Znll
 36 |         let mut closure = expect_sig(|p, y| *p = y);
    |                                                  ^
 
-error: free region `'_#4r` does not outlive free region `'_#3r`
+error: free region `ReFree(DefId(0/1:9 ~ escape_argument_callee[317d]::test[0]::{{closure}}[0]), BrAnon(3))` does not outlive free region `ReFree(DefId(0/1:9 ~ escape_argument_callee[317d]::test[0]::{{closure}}[0]), BrAnon(2))`
   --> $DIR/escape-argument-callee.rs:36:45
    |
 36 |         let mut closure = expect_sig(|p, y| *p = y);

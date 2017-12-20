@@ -72,11 +72,13 @@ note: External requirements
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#3r
 
-error: `<T as std::iter::Iterator>::Item` does not outlive `'_#4r`
+error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
   --> $DIR/projection-no-regions-closure.rs:36:23
    |
 36 |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
 
 note: No external requirements
   --> $DIR/projection-no-regions-closure.rs:32:1
@@ -86,7 +88,7 @@ note: No external requirements
 34 | |     T: Iterator,
 35 | | {
 ...  |
-38 | |     //~| ERROR `<T as std::iter::Iterator>::Item` does not outlive
+38 | |     //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 39 | | }
    | |_^
    |
@@ -111,11 +113,13 @@ note: No external requirements
                T
            ]
 
-error: `<T as std::iter::Iterator>::Item` does not outlive `'_#6r`
+error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
   --> $DIR/projection-no-regions-closure.rs:54:23
    |
 54 |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
 
 note: No external requirements
   --> $DIR/projection-no-regions-closure.rs:50:1
@@ -125,7 +129,7 @@ note: No external requirements
 52 | |     T: 'b + Iterator,
 53 | | {
 ...  |
-56 | |     //~| ERROR `<T as std::iter::Iterator>::Item` does not outlive
+56 | |     //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 57 | | }
    | |_^
    |

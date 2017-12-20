@@ -21,7 +21,7 @@ where
 {
     x
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR `T` does not outlive
+    //~| the parameter type `T` may not live long enough
 }
 
 fn correct_region<'a, T>(x: Box<T>) -> Box<Debug + 'a>
@@ -37,7 +37,7 @@ where
 {
     x
     //~^ WARNING not reporting region error due to -Znll
-    //~| ERROR `T` does not outlive
+    //~| the parameter type `T` may not live long enough
 }
 
 fn outlives_region<'a, 'b, T>(x: Box<T>) -> Box<Debug + 'a>

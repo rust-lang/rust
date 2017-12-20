@@ -44,7 +44,7 @@ fn demand_y<'x, 'y>(_outlives1: Cell<&&'x u32>, _outlives2: Cell<&'y &u32>, _y: 
 #[rustc_regions]
 fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
     establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
-        //~^ ERROR free region `'_#1r` does not outlive free region `'_#2r`
+        //~^ ERROR lifetime mismatch
 
         // Only works if 'x: 'y:
         demand_y(outlives1, outlives2, x.get()) //~ WARNING not reporting region error due to -Znll

@@ -39,6 +39,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 use rustc::ty::item_path;
+use rustc::mir::visit::MirVisitable;
 use std::path::{Path, PathBuf};
 use std::fs;
 use rustc::ty::TyCtxt;
@@ -219,6 +220,81 @@ impl LivenessResult {
     }
 }
 
+#[derive(Eq, PartialEq, Clone)]
+pub enum DefUse {
+    Def,
+    Use,
+}
+
+pub fn categorize<'tcx>(context: PlaceContext<'tcx>, mode: LivenessMode) -> Option<DefUse> {
+    match context {
+        ///////////////////////////////////////////////////////////////////////////
+        // DEFS
+
+        PlaceContext::Store |
+
+        // This is potentially both a def and a use...
+        PlaceContext::AsmOutput |
+
+        // We let Call define the result in both the success and
+        // unwind cases. This is not really correct, however it
+        // does not seem to be observable due to the way that we
+        // generate MIR. See the test case
+        // `mir-opt/nll/liveness-call-subtlety.rs`. To do things
+        // properly, we would apply the def in call only to the
+        // input from the success path and not the unwind
+        // path. -nmatsakis
+        PlaceContext::Call |
+
+        // Storage live and storage dead aren't proper defines, but we can ignore
+        // values that come before them.
+        PlaceContext::StorageLive |
+        PlaceContext::StorageDead => Some(DefUse::Def),
+
+        ///////////////////////////////////////////////////////////////////////////
+        // REGULAR USES
+        //
+        // These are uses that occur *outside* of a drop. For the
+        // purposes of NLL, these are special in that **all** the
+        // lifetimes appearing in the variable must be live for each regular use.
+
+        PlaceContext::Projection(..) |
+
+        // Borrows only consider their local used at the point of the borrow.
+        // This won't affect the results since we use this analysis for generators
+        // and we only care about the result at suspension points. Borrows cannot
+        // cross suspension points so this behavior is unproblematic.
+        PlaceContext::Borrow { .. } |
+
+        PlaceContext::Inspect |
+        PlaceContext::Copy |
+        PlaceContext::Move |
+        PlaceContext::Validate => {
+            if mode.include_regular_use {
+                Some(DefUse::Use)
+            } else {
+                None
+            }
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        // DROP USES
+        //
+        // These are uses that occur in a DROP (a MIR drop, not a
+        // call to `std::mem::drop()`). For the purposes of NLL,
+        // uses in drop are special because `#[may_dangle]`
+        // attributes can affect whether lifetimes must be live.
+
+        PlaceContext::Drop => {
+            if mode.include_drops {
+                Some(DefUse::Use)
+            } else {
+                None
+            }
+        }
+    }
+}
+
 struct DefsUsesVisitor {
     mode: LivenessMode,
     defs_uses: DefsUses,
@@ -267,69 +343,16 @@ impl DefsUses {
 
 impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
-        match context {
-            ///////////////////////////////////////////////////////////////////////////
-            // DEFS
-
-            PlaceContext::Store |
-
-            // This is potentially both a def and a use...
-            PlaceContext::AsmOutput |
-
-            // We let Call define the result in both the success and
-            // unwind cases. This is not really correct, however it
-            // does not seem to be observable due to the way that we
-            // generate MIR. See the test case
-            // `mir-opt/nll/liveness-call-subtlety.rs`. To do things
-            // properly, we would apply the def in call only to the
-            // input from the success path and not the unwind
-            // path. -nmatsakis
-            PlaceContext::Call |
-
-            // Storage live and storage dead aren't proper defines, but we can ignore
-            // values that come before them.
-            PlaceContext::StorageLive |
-            PlaceContext::StorageDead => {
+        match categorize(context, self.mode) {
+            Some(DefUse::Def) => {
                 self.defs_uses.add_def(local);
             }
 
-            ///////////////////////////////////////////////////////////////////////////
-            // REGULAR USES
-            //
-            // These are uses that occur *outside* of a drop. For the
-            // purposes of NLL, these are special in that **all** the
-            // lifetimes appearing in the variable must be live for each regular use.
-
-            PlaceContext::Projection(..) |
-
-            // Borrows only consider their local used at the point of the borrow.
-            // This won't affect the results since we use this analysis for generators
-            // and we only care about the result at suspension points. Borrows cannot
-            // cross suspension points so this behavior is unproblematic.
-            PlaceContext::Borrow { .. } |
-
-            PlaceContext::Inspect |
-            PlaceContext::Copy |
-            PlaceContext::Move |
-            PlaceContext::Validate => {
-                if self.mode.include_regular_use {
-                    self.defs_uses.add_use(local);
-                }
+            Some(DefUse::Use) => {
+                self.defs_uses.add_use(local);
             }
 
-            ///////////////////////////////////////////////////////////////////////////
-            // DROP USES
-            //
-            // These are uses that occur in a DROP (a MIR drop, not a
-            // call to `std::mem::drop()`). For the purposes of NLL,
-            // uses in drop are special because `#[may_dangle]`
-            // attributes can affect whether lifetimes must be live.
-
-            PlaceContext::Drop => {
-                if self.mode.include_drops {
-                    self.defs_uses.add_use(local);
-                }
-            }
+            None => {}
         }
     }
 }
@@ -356,30 +379,6 @@ fn block<'tcx>(mode: LivenessMode, b: &BasicBlockData<'tcx>, locals: usize) -> D
     }
 
     visitor.defs_uses
-}
-
-trait MirVisitable<'tcx> {
-    fn apply<V>(&self, location: Location, visitor: &mut V)
-    where
-        V: Visitor<'tcx>;
-}
-
-impl<'tcx> MirVisitable<'tcx> for Statement<'tcx> {
-    fn apply<V>(&self, location: Location, visitor: &mut V)
-    where
-        V: Visitor<'tcx>,
-    {
-        visitor.visit_statement(location.block, self, location)
-    }
-}
-
-impl<'tcx> MirVisitable<'tcx> for Option<Terminator<'tcx>> {
-    fn apply<V>(&self, location: Location, visitor: &mut V)
-    where
-        V: Visitor<'tcx>,
-    {
-        visitor.visit_terminator(location.block, self.as_ref().unwrap(), location)
-    }
 }
 
 pub fn dump_mir<'a, 'tcx>(

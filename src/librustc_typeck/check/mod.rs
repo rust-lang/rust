@@ -90,6 +90,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use std::slice;
 use namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
+use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -97,7 +98,7 @@ use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCo
 use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
+use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -223,43 +224,6 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     implicit_region_bound: Option<ty::Region<'tcx>>,
 
     body_id: Option<hir::BodyId>,
-}
-
-/// Information about the anonymous, abstract types whose values we
-/// are inferring in this function (these are the `impl Trait` that
-/// appear in the return type).
-#[derive(Debug)]
-struct AnonTypeDecl<'tcx> {
-    /// The substitutions that we apply to the abstract that that this
-    /// `impl Trait` desugars to. e.g., if:
-    ///
-    ///     fn foo<'a, 'b, T>() -> impl Trait<'a>
-    ///
-    /// winds up desugared to:
-    ///
-    ///     abstract type Foo<'x, T>: Trait<'x>
-    ///     fn foo<'a, 'b, T>() -> Foo<'a, T>
-    ///
-    /// then `substs` would be `['a, T]`.
-    substs: &'tcx Substs<'tcx>,
-
-    /// The type variable that represents the value of the abstract type
-    /// that we require. In other words, after we compile this function,
-    /// we will be created a constraint like:
-    ///
-    ///     Foo<'a, T> = ?C
-    ///
-    /// where `?C` is the value of this type variable. =) It may
-    /// naturally refer to the type and lifetime parameters in scope
-    /// in this function, though ultimately it should only reference
-    /// those that are arguments to `Foo` in the constraint above. (In
-    /// other words, `?C` should not include `'b`, even though it's a
-    /// lifetime parameter on `foo`.)
-    concrete_ty: Ty<'tcx>,
-
-    /// A list of all required region bounds on the impl Trait type,
-    /// e.g. `'a` and `'b` in `fn foo<'a, 'b, 'c>() -> impl Trait<'c> + 'a + 'b`.
-    required_region_bounds: Vec<ty::Region<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
@@ -873,8 +837,6 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   &fn_sig);
 
             let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, false).0;
-            // Ensure anon_types have been instantiated prior to entering regionck
-            fcx.instantiate_anon_types(&fn_sig.output());
             fcx
         } else {
             let fcx = FnCtxt::new(&inh, param_env, body.value.id);
@@ -1023,7 +985,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     let ret_ty = fn_sig.output();
     fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::SizedReturnType);
-    let ret_ty = fcx.instantiate_anon_types(&ret_ty);
+    let ret_ty = fcx.instantiate_anon_types_from_return_value(fn_id, &ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
@@ -1914,60 +1876,38 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
-    /// Replace all anonymized types with fresh inference variables
-    /// and record them for writeback.
-    fn instantiate_anon_types<T: TypeFoldable<'tcx>>(&self, value: &T) -> T {
-        debug!("instantiate_anon_types(value={:?})", value);
-        value.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
-            if let ty::TyAnon(def_id, substs) = ty.sty {
-                debug!("instantiate_anon_types: TyAnon(def_id={:?}, substs={:?})", def_id, substs);
+    /// Replace the anonymized types from the return value of the
+    /// function with type variables and records the `AnonTypeMap` for
+    /// later use during writeback. See
+    /// `InferCtxt::instantiate_anon_types` for more details.
+    fn instantiate_anon_types_from_return_value<T: TypeFoldable<'tcx>>(
+        &self,
+        fn_id: ast::NodeId,
+        value: &T,
+    ) -> T {
+        let fn_def_id = self.tcx.hir.local_def_id(fn_id);
+        debug!(
+            "instantiate_anon_types_from_return_value(fn_def_id={:?}, value={:?})",
+            fn_def_id,
+            value
+        );
 
-                // Use the same type variable if the exact same TyAnon appears more
-                // than once in the return type (e.g. if it's passed to a type alias).
-                if let Some(anon_defn) = self.anon_types.borrow().get(&def_id) {
-                    return anon_defn.concrete_ty;
-                }
-                let span = self.tcx.def_span(def_id);
-                let ty_var = self.next_ty_var(TypeVariableOrigin::TypeInference(span));
+        let (value, anon_type_map) = self.register_infer_ok_obligations(
+            self.instantiate_anon_types(
+                fn_def_id,
+                self.body_id,
+                self.param_env,
+                value,
+            )
+        );
 
-                let predicates_of = self.tcx.predicates_of(def_id);
-                let bounds = predicates_of.instantiate(self.tcx, substs);
-                debug!("instantiate_anon_types: bounds={:?}", bounds);
+        let mut anon_types = self.anon_types.borrow_mut();
+        for (ty, decl) in anon_type_map {
+            let old_value = anon_types.insert(ty, decl);
+            assert!(old_value.is_none(), "instantiated twice: {:?}/{:?}", ty, decl);
+        }
 
-                let required_region_bounds =
-                    self.tcx.required_region_bounds(ty, bounds.predicates.clone());
-                debug!("instantiate_anon_types: required_region_bounds={:?}",
-                       required_region_bounds);
-
-                self.anon_types.borrow_mut().insert(def_id, AnonTypeDecl {
-                    substs,
-                    concrete_ty: ty_var,
-                    required_region_bounds,
-                });
-                debug!("instantiate_anon_types: ty_var={:?}", ty_var);
-
-                for predicate in bounds.predicates {
-                    // Change the predicate to refer to the type variable,
-                    // which will be the concrete type, instead of the TyAnon.
-                    // This also instantiates nested `impl Trait`.
-                    let predicate = self.instantiate_anon_types(&predicate);
-
-                    // Require that the predicate holds for the concrete type.
-                    let cause = traits::ObligationCause::new(span,
-                                                             self.body_id,
-                                                             traits::SizedReturnType);
-
-                    debug!("instantiate_anon_types: predicate={:?}", predicate);
-                    self.register_predicate(traits::Obligation::new(cause,
-                                                                    self.param_env,
-                                                                    predicate));
-                }
-
-                ty_var
-            } else {
-                ty
-            }
-        }})
+        value
     }
 
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T

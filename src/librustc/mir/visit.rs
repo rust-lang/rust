@@ -811,6 +811,31 @@ macro_rules! make_mir_visitor {
 make_mir_visitor!(Visitor,);
 make_mir_visitor!(MutVisitor,mut);
 
+pub trait MirVisitable<'tcx> {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>);
+}
+
+impl<'tcx> MirVisitable<'tcx> for Statement<'tcx> {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
+    {
+        visitor.visit_statement(location.block, self, location)
+    }
+}
+
+impl<'tcx> MirVisitable<'tcx> for Terminator<'tcx> {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
+    {
+        visitor.visit_terminator(location.block, self, location)
+    }
+}
+
+impl<'tcx> MirVisitable<'tcx> for Option<Terminator<'tcx>> {
+    fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
+    {
+        visitor.visit_terminator(location.block, self.as_ref().unwrap(), location)
+    }
+}
+
 /// Extra information passed to `visit_ty` and friends to give context
 /// about where the type etc appears.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

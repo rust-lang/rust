@@ -18,7 +18,7 @@
 fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
     &*x
         //~^ WARN not reporting region error due to -Znll
-        //~| ERROR free region `'_#1r` does not outlive free region `'_#2r`
+        //~| ERROR lifetime mismatch
 }
 
 fn main() { }

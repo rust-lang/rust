@@ -42,6 +42,9 @@ error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as imm
 43 |             Some(v) => {
 44 |                 map.set(String::new()); // Both AST and MIR error here
    |                 ^^^ mutable borrow occurs here
+...
+47 |                 return v;
+   |                        - borrow later used here
 
 error: aborting due to 4 previous errors
 

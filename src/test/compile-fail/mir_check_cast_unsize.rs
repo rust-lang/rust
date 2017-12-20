@@ -16,7 +16,7 @@
 use std::fmt::Debug;
 
 fn bar<'a>(x: &'a u32) -> &'static dyn Debug {
-    //~^ ERROR free region `'_#1r` does not outlive free region `'static`
+    //~^ ERROR free region `'a` does not outlive free region `'static`
     x
     //~^ WARNING not reporting region error due to -Znll
 }

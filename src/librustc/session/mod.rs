@@ -18,7 +18,7 @@ use lint;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::DebugInfoLevel;
+use session::config::{BorrowckMode, DebugInfoLevel};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -437,11 +437,62 @@ impl Session {
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
     }
-    pub fn emit_end_regions(&self) -> bool {
-        self.opts.debugging_opts.emit_end_regions ||
-            (self.opts.debugging_opts.mir_emit_validate > 0) ||
-            self.opts.borrowck_mode.use_mir()
+
+    /// If true, we should use NLL-style region checking instead of
+    /// lexical style.
+    pub fn nll(&self) -> bool {
+        self.features.borrow().nll || self.opts.debugging_opts.nll
     }
+
+    /// If true, we should use the MIR-based borrowck (we may *also* use
+    /// the AST-based borrowck).
+    pub fn use_mir(&self) -> bool {
+        self.borrowck_mode().use_mir()
+    }
+
+    /// If true, we should gather causal information during NLL
+    /// checking. This will eventually be the normal thing, but right
+    /// now it is too unoptimized.
+    pub fn nll_dump_cause(&self) -> bool {
+        self.opts.debugging_opts.nll_dump_cause
+    }
+
+    /// If true, we should enable two-phase borrows checks. This is
+    /// done with either `-Ztwo-phase-borrows` or with
+    /// `#![feature(nll)]`.
+    pub fn two_phase_borrows(&self) -> bool {
+        self.features.borrow().nll || self.opts.debugging_opts.two_phase_borrows
+    }
+
+    /// What mode(s) of borrowck should we run? AST? MIR? both?
+    /// (Also considers the `#![feature(nll)]` setting.)
+    pub fn borrowck_mode(&self) -> BorrowckMode {
+        match self.opts.borrowck_mode {
+            mode @ BorrowckMode::Mir |
+            mode @ BorrowckMode::Compare => mode,
+
+            mode @ BorrowckMode::Ast => {
+                if self.nll() {
+                    BorrowckMode::Mir
+                } else {
+                    mode
+                }
+            }
+
+        }
+    }
+
+    /// Should we emit EndRegion MIR statements? These are consumed by
+    /// MIR borrowck, but not when NLL is used. They are also consumed
+    /// by the validation stuff.
+    pub fn emit_end_regions(&self) -> bool {
+        // FIXME(#46875) -- we should not emit end regions when NLL is enabled,
+        // but for now we can't stop doing so because it causes false positives
+        self.opts.debugging_opts.emit_end_regions ||
+            self.opts.debugging_opts.mir_emit_validate > 0 ||
+            self.use_mir()
+    }
+
     pub fn lto(&self) -> bool {
         self.opts.cg.lto || self.target.target.options.requires_lto
     }

@@ -4,7 +4,7 @@ warning: not reporting region error due to -Znll
 55 |             let p = x.get();
    |                     ^^^^^^^
 
-error: free region `'_#5r` does not outlive free region `'_#6r`
+error: free region `ReFree(DefId(0/1:20 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]), BrAnon(1))` does not outlive free region `ReFree(DefId(0/1:20 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]), BrAnon(2))`
   --> $DIR/propagate-approximated-fail-no-postdom.rs:55:17
    |
 55 |             let p = x.get();
@@ -17,7 +17,7 @@ note: No external requirements
 54 | |             // Only works if 'x: 'y:
 55 | |             let p = x.get();
 56 | |             //~^ WARN not reporting region error due to -Znll
-57 | |             //~| ERROR free region `'_#5r` does not outlive free region `'_#6r`
+57 | |             //~| ERROR does not outlive free region
 58 | |             demand_y(x, y, p)
 59 | |         },
    | |_________^

@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Znll -Zborrowck=mir
+// compile-flags:-Znll-dump-cause
 
 // Test that a structure which tries to store a pointer to `y` into
 // `p` (indirectly) fails to compile.
 
 #![feature(rustc_attrs)]
+#![feature(nll)]
 
 struct SomeStruct<'a, 'b: 'a> {
     p: &'a mut &'b i32,

@@ -1,0 +1,16 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/impl-trait-captures.rs:22:5
+   |
+22 |     x
+   |     ^
+
+error[E0621]: explicit lifetime required in the type of `x`
+  --> $DIR/impl-trait-captures.rs:22:5
+   |
+21 | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
+   |               - consider changing the type of `x` to `&ReEarlyBound(0, 'a) T`
+22 |     x
+   |     ^ lifetime `ReEarlyBound(0, 'a)` required
+
+error: aborting due to previous error
+

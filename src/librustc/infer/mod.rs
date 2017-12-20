@@ -48,6 +48,7 @@ use self::outlives::env::OutlivesEnvironment;
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
+pub mod anon_types;
 pub mod at;
 mod combine;
 mod equate;
@@ -1158,10 +1159,45 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_type_vars_if_possible` as well as `fully_resolve`.
-    pub fn resolve_regions_and_report_errors(&self,
-                                             region_context: DefId,
-                                             region_map: &region::ScopeTree,
-                                             outlives_env: &OutlivesEnvironment<'tcx>) {
+    pub fn resolve_regions_and_report_errors(
+        &self,
+        region_context: DefId,
+        region_map: &region::ScopeTree,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) {
+        self.resolve_regions_and_report_errors_inner(
+            region_context,
+            region_map,
+            outlives_env,
+            false,
+        )
+    }
+
+    /// Like `resolve_regions_and_report_errors`, but skips error
+    /// reporting if NLL is enabled.  This is used for fn bodies where
+    /// the same error may later be reported by the NLL-based
+    /// inference.
+    pub fn resolve_regions_and_report_errors_unless_nll(
+        &self,
+        region_context: DefId,
+        region_map: &region::ScopeTree,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) {
+        self.resolve_regions_and_report_errors_inner(
+            region_context,
+            region_map,
+            outlives_env,
+            true,
+        )
+    }
+
+    fn resolve_regions_and_report_errors_inner(
+        &self,
+        region_context: DefId,
+        region_map: &region::ScopeTree,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+        will_later_be_reported_by_nll: bool,
+    ) {
         assert!(self.is_tainted_by_errors() || self.region_obligations.borrow().is_empty(),
                 "region_obligations not empty: {:#?}",
                 self.region_obligations.borrow());
@@ -1186,7 +1222,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(region_map, &errors); // see error_reporting module
+            self.report_region_errors(region_map, &errors, will_later_be_reported_by_nll);
         }
     }
 

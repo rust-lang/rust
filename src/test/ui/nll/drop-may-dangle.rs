@@ -12,41 +12,35 @@
 // in the type of `p` includes the points after `&v[0]` up to (but not
 // including) the call to `use_x`. The `else` branch is not included.
 
-// ignore-tidy-linelength
-// compile-flags:-Znll -Zverbose
-//                     ^^^^^^^^^ force compiler to dump more region information
+// compile-flags:-Znll -Zborrowck=mir
+// must-compile-successfully
 
 #![allow(warnings)]
+#![feature(dropck_eyepatch)]
+#![feature(generic_param_attrs)]
 
 fn use_x(_: usize) -> bool { true }
 
 fn main() {
     let mut v = [1, 2, 3];
-    let p: Wrap<& /* R1 */ usize> = Wrap { value: &v[0] };
+    let p: WrapMayDangle<& /* R4 */ usize> = WrapMayDangle { value: &v[0] };
     if true {
+        // `p` will get dropped at end of this block. However, because of
+        // the `#[may_dangle]` attribute, we do not need to consider R4
+        // live after this point.
         use_x(*p.value);
     } else {
+        v[0] += 1;
         use_x(22);
     }
 
-    // `p` will get dropped here. Because the `#[may_dangle]`
-    // attribute is not present on `Wrap`, we must conservatively
-    // assume that the dtor may access the `value` field, and hence we
-    // must consider R1 to be live.
+    v[0] += 1;
 }
 
-struct Wrap<T> {
+struct WrapMayDangle<T> {
     value: T
 }
 
-// Look ma, no `#[may_dangle]` attribute here.
-impl<T> Drop for Wrap<T> {
+unsafe impl<#[may_dangle] T> Drop for WrapMayDangle<T> {
     fn drop(&mut self) { }
 }
-
-// END RUST SOURCE
-// START rustc.main.nll.0.mir
-// | '_#6r    | {bb2[3..=5], bb3[0..=2], bb4[0], bb5[0..=2], bb6[0], bb7[0..=1], bb8[0]}
-// ...
-// let _2: Wrap<&'_#6r usize>;
-// END rustc.main.nll.0.mir

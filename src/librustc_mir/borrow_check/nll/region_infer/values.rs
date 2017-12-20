@@ -10,10 +10,14 @@
 
 use std::rc::Rc;
 use rustc_data_structures::bitvec::BitMatrix;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::RegionVid;
+use syntax::codemap::Span;
+
+use super::{Cause, CauseExt, TrackCauses};
 
 /// Maps between the various kinds of elements of a region value to
 /// the internal indices that w use.
@@ -27,18 +31,23 @@ pub(super) struct RegionValueElements {
 impl RegionValueElements {
     pub(super) fn new(mir: &Mir<'_>, num_universal_regions: usize) -> Self {
         let mut num_points = 0;
-        let statements_before_block =
-            mir.basic_blocks()
-               .iter()
-               .map(|block_data| {
-                   let v = num_points;
-                   num_points += block_data.statements.len() + 1;
-                   v
-               })
-               .collect();
+        let statements_before_block = mir.basic_blocks()
+            .iter()
+            .map(|block_data| {
+                let v = num_points;
+                num_points += block_data.statements.len() + 1;
+                v
+            })
+            .collect();
 
-        debug!("RegionValueElements(num_universal_regions={:?})", num_universal_regions);
-        debug!("RegionValueElements: statements_before_block={:#?}", statements_before_block);
+        debug!(
+            "RegionValueElements(num_universal_regions={:?})",
+            num_universal_regions
+        );
+        debug!(
+            "RegionValueElements: statements_before_block={:#?}",
+            statements_before_block
+        );
         debug!("RegionValueElements: num_points={:#?}", num_points);
 
         Self {
@@ -60,7 +69,9 @@ impl RegionValueElements {
 
     /// Iterates over the `RegionElementIndex` for all points in the CFG.
     pub(super) fn all_point_indices<'a>(&'a self) -> impl Iterator<Item = RegionElementIndex> + 'a {
-        (0..self.num_points).map(move |i| RegionElementIndex::new(i + self.num_universal_regions))
+        (0..self.num_points).map(move |i| {
+            RegionElementIndex::new(i + self.num_universal_regions)
+        })
     }
 
     /// Iterates over the `RegionElementIndex` for all points in the CFG.
@@ -95,12 +106,11 @@ impl RegionValueElements {
             // be (BB2, 20).
             //
             // Nit: we could do a binary search here but I'm too lazy.
-            let (block, &first_index) =
-                self.statements_before_block
-                    .iter_enumerated()
-                    .filter(|(_, first_index)| **first_index <= point_index)
-                    .last()
-                    .unwrap();
+            let (block, &first_index) = self.statements_before_block
+                .iter_enumerated()
+                .filter(|(_, first_index)| **first_index <= point_index)
+                .last()
+                .unwrap();
 
             RegionElement::Location(Location {
                 block,
@@ -151,7 +161,10 @@ pub(super) trait ToElementIndex {
 
 impl ToElementIndex for Location {
     fn to_element_index(self, elements: &RegionValueElements) -> RegionElementIndex {
-        let Location { block, statement_index } = self;
+        let Location {
+            block,
+            statement_index,
+        } = self;
         let start_index = elements.statements_before_block[block];
         RegionElementIndex::new(elements.num_universal_regions + start_index + statement_index)
     }
@@ -178,10 +191,22 @@ impl ToElementIndex for RegionElementIndex {
 pub(super) struct RegionValues {
     elements: Rc<RegionValueElements>,
     matrix: BitMatrix,
+
+    /// If cause tracking is enabled, maps from a pair (r, e)
+    /// consisting of a region `r` that contains some element `e` to
+    /// the reason that the element is contained. There should be an
+    /// entry for every bit set to 1 in `BitMatrix`.
+    causes: Option<CauseMap>,
 }
 
+type CauseMap = FxHashMap<(RegionVid, RegionElementIndex), Rc<Cause>>;
+
 impl RegionValues {
-    pub(super) fn new(elements: &Rc<RegionValueElements>, num_region_variables: usize) -> Self {
+    pub(super) fn new(
+        elements: &Rc<RegionValueElements>,
+        num_region_variables: usize,
+        track_causes: TrackCauses,
+    ) -> Self {
         assert!(
             elements.num_universal_regions <= num_region_variables,
             "universal regions are a subset of the region variables"
@@ -190,19 +215,69 @@ impl RegionValues {
         Self {
             elements: elements.clone(),
             matrix: BitMatrix::new(num_region_variables, elements.num_elements()),
+            causes: if track_causes.0 {
+                Some(CauseMap::default())
+            } else {
+                None
+            },
         }
     }
 
     /// Adds the given element to the value for the given region. Returns true if
     /// the element is newly added (i.e., was not already present).
-    pub(super) fn add<E: ToElementIndex>(&mut self, r: RegionVid, elem: E) -> bool {
+    pub(super) fn add<E: ToElementIndex>(&mut self, r: RegionVid, elem: E, cause: &Cause) -> bool {
         let i = self.elements.index(elem);
+        self.add_internal(r, i, |_| cause.clone())
+    }
+
+    /// Internal method to add an element to a region.
+    ///
+    /// Takes a "lazy" cause -- this function will return the cause, but it will only
+    /// be invoked if cause tracking is enabled.
+    fn add_internal<F>(&mut self, r: RegionVid, i: RegionElementIndex, make_cause: F) -> bool
+    where
+        F: FnOnce(&CauseMap) -> Cause,
+    {
         if self.matrix.add(r.index(), i.index()) {
             debug!("add(r={:?}, i={:?})", r, self.elements.to_element(i));
+
+            if let Some(causes) = &mut self.causes {
+                let cause = Rc::new(make_cause(causes));
+                causes.insert((r, i), cause);
+            }
+
             true
         } else {
+            if let Some(causes) = &mut self.causes {
+                let cause = make_cause(causes);
+                let old_cause = causes.get_mut(&(r, i)).unwrap();
+                if cause < **old_cause {
+                    *old_cause = Rc::new(cause);
+                    return true;
+                }
+            }
+
             false
         }
+    }
+
+    /// Adds `elem` to `to_region` because of a relation:
+    ///
+    ///     to_region: from_region @ constraint_location
+    ///
+    /// that was added by the cod at `constraint_span`.
+    pub(super) fn add_due_to_outlives<T: ToElementIndex>(
+        &mut self,
+        from_region: RegionVid,
+        to_region: RegionVid,
+        elem: T,
+        constraint_location: Location,
+        constraint_span: Span,
+    ) -> bool {
+        let elem = self.elements.index(elem);
+        self.add_internal(to_region, elem, |causes| {
+            causes[&(from_region, elem)].outlives(constraint_location, constraint_span)
+        })
     }
 
     /// Adds all the universal regions outlived by `from_region` to
@@ -211,10 +286,12 @@ impl RegionValues {
         &mut self,
         from_region: RegionVid,
         to_region: RegionVid,
+        constraint_location: Location,
+        constraint_span: Span,
     ) -> bool {
-        // FIXME. We could optimize this by improving
-        // `BitMatrix::merge` so it does not always merge an entire
-        // row.
+        // We could optimize this by improving `BitMatrix::merge` so
+        // it does not always merge an entire row. That would
+        // complicate causal tracking though.
         debug!(
             "add_universal_regions_outlived_by(from_region={:?}, to_region={:?})",
             from_region,
@@ -223,7 +300,13 @@ impl RegionValues {
         let mut changed = false;
         for elem in self.elements.all_universal_region_indices() {
             if self.contains(from_region, elem) {
-                changed |= self.add(to_region, elem);
+                changed |= self.add_due_to_outlives(
+                    from_region,
+                    to_region,
+                    elem,
+                    constraint_location,
+                    constraint_span,
+                );
             }
         }
         changed
@@ -336,6 +419,20 @@ impl RegionValues {
                 location1.statement_index,
                 location2.statement_index
             ));
+        }
+    }
+
+    /// Given a region `r` that contains the element `elem`, returns the `Cause`
+    /// that tells us *why* `elem` is found in that region.
+    ///
+    /// Returns None if cause tracking is disabled or `elem` is not
+    /// actually found in `r`.
+    pub(super) fn cause<T: ToElementIndex>(&self, r: RegionVid, elem: T) -> Option<Rc<Cause>> {
+        let index = self.elements.index(elem);
+        if let Some(causes) = &self.causes {
+            causes.get(&(r, index)).cloned()
+        } else {
+            None
         }
     }
 }

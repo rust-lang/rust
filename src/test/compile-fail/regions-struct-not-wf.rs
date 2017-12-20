@@ -10,11 +10,15 @@
 
 // Various examples of structs whose fields are not well-formed.
 
+// revisions:lexical nll
+
 #![allow(dead_code)]
+#![cfg_attr(nll, feature(nll))]
 
 struct Ref<'a, T> {
     field: &'a T
-        //~^ ERROR the parameter type `T` may not live long enough
+        //[lexical]~^ ERROR the parameter type `T` may not live long enough
+        //[nll]~^^ ERROR the parameter type `T` may not live long enough
 }
 
 struct RefOk<'a, T:'a> {
@@ -23,12 +27,14 @@ struct RefOk<'a, T:'a> {
 
 struct RefIndirect<'a, T> {
     field: RefOk<'a, T>
-        //~^ ERROR the parameter type `T` may not live long enough
+        //[lexical]~^ ERROR the parameter type `T` may not live long enough
+        //[nll]~^^ ERROR the parameter type `T` may not live long enough
 }
 
 struct DoubleRef<'a, 'b, T> {
     field: &'a &'b T
-        //~^ ERROR reference has a longer lifetime than the data it references
+        //[lexical]~^ ERROR reference has a longer lifetime than the data it references
+        //[nll]~^^ ERROR reference has a longer lifetime than the data it references
 }
 
 fn main() { }

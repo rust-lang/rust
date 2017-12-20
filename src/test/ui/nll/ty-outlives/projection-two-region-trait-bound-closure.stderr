@@ -152,11 +152,13 @@ note: External requirements
     = note: number of external vids: 3
     = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#1r)>>::AssocType: '_#2r
 
-error: `<T as Anything<'_#5r, '_#6r>>::AssocType` does not outlive `'_#7r`
+error[E0309]: the associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:49:29
    |
 49 |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#5r, '_#6r>>::AssocType: ReFree(DefId(0/0:8 ~ projection_two_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:19), 'a))`...
 
 note: No external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:45:1
@@ -166,7 +168,7 @@ note: No external requirements
 47 | |     T: Anything<'b, 'c>,
 48 | | {
 ...  |
-51 | |     //~| ERROR `<T as Anything<'_#5r, '_#6r>>::AssocType` does not outlive `'_#7r`
+51 | |     //~| ERROR associated type `<T as Anything<'_#5r, '_#6r>>::AssocType` may not live long enough
 52 | | }
    | |_^
    |
@@ -176,11 +178,13 @@ note: No external requirements
                T
            ]
 
-error: `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
+error[E0309]: the associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:60:29
    |
 60 |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: ReEarlyBound(0, 'a)`...
 
 note: No external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:55:1
@@ -190,7 +194,7 @@ note: No external requirements
 57 | |     T: Anything<'b, 'c>,
 58 | |     'a: 'a,
 ...  |
-62 | |     //~| ERROR `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
+62 | |     //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
 63 | | }
    | |_^
    |
@@ -201,11 +205,13 @@ note: No external requirements
                T
            ]
 
-error: `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
+error[E0309]: the associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
   --> $DIR/projection-two-region-trait-bound-closure.rs:81:29
    |
 81 |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as Anything<'_#6r, '_#7r>>::AssocType: ReEarlyBound(0, 'a)`...
 
 note: No external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:66:1
@@ -215,7 +221,7 @@ note: No external requirements
 68 | |     T: Anything<'b, 'c>,
 69 | |     T::AssocType: 'a,
 ...  |
-83 | |     //~| ERROR `<T as Anything<'_#6r, '_#7r>>::AssocType` does not outlive `'_#8r`
+83 | |     //~| ERROR associated type `<T as Anything<'_#6r, '_#7r>>::AssocType` may not live long enough
 84 | | }
    | |_^
    |
@@ -264,7 +270,7 @@ note: No external requirements
                 T
             ]
 
-error: free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+error: free region `ReEarlyBound(0, 'b)` does not outlive free region `ReFree(DefId(0/0:13 ~ projection_two_region_trait_bound_closure[317d]::two_regions[0]), BrNamed(crate0:DefIndex(1:44), 'a))`
    --> $DIR/projection-two-region-trait-bound-closure.rs:109:20
     |
 109 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -278,7 +284,7 @@ note: No external requirements
 107 | |     T: Anything<'b, 'b>,
 108 | | {
 ...   |
-111 | |     //~| ERROR free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+111 | |     //~| ERROR does not outlive free region
 112 | | }
     | |_^
     |

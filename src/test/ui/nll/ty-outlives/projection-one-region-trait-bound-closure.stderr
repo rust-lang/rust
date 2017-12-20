@@ -94,7 +94,7 @@ note: External requirements
     = note: number of external vids: 3
     = note: where '_#1r: '_#2r
 
-error: free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+error: free region `ReEarlyBound(0, 'b)` does not outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:17), 'a))`
   --> $DIR/projection-one-region-trait-bound-closure.rs:48:20
    |
 48 |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -108,7 +108,7 @@ note: No external requirements
 46 | |     T: Anything<'b>,
 47 | | {
 ...  |
-50 | |     //~| ERROR free region `ReEarlyBound(0, 'b)` does not outlive free region `'_#2r`
+50 | |     //~| ERROR does not outlive free region
 51 | | }
    | |_^
    |
@@ -131,7 +131,7 @@ note: No external requirements
 56 | |     T: Anything<'b>,
 57 | |     'a: 'a,
 ...  |
-61 | |     //~| ERROR free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
+61 | |     //~| ERROR does not outlive free region
 62 | | }
    | |_^
    |
@@ -155,7 +155,7 @@ note: No external requirements
 67 | |     T: Anything<'b>,
 68 | |     T::AssocType: 'a,
 ...  |
-82 | |     //~| ERROR free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
+82 | |     //~| ERROR does not outlive free region
 83 | | }
    | |_^
    |

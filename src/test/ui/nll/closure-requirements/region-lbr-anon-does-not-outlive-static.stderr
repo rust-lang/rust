@@ -4,7 +4,7 @@ warning: not reporting region error due to -Znll
 19 |     &*x
    |     ^^^
 
-error: free region `'_#1r` does not outlive free region `ReStatic`
+error: free region `ReFree(DefId(0/0:3 ~ region_lbr_anon_does_not_outlive_static[317d]::foo[0]), BrAnon(0))` does not outlive free region `ReStatic`
   --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
    |
 19 |     &*x
