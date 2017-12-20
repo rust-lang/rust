@@ -361,7 +361,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                 }
             }
 
-            mir::StatementKind::Assign(_, ref rhs) => {
+            mir::StatementKind::Assign(ref lhs, ref rhs) => {
                 // NOTE: if/when the Assign case is revised to inspect
                 // the assigned_place here, make sure to also
                 // re-consider the current implementations of the
@@ -382,6 +382,22 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                         panic!("could not find BorrowIndexs for region {:?}", region);
                     }).contains(&index));
                     sets.gen(&ReserveOrActivateIndex::reserved(*index));
+
+                    if is_activations {
+                        // Issue #46746: Two-phase borrows handles
+                        // stmts of form `Tmp = &mut Borrow` ...
+                        match lhs {
+                            Place::Local(..) => {} // okay
+                            Place::Static(..) => unreachable!(), // (filtered by is_unsafe_place)
+                            Place::Projection(..) => {
+                                // ... can assign into projections,
+                                // e.g. `box (&mut _)`. Current
+                                // conservative solution: force
+                                // immediate activation here.
+                                sets.gen(&ReserveOrActivateIndex::active(*index));
+                            }
+                        }
+                    }
                 }
             }
 
