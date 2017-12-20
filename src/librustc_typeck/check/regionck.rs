@@ -124,7 +124,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             rcx.visit_body(body);
             rcx.visit_region_obligations(id);
         }
-        rcx.resolve_regions_and_report_errors();
+        rcx.resolve_regions_and_report_errors_unless_nll();
 
         assert!(self.tables.borrow().free_region_map.is_empty());
         self.tables.borrow_mut().free_region_map = rcx.outlives_environment.into_free_region_map();
@@ -173,7 +173,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             rcx.visit_fn_body(fn_id, body, self.tcx.hir.span(fn_id));
         }
 
-        rcx.resolve_regions_and_report_errors();
+        rcx.resolve_regions_and_report_errors_unless_nll();
 
         // In this mode, we also copy the free-region-map into the
         // tables of the enclosing fcx. In the other regionck modes
@@ -369,6 +369,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         self.fcx.resolve_regions_and_report_errors(self.subject_def_id,
                                                    &self.region_scope_tree,
                                                    &self.outlives_environment);
+    }
+
+    fn resolve_regions_and_report_errors_unless_nll(&self) {
+        self.fcx.resolve_regions_and_report_errors_unless_nll(self.subject_def_id,
+                                                              &self.region_scope_tree,
+                                                              &self.outlives_environment);
     }
 
     fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {

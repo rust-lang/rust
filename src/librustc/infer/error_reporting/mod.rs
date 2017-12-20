@@ -258,10 +258,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_region_errors(&self,
                                 region_scope_tree: &region::ScopeTree,
-                                errors: &Vec<RegionResolutionError<'tcx>>) {
+                                errors: &Vec<RegionResolutionError<'tcx>>,
+                                will_later_be_reported_by_nll: bool) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
-        if self.tcx.sess.nll() {
+        if will_later_be_reported_by_nll && self.tcx.sess.nll() {
+            // With `#![feature(nll)]`, we want to present a nice user
+            // experience, so don't even mention the errors from the
+            // AST checker.
+            if self.tcx.sess.features.borrow().nll {
+                return;
+            }
+
+            // But with -Znll, it's nice to have some note for later.
             for error in errors {
                 match *error {
                     RegionResolutionError::ConcreteFailure(ref origin, ..) |
