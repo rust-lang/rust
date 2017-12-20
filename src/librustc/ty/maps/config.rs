@@ -102,7 +102,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::coherent_trait<'tcx> {
-    fn describe(tcx: TyCtxt, (_, def_id): (CrateNum, DefId)) -> String {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("coherence checking all impls of trait `{}`",
                 tcx.item_path_str(def_id))
     }

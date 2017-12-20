@@ -11,7 +11,7 @@
 //! misc. type-system utilities too small to deserve their own file
 
 use hir::def::Def;
-use hir::def_id::{DefId, LOCAL_CRATE};
+use hir::def_id::DefId;
 use hir::map::{DefPathData, Node};
 use hir;
 use ich::NodeIdHashingMode;
@@ -427,7 +427,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return None;
         };
 
-        self.coherent_trait((LOCAL_CRATE, drop_trait));
+        ty::maps::queries::coherent_trait::ensure(self, drop_trait);
 
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);

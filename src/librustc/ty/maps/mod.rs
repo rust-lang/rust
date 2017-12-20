@@ -187,7 +187,7 @@ define_maps! { <'tcx>
 
     [] fn has_typeck_tables: HasTypeckTables(DefId) -> bool,
 
-    [] fn coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
+    [] fn coherent_trait: CoherenceCheckTrait(DefId) -> (),
 
     [] fn borrowck: BorrowCheck(DefId) -> Rc<BorrowCheckResult>,
 
@@ -383,10 +383,6 @@ fn fulfill_obligation_dep_node<'tcx>((param_env, trait_ref):
         param_env,
         trait_ref
     }
-}
-
-fn coherent_trait_dep_node<'tcx>((_, def_id): (CrateNum, DefId)) -> DepConstructor<'tcx> {
-    DepConstructor::CoherenceCheckTrait(def_id)
 }
 
 fn crate_inherent_impls_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
