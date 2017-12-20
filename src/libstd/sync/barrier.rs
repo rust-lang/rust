@@ -157,6 +157,33 @@ impl Barrier {
             BarrierWaitResult(true)
         }
     }
+
+    /// Returns 1 + the number of threads that the barrier will block.
+    /// This is the same value `n` that the barrier was constructed with in
+    /// [`Barrier::new(n)`](#method.new).
+    ///
+    /// Let `n = barrier.num_threads()`. Then the barrier will at most block
+    /// `n - 1` threads which call [`wait`]. Once the `n`th thread calls
+    /// [`wait`], all threads will be awaken.
+    ///
+    /// [`wait`]: #method.wait
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(barrier_num_threads)]
+    ///
+    /// use std::sync::Barrier;
+    /// 
+    /// fn main() {
+    ///     let barrier = Barrier::new(10);
+    ///     assert_eq!(barrier.num_threads(), 10);
+    /// }
+    /// ```
+    #[unstable(feature = "barrier_num_threads", issue = "0")]
+    pub fn num_threads(&self) -> usize {
+        self.num_threads
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
