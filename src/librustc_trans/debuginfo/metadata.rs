@@ -42,7 +42,7 @@ use std::ffi::CString;
 use std::fmt::Write;
 use std::ptr;
 use std::path::{Path, PathBuf};
-use syntax::ast;
+use syntax::{ast, attr};
 use syntax::symbol::{Interner, InternedString, Symbol};
 use syntax_pos::{self, Span, FileName};
 
@@ -1643,8 +1643,10 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     }
 
     let tcx = cx.tcx();
-
     let node_def_id = tcx.hir.local_def_id(node_id);
+    let no_mangle = attr::contains_name(&tcx.get_attrs(node_def_id), "no_mangle");
+    // We may want to remove the namespace scope if we're in an extern block, see:
+    // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952
     let var_scope = get_namespace_for_item(cx, node_def_id);
     let span = cx.tcx().def_span(node_def_id);
 
@@ -1659,10 +1661,13 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let variable_type = Instance::mono(cx.tcx(), node_def_id).ty(cx.tcx());
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(node_def_id).to_string();
-    let linkage_name = mangled_name_of_item(cx, node_def_id, "");
-
     let var_name = CString::new(var_name).unwrap();
-    let linkage_name = CString::new(linkage_name).unwrap();
+    let linkage_name = if no_mangle {
+        None
+    } else {
+        let linkage_name = mangled_name_of_item(cx, node_def_id, "");
+        Some(CString::new(linkage_name).unwrap())
+    };
 
     let global_align = cx.align_of(variable_type);
 
@@ -1670,7 +1675,10 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
                                                     var_scope,
                                                     var_name.as_ptr(),
-                                                    linkage_name.as_ptr(),
+                                                    // If null, linkage_name field is omitted,
+                                                    // which is what we want for no_mangle statics
+                                                    linkage_name.as_ref()
+                                                     .map_or(ptr::null(), |name| name.as_ptr()),
                                                     file_metadata,
                                                     line_number,
                                                     type_metadata,
