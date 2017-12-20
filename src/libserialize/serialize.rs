@@ -618,6 +618,54 @@ impl<T:Decodable> Decodable for Option<T> {
     }
 }
 
+impl<T1: Encodable, T2: Encodable> Encodable for Result<T1, T2> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_enum("Result", |s| {
+            match *self {
+                Ok(ref v) => {
+                    s.emit_enum_variant("Ok", 0, 1, |s| {
+                        s.emit_enum_variant_arg(0, |s| {
+                            v.encode(s)
+                        })
+                    })
+                }
+                Err(ref v) => {
+                    s.emit_enum_variant("Err", 1, 1, |s| {
+                        s.emit_enum_variant_arg(0, |s| {
+                            v.encode(s)
+                        })
+                    })
+                }
+            }
+        })
+    }
+}
+
+impl<T1:Decodable, T2:Decodable> Decodable for Result<T1, T2> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Result<T1, T2>, D::Error> {
+        d.read_enum("Result", |d| {
+            d.read_enum_variant(&["Ok", "Err"], |d, disr| {
+                match disr {
+                    0 => {
+                        Ok(Ok(d.read_enum_variant_arg(0, |d| {
+                            T1::decode(d)
+                        })?))
+                    }
+                    1 => {
+                        Ok(Err(d.read_enum_variant_arg(0, |d| {
+                            T2::decode(d)
+                        })?))
+                    }
+                    _ => {
+                        panic!("Encountered invalid discriminant while \
+                                decoding `Result`.");
+                    }
+                }
+            })
+        })
+    }
+}
+
 macro_rules! peel {
     ($name:ident, $($other:ident,)*) => (tuple! { $($other,)* })
 }
