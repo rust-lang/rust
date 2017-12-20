@@ -408,15 +408,16 @@ impl<'a> State<'a> {
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 let mut first = true;
                 for bound in bounds {
-                    self.nbsp()?;
                     if first {
                         first = false;
                     } else {
+                        self.nbsp()?;
                         self.word_space("+")?;
                     }
                     self.print_poly_trait_ref(bound)?;
                 }
                 if !lifetime.is_elided() {
+                    self.nbsp()?;
                     self.word_space("+")?;
                     self.print_lifetime(lifetime)?;
                 }
@@ -764,7 +765,8 @@ impl<'a> State<'a> {
                         real_bounds.push(b.clone());
                     }
                 }
-                self.print_bounds(" = ", &real_bounds[..])?;
+                self.nbsp()?;
+                self.print_bounds("=", &real_bounds[..])?;
                 self.print_where_clause(&generics.where_clause)?;
                 self.s.word(";")?;
             }
@@ -788,6 +790,7 @@ impl<'a> State<'a> {
                 comma = true;
             }
             self.s.word(">")?;
+            self.nbsp()?;
         }
         Ok(())
     }
@@ -2016,30 +2019,29 @@ impl<'a> State<'a> {
             self.s.word(prefix)?;
             let mut first = true;
             for bound in bounds {
-                self.nbsp()?;
+                if !(first && prefix.is_empty()) {
+                    self.nbsp()?;
+                }
                 if first {
                     first = false;
                 } else {
                     self.word_space("+")?;
                 }
 
-                match *bound {
-                    TraitTyParamBound(ref tref, TraitBoundModifier::None) => {
-                        self.print_poly_trait_ref(tref)
+                match bound {
+                    TraitTyParamBound(tref, modifier) => {
+                        if modifier == &TraitBoundModifier::Maybe {
+                            self.s.word("?")?;
+                        }
+                        self.print_poly_trait_ref(tref)?;
                     }
-                    TraitTyParamBound(ref tref, TraitBoundModifier::Maybe) => {
-                        self.s.word("?")?;
-                        self.print_poly_trait_ref(tref)
+                    RegionTyParamBound(lt) => {
+                        self.print_lifetime(lt)?;
                     }
-                    RegionTyParamBound(ref lt) => {
-                        self.print_lifetime(lt)
-                    }
-                }?
+                }
             }
-            Ok(())
-        } else {
-            Ok(())
         }
+        Ok(())
     }
 
     pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
