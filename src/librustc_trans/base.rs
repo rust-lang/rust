@@ -1024,7 +1024,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
 
     assert_symbols_are_distinct(tcx, items.iter());
 
-    let strategy = if tcx.sess.opts.debugging_opts.incremental.is_some() {
+    let strategy = if tcx.sess.opts.incremental.is_some() {
         PartitioningStrategy::PerModule
     } else {
         PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
