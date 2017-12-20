@@ -97,7 +97,7 @@ impl DepGraph {
         // Pre-allocate the fingerprints array. We over-allocate a little so
         // that we hopefully don't have to re-allocate during this compilation
         // session.
-        let fingerprints = IndexVec::from_elem_n(Fingerprint::zero(),
+        let fingerprints = IndexVec::from_elem_n(Fingerprint::ZERO,
                                                  (prev_graph.node_count() * 115) / 100);
         DepGraph {
             data: Some(Rc::new(DepGraphData {
@@ -236,10 +236,10 @@ impl DepGraph {
                 let mut fingerprints = self.fingerprints.borrow_mut();
 
                 if dep_node_index.index() >= fingerprints.len() {
-                    fingerprints.resize(dep_node_index.index() + 1, Fingerprint::zero());
+                    fingerprints.resize(dep_node_index.index() + 1, Fingerprint::ZERO);
                 }
 
-                debug_assert!(fingerprints[dep_node_index] == Fingerprint::zero(),
+                debug_assert!(fingerprints[dep_node_index] == Fingerprint::ZERO,
                               "DepGraph::with_task() - Duplicate fingerprint \
                                insertion for {:?}", key);
                 fingerprints[dep_node_index] = current_fingerprint;
@@ -451,7 +451,7 @@ impl DepGraph {
 
         // Make sure we don't run out of bounds below.
         if current_dep_graph.nodes.len() > fingerprints.len() {
-            fingerprints.resize(current_dep_graph.nodes.len(), Fingerprint::zero());
+            fingerprints.resize(current_dep_graph.nodes.len(), Fingerprint::ZERO);
         }
 
         let nodes: IndexVec<_, (DepNode, Fingerprint)> =
@@ -644,10 +644,10 @@ impl DepGraph {
             let mut fingerprints = self.fingerprints.borrow_mut();
 
             if dep_node_index.index() >= fingerprints.len() {
-                fingerprints.resize(dep_node_index.index() + 1, Fingerprint::zero());
+                fingerprints.resize(dep_node_index.index() + 1, Fingerprint::ZERO);
             }
 
-            debug_assert!(fingerprints[dep_node_index] == Fingerprint::zero(),
+            debug_assert!(fingerprints[dep_node_index] == Fingerprint::ZERO,
                 "DepGraph::try_mark_green() - Duplicate fingerprint \
                 insertion for {:?}", dep_node);
 

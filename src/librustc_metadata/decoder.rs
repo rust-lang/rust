@@ -781,7 +781,7 @@ impl<'a, 'tcx> CrateMetadata {
         } else {
             ExternBodyNestedBodies {
                 nested_bodies: Rc::new(BTreeMap::new()),
-                fingerprint: Fingerprint::zero(),
+                fingerprint: Fingerprint::ZERO,
             }
         }
     }

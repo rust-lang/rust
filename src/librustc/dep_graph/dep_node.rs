@@ -279,7 +279,7 @@ macro_rules! define_dep_nodes {
 
                             DepNode {
                                 kind: DepKind::$variant,
-                                hash: Fingerprint::zero(),
+                                hash: Fingerprint::ZERO,
                             }
                         }
                     )*
@@ -308,7 +308,7 @@ macro_rules! define_dep_nodes {
                 assert!(!kind.has_params());
                 DepNode {
                     kind,
-                    hash: Fingerprint::zero(),
+                    hash: Fingerprint::ZERO,
                 }
             }
 
