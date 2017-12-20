@@ -14,5 +14,7 @@ const B: i32 = (&A)[1];
 //~| index out of bounds: the len is 0 but the index is 1
 
 fn main() {
-    let _ = B;
+    let b = B;
+
+    std::mem::drop(b); // force use
 }

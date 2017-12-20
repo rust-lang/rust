@@ -14,6 +14,7 @@
 #![feature(never_type)]
 
 pub fn main() {
-    let _x: Option<!> = None;
-    let _y: Result<u32, !> = Ok(42);
+    let x: Option<!> = None;
+    let y: Result<u32, !> = Ok(42);
+    std::mem::drop((x, y));
 }

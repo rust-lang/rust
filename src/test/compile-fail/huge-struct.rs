@@ -51,4 +51,5 @@ struct S1M<T> { val: S1k<S1k<T>> }
 
 fn main() {
     let fat: Option<S1M<S1M<S1M<u32>>>> = None;
+    std::mem::drop(fat); // force use
 }

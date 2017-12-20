@@ -13,9 +13,11 @@
 #[cfg(target_pointer_width = "32")]
 fn main() {
     let x = [0usize; 0xffff_ffff];
+    std::mem::drop(x[0]); // force use
 }
 
 #[cfg(target_pointer_width = "64")]
 fn main() {
     let x = [0usize; 0xffff_ffff_ffff_ffff];
+    std::mem::drop(x[0]); // force use
 }

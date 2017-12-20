@@ -14,5 +14,7 @@ const BAR: u32 = FOO[5];
 //~| index out of bounds: the len is 3 but the index is 5
 
 fn main() {
-    let _ = BAR;
+    let b = BAR;
+
+    std::mem::drop(b); // force use
 }

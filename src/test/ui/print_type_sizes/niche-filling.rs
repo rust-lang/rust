@@ -77,14 +77,16 @@ pub enum Enum4<A, B, C, D> {
 }
 
 pub fn main() {
-    let _x: MyOption<NonZero<u32>> = Default::default();
-    let _y: EmbeddedDiscr = Default::default();
-    let _z: MyOption<IndirectNonZero<u32>> = Default::default();
-    let _a: MyOption<bool> = Default::default();
-    let _b: MyOption<char> = Default::default();
-    let _c: MyOption<std::cmp::Ordering> = Default::default();
-    let _b: MyOption<MyOption<u8>> = Default::default();
-    let _e: Enum4<(), char, (), ()> = Enum4::One(());
-    let _f: Enum4<(), (), bool, ()> = Enum4::One(());
-    let _g: Enum4<(), (), (), MyOption<u8>> = Enum4::One(());
+    let x: MyOption<NonZero<u32>> = Default::default();
+    let y: EmbeddedDiscr = Default::default();
+    let z: MyOption<IndirectNonZero<u32>> = Default::default();
+    let a: MyOption<bool> = Default::default();
+    let b: MyOption<char> = Default::default();
+    let c: MyOption<std::cmp::Ordering> = Default::default();
+    let b: MyOption<MyOption<u8>> = Default::default();
+    let e: Enum4<(), char, (), ()> = Enum4::One(());
+    let f: Enum4<(), (), bool, ()> = Enum4::One(());
+    let g: Enum4<(), (), (), MyOption<u8>> = Enum4::One(());
+
+    std::mem::drop((x, y, z, a, b, c, e, f, g));
 }

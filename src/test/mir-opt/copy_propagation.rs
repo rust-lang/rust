@@ -22,11 +22,11 @@ fn main() {
 // START rustc.test.CopyPropagation.before.mir
 //  bb0: {
 //      ...
-//      _3 = _1;
+//      _3 = move _1;
 //      ...
 //      _2 = move _3;
 //      ...
-//      _4 = _2;
+//      _4 = move _2;
 //      _0 = move _4;
 //      ...
 //      return;
