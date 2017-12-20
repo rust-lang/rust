@@ -148,7 +148,7 @@ declare_lint! {
 /// **What it does:** Checks for match which is used to add a reference to an
 /// `Option` value.
 ///
-/// **Why is this bad?** Using `as_ref()` instead is shorter.
+/// **Why is this bad?** Using `as_ref()` or `as_mut()` instead is shorter.
 ///
 /// **Known problems:** None.
 ///
@@ -163,7 +163,7 @@ declare_lint! {
 declare_lint! {
     pub MATCH_AS_REF,
     Warn,
-    "a match on an Option value instead of using `as_ref()`"
+    "a match on an Option value instead of using `as_ref()` or `as_mut`"
 }
 
 #[allow(missing_copy_implementations)]
@@ -438,15 +438,22 @@ fn check_match_as_ref(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms.len() == 2 &&
         arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
         arms[1].pats.len() == 1 && arms[1].guard.is_none() {
-        if (is_ref_some_arm(&arms[0]) && is_none_arm(&arms[1])) ||
-            (is_ref_some_arm(&arms[1]) && is_none_arm(&arms[0])) {
+        let arm_ref: Option<BindingAnnotation> = if is_none_arm(&arms[0]) {
+            is_ref_some_arm(&arms[1])
+        } else if is_none_arm(&arms[1]) {
+            is_ref_some_arm(&arms[0])
+        } else {
+            None
+        };
+        if let Some(rb) = arm_ref {
+            let suggestion = if rb == BindingAnnotation::Ref { "as_ref" } else { "as_mut" };
             span_lint_and_sugg(
                 cx,
                 MATCH_AS_REF,
                 expr.span,
-                "use as_ref() instead",
+                &format!("use {}() instead", suggestion),
                 "try this",
-                format!("{}.as_ref()", snippet(cx, ex.span, "_"))
+                format!("{}.{}()", snippet(cx, ex.span, "_"), suggestion)
             )
         }
     }
@@ -574,7 +581,7 @@ fn is_none_arm(arm: &Arm) -> bool {
 }
 
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
-fn is_ref_some_arm(arm: &Arm) -> bool {
+fn is_ref_some_arm(arm: &Arm) -> Option<BindingAnnotation> {
     if_chain! {
         if let PatKind::TupleStruct(ref path, ref pats, _) = arm.pats[0].node;
         if pats.len() == 1 && match_qpath(path, &paths::OPTION_SOME);
@@ -585,12 +592,12 @@ fn is_ref_some_arm(arm: &Arm) -> bool {
         if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
         if let ExprPath(ref qpath) = args[0].node;
         if let &QPath::Resolved(_, ref path2) = qpath;
-        if path2.segments.len() == 1;
+        if path2.segments.len() == 1 && ident.node == path2.segments[0].name;
         then {
-            return ident.node == path2.segments[0].name
+            return Some(rb)
         }
     }
-    false
+    None
 }
 
 fn has_only_ref_pats(arms: &[Arm]) -> bool {
