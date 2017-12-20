@@ -400,7 +400,7 @@ impl<T> SliceExt for [T] {
         while size > 1 {
             let half = size / 2;
             let mid = base + half;
-            // mid is always in [0, size).
+            // mid is always in [0, size), that means mid is >= 0 and < size.
             // mid >= 0: by definition
             // mid < size: mid = size / 2 + size / 4 + size / 8 ...
             let cmp = f(unsafe { s.get_unchecked(mid) });
