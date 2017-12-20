@@ -59,7 +59,7 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<Local>,
+                             _sets: &mut BlockSets<'_, Local>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {

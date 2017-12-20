@@ -674,7 +674,7 @@ pub trait BitDenotation: BitwiseOperator {
     /// `bb_data` is the sequence of statements identified by `bb` in
     /// the MIR.
     fn statement_effect(&self,
-                        sets: &mut BlockSets<Self::Idx>,
+                        sets: &mut BlockSets<'_, Self::Idx>,
                         location: Location);
 
     /// Similar to `terminator_effect`, except it applies
@@ -703,7 +703,7 @@ pub trait BitDenotation: BitwiseOperator {
     /// The effects applied here cannot depend on which branch the
     /// terminator took.
     fn terminator_effect(&self,
-                         sets: &mut BlockSets<Self::Idx>,
+                         sets: &mut BlockSets<'_, Self::Idx>,
                          location: Location);
 
     /// Mutates the block-sets according to the (flow-dependent)
