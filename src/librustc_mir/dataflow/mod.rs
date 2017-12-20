@@ -835,31 +835,31 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
             mir::TerminatorKind::DropAndReplace {
                 ref target, value: _, location: _, unwind: None
             } => {
-                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
+                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
             }
             mir::TerminatorKind::Yield { resume: ref target, drop: Some(ref drop), .. } => {
-                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
-                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, drop);
+                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
+                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, drop);
             }
             mir::TerminatorKind::Assert { ref target, cleanup: Some(ref unwind), .. } |
             mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
             mir::TerminatorKind::DropAndReplace {
                 ref target, value: _, location: _, unwind: Some(ref unwind)
             } => {
-                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
+                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
                 if !self.dead_unwinds.contains(&bb) {
-                    self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, unwind);
+                    self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, unwind);
                 }
             }
             mir::TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
-                    self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
+                    self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
                 }
             }
             mir::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
                 if let Some(ref unwind) = *cleanup {
                     if !self.dead_unwinds.contains(&bb) {
-                        self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, unwind);
+                        self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, unwind);
                     }
                 }
                 if let Some((ref dest_place, ref dest_bb)) = *destination {
@@ -869,13 +869,13 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                     self.flow_state.operator.propagate_call_return(
                         sets, bb, *dest_bb, dest_place);
                     sets.apply_local_effect();
-                    self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, dest_bb);
+                    self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, dest_bb);
                 }
             }
             mir::TerminatorKind::FalseEdges { ref real_target, ref imaginary_targets } => {
-                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, real_target);
+                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, real_target);
                 for target in imaginary_targets {
-                    self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
+                    self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
                 }
             }
         }
