@@ -1274,6 +1274,8 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             impl_id: DefId,
                                             impl_trait_ref: ty::TraitRef<'tcx>,
                                             impl_item_refs: &[hir::ImplItemRef]) {
+    let impl_span = tcx.sess.codemap().def_span(impl_span);
+
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
     // isn't populated for such impls.
