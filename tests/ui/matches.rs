@@ -315,5 +315,20 @@ fn match_wild_err_arm() {
     }
 }
 
+fn match_as_ref() {
+    let owned: Option<()> = None;
+    let borrowed: Option<&()> = match owned {
+        None => None,
+        Some(ref v) => Some(v),
+    };
+
+    let mut mut_owned: Option<()> = None;
+    let borrow_mut: Option<&mut ()> = match mut_owned {
+        None => None,
+        Some(ref mut v) => Some(v),
+    };
+
+}
+
 fn main() {
 }
