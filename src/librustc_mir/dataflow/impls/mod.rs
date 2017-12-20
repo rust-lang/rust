@@ -363,15 +363,19 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<MovePathIndex>,
+                             sets: &mut BlockSets<'_, MovePathIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              dest_place: &mir::Place) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
-        on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_place),
-                              |mpi| { in_out.add(&mpi); });
+        on_lookup_result_bits(
+            self.tcx,
+            self.mir,
+            self.move_data(),
+            self.move_data().rev_lookup.find(dest_place),
+            |mpi| sets.gen(&mpi),
+        );
     }
 }
 
@@ -418,15 +422,19 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<MovePathIndex>,
+                             sets: &mut BlockSets<'_, MovePathIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              dest_place: &mir::Place) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 0 (initialized).
-        on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_place),
-                              |mpi| { in_out.remove(&mpi); });
+        on_lookup_result_bits(
+            self.tcx,
+            self.mir,
+            self.move_data(),
+            self.move_data().rev_lookup.find(dest_place),
+            |mpi| sets.kill(&mpi),
+        );
     }
 }
 
@@ -472,15 +480,19 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'gcx, 'tcx
     }
 
     fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<MovePathIndex>,
+                             sets: &mut BlockSets<'_, MovePathIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              dest_place: &mir::Place) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_place to 1 (initialized).
-        on_lookup_result_bits(self.tcx, self.mir, self.move_data(),
-                              self.move_data().rev_lookup.find(dest_place),
-                              |mpi| { in_out.add(&mpi); });
+        on_lookup_result_bits(
+            self.tcx,
+            self.mir,
+            self.move_data(),
+            self.move_data().rev_lookup.find(dest_place),
+            |mpi| sets.gen(&mpi),
+        );
     }
 }
 
@@ -550,14 +562,16 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
         let bits_per_block = self.bits_per_block();
 
         let path_map = &move_data.path_map;
-        on_lookup_result_bits(self.tcx,
-                              self.mir,
-                              move_data,
-                              move_data.rev_lookup.find(dest_place),
-                              |mpi| for moi in &path_map[mpi] {
-                                  assert!(moi.index() < bits_per_block);
-                                  in_out.remove(&moi);
-                              });
+        on_lookup_result_bits(
+            self.tcx,
+            self.mir,
+            move_data,
+            move_data.rev_lookup.find(dest_place),
+            |mpi| for moi in &path_map[mpi] {
+                assert!(moi.index() < bits_per_block);
+                sets.kill(&moi);
+            },
+        );
     }
 }
 
@@ -638,7 +652,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<InitIndex>,
+                             sets: &mut BlockSets<'_, InitIndex>,
                              call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {
@@ -652,7 +666,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
         };
         for init_index in &init_loc_map[call_loc] {
             assert!(init_index.index() < bits_per_block);
-            in_out.add(init_index);
+            sets.gen(init_index);
         }
     }
 }

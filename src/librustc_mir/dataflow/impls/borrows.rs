@@ -678,7 +678,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Reservations<'a, 'gcx, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<ReserveOrActivateIndex>,
+                             _sets: &mut BlockSets<'_, ReserveOrActivateIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {
@@ -739,7 +739,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for ActiveBorrows<'a, 'gcx, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<ReserveOrActivateIndex>,
+                             _sets: &mut BlockSets<'_, ReserveOrActivateIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {

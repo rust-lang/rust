@@ -237,6 +237,8 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: Bi
 {
     fn walk_cfg(&mut self, in_out: &mut IdxSet<BD::Idx>) {
         let mir = self.builder.mir;
+        let mut temp_gens = IdxSetBuf::new_empty(self.builder.flow_state.sets.bits_per_block);
+        let mut temp_kills = IdxSetBuf::new_empty(self.builder.flow_state.sets.bits_per_block);
         for (bb_idx, bb_data) in mir.basic_blocks().iter().enumerate() {
             let builder = &mut self.builder;
             {
@@ -246,8 +248,15 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: Bi
                 in_out.union(sets.gen_set);
                 in_out.subtract(sets.kill_set);
             }
+
+            let sets = &mut BlockSets {
+                on_entry: in_out,
+                gen_set: &mut temp_gens,
+                kill_set: &mut temp_kills,
+            };
+
             builder.propagate_bits_into_graph_successors_of(
-                in_out, &mut self.changed, (mir::BasicBlock::new(bb_idx), bb_data));
+                sets, &mut self.changed, (mir::BasicBlock::new(bb_idx), bb_data));
         }
     }
 }
@@ -555,11 +564,16 @@ impl<'a, E:Idx> BlockSets<'a, E> {
         self.on_entry.union(&self.gen_set);
         self.on_entry.subtract(&self.kill_set);
     }
+
+    fn clear_local_effect(&mut self) {
+        self.gen_set.clear();
+        self.kill_set.clear();
+    }
 }
 
 impl<E:Idx> AllSets<E> {
     pub fn bits_per_block(&self) -> usize { self.bits_per_block }
-    pub fn for_block(&mut self, block_idx: usize) -> BlockSets<E> {
+    pub fn for_block(&mut self, block_idx: usize) -> BlockSets<'_, E> {
         let offset = self.words_per_block * block_idx;
         let range = E::new(offset)..E::new(offset + self.words_per_block);
         BlockSets {
@@ -725,7 +739,7 @@ pub trait BitDenotation: BitwiseOperator {
     /// kill-sets associated with each edge coming out of the basic
     /// block.
     fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<Self::Idx>,
+                             sets: &mut BlockSets<'_, Self::Idx>,
                              call_bb: mir::BasicBlock,
                              dest_bb: mir::BasicBlock,
                              dest_place: &mir::Place);
@@ -804,7 +818,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
     /// unwind target).
     fn propagate_bits_into_graph_successors_of(
         &mut self,
-        in_out: &mut IdxSet<D::Idx>,
+        sets: &mut BlockSets<'_, D::Idx>,
         changed: &mut bool,
         (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData))
     {
@@ -821,45 +835,47 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
             mir::TerminatorKind::DropAndReplace {
                 ref target, value: _, location: _, unwind: None
             } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
             }
             mir::TerminatorKind::Yield { resume: ref target, drop: Some(ref drop), .. } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
-                self.propagate_bits_into_entry_set_for(in_out, changed, drop);
+                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
+                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, drop);
             }
             mir::TerminatorKind::Assert { ref target, cleanup: Some(ref unwind), .. } |
             mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
             mir::TerminatorKind::DropAndReplace {
                 ref target, value: _, location: _, unwind: Some(ref unwind)
             } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
                 if !self.dead_unwinds.contains(&bb) {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                    self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, unwind);
                 }
             }
             mir::TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                    self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
                 }
             }
             mir::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
                 if let Some(ref unwind) = *cleanup {
                     if !self.dead_unwinds.contains(&bb) {
-                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                        self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, unwind);
                     }
                 }
                 if let Some((ref dest_place, ref dest_bb)) = *destination {
                     // N.B.: This must be done *last*, after all other
                     // propagation, as documented in comment above.
+                    sets.clear_local_effect();
                     self.flow_state.operator.propagate_call_return(
-                        in_out, bb, *dest_bb, dest_place);
-                    self.propagate_bits_into_entry_set_for(in_out, changed, dest_bb);
+                        sets, bb, *dest_bb, dest_place);
+                    sets.apply_local_effect();
+                    self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, dest_bb);
                 }
             }
             mir::TerminatorKind::FalseEdges { ref real_target, ref imaginary_targets } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, real_target);
+                self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, real_target);
                 for target in imaginary_targets {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                    self.propagate_bits_into_entry_set_for(&mut sets.on_entry, changed, target);
                 }
             }
         }
