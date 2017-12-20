@@ -9,11 +9,11 @@
 // except according to those terms.
 
 // Basic test for liveness constraints: the region (`R1`) that appears
-// in the type of `p` includes the points after `&v[0]` up to (but not
-// including) the call to `use_x`. The `else` branch is not included.
+// in the type of `p` must include everything until `p` is dropped
+// because of destructor. (Note that the stderr also identifies this
+// destructor in the error message.)
 
-// compile-flags:-Znll -Zverbose
-//                     ^^^^^^^^^ force compiler to dump more region information
+// compile-flags:-Znll -Zborrowck=mir -Znll-dump-cause
 
 #![allow(warnings)]
 #![feature(dropck_eyepatch)]
@@ -23,28 +23,21 @@ fn use_x(_: usize) -> bool { true }
 
 fn main() {
     let mut v = [1, 2, 3];
-    let p: Wrap<& /* R4 */ usize> = Wrap { value: &v[0] };
+    let p: WrapMayNotDangle<&usize> = WrapMayNotDangle { value: &v[0] };
     if true {
         use_x(*p.value);
     } else {
         use_x(22);
+        v[0] += 1; //~ ERROR cannot assign to `v[..]` because it is borrowed
     }
 
-    // `p` will get dropped here. However, because of the
-    // `#[may_dangle]` attribute, we do not need to consider R4 live.
+    v[0] += 1; //~ ERROR cannot assign to `v[..]` because it is borrowed
 }
 
-struct Wrap<T> {
+struct WrapMayNotDangle<T> {
     value: T
 }
 
-unsafe impl<#[may_dangle] T> Drop for Wrap<T> {
+impl<T> Drop for WrapMayNotDangle<T> {
     fn drop(&mut self) { }
 }
-
-// END RUST SOURCE
-// START rustc.main.nll.0.mir
-// | '_#6r    | {bb2[3..=5], bb3[0..=1]}
-// ...
-// let _2: Wrap<&'_#6r usize>;
-// END rustc.main.nll.0.mir
