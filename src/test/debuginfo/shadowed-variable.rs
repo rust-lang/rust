@@ -34,6 +34,17 @@
 // gdb-check:$6 = 20
 // gdb-command:continue
 
+// gdb-command:print x
+// gdb-check:$5 = 10.5
+// gdb-command:print y
+// gdb-check:$6 = 20
+// gdb-command:continue
+
+// gdb-command:print x
+// gdb-check:$5 = 11.5
+// gdb-command:print y
+// gdb-check:$6 = 20
+// gdb-command:continue
 
 // === LLDB TESTS ==================================================================================
 
@@ -53,6 +64,18 @@
 
 // lldb-command:print x
 // lldb-check:[...]$4 = 10.5
+// lldb-command:print y
+// lldb-check:[...]$5 = 20
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$4 = 10.5
+// lldb-command:print y
+// lldb-check:[...]$5 = 20
+// lldb-command:continue
+
+// lldb-command:print x
+// lldb-check:[...]$4 = 11.5
 // lldb-command:print y
 // lldb-check:[...]$5 = 20
 // lldb-command:continue
@@ -77,6 +100,15 @@ fn main() {
 
     zzz(); // #break
     sentinel();
+
+    let x = {
+        zzz(); // #break
+        sentinel();
+        11.5
+    };
+
+    zzz(); // #break
+    sentinel()
 }
 
 fn zzz() {()}
