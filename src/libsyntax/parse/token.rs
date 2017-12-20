@@ -251,7 +251,7 @@ impl Token {
             Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
             Interpolated(ref nt) => match nt.0 {
-                NtIdent(..) | NtTy(..) | NtPath(..) => true,
+                NtIdent(..) | NtTy(..) | NtPath(..) | NtLifetime(..) => true,
                 _ => false,
             },
             _ => false,
@@ -318,7 +318,11 @@ impl Token {
     pub fn is_lifetime(&self) -> bool {
         match *self {
             Lifetime(..) => true,
-            _            => false,
+            Interpolated(ref nt) => match nt.0 {
+                NtLifetime(..) => true,
+                _ => false,
+            },
+            _ => false,
         }
     }
 
@@ -485,6 +489,10 @@ impl Token {
             Nonterminal::NtIdent(ident) => {
                 let token = Token::Ident(ident.node);
                 tokens = Some(TokenTree::Token(ident.span, token).into());
+            }
+            Nonterminal::NtLifetime(lifetime) => {
+                let token = Token::Lifetime(lifetime.ident);
+                tokens = Some(TokenTree::Token(lifetime.span, token).into());
             }
             Nonterminal::NtTT(ref tt) => {
                 tokens = Some(tt.clone().into());

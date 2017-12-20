@@ -1295,6 +1295,10 @@ impl<'a> Parser<'a> {
     fn get_label(&mut self) -> ast::Ident {
         match self.token {
             token::Lifetime(ref ident) => *ident,
+            token::Interpolated(ref nt) => match nt.0 {
+                token::NtLifetime(lifetime) => lifetime.ident,
+                _ => self.bug("not a lifetime"),
+            },
             _ => self.bug("not a lifetime"),
         }
     }
@@ -2032,14 +2036,20 @@ impl<'a> Parser<'a> {
 
     /// Parse single lifetime 'a or panic.
     pub fn expect_lifetime(&mut self) -> Lifetime {
-        match self.token {
-            token::Lifetime(ident) => {
-                let ident_span = self.span;
-                self.bump();
-                Lifetime { ident: ident, span: ident_span, id: ast::DUMMY_NODE_ID }
+        let lifetime = match self.token {
+            token::Lifetime(ident) =>
+                Lifetime { ident: ident, span: self.span, id: ast::DUMMY_NODE_ID },
+            token::Interpolated(ref nt) => match nt.0 {
+                token::NtLifetime(lifetime) => 
+                    lifetime,
+                    //Lifetime { ident: lifetime.ident, span: lifetime.span, id: ast::DUMMY_NODE_ID },
+                _ => self.span_bug(self.span, &format!("not a lifetime: {:?}", self.token))
             }
-            _ => self.span_bug(self.span, "not a lifetime")
-        }
+            _ => self.span_bug(self.span, &format!("not a lifetime: {:?}", self.token))
+        };
+
+        self.bump();
+        lifetime
     }
 
     /// Parse mutability (`mut` or nothing).
