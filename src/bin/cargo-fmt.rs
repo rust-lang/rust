@@ -240,13 +240,22 @@ fn get_targets_root_only(targets: &mut HashSet<Target>) -> Result<(), io::Error>
 
     for package in metadata.packages {
         for target in package.targets {
-            if target.name == package.name {
+            if is_target_workspace_members(&target.name, &metadata.workspace_members) {
                 targets.insert(Target::from_target(&target));
             }
         }
     }
 
     Ok(())
+}
+
+fn is_target_workspace_members(target: &str, workspace_members: &[String]) -> bool {
+    workspace_members.iter().any(|member| {
+        member
+            .split_whitespace()
+            .nth(0)
+            .map_or(false, |name| name == target)
+    })
 }
 
 fn get_targets_recursive(

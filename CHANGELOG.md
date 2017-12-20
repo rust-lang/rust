@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- `cargo fmt` will format every workspace member.
+
 ## [0.3.2] 2017-12-15
 
 ### Changed
