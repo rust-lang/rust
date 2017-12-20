@@ -246,7 +246,9 @@ impl<'a> Parser<'a> {
         }
 
         let mut tail = [0; 8];
-        let (tail_size, _) = read_groups(self, &mut tail, 8 - head_size);
+        // `::` indicates one or more groups of 16 bits of zeros
+        let limit = 8 - (head_size + 1);
+        let (tail_size, _) = read_groups(self, &mut tail, limit);
         Some(ipv6_addr_from_head_tail(&head[..head_size], &tail[..tail_size]))
     }
 
