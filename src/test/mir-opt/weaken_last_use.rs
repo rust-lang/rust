@@ -84,6 +84,8 @@ fn main() {
     loop_body(0);
 }
 
+// ignore-tidy-linelength The assertions below are too long to fit, and can't wrap
+
 // END RUST SOURCE
 
 // START rustc.return_arg.WeakenLastUse.before.mir
