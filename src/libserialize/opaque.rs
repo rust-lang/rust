@@ -27,6 +27,10 @@ impl<'a> Encoder<'a> {
     pub fn new(cursor: &'a mut io::Cursor<Vec<u8>>) -> Encoder<'a> {
         Encoder { cursor: cursor }
     }
+
+    pub fn emit_raw_bytes(&mut self, s: &[u8]) -> EncodeResult {
+        self.cursor.write_all(s)
+    }
 }
 
 
@@ -168,6 +172,16 @@ impl<'a> Decoder<'a> {
 
     pub fn advance(&mut self, bytes: usize) {
         self.position += bytes;
+    }
+
+    pub fn read_raw_bytes(&mut self, s: &mut [u8]) -> Result<(), String> {
+        let len = s.len();
+
+        self.position += len;
+
+        s.copy_from_slice(&self.data[0..len]);
+
+        Ok(())
     }
 }
 
