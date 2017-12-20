@@ -1553,7 +1553,7 @@ impl<'a> Parser<'a> {
             if self.eat(&token::Not) {
                 // Macro invocation in type position
                 let (_, tts) = self.expect_delimited_token_tree()?;
-                TyKind::Mac(respan(lo.to(self.span), Mac_ { path: path, tts: tts }))
+                TyKind::Mac(respan(lo.to(self.prev_span), Mac_ { path: path, tts: tts }))
             } else {
                 // Just a type path or bound list (trait object type) starting with a trait.
                 //   `Type`
