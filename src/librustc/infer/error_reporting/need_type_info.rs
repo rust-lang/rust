@@ -75,8 +75,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn extract_type_name(&self, ty: &'a Ty<'tcx>) -> String {
         if let ty::TyInfer(ty::TyVar(ty_vid)) = (*ty).sty {
             let ty_vars = self.type_variables.borrow();
-            if let TypeVariableOrigin::TypeParameterDefinition(_, name) =
-                *ty_vars.var_origin(ty_vid) {
+            if let TypeVariableOrigin::TypeParameterDefinition(_, name, _) =
+                ty_vars.var_origin(ty_vid) {
                 name.to_string()
             } else {
                 ty.to_string()

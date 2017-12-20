@@ -255,20 +255,30 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return ty;
             }
 
+            let inferred_param = || if !default_needs_object_self(def) {
+                                        self.ty_infer_for_def(def, substs, span)
+                                    } else {
+                                        self.ty_infer(span)
+                                    };
+
             let i = i - self_ty.is_some() as usize - decl_generics.regions.len();
             if i < num_types_provided {
                 // A provided type parameter.
-                self.ast_ty_to_ty(&parameters.types[i])
+                let provided = &parameters.types[i];
+                if provided.node != hir::Ty_::TyInfer {
+                    self.ast_ty_to_ty(provided)
+                } else {
+                    let inferred = inferred_param();
+                    self.record_ty(provided.hir_id, inferred, provided.span);
+                    inferred
+                }
             } else if infer_types {
                 // No type parameters were provided, we can infer all.
-                let ty_var = if !default_needs_object_self(def) {
-                    self.ty_infer_for_def(def, substs, span)
-                } else {
-                    self.ty_infer(span)
-                };
-                ty_var
+                inferred_param()
             } else if def.has_default {
                 // No type parameter provided, but a default exists.
+                // FIXME(leodasvacas):
+                // For fns and impls, feature gate under `default_type_parameter_fallback`.
 
                 // If we are converting an object type, then the
                 // `Self` parameter is unknown. However, some of the
@@ -718,6 +728,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                       span)
     }
 
+    fn count_bounds_for_assoc_item(&self,
+                                 ty_param_def_id: DefId,
+                                 assoc_name: ast::Name,
+                                 span: Span)
+                                 -> usize
+    {
+        let tcx = self.tcx();
+        let bounds: Vec<_> = self.get_type_parameter_bounds(span, ty_param_def_id)
+            .predicates.into_iter().filter_map(|p| p.to_opt_poly_trait_ref()).collect();
+        traits::transitive_bounds(tcx, &bounds)
+            .filter(|b| self.trait_defines_associated_type_named(b.def_id(), assoc_name)).count()
+    }
 
     // Checks that bounds contains exactly one element and reports appropriate
     // errors otherwise.
@@ -789,6 +811,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                      item_segment: &hir::PathSegment)
                                      -> (Ty<'tcx>, Def)
     {
+        use rustc::ty::ToPolyTraitRef;
+
         let tcx = self.tcx();
         let assoc_name = item_segment.name;
 
@@ -820,9 +844,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
             }
-            (&ty::TyParam(_), Def::SelfTy(Some(param_did), None)) |
-            (&ty::TyParam(_), Def::TyParam(param_did)) => {
-                match self.find_bound_for_assoc_item(param_did, assoc_name, span) {
+            (&ty::TyParam(_), Def::SelfTy(Some(trait_did), None))
+            if self.count_bounds_for_assoc_item(trait_did, assoc_name, span) == 0 => {
+                // No bounds for `Self` in trait definition.
+                let substs = Substs::identity_for_item(tcx, trait_did);
+                let trait_ref = ty::TraitRef::new(trait_did, substs).to_poly_trait_ref();
+                let candidates =
+                    traits::supertraits(tcx, trait_ref)
+                    .filter(|r| self.trait_defines_associated_type_named(r.def_id(),
+                                                                        assoc_name));
+                match self.one_bound_for_assoc_type(candidates, "Self", assoc_name, span) {
+                    Ok(bound) => bound,
+                    Err(ErrorReported) => return (tcx.types.err, Def::Err),
+                }
+            }
+            (&ty::TyParam(_), Def::SelfTy(Some(did), None)) |
+            (&ty::TyParam(_), Def::TyParam(did)) => {
+                match self.find_bound_for_assoc_item(did, assoc_name, span) {
                     Ok(bound) => bound,
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }

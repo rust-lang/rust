@@ -305,6 +305,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
+        // FIXME(leodasvacas):
+        // Support substituting elided for defaults under gate `default_type_parameter_fallback`.
         assert_eq!(method_generics.parent_count(), parent_substs.len());
         let provided = &segment.parameters;
         Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
@@ -326,7 +328,13 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     p.types.get(i - parent_substs.len() - method_generics.regions.len())
                 })
             {
-                self.to_ty(ast_ty)
+                if ast_ty.node != hir::Ty_::TyInfer {
+                    self.to_ty(ast_ty)
+                } else {
+                    let inferred = self.type_var_for_def(self.span, def, cur_substs);
+                    self.record_ty(ast_ty.hir_id, inferred, ast_ty.span);
+                    inferred
+                }
             } else {
                 self.type_var_for_def(self.span, def, cur_substs)
             }

@@ -55,7 +55,7 @@ pub enum TypeVariableOrigin {
     MiscVariable(Span),
     NormalizeProjectionType(Span),
     TypeInference(Span),
-    TypeParameterDefinition(Span, ast::Name),
+    TypeParameterDefinition(Span, ast::Name, ty::OriginOfTyParam),
 
     /// one of the upvars or closure kind parameters in a `ClosureSubsts`
     /// (before it has been determined)
@@ -70,25 +70,44 @@ pub enum TypeVariableOrigin {
     Generalized(ty::TyVid),
 }
 
-pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableOrigin>;
+pub type TypeVariableMap<'tcx> = FxHashMap<ty::TyVid, (TypeVariableOrigin,
+                                                       Option<UserDefault<'tcx>>)>;
 
 struct TypeVariableData<'tcx> {
     value: TypeVariableValue<'tcx>,
     origin: TypeVariableOrigin,
-    diverging: bool
+    default: Default<'tcx>,
 }
 
 enum TypeVariableValue<'tcx> {
     Known(Ty<'tcx>),
-    Bounded {
-        default: Option<Default<'tcx>>
+    Bounded,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Default<'tcx> {
+    User(UserDefault<'tcx>),
+    Integer,
+    Float,
+    Diverging,
+    None,
+}
+
+impl<'tcx> Default<'tcx> {
+    pub fn as_user(&self) -> Option<UserDefault<'tcx>> {
+        match *self {
+            Default::User(ref user_default) => Some(user_default.clone()),
+            Default::None => None,
+            _ => bug!("Default exists but is not user"),
+        }
     }
 }
 
-// We will use this to store the required information to recapitulate what happened when
-// an error occurs.
+// We will use this to store the required information to recapitulate
+// what happened when an error occurs.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Default<'tcx> {
+pub struct UserDefault<'tcx> {
+    /// The default type provided by the user
     pub ty: Ty<'tcx>,
     /// The span where the default was incurred
     pub origin_span: Span,
@@ -102,9 +121,8 @@ pub struct Snapshot {
     sub_snapshot: ut::Snapshot<ty::TyVid>,
 }
 
-struct Instantiate<'tcx> {
+struct Instantiate {
     vid: ty::TyVid,
-    default: Option<Default<'tcx>>,
 }
 
 struct Delegate<'tcx>(PhantomData<&'tcx ()>);
@@ -118,19 +136,19 @@ impl<'tcx> TypeVariableTable<'tcx> {
         }
     }
 
-    pub fn default(&self, vid: ty::TyVid) -> Option<Default<'tcx>> {
-        match &self.values.get(vid.index as usize).value {
-            &Known(_) => None,
-            &Bounded { ref default, .. } => default.clone()
-        }
+    pub fn default(&self, vid: ty::TyVid) -> &Default<'tcx> {
+       &self.values.get(vid.index as usize).default
     }
 
     pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
-        self.values.get(vid.index as usize).diverging
+        match self.values.get(vid.index as usize).default {
+            Default::Diverging => true,
+            _ => false,
+        }
     }
 
-    pub fn var_origin(&self, vid: ty::TyVid) -> &TypeVariableOrigin {
-        &self.values.get(vid.index as usize).origin
+    pub fn var_origin(&self, vid: ty::TyVid) -> TypeVariableOrigin {
+        self.values.get(vid.index as usize).origin
     }
 
     /// Records that `a == b`, depending on `dir`.
@@ -165,8 +183,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
         };
 
         match old_value {
-            TypeVariableValue::Bounded { default } => {
-                self.values.record(Instantiate { vid: vid, default: default });
+            TypeVariableValue::Bounded => {
+                self.values.record(Instantiate { vid: vid });
             }
             TypeVariableValue::Known(old_ty) => {
                 bug!("instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
@@ -178,14 +196,22 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn new_var(&mut self,
                    diverging: bool,
                    origin: TypeVariableOrigin,
-                   default: Option<Default<'tcx>>,) -> ty::TyVid {
-        debug!("new_var(diverging={:?}, origin={:?})", diverging, origin);
+                   default: Option<UserDefault<'tcx>>,) -> ty::TyVid {
+        debug!("new_var(diverging={:?}, origin={:?} default={:?})", diverging, origin, default);
         self.eq_relations.new_key(());
         self.sub_relations.new_key(());
+
+        let default = if diverging {
+            Default::Diverging
+        } else {
+            default.map(|u| Default::User(u))
+                   .unwrap_or(Default::None)
+        };
+
         let index = self.values.push(TypeVariableData {
-            value: Bounded { default: default },
+            value: Bounded,
             origin,
-            diverging,
+            default,
         });
         let v = ty::TyVid { index: index as u32 };
         debug!("new_var: diverging={:?} index={:?}", diverging, v);
@@ -235,7 +261,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn probe_root(&mut self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
         debug_assert!(self.root_var(vid) == vid);
         match self.values.get(vid.index as usize).value {
-            Bounded { .. } => None,
+            Bounded => None,
             Known(t) => Some(t)
         }
     }
@@ -289,7 +315,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// ty-variables created during the snapshot, and the values
     /// `{V2}` are the root variables that they were unified with,
     /// along with their origin.
-    pub fn types_created_since_snapshot(&mut self, s: &Snapshot) -> TypeVariableMap {
+    pub fn types_created_since_snapshot(&mut self, s: &Snapshot) -> TypeVariableMap<'tcx> {
         let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
 
         actions_since_snapshot
@@ -300,7 +326,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
             })
             .map(|vid| {
                 let origin = self.values.get(vid.index as usize).origin.clone();
-                (vid, origin)
+                let default = self.default(vid).clone().as_user();
+                (vid, (origin, default))
             })
             .collect()
     }
@@ -331,12 +358,12 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
                 }
 
-                sv::UndoLog::Other(Instantiate { vid, .. }) => {
+                sv::UndoLog::Other(Instantiate { vid }) => {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
                         let escaping_type = match self.values.get(vid.index as usize).value {
-                            Bounded { .. } => bug!(),
+                            Bounded => bug!(),
                             Known(ty) => ty,
                         };
                         escaping_types.push(escaping_type);
@@ -367,12 +394,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
 impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     type Value = TypeVariableData<'tcx>;
-    type Undo = Instantiate<'tcx>;
+    type Undo = Instantiate;
 
-    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: Instantiate<'tcx>) {
-        let Instantiate { vid, default } = action;
-        values[vid.index as usize].value = Bounded {
-            default,
-        };
+    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: Instantiate) {
+        let Instantiate { vid } = action;
+        values[vid.index as usize].value = Bounded;
     }
 }

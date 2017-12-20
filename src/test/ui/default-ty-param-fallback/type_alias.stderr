@@ -1,0 +1,10 @@
+error[E0282]: type annotations needed
+  --> $DIR/type_alias.rs:19:13
+   |
+19 |     let x = IntMap::new();
+   |         -   ^^^^^^^^^^^ cannot infer type for `K`
+   |         |
+   |         consider giving `x` a type
+
+error: aborting due to previous error
+

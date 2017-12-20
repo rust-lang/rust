@@ -57,6 +57,7 @@ pub trait ObligationProcessor {
         where I: Clone + Iterator<Item=&'c Self::Obligation>;
 }
 
+#[derive(Clone)]
 pub struct ObligationForest<O: ForestObligation> {
     /// The list of obligations. In between calls to
     /// `process_obligations`, this list only contains nodes in the
@@ -81,7 +82,7 @@ pub struct ObligationForest<O: ForestObligation> {
     scratch: Option<Vec<usize>>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Node<O> {
     obligation: O,
     state: Cell<NodeState>,
@@ -242,6 +243,13 @@ impl<O: ForestObligation> ObligationForest<O> {
             .filter(|n| n.state.get() == NodeState::Pending)
             .map(|n| n.obligation.clone())
             .collect()
+    }
+
+    /// Returns all obligations.
+    pub fn obligations(&self) -> Vec<O>
+        where O: Clone
+    {
+        self.nodes.iter().map(|n| n.obligation.clone()).collect()
     }
 
     /// Perform a pass through the obligation list. This must

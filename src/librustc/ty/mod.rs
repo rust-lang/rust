@@ -690,12 +690,21 @@ pub enum IntVarValue {
     UintType(ast::UintTy),
 }
 
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+pub enum OriginOfTyParam {
+    Fn,
+    Impl,
+    TyDef,
+    Other,
+}
+
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct TypeParameterDef {
     pub name: Name,
     pub def_id: DefId,
     pub index: u32,
     pub has_default: bool,
+    pub origin: OriginOfTyParam,
     pub object_lifetime_default: ObjectLifetimeDefault,
 
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute

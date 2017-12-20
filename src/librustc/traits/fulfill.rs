@@ -9,12 +9,13 @@
 // except according to those terms.
 
 use infer::{RegionObligation, InferCtxt, InferOk};
-use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
+use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate, InferTy, TypeVariants};
 use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
 use hir::def_id::DefId;
+use util::nodemap::FxHashSet;
 
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
@@ -41,7 +42,7 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
 /// along. Once all type inference constraints have been generated, the
 /// method `select_all_or_error` can be used to report any remaining
 /// ambiguous cases as errors.
-
+#[derive(Clone)]
 pub struct FulfillmentContext<'tcx> {
     // A list of all obligations that have been registered with this
     // fulfillment context.
@@ -198,6 +199,18 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
     pub fn pending_obligations(&self) -> Vec<PendingPredicateObligation<'tcx>> {
         self.predicates.pending_obligations()
+    }
+
+    pub fn vars_in_obligations(&self) -> FxHashSet<ty::TyVid> {
+        let mut vars = FxHashSet();
+        for p in self.predicates.obligations() {
+            for ty in p.obligation.predicate.walk_tys() {
+                if let TypeVariants::TyInfer(InferTy::TyVar(vid)) = ty.sty {
+                    vars.insert(vid);
+                }
+            }
+        }
+        vars
     }
 
     /// Attempts to select obligations using `selcx`. If `only_new_obligations` is true, then it

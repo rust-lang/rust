@@ -327,11 +327,11 @@ impl CodeMap {
                         .sum();
                     col.0 - special_chars + non_narrow
                 };
-                debug!("byte pos {:?} is on the line at byte pos {:?}",
+                trace!("byte pos {:?} is on the line at byte pos {:?}",
                        pos, linebpos);
-                debug!("char pos {:?} is on the line at char pos {:?}",
+                trace!("char pos {:?} is on the line at char pos {:?}",
                        chpos, linechpos);
-                debug!("byte is on line: {}", line);
+                trace!("byte is on line: {}", line);
                 assert!(chpos >= linechpos);
                 Loc {
                     file: f,

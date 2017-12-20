@@ -56,7 +56,7 @@ pub enum TypeError<'tcx> {
     CyclicTy(Ty<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
-    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
+    TyParamDefaultMismatch(ExpectedFound<type_variable::UserDefault<'tcx>>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
 
     OldStyleLUB(Box<TypeError<'tcx>>),

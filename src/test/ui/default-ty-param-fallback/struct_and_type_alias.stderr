@@ -1,0 +1,10 @@
+error[E0282]: type annotations needed
+  --> $DIR/struct_and_type_alias.rs:38:20
+   |
+38 |     let hash_map = mystd::HashMap::new();
+   |         --------   ^^^^^^^^^^^^^^^^^^^ cannot infer type for `H`
+   |         |
+   |         consider giving `hash_map` a type
+
+error: aborting due to previous error
+

@@ -1,0 +1,10 @@
+error[E0282]: type annotations needed
+  --> $DIR/trait_method_call_default_self.rs:29:13
+   |
+29 |     let x = None;
+   |         -   ^^^^ cannot infer type for `T`
+   |         |
+   |         consider giving `x` a type
+
+error: aborting due to previous error
+

@@ -475,11 +475,19 @@ for ty::RegionParameterDef {
     }
 }
 
+impl_stable_hash_for!(enum ty::OriginOfTyParam {
+    Fn,
+    Impl,
+    TyDef,
+    Other
+});
+
 impl_stable_hash_for!(struct ty::TypeParameterDef {
     name,
     def_id,
     index,
     has_default,
+    origin,
     object_lifetime_default,
     pure_wrt_drop,
     synthetic

@@ -548,8 +548,8 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::error::ExpectedFound<T> {
 }
 
 BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for type_variable::Default<'a> {
-        type Lifted = type_variable::Default<'tcx>;
+    impl<'a, 'tcx> Lift<'tcx> for type_variable::UserDefault<'a> {
+        type Lifted = type_variable::UserDefault<'tcx>;
         ty, origin_span, def_id
     }
 }
@@ -1172,9 +1172,9 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::error::ExpectedFoun
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for type_variable::Default<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for type_variable::UserDefault<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        type_variable::Default {
+        type_variable::UserDefault {
             ty: self.ty.fold_with(folder),
             origin_span: self.origin_span,
             def_id: self.def_id

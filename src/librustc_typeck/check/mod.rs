@@ -90,7 +90,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use std::slice;
 use namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
-use rustc::infer::type_variable::{TypeVariableOrigin};
+use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
@@ -2116,11 +2116,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Apply "fallbacks" to some types
-    /// unconstrained types get replaced with ! or  () (depending on whether
+    /// Apply divering and numeric fallbacks.
+    /// Diverging types get replaced with ! or () (depending on whether
     /// feature(never_type) is enabled), unconstrained ints with i32, and
     /// unconstrained floats with f64.
-    fn default_type_parameters(&self) {
+    fn apply_diverging_and_numeric_type_parameter_fallback(&self) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
@@ -2129,7 +2129,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // some errors in this function, just resolve all uninstanted type
         // varibles to TyError.
         if self.is_tainted_by_errors() {
-            for ty in &self.unsolved_variables() {
+            for ty in &self.candidates_for_fallback() {
                 if let ty::TyInfer(_) = self.shallow_resolve(ty).sty {
                     debug!("default_type_parameters: defaulting `{:?}` to error", ty);
                     self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx().types.err);
@@ -2138,7 +2138,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        for ty in &self.unsolved_variables() {
+        for ty in &self.candidates_for_fallback() {
             let resolved = self.resolve_type_vars_if_possible(ty);
             if self.type_var_diverges(resolved) {
                 debug!("default_type_parameters: defaulting `{:?}` to `!` because it diverges",
@@ -2163,10 +2163,105 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// This runs as the last resort of type inference.
+    ///
+    /// It applies user supplied defaults as fallbacks for inference variables,
+    /// for example in `fn foo<T=String>()` an inference variable originated from `T`
+    /// will have `String` as its default.
+    ///
+    /// Adding a default to a type parameter that has none should be backwards compatible.
+    /// Therefore we take care to future-proof against conflicting defaults.
+    ///
+    /// Currently we prioritize params from impls and fns over params in types,
+    /// this for example allows `fn foo<T=String>(x: Option<T>)` to work
+    /// even though `Option<T>` has no default for `T`.
+    /// Lower priority defaults are considered when there are no higher priority params involved.
+    fn apply_user_type_parameter_fallback(&self) {
+        use self::TypeVariableOrigin::TypeParameterDefinition;
+        use ty::OriginOfTyParam;
+        // Collect variables that are unsolved and support fallback,
+        // grouped in bags by subtyping equivalence.
+        let mut bags = FxHashMap();
+        for vid in self.fulfillment_cx.borrow().vars_in_obligations() {
+            let mut type_variables = self.infcx.type_variables.borrow_mut();
+            let not_known = type_variables.probe(vid).is_none();
+            let supports_fallback = match type_variables.var_origin(vid) {
+                TypeParameterDefinition(_, _, OriginOfTyParam::Fn) |
+                TypeParameterDefinition(_, _, OriginOfTyParam::Impl) |
+                TypeParameterDefinition(_, _, OriginOfTyParam::TyDef) => true,
+                _ => false
+            };
+            if supports_fallback && not_known {
+                let root = type_variables.sub_root_var(vid);
+                bags.entry(root).or_insert(Vec::new()).push(vid);
+            }
+        }
+        // We put everything in a single transaction
+        // because dependent defaults create cross-bag dependencies.
+        // This is bad in that we may report errors
+        // for things that actually were successfully inferred.
+        let _ = self.commit_if_ok(|_| { self.save_and_restore_in_snapshot_flag(|infcx| {
+            // Clone the whole thing so we can use it for this snapshot.
+            let mut local_fullfilment = self.fulfillment_cx.borrow().clone();
+            // Attempt to find a fallback for each bag.
+            // - Fail if there are missing defaults.
+            // - Apply default if all default exist.
+            'bags: for bag in bags.into_iter().map(|b| b.1) {
+                // Partition the bag by the origin of the type param.
+                let (fn_or_impl, ty_def) = bag.iter().partition(|&&v| {
+                    match infcx.type_variables.borrow().var_origin(v) {
+                        TypeParameterDefinition(_, _, OriginOfTyParam::Fn) |
+                        TypeParameterDefinition(_, _, OriginOfTyParam::Impl) => true,
+                        TypeParameterDefinition(_, _, OriginOfTyParam::TyDef) => false,
+                        _ => bug!("type var does not support fallback")
+                    }
+                });
+                // Params from fns or impls have higher priority than those from type definitions.
+                // The first non-empty priority level is considered.
+                let mut bag: Vec<ty::TyVid> = fn_or_impl;
+                if bag.is_empty() {
+                    bag = ty_def;
+                }
+                let get_default = |&v| infcx.type_variables.borrow().default(v).as_user();
+                let mut normalized_defaults = Vec::new();
+                for (&vid, default) in bag.iter().zip(bag.iter().map(&get_default)) {
+                    if let Some(d) = default {
+                        let infr_ok = self.normalize_associated_types_in_as_infer_ok(d.origin_span,
+                                                                                    &d.ty);
+                        normalized_defaults.push((vid, infr_ok.value));
+                        for obligation in infr_ok.obligations {
+                            local_fullfilment.register_predicate_obligation(infcx, obligation);
+                        }
+                    } else {
+                        continue 'bags; // Fail, missing default.
+                    }
+                }
+                // All defaults exist, apply them.
+                for (vid, default) in normalized_defaults {
+                    let ty = self.tcx.mk_var(vid);
+                    let cause = self.misc(syntax_pos::DUMMY_SP);
+                    if let Ok(infer_ok) = self.at(&cause, self.param_env).sub(default, ty) {
+                        for obligation in infer_ok.obligations {
+                            local_fullfilment.register_predicate_obligation(infcx, obligation);
+                        }
+                    }
+                    debug!("apply_user_type_parameter_fallback: applied fallback to var: {:?} \
+                        with ty: {:?} with default: {:?}", vid, ty, default);
+                }
+            }
+            // Rollback on any conflict.
+            if local_fullfilment.select_where_possible(self).is_err() {
+                Err(())
+            } else {
+                Ok(())
+            }
+        })});
+    }
+
     // Implements type inference fallback algorithm
     fn select_all_obligations_and_apply_defaults(&self) {
         self.select_obligations_where_possible();
-        self.default_type_parameters();
+        self.apply_diverging_and_numeric_type_parameter_fallback();
         self.select_obligations_where_possible();
     }
 
@@ -2178,6 +2273,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(self.deferred_call_resolutions.borrow().is_empty());
 
         self.select_all_obligations_and_apply_defaults();
+        if self.tcx.sess.features.borrow().default_type_parameter_fallback {
+            self.apply_user_type_parameter_fallback();
+        }
 
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
 
@@ -4751,9 +4849,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if let Some(ast_ty) = types.get(i) {
                 // A provided type parameter.
-                self.to_ty(ast_ty)
+                if ast_ty.node != hir::Ty_::TyInfer {
+                    self.to_ty(ast_ty)
+                } else {
+                    let inferred = self.type_var_for_def(span, def, substs);
+                    self.record_ty(ast_ty.hir_id, inferred, ast_ty.span);
+                    inferred
+                }
             } else if !infer_types && def.has_default {
                 // No type parameter provided, but a default exists.
+                // FIXME(leodasvacas):
+                // For fns and impls, feature gate under `default_type_parameter_fallback`.
                 let default = self.tcx.type_of(def.def_id);
                 self.normalize_ty(
                     span,
@@ -4961,6 +5067,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // If not, error.
             if alternative.is_ty_var() || alternative.references_error() {
                 if !self.is_tainted_by_errors() {
+                    // Try user fallbacks as a last attempt.
+                    if self.tcx.sess.features.borrow().default_type_parameter_fallback {
+                        self.apply_user_type_parameter_fallback();
+                        let ty = self.resolve_type_vars_with_obligations(ty);
+                        if !ty.is_ty_var() {
+                            return ty;
+                        }
+                    }
                     type_error_struct!(self.tcx.sess, sp, ty, E0619,
                                        "the type of this value must be known in this context")
                         .emit();

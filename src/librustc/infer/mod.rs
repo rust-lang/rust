@@ -694,23 +694,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns a type variable's default fallback if any exists. A default
-    /// must be attached to the variable when created, if it is created
-    /// without a default, this will return None.
-    ///
-    /// This code does not apply to integral or floating point variables,
-    /// only to use declared defaults.
-    ///
-    /// See `new_ty_var_with_default` to create a type variable with a default.
-    /// See `type_variable::Default` for details about what a default entails.
-    pub fn default(&self, ty: Ty<'tcx>) -> Option<type_variable::Default<'tcx>> {
-        match ty.sty {
-            ty::TyInfer(ty::TyVar(vid)) => self.type_variables.borrow().default(vid),
-            _ => None
-        }
-    }
-
-    pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
+    // Returns a vector containing all type variables that have an applicable default,
+    // along with their defaults.
+    //
+    // NB: You must be careful to only apply defaults once, if a variable is unififed
+    // it many no longer be unsolved and apply a second default will mostly likely
+    // result in a type error.
+    pub fn candidates_for_fallback(&self) -> Vec<Ty<'tcx>> {
         let mut variables = Vec::new();
 
         let unbound_ty_vars = self.type_variables
@@ -736,7 +726,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         variables.extend(unbound_float_vars);
 
         return variables;
-    }
+}
 
     fn combine_fields(&'a self, trace: TypeTrace<'tcx>, param_env: ty::ParamEnv<'tcx>)
                       -> CombineFields<'a, 'gcx, 'tcx> {
@@ -1031,6 +1021,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .new_var(diverging, origin, None)
     }
 
+    pub fn next_ty_var_with_default(&self,
+                                    default: Option<type_variable::UserDefault<'tcx>>,
+                                    origin: TypeVariableOrigin) -> Ty<'tcx> {
+        let ty_var_id = self.type_variables
+                            .borrow_mut()
+                            .new_var(false, origin, default);
+
+        self.tcx.mk_var(ty_var_id)
+    }
+
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(false, origin))
     }
@@ -1097,7 +1097,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             -> Ty<'tcx> {
         let default = if def.has_default {
             let default = self.tcx.type_of(def.def_id);
-            Some(type_variable::Default {
+            Some(type_variable::UserDefault {
                 ty: default.subst_spanned(self.tcx, substs, Some(span)),
                 origin_span: span,
                 def_id: def.def_id
@@ -1106,14 +1106,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             None
         };
 
+        let origin = TypeVariableOrigin::TypeParameterDefinition(span,
+                                                                 def.name,
+                                                                 def.origin);
 
-        let ty_var_id = self.type_variables
-                            .borrow_mut()
-                            .new_var(false,
-                                     TypeVariableOrigin::TypeParameterDefinition(span, def.name),
-                                     default);
-
-        self.tcx.mk_var(ty_var_id)
+        self.tcx.mk_var(self.type_variables.borrow_mut().new_var(false, origin, default))
     }
 
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
@@ -1369,13 +1366,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_conflicting_default_types(&self,
                                             span: Span,
                                             body_id: ast::NodeId,
-                                            expected: type_variable::Default<'tcx>,
-                                            actual: type_variable::Default<'tcx>) {
+                                            expected: type_variable::UserDefault<'tcx>,
+                                            actual: type_variable::UserDefault<'tcx>) {
         let trace = TypeTrace {
             cause: ObligationCause::misc(span, body_id),
             values: Types(ExpectedFound {
                 expected: expected.ty,
-                found: actual.ty
+                found: actual.ty,
             })
         };
 
