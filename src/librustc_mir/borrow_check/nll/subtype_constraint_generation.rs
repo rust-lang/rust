@@ -11,11 +11,14 @@
 use rustc::mir::Mir;
 use rustc::infer::region_constraints::Constraint;
 use rustc::infer::region_constraints::RegionConstraintData;
+use rustc::infer::region_constraints::{Verify, VerifyBound};
 use rustc::ty;
-use transform::type_check::MirTypeckRegionConstraints;
-use transform::type_check::OutlivesSet;
+use syntax::codemap::Span;
 
-use super::region_infer::RegionInferenceContext;
+use super::region_infer::{TypeTest, RegionInferenceContext, RegionTest};
+use super::type_check::Locations;
+use super::type_check::MirTypeckRegionConstraints;
+use super::type_check::OutlivesSet;
 
 /// When the MIR type-checker executes, it validates all the types in
 /// the MIR, and in the process generates a set of constraints that
@@ -27,10 +30,7 @@ pub(super) fn generate<'tcx>(
     mir: &Mir<'tcx>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
 ) {
-    SubtypeConstraintGenerator {
-        regioncx,
-        mir,
-    }.generate(constraints);
+    SubtypeConstraintGenerator { regioncx, mir }.generate(constraints);
 }
 
 struct SubtypeConstraintGenerator<'cx, 'tcx: 'cx> {
@@ -65,6 +65,8 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
                 givens,
             } = data;
 
+            let span = self.mir.source_info(locations.from_location).span;
+
             for constraint in constraints.keys() {
                 debug!("generate: constraint: {:?}", constraint);
                 let (a_vid, b_vid) = match constraint {
@@ -81,16 +83,68 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
                 // reverse direction, because `regioncx` talks about
                 // "outlives" (`>=`) whereas the region constraints
                 // talk about `<=`.
-                let span = self.mir.source_info(locations.from_location).span;
                 self.regioncx
                     .add_outlives(span, b_vid, a_vid, locations.at_location);
             }
 
-            assert!(verifys.is_empty(), "verifys not yet implemented");
+            for verify in verifys {
+                let type_test = self.verify_to_type_test(verify, span, locations);
+                self.regioncx.add_type_test(type_test);
+            }
+
             assert!(
                 givens.is_empty(),
                 "MIR type-checker does not use givens (thank goodness)"
             );
+        }
+    }
+
+    fn verify_to_type_test(
+        &self,
+        verify: &Verify<'tcx>,
+        span: Span,
+        locations: &Locations,
+    ) -> TypeTest<'tcx> {
+        let generic_kind = verify.kind;
+
+        let lower_bound = self.to_region_vid(verify.region);
+
+        let point = locations.at_location;
+
+        let test = self.verify_bound_to_region_test(&verify.bound);
+
+        TypeTest {
+            generic_kind,
+            lower_bound,
+            point,
+            span,
+            test,
+        }
+    }
+
+    fn verify_bound_to_region_test(&self, verify_bound: &VerifyBound<'tcx>) -> RegionTest {
+        match verify_bound {
+            VerifyBound::AnyRegion(regions) => RegionTest::IsOutlivedByAnyRegionIn(
+                regions.iter().map(|r| self.to_region_vid(r)).collect(),
+            ),
+
+            VerifyBound::AllRegions(regions) => RegionTest::IsOutlivedByAllRegionsIn(
+                regions.iter().map(|r| self.to_region_vid(r)).collect(),
+            ),
+
+            VerifyBound::AnyBound(bounds) => RegionTest::Any(
+                bounds
+                    .iter()
+                    .map(|b| self.verify_bound_to_region_test(b))
+                    .collect(),
+            ),
+
+            VerifyBound::AllBounds(bounds) => RegionTest::All(
+                bounds
+                    .iter()
+                    .map(|b| self.verify_bound_to_region_test(b))
+                    .collect(),
+            ),
         }
     }
 

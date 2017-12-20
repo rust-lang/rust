@@ -1,0 +1,14 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-fn-body.rs:30:5
+   |
+30 |     outlives(cell, t)
+   |     ^^^^^^^^
+
+error: `T` does not outlive `'_#4r`
+  --> $DIR/ty-param-fn-body.rs:30:5
+   |
+30 |     outlives(cell, t)
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

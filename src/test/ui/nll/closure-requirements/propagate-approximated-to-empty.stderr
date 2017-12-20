@@ -1,0 +1,45 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/propagate-approximated-to-empty.rs:41:9
+   |
+41 |         demand_y(x, y, x.get())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: free region `'_#6r` does not outlive free region `'_#4r`
+  --> $DIR/propagate-approximated-to-empty.rs:41:18
+   |
+41 |         demand_y(x, y, x.get())
+   |                  ^
+
+note: No external requirements
+  --> $DIR/propagate-approximated-to-empty.rs:39:47
+   |
+39 |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+   |  _______________________________________________^
+40 | |         // Only works if 'x: 'y:
+41 | |         demand_y(x, y, x.get())
+42 | |         //~^ WARN not reporting region error due to -Znll
+43 | |         //~| ERROR free region `'_#6r` does not outlive free region `'_#4r`
+44 | |     });
+   | |_____^
+   |
+   = note: defining type: DefId(0/1:18 ~ propagate_approximated_to_empty[317d]::supply[0]::{{closure}}[0]) with closure substs [
+               i16,
+               for<'r, 's, 't0, 't1, 't2> extern "rust-call" fn((&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) &'_#1r u32>, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 't0)) std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 't1)) u32>, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 't2)) std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) u32>))
+           ]
+
+note: No external requirements
+  --> $DIR/propagate-approximated-to-empty.rs:38:1
+   |
+38 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+39 | |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+40 | |         // Only works if 'x: 'y:
+41 | |         demand_y(x, y, x.get())
+...  |
+44 | |     });
+45 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:6 ~ propagate_approximated_to_empty[317d]::supply[0]) with substs []
+
+error: aborting due to previous error
+

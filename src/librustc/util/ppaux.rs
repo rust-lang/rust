@@ -733,6 +733,9 @@ define_print! {
                 ty::ReErased => Ok(()),
                 ty::ReStatic => write!(f, "'static"),
                 ty::ReEmpty => write!(f, "'<empty>"),
+
+                // The user should never encounter these in unsubstituted form.
+                ty::ReClosureBound(vid) => write!(f, "{:?}", vid),
             }
         }
         debug {
@@ -741,6 +744,11 @@ define_print! {
                     write!(f, "ReEarlyBound({}, {})",
                            data.index,
                            data.name)
+                }
+
+                ty::ReClosureBound(ref vid) => {
+                    write!(f, "ReClosureBound({:?})",
+                           vid)
                 }
 
                 ty::ReLateBound(binder_id, ref bound_region) => {

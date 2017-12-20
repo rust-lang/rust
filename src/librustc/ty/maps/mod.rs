@@ -193,7 +193,7 @@ define_maps! { <'tcx>
 
     /// Borrow checks the function body. If this is a closure, returns
     /// additional requirements that the closure's creator must verify.
-    [] fn mir_borrowck: MirBorrowCheck(DefId) -> Option<mir::ClosureRegionRequirements>,
+    [] fn mir_borrowck: MirBorrowCheck(DefId) -> Option<mir::ClosureRegionRequirements<'tcx>>,
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.

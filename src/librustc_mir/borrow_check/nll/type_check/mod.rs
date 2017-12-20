@@ -12,6 +12,9 @@
 #![allow(unreachable_code)]
 
 use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
+use dataflow::FlowAtLocation;
+use dataflow::MaybeInitializedLvals;
+use dataflow::move_paths::MoveData;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::traits::{self, FulfillmentContext};
@@ -26,24 +29,80 @@ use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
+use util::liveness::LivenessResults;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
 
+mod liveness;
+
 /// Type checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
-/// be proven.
+/// be proven. This result is includes liveness constraints that
+/// ensure that regions appearing in the types of all local variables
+/// are live at all points where that local variable may later be
+/// used.
 ///
 /// This phase of type-check ought to be infallible -- this is because
 /// the original, HIR-based type-check succeeded. So if any errors
 /// occur here, we will get a `bug!` reported.
-pub fn type_check<'a, 'gcx, 'tcx>(
-    infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+///
+/// # Parameters
+///
+/// - `infcx` -- inference context to use
+/// - `body_id` -- body-id of the MIR being checked
+/// - `param_env` -- parameter environment to use for trait solving
+/// - `mir` -- MIR to type-check
+/// - `implicit_region_bound` -- a region which all generic parameters are assumed
+///   to outlive; should represent the fn body
+/// - `input_tys` -- fully liberated, but **not** normalized, expected types of the arguments;
+///   the types of the input parameters found in the MIR itself will be equated with these
+/// - `output_ty` -- fully liberaetd, but **not** normalized, expected return type;
+///   the type for the RETURN_PLACE will be equated with this
+/// - `liveness` -- results of a liveness computation on the MIR; used to create liveness
+///   constraints for the regions in the types of variables
+/// - `flow_inits` -- results of a maybe-init dataflow analysis
+/// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
+pub(crate) fn type_check<'gcx, 'tcx>(
+    infcx: &InferCtxt<'_, 'gcx, 'tcx>,
     body_id: ast::NodeId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
+    implicit_region_bound: ty::Region<'tcx>,
+    input_tys: &[Ty<'tcx>],
+    output_ty: Ty<'tcx>,
+    liveness: &LivenessResults,
+    flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'_, 'gcx, 'tcx>>,
+    move_data: &MoveData<'tcx>,
 ) -> MirTypeckRegionConstraints<'tcx> {
-    let mut checker = TypeChecker::new(infcx, body_id, param_env);
+    type_check_internal(
+        infcx,
+        body_id,
+        param_env,
+        mir,
+        Some(implicit_region_bound),
+        &mut |cx| {
+            liveness::generate(cx, mir, liveness, flow_inits, move_data);
+
+            // Equate the input and output tys given by the user with
+            // the ones found in the MIR.
+            cx.equate_input_or_output(output_ty, mir.local_decls[RETURN_PLACE].ty);
+            for (&input_ty, local) in input_tys.iter().zip((1..).map(Local::new)) {
+                cx.equate_input_or_output(input_ty, mir.local_decls[local].ty);
+            }
+        },
+    )
+}
+
+fn type_check_internal<'gcx, 'tcx>(
+    infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+    body_id: ast::NodeId,
+    param_env: ty::ParamEnv<'gcx>,
+    mir: &Mir<'tcx>,
+    implicit_region_bound: Option<ty::Region<'tcx>>,
+    extra: &mut FnMut(&mut TypeChecker<'_, 'gcx, 'tcx>),
+) -> MirTypeckRegionConstraints<'tcx> {
+    let mut checker = TypeChecker::new(infcx, body_id, param_env, implicit_region_bound);
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, mir);
         verifier.visit_mir(mir);
@@ -55,8 +114,11 @@ pub fn type_check<'a, 'gcx, 'tcx>(
         checker.typeck_mir(mir);
     }
 
+    extra(&mut checker);
+
     checker.constraints
 }
+
 
 fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
     // We sometimes see MIR failures (notably predicate failures) due to
@@ -503,11 +565,12 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 /// constraints needed for it to be valid and well-typed. Along the
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
-pub struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
     last_span: Span,
     body_id: ast::NodeId,
+    implicit_region_bound: Option<ty::Region<'tcx>>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     constraints: MirTypeckRegionConstraints<'tcx>,
 }
@@ -561,12 +624,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
         body_id: ast::NodeId,
         param_env: ty::ParamEnv<'gcx>,
+        implicit_region_bound: Option<ty::Region<'tcx>>,
     ) -> Self {
         TypeChecker {
             infcx,
             last_span: DUMMY_SP,
             body_id,
             param_env,
+            implicit_region_bound,
             reported_errors: FxHashSet(),
             constraints: MirTypeckRegionConstraints::default(),
         }
@@ -591,8 +656,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
         }
 
-        self.infcx
-            .process_registered_region_obligations(&[], None, self.param_env, self.body_id);
+        self.infcx.process_registered_region_obligations(
+            &[],
+            self.implicit_region_bound,
+            self.param_env,
+            self.body_id,
+        );
 
         let data = self.infcx.take_and_reset_region_constraints();
         if !data.is_empty() {
@@ -623,6 +692,25 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 .at(&this.misc(this.last_span), this.param_env)
                 .eq(b, a)
         })
+    }
+
+    fn equate_input_or_output(&mut self, unnormalized_a: Ty<'tcx>, b: Ty<'tcx>) {
+        let start_position = Location {
+            block: START_BLOCK,
+            statement_index: 0,
+        };
+        let a = self.normalize(&unnormalized_a, start_position);
+        if let Err(terr) = self.eq_types(a, b, start_position.at_self()) {
+            span_mirbug!(
+                self,
+                start_position,
+                "bad input or output {:?} normalized to {:?} should equal {:?} but got error {:?}",
+                unnormalized_a,
+                a,
+                b,
+                terr
+            );
+        }
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -1368,6 +1456,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 if let Some(closure_region_requirements) = tcx.mir_borrowck(*def_id) {
                     closure_region_requirements.apply_requirements(
                         self.infcx,
+                        self.body_id,
                         location,
                         *def_id,
                         *substs,
@@ -1474,7 +1563,7 @@ impl MirPass for TypeckMir {
         }
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let _region_constraint_sets = type_check(&infcx, id, param_env, mir);
+            let _ = type_check_internal(&infcx, id, param_env, mir, None, &mut |_| ());
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)

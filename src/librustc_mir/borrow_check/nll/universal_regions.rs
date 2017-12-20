@@ -45,6 +45,11 @@ pub struct UniversalRegions<'tcx> {
     /// The vid assigned to `'static`
     pub fr_static: RegionVid,
 
+    /// A special region vid created to represent the current MIR fn
+    /// body.  It will outlive the entire CFG but it will not outlive
+    /// any other universal regions.
+    pub fr_fn_body: RegionVid,
+
     /// We create region variables such that they are ordered by their
     /// `RegionClassification`. The first block are globals, then
     /// externals, then locals. So things from:
@@ -64,12 +69,16 @@ pub struct UniversalRegions<'tcx> {
     /// closure type, but for a top-level function it's the `TyFnDef`.
     pub defining_ty: Ty<'tcx>,
 
-    /// The return type of this function, with all regions replaced
-    /// by their universal `RegionVid` equivalents.
+    /// The return type of this function, with all regions replaced by
+    /// their universal `RegionVid` equivalents. This type is **NOT
+    /// NORMALIZED** (i.e., it contains unnormalized associated type
+    /// projections).
     pub output_ty: Ty<'tcx>,
 
     /// The fully liberated input types of this function, with all
     /// regions replaced by their universal `RegionVid` equivalents.
+    /// This type is **NOT NORMALIZED** (i.e., it contains
+    /// unnormalized associated type projections).
     pub input_tys: &'tcx [Ty<'tcx>],
 
     /// Each RBP `('a, GK)` indicates that `GK: 'a` can be assumed to
@@ -242,17 +251,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::new)
     }
 
-    /// True if `r` is classied as a global region.
-    pub fn is_global_free_region(&self, r: RegionVid) -> bool {
-        self.region_classification(r) == Some(RegionClassification::Global)
-    }
-
-    /// True if `r` is classied as an external region.
-    pub fn is_extern_free_region(&self, r: RegionVid) -> bool {
-        self.region_classification(r) == Some(RegionClassification::External)
-    }
-
-    /// True if `r` is classied as an local region.
+    /// True if `r` is classified as an local region.
     pub fn is_local_free_region(&self, r: RegionVid) -> bool {
         self.region_classification(r) == Some(RegionClassification::Local)
     }
@@ -260,6 +259,20 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// Returns the number of universal regions created in any category.
     pub fn len(&self) -> usize {
         self.num_universals
+    }
+
+    /// Given two universal regions, returns the postdominating
+    /// upper-bound (effectively the least upper bound).
+    ///
+    /// (See `TransitiveRelation::postdom_upper_bound` for details on
+    /// the postdominating upper bound in general.)
+    pub fn postdom_upper_bound(&self, fr1: RegionVid, fr2: RegionVid) -> RegionVid {
+        assert!(self.is_universal_region(fr1));
+        assert!(self.is_universal_region(fr2));
+        *self.relations
+            .inverse_outlives
+            .postdom_upper_bound(&fr1, &fr2)
+            .unwrap_or(&self.fr_static)
     }
 
     /// Finds an "upper bound" for `fr` that is not local. In other
@@ -305,6 +318,10 @@ impl<'tcx> UniversalRegions<'tcx> {
         relation: &TransitiveRelation<RegionVid>,
         fr0: RegionVid,
     ) -> Option<RegionVid> {
+        // This method assumes that `fr0` is one of the universally
+        // quantified region variables.
+        assert!(self.is_universal_region(fr0));
+
         let mut external_parents = vec![];
         let mut queue = vec![&fr0];
 
@@ -408,6 +425,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         let first_local_index = self.infcx.num_region_vars();
         let inputs_and_output = self.infcx
             .replace_bound_regions_with_nll_infer_vars(FR, &bound_inputs_and_output);
+        let fr_fn_body = self.infcx.next_nll_region_var(FR).to_region_vid();
         let num_universals = self.infcx.num_region_vars();
 
         // Insert the facts we know from the predicates. Why? Why not.
@@ -419,12 +437,19 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             self.add_implied_bounds(&indices, ty);
         }
 
-        // Finally, outlives is reflexive, and static outlives every
-        // other free region.
+        // Finally:
+        // - outlives is reflexive, so `'r: 'r` for every region `'r`
+        // - `'static: 'r` for every region `'r`
+        // - `'r: 'fn_body` for every (other) universally quantified
+        //   region `'r`, all of which are provided by our caller
         for fr in (FIRST_GLOBAL_INDEX..num_universals).map(RegionVid::new) {
-            debug!("build: relating free region {:?} to itself and to 'static", fr);
+            debug!(
+                "build: relating free region {:?} to itself and to 'static",
+                fr
+            );
             self.relations.relate_universal_regions(fr, fr);
             self.relations.relate_universal_regions(fr_static, fr);
+            self.relations.relate_universal_regions(fr, fr_fn_body);
         }
 
         let (output_ty, input_tys) = inputs_and_output.split_last().unwrap();
@@ -432,19 +457,26 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
         // we should not have created any more variables
         assert_eq!(self.infcx.num_region_vars(), num_universals);
 
-        debug!("build: global regions = {}..{}",
-               FIRST_GLOBAL_INDEX,
-               first_extern_index);
-        debug!("build: extern regions = {}..{}",
-               first_extern_index,
-               first_local_index);
-        debug!("build: local regions  = {}..{}",
-               first_local_index,
-               num_universals);
+        debug!(
+            "build: global regions = {}..{}",
+            FIRST_GLOBAL_INDEX,
+            first_extern_index
+        );
+        debug!(
+            "build: extern regions = {}..{}",
+            first_extern_index,
+            first_local_index
+        );
+        debug!(
+            "build: local regions  = {}..{}",
+            first_local_index,
+            num_universals
+        );
 
         UniversalRegions {
             indices,
             fr_static,
+            fr_fn_body,
             first_extern_index,
             first_local_index,
             num_universals,

@@ -1055,6 +1055,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
             ty::ReVar(..) |
             ty::ReSkolemized(..) |
             ty::ReEmpty |
+            ty::ReClosureBound(_) |
             ty::ReErased => None
         }
     }

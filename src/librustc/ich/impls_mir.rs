@@ -536,14 +536,29 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Literal<'gcx> {
 
 impl_stable_hash_for!(struct mir::Location { block, statement_index });
 
-impl_stable_hash_for!(struct mir::ClosureRegionRequirements {
+impl_stable_hash_for!(struct mir::ClosureRegionRequirements<'tcx> {
     num_external_vids,
     outlives_requirements
 });
 
-impl_stable_hash_for!(struct mir::ClosureOutlivesRequirement {
-    free_region,
+impl_stable_hash_for!(struct mir::ClosureOutlivesRequirement<'tcx> {
+    subject,
     outlived_free_region,
     blame_span
 });
 
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::ClosureOutlivesSubject<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            mir::ClosureOutlivesSubject::Ty(ref ty) => {
+                ty.hash_stable(hcx, hasher);
+            }
+            mir::ClosureOutlivesSubject::Region(ref region) => {
+                region.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}

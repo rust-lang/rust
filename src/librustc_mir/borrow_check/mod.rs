@@ -22,16 +22,16 @@ use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::ClosureRegionRequirements;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::indexed_set::{IdxSetBuf};
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 
 use syntax::ast;
 use syntax_pos::Span;
 
 use dataflow::{do_dataflow, DebugFormatted};
+use dataflow::FlowAtLocation;
 use dataflow::MoveDataParamEnv;
 use dataflow::{DataflowAnalysis, DataflowResultsConsumer};
-use dataflow::{FlowAtLocation, FlowsAtLocation};
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
 use dataflow::{EverInitializedLvals, MovingOutStatements};
 use dataflow::{Borrows, BorrowData, ReserveOrActivateIndex};
@@ -65,7 +65,7 @@ pub fn provide(providers: &mut Providers) {
 fn mir_borrowck<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> Option<ClosureRegionRequirements> {
+) -> Option<ClosureRegionRequirements<'tcx>> {
     let input_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
@@ -89,7 +89,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     input_mir: &Mir<'gcx>,
     def_id: DefId,
-) -> Option<ClosureRegionRequirements> {
+) -> Option<ClosureRegionRequirements<'gcx>> {
     let tcx = infcx.tcx;
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);

@@ -9,16 +9,16 @@
 // except according to those terms.
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::{ClosureRegionRequirements, Mir};
+use rustc::mir::{ClosureRegionRequirements, ClosureOutlivesSubject, Mir};
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
+use std::fmt::Debug;
 use std::io;
 use transform::MirSource;
-use transform::type_check;
-use util::liveness::{self, LivenessMode, LivenessResult, LocalSet};
-use borrow_check::FlowAtLocation;
+use util::liveness::{LivenessResults, LocalSet};
+use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedLvals;
 use dataflow::move_paths::MoveData;
 
@@ -27,14 +27,15 @@ use util::pretty::{self, ALIGN};
 use self::mir_util::PassWhere;
 
 mod constraint_generation;
+pub(crate) mod region_infer;
+mod renumber;
 mod subtype_constraint_generation;
+pub(crate) mod type_check;
 mod universal_regions;
+
+use self::region_infer::RegionInferenceContext;
 use self::universal_regions::UniversalRegions;
 
-pub(crate) mod region_infer;
-use self::region_infer::RegionInferenceContext;
-
-mod renumber;
 
 /// Rewrites the regions in the MIR to use NLL variables, also
 /// scraping out the set of universal regions (e.g., region parameters)
@@ -52,7 +53,7 @@ pub(in borrow_check) fn replace_regions_in_mir<'cx, 'gcx, 'tcx>(
     let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
 
     // Replace all remaining regions with fresh inference variables.
-    renumber::renumber_mir(infcx, &universal_regions, mir);
+    renumber::renumber_mir(infcx, mir);
 
     let source = MirSource::item(def_id);
     mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, mir, |_, _| Ok(()));
@@ -73,11 +74,24 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     move_data: &MoveData<'tcx>,
 ) -> (
     RegionInferenceContext<'tcx>,
-    Option<ClosureRegionRequirements>,
+    Option<ClosureRegionRequirements<'gcx>>,
 ) {
     // Run the MIR type-checker.
     let mir_node_id = infcx.tcx.hir.as_local_node_id(def_id).unwrap();
-    let constraint_sets = &type_check::type_check(infcx, mir_node_id, param_env, mir);
+    let liveness = &LivenessResults::compute(mir);
+    let fr_fn_body = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
+    let constraint_sets = &type_check::type_check(
+        infcx,
+        mir_node_id,
+        param_env,
+        mir,
+        fr_fn_body,
+        universal_regions.input_tys,
+        universal_regions.output_ty,
+        &liveness,
+        flow_inits,
+        move_data,
+    );
 
     // Create the region inference context, taking ownership of the region inference
     // data that was contained in `infcx`.
@@ -85,35 +99,9 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     let mut regioncx = RegionInferenceContext::new(var_origins, universal_regions, mir);
     subtype_constraint_generation::generate(&mut regioncx, mir, constraint_sets);
 
-    // Compute what is live where.
-    let liveness = &LivenessResults {
-        regular: liveness::liveness_of_locals(
-            &mir,
-            LivenessMode {
-                include_regular_use: true,
-                include_drops: false,
-            },
-        ),
-
-        drop: liveness::liveness_of_locals(
-            &mir,
-            LivenessMode {
-                include_regular_use: false,
-                include_drops: true,
-            },
-        ),
-    };
 
     // Generate non-subtyping constraints.
-    constraint_generation::generate_constraints(
-        infcx,
-        &mut regioncx,
-        &mir,
-        param_env,
-        liveness,
-        flow_inits,
-        move_data,
-    );
+    constraint_generation::generate_constraints(infcx, &mut regioncx, &mir);
 
     // Solve the region constraints.
     let closure_region_requirements = regioncx.solve(infcx, &mir, def_id);
@@ -134,11 +122,6 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     dump_annotation(infcx, &mir, def_id, &regioncx, &closure_region_requirements);
 
     (regioncx, closure_region_requirements)
-}
-
-struct LivenessResults {
-    regular: LivenessResult,
-    drop: LivenessResult,
 }
 
 fn dump_mir_results<'a, 'gcx, 'tcx>(
@@ -283,9 +266,13 @@ fn for_each_region_constraint(
     with_msg: &mut FnMut(&str) -> io::Result<()>,
 ) -> io::Result<()> {
     for req in &closure_region_requirements.outlives_requirements {
+        let subject: &Debug = match &req.subject {
+            ClosureOutlivesSubject::Region(subject) => subject,
+            ClosureOutlivesSubject::Ty(ty) => ty,
+        };
         with_msg(&format!(
             "where {:?}: {:?}",
-            req.free_region,
+            subject,
             req.outlived_free_region,
         ))?;
     }

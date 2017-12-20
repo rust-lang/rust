@@ -5,20 +5,20 @@ warning: not reporting region error due to -Znll
    |                     ^^^^^^^
 
 error: free region `'_#5r` does not outlive free region `'_#6r`
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:57:25
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:55:17
    |
-57 |             demand_y(x, y, p)
-   |                         ^
+55 |             let p = x.get();
+   |                 ^
 
-note: External requirements
+note: No external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:53:9
    |
 53 | /         |_outlives1, _outlives2, _outlives3, x, y| {
 54 | |             // Only works if 'x: 'y:
 55 | |             let p = x.get();
 56 | |             //~^ WARN not reporting region error due to -Znll
-57 | |             demand_y(x, y, p)
-58 | |             //~^ ERROR free region `'_#5r` does not outlive free region `'_#6r`
+57 | |             //~| ERROR free region `'_#5r` does not outlive free region `'_#6r`
+58 | |             demand_y(x, y, p)
 59 | |         },
    | |_________^
    |
@@ -26,7 +26,6 @@ note: External requirements
                i16,
                for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) u32>))
            ]
-   = note: number of external vids: 4
 
 note: No external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:48:1

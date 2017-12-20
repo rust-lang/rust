@@ -822,6 +822,8 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, .. }) => {
                 self.def_id(def_id);
             }
+
+            ty::ReClosureBound(..) |
             ty::ReLateBound(..) |
             ty::ReFree(..) |
             ty::ReScope(..) |

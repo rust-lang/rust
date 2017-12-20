@@ -7,7 +7,7 @@ error[E0597]: `y` does not live long enough
 37 |     }
    |      - borrowed value only lives until here
    |
-   = note: borrowed value must be valid for lifetime '_#4r...
+   = note: borrowed value must be valid for lifetime '_#5r...
 
 error: aborting due to previous error
 

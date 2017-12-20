@@ -12,21 +12,13 @@ use rustc::hir;
 use rustc::mir::{BasicBlock, BasicBlockData, Location, Place, Mir, Rvalue};
 use rustc::mir::visit::Visitor;
 use rustc::mir::Place::Projection;
-use rustc::mir::{Local, PlaceProjection, ProjectionElem};
+use rustc::mir::{PlaceProjection, ProjectionElem};
 use rustc::mir::visit::TyContext;
 use rustc::infer::InferCtxt;
-use rustc::traits::{self, ObligationCause};
-use rustc::ty::{self, ClosureSubsts, Ty};
+use rustc::ty::{self, ClosureSubsts};
 use rustc::ty::subst::Substs;
 use rustc::ty::fold::TypeFoldable;
-use rustc::util::common::ErrorReported;
-use rustc_data_structures::fx::FxHashSet;
-use syntax::codemap::DUMMY_SP;
-use borrow_check::{FlowAtLocation, FlowsAtLocation};
-use dataflow::MaybeInitializedLvals;
-use dataflow::move_paths::{HasMoveData, MoveData};
 
-use super::LivenessResults;
 use super::ToRegionVid;
 use super::region_infer::RegionInferenceContext;
 
@@ -34,19 +26,11 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
     regioncx: &mut RegionInferenceContext<'tcx>,
     mir: &Mir<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    liveness: &LivenessResults,
-    flow_inits: &mut FlowAtLocation<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
-    move_data: &MoveData<'tcx>,
 ) {
     let mut cg = ConstraintGeneration {
         infcx,
         regioncx,
         mir,
-        liveness,
-        param_env,
-        flow_inits,
-        move_data,
     };
 
     for (bb, data) in mir.basic_blocks().iter_enumerated() {
@@ -59,16 +43,10 @@ struct ConstraintGeneration<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: &'cg InferCtxt<'cx, 'gcx, 'tcx>,
     regioncx: &'cg mut RegionInferenceContext<'tcx>,
     mir: &'cg Mir<'tcx>,
-    liveness: &'cg LivenessResults,
-    param_env: ty::ParamEnv<'tcx>,
-    flow_inits: &'cg mut FlowAtLocation<MaybeInitializedLvals<'cx, 'gcx, 'tcx>>,
-    move_data: &'cg MoveData<'tcx>,
 }
-
 
 impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, data: &BasicBlockData<'tcx>) {
-        self.add_liveness_constraints(bb);
         self.super_basic_block_data(bb, data);
     }
 
@@ -130,84 +108,6 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
 }
 
 impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
-    /// Liveness constraints:
-    ///
-    /// > If a variable V is live at point P, then all regions R in the type of V
-    /// > must include the point P.
-    fn add_liveness_constraints(&mut self, bb: BasicBlock) {
-        debug!("add_liveness_constraints(bb={:?})", bb);
-
-        self.liveness
-            .regular
-            .simulate_block(self.mir, bb, |location, live_locals| {
-                for live_local in live_locals.iter() {
-                    let live_local_ty = self.mir.local_decls[live_local].ty;
-                    self.add_regular_live_constraint(live_local_ty, location);
-                }
-            });
-
-        let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
-        self.liveness
-            .drop
-            .simulate_block(self.mir, bb, |location, live_locals| {
-                all_live_locals.push((location, live_locals.iter().collect()));
-            });
-        debug!(
-            "add_liveness_constraints: all_live_locals={:#?}",
-            all_live_locals
-        );
-
-        let terminator_index = self.mir.basic_blocks()[bb].statements.len();
-        self.flow_inits.reset_to_entry_of(bb);
-        while let Some((location, live_locals)) = all_live_locals.pop() {
-            for live_local in live_locals {
-                debug!(
-                    "add_liveness_constraints: location={:?} live_local={:?}",
-                    location,
-                    live_local
-                );
-
-                self.flow_inits.each_state_bit(|mpi_init| {
-                    debug!(
-                        "add_liveness_constraints: location={:?} initialized={:?}",
-                        location,
-                        &self.flow_inits
-                            .operator()
-                            .move_data()
-                            .move_paths[mpi_init]
-                    );
-                });
-
-                let mpi = self.move_data.rev_lookup.find_local(live_local);
-                if let Some(initialized_child) = self.flow_inits.has_any_child_of(mpi) {
-                    debug!(
-                        "add_liveness_constraints: mpi={:?} has initialized child {:?}",
-                        self.move_data.move_paths[mpi],
-                        self.move_data.move_paths[initialized_child]
-                    );
-
-                    let live_local_ty = self.mir.local_decls[live_local].ty;
-                    self.add_drop_live_constraint(live_local_ty, location);
-                }
-            }
-
-            if location.statement_index == terminator_index {
-                debug!(
-                    "add_liveness_constraints: reconstruct_terminator_effect from {:#?}",
-                    location
-                );
-                self.flow_inits.reconstruct_terminator_effect(location);
-            } else {
-                debug!(
-                    "add_liveness_constraints: reconstruct_statement_effect from {:#?}",
-                    location
-                );
-                self.flow_inits.reconstruct_statement_effect(location);
-            }
-            self.flow_inits.apply_local_effect(location);
-        }
-    }
-
     /// Some variable with type `live_ty` is "regular live" at
     /// `location` -- i.e., it may be used later. This means that all
     /// regions appearing in the type `live_ty` must be live at
@@ -228,75 +128,6 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
                 let vid = live_region.to_region_vid();
                 self.regioncx.add_live_point(vid, location);
             });
-    }
-
-    /// Some variable with type `live_ty` is "drop live" at `location`
-    /// -- i.e., it may be dropped later. This means that *some* of
-    /// the regions in its type must be live at `location`. The
-    /// precise set will depend on the dropck constraints, and in
-    /// particular this takes `#[may_dangle]` into account.
-    fn add_drop_live_constraint(&mut self, dropped_ty: Ty<'tcx>, location: Location) {
-        debug!(
-            "add_drop_live_constraint(dropped_ty={:?}, location={:?})",
-            dropped_ty,
-            location
-        );
-
-        let tcx = self.infcx.tcx;
-        let mut types = vec![(dropped_ty, 0)];
-        let mut known = FxHashSet();
-        while let Some((ty, depth)) = types.pop() {
-            let span = DUMMY_SP; // FIXME
-            let result = match tcx.dtorck_constraint_for_ty(span, dropped_ty, depth, ty) {
-                Ok(result) => result,
-                Err(ErrorReported) => {
-                    continue;
-                }
-            };
-
-            let ty::DtorckConstraint {
-                outlives,
-                dtorck_types,
-            } = result;
-
-            // All things in the `outlives` array may be touched by
-            // the destructor and must be live at this point.
-            for outlive in outlives {
-                self.add_regular_live_constraint(outlive, location);
-            }
-
-            // However, there may also be some types that
-            // `dtorck_constraint_for_ty` could not resolve (e.g.,
-            // associated types and parameters). We need to normalize
-            // associated types here and possibly recursively process.
-            for ty in dtorck_types {
-                let cause = ObligationCause::dummy();
-                // We know that our original `dropped_ty` is well-formed,
-                // so region obligations resulting from this normalization
-                // should always hold.
-                //
-                // Therefore we ignore them instead of trying to match
-                // them up with a location.
-                let fulfillcx = traits::FulfillmentContext::new_ignoring_regions();
-                match traits::fully_normalize_with_fulfillcx(
-                    self.infcx, fulfillcx, cause, self.param_env, &ty
-                ) {
-                    Ok(ty) => match ty.sty {
-                        ty::TyParam(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
-                            self.add_regular_live_constraint(ty, location);
-                        }
-
-                        _ => if known.insert(ty) {
-                            types.push((ty, depth + 1));
-                        },
-                    },
-
-                    Err(errors) => {
-                        self.infcx.report_fulfillment_errors(&errors, None);
-                    }
-                }
-            }
-        }
     }
 
     fn add_reborrow_constraint(

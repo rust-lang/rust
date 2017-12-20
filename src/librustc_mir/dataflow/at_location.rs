@@ -25,26 +25,43 @@ use std::iter;
 /// There's probably a way to auto-impl this, but I think
 /// it is cleaner to have manual visitor impls.
 pub trait FlowsAtLocation {
-    // reset the state bitvector to represent the entry to block `bb`.
+    /// Reset the state bitvector to represent the entry to block `bb`.
     fn reset_to_entry_of(&mut self, bb: BasicBlock);
 
-    // build gen + kill sets for statement at `loc`.
+    /// Build gen + kill sets for statement at `loc`.
+    ///
+    /// Note that invoking this method alone does not change the
+    /// `curr_state` -- you must invoke `apply_local_effect`
+    /// afterwards.
     fn reconstruct_statement_effect(&mut self, loc: Location);
 
-    // build gen + kill sets for terminator for `loc`.
+    /// Build gen + kill sets for terminator for `loc`.
+    ///
+    /// Note that invoking this method alone does not change the
+    /// `curr_state` -- you must invoke `apply_local_effect`
+    /// afterwards.
     fn reconstruct_terminator_effect(&mut self, loc: Location);
 
-    // apply current gen + kill sets to `flow_state`.
-    //
-    // (`bb` and `stmt_idx` parameters can be ignored if desired by
-    // client. For the terminator, the `stmt_idx` will be the number
-    // of statements in the block.)
+    /// Apply current gen + kill sets to `flow_state`.
+    ///
+    /// (`loc` parameters can be ignored if desired by
+    /// client. For the terminator, the `stmt_idx` will be the number
+    /// of statements in the block.)
     fn apply_local_effect(&mut self, loc: Location);
 }
 
 /// Represents the state of dataflow at a particular
 /// CFG location, both before and after it is
 /// executed.
+///
+/// Data flow results are typically computed only as basic block
+/// boundaries. A `FlowInProgress` allows you to reconstruct the
+/// effects at any point in the control-flow graph by starting with
+/// the state at the start of the basic block (`reset_to_entry_of`)
+/// and then replaying the effects of statements and terminators
+/// (e.g. via `reconstruct_statement_effect` and
+/// `reconstruct_terminator_effect`; don't forget to call
+/// `apply_local_effect`).
 pub struct FlowAtLocation<BD>
 where
     BD: BitDenotation,
@@ -59,6 +76,7 @@ impl<BD> FlowAtLocation<BD>
 where
     BD: BitDenotation,
 {
+    /// Iterate over each bit set in the current state.
     pub fn each_state_bit<F>(&self, f: F)
     where
         F: FnMut(BD::Idx),
@@ -67,6 +85,9 @@ where
             .each_bit(self.base_results.operator().bits_per_block(), f)
     }
 
+    /// Iterate over each `gen` bit in the current effect (invoke
+    /// `reconstruct_statement_effect` or
+    /// `reconstruct_terminator_effect` first).
     pub fn each_gen_bit<F>(&self, f: F)
     where
         F: FnMut(BD::Idx),
@@ -88,6 +109,7 @@ where
         }
     }
 
+    /// Access the underlying operator.
     pub fn operator(&self) -> &BD {
         self.base_results.operator()
     }
@@ -96,11 +118,15 @@ where
         self.curr_state.contains(x)
     }
 
+    /// Returns an iterator over the elements present in the current state.
     pub fn elems_incoming(&self) -> iter::Peekable<indexed_set::Elems<BD::Idx>> {
         let univ = self.base_results.sets().bits_per_block();
         self.curr_state.elems(univ).peekable()
     }
 
+    /// Creates a clone of the current state and applies the local
+    /// effects to the clone (leaving the state of self intact).
+    /// Invokes `f` with an iterator over the resulting state.
     pub fn with_elems_outgoing<F>(&self, f: F)
     where
         F: FnOnce(indexed_set::Elems<BD::Idx>),

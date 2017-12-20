@@ -1,0 +1,26 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-fn.rs:22:5
+   |
+22 |     x
+   |     ^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-fn.rs:38:5
+   |
+38 |     x
+   |     ^
+
+error: `T` does not outlive `'_#3r`
+  --> $DIR/ty-param-fn.rs:22:5
+   |
+22 |     x
+   |     ^
+
+error: `T` does not outlive `'_#4r`
+  --> $DIR/ty-param-fn.rs:38:5
+   |
+38 |     x
+   |     ^
+
+error: aborting due to 2 previous errors
+

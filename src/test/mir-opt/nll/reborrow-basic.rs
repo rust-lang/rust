@@ -28,11 +28,11 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.main.nll.0.mir
-// | '_#6r    | {bb0[6], bb0[7], bb0[8], bb0[9], bb0[10], bb0[11], bb0[12], bb0[13], bb0[14]}
+// | '_#7r    | {bb0[6..=14]}
 // ...
-// | '_#8r    | {bb0[11], bb0[12], bb0[13], bb0[14]}
+// | '_#9r    | {bb0[11..=14]}
 // ...
-// let _2: &'_#6r mut i32;
+// let _2: &'_#7r mut i32;
 // ...
-// let _4: &'_#8r mut i32;
+// let _4: &'_#9r mut i32;
 // END rustc.main.nll.0.mir

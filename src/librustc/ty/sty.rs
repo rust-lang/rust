@@ -1036,6 +1036,12 @@ pub enum RegionKind {
 
     /// Erased region, used by trait selection, in MIR and during trans.
     ReErased,
+
+    /// These are regions bound in the "defining type" for a
+    /// closure. They are used ONLY as part of the
+    /// `ClosureRegionRequirements` that are produced by MIR borrowck.
+    /// See `ClosureRegionRequirements` for more details.
+    ReClosureBound(RegionVid),
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1184,18 +1190,32 @@ impl RegionKind {
 
         match *self {
             ty::ReVar(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
                 flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::ReSkolemized(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
                 flags = flags | TypeFlags::HAS_RE_SKOL;
                 flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::ReLateBound(..) => { }
-            ty::ReEarlyBound(..) => { flags = flags | TypeFlags::HAS_RE_EARLY_BOUND; }
-            ty::ReStatic | ty::ReErased => { }
-            _ => { flags = flags | TypeFlags::HAS_FREE_REGIONS; }
+            ty::ReEarlyBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_RE_EARLY_BOUND;
+            }
+            ty::ReEmpty |
+            ty::ReStatic |
+            ty::ReFree { .. } |
+            ty::ReScope { .. } => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+            }
+            ty::ReErased => {
+            }
+            ty::ReClosureBound(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+            }
         }
 
         match *self {
