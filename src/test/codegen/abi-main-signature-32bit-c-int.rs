@@ -17,4 +17,4 @@
 fn main() {
 }
 
-// CHECK: define i32 @main(i32, i8**)
+// CHECK: define void @main(i32, i8**)

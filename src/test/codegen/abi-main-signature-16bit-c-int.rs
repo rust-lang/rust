@@ -29,4 +29,4 @@
 fn main() {
 }
 
-// CHECK: define i16 @main(i16, i8**)
+// CHECK: define void @main(i16, i8**)
