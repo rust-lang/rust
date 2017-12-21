@@ -22,7 +22,7 @@ use slice;
 use str;
 
 mod float;
-mod num;
+pub(crate) mod num;
 mod builders;
 
 #[unstable(feature = "fmt_flags_align", issue = "27726")]

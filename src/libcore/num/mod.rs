@@ -99,6 +99,7 @@ pub mod diy_float;
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
     ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr,
+     MAX_STR_LEN = $MAX_STR_LEN: expr,
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
@@ -154,6 +155,101 @@ macro_rules! int_impl {
         pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
             from_str_radix(src, radix)
         }
+
+        /// Write the representation in a given base in a pre-allocated buffer.
+        ///
+        /// Digits are a subset (depending on `radix`) of `0-9A-Z`.
+        ///
+        /// The returned slice starts with a minus sign for negative values
+        /// but contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `radix` is smaller than 2 or larger than 36,
+        /// or if `buffer` is too small.
+        /// As a conservative upper bound, `&mut [u8; 128]` is always large enough.
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!((i16::min_value() + 1).to_uppercase_str_radix(&mut [0; 5], 16), "-7FFF")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_uppercase_str_radix(self, buffer: &mut [u8], radix: u32) -> &mut str {
+            fmt::num::SignedToStr::to_str_radix(self as $ActualT, buffer, radix, true)
+        }
+
+        /// Write the representation in a given base in a pre-allocated buffer.
+        ///
+        /// Digits are a subset (depending on `radix`) of `0-9a-z`.
+        ///
+        /// The returned slice starts with a minus sign for negative values
+        /// but contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `radix` is smaller than 2 or larger than 36,
+        /// or if `buffer` is too small.
+        /// As a conservative upper bound, `&mut [u8; 128]` is always large enough.
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!((i16::min_value() + 1).to_lowercase_str_radix(&mut [0; 5], 16), "-7fff")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_lowercase_str_radix(self, buffer: &mut [u8], radix: u32) -> &mut str {
+            fmt::num::SignedToStr::to_str_radix(self as $ActualT, buffer, radix, false)
+        }
+
+        /// Writes the decimal representation in a pre-allocated buffer.
+        ///
+        /// The returned slice starts with a minus sign for negative values
+        /// but contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `buffer` is smaller than [`MAX_STR_LEN`].
+        ///
+        /// [`MAX_STR_LEN`]: #associatedconstant.MAX_STR_LEN
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!(i16::min_value().to_str(&mut [0; i16::MAX_STR_LEN]), "-32768")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_str(self, buffer: &mut [u8]) -> &mut str {
+            fmt::num::SignedToStr::to_str(self as $ActualT, buffer)
+        }
+
+        /// The maximum length of the decimal representation of a value of this type.
+        /// This is intended to be used together with [`to_str`].
+        ///
+        /// [`MAX_STR_LEN`]: #method.to_str
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub const MAX_STR_LEN: usize = $MAX_STR_LEN;
 
         /// Returns the number of ones in the binary representation of `self`.
         ///
@@ -1208,6 +1304,7 @@ macro_rules! int_impl {
 #[lang = "i8"]
 impl i8 {
     int_impl! { i8, i8, u8, 8,
+        MAX_STR_LEN = 4,  // i8::min_value().to_string().len()
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1216,6 +1313,7 @@ impl i8 {
 #[lang = "i16"]
 impl i16 {
     int_impl! { i16, i16, u16, 16,
+        MAX_STR_LEN = 6,  // i16::min_value().to_string().len()
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1224,6 +1322,7 @@ impl i16 {
 #[lang = "i32"]
 impl i32 {
     int_impl! { i32, i32, u32, 32,
+        MAX_STR_LEN = 11,  // i32::min_value().to_string().len()
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1232,6 +1331,7 @@ impl i32 {
 #[lang = "i64"]
 impl i64 {
     int_impl! { i64, i64, u64, 64,
+        MAX_STR_LEN = 20,  // i64::min_value().to_string().len()
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1240,6 +1340,7 @@ impl i64 {
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128,
+        MAX_STR_LEN = 40,  // i128::min_value().to_string().len()
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1249,6 +1350,7 @@ impl i128 {
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i16, u16, 16,
+        MAX_STR_LEN = i16::MAX_STR_LEN,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1258,6 +1360,7 @@ impl isize {
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i32, u32, 32,
+        MAX_STR_LEN = i32::MAX_STR_LEN,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1267,6 +1370,7 @@ impl isize {
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i64, u64, 64,
+        MAX_STR_LEN = i64::MAX_STR_LEN,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1275,6 +1379,7 @@ impl isize {
 // `Int` + `UnsignedInt` implemented for unsigned integers
 macro_rules! uint_impl {
     ($SelfT:ty, $ActualT:ty, $BITS:expr,
+     MAX_STR_LEN = $MAX_STR_LEN: expr,
      $ctpop:path,
      $ctlz:path,
      $ctlz_nonzero:path,
@@ -1331,6 +1436,98 @@ macro_rules! uint_impl {
         pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
             from_str_radix(src, radix)
         }
+
+        /// Write the representation in a given base in a pre-allocated buffer.
+        ///
+        /// Digits are a subset (depending on `radix`) of `0-9A-Z`.
+        ///
+        /// The returned slice contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `radix` is smaller than 2 or larger than 36,
+        /// or if `buffer` is too small.
+        /// As a conservative upper bound, `&mut [u8; 128]` is always large enough.
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!((std::char::MAX as u32).to_uppercase_str_radix(&mut [0; 8], 16), "10FFFF")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_uppercase_str_radix(self, buffer: &mut [u8], radix: u32) -> &mut str {
+            fmt::num::UnsignedToStr::to_str_radix(self as $ActualT, buffer, radix, true, false)
+        }
+
+        /// Write the representation in a given base in a pre-allocated buffer.
+        ///
+        /// Digits are a subset (depending on `radix`) of `0-9a-z`.
+        ///
+        /// The returned slice contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `radix` is smaller than 2 or larger than 36,
+        /// or if `buffer` is too small.
+        /// As a conservative upper bound, `&mut [u8; 128]` is always large enough.
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!((std::char::MAX as u32).to_lowercase_str_radix(&mut [0; 8], 16), "10ffff")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_lowercase_str_radix(self, buffer: &mut [u8], radix: u32) -> &mut str {
+            fmt::num::UnsignedToStr::to_str_radix(self as $ActualT, buffer, radix, false, false)
+        }
+
+        /// Writes the decimal representation in a pre-allocated buffer.
+        ///
+        /// The returned slice contains no leading zero or plus sign,
+        /// and is aligned to the *end* of `buffer`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `buffer` is smaller than [`MAX_STR_LEN`].
+        ///
+        /// [`MAX_STR_LEN`]: #associatedconstant.MAX_STR_LEN
+        ///
+        /// # Safety
+        ///
+        /// `buffer` may be uninitialized.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_str)]
+        ///
+        /// assert_eq!(0xFFFF_u32.to_str(&mut [0; u32::MAX_STR_LEN]), "65535")
+        /// ```
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub fn to_str(self, buffer: &mut [u8]) -> &mut str {
+            fmt::num::UnsignedToStr::to_str(self as $ActualT, buffer)
+        }
+
+        /// The maximum length of the decimal representation of a value of this type.
+        /// This is intended to be used together with [`to_str`].
+        ///
+        /// [`MAX_STR_LEN`]: #method.to_str
+        #[unstable(feature = "int_to_str", issue = /* FIXME */ "0")]
+        pub const MAX_STR_LEN: usize = $MAX_STR_LEN;
 
         /// Returns the number of ones in the binary representation of `self`.
         ///
@@ -2271,6 +2468,7 @@ macro_rules! uint_impl {
 #[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8,
+        MAX_STR_LEN = 3,  // u8::min_value().to_string().len()
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::ctlz_nonzero,
@@ -2825,6 +3023,7 @@ impl u8 {
 #[lang = "u16"]
 impl u16 {
     uint_impl! { u16, u16, 16,
+        MAX_STR_LEN = 5,  // u16::min_value().to_string().len()
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::ctlz_nonzero,
@@ -2838,6 +3037,7 @@ impl u16 {
 #[lang = "u32"]
 impl u32 {
     uint_impl! { u32, u32, 32,
+        MAX_STR_LEN = 10,  // u32::min_value().to_string().len()
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::ctlz_nonzero,
@@ -2851,6 +3051,7 @@ impl u32 {
 #[lang = "u64"]
 impl u64 {
     uint_impl! { u64, u64, 64,
+        MAX_STR_LEN = 20,  // u64::min_value().to_string().len()
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::ctlz_nonzero,
@@ -2864,6 +3065,7 @@ impl u64 {
 #[lang = "u128"]
 impl u128 {
     uint_impl! { u128, u128, 128,
+        MAX_STR_LEN = 40,  // u128::min_value().to_string().len()
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::ctlz_nonzero,
@@ -2878,6 +3080,7 @@ impl u128 {
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u16, 16,
+        MAX_STR_LEN = u16::MAX_STR_LEN,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::ctlz_nonzero,
@@ -2891,6 +3094,7 @@ impl usize {
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u32, 32,
+        MAX_STR_LEN = u32::MAX_STR_LEN,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::ctlz_nonzero,
@@ -2905,6 +3109,7 @@ impl usize {
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u64, 64,
+        MAX_STR_LEN = u64::MAX_STR_LEN,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::ctlz_nonzero,

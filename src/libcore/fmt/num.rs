@@ -25,6 +25,7 @@ trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
            Sub<Output=Self> + Copy {
     fn zero() -> Self;
     fn from_u8(u: u8) -> Self;
+    fn from_u32(u: u32) -> Self;
     fn to_u8(&self) -> u8;
     fn to_u16(&self) -> u16;
     fn to_u32(&self) -> u32;
@@ -36,6 +37,7 @@ macro_rules! doit {
     ($($t:ident)*) => ($(impl Int for $t {
         fn zero() -> $t { 0 }
         fn from_u8(u: u8) -> $t { u as $t }
+        fn from_u32(u: u32) -> $t { u as $t }
         fn to_u8(&self) -> u8 { *self as u8 }
         fn to_u16(&self) -> u16 { *self as u16 }
         fn to_u32(&self) -> u32 { *self as u32 }
@@ -200,60 +202,156 @@ macro_rules! impl_Display {
         #[allow(unused_comparisons)]
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let is_nonnegative = *self >= 0;
-            let mut n = if is_nonnegative {
+            let n = if is_nonnegative {
                 self.$conv_fn()
             } else {
                 // convert the negative num to positive by summing 1 to it's 2 complement
                 (!self.$conv_fn()).wrapping_add(1)
             };
-            let mut buf: [u8; 39] = unsafe { mem::uninitialized() };
+            unsafe {
+                let mut buf: [u8; i128::MAX_STR_LEN] = mem::uninitialized();
+                f.pad_integral(is_nonnegative, "", n.to_str_unchecked(&mut buf, false))
+            }
+        }
+    })+);
+}
+
+macro_rules! impl_unsigned_to_str {
+    ($($t:ident),*) => ($(
+    impl UnsignedToStr for $t {
+        fn to_str(self, buf: &mut [u8]) -> &mut str {
+            assert!(buf.len() >= $t::MAX_STR_LEN, concat!(
+                "A buffer of length ", stringify!($t), "::MAX_STR_LEN or more is required."
+            ));
+            unsafe {
+                self.to_str_unchecked(buf, false)
+            }
+        }
+
+        /// `buf` must be large enough
+        unsafe fn to_str_unchecked(self, buf: &mut [u8], minus_sign: bool) -> &mut str {
             let mut curr = buf.len() as isize;
             let buf_ptr = buf.as_mut_ptr();
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
+            let mut n = self;
 
-            unsafe {
-                // need at least 16 bits for the 4-characters-at-a-time to work.
-                if ::mem::size_of::<$t>() >= 2 {
-                    // eagerly decode 4 characters at a time
-                    while n >= 10000 {
-                        let rem = (n % 10000) as isize;
-                        n /= 10000;
+            // need at least 16 bits for the 4-characters-at-a-time to work.
+            if ::mem::size_of::<$t>() >= 2 {
+                // eagerly decode 4 characters at a time
+                #[allow(unused_comparisons, overflowing_literals)]
+                while n >= 10000 {
+                    let rem = (n % 10000) as isize;
+                    n /= 10000;
 
-                        let d1 = (rem / 100) << 1;
-                        let d2 = (rem % 100) << 1;
-                        curr -= 4;
-                        ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                        ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
-                    }
-                }
-
-                // if we reach here numbers are <= 9999, so at most 4 chars long
-                let mut n = n as isize; // possibly reduce 64bit math
-
-                // decode 2 more chars, if > 2 chars
-                if n >= 100 {
-                    let d1 = (n % 100) << 1;
-                    n /= 100;
-                    curr -= 2;
+                    let d1 = (rem / 100) << 1;
+                    let d2 = (rem % 100) << 1;
+                    curr -= 4;
                     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                }
-
-                // decode last 1 or 2 chars
-                if n < 10 {
-                    curr -= 1;
-                    *buf_ptr.offset(curr) = (n as u8) + b'0';
-                } else {
-                    let d1 = n << 1;
-                    curr -= 2;
-                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
                 }
             }
 
-            let buf_slice = unsafe {
-                str::from_utf8_unchecked(
-                    slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
+            // if we reach here numbers are <= 9999, so at most 4 chars long
+            let mut n = n as isize; // possibly reduce 64bit math
+
+            // decode 2 more chars, if > 2 chars
+            if n >= 100 {
+                let d1 = (n % 100) << 1;
+                n /= 100;
+                curr -= 2;
+                ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+            }
+
+            // decode last 1 or 2 chars
+            if n < 10 {
+                curr -= 1;
+                *buf_ptr.offset(curr) = (n as u8) + b'0';
+            } else {
+                let d1 = n << 1;
+                curr -= 2;
+                ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+            }
+
+            if minus_sign {
+                curr -= 1;
+                *buf_ptr.offset(curr) = b'-';
+            }
+
+            str::from_utf8_unchecked_mut(
+                slice::from_raw_parts_mut(buf_ptr.offset(curr), buf.len() - curr as usize)
+            )
+        }
+
+        fn to_str_radix(self, buf: &mut [u8], radix: u32, uppercase: bool, minus_sign: bool)
+                        -> &mut str {
+            assert!(2 <= radix && radix <= 36, "radix must be between 2 and 36 inclusive");
+            let radix = $t::from_u32(radix);
+            let mut curr = buf.len();
+            macro_rules! next {
+                () => {
+                    match curr.checked_sub(1) {
+                        Some(next) => curr = next,
+                        None => panic!(
+                            "A buffer of length {} is too small to represent {} in base {}",
+                            buf.len(), self, radix
+                        )
+                    }
+                }
+            }
+            let mut n = self;
+            loop {
+                next!();
+                let digit = (n % radix).to_u8();
+                buf[curr] = digit + if digit < 10 {
+                    b'0'
+                } else if uppercase {
+                    b'A' - 10
+                } else {
+                    b'a' - 10
+                };
+                n /= radix;
+                if n == 0 {
+                    if minus_sign {
+                        next!();
+                        buf[curr] = b'-'
+                    }
+                    return unsafe {
+                        str::from_utf8_unchecked_mut(&mut buf[curr..])
+                    }
+                }
+            }
+        }
+    })*);
+}
+
+macro_rules! impl_signed_to_str {
+    ($($t:ident $conv_fn: ident),*) => ($(
+    impl SignedToStr for $t {
+        fn to_str(self, buf: &mut [u8]) -> &mut str {
+            assert!(buf.len() >= $t::MAX_STR_LEN, concat!(
+                "A buffer of length ", stringify!($t), "::MAX_STR_LEN or more is required."
+            ));
+            let is_negative = self < 0;
+            let n = if is_negative {
+                // convert the negative num to positive by summing 1 to it's 2 complement
+                (!self.$conv_fn()).wrapping_add(1)
+            } else {
+                self.$conv_fn()
             };
-            f.pad_integral(is_nonnegative, "", buf_slice)
+            unsafe {
+                n.to_str_unchecked(buf, is_negative)
+            }
+        }
+
+        fn to_str_radix(self, buf: &mut [u8], radix: u32, uppercase: bool) -> &mut str {
+            let is_negative = self < 0;
+            let n = if is_negative {
+                // convert the negative num to positive by summing 1 to it's 2 complement
+                (!self.$conv_fn()).wrapping_add(1)
+            } else {
+                self.$conv_fn()
+            };
+            n.to_str_radix(buf, radix, uppercase, is_negative)
         }
     })*);
 }
@@ -267,3 +365,18 @@ impl_Display!(isize, usize: to_u16);
 impl_Display!(isize, usize: to_u32);
 #[cfg(target_pointer_width = "64")]
 impl_Display!(isize, usize: to_u64);
+
+impl_unsigned_to_str!(u8, u16, u32, u64, u128);
+impl_signed_to_str!(i8 to_u8, i16 to_u16, i32 to_u32, i64 to_u64, i128 to_u128);
+
+pub(crate) trait UnsignedToStr {
+    fn to_str(self, buf: &mut [u8]) -> &mut str;
+    unsafe fn to_str_unchecked(self, buf: &mut [u8], minus_sign: bool) -> &mut str;
+    fn to_str_radix(self, buf: &mut [u8], radix: u32, uppercase: bool, minus_sign: bool)
+                    -> &mut str;
+}
+
+pub(crate) trait SignedToStr {
+    fn to_str(self, buf: &mut [u8]) -> &mut str;
+    fn to_str_radix(self, buf: &mut [u8], radix: u32, uppercase: bool) -> &mut str;
+}
