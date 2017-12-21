@@ -29,8 +29,8 @@ miri = "Broken"
 clippy = "Testing"
 
 # ping @nrc
-rls = "Testing"
+rls = "Broken"
 
 # ping @nrc
 # when breaking rustfmt, always break rls as well
-rustfmt = "Testing"
+rustfmt = "Broken"

@@ -1754,6 +1754,7 @@ mod tests {
             included_mod_stack: RefCell::new(Vec::new()),
             code_map: cm,
             missing_fragment_specifiers: RefCell::new(HashSet::new()),
+            non_modrs_mods: RefCell::new(vec![]),
         }
     }
 
