@@ -256,7 +256,7 @@ impl Step for Rls {
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
         if try_run(build, &mut cargo) {
-            build.save_toolstate("rls", ToolState::Testing);
+            build.save_toolstate("rls", ToolState::TestPass);
         }
     }
 }
@@ -302,7 +302,7 @@ impl Step for Rustfmt {
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
         if try_run(build, &mut cargo) {
-            build.save_toolstate("rustfmt", ToolState::Testing);
+            build.save_toolstate("rustfmt", ToolState::TestPass);
         }
     }
 }
@@ -352,7 +352,7 @@ impl Step for Miri {
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
             if try_run(build, &mut cargo) {
-                build.save_toolstate("miri", ToolState::Testing);
+                build.save_toolstate("miri", ToolState::TestPass);
             }
         } else {
             eprintln!("failed to test miri: could not build");
@@ -407,7 +407,7 @@ impl Step for Clippy {
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
             if try_run(build, &mut cargo) {
-                build.save_toolstate("clippy-driver", ToolState::Testing);
+                build.save_toolstate("clippy-driver", ToolState::TestPass);
             }
         } else {
             eprintln!("failed to test clippy: could not build");

@@ -9,19 +9,20 @@
 // except according to those terms.
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
 /// Whether a tool can be compiled, tested or neither
 pub enum ToolState {
     /// The tool compiles successfully, but the test suite fails
-    Compiling = 1,
+    TestFail = 1,
     /// The tool compiles successfully and its test suite passes
-    Testing = 2,
+    TestPass = 2,
     /// The tool can't even be compiled
-    Broken = 0,
+    BuildFail = 0,
 }
 
 impl Default for ToolState {
     fn default() -> Self {
         // err on the safe side
-        ToolState::Broken
+        ToolState::BuildFail
     }
 }

@@ -116,9 +116,9 @@ impl Step for ToolBuild {
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
         let is_expected = build.try_run(&mut cargo);
         build.save_toolstate(tool, if is_expected {
-            ToolState::Compiling
+            ToolState::TestFail
         } else {
-            ToolState::Broken
+            ToolState::BuildFail
         });
 
         if !is_expected {

@@ -41,6 +41,6 @@ $COMMIT\t$(cat "$TOOLSTATE_FILE")
     exit 0
 fi
 
-if grep -q 'Broken\|Compiling' "$TOOLSTATE_FILE"; then
+if grep -q fail "$TOOLSTATE_FILE"; then
     exit 4
 fi
