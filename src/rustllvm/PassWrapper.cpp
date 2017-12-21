@@ -1114,6 +1114,74 @@ LLVMRustParseBitcodeForThinLTO(LLVMContextRef Context,
   return wrap(std::move(*SrcOrError).release());
 }
 
+// Rewrite all `DICompileUnit` pointers to the `DICompileUnit` specified. See
+// the comment in `back/lto.rs` for why this exists.
+extern "C" void
+LLVMRustThinLTOGetDICompileUnit(LLVMModuleRef Mod,
+                                DICompileUnit **A,
+                                DICompileUnit **B) {
+  Module *M = unwrap(Mod);
+  DICompileUnit **Cur = A;
+  DICompileUnit **Next = B;
+  for (DICompileUnit *CU : M->debug_compile_units()) {
+    *Cur = CU;
+    Cur = Next;
+    Next = nullptr;
+    if (Cur == nullptr)
+      break;
+  }
+}
+
+// Rewrite all `DICompileUnit` pointers to the `DICompileUnit` specified. See
+// the comment in `back/lto.rs` for why this exists.
+extern "C" void
+LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
+  Module *M = unwrap(Mod);
+
+  // If the original source module didn't have a `DICompileUnit` then try to
+  // merge all the existing compile units. If there aren't actually any though
+  // then there's not much for us to do so return.
+  if (Unit == nullptr) {
+    for (DICompileUnit *CU : M->debug_compile_units()) {
+      Unit = CU;
+      break;
+    }
+    if (Unit == nullptr)
+      return;
+  }
+
+  // Use LLVM's built-in `DebugInfoFinder` to find a bunch of debuginfo and
+  // process it recursively. Note that we specifically iterate over instructions
+  // to ensure we feed everything into it.
+  DebugInfoFinder Finder;
+  Finder.processModule(*M);
+  for (Function &F : M->functions()) {
+    for (auto &FI : F) {
+      for (Instruction &BI : FI) {
+        if (auto Loc = BI.getDebugLoc())
+          Finder.processLocation(*M, Loc);
+        if (auto DVI = dyn_cast<DbgValueInst>(&BI))
+          Finder.processValue(*M, DVI);
+        if (auto DDI = dyn_cast<DbgDeclareInst>(&BI))
+          Finder.processDeclare(*M, DDI);
+      }
+    }
+  }
+
+  // After we've found all our debuginfo, rewrite all subprograms to point to
+  // the same `DICompileUnit`.
+  for (auto &F : Finder.subprograms()) {
+    F->replaceUnit(Unit);
+  }
+
+  // Erase any other references to other `DICompileUnit` instances, the verifier
+  // will later ensure that we don't actually have any other stale references to
+  // worry about.
+  auto *MD = M->getNamedMetadata("llvm.dbg.cu");
+  MD->clearOperands();
+  MD->addOperand(Unit);
+}
+
 #else
 
 extern "C" bool
@@ -1190,6 +1258,18 @@ LLVMRustParseBitcodeForThinLTO(LLVMContextRef Context,
                                const char *data,
                                size_t len,
                                const char *identifier) {
+  report_fatal_error("ThinLTO not available");
+}
+
+extern "C" void
+LLVMRustThinLTOGetDICompileUnit(LLVMModuleRef Mod,
+                                DICompileUnit **A,
+                                DICompileUnit **B) {
+  report_fatal_error("ThinLTO not available");
+}
+
+extern "C" void
+LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod) {
   report_fatal_error("ThinLTO not available");
 }
 #endif // LLVM_VERSION_GE(4, 0)
