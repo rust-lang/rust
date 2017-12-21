@@ -602,9 +602,6 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_lifetime, lifetimes);
         }
-        TyImplTraitUniversal(_, ref bounds) => {
-            walk_list!(visitor, visit_ty_param_bound, bounds);
-        }
         TyTypeof(expression) => {
             visitor.visit_nested_body(expression)
         }

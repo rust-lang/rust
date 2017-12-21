@@ -30,7 +30,6 @@ use util::nodemap::FxHashSet;
 
 use std::iter;
 use syntax::{abi, ast};
-use syntax::symbol::Symbol;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax_pos::Span;
 
@@ -1065,13 +1064,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyImplTraitExistential(_, ref lifetimes) => {
                 let def_id = tcx.hir.local_def_id(ast_ty.id);
                 self.impl_trait_ty_to_ty(def_id, lifetimes)
-            }
-            hir::TyImplTraitUniversal(fn_def_id, _) => {
-                let impl_trait_def_id = tcx.hir.local_def_id(ast_ty.id);
-                let generics = tcx.generics_of(fn_def_id);
-                let index = generics.type_param_to_index[&impl_trait_def_id.index];
-                tcx.mk_param(index,
-                             Symbol::intern(&tcx.hir.node_to_pretty_string(ast_ty.id)))
             }
             hir::TyPath(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
