@@ -18,6 +18,25 @@ extern crate cgu_export_trait_method;
 
 use cgu_export_trait_method::Trait;
 
+//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::align[0] @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::from_size_align_unchecked[0] @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::size[0] @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn alloc::heap[0]::box_free[0]<core::any[0]::Any[0]> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn alloc::heap[0]::{{impl}}[0]::dealloc[0] @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn core::mem[0]::uninitialized[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::any[0]::Any[0]> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::result[0]::Result[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>>> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::read[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::write[0]<i32> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn core::result[0]::{{impl}}[0]::unwrap_or[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn std::panic[0]::catch_unwind[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn std::panicking[0]::try[0]::do_call[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn std::panicking[0]::try[0]<i32, std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, fn()> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, &fn()> @@ cross_crate_trait_method0[Internal]
+//~ TRANS_ITEM fn std::rt[0]::lang_start[0]<()> @@ cross_crate_trait_method0[External]
+//~ TRANS_ITEM fn std::sys_common[0]::backtrace[0]::__rust_begin_short_backtrace[0]<std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<()>, i32> @@ cross_crate_trait_method0[Internal]
 //~ TRANS_ITEM fn cross_crate_trait_method::main[0]
 fn main()
 {

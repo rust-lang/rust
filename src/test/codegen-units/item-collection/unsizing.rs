@@ -53,6 +53,25 @@ struct Wrapper<T: ?Sized>(*const T);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
 
+//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::align[0] @@ unsizing0[Internal]
+//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::from_size_align_unchecked[0] @@ unsizing0[Internal]
+//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::size[0] @@ unsizing0[Internal]
+//~ TRANS_ITEM fn alloc::heap[0]::box_free[0]<core::any[0]::Any[0]> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn alloc::heap[0]::{{impl}}[0]::dealloc[0] @@ unsizing0[Internal]
+//~ TRANS_ITEM fn core::mem[0]::uninitialized[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::any[0]::Any[0]> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::result[0]::Result[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>>> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::read[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::write[0]<i32> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn core::result[0]::{{impl}}[0]::unwrap_or[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn std::panic[0]::catch_unwind[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn std::panicking[0]::try[0]::do_call[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn std::panicking[0]::try[0]<i32, std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, fn()> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, &fn()> @@ unsizing0[Internal]
+//~ TRANS_ITEM fn std::rt[0]::lang_start[0]<()> @@ unsizing0[External]
+//~ TRANS_ITEM fn std::sys_common[0]::backtrace[0]::__rust_begin_short_backtrace[0]<std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<()>, i32> @@ unsizing0[Internal]
 //~ TRANS_ITEM fn unsizing::main[0]
 fn main()
 {
