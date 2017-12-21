@@ -45,4 +45,12 @@ struct foo7 {
 
 type __ = isize; //~ ERROR type `__` should have a camel case name such as `CamelCase`
 
+struct X86_64;
+
+struct X86__64; //~ ERROR type `X86__64` should have a camel case name such as `X86_64`
+
+struct Abc_123; //~ ERROR type `Abc_123` should have a camel case name such as `Abc123`
+
+struct A1_b2_c3; //~ ERROR type `A1_b2_c3` should have a camel case name such as `A1B2C3`
+
 fn main() { }
