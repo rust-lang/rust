@@ -44,10 +44,8 @@ error[E0599]: no method named `fff` found for type `Myisize` in the current scop
 note: candidate #1 is defined in an impl for the type `Myisize`
   --> $DIR/issue-7575.rs:51:5
    |
-51 | /     fn fff(i: isize) -> isize {
-52 | |         i
-53 | |     }
-   | |_____^
+51 |     fn fff(i: isize) -> isize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `is_str` found for type `T` in the current scope
   --> $DIR/issue-7575.rs:82:7
@@ -60,10 +58,8 @@ error[E0599]: no method named `is_str` found for type `T` in the current scope
 note: candidate #1 is defined in the trait `ManyImplTrait`
   --> $DIR/issue-7575.rs:57:5
    |
-57 | /     fn is_str() -> bool {
-58 | |         false
-59 | |     }
-   | |_____^
+57 |     fn is_str() -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `ManyImplTrait::is_str(t)` instead
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `is_str`, perhaps you need to implement it:
