@@ -236,7 +236,9 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
-    internalize_symbols(tcx, &mut post_inlining, inlining_map);
+    if !tcx.sess.opts.cg.link_dead_code {
+        internalize_symbols(tcx, &mut post_inlining, inlining_map);
+    }
 
     // Finally, sort by codegen unit name, so that we get deterministic results
     let PostInliningPartitioning {
