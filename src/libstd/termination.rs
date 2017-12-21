@@ -21,6 +21,8 @@ use libc;
 /// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
 #[cfg_attr(not(stage0), lang = "termination")]
 #[unstable(feature = "termination_trait", issue = "0")]
+#[rustc_on_unimplemented =
+  "`main` can only return types that implement {Termination}, not `{Self}`"]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.

@@ -195,7 +195,6 @@ use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem,StartFnLangItem};
-use rustc::middle::trans::TransItem;
 use rustc::traits;
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
@@ -1001,7 +1000,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
             debug!("RootCollector::push_if_root: found root def_id={:?}", def_id);
 
             let instance = Instance::mono(self.tcx, def_id);
-            self.output.push(create_fn_trans_item(instance));
+            self.output.push(create_fn_mono_item(instance));
 
             self.push_extra_entry_roots(def_id);
         }
@@ -1041,7 +1040,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
             self.tcx.mk_substs(iter::once(Kind::from(main_ret_ty)))
         ).unwrap();
 
-        self.output.push(create_fn_trans_item(start_instance));
+        self.output.push(create_fn_mono_item(start_instance));
     }
 }
 

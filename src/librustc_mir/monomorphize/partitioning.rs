@@ -106,8 +106,7 @@ use monomorphize::collector::InliningMap;
 use rustc::dep_graph::WorkProductId;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
-use rustc::middle::lang_items::StartFnLangItem;
-use rustc::middle::trans::{Linkage, Visibility};
+use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -313,11 +312,9 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     MonoItem::Fn(ref instance) => {
                         let visibility = match instance.def {
                             InstanceDef::Item(def_id) => {
-                                let start_def_id = tcx.lang_items().require(StartFnLangItem);
-
                                 // If we encounter the lang start item, we set the visibility to
                                 // default.
-                                if start_def_id == Ok(def_id) {
+                                if tcx.lang_items().start_fn() == Some(def_id) {
                                     Visibility::Default
                                 } else if def_id.is_local() {
                                     if tcx.is_exported_symbol(def_id) {
