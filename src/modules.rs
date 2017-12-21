@@ -76,7 +76,7 @@ fn module_file(
         return Ok(path);
     }
 
-    match parser::Parser::default_submod_path(id, dir_path, codemap).result {
+    match parser::Parser::default_submod_path(id, None, dir_path, codemap).result {
         Ok(parser::ModulePathSuccess { path, .. }) => Ok(path),
         Err(_) => Err(io::Error::new(
             io::ErrorKind::Other,
