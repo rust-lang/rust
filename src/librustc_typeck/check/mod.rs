@@ -1724,6 +1724,12 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Fallback {
+    Full,
+    Numeric
+}
+
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn new(inh: &'a Inherited<'a, 'gcx, 'tcx>,
                param_env: ty::ParamEnv<'tcx>,
@@ -2133,7 +2139,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // unconstrained floats with f64.
     // Defaulting inference variables becomes very dubious if we have
     // encountered type-checking errors. In that case, fallback to TyError.
-    fn apply_fallback_if_possible(&self, ty: Ty<'tcx>) {
+    fn apply_fallback_if_possible(&self, ty: Ty<'tcx>, fallback: Fallback) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
@@ -2142,7 +2148,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ if self.is_tainted_by_errors() => self.tcx().types.err,
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
-            Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
+            Neither if self.type_var_diverges(ty) && fallback == Fallback::Full
+                            => self.tcx.mk_diverging_default(),
             Neither => return
         };
         debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);
@@ -2159,7 +2166,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.select_obligations_where_possible();
 
         for ty in &self.unsolved_variables() {
-            self.apply_fallback_if_possible(ty);
+            self.apply_fallback_if_possible(ty, Fallback::Full);
         }
 
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
@@ -4934,22 +4941,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty
         } else {
             self.must_be_known_in_context(sp, ty)
-        }
-    }
-
-    // Same as `structurally_resolved_type` but also resolves numeric vars, with fallback.
-    pub fn resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let mut ty = self.resolve_type_vars_with_obligations(ty);
-        if !ty.is_ty_infer() {
-            return ty;
-        } else {
-            self.apply_fallback_if_possible(ty);
-            ty = self.resolve_type_vars_with_obligations(ty);
-            if !ty.is_ty_infer() {
-                ty
-            } else { // Fallback failed, error.
-                self.must_be_known_in_context(sp, ty)
-            }
         }
     }
 
