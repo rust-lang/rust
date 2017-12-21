@@ -359,12 +359,14 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     /// Set the discriminant for a new value of the given case of the given
     /// representation.
     pub fn trans_set_discr(&self, bcx: &Builder<'a, 'tcx>, variant_index: usize) {
-            if self.layout.for_variant(bcx.ccx, variant_index).abi == layout::Abi::Uninhabited {
-                return;
-            }
-            match self.layout.variants {
+        match self.layout.variants {
             layout::Variants::Single { index } => {
-                assert_eq!(index, variant_index);
+                if index != variant_index {
+                    // If the layout of an enum is `Single`, all
+                    // other variants are necessarily uninhabited.
+                    assert_eq!(self.layout.for_variant(bcx.ccx, variant_index).abi,
+                               layout::Abi::Uninhabited);
+                }
             }
             layout::Variants::Tagged { .. } => {
                 let ptr = self.project_field(bcx, 0);
