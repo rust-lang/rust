@@ -349,7 +349,22 @@ pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> 
     let env_node_id = tcx.hir.get_parent(hir_ty.id);
     let env_def_id = tcx.hir.local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
-    item_cx.to_ty(hir_ty)
+    astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
+}
+
+pub fn hir_trait_to_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_trait: &hir::TraitRef)
+        -> (ty::PolyTraitRef<'tcx>, Vec<ty::PolyProjectionPredicate<'tcx>>) {
+    // In case there are any projections etc, find the "environment"
+    // def-id that will be used to determine the traits/predicates in
+    // scope.  This is derived from the enclosing item-like thing.
+    let env_node_id = tcx.hir.get_parent(hir_trait.ref_id);
+    let env_def_id = tcx.hir.local_def_id(env_node_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    let mut projections = Vec::new();
+    let principal = astconv::AstConv::instantiate_poly_trait_ref_inner(
+        &item_cx, hir_trait, tcx.types.err, &mut projections, true
+    );
+    (principal, projections)
 }
 
 __build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }
