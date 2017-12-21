@@ -89,7 +89,7 @@ fn execute() -> i32 {
     }
 
     if matches.opt_present("version") {
-        return handle_command_status(get_version(), &opts);
+        return handle_command_status(get_version(verbosity), &opts);
     }
 
     let strategy = CargoFmtStrategy::from_matches(&matches);
@@ -138,19 +138,8 @@ fn handle_command_status(status: Result<ExitStatus, io::Error>, opts: &getopts::
     }
 }
 
-fn get_version() -> Result<ExitStatus, io::Error> {
-    let mut command = Command::new("rustfmt")
-        .args(vec!["--version"])
-        .spawn()
-        .map_err(|e| match e.kind() {
-            io::ErrorKind::NotFound => io::Error::new(
-                io::ErrorKind::Other,
-                "Could not run rustfmt, please make sure it is in your PATH.",
-            ),
-            _ => e,
-        })?;
-
-    command.wait()
+fn get_version(verbosity: Verbosity) -> Result<ExitStatus, io::Error> {
+    run_rustfmt(&vec![], &vec![String::from("--version")], verbosity)
 }
 
 fn format_crate(
@@ -175,7 +164,7 @@ fn format_crate(
         .map(|t| t.path)
         .collect();
 
-    format_files(&files, &rustfmt_args, verbosity)
+    run_rustfmt(&files, &rustfmt_args, verbosity)
 }
 
 fn get_fmt_args() -> Vec<String> {
@@ -337,7 +326,7 @@ fn add_targets(target_paths: &[cargo_metadata::Target], targets: &mut HashSet<Ta
     }
 }
 
-fn format_files(
+fn run_rustfmt(
     files: &[PathBuf],
     fmt_args: &[String],
     verbosity: Verbosity,
