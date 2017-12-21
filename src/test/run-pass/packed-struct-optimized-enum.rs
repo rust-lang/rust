@@ -19,7 +19,9 @@ impl<T: Copy> Clone for Packed<T> {
 fn sanity_check_size<T: Copy>(one: T) {
     let two = [one, one];
     let stride = (&two[1] as *const _ as usize) - (&two[0] as *const _ as usize);
-    assert_eq!(stride, std::mem::size_of_val(&one));
+    let (size, align) = (std::mem::size_of::<T>(), std::mem::align_of::<T>());
+    assert_eq!(stride, size);
+    assert_eq!(size % align, 0);
 }
 
 fn main() {
@@ -32,5 +34,12 @@ fn main() {
     // In #46769, `Option<(Packed<&()>, bool)>` was found to have
     // pointer alignment, without actually being aligned in size.
     // E.g. on 64-bit platforms, it had alignment `8` but size `9`.
-    sanity_check_size(Some((Packed(&()), true)));
+    type PackedRefAndBool<'a> = (Packed<&'a ()>, bool);
+    sanity_check_size::<Option<PackedRefAndBool>>(Some((Packed(&()), true)));
+
+    // Make sure we don't pay for the enum optimization in size,
+    // e.g. we shouldn't need extra padding after the packed data.
+    assert_eq!(std::mem::align_of::<Option<PackedRefAndBool>>(), 1);
+    assert_eq!(std::mem::size_of::<Option<PackedRefAndBool>>(),
+               std::mem::size_of::<PackedRefAndBool>());
 }
