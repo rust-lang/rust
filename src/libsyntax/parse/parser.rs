@@ -2040,12 +2040,11 @@ impl<'a> Parser<'a> {
             token::Lifetime(ident) =>
                 Lifetime { ident: ident, span: self.span, id: ast::DUMMY_NODE_ID },
             token::Interpolated(ref nt) => match nt.0 {
-                token::NtLifetime(lifetime) => 
+                token::NtLifetime(lifetime) =>
                     lifetime,
-                    //Lifetime { ident: lifetime.ident, span: lifetime.span, id: ast::DUMMY_NODE_ID },
-                _ => self.span_bug(self.span, &format!("not a lifetime: {:?}", self.token))
+                _ => self.span_bug(self.span, "not a lifetime")
             }
-            _ => self.span_bug(self.span, &format!("not a lifetime: {:?}", self.token))
+            _ => self.span_bug(self.span, "not a lifetime")
         };
 
         self.bump();
