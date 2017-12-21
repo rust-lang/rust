@@ -1020,6 +1020,33 @@ h4 > .important-traits {
 	#titles {
 		height: 50px;
 	}
+
+	.sidebar.mobile {
+		position: fixed;
+		width: 100%;
+		margin-left: 0;
+		background-color: rgba(0,0,0,0);
+		height: 100%;
+	}
+
+	.show-it {
+		display: block;
+	}
+
+	/* Because of ios, we need to actually have a full height sidebar title so the
+	 * actual sidebar can show up. But then we need to make it transparent so we don't
+	 * hide content. The filler just allows to create the background for the sidebar
+	 * title. But because of the absolute position, I had to lower the z-index.
+	 */
+	#sidebar-filler {
+		position: fixed;
+		left: 45px;
+		width: calc(100% - 45px);
+		top: 0;
+		height: 45px;
+		z-index: -1;
+		border-bottom: 1px solid;
+	}
 }
 
 
