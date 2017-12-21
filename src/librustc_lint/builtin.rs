@@ -349,7 +349,27 @@ impl MissingDoc {
             }
         }
 
-        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.check_name("doc"));
+        fn has_doc(attr: &ast::Attribute) -> bool {
+            if !attr.check_name("doc") {
+                return false;
+            }
+
+            if attr.is_value_str() {
+                return true;
+            }
+
+            if let Some(list) = attr.meta_item_list() {
+                for meta in list {
+                    if meta.check_name("include") {
+                        return true;
+                    }
+                }
+            }
+
+            false
+        }
+
+        let has_doc = attrs.iter().any(|a| has_doc(a));
         if !has_doc {
             cx.span_lint(MISSING_DOCS,
                          cx.tcx.sess.codemap().def_span(sp),

@@ -1115,15 +1115,19 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     match File::open(&filename).and_then(|mut f| f.read_to_end(&mut buf)) {
                         Ok(..) => {}
                         Err(e) => {
-                            self.cx.span_warn(at.span,
-                                              &format!("couldn't read {}: {}",
-                                                       filename.display(),
-                                                       e));
+                            self.cx.span_err(at.span,
+                                             &format!("couldn't read {}: {}",
+                                                      filename.display(),
+                                                      e));
                         }
                     }
 
                     match String::from_utf8(buf) {
                         Ok(src) => {
+                            // Add this input file to the code map to make it available as
+                            // dependency information
+                            self.cx.codemap().new_filemap_and_lines(&filename, &src);
+
                             let include_info = vec![
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
                                         attr::mk_name_value_item_str("file".into(),
@@ -1137,9 +1141,9 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                                         attr::mk_list_item("include".into(), include_info))));
                         }
                         Err(_) => {
-                            self.cx.span_warn(at.span,
-                                              &format!("{} wasn't a utf-8 file",
-                                                       filename.display()));
+                            self.cx.span_err(at.span,
+                                             &format!("{} wasn't a utf-8 file",
+                                                      filename.display()));
                         }
                     }
                 } else {
