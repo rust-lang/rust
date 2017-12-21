@@ -279,7 +279,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let trait_def_id = self.tcx.hir.local_def_id(item.id);
         
         self.for_item(item).with_fcx(|fcx, _| {
-            self.check_where_clauses(fcx, item.span, trait_def_id);
+            self.check_trait_where_clauses(fcx, item.span, trait_def_id);
             vec![]
         });
     }
@@ -350,41 +350,46 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         });
     }
 
-    /// Checks where clauses and inline bounds.
+    /// Checks where clauses and inline bounds that are declared on def_id.
     fn check_where_clauses<'fcx, 'tcx>(&mut self,
                                        fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                        span: Span,
-                                       def_id: DefId)
+                                       def_id: DefId) {
+        self.inner_check_where_clauses(fcx, span, def_id, false)
+    }
+
+    fn check_trait_where_clauses<'fcx, 'tcx>(&mut self,
+                                       fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
+                                       span: Span,
+                                       def_id: DefId) {
+        self.inner_check_where_clauses(fcx, span, def_id, true)
+    }
+
+    /// Checks where clauses and inline bounds that are declared on def_id.
+    fn inner_check_where_clauses<'fcx, 'tcx>(&mut self,
+                                       fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
+                                       span: Span,
+                                       def_id: DefId,
+                                       is_trait: bool)
     {
         use ty::subst::Subst;
-        use ty::Predicate;
+        use rustc::ty::TypeFoldable;
 
         let generics = self.tcx.generics_of(def_id);
-        let defaults = generics.types.iter().filter_map(|p| match p.has_default {
-                                                                true => Some(p.def_id),
-                                                                false => None,
-                                                        });
+        let defaulted_params = generics.types.iter()
+                                             .filter(|def| def.has_default &&
+                                                     def.index >= generics.parent_count() as u32);
         // Defaults must be well-formed.
-        for d in defaults {
+        for d in defaulted_params.map(|p| p.def_id) {
             fcx.register_wf_obligation(fcx.tcx.type_of(d), fcx.tcx.def_span(d), self.code.clone());
         }
-
         // Check that each default fulfills the bounds on it's parameter.
         // We go over each predicate and duplicate it, substituting defaults in the self type.
         let mut predicates = fcx.tcx.predicates_of(def_id);
         let mut default_predicates = Vec::new();
-        for pred in &predicates.predicates {
-            let mut self_ty = match pred {
-                Predicate::Trait(trait_pred) => trait_pred.skip_binder().self_ty(),
-                Predicate::TypeOutlives(outlives_pred) => (outlives_pred.0).0,
-                Predicate::Projection(proj_pred) => {
-                    fcx.tcx.mk_ty(ty::TyProjection(proj_pred.skip_binder().projection_ty))
-                }
-                // Lifetime params can't have defaults.
-                Predicate::RegionOutlives(..) => continue,
-                _ => bug!("Predicate {:?} not supported in where clauses.", pred)
-            };
-
+        // In `trait Trait : Super` predicates as `Self: Trait` and `Self: Super` are a problem.
+        // Therefore we skip such predicates. This means we check less than we could.
+        for pred in predicates.predicates.iter().filter(|p| !(is_trait && p.has_self_ty())) {
             let mut skip = false;
             let mut no_default = true;
             let substs = ty::subst::Substs::for_item(fcx.tcx, def_id, |def, _| {
@@ -398,42 +403,11 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     no_default = false;
                     // Has a default, use it in the substitution.
                     let default_ty = fcx.tcx.type_of(def.def_id);
-                    // Skip `Self : Self` in traits, it's problematic.
-                    // This means we probably check less than we could.
-                    let should_skip = match self_ty.sty {
-                        ty::TyParam(ref p) => {
-                            // lhs is Self && rhs is Self
-                            p.is_self() && match pred {
-                                Predicate::Trait(p) => p.def_id() == def_id,
-                                Predicate::TypeOutlives(_) => false,
-                                _ => bug!("Unexpected predicate {:?}", pred)
-                            }
-                        }
-                        ty::TyProjection(ref proj) => {
-                            let mut projection = proj;
-                            let mut next_typ = &projection.substs[0].as_type().unwrap().sty;
-                            // Dig through projections.
-                            while let ty::TyProjection(ref proj) = next_typ {
-                                projection = proj;
-                                next_typ = &projection.substs[0].as_type().unwrap().sty;
-                            }
-                            let lhs_is_self = match next_typ {
-                                ty::TyParam(ref p) => p.is_self(),
-                                _ => false
-                            };
-                            let rhs = fcx.tcx.associated_item(projection.item_def_id)
-                                                     .container
-                                                     .assert_trait();
-                            lhs_is_self && rhs == def_id
-                        }
-                        _ => false
-                    };
-                    skip = skip || should_skip;
 
-                   match default_ty.sty {
+                    match default_ty.sty {
                         // Skip `Self: Sized` when `Self` is the default. Needed in traits.
-                        ty::TyParam(ref p) if p.is_self() => {
-                            if let Predicate::Trait(p) = pred {
+                        ty::TyParam(ref p) if is_trait && p.is_self() => {
+                            if let ty::Predicate::Trait(p) = pred {
                                 if Some(p.def_id()) == fcx.tcx.lang_items().sized_trait() {
                                     skip = true;
                                 }
@@ -449,30 +423,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 continue;
             }
 
-            self_ty = self_ty.subst(fcx.tcx, substs);
-            default_predicates.push(match pred {
-                Predicate::Trait(trait_pred) => {
-                    let mut substs = trait_pred.skip_binder().trait_ref.substs.to_vec();
-                    substs[0] = self_ty.into();
-                    let substs = fcx.tcx.intern_substs(&substs);
-                    let trait_ref = ty::Binder(ty::TraitRef::new(trait_pred.def_id(), substs));
-                    Predicate::Trait(trait_ref.to_poly_trait_predicate())
-                }
-                Predicate::TypeOutlives(pred) => {
-                    Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(self_ty, (pred.0).1)))
-                }
-                Predicate::Projection(proj_pred) => {
-                    let projection_ty = match self_ty.sty {
-                        ty::TyProjection(proj_ty) => proj_ty,
-                        _ => bug!("self_ty not projection for projection predicate.")
-                    };
-                    Predicate::Projection(ty::Binder(ty::ProjectionPredicate {
-                                                        projection_ty,
-                                                        ty: proj_pred.ty().skip_binder()
-                                                    }))
-                }
-                _ => bug!("Predicate {:?} not supported for type params.", pred)
-            });
+            default_predicates.push(pred.subst(fcx.tcx, substs));
         }
 
         predicates.predicates.extend(default_predicates);
