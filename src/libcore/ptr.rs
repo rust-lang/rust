@@ -581,8 +581,7 @@ impl<T: ?Sized> *const T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow or underflow an
-    ///   `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
@@ -714,8 +713,7 @@ impl<T: ?Sized> *const T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow or underflow an
-    ///   `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum must fit in a `usize`.
@@ -1219,8 +1217,7 @@ impl<T: ?Sized> *mut T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow or underflow an
-    ///   `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
@@ -1419,8 +1416,7 @@ impl<T: ?Sized> *mut T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow or underflow an
-    ///   `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum must fit in a `usize`.

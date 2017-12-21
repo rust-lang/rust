@@ -402,7 +402,7 @@ macro_rules! int_impl {
         }
 
         /// Checked integer subtraction. Computes `self - rhs`, returning
-        /// `None` if underflow occurred.
+        /// `None` if overflow occurred.
         ///
         /// # Examples
         ///
@@ -420,7 +420,7 @@ macro_rules! int_impl {
         }
 
         /// Checked integer multiplication. Computes `self * rhs`, returning
-        /// `None` if underflow or overflow occurred.
+        /// `None` if overflow occurred.
         ///
         /// # Examples
         ///
@@ -438,7 +438,7 @@ macro_rules! int_impl {
         }
 
         /// Checked integer division. Computes `self / rhs`, returning `None`
-        /// if `rhs == 0` or the operation results in underflow or overflow.
+        /// if `rhs == 0` or the operation results in overflow.
         ///
         /// # Examples
         ///
@@ -460,7 +460,7 @@ macro_rules! int_impl {
         }
 
         /// Checked integer remainder. Computes `self % rhs`, returning `None`
-        /// if `rhs == 0` or the operation results in underflow or overflow.
+        /// if `rhs == 0` or the operation results in overflow.
         ///
         /// # Examples
         ///
@@ -1598,7 +1598,7 @@ macro_rules! uint_impl {
         }
 
         /// Checked integer subtraction. Computes `self - rhs`, returning
-        /// `None` if underflow occurred.
+        /// `None` if overflow occurred.
         ///
         /// # Examples
         ///
@@ -1616,7 +1616,7 @@ macro_rules! uint_impl {
         }
 
         /// Checked integer multiplication. Computes `self * rhs`, returning
-        /// `None` if underflow or overflow occurred.
+        /// `None` if overflow occurred.
         ///
         /// # Examples
         ///
@@ -1634,7 +1634,7 @@ macro_rules! uint_impl {
         }
 
         /// Checked integer division. Computes `self / rhs`, returning `None`
-        /// if `rhs == 0` or the operation results in underflow or overflow.
+        /// if `rhs == 0` or the operation results in overflow.
         ///
         /// # Examples
         ///
@@ -1654,7 +1654,7 @@ macro_rules! uint_impl {
         }
 
         /// Checked integer remainder. Computes `self % rhs`, returning `None`
-        /// if `rhs == 0` or the operation results in underflow or overflow.
+        /// if `rhs == 0` or the operation results in overflow.
         ///
         /// # Examples
         ///

@@ -263,7 +263,7 @@ impl<R: Seek> Seek for BufReader<R> {
     /// See `std::io::Seek` for more details.
     ///
     /// Note: In the edge case where you're seeking with `SeekFrom::Current(n)`
-    /// where `n` minus the internal buffer length underflows an `i64`, two
+    /// where `n` minus the internal buffer length overflows an `i64`, two
     /// seeks will be performed instead of one. If the second seek returns
     /// `Err`, the underlying reader will be left at the same position it would
     /// have if you seeked to `SeekFrom::Current(0)`.
