@@ -22,5 +22,17 @@ error: missing angle brackets in associated item path
 22 |     (u8, u8)::clone(&(0, 0));
    |     ^^^^^^^^^^^^^^^ help: try: `<(u8, u8)>::clone`
 
-error: aborting due to 4 previous errors
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:25:6
+   |
+25 |     &(u8)::clone(&0);
+   |      ^^^^^^^^^^^ help: try: `<(u8)>::clone`
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-expr.rs:28:10
+   |
+28 |     10 + (u8)::clone(&0);
+   |          ^^^^^^^^^^^ help: try: `<(u8)>::clone`
+
+error: aborting due to 6 previous errors
 

@@ -20,7 +20,6 @@ use syntax_pos::{Span, DUMMY_SP};
 use codemap::{respan, Spanned};
 use abi::Abi;
 use ext::hygiene::{Mark, SyntaxContext};
-use parse::parser::{RecoverQPath, PathStyle};
 use print::pprust;
 use ptr::P;
 use rustc_data_structures::indexed_vec;
@@ -485,6 +484,30 @@ impl fmt::Debug for Pat {
 }
 
 impl Pat {
+    pub(super) fn to_ty(&self) -> Option<P<Ty>> {
+        let node = match &self.node {
+            PatKind::Wild => TyKind::Infer,
+            PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) =>
+                TyKind::Path(None, Path::from_ident(ident.span, ident.node)),
+            PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
+            PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
+            PatKind::Ref(pat, mutbl) =>
+                pat.to_ty().map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
+            PatKind::Slice(pats, None, _) if pats.len() == 1 =>
+                pats[0].to_ty().map(TyKind::Slice)?,
+            PatKind::Tuple(pats, None) => {
+                let mut tys = Vec::new();
+                for pat in pats {
+                    tys.push(pat.to_ty()?);
+                }
+                TyKind::Tup(tys)
+            }
+            _ => return None,
+        };
+
+        Some(P(Ty { node, id: self.id, span: self.span }))
+    }
+
     pub fn walk<F>(&self, it: &mut F) -> bool
         where F: FnMut(&Pat) -> bool
     {
@@ -517,38 +540,6 @@ impl Pat {
                 true
             }
         }
-    }
-}
-
-impl RecoverQPath for Pat {
-    fn to_ty(&self) -> Option<P<Ty>> {
-        let node = match &self.node {
-            PatKind::Wild => TyKind::Infer,
-            PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None) =>
-                TyKind::Path(None, Path::from_ident(ident.span, ident.node)),
-            PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
-            PatKind::Mac(mac) => TyKind::Mac(mac.clone()),
-            PatKind::Ref(pat, mutbl) =>
-                pat.to_ty().map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
-            PatKind::Slice(pats, None, _) if pats.len() == 1 =>
-                pats[0].to_ty().map(TyKind::Slice)?,
-            PatKind::Tuple(pats, None) => {
-                let mut tys = Vec::new();
-                for pat in pats {
-                    tys.push(pat.to_ty()?);
-                }
-                TyKind::Tup(tys)
-            }
-            _ => return None,
-        };
-
-        Some(P(Ty { node, id: self.id, span: self.span }))
-    }
-    fn to_recovered(&self, qself: Option<QSelf>, path: Path) -> Self {
-        Self { span: path.span, node: PatKind::Path(qself, path), id: self.id }
-    }
-    fn to_string(&self) -> String {
-        pprust::pat_to_string(self)
     }
 }
 
@@ -919,10 +910,8 @@ impl Expr {
             _ => None,
         }
     }
-}
 
-impl RecoverQPath for Expr {
-    fn to_ty(&self) -> Option<P<Ty>> {
+    pub(super) fn to_ty(&self) -> Option<P<Ty>> {
         let node = match &self.node {
             ExprKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             ExprKind::Mac(mac) => TyKind::Mac(mac.clone()),
@@ -950,13 +939,6 @@ impl RecoverQPath for Expr {
         };
 
         Some(P(Ty { node, id: self.id, span: self.span }))
-    }
-    fn to_recovered(&self, qself: Option<QSelf>, path: Path) -> Self {
-        Self { span: path.span, node: ExprKind::Path(qself, path),
-               id: self.id, attrs: self.attrs.clone() }
-    }
-    fn to_string(&self) -> String {
-        pprust::expr_to_string(self)
     }
 }
 
@@ -1467,19 +1449,6 @@ pub struct Ty {
     pub id: NodeId,
     pub node: TyKind,
     pub span: Span,
-}
-
-impl RecoverQPath for Ty {
-    fn to_ty(&self) -> Option<P<Ty>> {
-        Some(P(self.clone()))
-    }
-    fn to_recovered(&self, qself: Option<QSelf>, path: Path) -> Self {
-        Self { span: path.span, node: TyKind::Path(qself, path), id: self.id }
-    }
-    fn to_string(&self) -> String {
-        pprust::ty_to_string(self)
-    }
-    const PATH_STYLE: PathStyle = PathStyle::Type;
 }
 
 impl fmt::Debug for Ty {
