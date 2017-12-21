@@ -1408,23 +1408,42 @@ extern "rust-intrinsic" {
 }
 
 // Simple bootstrap implementations for stage0 compilation
+
 /// Returns the minimum of two `f32` values.
 #[cfg(stage0)]
 pub unsafe fn minnumf32(x: f32, y: f32) -> f32 {
+    // IEEE754 says: minNum(x, y) is the canonicalized number x if x < y, y if y < x, the
+    // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
+    // is either x or y, canonicalized (this means results might differ among implementations).
+    // When either x or y is a signalingNaN, then the result is according to 6.2.
+    //
+    // Since we do not support sNaN in Rust yet, we do not need to handle them.
+    // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
+    // multiplying by 1.0. Should switch to the `canonicalize` when it works.
     (if x < y || y != y { x } else { y }) * 1.0
 }
 /// Returns the minimum of two `f64` values.
 #[cfg(stage0)]
 pub unsafe fn minnumf64(x: f64, y: f64) -> f64 {
+    // Identical to the `f32` case.
     (if x < y || y != y { x } else { y }) * 1.0
 }
 /// Returns the maximum of two `f32` values.
 #[cfg(stage0)]
 pub unsafe fn maxnumf32(x: f32, y: f32) -> f32 {
+    // IEEE754 says: maxNum(x, y) is the canonicalized number y if x < y, x if y < x, the
+    // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
+    // is either x or y, canonicalized (this means results might differ among implementations).
+    // When either x or y is a signalingNaN, then the result is according to 6.2.
+    //
+    // Since we do not support sNaN in Rust yet, we do not need to handle them.
+    // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
+    // multiplying by 1.0. Should switch to the `canonicalize` when it works.
     (if x < y || x != x { y } else { x }) * 1.0
 }
 /// Returns the maximum of two `f64` values.
 #[cfg(stage0)]
 pub unsafe fn maxnumf64(x: f64, y: f64) -> f64 {
+    // Identical to the `f32` case.
     (if x < y || x != x { y } else { x }) * 1.0
 }
