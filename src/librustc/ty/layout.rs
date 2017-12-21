@@ -1361,11 +1361,6 @@ impl<'a, 'tcx> LayoutDetails {
                         bug!("Union must be represented as a single variant");
                     }
 
-                    if variants[0].iter().all(|f| f.abi == Abi::Uninhabited) {
-                        // Uninhabited because it has only uninhabited variants/fields.
-                        return Ok(tcx.intern_layout(LayoutDetails::uninhabited(0)));
-                    }
-
                     let mut align = if def.repr.packed() {
                         dl.i8_align
                     } else {
