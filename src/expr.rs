@@ -608,7 +608,7 @@ fn rewrite_single_line_block(
     shape: Shape,
 ) -> Option<String> {
     if is_simple_block(block, context.codemap) {
-        let expr_shape = Shape::legacy(shape.width - prefix.len(), shape.indent);
+        let expr_shape = shape.offset_left(last_line_width(prefix))?;
         let expr_str = block.stmts[0].rewrite(context, expr_shape)?;
         let result = format!("{}{{ {} }}", prefix, expr_str);
         if result.len() <= shape.width && !result.contains('\n') {
@@ -654,7 +654,6 @@ impl Rewrite for ast::Block {
         }
 
         let prefix = block_prefix(context, self, shape)?;
-        let shape = shape.offset_left(last_line_width(&prefix))?;
 
         let result = rewrite_block_with_visitor(context, &prefix, self, shape, true);
         if let Some(ref result_str) = result {
