@@ -3789,7 +3789,8 @@ mod tests {
 
     #[simd_test = "sse"]
     unsafe fn _mm_storeu_pd() {
-        let mut vals = [0.0f64; 4];
+        let mut mem = Memory { data: [0.0f64; 4] };
+        let vals = &mut mem.data;
         let a = f64x2::new(1.0, 2.0);
 
         let mut ofs = 0;
@@ -3812,77 +3813,58 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn _mm_store1_pd() {
-        let mut vals = [0.0f64; 4];
+        let mut mem = Memory { data: [0.0f64; 4] };
+        let vals = &mut mem.data;
         let a = f64x2::new(1.0, 2.0);
-        let mut d = vals.as_mut_ptr();
-
-        // Align d to 16-byte boundary
-        let mut offset = 0;
-        while (d as usize) & 0xf != 0 {
-            d = d.offset(1 as isize);
-            offset += 1;
-        }
+        let d = vals.as_mut_ptr();
 
         sse2::_mm_store1_pd(d, *black_box(&a));
-        assert_eq!(vals[offset + 0], 1.0);
-        assert_eq!(vals[offset + 1], 1.0);
+        assert_eq!(vals[0], 1.0);
+        assert_eq!(vals[1], 1.0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn _mm_store_pd1() {
-        let mut vals = [0.0f64; 4];
+        let mut mem = Memory { data: [0.0f64; 4] };
+        let vals = &mut mem.data;
         let a = f64x2::new(1.0, 2.0);
-        let mut d = vals.as_mut_ptr();
-
-        // Align d to 16-byte boundary
-        let mut offset = 0;
-        while (d as usize) & 0xf != 0 {
-            d = d.offset(1 as isize);
-            offset += 1;
-        }
+        let d = vals.as_mut_ptr();
 
         sse2::_mm_store_pd1(d, *black_box(&a));
-        assert_eq!(vals[offset + 0], 1.0);
-        assert_eq!(vals[offset + 1], 1.0);
+        assert_eq!(vals[0], 1.0);
+        assert_eq!(vals[1], 1.0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn _mm_storer_pd() {
-        let mut vals = [0.0f64; 4];
+        let mut mem = Memory { data: [0.0f64; 4] };
+        let vals = &mut mem.data;
         let a = f64x2::new(1.0, 2.0);
-        let mut d = vals.as_mut_ptr();
-
-        // Align d to 16-byte boundary
-        let mut offset = 0;
-        while (d as usize) & 0xf != 0 {
-            d = d.offset(1 as isize);
-            offset += 1;
-        }
+        let d = vals.as_mut_ptr();
 
         sse2::_mm_storer_pd(d, *black_box(&a));
-        assert_eq!(vals[offset + 0], 2.0);
-        assert_eq!(vals[offset + 1], 1.0);
+        assert_eq!(vals[0], 2.0);
+        assert_eq!(vals[1], 1.0);
     }
 
     #[simd_test = "sse2"]
     unsafe fn _mm_loadr_pd() {
-        let vals = &[1.0f64, 2.0, 3.0, 4.0];
-        let mut d = vals.as_ptr();
-
-        // Align d to 16-byte boundary
-        let mut offset = 0;
-        while (d as usize) & 0xf != 0 {
-            d = d.offset(1 as isize);
-            offset += 1;
-        }
+        let mut mem = Memory {
+            data: [1.0f64, 2.0, 3.0, 4.0],
+        };
+        let vals = &mut mem.data;
+        let d = vals.as_ptr();
 
         let r = sse2::_mm_loadr_pd(d);
-        assert_eq!(r, f64x2::new(2.0, 1.0) + f64x2::splat(offset as f64));
+        assert_eq!(r, f64x2::new(2.0, 1.0));
     }
 
     #[simd_test = "sse2"]
     unsafe fn _mm_loadu_pd() {
-        let vals = &[1.0f64, 2.0, 3.0, 4.0];
+        let mut mem = Memory {
+            data: [1.0f64, 2.0, 3.0, 4.0],
+        };
+        let vals = &mut mem.data;
         let mut d = vals.as_ptr();
 
         // make sure d is not aligned to 16-byte boundary
