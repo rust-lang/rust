@@ -71,5 +71,5 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     let (sess, cstore) = basic_sess(sysroot);
     let control = CompileController::basic();
     let input = Input::Str { name: FileName::Anon, input: code };
-    let _ = compile_input(&sess, &cstore, &input, &None, &Some(output), None, &control);
+    let _ = compile_input(&sess, &cstore, &None, &input, &None, &Some(output), None, &control);
 }

@@ -263,7 +263,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, cfgs: Vec<String>,
     }
 
     let res = panic::catch_unwind(AssertUnwindSafe(|| {
-        driver::compile_input(&sess, &cstore, &input, &out, &None, None, &control)
+        driver::compile_input(&sess, &cstore, &None, &input, &out, &None, None, &control)
     }));
 
     let compile_result = match res {
