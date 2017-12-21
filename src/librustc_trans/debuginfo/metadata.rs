@@ -1665,8 +1665,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let linkage_name = if no_mangle {
         None
     } else {
-        let linkage_name = mangled_name_of_item(cx, node_def_id, "");
-        Some(CString::new(linkage_name).unwrap())
+        let linkage_name = mangled_name_of_item(cx, node_id);
+        Some(CString::new(linkage_name.to_string()).unwrap())
     };
 
     let global_align = cx.align_of(variable_type);

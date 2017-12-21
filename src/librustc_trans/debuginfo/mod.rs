@@ -15,7 +15,7 @@ use self::VariableAccess::*;
 use self::VariableKind::*;
 
 use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
-use self::namespace::mangled_name_of_item;
+use self::namespace::mangled_name_of_instance;
 use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
@@ -237,7 +237,6 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // Find the enclosing function, in case this is a closure.
     let def_key = cx.tcx().def_key(def_id);
     let mut name = def_key.disambiguated_data.data.to_string();
-    let name_len = name.len();
 
     let enclosing_fn_def_id = cx.tcx().closure_base_def_id(def_id);
 
@@ -251,8 +250,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                       file_metadata,
                                                       &mut name);
 
-    // Build the linkage_name out of the item path and "template" parameters.
-    let linkage_name = mangled_name_of_item(cx, instance.def_id(), &name[name_len..]);
+    // Get the linkage_name, which is just the symbol name
+    let linkage_name = mangled_name_of_instance(cx, instance);
 
     let scope_line = span_start(cx, span).line;
 
@@ -260,7 +259,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let is_local_to_unit = local_id.map_or(false, |id| is_node_local_to_unit(cx, id));
 
     let function_name = CString::new(name).unwrap();
-    let linkage_name = CString::new(linkage_name).unwrap();
+    let linkage_name = CString::new(linkage_name.to_string()).unwrap();
 
     let mut flags = DIFlags::FlagPrototyped;
     match *cx.sess().entry_fn.borrow() {
