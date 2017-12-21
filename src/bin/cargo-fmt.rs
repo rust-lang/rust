@@ -93,20 +93,7 @@ fn execute() -> i32 {
     }
 
     let strategy = CargoFmtStrategy::from_matches(&matches);
-
-    match format_crate(verbosity, &strategy) {
-        Err(e) => {
-            print_usage_to_stderr(&opts, &e.to_string());
-            FAILURE
-        }
-        Ok(status) => {
-            if status.success() {
-                SUCCESS
-            } else {
-                status.code().unwrap_or(FAILURE)
-            }
-        }
-    }
+    handle_command_status(format_crate(verbosity, &strategy), &opts)
 }
 
 macro_rules! print_usage {
