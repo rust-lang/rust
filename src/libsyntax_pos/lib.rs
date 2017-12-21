@@ -30,7 +30,7 @@ use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::cmp::{self, Ordering};
 use std::fmt;
-use std::hash::Hasher;
+use std::hash::{Hasher, Hash};
 use std::ops::{Add, Sub};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -691,6 +691,8 @@ pub struct FileMap {
     pub multibyte_chars: RefCell<Vec<MultiByteChar>>,
     /// Width of characters that are not narrow in the source code
     pub non_narrow_chars: RefCell<Vec<NonNarrowChar>>,
+    /// A hash of the filename, used for speeding up the incr. comp. hashing.
+    pub name_hash: u128,
 }
 
 impl Encodable for FileMap {
@@ -752,6 +754,9 @@ impl Encodable for FileMap {
             })?;
             s.emit_struct_field("non_narrow_chars", 8, |s| {
                 (*self.non_narrow_chars.borrow()).encode(s)
+            })?;
+            s.emit_struct_field("name_hash", 9, |s| {
+                self.name_hash.encode(s)
             })
         })
     }
@@ -801,6 +806,8 @@ impl Decodable for FileMap {
                 d.read_struct_field("multibyte_chars", 7, |d| Decodable::decode(d))?;
             let non_narrow_chars: Vec<NonNarrowChar> =
                 d.read_struct_field("non_narrow_chars", 8, |d| Decodable::decode(d))?;
+            let name_hash: u128 =
+                d.read_struct_field("name_hash", 9, |d| Decodable::decode(d))?;
             Ok(FileMap {
                 name,
                 name_was_remapped,
@@ -816,7 +823,8 @@ impl Decodable for FileMap {
                 external_src: RefCell::new(ExternalSource::AbsentOk),
                 lines: RefCell::new(lines),
                 multibyte_chars: RefCell::new(multibyte_chars),
-                non_narrow_chars: RefCell::new(non_narrow_chars)
+                non_narrow_chars: RefCell::new(non_narrow_chars),
+                name_hash,
             })
         })
     }
@@ -836,9 +844,16 @@ impl FileMap {
                start_pos: BytePos) -> FileMap {
         remove_bom(&mut src);
 
-        let mut hasher: StableHasher<u128> = StableHasher::new();
-        hasher.write(src.as_bytes());
-        let src_hash = hasher.finish();
+        let src_hash = {
+            let mut hasher: StableHasher<u128> = StableHasher::new();
+            hasher.write(src.as_bytes());
+            hasher.finish()
+        };
+        let name_hash = {
+            let mut hasher: StableHasher<u128> = StableHasher::new();
+            name.hash(&mut hasher);
+            hasher.finish()
+        };
         let end_pos = start_pos.to_usize() + src.len();
 
         FileMap {
@@ -854,6 +869,7 @@ impl FileMap {
             lines: RefCell::new(Vec::new()),
             multibyte_chars: RefCell::new(Vec::new()),
             non_narrow_chars: RefCell::new(Vec::new()),
+            name_hash,
         }
     }
 
