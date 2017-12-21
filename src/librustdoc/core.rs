@@ -20,6 +20,7 @@ use rustc::lint;
 use rustc::util::nodemap::FxHashMap;
 use rustc_trans;
 use rustc_resolve as resolve;
+use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
 use syntax::codemap;
@@ -43,8 +44,9 @@ pub use rustc::session::search_paths::SearchPaths;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
-pub struct DocContext<'a, 'tcx: 'a> {
+pub struct DocContext<'a, 'tcx: 'a, 'rcx> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub resolver: resolve::Resolver<'rcx>,
     pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -67,7 +69,7 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
 }
 
-impl<'a, 'tcx> DocContext<'a, 'tcx> {
+impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
     pub fn sess(&self) -> &session::Session {
         &self.tcx.sess
     }
@@ -160,7 +162,13 @@ pub fn run_core(search_paths: SearchPaths,
 
     let name = ::rustc_trans_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
 
-    let driver::ExpansionResult { defs, analysis, resolutions, mut hir_forest, .. } = {
+    let driver::ExpansionResult {
+        expanded_crate,
+        defs,
+        analysis,
+        resolutions,
+        mut hir_forest
+    } = {
         let result = driver::phase_2_configure_and_expand(&sess,
                                                           &cstore,
                                                           krate,
@@ -173,6 +181,8 @@ pub fn run_core(search_paths: SearchPaths,
     };
 
     let arenas = AllArenas::new();
+    let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
+    let resolver_arenas = resolve::Resolver::arenas();
     let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
     let output_filenames = driver::build_output_filenames(&input,
                                                           &None,
@@ -205,8 +215,19 @@ pub fn run_core(search_paths: SearchPaths,
                                   .collect()
         };
 
+        // Set up a Resolver so that the doc cleaning can look up paths in the docs
+        let mut resolver = resolve::Resolver::new(&sess,
+                                                  &*cstore,
+                                                  &expanded_crate,
+                                                  &name,
+                                                  resolve::MakeGlobMap::No,
+                                                  &mut crate_loader,
+                                                  &resolver_arenas);
+        resolver.resolve_crate(&expanded_crate);
+
         let ctxt = DocContext {
             tcx,
+            resolver,
             populated_all_crate_impls: Cell::new(false),
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),
