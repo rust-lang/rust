@@ -421,7 +421,7 @@ thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
 thread_local!(pub static USED_ID_MAP: RefCell<FxHashMap<String, usize>> =
                     RefCell::new(init_ids()));
 
-pub fn render_text<F: FnMut(RenderType) -> String>(mut render: F) -> (String, String) {
+pub fn render_text<T, F: FnMut(RenderType) -> T>(mut render: F) -> (T, T) {
     // Save the state of USED_ID_MAP so it only gets updated once even
     // though we're rendering twice.
     let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
