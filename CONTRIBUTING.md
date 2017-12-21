@@ -112,14 +112,17 @@ There are large number of options provided in this config file that will alter t
 configuration used in the build process. Some options to note:
 
 #### `[llvm]`:
+- `assertions = true` = This enables LLVM assertions, which makes LLVM misuse cause an assertion failure instead of weird misbehavior. This also slows down the compiler's runtime by ~20%.
 - `ccache = true` - Use ccache when building llvm
 
 #### `[build]`:
 - `compiler-docs = true` - Build compiler documentation
 
 #### `[rust]`:
-- `debuginfo = true` - Build a compiler with debuginfo
-- `optimize = false` - Disable optimizations to speed up compilation of stage1 rust
+- `debuginfo = true` - Build a compiler with debuginfo. Makes building rustc slower, but then you can use a debugger to debug `rustc`.
+- `debuginfo-lines = true` - An alternative to `debuginfo = true` that doesn't let you use a debugger, but doesn't make building rustc slower and still gives you line numbers in backtraces.
+- `debug-assertions = true` - Makes the log output of `debug!` work.
+- `optimize = false` - Disable optimizations to speed up compilation of stage1 rust, but makes the stage1 compiler x100 slower.
 
 For more options, the `config.toml` file contains commented out defaults, with
 descriptions of what each option will do.
@@ -272,6 +275,27 @@ your custom rustc and rustdoc to generate docs. (If you do this with a `--stage 
 build, you'll need to build rustdoc specially, since it's not normally built in
 stage 1. `python x.py build --stage 1 src/libstd src/tools/rustdoc` will build
 rustdoc and libstd, which will allow rustdoc to be run with that toolchain.)
+
+### Out-of-tree builds
+[out-of-tree-builds]: #out-of-tree-builds
+
+Rust's `x.py` script fully supports out-of-tree builds - it looks for
+the Rust source code from the directory `x.py` was found in, but it
+reads the `config.toml` configuration file from the directory it's
+run in, and places all build artifacts within a subdirectory named `build`.
+
+This means that if you want to do an out-of-tree build, you can just do it:
+```
+$ cd my/build/dir
+$ cp ~/my-config.toml config.toml # Or fill in config.toml otherwise
+$ path/to/rust/x.py build
+...
+$ # This will use the Rust source code in `path/to/rust`, but build
+$ # artifacts will now be in ./build
+```
+
+It's absolutely fine to have multiple build directories with different
+`config.toml` configurations using the same code.
 
 ## Pull Requests
 [pull-requests]: #pull-requests
@@ -446,14 +470,14 @@ failed to run: ~/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo build --ma
 If you haven't used the `[patch]`
 section of `Cargo.toml` before, there is [some relevant documentation about it
 in the cargo docs](http://doc.crates.io/manifest.html#the-patch-section). In
-addition to that, you should read the 
+addition to that, you should read the
 [Overriding dependencies](http://doc.crates.io/specifying-dependencies.html#overriding-dependencies)
 section of the documentation as well.
 
 Specifically, the following [section in Overriding dependencies](http://doc.crates.io/specifying-dependencies.html#testing-a-bugfix) reveals what the problem is:
 
 > Next up we need to ensure that our lock file is updated to use this new version of uuid so our project uses the locally checked out copy instead of one from crates.io. The way [patch] works is that it'll load the dependency at ../path/to/uuid and then whenever crates.io is queried for versions of uuid it'll also return the local version.
-> 
+>
 > This means that the version number of the local checkout is significant and will affect whether the patch is used. Our manifest declared uuid = "1.0" which means we'll only resolve to >= 1.0.0, < 2.0.0, and Cargo's greedy resolution algorithm also means that we'll resolve to the maximum version within that range. Typically this doesn't matter as the version of the git repository will already be greater or match the maximum version published on crates.io, but it's important to keep this in mind!
 
 This says that when we updated the submodule, the version number in our
