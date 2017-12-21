@@ -1182,6 +1182,15 @@ LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
   MD->addOperand(Unit);
 }
 
+extern "C" void
+LLVMRustThinLTORemoveAvailableExternally(LLVMModuleRef Mod) {
+  Module *M = unwrap(Mod);
+  for (Function &F : M->functions()) {
+    if (F.hasAvailableExternallyLinkage())
+      F.deleteBody();
+  }
+}
+
 #else
 
 extern "C" bool
@@ -1272,4 +1281,10 @@ extern "C" void
 LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod) {
   report_fatal_error("ThinLTO not available");
 }
+
+extern "C" void
+LLVMRustThinLTORemoveAvailableExternally(LLVMModuleRef Mod) {
+  report_fatal_error("ThinLTO not available");
+}
+
 #endif // LLVM_VERSION_GE(4, 0)
