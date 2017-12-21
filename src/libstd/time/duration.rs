@@ -290,7 +290,7 @@ impl Duration {
     }
 
     /// Checked `Duration` subtraction. Computes `self - other`, returning [`None`]
-    /// if the result would be negative or if underflow occurred.
+    /// if the result would be negative or if overflow occurred.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///

@@ -341,7 +341,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Span {
         std_hash::Hash::hash(&TAG_VALID_SPAN, hasher);
         // We truncate the stable_id hash and line and col numbers. The chances
         // of causing a collision this way should be minimal.
-        std_hash::Hash::hash(&file_lo.name, hasher);
+        std_hash::Hash::hash(&(file_lo.name_hash as u64), hasher);
 
         let col = (col_lo.0 as u64) & 0xFF;
         let line = ((line_lo as u64) & 0xFF_FF_FF) << 8;

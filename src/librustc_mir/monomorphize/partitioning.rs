@@ -377,6 +377,17 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     assert!(target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
 
+    // Note that at this point in time the `codegen_units` here may not be in a
+    // deterministic order (but we know they're deterministically the same set).
+    // We want this merging to produce a deterministic ordering of codegen units
+    // from the input.
+    //
+    // Due to basically how we've implemented the merging below (merge the two
+    // smallest into each other) we're sure to start off with a deterministic
+    // order (sorted by name). This'll mean that if two cgus have the same size
+    // the stable sort below will keep everything nice and deterministic.
+    codegen_units.sort_by_key(|cgu| cgu.name().clone());
+
     // Merge the two smallest codegen units until the target size is reached.
     // Note that "size" is estimated here rather inaccurately as the number of
     // translation items in a given unit. This could be improved on.

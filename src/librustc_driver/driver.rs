@@ -71,6 +71,7 @@ use profile;
 
 pub fn compile_input(sess: &Session,
                      cstore: &CStore,
+                     input_path: &Option<PathBuf>,
                      input: &Input,
                      outdir: &Option<PathBuf>,
                      output: &Option<PathBuf>,
@@ -142,6 +143,20 @@ pub fn compile_input(sess: &Session,
         };
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
+
+        // Ensure the source file isn't accidentally overwritten during compilation.
+        match *input_path {
+            Some(ref input_path) => {
+                if outputs.contains_path(input_path) && sess.opts.will_create_output_file() {
+                    sess.err(&format!(
+                        "the input file \"{}\" would be overwritten by the generated executable",
+                        input_path.display()));
+                    return Err(CompileIncomplete::Stopped);
+                }
+            },
+            None => {}
+        }
+
         let crate_name =
             ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {

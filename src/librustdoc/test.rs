@@ -263,7 +263,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, cfgs: Vec<String>,
     }
 
     let res = panic::catch_unwind(AssertUnwindSafe(|| {
-        driver::compile_input(&sess, &cstore, &input, &out, &None, None, &control)
+        driver::compile_input(&sess, &cstore, &None, &input, &out, &None, None, &control)
     }));
 
     let compile_result = match res {
@@ -533,7 +533,7 @@ impl Collector {
                 should_panic: testing::ShouldPanic::No,
                 allow_fail,
             },
-            testfn: testing::DynTestFn(box move |()| {
+            testfn: testing::DynTestFn(box move || {
                 let panic = io::set_panic(None);
                 let print = io::set_print(None);
                 match {

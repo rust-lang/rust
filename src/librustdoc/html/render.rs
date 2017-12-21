@@ -3720,9 +3720,10 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                     })).and_then(|did| c.impls.get(&did));
                     if let Some(impls) = inner_impl {
                         out.push_str("<a class=\"sidebar-title\" href=\"#deref-methods\">");
-                        out.push_str(&format!("Methods from {:#}&lt;Target={:#}&gt;",
-                                              impl_.inner_impl().trait_.as_ref().unwrap(),
-                                              target));
+                        out.push_str(&format!("Methods from {}&lt;Target={}&gt;",
+                                              Escape(&format!("{:#}",
+                                                     impl_.inner_impl().trait_.as_ref().unwrap())),
+                                              Escape(&format!("{:#}", target))));
                         out.push_str("</a>");
                         let ret = impls.iter()
                                        .filter(|i| i.inner_impl().trait_.is_none())

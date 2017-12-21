@@ -232,7 +232,7 @@ pub fn run_compiler<'a>(args: &[String],
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
-        sopts, input_file_path, descriptions, codemap, emitter_dest,
+        sopts, input_file_path.clone(), descriptions, codemap, emitter_dest,
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -252,6 +252,7 @@ pub fn run_compiler<'a>(args: &[String],
     let control = callbacks.build_controller(&sess, &matches);
     (driver::compile_input(&sess,
                            &cstore,
+                           &input_file_path,
                            &input,
                            &odir,
                            &ofile,

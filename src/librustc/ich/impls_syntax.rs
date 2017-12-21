@@ -387,7 +387,8 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let FileMap {
-            ref name,
+            name: _, // We hash the smaller name_hash instead of this
+            name_hash,
             name_was_remapped,
             unmapped_path: _,
             crate_of_origin,
@@ -402,7 +403,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
             ref non_narrow_chars,
         } = *self;
 
-        name.hash_stable(hcx, hasher);
+        (name_hash as u64).hash_stable(hcx, hasher);
         name_was_remapped.hash_stable(hcx, hasher);
 
         DefId {
