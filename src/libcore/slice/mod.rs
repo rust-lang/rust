@@ -38,7 +38,6 @@
 use cmp::Ordering::{self, Less, Equal, Greater};
 use cmp;
 use fmt;
-use intrinsics::assume;
 use iter::*;
 use ops::{FnMut, Try, self};
 use option::Option;
@@ -46,8 +45,9 @@ use option::Option::{None, Some};
 use result::Result;
 use result::Result::{Ok, Err};
 use ptr;
-use mem;
+use mem::{self, size_of};
 use marker::{Copy, Send, Sync, Sized, self};
+use nonzero::NonZero;
 use iter_private::TrustedRandomAccess;
 
 mod rotate;
@@ -227,40 +227,40 @@ pub trait SliceExt {
 }
 
 // Use macros to be generic over const/mut
-macro_rules! slice_offset {
-    ($ptr:expr, $by:expr) => {{
-        let ptr = $ptr;
-        if size_from_ptr(ptr) == 0 {
-            (ptr as *mut i8).wrapping_offset($by) as _
+macro_rules! iterator_end {
+    ($ptr:expr, $len:expr, $elem:ty) => {{
+        if size_of::<$elem>() != 0 {
+            $ptr.offset($len as isize)
         } else {
-            ptr.offset($by)
+            $len as _
         }
     }};
 }
 
 // make a &T from a *const T
 macro_rules! make_ref {
-    ($ptr:expr) => {{
-        let ptr = $ptr;
-        if size_from_ptr(ptr) == 0 {
-            // Use a non-null pointer value
-            &*(1 as *mut _)
-        } else {
-            &*ptr
-        }
-    }};
+    ($ptr:expr) => { &*$ptr };
 }
 
 // make a &mut T from a *mut T
 macro_rules! make_ref_mut {
+    ($ptr:expr) => { &mut *$ptr };
+}
+
+// unchecked iterator step at the front, non-ZST case
+macro_rules! non_zst_ptr_post_inc {
     ($ptr:expr) => {{
-        let ptr = $ptr;
-        if size_from_ptr(ptr) == 0 {
-            // Use a non-null pointer value
-            &mut *(1 as *mut _)
-        } else {
-            &mut *ptr
-        }
+        let ptr = $ptr.get();
+        $ptr = NonZero::new_unchecked(ptr.offset(1));
+        ptr
+    }};
+}
+
+// unchecked iterator step at the back, non-ZST case
+macro_rules! non_zst_end_pre_dec {
+    ($end:expr) => {{
+        $end = $end.offset(-1);
+        $end
     }};
 }
 
@@ -278,17 +278,11 @@ impl<T> SliceExt for [T] {
     #[inline]
     fn iter(&self) -> Iter<T> {
         unsafe {
-            let p = if mem::size_of::<T>() == 0 {
-                1 as *const _
-            } else {
-                let p = self.as_ptr();
-                assume(!p.is_null());
-                p
-            };
+            let ptr = self.as_ptr();
 
             Iter {
-                ptr: p,
-                end: slice_offset!(p, self.len() as isize),
+                ptr: NonZero::new_unchecked(ptr),
+                end: iterator_end!(ptr, self.len(), T),
                 _marker: marker::PhantomData
             }
         }
@@ -442,17 +436,11 @@ impl<T> SliceExt for [T] {
     #[inline]
     fn iter_mut(&mut self) -> IterMut<T> {
         unsafe {
-            let p = if mem::size_of::<T>() == 0 {
-                1 as *mut _
-            } else {
-                let p = self.as_mut_ptr();
-                assume(!p.is_null());
-                p
-            };
+            let ptr = self.as_mut_ptr();
 
             IterMut {
-                ptr: p,
-                end: slice_offset!(p, self.len() as isize),
+                ptr: NonZero::new_unchecked(ptr),
+                end: iterator_end!(ptr, self.len(), T),
                 _marker: marker::PhantomData
             }
         }
@@ -1115,37 +1103,56 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     }
 }
 
-#[inline]
-fn size_from_ptr<T>(_: *const T) -> usize {
-    mem::size_of::<T>()
-}
-
-// The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty, $mkref:ident) => {
+
+        impl<'a, T> $name<'a, T> {
+            fn ptr(&self) -> $ptr {
+                self.ptr.get()
+            }
+
+            // Helper function for Iter::nth
+            // Return a raw pointer to the nth element (0-indexed)
+            fn get_raw_nth(&mut self, n: usize) -> Option<$ptr> {
+                if n < self.len() {
+                    unsafe {
+                        Some(self.ptr().offset(n as isize))
+                    }
+                } else {
+                    None
+                }
+            }
+
+        }
+
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, T> Iterator for $name<'a, T> {
             type Item = $elem;
 
             #[inline]
             fn next(&mut self) -> Option<$elem> {
-                // could be implemented with slices, but this avoids bounds checks
                 unsafe {
-                    if mem::size_of::<T>() != 0 {
-                        assume(!self.ptr.is_null());
-                        assume(!self.end.is_null());
-                    }
-                    if self.ptr == self.end {
-                        None
+                    if size_of::<T>() != 0 {
+                        if self.ptr() == self.end {
+                            None
+                        } else {
+                            Some($mkref!(non_zst_ptr_post_inc!(self.ptr)))
+                        }
                     } else {
-                        Some($mkref!(self.ptr.post_inc()))
+                        if self.end == 0 as _ {
+                            None
+                        } else {
+                            let ptr = self.ptr();
+                            self.end = self.end.arithmetic_offset(-1);
+                            Some($mkref!(ptr))
+                        }
                     }
                 }
             }
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let exact = ptrdistance(self.ptr, self.end);
+                let exact = self.len();
                 (exact, Some(exact))
             }
 
@@ -1156,8 +1163,28 @@ macro_rules! iterator {
 
             #[inline]
             fn nth(&mut self, n: usize) -> Option<$elem> {
-                // Call helper method. Can't put the definition here because mut versus const.
-                self.iter_nth(n)
+                unsafe {
+                    match self.get_raw_nth(n) {
+                        Some(elem_ptr) => {
+                            let offset = (n as isize).wrapping_add(1);
+                            if size_of::<T>() != 0 {
+                                let ptr = self.ptr.get();
+                                self.ptr = NonZero::new_unchecked(ptr.offset(offset));
+                            } else {
+                                self.end = self.end.arithmetic_offset(-offset);
+                            }
+                            Some($mkref!(elem_ptr))
+                        }
+                        None => {
+                            if size_of::<T>() != 0 {
+                                self.ptr = NonZero::new_unchecked(self.end);
+                            } else {
+                                self.end = 0 as _
+                            }
+                            None
+                        }
+                    }
+                }
             }
 
             #[inline]
@@ -1170,16 +1197,17 @@ macro_rules! iterator {
                 Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
             {
                 // manual unrolling is needed when there are conditional exits from the loop
+                // (manual unrolling only used in the non-ZST case)
                 let mut accum = init;
                 unsafe {
-                    while ptrdistance(self.ptr, self.end) >= 4 {
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                    while size_of::<T>() != 0 && self.len() >= 4 {
+                        accum = f(accum, $mkref!(non_zst_ptr_post_inc!(self.ptr)))?;
+                        accum = f(accum, $mkref!(non_zst_ptr_post_inc!(self.ptr)))?;
+                        accum = f(accum, $mkref!(non_zst_ptr_post_inc!(self.ptr)))?;
+                        accum = f(accum, $mkref!(non_zst_ptr_post_inc!(self.ptr)))?;
                     }
-                    while self.ptr != self.end {
-                        accum = f(accum, $mkref!(self.ptr.post_inc()))?;
+                    while let Some(elt) = self.next() {
+                        accum = f(accum, elt)?;
                     }
                 }
                 Try::from_ok(accum)
@@ -1203,16 +1231,21 @@ macro_rules! iterator {
         impl<'a, T> DoubleEndedIterator for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
-                // could be implemented with slices, but this avoids bounds checks
                 unsafe {
-                    if mem::size_of::<T>() != 0 {
-                        assume(!self.ptr.is_null());
-                        assume(!self.end.is_null());
-                    }
-                    if self.end == self.ptr {
-                        None
+                    if size_of::<T>() != 0 {
+                        if self.ptr() == self.end {
+                            None
+                        } else {
+                            Some($mkref!(non_zst_end_pre_dec!(self.end)))
+                        }
                     } else {
-                        Some($mkref!(self.end.pre_dec()))
+                        if self.end == 0 as _ {
+                            None
+                        } else {
+                            let ptr = self.ptr();
+                            self.end = self.end.arithmetic_offset(-1);
+                            Some($mkref!(ptr))
+                        }
                     }
                 }
             }
@@ -1222,16 +1255,17 @@ macro_rules! iterator {
                 Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
             {
                 // manual unrolling is needed when there are conditional exits from the loop
+                // (manual unrolling only used in the non-ZST case)
                 let mut accum = init;
                 unsafe {
-                    while ptrdistance(self.ptr, self.end) >= 4 {
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
+                    while size_of::<T>() != 0 && self.len() >= 4 {
+                        accum = f(accum, $mkref!(non_zst_end_pre_dec!(self.end)))?;
+                        accum = f(accum, $mkref!(non_zst_end_pre_dec!(self.end)))?;
+                        accum = f(accum, $mkref!(non_zst_end_pre_dec!(self.end)))?;
+                        accum = f(accum, $mkref!(non_zst_end_pre_dec!(self.end)))?;
                     }
-                    while self.ptr != self.end {
-                        accum = f(accum, $mkref!(self.end.pre_dec()))?;
+                    while let Some(elt) = self.next_back() {
+                        accum = f(accum, elt)?
                     }
                 }
                 Try::from_ok(accum)
@@ -1250,35 +1284,27 @@ macro_rules! iterator {
                 accum
             }
         }
+
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<'a, T> ExactSizeIterator for $name<'a, T> {
+            fn len(&self) -> usize {
+                if size_of::<T>() == 0 {
+                    self.end as usize
+                } else {
+                    (self.end as usize - self.ptr() as usize) / size_of::<T>()
+                }
+            }
+
+            fn is_empty(&self) -> bool {
+                if size_of::<T>() == 0 {
+                    self.end == 0 as _
+                } else {
+                    self.ptr() == self.end
+                }
+            }
+        }
     }
-}
-
-macro_rules! make_slice {
-    ($start: expr, $end: expr) => {{
-        let start = $start;
-        let diff = ($end as usize).wrapping_sub(start as usize);
-        if size_from_ptr(start) == 0 {
-            // use a non-null pointer value
-            unsafe { from_raw_parts(1 as *const _, diff) }
-        } else {
-            let len = diff / size_from_ptr(start);
-            unsafe { from_raw_parts(start, len) }
-        }
-    }}
-}
-
-macro_rules! make_mut_slice {
-    ($start: expr, $end: expr) => {{
-        let start = $start;
-        let diff = ($end as usize).wrapping_sub(start as usize);
-        if size_from_ptr(start) == 0 {
-            // use a non-null pointer value
-            unsafe { from_raw_parts_mut(1 as *mut _, diff) }
-        } else {
-            let len = diff / size_from_ptr(start);
-            unsafe { from_raw_parts_mut(start, len) }
-        }
-    }}
 }
 
 /// Immutable slice iterator
@@ -1302,8 +1328,49 @@ macro_rules! make_mut_slice {
 /// [`iter`]: ../../std/primitive.slice.html#method.iter
 /// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
+// # Implementation Notes
+//
+// ## Regular case, T is not zero-sized
+//
+// (Nothing changes in this case, but this is the documentation in the code.)
+//
+// The iterator represents a contiguous range of elements.
+// `ptr` is a pointer to the start of the range.
+// `end` is a pointer to one past the end of the range.
+//
+// Initial values are ptr = slice.as_ptr() and end = ptr.offset(slice.len())
+//
+// The iterator is empty when ptr == end.
+// The iterator is stepped at the front by incrementing ptr, the
+// yielded element is the old value of ptr ("post increment" semantic).
+// The iterator is stepped at the back by decrementing end, the
+// yielded element is the new value of end ("pre decrement" semantic).
+//
+// ## When T is a Zero-sized type (ZST)
+//
+// `ptr` is a pointer to the start of the range.
+// `end` is used as an integer: the count of elements in the range.
+//
+// Initial values are ptr = slice.as_ptr() and end = self.len() as *const T
+//
+// The iterator is empty when end == 0
+// The iterator is stepped at the front by decrementing end.
+// The iterator is stepped at the back by decrementing end.
+//
+// For both front and back, the yielded element is `ptr`, which does not change
+// during the iteration.
+//
+// ## NonZero
+//
+// `ptr` is derived from `slice.as_ptr()` and just like it is is non-null.
+// `end` is allowed to be null (used by the ZST implementation); this is
+// required since for iterating a [(); usize::MAX] all values of usize (and
+// equivalently the raw pointer) are used, including zero.
+//
 pub struct Iter<'a, T: 'a> {
-    ptr: *const T,
+    // The front pointer is non-null
+    ptr: NonZero<*const T>,
+    // The end pointer may be null - it is used by zero sized T
     end: *const T,
     _marker: marker::PhantomData<&'a T>,
 }
@@ -1349,32 +1416,13 @@ impl<'a, T> Iter<'a, T> {
     /// ```
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn as_slice(&self) -> &'a [T] {
-        make_slice!(self.ptr, self.end)
-    }
-
-    // Helper function for Iter::nth
-    fn iter_nth(&mut self, n: usize) -> Option<&'a T> {
-        match self.as_slice().get(n) {
-            Some(elem_ref) => unsafe {
-                self.ptr = slice_offset!(self.ptr, (n as isize).wrapping_add(1));
-                Some(elem_ref)
-            },
-            None => {
-                self.ptr = self.end;
-                None
-            }
+        unsafe {
+            from_raw_parts(self.ptr(), self.len())
         }
     }
 }
 
 iterator!{struct Iter -> *const T, &'a T, make_ref}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for Iter<'a, T> {
-    fn is_empty(&self) -> bool {
-        self.ptr == self.end
-    }
-}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
@@ -1419,8 +1467,9 @@ impl<'a, T> AsRef<[T]> for Iter<'a, T> {
 /// [`iter_mut`]: ../../std/primitive.slice.html#method.iter_mut
 /// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
+// See implementation notes under struct Iter.
 pub struct IterMut<'a, T: 'a> {
-    ptr: *mut T,
+    ptr: NonZero<*mut T>,
     end: *mut T,
     _marker: marker::PhantomData<&'a mut T>,
 }
@@ -1429,7 +1478,7 @@ pub struct IterMut<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IterMut")
-            .field(&make_slice!(self.ptr, self.end))
+            .field(&self.as_slice())
             .finish()
     }
 }
@@ -1477,32 +1526,19 @@ impl<'a, T> IterMut<'a, T> {
     /// ```
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn into_slice(self) -> &'a mut [T] {
-        make_mut_slice!(self.ptr, self.end)
+        unsafe {
+            from_raw_parts_mut(self.ptr(), self.len())
+        }
     }
 
-    // Helper function for IterMut::nth
-    fn iter_nth(&mut self, n: usize) -> Option<&'a mut T> {
-        match make_mut_slice!(self.ptr, self.end).get_mut(n) {
-            Some(elem_ref) => unsafe {
-                self.ptr = slice_offset!(self.ptr, (n as isize).wrapping_add(1));
-                Some(elem_ref)
-            },
-            None => {
-                self.ptr = self.end;
-                None
-            }
+    fn as_slice(&self) -> &[T] {
+        unsafe {
+            from_raw_parts(self.ptr(), self.len())
         }
     }
 }
 
 iterator!{struct IterMut -> *mut T, &'a mut T, make_ref_mut}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
-    fn is_empty(&self) -> bool {
-        self.ptr == self.end
-    }
-}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
@@ -1510,48 +1546,21 @@ impl<'a, T> FusedIterator for IterMut<'a, T> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, T> TrustedLen for IterMut<'a, T> {}
 
+// intended to be used for pointer to ZST only
+trait ZstPointerExt {
+    /// compute a wrapping pointer offset as if it were a *const u8
+    fn arithmetic_offset(self, i: isize) -> Self;
+}
 
-// Return the number of elements of `T` from `start` to `end`.
-// Return the arithmetic difference if `T` is zero size.
-#[inline(always)]
-fn ptrdistance<T>(start: *const T, end: *const T) -> usize {
-    match start.offset_to(end) {
-        Some(x) => x as usize,
-        None => (end as usize).wrapping_sub(start as usize),
+impl<T> ZstPointerExt for *const T {
+    fn arithmetic_offset(self, offset: isize) -> Self {
+        (self as *const u8).wrapping_offset(offset) as *const T
     }
 }
 
-// Extension methods for raw pointers, used by the iterators
-trait PointerExt : Copy {
-    unsafe fn slice_offset(self, i: isize) -> Self;
-
-    /// Increments `self` by 1, but returns the old value.
-    #[inline(always)]
-    unsafe fn post_inc(&mut self) -> Self {
-        let current = *self;
-        *self = self.slice_offset(1);
-        current
-    }
-
-    /// Decrements `self` by 1, and returns the new value.
-    #[inline(always)]
-    unsafe fn pre_dec(&mut self) -> Self {
-        *self = self.slice_offset(-1);
-        *self
-    }
-}
-
-impl<T> PointerExt for *const T {
-    #[inline(always)]
-    unsafe fn slice_offset(self, i: isize) -> Self {
-        slice_offset!(self, i)
-    }
-}
-
-impl<T> PointerExt for *mut T {
-    #[inline(always)]
-    unsafe fn slice_offset(self, i: isize) -> Self {
-        slice_offset!(self, i)
+impl<T> ZstPointerExt for *mut T {
+    fn arithmetic_offset(self, offset: isize) -> Self {
+        (self as *mut u8).wrapping_offset(offset) as *mut T
     }
 }
 
@@ -2602,7 +2611,7 @@ impl_marker_for!(BytewiseEquality,
 #[doc(hidden)]
 unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a T {
-        &*self.ptr.offset(i as isize)
+        &*self.ptr().offset(i as isize)
     }
     fn may_have_side_effect() -> bool { false }
 }
@@ -2610,7 +2619,7 @@ unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
 #[doc(hidden)]
 unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut T {
-        &mut *self.ptr.offset(i as isize)
+        &mut *self.ptr().offset(i as isize)
     }
     fn may_have_side_effect() -> bool { false }
 }
