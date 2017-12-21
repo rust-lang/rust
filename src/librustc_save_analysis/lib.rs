@@ -886,21 +886,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
 fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     let mut sig = "fn ".to_owned();
-    if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
+    if !generics.params.is_empty() {
         sig.push('<');
         sig.push_str(&generics
-            .lifetimes
+            .params
             .iter()
-            .map(|l| l.lifetime.ident.name.to_string())
-            .collect::<Vec<_>>()
-            .join(", "));
-        if !generics.lifetimes.is_empty() {
-            sig.push_str(", ");
-        }
-        sig.push_str(&generics
-            .ty_params
-            .iter()
-            .map(|l| l.ident.to_string())
+            .map(|param| match *param {
+                ast::GenericParam::Lifetime(ref l) => l.lifetime.ident.name.to_string(),
+                ast::GenericParam::Type(ref t) => t.ident.to_string(),
+            })
             .collect::<Vec<_>>()
             .join(", "));
         sig.push_str("> ");

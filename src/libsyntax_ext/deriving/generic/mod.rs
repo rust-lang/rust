@@ -192,7 +192,9 @@ use std::collections::HashSet;
 use std::vec;
 
 use syntax::abi::Abi;
-use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind, VariantData};
+use syntax::ast::{
+    self, BinOpKind, EnumDef, Expr, GenericParam, Generics, Ident, PatKind, VariantData
+};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
@@ -417,7 +419,7 @@ impl<'a> TraitDef<'a> {
                     ast::ItemKind::Struct(_, ref generics) |
                     ast::ItemKind::Enum(_, ref generics) |
                     ast::ItemKind::Union(_, ref generics) => {
-                        generics.ty_params.is_empty()
+                        !generics.params.iter().any(|p| p.is_type_param())
                     }
                     _ => {
                         // Non-ADT derive is an error, but it should have been
@@ -537,32 +539,35 @@ impl<'a> TraitDef<'a> {
             }
         });
 
-        let Generics { mut lifetimes, mut ty_params, mut where_clause, span } = self.generics
+        let Generics { mut params, mut where_clause, span } = self.generics
             .to_generics(cx, self.span, type_ident, generics);
 
-        // Copy the lifetimes
-        lifetimes.extend(generics.lifetimes.iter().cloned());
+        // Create the generic parameters
+        params.extend(generics.params.iter().map(|param| {
+            match *param {
+                ref l @ GenericParam::Lifetime(_) => l.clone(),
+                GenericParam::Type(ref ty_param) => {
+                    // I don't think this can be moved out of the loop, since
+                    // a TyParamBound requires an ast id
+                    let mut bounds: Vec<_> =
+                        // extra restrictions on the generics parameters to the
+                        // type being derived upon
+                        self.additional_bounds.iter().map(|p| {
+                            cx.typarambound(p.to_path(cx, self.span,
+                                                        type_ident, generics))
+                        }).collect();
 
-        // Create the type parameters.
-        ty_params.extend(generics.ty_params.iter().map(|ty_param| {
-            // I don't think this can be moved out of the loop, since
-            // a TyParamBound requires an ast id
-            let mut bounds: Vec<_> =
-                // extra restrictions on the generics parameters to the type being derived upon
-                self.additional_bounds.iter().map(|p| {
-                    cx.typarambound(p.to_path(cx, self.span,
-                                                  type_ident, generics))
-                }).collect();
+                    // require the current trait
+                    bounds.push(cx.typarambound(trait_path.clone()));
 
-            // require the current trait
-            bounds.push(cx.typarambound(trait_path.clone()));
+                    // also add in any bounds from the declaration
+                    for declared_bound in ty_param.bounds.iter() {
+                        bounds.push((*declared_bound).clone());
+                    }
 
-            // also add in any bounds from the declaration
-            for declared_bound in ty_param.bounds.iter() {
-                bounds.push((*declared_bound).clone());
+                    GenericParam::Type(cx.typaram(self.span, ty_param.ident, vec![], bounds, None))
+                }
             }
-
-            cx.typaram(self.span, ty_param.ident, vec![], bounds, None)
         }));
 
         // and similarly for where clauses
@@ -571,7 +576,7 @@ impl<'a> TraitDef<'a> {
                 ast::WherePredicate::BoundPredicate(ref wb) => {
                     ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
                         span: self.span,
-                        bound_lifetimes: wb.bound_lifetimes.clone(),
+                        bound_generic_params: wb.bound_generic_params.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
                         bounds: wb.bounds.iter().cloned().collect(),
                     })
@@ -594,49 +599,61 @@ impl<'a> TraitDef<'a> {
             }
         }));
 
-        if !ty_params.is_empty() {
-            let ty_param_names: Vec<ast::Name> = ty_params.iter()
-                .map(|ty_param| ty_param.ident.name)
-                .collect();
+        {
+            // Extra scope required here so ty_params goes out of scope before params is moved
 
-            let mut processed_field_types = HashSet::new();
-            for field_ty in field_tys {
-                let tys = find_type_parameters(&field_ty, &ty_param_names, self.span, cx);
+            let mut ty_params = params.iter()
+                .filter_map(|param| match *param {
+                    ast::GenericParam::Type(ref t) => Some(t),
+                    _ => None,
+                })
+                .peekable();
 
-                for ty in tys {
-                    // if we have already handled this type, skip it
-                    if let ast::TyKind::Path(_, ref p) = ty.node {
-                        if p.segments.len() == 1 &&
-                           ty_param_names.contains(&p.segments[0].identifier.name) ||
-                           processed_field_types.contains(&p.segments) {
-                            continue;
+            if ty_params.peek().is_some() {
+                let ty_param_names: Vec<ast::Name> = ty_params
+                    .map(|ty_param| ty_param.ident.name)
+                    .collect();
+
+                let mut processed_field_types = HashSet::new();
+                for field_ty in field_tys {
+                    let tys = find_type_parameters(&field_ty, &ty_param_names, self.span, cx);
+
+                    for ty in tys {
+                        // if we have already handled this type, skip it
+                        if let ast::TyKind::Path(_, ref p) = ty.node {
+                            if p.segments.len() == 1 &&
+                            ty_param_names.contains(&p.segments[0].identifier.name) ||
+                            processed_field_types.contains(&p.segments) {
+                                continue;
+                            };
+                            processed_field_types.insert(p.segments.clone());
+                        }
+                        let mut bounds: Vec<_> = self.additional_bounds
+                            .iter()
+                            .map(|p| {
+                                cx.typarambound(p.to_path(cx, self.span, type_ident, generics))
+                            })
+                            .collect();
+
+                        // require the current trait
+                        bounds.push(cx.typarambound(trait_path.clone()));
+
+                        let predicate = ast::WhereBoundPredicate {
+                            span: self.span,
+                            bound_generic_params: Vec::new(),
+                            bounded_ty: ty,
+                            bounds,
                         };
-                        processed_field_types.insert(p.segments.clone());
+
+                        let predicate = ast::WherePredicate::BoundPredicate(predicate);
+                        where_clause.predicates.push(predicate);
                     }
-                    let mut bounds: Vec<_> = self.additional_bounds
-                        .iter()
-                        .map(|p| cx.typarambound(p.to_path(cx, self.span, type_ident, generics)))
-                        .collect();
-
-                    // require the current trait
-                    bounds.push(cx.typarambound(trait_path.clone()));
-
-                    let predicate = ast::WhereBoundPredicate {
-                        span: self.span,
-                        bound_lifetimes: vec![],
-                        bounded_ty: ty,
-                        bounds,
-                    };
-
-                    let predicate = ast::WherePredicate::BoundPredicate(predicate);
-                    where_clause.predicates.push(predicate);
                 }
             }
         }
 
         let trait_generics = Generics {
-            lifetimes,
-            ty_params,
+            params,
             where_clause,
             span,
         };
@@ -645,14 +662,21 @@ impl<'a> TraitDef<'a> {
         let trait_ref = cx.trait_ref(trait_path);
 
         // Create the type parameters on the `self` path.
-        let self_ty_params = generics.ty_params
+        let self_ty_params = generics.params
             .iter()
-            .map(|ty_param| cx.ty_ident(self.span, ty_param.ident))
+            .filter_map(|param| match *param {
+                GenericParam::Type(ref ty_param)
+                    => Some(cx.ty_ident(self.span, ty_param.ident)),
+                _ => None,
+            })
             .collect();
 
-        let self_lifetimes: Vec<ast::Lifetime> = generics.lifetimes
+        let self_lifetimes: Vec<ast::Lifetime> = generics.params
             .iter()
-            .map(|ld| ld.lifetime)
+            .filter_map(|param| match *param {
+                GenericParam::Lifetime(ref ld) => Some(ld.lifetime),
+                _ => None,
+            })
             .collect();
 
         // Create the type of `self`.

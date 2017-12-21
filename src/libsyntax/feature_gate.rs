@@ -1748,22 +1748,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_vis(self, vis);
     }
 
-    fn visit_generics(&mut self, g: &'a ast::Generics) {
-        for t in &g.ty_params {
-            if !t.attrs.is_empty() {
-                gate_feature_post!(&self, generic_param_attrs, t.attrs[0].span,
-                                   "attributes on type parameter bindings are experimental");
-            }
-        }
-        visit::walk_generics(self, g)
-    }
+    fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
+        let (attrs, explain) = match *param {
+            ast::GenericParam::Lifetime(ref ld) =>
+                (&ld.attrs, "attributes on lifetime bindings are experimental"),
+            ast::GenericParam::Type(ref t) =>
+                (&t.attrs, "attributes on type parameter bindings are experimental"),
+        };
 
-    fn visit_lifetime_def(&mut self, lifetime_def: &'a ast::LifetimeDef) {
-        if !lifetime_def.attrs.is_empty() {
-            gate_feature_post!(&self, generic_param_attrs, lifetime_def.attrs[0].span,
-                               "attributes on lifetime bindings are experimental");
+        if !attrs.is_empty() {
+            gate_feature_post!(&self, generic_param_attrs, attrs[0].span, explain);
         }
-        visit::walk_lifetime_def(self, lifetime_def)
+
+        visit::walk_generic_param(self, param)
     }
 
     fn visit_lifetime(&mut self, lt: &'a ast::Lifetime) {

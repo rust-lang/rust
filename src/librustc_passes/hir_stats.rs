@@ -224,10 +224,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.record("Lifetime", Id::Node(lifetime.id), lifetime);
         hir_visit::walk_lifetime(self, lifetime)
     }
-    fn visit_lifetime_def(&mut self, lifetime: &'v hir::LifetimeDef) {
-        self.record("LifetimeDef", Id::None, lifetime);
-        hir_visit::walk_lifetime_def(self, lifetime)
-    }
     fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: NodeId, span: Span) {
         self.record("QPath", Id::None, qpath);
         hir_visit::walk_qpath(self, qpath, id, span)
@@ -347,11 +343,6 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime) {
         self.record("Lifetime", Id::None, lifetime);
         ast_visit::walk_lifetime(self, lifetime)
-    }
-
-    fn visit_lifetime_def(&mut self, lifetime: &'v ast::LifetimeDef) {
-        self.record("LifetimeDef", Id::None, lifetime);
-        ast_visit::walk_lifetime_def(self, lifetime)
     }
 
     fn visit_mac(&mut self, mac: &'v ast::Mac) {

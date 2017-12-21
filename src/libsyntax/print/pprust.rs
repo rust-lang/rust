@@ -275,7 +275,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtArm(ref e)         => arm_to_string(e),
             token::NtImplItem(ref e)    => impl_item_to_string(e),
             token::NtTraitItem(ref e)   => trait_item_to_string(e),
-            token::NtGenerics(ref e)    => generics_to_string(e),
+            token::NtGenerics(ref e)    => generic_params_to_string(&e.params),
             token::NtWhereClause(ref e) => where_clause_to_string(e),
             token::NtArg(ref e)         => arg_to_string(e),
             token::NtVis(ref e)         => vis_to_string(e),
@@ -339,8 +339,8 @@ pub fn trait_item_to_string(i: &ast::TraitItem) -> String {
     to_string(|s| s.print_trait_item(i))
 }
 
-pub fn generics_to_string(generics: &ast::Generics) -> String {
-    to_string(|s| s.print_generics(generics))
+pub fn generic_params_to_string(generic_params: &[ast::GenericParam]) -> String {
+    to_string(|s| s.print_generic_params(generic_params))
 }
 
 pub fn where_clause_to_string(i: &ast::WhereClause) -> String {
@@ -1043,21 +1043,11 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             ast::TyKind::BareFn(ref f) => {
-                let generics = ast::Generics {
-                    lifetimes: f.lifetimes.clone(),
-                    ty_params: Vec::new(),
-                    where_clause: ast::WhereClause {
-                        id: ast::DUMMY_NODE_ID,
-                        predicates: Vec::new(),
-                        span: syntax_pos::DUMMY_SP,
-                    },
-                    span: syntax_pos::DUMMY_SP,
-                };
                 self.print_ty_fn(f.abi,
                                  f.unsafety,
                                  &f.decl,
                                  None,
-                                 &generics)?;
+                                 &f.generic_params)?;
             }
             ast::TyKind::Path(None, ref path) => {
                 self.print_path(path, false, 0, false)?;
@@ -1271,15 +1261,15 @@ impl<'a> State<'a> {
                 self.s.word(&ga.asm.as_str())?;
                 self.end()?;
             }
-            ast::ItemKind::Ty(ref ty, ref params) => {
+            ast::ItemKind::Ty(ref ty, ref generics) => {
                 self.ibox(INDENT_UNIT)?;
                 self.ibox(0)?;
                 self.word_nbsp(&visibility_qualified(&item.vis, "type"))?;
                 self.print_ident(item.ident)?;
-                self.print_generics(params)?;
+                self.print_generic_params(&generics.params)?;
                 self.end()?; // end the inner ibox
 
-                self.print_where_clause(&params.where_clause)?;
+                self.print_where_clause(&generics.where_clause)?;
                 self.s.space()?;
                 self.word_space("=")?;
                 self.print_type(ty)?;
@@ -1329,7 +1319,7 @@ impl<'a> State<'a> {
                 self.word_nbsp("impl")?;
 
                 if generics.is_parameterized() {
-                    self.print_generics(generics)?;
+                    self.print_generic_params(&generics.params)?;
                     self.s.space()?;
                 }
 
@@ -1361,7 +1351,7 @@ impl<'a> State<'a> {
                 self.print_is_auto(is_auto)?;
                 self.word_nbsp("trait")?;
                 self.print_ident(item.ident)?;
-                self.print_generics(generics)?;
+                self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
                     if let TraitTyParamBound(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
@@ -1386,7 +1376,7 @@ impl<'a> State<'a> {
                 self.print_visibility(&item.vis)?;
                 self.word_nbsp("trait")?;
                 self.print_ident(item.ident)?;
-                self.print_generics(generics)?;
+                self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 // FIXME(durka) this seems to be some quite outdated syntax
                 for b in bounds.iter() {
@@ -1432,26 +1422,20 @@ impl<'a> State<'a> {
         self.print_path(&t.path, false, 0, false)
     }
 
-    fn print_formal_lifetime_list(&mut self, lifetimes: &[ast::LifetimeDef]) -> io::Result<()> {
-        if !lifetimes.is_empty() {
-            self.s.word("for<")?;
-            let mut comma = false;
-            for lifetime_def in lifetimes {
-                if comma {
-                    self.word_space(",")?
-                }
-                self.print_outer_attributes_inline(&lifetime_def.attrs)?;
-                self.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds)?;
-                comma = true;
-            }
-            self.s.word(">")?;
+    fn print_formal_generic_params(
+        &mut self,
+        generic_params: &[ast::GenericParam]
+    ) -> io::Result<()> {
+        if !generic_params.is_empty() {
+            self.s.word("for")?;
+            self.print_generic_params(generic_params)?;
             self.nbsp()?;
         }
         Ok(())
     }
 
     fn print_poly_trait_ref(&mut self, t: &ast::PolyTraitRef) -> io::Result<()> {
-        self.print_formal_lifetime_list(&t.bound_lifetimes)?;
+        self.print_formal_generic_params(&t.bound_generic_params)?;
         self.print_trait_ref(&t.trait_ref)
     }
 
@@ -1461,7 +1445,7 @@ impl<'a> State<'a> {
                           visibility: &ast::Visibility) -> io::Result<()> {
         self.head(&visibility_qualified(visibility, "enum"))?;
         self.print_ident(ident)?;
-        self.print_generics(generics)?;
+        self.print_generic_params(&generics.params)?;
         self.print_where_clause(&generics.where_clause)?;
         self.s.space()?;
         self.print_variants(&enum_definition.variants, span)
@@ -1517,7 +1501,7 @@ impl<'a> State<'a> {
                         span: syntax_pos::Span,
                         print_finalizer: bool) -> io::Result<()> {
         self.print_ident(ident)?;
-        self.print_generics(generics)?;
+        self.print_generic_params(&generics.params)?;
         if !struct_def.is_struct() {
             if struct_def.is_tuple() {
                 self.popen()?;
@@ -2764,7 +2748,7 @@ impl<'a> State<'a> {
             self.nbsp()?;
             self.print_ident(name)?;
         }
-        self.print_generics(generics)?;
+        self.print_generic_params(&generics.params)?;
         self.print_fn_args_and_ret(decl)?;
         self.print_where_clause(&generics.where_clause)
     }
@@ -2870,31 +2854,23 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_generics(&mut self,
-                          generics: &ast::Generics)
-                          -> io::Result<()>
-    {
-        let total = generics.lifetimes.len() + generics.ty_params.len();
-        if total == 0 {
+    pub fn print_generic_params(
+        &mut self,
+        generic_params: &[ast::GenericParam]
+    ) -> io::Result<()> {
+        if generic_params.is_empty() {
             return Ok(());
         }
 
         self.s.word("<")?;
 
-        let mut ints = Vec::new();
-        for i in 0..total {
-            ints.push(i);
-        }
-
-        self.commasep(Inconsistent, &ints[..], |s, &idx| {
-            if idx < generics.lifetimes.len() {
-                let lifetime_def = &generics.lifetimes[idx];
-                s.print_outer_attributes_inline(&lifetime_def.attrs)?;
-                s.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds)
-            } else {
-                let idx = idx - generics.lifetimes.len();
-                let param = &generics.ty_params[idx];
-                s.print_ty_param(param)
+        self.commasep(Inconsistent, &generic_params, |s, param| {
+            match *param {
+                ast::GenericParam::Lifetime(ref lifetime_def) => {
+                    s.print_outer_attributes_inline(&lifetime_def.attrs)?;
+                    s.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds)
+                },
+                ast::GenericParam::Type(ref ty_param) => s.print_ty_param(ty_param),
             }
         })?;
 
@@ -2931,11 +2907,13 @@ impl<'a> State<'a> {
             }
 
             match *predicate {
-                ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bound_lifetimes,
-                                                                             ref bounded_ty,
-                                                                             ref bounds,
-                                                                             ..}) => {
-                    self.print_formal_lifetime_list(bound_lifetimes)?;
+                ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+                    ref bound_generic_params,
+                    ref bounded_ty,
+                    ref bounds,
+                    ..
+                }) => {
+                    self.print_formal_generic_params(bound_generic_params)?;
                     self.print_type(bounded_ty)?;
                     self.print_bounds(":", bounds)?;
                 }
@@ -3057,16 +3035,15 @@ impl<'a> State<'a> {
                        unsafety: ast::Unsafety,
                        decl: &ast::FnDecl,
                        name: Option<ast::Ident>,
-                       generics: &ast::Generics)
+                       generic_params: &Vec<ast::GenericParam>)
                        -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
-        if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
+        if !generic_params.is_empty() {
             self.s.word("for")?;
-            self.print_generics(generics)?;
+            self.print_generic_params(generic_params)?;
         }
         let generics = ast::Generics {
-            lifetimes: Vec::new(),
-            ty_params: Vec::new(),
+            params: Vec::new(),
             where_clause: ast::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),

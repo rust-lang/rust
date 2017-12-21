@@ -783,6 +783,11 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::walk_decl(self, d);
     }
 
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam) {
+        run_lints!(self, check_generic_param, late_passes, p);
+        hir_visit::walk_generic_param(self, p);
+    }
+
     fn visit_generics(&mut self, g: &'tcx hir::Generics) {
         run_lints!(self, check_generics, late_passes, g);
         hir_visit::walk_generics(self, g);
@@ -817,11 +822,6 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
     fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
         run_lints!(self, check_lifetime, late_passes, lt);
         hir_visit::walk_lifetime(self, lt);
-    }
-
-    fn visit_lifetime_def(&mut self, lt: &'tcx hir::LifetimeDef) {
-        run_lints!(self, check_lifetime_def, late_passes, lt);
-        hir_visit::walk_lifetime_def(self, lt);
     }
 
     fn visit_path(&mut self, p: &'tcx hir::Path, id: ast::NodeId) {
@@ -945,6 +945,11 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         run_lints!(self, check_expr_post, early_passes, e);
     }
 
+    fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
+        run_lints!(self, check_generic_param, early_passes, param);
+        ast_visit::walk_generic_param(self, param);
+    }
+
     fn visit_generics(&mut self, g: &'a ast::Generics) {
         run_lints!(self, check_generics, early_passes, g);
         ast_visit::walk_generics(self, g);
@@ -969,10 +974,6 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     fn visit_lifetime(&mut self, lt: &'a ast::Lifetime) {
         run_lints!(self, check_lifetime, early_passes, lt);
         self.check_id(lt.id);
-    }
-
-    fn visit_lifetime_def(&mut self, lt: &'a ast::LifetimeDef) {
-        run_lints!(self, check_lifetime_def, early_passes, lt);
     }
 
     fn visit_path(&mut self, p: &'a ast::Path, id: ast::NodeId) {

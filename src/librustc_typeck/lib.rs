@@ -186,7 +186,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
                         hir::ItemFn(.., ref generics, _) => {
-                            if generics.is_parameterized() {
+                            if !generics.params.is_empty() {
                                 struct_span_err!(tcx.sess, generics.span, E0131,
                                          "main function is not allowed to have type parameters")
                                     .span_label(generics.span,
@@ -235,7 +235,7 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
                         hir::ItemFn(..,ref ps,_)
-                        if ps.is_parameterized() => {
+                        if !ps.params.is_empty() => {
                             struct_span_err!(tcx.sess, ps.span, E0132,
                                 "start function is not allowed to have type parameters")
                                 .span_label(ps.span,

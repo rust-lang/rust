@@ -200,9 +200,13 @@ impl_stable_hash_for!(struct hir::TyParam {
     synthetic
 });
 
+impl_stable_hash_for!(enum hir::GenericParam {
+    Lifetime(lifetime_def),
+    Type(ty_param)
+});
+
 impl_stable_hash_for!(struct hir::Generics {
-    lifetimes,
-    ty_params,
+    params,
     where_clause,
     span
 });
@@ -224,7 +228,7 @@ impl_stable_hash_for!(enum hir::WherePredicate {
 
 impl_stable_hash_for!(struct hir::WhereBoundPredicate {
     span,
-    bound_lifetimes,
+    bound_generic_params,
     bounded_ty,
     bounds
 });
@@ -291,7 +295,7 @@ impl_stable_hash_for!(enum hir::PrimTy {
 impl_stable_hash_for!(struct hir::BareFnTy {
     unsafety,
     abi,
-    lifetimes,
+    generic_params,
     decl,
     arg_names
 });
@@ -345,7 +349,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::TraitRef {
 
 
 impl_stable_hash_for!(struct hir::PolyTraitRef {
-    bound_lifetimes,
+    bound_generic_params,
     trait_ref,
     span
 });

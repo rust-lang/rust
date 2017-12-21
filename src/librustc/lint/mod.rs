@@ -155,6 +155,7 @@ pub trait LateLintPass<'a, 'tcx>: LintPass {
     fn check_expr(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Expr) { }
     fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Expr) { }
     fn check_ty(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Ty) { }
+    fn check_generic_param(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::GenericParam) { }
     fn check_generics(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Generics) { }
     fn check_fn(&mut self,
                 _: &LateContext<'a, 'tcx>,
@@ -196,7 +197,6 @@ pub trait LateLintPass<'a, 'tcx>: LintPass {
                           _: &'tcx hir::Variant,
                           _: &'tcx hir::Generics) { }
     fn check_lifetime(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Lifetime) { }
-    fn check_lifetime_def(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::LifetimeDef) { }
     fn check_path(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Path, _: ast::NodeId) { }
     fn check_attribute(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx ast::Attribute) { }
 
@@ -227,6 +227,7 @@ pub trait EarlyLintPass: LintPass {
     fn check_expr(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_expr_post(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
+    fn check_generic_param(&mut self, _: &EarlyContext, _: &ast::GenericParam) { }
     fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
     fn check_fn(&mut self, _: &EarlyContext,
         _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
@@ -244,7 +245,6 @@ pub trait EarlyLintPass: LintPass {
     fn check_variant(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
     fn check_variant_post(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
     fn check_lifetime(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
-    fn check_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
     fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
     fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
 

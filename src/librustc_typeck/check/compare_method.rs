@@ -562,10 +562,10 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if num_impl_m_type_params != num_trait_m_type_params {
         let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
         let impl_m_item = tcx.hir.expect_impl_item(impl_m_node_id);
-        let span = if impl_m_item.generics.is_parameterized() {
-            impl_m_item.generics.span
-        } else {
+        let span = if impl_m_item.generics.params.is_empty() {
             impl_m_span
+        } else {
+            impl_m_item.generics.span
         };
 
         let mut err = struct_span_err!(tcx.sess,

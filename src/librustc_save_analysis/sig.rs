@@ -218,12 +218,17 @@ impl Sig for ast::Ty {
             }
             ast::TyKind::BareFn(ref f) => {
                 let mut text = String::new();
-                if !f.lifetimes.is_empty() {
+                if !f.generic_params.is_empty() {
                     // FIXME defs, bounds on lifetimes
                     text.push_str("for<");
-                    text.push_str(&f.lifetimes
+                    text.push_str(&f.generic_params
                         .iter()
-                        .map(|l| l.lifetime.ident.to_string())
+                        .filter_map(|p| match *p {
+                            ast::GenericParam::Lifetime(ref l) => {
+                                Some(l.lifetime.ident.to_string())
+                            }
+                            _ => None,
+                        })
                         .collect::<Vec<_>>()
                         .join(", "));
                     text.push('>');
@@ -615,50 +620,53 @@ impl Sig for ast::Path {
 // This does not cover the where clause, which must be processed separately.
 impl Sig for ast::Generics {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext) -> Result {
-        let total = self.lifetimes.len() + self.ty_params.len();
-        if total == 0 {
+        if self.params.is_empty() {
             return Ok(text_sig(String::new()));
         }
 
         let mut text = "<".to_owned();
 
         let mut defs = vec![];
-        for l in &self.lifetimes {
-            let mut l_text = l.lifetime.ident.to_string();
-            defs.push(SigElement {
-                id: id_from_node_id(l.lifetime.id, scx),
-                start: offset + text.len(),
-                end: offset + text.len() + l_text.len(),
-            });
+        for param in &self.params {
+            match *param {
+                ast::GenericParam::Lifetime(ref l) => {
+                    let mut l_text = l.lifetime.ident.to_string();
+                    defs.push(SigElement {
+                        id: id_from_node_id(l.lifetime.id, scx),
+                        start: offset + text.len(),
+                        end: offset + text.len() + l_text.len(),
+                    });
 
-            if !l.bounds.is_empty() {
-                l_text.push_str(": ");
-                let bounds = l.bounds
-                    .iter()
-                    .map(|l| l.ident.to_string())
-                    .collect::<Vec<_>>()
-                    .join(" + ");
-                l_text.push_str(&bounds);
-                // FIXME add lifetime bounds refs.
-            }
-            text.push_str(&l_text);
-            text.push(',');
-        }
-        for t in &self.ty_params {
-            let mut t_text = t.ident.to_string();
-            defs.push(SigElement {
-                id: id_from_node_id(t.id, scx),
-                start: offset + text.len(),
-                end: offset + text.len() + t_text.len(),
-            });
+                    if !l.bounds.is_empty() {
+                        l_text.push_str(": ");
+                        let bounds = l.bounds
+                            .iter()
+                            .map(|l| l.ident.to_string())
+                            .collect::<Vec<_>>()
+                            .join(" + ");
+                        l_text.push_str(&bounds);
+                        // FIXME add lifetime bounds refs.
+                    }
+                    text.push_str(&l_text);
+                    text.push(',');
+                }
+                ast::GenericParam::Type(ref t) => {
+                    let mut t_text = t.ident.to_string();
+                    defs.push(SigElement {
+                        id: id_from_node_id(t.id, scx),
+                        start: offset + text.len(),
+                        end: offset + text.len() + t_text.len(),
+                    });
 
-            if !t.bounds.is_empty() {
-                t_text.push_str(": ");
-                t_text.push_str(&pprust::bounds_to_string(&t.bounds));
-                // FIXME descend properly into bounds.
+                    if !t.bounds.is_empty() {
+                        t_text.push_str(": ");
+                        t_text.push_str(&pprust::bounds_to_string(&t.bounds));
+                        // FIXME descend properly into bounds.
+                    }
+                    text.push_str(&t_text);
+                    text.push(',');
+                }
             }
-            text.push_str(&t_text);
-            text.push(',');
         }
 
         text.push('>');

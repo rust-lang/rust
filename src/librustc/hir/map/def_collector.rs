@@ -183,14 +183,25 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         });
     }
 
-    fn visit_generics(&mut self, generics: &'a Generics) {
-        for ty_param in generics.ty_params.iter() {
-            self.create_def(ty_param.id,
-                            DefPathData::TypeParam(ty_param.ident.name.as_str()),
-                            REGULAR_SPACE);
+    fn visit_generic_param(&mut self, param: &'a GenericParam) {
+        match *param {
+            GenericParam::Lifetime(ref lifetime_def) => {
+                self.create_def(
+                    lifetime_def.lifetime.id,
+                    DefPathData::LifetimeDef(lifetime_def.lifetime.ident.name.as_str()),
+                    REGULAR_SPACE
+                );
+            }
+            GenericParam::Type(ref ty_param) => {
+                self.create_def(
+                    ty_param.id,
+                    DefPathData::TypeParam(ty_param.ident.name.as_str()),
+                    REGULAR_SPACE
+                );
+            }
         }
 
-        visit::walk_generics(self, generics);
+        visit::walk_generic_param(self, param);
     }
 
     fn visit_trait_item(&mut self, ti: &'a TraitItem) {
@@ -266,12 +277,6 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             _ => {}
         }
         visit::walk_ty(self, ty);
-    }
-
-    fn visit_lifetime_def(&mut self, def: &'a LifetimeDef) {
-        self.create_def(def.lifetime.id,
-                        DefPathData::LifetimeDef(def.lifetime.ident.name.as_str()),
-                        REGULAR_SPACE);
     }
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {

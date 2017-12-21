@@ -250,7 +250,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Trait(is_auto, _, ref generics, ref bounds, ref trait_items) => {
                 if is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
-                    if !generics.ty_params.is_empty() {
+                    if generics.is_parameterized() {
                         self.err_handler().span_err(item.span,
                                                     "auto traits cannot have generics");
                     }
@@ -283,17 +283,25 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::TraitAlias(Generics { ref ty_params, .. }, ..) => {
-                for &TyParam { ref bounds, ref default, span, .. } in ty_params {
-                    if !bounds.is_empty() {
-                        self.err_handler().span_err(span,
-                                                    "type parameters on the left side of a \
-                                                     trait alias cannot be bounded");
-                    }
-                    if !default.is_none() {
-                        self.err_handler().span_err(span,
-                                                    "type parameters on the left side of a \
-                                                     trait alias cannot have defaults");
+            ItemKind::TraitAlias(Generics { ref params, .. }, ..) => {
+                for param in params {
+                    if let GenericParam::Type(TyParam {
+                        ref bounds,
+                        ref default,
+                        span,
+                        ..
+                    }) = *param
+                    {
+                        if !bounds.is_empty() {
+                            self.err_handler().span_err(span,
+                                                        "type parameters on the left side of a \
+                                                         trait alias cannot be bounded");
+                        }
+                        if !default.is_none() {
+                            self.err_handler().span_err(span,
+                                                        "type parameters on the left side of a \
+                                                         trait alias cannot have defaults");
+                        }
                     }
                 }
             }
@@ -352,9 +360,21 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_generics(&mut self, g: &'a Generics) {
+        let mut seen_non_lifetime_param = false;
         let mut seen_default = None;
-        for ty_param in &g.ty_params {
-            if ty_param.default.is_some() {
+        for param in &g.params {
+            match (param, seen_non_lifetime_param) {
+                (&GenericParam::Lifetime(ref ld), true) => {
+                    self.err_handler()
+                        .span_err(ld.lifetime.span, "lifetime parameters must be leading");
+                },
+                (&GenericParam::Lifetime(_), false) => {}
+                _ => {
+                    seen_non_lifetime_param = true;
+                }
+            }
+
+            if let GenericParam::Type(ref ty_param @ TyParam { default: Some(_), .. }) = *param {
                 seen_default = Some(ty_param.span);
             } else if let Some(span) = seen_default {
                 self.err_handler()

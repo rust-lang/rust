@@ -4949,16 +4949,18 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        generics: &hir::Generics,
                                        ty: Ty<'tcx>) {
     debug!("check_bounds_are_used(n_tps={}, ty={:?})",
-           generics.ty_params.len(),  ty);
+           generics.ty_params().count(),  ty);
 
     // make a vector of booleans initially false, set to true when used
-    if generics.ty_params.is_empty() { return; }
-    let mut tps_used = vec![false; generics.ty_params.len()];
+    if generics.ty_params().next().is_none() { return; }
+    let mut tps_used = vec![false; generics.ty_params().count()];
+
+    let lifetime_count = generics.lifetimes().count();
 
     for leaf_ty in ty.walk() {
         if let ty::TyParam(ParamTy {idx, ..}) = leaf_ty.sty {
             debug!("Found use of ty param num {}", idx);
-            tps_used[idx as usize - generics.lifetimes.len()] = true;
+            tps_used[idx as usize - lifetime_count] = true;
         } else if let ty::TyError = leaf_ty.sty {
             // If there already another error, do not emit an error for not using a type Parameter
             assert!(tcx.sess.err_count() > 0);
@@ -4966,7 +4968,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    for (&used, param) in tps_used.iter().zip(&generics.ty_params) {
+    for (&used, param) in tps_used.iter().zip(generics.ty_params()) {
         if !used {
             struct_span_err!(tcx.sess, param.span, E0091,
                 "type parameter `{}` is unused",
