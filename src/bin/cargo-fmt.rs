@@ -49,6 +49,7 @@ fn execute() -> i32 {
         "specify package to format (only usable in workspaces)",
         "<package>",
     );
+    opts.optflag("", "version", "print rustfmt version and exit");
     opts.optflag("", "all", "format all packages (only usable in workspaces)");
 
     // If there is any invalid argument passed to `cargo fmt`, return without formatting.
@@ -85,6 +86,10 @@ fn execute() -> i32 {
     if matches.opt_present("h") {
         print_usage_to_stdout(&opts, "");
         return success;
+    }
+
+    if matches.opt_present("version") {
+        return handle_command_status(get_version(), &opts);
     }
 
     let strategy = CargoFmtStrategy::from_matches(&matches);
@@ -128,6 +133,40 @@ pub enum Verbosity {
     Verbose,
     Normal,
     Quiet,
+}
+
+fn handle_command_status(status: Result<ExitStatus, io::Error>, opts: &getopts::Options) -> i32 {
+    let success = 0;
+    let failure = 1;
+
+    match status {
+        Err(e) => {
+            print_usage_to_stderr(&opts, &e.to_string());
+            failure
+        }
+        Ok(status) => {
+            if status.success() {
+                success
+            } else {
+                status.code().unwrap_or(failure)
+            }
+        }
+    }
+}
+
+fn get_version() -> Result<ExitStatus, io::Error> {
+    let mut command = Command::new("rustfmt")
+        .args(vec!["--version"])
+        .spawn()
+        .map_err(|e| match e.kind() {
+            io::ErrorKind::NotFound => io::Error::new(
+                io::ErrorKind::Other,
+                "Could not run rustfmt, please make sure it is in your PATH.",
+            ),
+            _ => e,
+        })?;
+
+    command.wait()
 }
 
 fn format_crate(
