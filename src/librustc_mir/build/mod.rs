@@ -354,10 +354,10 @@ macro_rules! unpack {
     };
 }
 
-fn needs_abort_block<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                     fn_id: ast::NodeId,
-                                     abi: Abi)
-                                     -> bool {
+fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                         fn_id: ast::NodeId,
+                                         abi: Abi)
+                                         -> bool {
 
     // Not callable from C, so we can safely unwind through these
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
@@ -405,8 +405,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, block, |builder| {
-
-        if needs_abort_block(tcx, fn_id, abi) {
+        if should_abort_on_panic(tcx, fn_id, abi) {
             builder.schedule_abort();
         }
 
