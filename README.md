@@ -40,11 +40,10 @@ clippy = {version = "*", optional = true}
 default = []
 ```
 
-And, in your `main.rs` or `lib.rs`:
+And, in your `main.rs` or `lib.rs`, add these lines:
 
 ```rust
 #![cfg_attr(feature="clippy", feature(plugin))]
-
 #![cfg_attr(feature="clippy", plugin(clippy))]
 ```
 
