@@ -40,15 +40,14 @@ clippy = {version = "*", optional = true}
 default = []
 ```
 
-And, in your `main.rs` or `lib.rs`:
+And, in your `main.rs` or `lib.rs`, add these lines:
 
 ```rust
 #![cfg_attr(feature="clippy", feature(plugin))]
-
 #![cfg_attr(feature="clippy", plugin(clippy))]
 ```
 
-Then build by enabling the feature: `cargo build --features "clippy"`
+Then build by enabling the feature: `cargo +nightly build --features "clippy"`.
 
 Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
 `cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy`
