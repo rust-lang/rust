@@ -447,6 +447,9 @@ declare_features! (
 
     // Termination trait in main (RFC 1937)
     (active, termination_trait, "1.24.0", Some(43301)),
+
+    // Allows use of the :lifetime macro fragment specifier
+    (active, macro_lifetime_matcher, "1.24.0", Some(46895)),
 );
 
 declare_features! (
@@ -520,7 +523,7 @@ declare_features! (
     (accepted, loop_break_value, "1.19.0", Some(37339)),
     // Permits numeric fields in struct expressions and patterns.
     (accepted, relaxed_adts, "1.19.0", Some(35626)),
-    // Coerces non capturing closures to function pointers
+   // Coerces non capturing closures to function pointers
     (accepted, closure_to_fn_coercion, "1.19.0", Some(39817)),
     // Allows attributes on struct literal fields.
     (accepted, struct_field_attributes, "1.20.0", Some(38814)),
@@ -1225,6 +1228,9 @@ pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
 
 pub const EXPLAIN_VIS_MATCHER: &'static str =
     ":vis fragment specifier is experimental and subject to change";
+
+pub const EXPLAIN_LIFETIME_MATCHER: &'static str =
+    ":lifetime fragment specifier is experimental and subject to change";
 
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";
