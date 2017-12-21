@@ -1142,6 +1142,19 @@ extern "rust-intrinsic" {
     /// Returns the absolute value of an `f64`.
     pub fn fabsf64(x: f64) -> f64;
 
+    /// Returns the minimum of two `f32` values.
+    #[cfg(not(stage0))]
+    pub fn minnumf32(x: f32, y: f32) -> f32;
+    /// Returns the minimum of two `f64` values.
+    #[cfg(not(stage0))]
+    pub fn minnumf64(x: f64, y: f64) -> f64;
+    /// Returns the maximum of two `f32` values.
+    #[cfg(not(stage0))]
+    pub fn maxnumf32(x: f32, y: f32) -> f32;
+    /// Returns the maximum of two `f64` values.
+    #[cfg(not(stage0))]
+    pub fn maxnumf64(x: f64, y: f64) -> f64;
+
     /// Copies the sign from `y` to `x` for `f32` values.
     pub fn copysignf32(x: f32, y: f32) -> f32;
     /// Copies the sign from `y` to `x` for `f64` values.
@@ -1392,4 +1405,26 @@ extern "rust-intrinsic" {
     /// Probably will never become stable.
     #[cfg(not(stage0))]
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
+}
+
+// Simple bootstrap implementations for stage0 compilation
+/// Returns the minimum of two `f32` values.
+#[cfg(stage0)]
+pub unsafe fn minnumf32(x: f32, y: f32) -> f32 {
+    (if x < y || y != y { x } else { y }) * 1.0
+}
+/// Returns the minimum of two `f64` values.
+#[cfg(stage0)]
+pub unsafe fn minnumf64(x: f64, y: f64) -> f64 {
+    (if x < y || y != y { x } else { y }) * 1.0
+}
+/// Returns the maximum of two `f32` values.
+#[cfg(stage0)]
+pub unsafe fn maxnumf32(x: f32, y: f32) -> f32 {
+    (if x < y || x != x { y } else { x }) * 1.0
+}
+/// Returns the maximum of two `f64` values.
+#[cfg(stage0)]
+pub unsafe fn maxnumf64(x: f64, y: f64) -> f64 {
+    (if x < y || x != x { y } else { x }) * 1.0
 }
