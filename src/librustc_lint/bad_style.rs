@@ -24,7 +24,8 @@ use rustc::hir::intravisit::FnKind;
 use regex::Regex;
 
 lazy_static! {
-    static ref ALPHABETIC_UNDERSCORE: Regex = Regex::new("([[:alpha:]])_([[:alpha:]])").unwrap();
+    static ref ALPHABETIC_UNDERSCORE: Regex =
+        Regex::new("([[:alpha:]])_+|_+([[:alpha:]])").unwrap();
 }
 
 #[derive(PartialEq)]
@@ -69,11 +70,12 @@ impl NonCamelCaseTypes {
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
             !name.is_empty() && !name.chars().next().unwrap().is_lowercase() &&
-                !ALPHABETIC_UNDERSCORE.is_match(name)
+                !name.contains("__") && !ALPHABETIC_UNDERSCORE.is_match(name)
         }
 
         fn to_camel_case(s: &str) -> String {
-            let s = s.split('_')
+            let s = s.trim_matches('_')
+                     .split('_')
                         .map(|word| {
                             word.chars().enumerate().map(|(i, c)| if i == 0 {
                                 c.to_uppercase().collect::<String>()
@@ -83,6 +85,7 @@ impl NonCamelCaseTypes {
                             .collect::<Vec<_>>()
                             .concat()
                         })
+                        .filter(|x| !x.is_empty())
                         .collect::<Vec<_>>()
                         .join("_");
             ALPHABETIC_UNDERSCORE.replace_all(s.as_str(), "$1$2").to_string()
