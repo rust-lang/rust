@@ -1365,9 +1365,11 @@ pub fn rewrite_type_alias(
     result.push_str(&ident.to_string());
 
     // 2 = `= `
-    let shape = Shape::indented(indent + result.len(), context.config).sub_width(2)?;
+    let g_shape = Shape::indented(indent, context.config)
+        .offset_left(result.len())?
+        .sub_width(2)?;
     let g_span = mk_sp(context.codemap.span_after(span, "type"), ty.span.lo());
-    let generics_str = rewrite_generics(context, generics, shape, g_span)?;
+    let generics_str = rewrite_generics(context, generics, g_shape, g_span)?;
     result.push_str(&generics_str);
 
     let where_budget = context.budget(last_line_width(&result));
@@ -1386,32 +1388,14 @@ pub fn rewrite_type_alias(
     )?;
     result.push_str(&where_clause_str);
     if where_clause_str.is_empty() {
-        result.push_str(" = ");
+        result.push_str(" =");
     } else {
-        result.push_str(&format!("\n{}= ", indent.to_string(context.config)));
+        result.push_str(&format!("\n{}=", indent.to_string(context.config)));
     }
 
-    let line_width = last_line_width(&result);
-    // This checked_sub may fail as the extra space after '=' is not taken into account
-    // In that case the budget is set to 0 which will make ty.rewrite retry on a new line
-    let budget = context.budget(indent.width() + line_width + ";".len());
-    let type_indent = indent + line_width;
-    // Try to fit the type on the same line
-    let ty_str = ty.rewrite(context, Shape::legacy(budget, type_indent))
-        .or_else(|| {
-            // The line was too short, try to put the type on the next line
-
-            // Remove the space after '='
-            result.pop();
-            let type_indent = indent.block_indent(context.config);
-            result.push('\n');
-            result.push_str(&type_indent.to_string(context.config));
-            let budget = context.budget(type_indent.width() + ";".len());
-            ty.rewrite(context, Shape::legacy(budget, type_indent))
-        })?;
-    result.push_str(&ty_str);
-    result.push_str(";");
-    Some(result)
+    // 1 = ";"
+    let ty_shape = Shape::indented(indent, context.config).sub_width(1)?;
+    rewrite_assign_rhs(context, result, ty, ty_shape).map(|s| s + ";")
 }
 
 fn type_annotation_spacing(config: &Config) -> (&str, &str) {

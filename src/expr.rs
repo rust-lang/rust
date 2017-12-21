@@ -2754,11 +2754,13 @@ pub fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
     shape: Shape,
 ) -> Option<String> {
     let lhs = lhs.into();
-    let last_line_width = last_line_width(&lhs) - if lhs.contains('\n') {
-        shape.indent.width()
-    } else {
-        0
-    };
+    let last_line_width = last_line_width(&lhs)
+        .checked_sub(if lhs.contains('\n') {
+            shape.indent.width()
+        } else {
+            0
+        })
+        .unwrap_or(0);
     // 1 = space between operator and rhs.
     let orig_shape = shape.offset_left(last_line_width + 1).unwrap_or(Shape {
         width: 0,
