@@ -11,6 +11,7 @@
 use ascii;
 use borrow::{Cow, Borrow};
 use cmp::Ordering;
+use convert::TryFrom;
 use error::Error;
 use fmt::{self, Write};
 use io;
@@ -648,6 +649,24 @@ impl From<CString> for Vec<u8> {
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
+impl TryFrom<Vec<u8>> for CString {
+    type Error = NulError;
+
+    fn try_from(bytes: Vec<u8>) -> Result<CString, NulError> {
+        CString::_new(bytes)
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl TryFrom<CString> for String {
+    type Error = IntoStringError;
+
+    fn try_from(c_str: CString) -> Result<String, IntoStringError> {
+        c_str.into_string()
+    }
+}
+
 #[stable(feature = "cstr_debug", since = "1.3.0")]
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -656,6 +675,15 @@ impl fmt::Debug for CStr {
             f.write_char(byte as char)?;
         }
         write!(f, "\"")
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl<'a> TryFrom<&'a [u8]> for &'a CStr {
+    type Error = FromBytesWithNulError;
+
+    fn try_from(bytes: &[u8]) -> Result<&CStr, FromBytesWithNulError> {
+        CStr::from_bytes_with_nul(bytes)
     }
 }
 
