@@ -29,4 +29,10 @@ trait SelfBound<T:Copy=Self> {}
 
 trait FooTrait<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
 
+trait Trait {}
+struct TwoParams<T, U>(T, U);
+impl Trait for TwoParams<i32, i32> {}
+// Check that each default is substituted individually in the clauses.
+struct Bogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait;
+
 fn main() { }

@@ -67,5 +67,23 @@ error[E0277]: the trait bound `i32: std::ops::Add<u8>` is not satisfied
    = help: the trait `std::ops::Add<u8>` is not implemented for `i32`
    = note: required by `std::ops::Add`
 
-error: aborting due to 8 previous errors
+error[E0277]: the trait bound `TwoParams<i32, U>: Trait` is not satisfied
+  --> $DIR/type-check-defaults.rs:36:1
+   |
+36 | struct Bogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `TwoParams<i32, U>`
+   |
+   = help: consider adding a `where TwoParams<i32, U>: Trait` bound
+   = note: required by `Trait`
+
+error[E0277]: the trait bound `TwoParams<T, i32>: Trait` is not satisfied
+  --> $DIR/type-check-defaults.rs:36:1
+   |
+36 | struct Bogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `TwoParams<T, i32>`
+   |
+   = help: consider adding a `where TwoParams<T, i32>: Trait` bound
+   = note: required by `Trait`
+
+error: aborting due to 10 previous errors
 

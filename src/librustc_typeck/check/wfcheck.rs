@@ -375,58 +375,56 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         use ty::subst::Subst;
         use rustc::ty::TypeFoldable;
 
+        let mut predicates = fcx.tcx.predicates_of(def_id);
+        let mut substituted_predicates = Vec::new();
+
         let generics = self.tcx.generics_of(def_id);
         let defaulted_params = generics.types.iter()
                                              .filter(|def| def.has_default &&
                                                      def.index >= generics.parent_count() as u32);
-        // Defaults must be well-formed.
-        for d in defaulted_params.map(|p| p.def_id) {
+        for param_def in defaulted_params {
+            // Defaults must be well-formed.
+            let d = param_def.def_id;
             fcx.register_wf_obligation(fcx.tcx.type_of(d), fcx.tcx.def_span(d), self.code.clone());
-        }
-        // Check that each default fulfills the bounds on it's parameter.
-        // We go over each predicate and duplicate it, substituting defaults in the self type.
-        let mut predicates = fcx.tcx.predicates_of(def_id);
-        let mut default_predicates = Vec::new();
-        // In `trait Trait : Super` predicates as `Self: Trait` and `Self: Super` are a problem.
-        // Therefore we skip such predicates. This means we check less than we could.
-        for pred in predicates.predicates.iter().filter(|p| !(is_trait && p.has_self_ty())) {
-            let mut skip = false;
-            let mut no_default = true;
-            let substs = ty::subst::Substs::for_item(fcx.tcx, def_id, |def, _| {
-                // All regions are identity.
-                fcx.tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
-            }, |def, _| {
-                // No default or generic comes from parent, identity substitution.
-                if !def.has_default || (def.index as usize) < generics.parent_count() {
-                    fcx.tcx.mk_param_from_def(def)
-                } else {
-                    no_default = false;
-                    // Has a default, use it in the substitution.
-                    let default_ty = fcx.tcx.type_of(def.def_id);
-
-                    match default_ty.sty {
-                        // Skip `Self: Sized` when `Self` is the default. Needed in traits.
-                        ty::TyParam(ref p) if is_trait && p.is_self() => {
-                            if let ty::Predicate::Trait(p) = pred {
-                                if Some(p.def_id()) == fcx.tcx.lang_items().sized_trait() {
-                                    skip = true;
-                                }
-                            }
+            // Check the clauses are well-formed when the param is substituted by it's default.
+            // In trait definitions, predicates as `Self: Trait` and `Self: Super` are problematic.
+            // Therefore we skip such predicates. This means we check less than we could.
+            for pred in predicates.predicates.iter().filter(|p| !(is_trait && p.has_self_ty())) {
+                let mut skip = true;
+                let substs = ty::subst::Substs::for_item(fcx.tcx, def_id, |def, _| {
+                    // All regions are identity.
+                    fcx.tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
+                }, |def, _| {
+                    let identity_substs = fcx.tcx.mk_param_from_def(def);
+                    if def.index != param_def.index {
+                        identity_substs
+                    } else {
+                        let sized = fcx.tcx.lang_items().sized_trait();
+                        let pred_is_sized = match pred {
+                            ty::Predicate::Trait(p) => Some(p.def_id()) == sized,
+                            _ => false,
+                        };
+                        let default_ty = fcx.tcx.type_of(def.def_id);
+                        let default_is_self = match default_ty.sty {
+                            ty::TyParam(ref p) => p.is_self(),
+                            _ => false
+                        };
+                        // In trait defs, skip `Self: Sized` when `Self` is the default.
+                        if is_trait && pred_is_sized && default_is_self {
+                            identity_substs
+                        } else {
+                            skip = false;
+                            default_ty
                         }
-                        _ => ()
                     }
-                    default_ty
+                });
+                if !skip {
+                    substituted_predicates.push(pred.subst(fcx.tcx, substs));
                 }
-            });
-
-            if skip || no_default {
-                continue;
             }
-
-            default_predicates.push(pred.subst(fcx.tcx, substs));
         }
 
-        predicates.predicates.extend(default_predicates);
+        predicates.predicates.extend(substituted_predicates);
         let predicates = predicates.instantiate_identity(fcx.tcx);
         let predicates = fcx.normalize_associated_types_in(span, &predicates);
 
