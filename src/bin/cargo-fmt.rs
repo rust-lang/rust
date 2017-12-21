@@ -35,10 +35,10 @@ fn main() {
     std::process::exit(exit_status);
 }
 
-fn execute() -> i32 {
-    let success = 0;
-    let failure = 1;
+const SUCCESS: i32 = 0;
+const FAILURE: i32 = 1;
 
+fn execute() -> i32 {
     let mut opts = getopts::Options::new();
     opts.optflag("h", "help", "show this message");
     opts.optflag("q", "quiet", "no output printed to stdout");
@@ -59,7 +59,7 @@ fn execute() -> i32 {
             is_package_arg = arg.starts_with("--package");
         } else if !is_package_arg {
             print_usage_to_stderr(&opts, &format!("Invalid argument: `{}`.", arg));
-            return failure;
+            return FAILURE;
         } else {
             is_package_arg = false;
         }
@@ -69,7 +69,7 @@ fn execute() -> i32 {
         Ok(m) => m,
         Err(e) => {
             print_usage_to_stderr(&opts, &e.to_string());
-            return failure;
+            return FAILURE;
         }
     };
 
@@ -79,13 +79,13 @@ fn execute() -> i32 {
         (true, false) => Verbosity::Verbose,
         (true, true) => {
             print_usage_to_stderr(&opts, "quiet mode and verbose mode are not compatible");
-            return failure;
+            return FAILURE;
         }
     };
 
     if matches.opt_present("h") {
         print_usage_to_stdout(&opts, "");
-        return success;
+        return SUCCESS;
     }
 
     if matches.opt_present("version") {
@@ -97,13 +97,13 @@ fn execute() -> i32 {
     match format_crate(verbosity, &strategy) {
         Err(e) => {
             print_usage_to_stderr(&opts, &e.to_string());
-            failure
+            FAILURE
         }
         Ok(status) => {
             if status.success() {
-                success
+                SUCCESS
             } else {
-                status.code().unwrap_or(failure)
+                status.code().unwrap_or(FAILURE)
             }
         }
     }
@@ -136,19 +136,16 @@ pub enum Verbosity {
 }
 
 fn handle_command_status(status: Result<ExitStatus, io::Error>, opts: &getopts::Options) -> i32 {
-    let success = 0;
-    let failure = 1;
-
     match status {
         Err(e) => {
             print_usage_to_stderr(&opts, &e.to_string());
-            failure
+            FAILURE
         }
         Ok(status) => {
             if status.success() {
-                success
+                SUCCESS
             } else {
-                status.code().unwrap_or(failure)
+                status.code().unwrap_or(FAILURE)
             }
         }
     }
