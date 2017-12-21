@@ -1,12 +1,37 @@
-- Feature Name: (fill me in with a unique ident, my_awesome_feature)
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Feature Name: libsyntax2
+- Start Date: 2017-12-30
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
+
+
+>I think the lack of reusability comes in object-oriented languages,
+>not functional languages. Because the problem with object-oriented
+>languages is they’ve got all this implicit environment that they
+>carry around with them. You wanted a banana but what you got was a
+>gorilla holding the banana and the entire jungle.
+>
+>If you have referentially transparent code, if you have pure
+>functions — all the data comes in its input arguments and everything
+>goes out and leave no state behind — it’s incredibly reusable.
+>
+> **Joe Armstrong**
 
 # Summary
 [summary]: #summary
 
-One para explanation of the feature.
+The long-term plan is to rewrite libsyntax parser and syntax tree data
+structure to create a software component independent of the rest of
+rustc compiler and suitable for the needs of IDEs and code
+editors. This RFCs is the first step of this plan, whose goal is to
+find out if this is possible at least in theory. If it is possible,
+the next steps would be a prototype implementation as a crates.io
+crate and a separate RFC for integrating the prototype with rustc,
+other tools, and eventual libsyntax removal.
+
+Note that this RFC does not propose to stabilize any API for working
+with rust syntax: the semver version of the hypothetical library would
+be `0.1.0`.
+
 
 # Motivation
 [motivation]: #motivation
