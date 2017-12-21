@@ -203,12 +203,19 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             let actual = tcx.fn_sig(main_def_id);
+            let expected_return_type = if tcx.lang_items().termination().is_some() {
+                // we take the return type of the given main function, the real check is done
+                // in `check_fn`
+                actual.output().skip_binder()
+            } else {
+                // standard () main return type
+                tcx.mk_nil()
+            };
 
             let se_ty = tcx.mk_fn_ptr(ty::Binder(
                 tcx.mk_fn_sig(
                     iter::empty(),
-                    // the return type is checked in `check_fn`
-                    actual.output().skip_binder(),
+                    expected_return_type,
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust
