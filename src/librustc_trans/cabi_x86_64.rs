@@ -11,10 +11,10 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-use abi::{ArgType, CastTarget, FnType, LayoutExt, Reg, RegKind};
+use abi::{ArgType, ArgAttribute, CastTarget, FnType, LayoutExt, Reg, RegKind};
 use context::CrateContext;
 
-use rustc::ty::layout::{self, TyLayout, Size};
+use rustc::ty::layout::{self, Layout, TyLayout, Size};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Class {
@@ -34,9 +34,9 @@ const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                           -> Result<[Class; MAX_EIGHTBYTES], Memory> {
     fn unify(cls: &mut [Class],
-             off: Size,
+             off: u64,
              c: Class) {
-        let i = (off.bytes() / 8) as usize;
+        let i = (off / 8) as usize;
         let to_write = match (cls[i], c) {
             (Class::None, _) => c,
             (_, Class::None) => return,
@@ -55,21 +55,20 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
     fn classify<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           layout: TyLayout<'tcx>,
                           cls: &mut [Class],
-                          off: Size)
+                          off: u64)
                           -> Result<(), Memory> {
-        if !off.is_abi_aligned(layout.align) {
-            if !layout.is_zst() {
+        if off % layout.align(ccx).abi() != 0 {
+            if layout.size(ccx).bytes() > 0 {
                 return Err(Memory);
             }
             return Ok(());
         }
 
-        match layout.abi {
-            layout::Abi::Uninhabited => {}
-
-            layout::Abi::Scalar(ref scalar) => {
-                let reg = match scalar.value {
-                    layout::Int(..) |
+        match *layout {
+            Layout::Scalar { value, .. } |
+            Layout::RawNullablePointer { value, .. } => {
+                let reg = match value {
+                    layout::Int(_) |
                     layout::Pointer => Class::Int,
                     layout::F32 |
                     layout::F64 => Class::Sse
@@ -77,43 +76,59 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 unify(cls, off, reg);
             }
 
-            layout::Abi::Vector => {
+            Layout::CEnum { .. } => {
+                unify(cls, off, Class::Int);
+            }
+
+            Layout::Vector { element, count } => {
                 unify(cls, off, Class::Sse);
 
                 // everything after the first one is the upper
                 // half of a register.
-                for i in 1..layout.fields.count() {
-                    let field_off = off + layout.fields.offset(i);
-                    unify(cls, field_off, Class::SseUp);
+                let eltsz = element.size(ccx).bytes();
+                for i in 1..count {
+                    unify(cls, off + i * eltsz, Class::SseUp);
                 }
             }
 
-            layout::Abi::ScalarPair(..) |
-            layout::Abi::Aggregate { .. } => {
-                match layout.variants {
-                    layout::Variants::Single { .. } => {
-                        for i in 0..layout.fields.count() {
-                            let field_off = off + layout.fields.offset(i);
-                            classify(ccx, layout.field(ccx, i), cls, field_off)?;
-                        }
+            Layout::Array { count, .. } => {
+                if count > 0 {
+                    let elt = layout.field(ccx, 0);
+                    let eltsz = elt.size(ccx).bytes();
+                    for i in 0..count {
+                        classify(ccx, elt, cls, off + i * eltsz)?;
                     }
-                    layout::Variants::Tagged { .. } |
-                    layout::Variants::NicheFilling { .. } => return Err(Memory),
                 }
             }
 
+            Layout::Univariant { ref variant, .. } => {
+                for i in 0..layout.field_count() {
+                    let field_off = off + variant.offsets[i].bytes();
+                    classify(ccx, layout.field(ccx, i), cls, field_off)?;
+                }
+            }
+
+            Layout::UntaggedUnion { .. } => {
+                for i in 0..layout.field_count() {
+                    classify(ccx, layout.field(ccx, i), cls, off)?;
+                }
+            }
+
+            Layout::FatPointer { .. } |
+            Layout::General { .. } |
+            Layout::StructWrappedNullablePointer { .. } => return Err(Memory)
         }
 
         Ok(())
     }
 
-    let n = ((arg.layout.size.bytes() + 7) / 8) as usize;
+    let n = ((arg.layout.size(ccx).bytes() + 7) / 8) as usize;
     if n > MAX_EIGHTBYTES {
         return Err(Memory);
     }
 
     let mut cls = [Class::None; MAX_EIGHTBYTES];
-    classify(ccx, arg.layout, &mut cls, Size::from_bytes(0))?;
+    classify(ccx, arg.layout, &mut cls, 0)?;
     if n > 2 {
         if cls[0] != Class::Sse {
             return Err(Memory);
@@ -138,7 +153,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
     Ok(cls)
 }
 
-fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
+fn reg_component(cls: &[Class], i: &mut usize, size: u64) -> Option<Reg> {
     if *i >= cls.len() {
         return None;
     }
@@ -147,7 +162,7 @@ fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
         Class::None => None,
         Class::Int => {
             *i += 1;
-            Some(match size.bytes() {
+            Some(match size {
                 1 => Reg::i8(),
                 2 => Reg::i16(),
                 3 |
@@ -159,14 +174,14 @@ fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
             let vec_len = 1 + cls[*i+1..].iter().take_while(|&&c| c == Class::SseUp).count();
             *i += vec_len;
             Some(if vec_len == 1 {
-                match size.bytes() {
+                match size {
                     4 => Reg::f32(),
                     _ => Reg::f64()
                 }
             } else {
                 Reg {
                     kind: RegKind::Vector,
-                    size: Size::from_bytes(8) * (vec_len as u64)
+                    size: Size::from_bytes(vec_len as u64 * 8)
                 }
             })
         }
@@ -174,17 +189,17 @@ fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
     }
 }
 
-fn cast_target(cls: &[Class], size: Size) -> CastTarget {
+fn cast_target(cls: &[Class], size: u64) -> CastTarget {
     let mut i = 0;
     let lo = reg_component(cls, &mut i, size).unwrap();
-    let offset = Size::from_bytes(8) * (i as u64);
+    let offset = i as u64 * 8;
     let target = if size <= offset {
         CastTarget::from(lo)
     } else {
         let hi = reg_component(cls, &mut i, size - offset).unwrap();
         CastTarget::Pair(lo, hi)
     };
-    assert_eq!(reg_component(cls, &mut i, Size::from_bytes(0)), None);
+    assert_eq!(reg_component(cls, &mut i, 0), None);
     target
 }
 
@@ -214,11 +229,11 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
         };
 
         if in_mem {
+            arg.make_indirect(ccx);
             if is_arg {
-                arg.make_indirect_byval();
+                arg.attrs.set(ArgAttribute::ByVal);
             } else {
                 // `sret` parameter thus one less integer register available
-                arg.make_indirect();
                 int_regs -= 1;
             }
         } else {
@@ -227,8 +242,8 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
             sse_regs -= needed_sse;
 
             if arg.layout.is_aggregate() {
-                let size = arg.layout.size;
-                arg.cast_to(cast_target(cls.as_ref().unwrap(), size))
+                let size = arg.layout.size(ccx).bytes();
+                arg.cast_to(ccx, cast_target(cls.as_ref().unwrap(), size))
             } else {
                 arg.extend_integer_width_to(32);
             }

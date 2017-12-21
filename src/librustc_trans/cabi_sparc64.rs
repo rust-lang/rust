@@ -16,21 +16,23 @@ use context::CrateContext;
 fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>)
                                      -> Option<Uniform> {
     arg.layout.homogeneous_aggregate(ccx).and_then(|unit| {
+        let size = arg.layout.size(ccx);
+
         // Ensure we have at most eight uniquely addressable members.
-        if arg.layout.size > unit.size.checked_mul(8, ccx).unwrap() {
+        if size > unit.size.checked_mul(8, ccx).unwrap() {
             return None;
         }
 
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector => arg.layout.size.bits() == 128
+            RegKind::Vector => size.bits() == 128
         };
 
         if valid_unit {
             Some(Uniform {
                 unit,
-                total: arg.layout.size
+                total: size
             })
         } else {
             None
@@ -45,10 +47,10 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
     }
 
     if let Some(uniform) = is_homogeneous_aggregate(ccx, ret) {
-        ret.cast_to(uniform);
+        ret.cast_to(ccx, uniform);
         return;
     }
-    let size = ret.layout.size;
+    let size = ret.layout.size(ccx);
     let bits = size.bits();
     if bits <= 128 {
         let unit = if bits <= 8 {
@@ -61,7 +63,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
             Reg::i64()
         };
 
-        ret.cast_to(Uniform {
+        ret.cast_to(ccx, Uniform {
             unit,
             total: size
         });
@@ -69,7 +71,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
     }
 
     // don't return aggregates in registers
-    ret.make_indirect();
+    ret.make_indirect(ccx);
 }
 
 fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
@@ -79,12 +81,12 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
     }
 
     if let Some(uniform) = is_homogeneous_aggregate(ccx, arg) {
-        arg.cast_to(uniform);
+        arg.cast_to(ccx, uniform);
         return;
     }
 
-    let total = arg.layout.size;
-    arg.cast_to(Uniform {
+    let total = arg.layout.size(ccx);
+    arg.cast_to(ccx, Uniform {
         unit: Reg::i64(),
         total
     });

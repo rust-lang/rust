@@ -25,8 +25,6 @@
 #![allow(unused_attributes)]
 #![feature(i128_type)]
 #![feature(i128)]
-#![feature(inclusive_range)]
-#![feature(inclusive_range_syntax)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -106,6 +104,7 @@ pub mod back {
 }
 
 mod abi;
+mod adt;
 mod allocator;
 mod asm;
 mod assert_module_sources;
@@ -138,6 +137,7 @@ mod declare;
 mod glue;
 mod intrinsic;
 mod llvm_util;
+mod machine;
 mod metadata;
 mod meth;
 mod mir;
@@ -145,6 +145,7 @@ mod partitioning;
 mod symbol_names_test;
 mod time_graph;
 mod trans_item;
+mod tvec;
 mod type_;
 mod type_of;
 mod value;
