@@ -35,6 +35,7 @@ use std::path::PathBuf;
 use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
+use html::markdown::RenderType;
 use html::render::RenderInfo;
 
 pub use rustc::session::config::Input;
@@ -54,6 +55,8 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
     pub external_traits: RefCell<FxHashMap<DefId, clean::Trait>>,
+    /// Which markdown renderer to use when extracting links.
+    pub render_type: RenderType,
 
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
@@ -104,7 +107,8 @@ pub fn run_core(search_paths: SearchPaths,
                 triple: Option<String>,
                 maybe_sysroot: Option<PathBuf>,
                 allow_warnings: bool,
-                force_unstable_if_unmarked: bool) -> (clean::Crate, RenderInfo)
+                force_unstable_if_unmarked: bool,
+                render_type: RenderType) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -207,6 +211,7 @@ pub fn run_core(search_paths: SearchPaths,
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),
             renderinfo: Default::default(),
+            render_type,
             ty_substs: Default::default(),
             lt_substs: Default::default(),
         };
