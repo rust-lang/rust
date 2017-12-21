@@ -201,15 +201,15 @@ and newlines after the opening brace and before the closing brace). The former
 approach should be used for short struct literals, the latter for longer struct
 literals. For tools, the first approach should be used when the width of the
 fields (excluding commas and braces) is 16 characters. E.g.,
-
+>
 > ```rust
-let x = Foo { a: 42, b: 34 };
-let y = Foo {
-    a: 42,
-    b: 34,
-    c: 1000
-};
-```
+> let x = Foo { a: 42, b: 34 };
+> let y = Foo {
+>     a: 42,
+>     b: 34,
+>     c: 1000
+> };
+> ```
 
 (Note this is just an example, not a proposed guideline).
 
