@@ -472,6 +472,13 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     // Constants can't `return` so a return block should not be created.
     assert_eq!(builder.cached_return_block, None);
 
+    // Constants may be match expressions in which case an unreachable block may
+    // be created, so terminate it properly.
+    if let Some(unreachable_block) = builder.cached_unreachable_block {
+        builder.cfg.terminate(unreachable_block, source_info,
+                              TerminatorKind::Unreachable);
+    }
+
     builder.finish(vec![], None)
 }
 
