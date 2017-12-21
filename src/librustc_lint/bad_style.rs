@@ -21,6 +21,12 @@ use syntax_pos::Span;
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
 
+use regex::Regex;
+
+lazy_static! {
+    static ref ALPHABETIC_UNDERSCORE: Regex = Regex::new("([[:alpha:]])_([[:alpha:]])").unwrap();
+}
+
 #[derive(PartialEq)]
 pub enum MethodLateContext {
     TraitAutoImpl,
@@ -62,20 +68,24 @@ impl NonCamelCaseTypes {
 
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
-            !name.is_empty() && !name.chars().next().unwrap().is_lowercase() && !name.contains('_')
+            !name.is_empty() && !name.chars().next().unwrap().is_lowercase() &&
+                !ALPHABETIC_UNDERSCORE.is_match(name)
         }
 
         fn to_camel_case(s: &str) -> String {
-            s.split('_')
-                .flat_map(|word| {
-                    word.chars().enumerate().map(|(i, c)| if i == 0 {
-                        c.to_uppercase().collect::<String>()
-                    } else {
-                        c.to_lowercase().collect()
-                    })
-                })
-                .collect::<Vec<_>>()
-                .concat()
+            let s = s.split('_')
+                        .map(|word| {
+                            word.chars().enumerate().map(|(i, c)| if i == 0 {
+                                c.to_uppercase().collect::<String>()
+                            } else {
+                                c.to_lowercase().collect()
+                            })
+                            .collect::<Vec<_>>()
+                            .concat()
+                        })
+                        .collect::<Vec<_>>()
+                        .join("_");
+            ALPHABETIC_UNDERSCORE.replace_all(s.as_str(), "$1$2").to_string()
         }
 
         if !is_camel_case(name) {

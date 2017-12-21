@@ -41,6 +41,9 @@ extern crate rustc;
 extern crate log;
 extern crate rustc_const_eval;
 extern crate syntax_pos;
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
 
 use rustc::lint;
 use rustc::middle;
