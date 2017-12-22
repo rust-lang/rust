@@ -62,7 +62,7 @@ fn lang_start<T: ::termination::Termination + 'static>
             ::sys_common::backtrace::__rust_begin_short_backtrace(move || main().report())
         });
         #[cfg(not(feature = "backtrace"))]
-        let exit_code = panic::catch_unwind(mem::transmute::<_, fn()>(main).report());
+        let exit_code = panic::catch_unwind(|| main().report());
 
         sys_common::cleanup();
         exit_code.unwrap_or(101)
