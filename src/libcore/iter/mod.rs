@@ -641,6 +641,30 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> {
+        CycleImpl::next(self)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        CycleImpl::size_hint(self)
+    }
+}
+
+// Cycle specialization trait
+// FIXME: #36262
+#[doc(hidden)]
+trait CycleImpl {
+    type Item;
+    fn next(&mut self) -> Option<Self::Item>;
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+// General Cycle impl
+impl<I> CycleImpl for Cycle<I> where I: Clone + Iterator {
+    type Item = <I as Iterator>::Item;
+
+    #[inline]
+    default fn next(&mut self) -> Option<Self::Item> {
         match self.iter.next() {
             None => { self.iter = self.orig.clone(); self.iter.next() }
             y => y
@@ -648,13 +672,26 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
     }
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
+    default fn size_hint(&self) -> (usize, Option<usize>) {
         // the cycle iterator is either empty or infinite
         match self.orig.size_hint() {
             sz @ (0, Some(0)) => sz,
             (0, _) => (0, None),
             _ => (usize::MAX, None)
         }
+    }
+}
+
+// Specialized StepBy impl for an underlying UnboundedIterator
+impl<I> CycleImpl for Cycle<I> where I: Clone + UnboundedIterator {
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
     }
 }
 
