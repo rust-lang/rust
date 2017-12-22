@@ -1,3 +1,13 @@
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use std::str::pattern::*;
 
 // This macro makes it easier to write
@@ -42,7 +52,9 @@ impl From<Option<(usize, usize)>> for Step {
     }
 }
 
-// XXXManishearth these tests focus on single-character searching  (CharSearcher)
+// ignore-tidy-linelength
+
+// FIXME(Manishearth) these tests focus on single-character searching  (CharSearcher)
 // and on next()/next_match(), not next_reject(). This is because
 // the memchr changes make next_match() for single chars complex, but next_reject()
 // continues to use next() under the hood. We should add more test cases for all
@@ -51,7 +63,7 @@ impl From<Option<(usize, usize)>> for Step {
 #[test]
 fn test_simple_iteration() {
     search_asserts! ("abcdeabcd", 'a', "forward iteration for ASCII string",
-        // a            b              c              d              e              a              b              c              d              EOF 
+        // a            b              c              d              e              a              b              c              d              EOF
         [next,          next,          next,          next,          next,          next,          next,          next,          next,          next],
         [Matches(0, 1), Rejects(1, 2), Rejects(2, 3), Rejects(3, 4), Rejects(4, 5), Matches(5, 6), Rejects(6, 7), Rejects(7, 8), Rejects(8, 9), Done]
     );
