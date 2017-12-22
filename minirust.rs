@@ -66,3 +66,20 @@ impl<'f> Iterator for Children<'f> {
         next
     }
 }
+
+
+
+pub const ERROR: NodeKind = NodeKind(0);
+pub const WHITESPACE: NodeKind = NodeKind(1);
+pub const STRUCT_KW: NodeKind = NodeKind(2);
+pub const IDENT: NodeKind = NodeKind(3);
+pub const L_CURLY: NodeKind = NodeKind(4);
+pub const R_CURLY: NodeKind = NodeKind(5);
+pub const COLON: NodeKind = NodeKind(6);
+pub const COMMA: NodeKind = NodeKind(7);
+pub const AMP: NodeKind = NodeKind(8);
+pub const LINE_COMMENT: NodeKind = NodeKind(9);
+pub const FILE: NodeKind = NodeKind(10);
+pub const STRUCT_DEF: NodeKind = NodeKind(11);
+pub const FIELD_DEF: NodeKind = NodeKind(12);
+pub const TYPE: NodeKind = NodeKind(13);

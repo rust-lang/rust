@@ -83,7 +83,8 @@ source code because, for example, it's important to preserve comments
 during refactorings. Ideally, IDEs should be able to incrementally
 relex and reparse the file as the user types, because syntax tree is
 necessary to correctly handle certain code-editing actions like
-autoindentation or joining lines.
+autoindentation or joining lines. IDE also must be able to produce
+partial parse trees when some input is missing or invalid.
 
 Currently rustc uses the AST approach, which preserves the source code
 information to some extent by storing spans in the AST.
@@ -117,11 +118,68 @@ the actual data about identifier names, constant values etc.
 All nodes in the tree are of the same type and store a constant for
 the syntactic category of the element and a range in the source code.
 
-Here is a minimal implementation of this data structure:
+Here is a minimal implementation of this data structure with some Rust
+syntactic categories
 
 
-```Rust
+```rust
 ```
+
+Here is a rust snippet and the corresponding parse tree:
+
+```rust
+struct Foo {
+    field1: u32,
+    &
+    // non-doc comment
+    field2:
+}
+```
+
+
+```
+FILE
+  STRUCT_DEF
+    STRUCT_KW
+	WHITESPACE
+	IDENT
+	WHITESPACE
+	L_CURLY
+	WHITESPACE
+	FIELD_DEF
+	  IDENT
+	  COLON
+	  WHITESPACE
+	  TYPE
+	    IDENT
+	COMMA
+	WHITESPACE
+	ERROR
+	  AMP
+	WHITESPACE
+	FIELD_DEF
+	  LINE_COMMENT
+	  WHITESPACE
+	  IDENT
+	  COLON
+	  ERROR
+	WHITESPACE
+	R_CURLY
+```
+
+Note several features of the tree:
+
+* All whitespace and comments are explicitly accounted for.
+
+* The node for `STRUCT_DEF` contains the error element for `&`, but
+  still represents the following field correctly.
+  
+* The second field of the struct is incomplete: `FIELD_DEF` node for
+  it contains an `ERROR` element, but nevertheless has the correct
+  `NodeKind`.
+  
+* The non-documenting comment is correctly attached to the following
+  field.
 
 
 
