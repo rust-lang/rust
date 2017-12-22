@@ -286,7 +286,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Arc { ptr: NonNull::from(Box::into_unique(x)), phantom: PhantomData }
+        Arc { ptr: Box::into_nonnull_raw(x), phantom: PhantomData }
     }
 
     /// Returns the contained value, if the `Arc` has exactly one strong reference.
@@ -991,11 +991,11 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         unsafe {
             Weak {
-                ptr: NonNull::from(Box::into_unique(box ArcInner {
+                ptr: Box::into_nonnull_raw(box ArcInner {
                     strong: atomic::AtomicUsize::new(0),
                     weak: atomic::AtomicUsize::new(1),
                     data: uninitialized(),
-                })),
+                }),
             }
         }
     }
