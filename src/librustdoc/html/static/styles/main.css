@@ -343,3 +343,12 @@ pre.ignore:hover, .information:hover + pre.ignore {
 		border-right-color: #000;
 	}
 }
+
+kbd {
+    color: #444d56;
+    background-color: #fafbfc;
+    border-color: #d1d5da;
+    border-bottom-color: #c6cbd1;
+    box-shadow-color: #c6cbd1;
+}
+
