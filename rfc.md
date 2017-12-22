@@ -36,7 +36,46 @@ be `0.1.0`.
 # Motivation
 [motivation]: #motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+"Reusable software component" part is addressed first "IDE ready part"
+second.
+
+
+In theory, parsing can be a pure function, which takes a `&str` as an
+input, and produces a `ParseTree` as an output.
+
+This is great for reusability: for example, you can compile this
+function to WASM and use it for fast client-side validation of syntax
+on the rust playground, or you can develop tools like `rustfmt` on
+stable Rust outside of rustc repository, or you can embed the parser
+into your favorite IDE or code editor.
+
+This is also great for correctness: with such simple interface, it's
+possible to write property-based tests to thoroughly compare two
+different implementations of the parser. It's also straightforward to
+create a comprehensive test suite, because all the inputs and outputs
+are trivially serializable to human-readable text.
+
+Another benefit is performance: with this signature, you can cache a
+parse tree for each file, with trivial strategy for cache invalidation
+(invalidate an entry when the underling file changes). On top of such
+a cache it is possible to build a smart code indexer which maintains
+the set of symbols in the project, watches files for changes and
+automatically reindexes only changed files.
+
+Unfortunately, the current libsyntax is far from this ideal. For
+example, even the lexer makes use of the `FileMap` which is
+essentially a global state of the compiler which represents all know
+files. As a data point, it turned out to be easier to move `rustfmt`
+inside of main `rustc` repository than to move libsyntax outside!
+
+
+
+
+
+
+
+
+
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
