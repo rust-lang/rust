@@ -103,7 +103,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                             // can't be implemented by default
                             return;
                         }
-                        if !impl_item.generics.ty_params.is_empty() {
+                        if impl_item.generics.params.iter().any(|gen| gen.is_type_param()) {
                             // when the result of `new()` depends on a type parameter we should not require
                             // an
                             // impl of `Default`

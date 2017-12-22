@@ -188,15 +188,17 @@ impl LintPass for MiscEarly {
 
 impl EarlyLintPass for MiscEarly {
     fn check_generics(&mut self, cx: &EarlyContext, gen: &Generics) {
-        for ty in &gen.ty_params {
-            let name = ty.ident.name.as_str();
-            if constants::BUILTIN_TYPES.contains(&&*name) {
-                span_lint(
-                    cx,
-                    BUILTIN_TYPE_SHADOW,
-                    ty.span,
-                    &format!("This generic shadows the built-in type `{}`", name),
-                );
+        for param in &gen.params {
+            if let GenericParam::Type(ref ty) = *param {
+                let name = ty.ident.name.as_str();
+                if constants::BUILTIN_TYPES.contains(&&*name) {
+                    span_lint(
+                        cx,
+                        BUILTIN_TYPE_SHADOW,
+                        ty.span,
+                        &format!("This generic shadows the built-in type `{}`", name),
+                    );
+                }
             }
         }
     }
