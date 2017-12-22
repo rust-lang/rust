@@ -9,7 +9,17 @@
 // except according to those terms.
 
 use error::Error;
-use libc;
+#[cfg(target_arch = "wasm32")]
+mod exit {
+    pub const SUCCESS: i32 = 0;
+    pub const FAILURE: i32 = 1;
+}
+#[cfg(not(target_arch = "wasm32"))]
+mod exit {
+    use libc;
+    pub const SUCCESS: i32 = libc::EXIT_SUCCESS;
+    pub const FAILURE: i32 = libc::EXIT_FAILURE;
+}
 
 /// A trait for implementing arbitrary return types in the `main` function.
 ///
@@ -31,7 +41,7 @@ pub trait Termination {
 
 #[unstable(feature = "termination_trait", issue = "43301")]
 impl Termination for () {
-    fn report(self) -> i32 { libc::EXIT_SUCCESS }
+    fn report(self) -> i32 { exit::SUCCESS }
 }
 
 #[unstable(feature = "termination_trait", issue = "43301")]
@@ -41,7 +51,7 @@ impl<T: Termination, E: Error> Termination for Result<T, E> {
             Ok(val) => val.report(),
             Err(err) => {
                 print_error(err);
-                libc::EXIT_FAILURE
+                exit::FAILURE
             }
         }
     }
@@ -64,7 +74,7 @@ impl Termination for ! {
 #[unstable(feature = "termination_trait", issue = "43301")]
 impl Termination for bool {
     fn report(self) -> i32 {
-        if self { libc::EXIT_SUCCESS } else { libc::EXIT_FAILURE }
+        if self { exit::SUCCESS } else { exit::FAILURE }
     }
 }
 
