@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ich::Fingerprint;
 use rustc::session::config::{self, OutputFilenames, Input, OutputType};
 use rustc::session::Session;
 use rustc::middle::cstore::{self, LinkMeta};
@@ -50,9 +49,9 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn build_link_meta(crate_hash: Fingerprint) -> LinkMeta {
+pub fn build_link_meta(crate_hash: Svh) -> LinkMeta {
     let r = LinkMeta {
-        crate_hash: Svh::new(crate_hash.to_smaller_hash()),
+        crate_hash,
     };
     info!("{:?}", r);
     return r;

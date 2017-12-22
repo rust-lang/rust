@@ -41,7 +41,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
-use rustc::dep_graph::{DepGraph, DepNode, DepKind};
+use rustc::dep_graph::DepGraph;
 use rustc_back::target::Target;
 use link::{build_link_meta, out_filename};
 
@@ -197,9 +197,7 @@ impl TransCrate for MetadataOnlyTransCrate {
         let _ = tcx.native_libraries(LOCAL_CRATE);
         tcx.sess.abort_if_errors();
 
-        let crate_hash = tcx.dep_graph
-                        .fingerprint_of(&DepNode::new_no_params(DepKind::Krate));
-        let link_meta = build_link_meta(crate_hash);
+        let link_meta = build_link_meta(tcx.crate_hash(LOCAL_CRATE));
         let exported_symbols = ::find_exported_symbols(tcx);
         let metadata = tcx.encode_metadata(&link_meta, &exported_symbols);
 

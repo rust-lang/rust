@@ -19,6 +19,7 @@ use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use hir::map::DefPathData;
+use hir::svh::Svh;
 use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
@@ -2669,6 +2670,13 @@ fn original_crate_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.crate_name.clone()
 }
 
+fn crate_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        crate_num: CrateNum)
+                        -> Svh {
+    assert_eq!(crate_num, LOCAL_CRATE);
+    tcx.hir.crate_hash
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     context::provide(providers);
     erase_regions::provide(providers);
@@ -2684,6 +2692,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         trait_of_item,
         crate_disambiguator,
         original_crate_name,
+        crate_hash,
         trait_impls_of: trait_def::trait_impls_of_provider,
         ..*providers
     };

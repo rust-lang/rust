@@ -43,7 +43,7 @@ use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::ty::maps::Providers;
-use rustc::dep_graph::{DepNode, DepKind, DepConstructor};
+use rustc::dep_graph::{DepNode, DepConstructor};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo};
@@ -709,8 +709,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let crate_hash = tcx.dep_graph
-                        .fingerprint_of(&DepNode::new_no_params(DepKind::Krate));
+    let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let link_meta = link::build_link_meta(crate_hash);
     let exported_symbol_node_ids = find_exported_symbols(tcx);
 

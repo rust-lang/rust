@@ -14,10 +14,8 @@ use rustc_data_structures::stable_hasher;
 pub struct Fingerprint(u64, u64);
 
 impl Fingerprint {
-    #[inline]
-    pub fn zero() -> Fingerprint {
-        Fingerprint(0, 0)
-    }
+
+    pub const ZERO: Fingerprint = Fingerprint(0, 0);
 
     #[inline]
     pub fn from_smaller_hash(hash: u64) -> Fingerprint {
