@@ -422,7 +422,11 @@ impl Rewrite for ast::WherePredicate {
 
                 let colon = type_bound_colon(context);
 
-                if bound_generic_params.iter().filter(|p| p.is_lifetime_param()).count() > 0 {
+                if bound_generic_params
+                    .iter()
+                    .filter(|p| p.is_lifetime_param())
+                    .count() > 0
+                {
                     let lifetime_str: String = bound_generic_params
                         .iter()
                         .filter_map(|p| match p {
@@ -594,7 +598,11 @@ impl Rewrite for ast::TyParam {
 
 impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        if self.bound_generic_params.iter().filter(|p| p.is_lifetime_param()).count() > 0 {
+        if self.bound_generic_params
+            .iter()
+            .filter(|p| p.is_lifetime_param())
+            .count() > 0
+        {
             let lifetime_str: String = self.bound_generic_params
                 .iter()
                 .filter_map(|p| match p {
@@ -754,7 +762,12 @@ fn rewrite_bare_fn(
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
 
-    if bare_fn.generic_params.iter().filter(|p| p.is_lifetime_param()).count() > 0 {
+    if bare_fn
+        .generic_params
+        .iter()
+        .filter(|p| p.is_lifetime_param())
+        .count() > 0
+    {
         result.push_str("for<");
         // 6 = "for<> ".len(), 4 = "for<".
         // This doesn't work out so nicely for mutliline situation with lots of
