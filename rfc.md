@@ -1,4 +1,4 @@
-- Feature Name: libsyntax2
+- Feature Name: libsyntax2.0
 - Start Date: 2017-12-30
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -111,6 +111,8 @@ compiler.
 [Kotlin]: https://kotlinlang.org/
 
 
+## Untyped Tree
+
 The main idea is to store the minimal amount of information in the
 tree itself, and instead lean heavily on the source code string for
 the actual data about identifier names, constant values etc.
@@ -123,6 +125,90 @@ syntactic categories
 
 
 ```rust
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct NodeKind(u16);
+
+pub struct File {
+    text: String,
+    nodes: Vec<NodeData>,
+}
+
+struct NodeData {
+    kind: NodeKind,
+    range: (u32, u32),
+    parent: Option<u32>,
+    first_child: Option<u32>,
+    next_sibling: Option<u32>,
+}
+
+#[derive(Clone, Copy)]
+pub struct Node<'f> {
+    file: &'f File,
+    idx: u32,
+}
+
+pub struct Children<'f> {
+    next: Option<Node<'f>>,
+}
+
+impl File {
+    pub fn root<'f>(&'f self) -> Node<'f> {
+        assert!(!self.nodes.is_empty());
+        Node { file: self, idx: 0 }
+    }
+}
+
+impl<'f> Node<'f> {
+    pub fn kind(&self) -> NodeKind {
+        self.data().kind
+    }
+
+    pub fn text(&self) -> &'f str {
+        let (start, end) = self.data().range;
+        &self.file.text[start as usize..end as usize]
+    }
+
+    pub fn parent(&self) -> Option<Node<'f>> {
+        self.as_node(self.data().parent)
+    }
+
+    pub fn children(&self) -> Children<'f> {
+        Children { next: self.as_node(self.data().first_child) }
+    }
+
+    fn data(&self) -> &'f NodeData {
+        &self.file.nodes[self.idx as usize]
+    }
+
+    fn as_node(&self, idx: Option<u32>) -> Option<Node<'f>> {
+        idx.map(|idx| Node { file: self.file, idx })
+    }
+}
+
+impl<'f> Iterator for Children<'f> {
+    type Item = Node<'f>;
+
+    fn next(&mut self) -> Option<Node<'f>> {
+        let next = self.next;
+        self.next = next.and_then(|node| node.as_node(node.data().next_sibling));
+        next
+    }
+}
+
+pub const ERROR: NodeKind = NodeKind(0);
+pub const WHITESPACE: NodeKind = NodeKind(1);
+pub const STRUCT_KW: NodeKind = NodeKind(2);
+pub const IDENT: NodeKind = NodeKind(3);
+pub const L_CURLY: NodeKind = NodeKind(4);
+pub const R_CURLY: NodeKind = NodeKind(5);
+pub const COLON: NodeKind = NodeKind(6);
+pub const COMMA: NodeKind = NodeKind(7);
+pub const AMP: NodeKind = NodeKind(8);
+pub const LINE_COMMENT: NodeKind = NodeKind(9);
+pub const FILE: NodeKind = NodeKind(10);
+pub const STRUCT_DEF: NodeKind = NodeKind(11);
+pub const FIELD_DEF: NodeKind = NodeKind(12);
+pub const TYPE_REF: NodeKind = NodeKind(13);
 ```
 
 Here is a rust snippet and the corresponding parse tree:
@@ -182,22 +268,137 @@ Note several features of the tree:
   field.
   
 
+## Typed Tree
+  
+It's hard to work with this raw parse tree, because it is untyped:
+node containing a struct definition has the same API as the node for
+the struct field. But it's possible to add a strongly typed layer on
+top of this raw tree, and get a zero-cost typed AST. Here is an
+example which adds type-safe wrappers for structs and fields:
+
+```rust
+pub trait AstNode<'f>: Copy + 'f {
+    fn new(node: Node<'f>) -> Option<Self>;
+    fn node(&self) -> Node<'f>;
+}
+
+pub fn child_of_kind<'f>(node: Node<'f>, kind: NodeKind) -> Option<Node<'f>> {
+    node.children().find(|child| child.kind() == kind)
+}
+
+pub fn ast_children<'f, A: AstNode<'f>>(node: Node<'f>) -> Box<Iterator<Item=A> + 'f> {
+    Box::new(node.children().filter_map(A::new))
+}
+
+#[derive(Clone, Copy)]
+pub struct StructDef<'f>(Node<'f>);
+
+#[derive(Clone, Copy)]
+pub struct FieldDef<'f>(Node<'f>);
+
+#[derive(Clone, Copy)]
+pub struct TypeRef<'f>(Node<'f>);
+
+pub trait NameOwner<'f>: AstNode<'f> {
+    fn name_ident(&self) -> Node<'f> {
+        child_of_kind(self.node(), IDENT).unwrap()
+    }
+
+    fn name(&self) -> &'f str { self.name_ident().text() }
+}
+
+
+impl<'f> AstNode<'f> for StructDef<'f> {
+    fn new(node: Node<'f>) -> Option<Self> {
+        if node.kind() == STRUCT_DEF { Some(StructDef(node)) } else { None }
+    }
+    fn node(&self) -> Node<'f> { self.0 }
+}
+
+impl<'f> AstNode<'f> for FieldDef<'f> {
+    fn new(node: Node<'f>) -> Option<Self> {
+        if node.kind() == FIELD_DEF { Some(FieldDef(node)) } else { None }
+    }
+    fn node(&self) -> Node<'f> { self.0 }
+}
+
+impl<'f> AstNode<'f> for TypeRef<'f> {
+    fn new(node: Node<'f>) -> Option<Self> {
+        if node.kind() == TYPE_REF { Some(TypeRef(node)) } else { None }
+    }
+    fn node(&self) -> Node<'f> { self.0 }
+}
+
+impl<'f> NameOwner<'f> for StructDef<'f> {}
+impl<'f> NameOwner<'f> for FieldDef<'f> {}
+
+impl<'f> StructDef<'f> {
+    pub fn fields(&self) -> Box<Iterator<Item=FieldDef<'f>> + 'f> {
+        ast_children(self.node())
+    }
+}
+
+impl<'f> FieldDef<'f> {
+    pub fn type_ref(&self) -> Option<TypeRef<'f>> {
+        ast_children(self.node()).next()
+    }
+}
+```
+
+
+## Missing Source Code
+
+The crucial feature of this syntax tree is that it is just a view into
+the original source code. And this poses a problem for the Rust
+language, because not all compiled Rust code is represented in the
+form of source code! Specifically, Rust has a powerful macro system,
+which effectively allows to create and parse additional source code at
+compile time. It is not entirely clear that the proposed parsing
+framework is able to handle this use case, and it's the main purpose
+of this RFC to figure it out. The current idea for handling macros is
+to make each macro expansion produce a triple of (expansion text,
+syntax tree, hygiene information), where hygiene information is a side
+table, which colors different ranges of the expansion text according
+to the original syntactic context.
+
+
+## Implementation plan
+
+This RFC proposes huge changes to the internals of the compiler, so
+it's important to proceed carefully and incrementally. The following
+plan is suggested:
+
+* RFC discussion about the theoretical feasibility of the proposal.
+
+* Implementation of the proposal as a completely separate crates.io
+  crate.
+  
+* A prototype implementation of the macro expansion on top of the new sytnax tree.
+
+* Additional round of discussion/RFC about merging with the mainline
+  compiler.
+
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Why should we *not* do this?
+- No harm will be done as long as the new libsyntax exists as an
+  experiemt on crates.io. However, actually using it in the compiler
+  and other tools would require massive refactorings.
 
 # Rationale and alternatives
 [alternatives]: #alternatives
 
-- Why is this design the best in the space of possible designs?
-- What other designs have been considered and what is the rationale for not choosing them?
-- What is the impact of not doing this?
+- Incrementally add more information about source code to the current AST.
+- Move the current libsyntax to crates.io as is. 
+- Explore alternative representations for the parse tree.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?
+- Is it at all possible to represent Rust parser as a pure function of
+  the source code?
+- Is it possible to implement macro expansion using the proposed
+  framework?
+- How to actually phase out current libsyntax, if libsyntax2.0 turns
+  out to be a success?
