@@ -437,10 +437,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         match cause.code {
             ObligationCauseCode::MatchExpressionArm { arm_span, source } => match source {
                 hir::MatchSource::IfLetDesugar {..} => {
-                    err.span_note(arm_span, "`if let` arm with an incompatible type");
+                    let msg = "`if let` arm with an incompatible type";
+                    if self.tcx.sess.codemap().is_multiline(arm_span) {
+                        err.span_note(arm_span, msg);
+                    } else {
+                        err.span_label(arm_span, msg);
+                    }
                 }
                 _ => {
-                    err.span_note(arm_span, "match arm with an incompatible type");
+                    let msg = "match arm with an incompatible type";
+                    if self.tcx.sess.codemap().is_multiline(arm_span) {
+                        err.span_note(arm_span, msg);
+                    } else {
+                        err.span_label(arm_span, msg);
+                    }
                 }
             },
             _ => ()

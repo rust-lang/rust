@@ -446,6 +446,12 @@ impl CodeMap {
             .expect("CodeMap::span_to_unmapped_path called for imported FileMap?")
     }
 
+    pub fn is_multiline(&self, sp: Span) -> bool {
+        let lo = self.lookup_char_pos(sp.lo());
+        let hi = self.lookup_char_pos(sp.hi());
+        lo.line != hi.line
+    }
+
     pub fn span_to_lines(&self, sp: Span) -> FileLinesResult {
         debug!("span_to_lines(sp={:?})", sp);
 
