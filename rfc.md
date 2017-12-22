@@ -80,7 +80,10 @@ simpler ones.
 
 In contrast, for IDEs it is crucial to have a lossless view of the
 source code because, for example, it's important to preserve comments
-during refactorings.
+during refactorings. Ideally, IDEs should be able to incrementally
+relex and reparse the file as the user types, because syntax tree is
+necessary to correctly handle certain code-editing actions like
+autoindentation or joining lines.
 
 Currently rustc uses the AST approach, which preserves the source code
 information to some extent by storing spans in the AST.
@@ -98,13 +101,28 @@ Not applicable.
 
 This section proposes a new syntax tree data structure, which should
 be suitable for both compiler and IDE. It is heavily inspired by [PSI]
-data structure which used in [IntelliJ] based IDEs and in the Kotlin
+data structure which used in [IntelliJ] based IDEs and in the [Kotlin]
 compiler.
 
 
 [PSI]: http://www.jetbrains.org/intellij/sdk/docs/reference_guide/custom_language_support/implementing_parser_and_psi.html
 [IntelliJ]: https://github.com/JetBrains/intellij-community/
 [Kotlin]: https://kotlinlang.org/
+
+
+The main idea is to store the minimal amount of information in the
+tree itself, and instead lean heavily on the source code string for
+the actual data about identifier names, constant values etc.
+
+All nodes in the tree are of the same type and store a constant for
+the syntactic category of the element and a range in the source code.
+
+Here is a minimal implementation of this data structure:
+
+
+```Rust
+```
+
 
 
 # Drawbacks
