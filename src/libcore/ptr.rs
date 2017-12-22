@@ -2557,13 +2557,6 @@ impl<T: ?Sized> NonNull<T> {
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
-
-    /// Acquires the underlying pointer as a `*mut` pointer.
-    #[rustc_deprecated(since = "1.19", reason = "renamed to `as_ptr` for ergonomics/consistency")]
-    #[unstable(feature = "nonnull", issue = "27730")]
-    pub unsafe fn as_mut_ptr(&self) -> *mut T {
-        self.as_ptr()
-    }
 }
 
 #[unstable(feature = "nonnull", issue = "27730")]
