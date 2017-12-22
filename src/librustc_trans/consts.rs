@@ -14,19 +14,19 @@ use llvm::{ValueRef, True};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use rustc::middle::const_val::ConstEvalErr;
-use debuginfo;
+use {debuginfo, machine};
 use base;
 use trans_item::{TransItem, TransItemExt};
 use common::{self, CrateContext, val_ty};
 use declare;
 use monomorphize::Instance;
 use type_::Type;
-use type_of::LayoutLlvmExt;
+use type_of;
 use rustc::ty;
-use rustc::ty::layout::{Align, LayoutOf};
 
 use rustc::hir;
 
+use std::cmp;
 use std::ffi::{CStr, CString};
 use syntax::ast;
 use syntax::attr;
@@ -45,26 +45,26 @@ pub fn bitcast(val: ValueRef, ty: Type) -> ValueRef {
 
 fn set_global_alignment(ccx: &CrateContext,
                         gv: ValueRef,
-                        mut align: Align) {
+                        mut align: machine::llalign) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller.  Rust doesn't support this yet.
     if let Some(min) = ccx.sess().target.target.options.min_global_align {
         match ty::layout::Align::from_bits(min, min) {
-            Ok(min) => align = align.max(min),
+            Ok(min) => align = cmp::max(align, min.abi() as machine::llalign),
             Err(err) => {
                 ccx.sess().err(&format!("invalid minimum global alignment: {}", err));
             }
         }
     }
     unsafe {
-        llvm::LLVMSetAlignment(gv, align.abi() as u32);
+        llvm::LLVMSetAlignment(gv, align);
     }
 }
 
 pub fn addr_of_mut(ccx: &CrateContext,
                    cv: ValueRef,
-                   align: Align,
+                   align: machine::llalign,
                    kind: &str)
                     -> ValueRef {
     unsafe {
@@ -82,16 +82,15 @@ pub fn addr_of_mut(ccx: &CrateContext,
 
 pub fn addr_of(ccx: &CrateContext,
                cv: ValueRef,
-               align: Align,
+               align: machine::llalign,
                kind: &str)
                -> ValueRef {
     if let Some(&gv) = ccx.const_globals().borrow().get(&cv) {
         unsafe {
             // Upgrade the alignment in cases where the same constant is used with different
             // alignment requirements
-            let llalign = align.abi() as u32;
-            if llalign > llvm::LLVMGetAlignment(gv) {
-                llvm::LLVMSetAlignment(gv, llalign);
+            if align > llvm::LLVMGetAlignment(gv) {
+                llvm::LLVMSetAlignment(gv, align);
             }
         }
         return gv;
@@ -113,7 +112,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
     let ty = common::instance_ty(ccx.tcx(), &instance);
     let g = if let Some(id) = ccx.tcx().hir.as_local_node_id(def_id) {
 
-        let llty = ccx.layout_of(ty).llvm_type(ccx);
+        let llty = type_of::type_of(ccx, ty);
         let (g, attrs) = match ccx.tcx().hir.get(id) {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
@@ -158,7 +157,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                         }
                     };
                     let llty2 = match ty.sty {
-                        ty::TyRawPtr(ref mt) => ccx.layout_of(mt.ty).llvm_type(ccx),
+                        ty::TyRawPtr(ref mt) => type_of::type_of(ccx, mt.ty),
                         _ => {
                             ccx.sess().span_fatal(span, "must have type `*const T` or `*mut T`");
                         }
@@ -207,7 +206,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
         // FIXME(nagisa): investigate whether it can be changed into define_global
-        let g = declare::declare_global(ccx, &sym, ccx.layout_of(ty).llvm_type(ccx));
+        let g = declare::declare_global(ccx, &sym, type_of::type_of(ccx, ty));
         // Thread-local statics in some other crate need to *always* be linked
         // against in a thread-local fashion, so we need to be sure to apply the
         // thread-local attribute locally if it was present remotely. If we
@@ -267,7 +266,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         let instance = Instance::mono(ccx.tcx(), def_id);
         let ty = common::instance_ty(ccx.tcx(), &instance);
-        let llty = ccx.layout_of(ty).llvm_type(ccx);
+        let llty = type_of::type_of(ccx, ty);
         let g = if val_llty == llty {
             g
         } else {

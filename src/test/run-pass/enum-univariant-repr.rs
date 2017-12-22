@@ -22,11 +22,6 @@ enum UnivariantWithoutDescr {
     Y
 }
 
-#[repr(u8)]
-enum UnivariantWithData {
-    Z(u8),
-}
-
 pub fn main() {
     {
         assert_eq!(4, mem::size_of::<Univariant>());
@@ -48,13 +43,5 @@ pub fn main() {
         let ints: &[u16] = unsafe { mem::transmute(enums) };
         // check it has the same memory layout as u16
         assert_eq!(&[descr, descr, descr], ints);
-    }
-
-    {
-        assert_eq!(2, mem::size_of::<UnivariantWithData>());
-
-        match UnivariantWithData::Z(4) {
-            UnivariantWithData::Z(x) => assert_eq!(x, 4),
-        }
     }
 }

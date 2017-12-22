@@ -344,7 +344,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 variant_index,
             } => (&adt_def.variants[variant_index], substs),
             LvalueTy::Ty { ty } => match ty.sty {
-                ty::TyAdt(adt_def, substs) if !adt_def.is_enum() => {
+                ty::TyAdt(adt_def, substs) if adt_def.is_univariant() => {
                     (&adt_def.variants[0], substs)
                 }
                 ty::TyClosure(def_id, substs) => {

@@ -43,7 +43,7 @@ use std::ptr;
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout::{self, LayoutTyper};
 
 pub mod gdb;
 mod utils;
@@ -71,7 +71,7 @@ pub struct CrateDebugContext<'tcx> {
     llmod: ModuleRef,
     builder: DIBuilderRef,
     created_files: RefCell<FxHashMap<(Symbol, Symbol), DIFile>>,
-    created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), DIType>>,
+    created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Integer), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
     namespace_map: RefCell<DefIdMap<DIScope>>,
@@ -335,7 +335,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             signature.extend(inputs.iter().map(|&t| {
                 let t = match t.sty {
                     ty::TyArray(ct, _)
-                        if (ct == cx.tcx().types.u8) || cx.layout_of(ct).is_zst() => {
+                        if (ct == cx.tcx().types.u8) ||
+                           (cx.layout_of(ct).size(cx).bytes() == 0) => {
                         cx.tcx().mk_imm_ptr(ct)
                     }
                     _ => t
@@ -498,7 +499,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     cx.sess().opts.optimize != config::OptLevel::No,
                     DIFlags::FlagZero,
                     argument_index,
-                    align.abi() as u32,
+                    align,
                 )
             };
             source_loc::set_debug_location(bcx,
