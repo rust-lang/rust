@@ -1,0 +1,10 @@
+error[E0133]: construction of immovable generator requires unsafe function or block
+  --> $DIR/unsafe-immovable.rs:14:5
+   |
+14 | /     static || { //~ ERROR: construction of immovable generator requires unsafe
+15 | |         yield;
+16 | |     };
+   | |_____^ construction of immovable generator
+
+error: aborting due to previous error
+

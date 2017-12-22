@@ -8,19 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators, generator_trait)]
-
-use std::ops::{Generator, GeneratorState};
+#![feature(generators)]
 
 fn main() {
-    let mut generator = unsafe {
-        static || {
-            let a = true;
-            let b = &a;
-            yield;
-            assert_eq!(b as *const _, &a as *const _);
-        }
+    static || { //~ ERROR: construction of immovable generator requires unsafe
+        yield;
     };
-    assert_eq!(generator.resume(), GeneratorState::Yielded(()));
-    assert_eq!(generator.resume(), GeneratorState::Complete(()));
 }
