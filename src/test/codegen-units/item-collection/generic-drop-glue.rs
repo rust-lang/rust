@@ -13,6 +13,7 @@
 // compile-flags:-Zinline-in-all-cgus
 
 #![deny(dead_code)]
+#![feature(start)]
 
 struct StructWithDrop<T1, T2> {
     x: T1,
@@ -53,27 +54,9 @@ impl Drop for NonGenericWithDrop {
     fn drop(&mut self) {}
 }
 
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::align[0] @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::from_size_align_unchecked[0] @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::size[0] @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn alloc::heap[0]::box_free[0]<core::any[0]::Any[0]> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn alloc::heap[0]::{{impl}}[0]::dealloc[0] @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn core::mem[0]::uninitialized[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::any[0]::Any[0]> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::result[0]::Result[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>>> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::read[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::write[0]<i32> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn core::result[0]::{{impl}}[0]::unwrap_or[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn std::panic[0]::catch_unwind[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn std::panicking[0]::try[0]::do_call[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn std::panicking[0]::try[0]<i32, std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, fn()> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, &fn()> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]<()> @@ generic_drop_glue0[External]
-//~ TRANS_ITEM fn std::sys_common[0]::backtrace[0]::__rust_begin_short_backtrace[0]<std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<()>, i32> @@ generic_drop_glue0[Internal]
-//~ TRANS_ITEM fn generic_drop_glue::main[0]
-fn main() {
+//~ TRANS_ITEM fn generic_drop_glue::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<generic_drop_glue::StructWithDrop[0]<i8, char>> @@ generic_drop_glue0[Internal]
     //~ TRANS_ITEM fn generic_drop_glue::{{impl}}[0]::drop[0]<i8, char>
     let _ = StructWithDrop { x: 0i8, y: 'a' }.x;
@@ -113,4 +96,6 @@ fn main() {
         EnumNoDrop::A(x) => x,
         EnumNoDrop::B(x) => x as f64
     };
+
+    0
 }

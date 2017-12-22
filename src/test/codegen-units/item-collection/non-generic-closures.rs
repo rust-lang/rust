@@ -17,6 +17,7 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 //~ TRANS_ITEM fn non_generic_closures::temporary[0]
 fn temporary() {
@@ -52,12 +53,15 @@ fn assigned_to_variable_executed_directly() {
     f(4);
 }
 
-//~ TRANS_ITEM fn non_generic_closures::main[0]
-fn main() {
+//~ TRANS_ITEM fn non_generic_closures::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     temporary();
     assigned_to_variable_but_not_executed();
     assigned_to_variable_executed_directly();
     assigned_to_variable_executed_indirectly();
+
+    0
 }
 
 //~ TRANS_ITEM fn non_generic_closures::run_closure[0]

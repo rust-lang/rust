@@ -12,6 +12,8 @@
 // compile-flags:-Zprint-trans-items=eager
 // compile-flags:-Zinline-in-all-cgus
 
+#![feature(start)]
+
 //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<drop_in_place_intrinsic::StructWithDtor[0]> @@ drop_in_place_intrinsic0[Internal]
 struct StructWithDtor(u32);
 
@@ -20,32 +22,16 @@ impl Drop for StructWithDtor {
     fn drop(&mut self) {}
 }
 
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::align[0] @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::from_size_align_unchecked[0] @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::size[0] @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn alloc::heap[0]::box_free[0]<core::any[0]::Any[0]> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn alloc::heap[0]::{{impl}}[0]::dealloc[0] @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn core::mem[0]::uninitialized[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::any[0]::Any[0]> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::result[0]::Result[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>>> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::read[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::write[0]<i32> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn core::result[0]::{{impl}}[0]::unwrap_or[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn std::panic[0]::catch_unwind[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn std::panicking[0]::try[0]::do_call[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn std::panicking[0]::try[0]<i32, std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, fn()> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, &fn()> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]<()> @@ drop_in_place_intrinsic0[External]
-//~ TRANS_ITEM fn std::sys_common[0]::backtrace[0]::__rust_begin_short_backtrace[0]<std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<()>, i32> @@ drop_in_place_intrinsic0[Internal]
-//~ TRANS_ITEM fn drop_in_place_intrinsic::main[0]
-fn main() {
+//~ TRANS_ITEM fn drop_in_place_intrinsic::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
 
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<[drop_in_place_intrinsic::StructWithDtor[0]; 2]> @@ drop_in_place_intrinsic0[Internal]
     let x = [StructWithDtor(0), StructWithDtor(1)];
 
     drop_slice_in_place(&x);
+
+    0
 }
 
 //~ TRANS_ITEM fn drop_in_place_intrinsic::drop_slice_in_place[0]

@@ -12,6 +12,7 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 trait Trait : Sized {
     fn foo(self) -> Self { self }
@@ -36,27 +37,9 @@ fn take_foo_mut<T, F: FnMut(T) -> T>(mut f: F, arg: T) -> T {
     (f)(arg)
 }
 
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::align[0] @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::from_size_align_unchecked[0] @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::size[0] @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn alloc::heap[0]::box_free[0]<core::any[0]::Any[0]> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn alloc::heap[0]::{{impl}}[0]::dealloc[0] @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn core::mem[0]::uninitialized[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::any[0]::Any[0]> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::result[0]::Result[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>>> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::read[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::write[0]<i32> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn core::result[0]::{{impl}}[0]::unwrap_or[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn std::panic[0]::catch_unwind[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn std::panicking[0]::try[0]::do_call[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn std::panicking[0]::try[0]<i32, std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, fn()> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, &fn()> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]<()> @@ trait_method_as_argument0[External]
-//~ TRANS_ITEM fn std::sys_common[0]::backtrace[0]::__rust_begin_short_backtrace[0]<std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<()>, i32> @@ trait_method_as_argument0[Internal]
-//~ TRANS_ITEM fn trait_method_as_argument::main[0]
-fn main() {
+//~ TRANS_ITEM fn trait_method_as_argument::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     //~ TRANS_ITEM fn trait_method_as_argument::take_foo_once[0]<u32, fn(u32) -> u32>
     //~ TRANS_ITEM fn trait_method_as_argument::{{impl}}[0]::foo[0]
     //~ TRANS_ITEM fn core::ops[0]::function[0]::FnOnce[0]::call_once[0]<fn(u32) -> u32, (u32)>
@@ -82,4 +65,6 @@ fn main() {
     //~ TRANS_ITEM fn trait_method_as_argument::take_foo_mut[0]<char, fn(char) -> char>
     //~ TRANS_ITEM fn core::ops[0]::function[0]::FnMut[0]::call_mut[0]<fn(u32) -> u32, (u32)>
     take_foo_mut(Trait::foo, 'c');
+
+    0
 }

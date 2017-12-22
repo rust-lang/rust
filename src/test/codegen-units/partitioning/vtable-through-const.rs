@@ -18,6 +18,8 @@
 // This test case makes sure, that references made through constants are
 // recorded properly in the InliningMap.
 
+#![feature(start)]
+
 mod mod1 {
     pub trait Trait1 {
         fn do_something(&self) {}
@@ -38,7 +40,7 @@ mod mod1 {
 
     fn id<T>(x: T) -> T { x }
 
-    // These are referenced, so they produce trans-items (see main())
+    // These are referenced, so they produce trans-items (see start())
     pub const TRAIT1_REF: &'static Trait1 = &0u32 as &Trait1;
     pub const TRAIT1_GEN_REF: &'static Trait1Gen<u8> = &0u32 as &Trait1Gen<u8>;
     pub const ID_CHAR: fn(char) -> char = id::<char>;
@@ -68,27 +70,9 @@ mod mod1 {
     pub const ID_I64: fn(i64) -> i64 = id::<i64>;
 }
 
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::align[0] @@ std-rt.volatile[Internal]
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::from_size_align_unchecked[0] @@ std-rt.volatile[Internal]
-//~ TRANS_ITEM fn alloc::allocator[0]::{{impl}}[0]::size[0] @@ std-rt.volatile[Internal]
-//~ TRANS_ITEM fn alloc::heap[0]::box_free[0]<core::any[0]::Any[0]> @@ std-rt.volatile[Internal]
-//~ TRANS_ITEM fn alloc::heap[0]::{{impl}}[0]::dealloc[0] @@ std-rt.volatile[Internal]
-//~ TRANS_ITEM fn core::mem[0]::uninitialized[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ std-panicking.volatile[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ std-rt.volatile[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::any[0]::Any[0]> @@ std-rt.volatile[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<core::result[0]::Result[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>>> @@ std-rt.volatile[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::read[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ std-panicking.volatile[Internal]
-//~ TRANS_ITEM fn core::ptr[0]::write[0]<i32> @@ std-panicking.volatile[Internal]
-//~ TRANS_ITEM fn core::result[0]::{{impl}}[0]::unwrap_or[0]<i32, alloc::boxed[0]::Box[0]<core::any[0]::Any[0]>> @@ std-rt.volatile[Internal]
-//~ TRANS_ITEM fn std::panic[0]::catch_unwind[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ std-panic.volatile[External]
-//~ TRANS_ITEM fn std::panicking[0]::try[0]::do_call[0]<std::rt[0]::lang_start[0]::{{closure}}[0]<()>, i32> @@ std-panicking.volatile[Internal]
-//~ TRANS_ITEM fn std::panicking[0]::try[0]<i32, std::rt[0]::lang_start[0]::{{closure}}[0]<()>> @@ std-panicking.volatile[External]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, fn()> @@ std-sys_common-backtrace.volatile[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]::{{closure}}[0]<(), i32, extern "rust-call" fn(()) -> i32, &fn()> @@ std-panicking.volatile[Internal]
-//~ TRANS_ITEM fn std::rt[0]::lang_start[0]<()> @@ std-rt.volatile[External]
-//~ TRANS_ITEM fn std::sys_common[0]::backtrace[0]::__rust_begin_short_backtrace[0]<std::rt[0]::lang_start[0]::{{closure}}[0]::{{closure}}[0]<()>, i32> @@ std-sys_common-backtrace.volatile[External]
-//~ TRANS_ITEM fn vtable_through_const::main[0] @@ vtable_through_const[Internal]
-fn main() {
+//~ TRANS_ITEM fn vtable_through_const::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<u32> @@ vtable_through_const[Internal]
 
     // Since Trait1::do_something() is instantiated via its default implementation,
@@ -109,4 +93,6 @@ fn main() {
 
     //~ TRANS_ITEM fn vtable_through_const::mod1[0]::id[0]<char> @@ vtable_through_const-mod1.volatile[External]
     mod1::ID_CHAR('x');
+
+    0
 }
