@@ -16,7 +16,6 @@ fn main() {
         println!("Y {}",x);
         return x;
     };
-    //~^ ERROR expected item, found `;`
 
     caller(bar_handler);
 }

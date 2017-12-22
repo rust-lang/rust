@@ -930,6 +930,7 @@ mod tests {
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::BlockCheckMode::Default, // no idea
                                         span: sp(15,21),
+                                        recovered: false,
                                     })),
                             vis: ast::Visibility::Inherited,
                             span: sp(0,21)})));

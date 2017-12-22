@@ -690,6 +690,11 @@ pub struct Block {
     /// currently permitted in Rust itself, but it is generated as
     /// part of `catch` statements.
     pub targeted_by_break: bool,
+    /// If true, don't emit return value type errors as the parser had
+    /// to recover from a parse error so this block will not have an
+    /// appropriate type. A parse error will have been emitted so the
+    /// compilation will never succeed if this is true.
+    pub recovered: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]

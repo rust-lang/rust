@@ -382,12 +382,14 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Block {
             rules,
             span,
             targeted_by_break,
+            recovered,
         } = *self;
 
         stmts.hash_stable(hcx, hasher);
         expr.hash_stable(hcx, hasher);
         rules.hash_stable(hcx, hasher);
         span.hash_stable(hcx, hasher);
+        recovered.hash_stable(hcx, hasher);
         targeted_by_break.hash_stable(hcx, hasher);
     }
 }

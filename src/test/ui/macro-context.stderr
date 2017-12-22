@@ -43,5 +43,3 @@ error: expected expression, found reserved keyword `typeof`
 26 |     m!();
    |     ----- in this macro invocation
 
-error: aborting due to 4 previous errors
-
