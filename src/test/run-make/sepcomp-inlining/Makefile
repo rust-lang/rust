@@ -10,6 +10,6 @@ all:
 	$(RUSTC) foo.rs --emit=llvm-ir -C codegen-units=3 \
 		-Z inline-in-all-cgus
 	[ "$$(cat "$(TMPDIR)"/foo.*.ll | grep -c define\ i32\ .*inlined)" -eq "0" ]
-	[ "$$(cat "$(TMPDIR)"/foo.*.ll | grep -c define\ internal\ i32\ .*inlined)" -eq "2" ]
+	[ "$$(cat "$(TMPDIR)"/foo.*.ll | grep -c define\ internal\ i32\ .*inlined)" -eq "1" ]
 	[ "$$(cat "$(TMPDIR)"/foo.*.ll | grep -c define\ hidden\ i32\ .*normal)" -eq "1" ]
-	[ "$$(cat "$(TMPDIR)"/foo.*.ll | grep -c declare\ hidden\ i32\ .*normal)" -eq "2" ]
+	[ "$$(cat "$(TMPDIR)"/foo.*.ll | grep -c declare\ hidden\ i32\ .*normal)" -eq "1" ]
