@@ -17,3 +17,8 @@ pub use self::sse41::*;
 
 mod sse42;
 pub use self::sse42::*;
+
+#[cfg(not(feature = "intel_sde"))]
+mod sse4a;
+#[cfg(not(feature = "intel_sde"))]
+pub use self::sse4a::*;

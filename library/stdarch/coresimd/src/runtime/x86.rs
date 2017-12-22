@@ -302,8 +302,7 @@ pub fn detect_features() -> usize {
     // Contains information about bmi,bmi2, and avx2 support.
     let (extended_features_ebx, extended_features_ecx) = if max_basic_leaf >= 7
     {
-        let CpuidResult { ebx, ecx, .. } =
-            unsafe { __cpuid(0x0000_0007_u32) };
+        let CpuidResult { ebx, ecx, .. } = unsafe { __cpuid(0x0000_0007_u32) };
         (ebx, ecx)
     } else {
         (0, 0) // CPUID does not support "Extended Features"
@@ -320,8 +319,7 @@ pub fn detect_features() -> usize {
     // EAX = 0x8000_0001, ECX=0: Queries "Extended Processor Info and Feature
     // Bits"
     let extended_proc_info_ecx = if extended_max_basic_leaf >= 1 {
-        let CpuidResult { ecx, .. } =
-            unsafe { __cpuid(0x8000_0001_u32) };
+        let CpuidResult { ecx, .. } = unsafe { __cpuid(0x8000_0001_u32) };
         ecx
     } else {
         0
@@ -457,6 +455,7 @@ mod tests {
         println!("ssse3: {:?}", cfg_feature_enabled!("ssse3"));
         println!("sse4.1: {:?}", cfg_feature_enabled!("sse4.1"));
         println!("sse4.2: {:?}", cfg_feature_enabled!("sse4.2"));
+        println!("sse4a: {:?}", cfg_feature_enabled!("sse4a"));
         println!("avx: {:?}", cfg_feature_enabled!("avx"));
         println!("avx2: {:?}", cfg_feature_enabled!("avx2"));
         println!("avx512f {:?}", cfg_feature_enabled!("avx512f"));
@@ -495,6 +494,7 @@ mod tests {
         assert_eq!(cfg_feature_enabled!("ssse3"), information.ssse3());
         assert_eq!(cfg_feature_enabled!("sse4.1"), information.sse4_1());
         assert_eq!(cfg_feature_enabled!("sse4.2"), information.sse4_2());
+        assert_eq!(cfg_feature_enabled!("sse4a"), information.sse4a());
         assert_eq!(cfg_feature_enabled!("avx"), information.avx());
         assert_eq!(cfg_feature_enabled!("avx2"), information.avx2());
         assert_eq!(cfg_feature_enabled!("avx512f"), information.avx512f());
@@ -520,7 +520,6 @@ mod tests {
         assert_eq!(cfg_feature_enabled!("bmi"), information.bmi1());
         assert_eq!(cfg_feature_enabled!("bmi2"), information.bmi2());
         assert_eq!(cfg_feature_enabled!("popcnt"), information.popcnt());
-        assert_eq!(cfg_feature_enabled!("sse4a"), information.sse4a());
         assert_eq!(cfg_feature_enabled!("abm"), information.lzcnt());
         assert_eq!(cfg_feature_enabled!("tbm"), information.tbm());
         assert_eq!(cfg_feature_enabled!("lzcnt"), information.lzcnt());

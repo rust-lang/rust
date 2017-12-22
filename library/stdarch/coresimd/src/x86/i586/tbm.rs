@@ -13,6 +13,7 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
+// FIXME(blocked on #248)
 // TODO: LLVM-CODEGEN ERROR: LLVM ERROR: Cannot select:
 // intrinsic %llvm.x86.tbm.bextri.u32
 /*
