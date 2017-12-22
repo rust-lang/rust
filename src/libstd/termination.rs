@@ -20,7 +20,7 @@ use libc;
 /// The default implementations are returning `libc::EXIT_SUCCESS` to indicate
 /// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
 #[cfg_attr(not(stage0), lang = "termination")]
-#[unstable(feature = "termination_trait", issue = "0")]
+#[unstable(feature = "termination_trait", issue = "43301")]
 #[rustc_on_unimplemented =
   "`main` can only return types that implement {Termination}, not `{Self}`"]
 pub trait Termination {
@@ -29,12 +29,12 @@ pub trait Termination {
     fn report(self) -> i32;
 }
 
-#[unstable(feature = "termination_trait", issue = "0")]
+#[unstable(feature = "termination_trait", issue = "43301")]
 impl Termination for () {
     fn report(self) -> i32 { libc::EXIT_SUCCESS }
 }
 
-#[unstable(feature = "termination_trait", issue = "0")]
+#[unstable(feature = "termination_trait", issue = "43301")]
 impl<T: Termination, E: Error> Termination for Result<T, E> {
     fn report(self) -> i32 {
         match self {
@@ -47,7 +47,7 @@ impl<T: Termination, E: Error> Termination for Result<T, E> {
     }
 }
 
-#[unstable(feature = "termination_trait", issue = "0")]
+#[unstable(feature = "termination_trait", issue = "43301")]
 fn print_error<E: Error>(err: E) {
     eprintln!("Error: {}", err.description());
 
@@ -56,19 +56,19 @@ fn print_error<E: Error>(err: E) {
     }
 }
 
-#[unstable(feature = "termination_trait", issue = "0")]
+#[unstable(feature = "termination_trait", issue = "43301")]
 impl Termination for ! {
     fn report(self) -> i32 { unreachable!(); }
 }
 
-#[unstable(feature = "termination_trait", issue = "0")]
+#[unstable(feature = "termination_trait", issue = "43301")]
 impl Termination for bool {
     fn report(self) -> i32 {
         if self { libc::EXIT_SUCCESS } else { libc::EXIT_FAILURE }
     }
 }
 
-#[unstable(feature = "termination_trait", issue = "0")]
+#[unstable(feature = "termination_trait", issue = "43301")]
 impl Termination for i32 {
     fn report(self) -> i32 {
         self

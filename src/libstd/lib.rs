@@ -503,7 +503,7 @@ pub mod rt;
 // The trait to support returning arbitrary types in the main function
 mod termination;
 
-#[unstable(feature = "termination_trait", issue = "0")]
+#[unstable(feature = "termination_trait", issue = "43301")]
 pub use self::termination::Termination;
 
 // Include a number of private modules that exist solely to provide

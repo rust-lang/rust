@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(termination_trait)]
-
-struct ReturnType {}
-
-fn main() -> ReturnType { //~ ERROR `ReturnType: std::Termination` is not satisfied
-    ReturnType {}
+fn main() -> i32 { //~ ERROR main function has wrong type [E0580]
+    0
 }

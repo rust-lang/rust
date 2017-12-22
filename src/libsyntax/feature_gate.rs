@@ -444,6 +444,9 @@ declare_features! (
 
     // Nested `impl Trait`
     (active, nested_impl_trait, "1.24.0", Some(34511)),
+
+    // Termination trait in main (RFC 1937)
+    (active, termination_trait, "1.24.0", Some(43301)),
 );
 
 declare_features! (

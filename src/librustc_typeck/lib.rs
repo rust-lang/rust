@@ -203,7 +203,8 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             let actual = tcx.fn_sig(main_def_id);
-            let expected_return_type = if tcx.lang_items().termination().is_some() {
+            let expected_return_type = if tcx.lang_items().termination().is_some()
+                && tcx.sess.features.borrow().termination_trait {
                 // we take the return type of the given main function, the real check is done
                 // in `check_fn`
                 actual.output().skip_binder()
