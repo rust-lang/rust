@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
@@ -362,6 +363,14 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             }
 
             mir::StatementKind::Assign(ref lhs, ref rhs) => {
+                // Make sure there are no remaining borrows for variables
+                // that are assigned over.
+                if let Place::Local(ref local) = *lhs {
+                    // FIXME: Handle the case in which we're assigning over
+                    // a projection (`foo.bar`).
+                    self.kill_borrows_on_local(sets, local, is_activations);
+                }
+
                 // NOTE: if/when the Assign case is revised to inspect
                 // the assigned_place here, make sure to also
                 // re-consider the current implementations of the
@@ -404,16 +413,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                //
-                // FIXME: expand this to variables that are assigned over.
-                if let Some(borrow_indexes) = self.local_map.get(&local) {
-                    sets.kill_all(borrow_indexes.iter()
-                                  .map(|b| ReserveOrActivateIndex::reserved(*b)));
-                    if is_activations {
-                        sets.kill_all(borrow_indexes.iter()
-                                      .map(|b| ReserveOrActivateIndex::active(*b)));
-                    }
-                }
+                self.kill_borrows_on_local(sets, &local, is_activations)
             }
 
             mir::StatementKind::InlineAsm { .. } |
@@ -422,6 +422,21 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             mir::StatementKind::Validate(..) |
             mir::StatementKind::Nop => {}
 
+        }
+    }
+
+    fn kill_borrows_on_local(&self,
+                             sets: &mut BlockSets<ReserveOrActivateIndex>,
+                             local: &rustc::mir::Local,
+                             is_activations: bool)
+    {
+        if let Some(borrow_indexes) = self.local_map.get(local) {
+            sets.kill_all(borrow_indexes.iter()
+                            .map(|b| ReserveOrActivateIndex::reserved(*b)));
+            if is_activations {
+                sets.kill_all(borrow_indexes.iter()
+                                .map(|b| ReserveOrActivateIndex::active(*b)));
+            }
         }
     }
 
