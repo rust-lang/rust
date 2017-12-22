@@ -2,9 +2,20 @@
 
 ## [Unreleased]
 
+## [0.3.3] 2017-12-22
+
+### Added
+
+- Format trait aliases.
+
 ### Changed
 
 - `cargo fmt` will format every workspace member.
+
+### Fixed
+
+- Rustup to `rustc 1.24.0-nightly (250b49205 2017-12-21)`
+- Fix formatting bugs.
 
 ## [0.3.2] 2017-12-15
 
