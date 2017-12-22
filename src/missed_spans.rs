@@ -210,21 +210,22 @@ impl<'a> FmtVisitor<'a> {
 
         let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
 
-        if fix_indent {
+        let comment_indent = if fix_indent {
             if let Some('{') = last_char {
                 self.push_str("\n");
             }
             let indent_str = self.block_indent.to_string(self.config);
             self.push_str(&indent_str);
+            self.block_indent
         } else {
             self.push_str(" ");
-        }
+            Indent::from_width(self.config, last_line_width(&self.buffer))
+        };
 
         let comment_width = ::std::cmp::min(
             self.config.comment_width(),
             self.config.max_width() - self.block_indent.width(),
         );
-        let comment_indent = Indent::from_width(self.config, last_line_width(&self.buffer));
         let comment_shape = Shape::legacy(comment_width, comment_indent);
         let comment_str = rewrite_comment(subslice, false, comment_shape, self.config)
             .unwrap_or_else(|| String::from(subslice));
