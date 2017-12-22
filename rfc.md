@@ -150,7 +150,7 @@ FILE
 	  IDENT
 	  COLON
 	  WHITESPACE
-	  TYPE
+	  TYPE_REF
 	    IDENT
 	COMMA
 	WHITESPACE
@@ -180,7 +180,7 @@ Note several features of the tree:
   
 * The non-documenting comment is correctly attached to the following
   field.
-
+  
 
 
 # Drawbacks
