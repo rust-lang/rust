@@ -1869,7 +1869,12 @@ fn rewrite_fn_base(
     // A conservative estimation, to goal is to be over all parens in generics
     let args_start = fn_sig
         .generics
-        .ty_params
+        .params
+        .iter()
+        .filter_map(|p| match p {
+            &ast::GenericParam::Type(ref t) => Some(t),
+            _ => None,
+        })
         .last()
         .map_or(lo_after_visibility, |tp| end_typaram(tp));
     let args_end = if fd.inputs.is_empty() {
@@ -2363,15 +2368,22 @@ fn rewrite_generics_inner(
         }
     }
 
-    if generics.lifetimes.is_empty() && generics.ty_params.is_empty() {
+    if generics.params.is_empty() {
         return Some(String::new());
     }
 
     let generics_args = generics
-        .lifetimes
+        .params
         .iter()
+        .filter_map(|p| match p {
+            &ast::GenericParam::Lifetime(ref l) => Some(l),
+            _ => None,
+        })
         .map(|lt| GenericsArg::Lifetime(lt))
-        .chain(generics.ty_params.iter().map(|ty| GenericsArg::TyParam(ty)));
+        .chain(generics.params.iter().filter_map(|ty| match ty {
+            &ast::GenericParam::Type(ref ty) => Some(GenericsArg::TyParam(ty)),
+            _ => None,
+        }));
     let items = itemize_list(
         context.codemap,
         generics_args,

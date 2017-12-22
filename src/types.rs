@@ -413,7 +413,7 @@ impl Rewrite for ast::WherePredicate {
         // TODO: dead spans?
         let result = match *self {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                ref bound_lifetimes,
+                ref bound_generic_params,
                 ref bounded_ty,
                 ref bounds,
                 ..
@@ -422,9 +422,13 @@ impl Rewrite for ast::WherePredicate {
 
                 let colon = type_bound_colon(context);
 
-                if !bound_lifetimes.is_empty() {
-                    let lifetime_str: String = bound_lifetimes
+                if bound_generic_params.iter().filter(|p| p.is_lifetime_param()).count() > 0 {
+                    let lifetime_str: String = bound_generic_params
                         .iter()
+                        .filter_map(|p| match p {
+                            &ast::GenericParam::Lifetime(ref l) => Some(l),
+                            _ => None,
+                        })
                         .map(|lt| lt.rewrite(context, shape))
                         .collect::<Option<Vec<_>>>()?
                         .join(", ");
@@ -590,9 +594,13 @@ impl Rewrite for ast::TyParam {
 
 impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        if !self.bound_lifetimes.is_empty() {
-            let lifetime_str: String = self.bound_lifetimes
+        if self.bound_generic_params.iter().filter(|p| p.is_lifetime_param()).count() > 0 {
+            let lifetime_str: String = self.bound_generic_params
                 .iter()
+                .filter_map(|p| match p {
+                    &ast::GenericParam::Lifetime(ref l) => Some(l),
+                    _ => None,
+                })
                 .map(|lt| lt.rewrite(context, shape))
                 .collect::<Option<Vec<_>>>()?
                 .join(", ");
@@ -746,14 +754,18 @@ fn rewrite_bare_fn(
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
 
-    if !bare_fn.lifetimes.is_empty() {
+    if bare_fn.generic_params.iter().filter(|p| p.is_lifetime_param()).count() > 0 {
         result.push_str("for<");
         // 6 = "for<> ".len(), 4 = "for<".
         // This doesn't work out so nicely for mutliline situation with lots of
         // rightward drift. If that is a problem, we could use the list stuff.
         result.push_str(&bare_fn
-            .lifetimes
+            .generic_params
             .iter()
+            .filter_map(|p| match p {
+                &ast::GenericParam::Lifetime(ref l) => Some(l),
+                _ => None,
+            })
             .map(|l| {
                 l.rewrite(
                     context,
