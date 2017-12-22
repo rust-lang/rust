@@ -72,3 +72,14 @@ fn generic<T>(arg: T) -> &SomeType
         }
     });
 }
+
+// #2296
+impl Foo {
+	// a comment
+	// on multiple lines
+	fn foo() {
+		// another comment
+		// on multiple lines
+		let x = true;
+	}
+}
