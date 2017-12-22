@@ -36,9 +36,7 @@ be `0.1.0`.
 # Motivation
 [motivation]: #motivation
 
-"Reusable software component" part is addressed first "IDE ready part"
-second.
-
+## Reusability
 
 In theory, parsing can be a pure function, which takes a `&str` as an
 input, and produces a `ParseTree` as an output.
@@ -69,37 +67,45 @@ files. As a data point, it turned out to be easier to move `rustfmt`
 inside of main `rustc` repository than to move libsyntax outside!
 
 
+## IDE support
 
+There is one big difference in how IDEs and compilers typically treat
+source code. 
 
+In the compiler, it is convenient to transform the source
+code into Abstract Syntax Tree form, which is independent of the
+surface syntax. For example, it's convenient to discard comments,
+whitespaces and desugar some syntactic constructs in terms of the
+simpler ones.
 
+In contrast, for IDEs it is crucial to have a lossless view of the
+source code because, for example, it's important to preserve comments
+during refactorings.
 
-
+Currently rustc uses the AST approach, which preserves the source code
+information to some extent by storing spans in the AST.
 
 
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Explain the proposal as if it was already included in the language and you were teaching it to another Rust programmer. That generally means:
+Not applicable.
 
-- Introducing new named concepts.
-- Explaining the feature largely in terms of examples.
-- Explaining how Rust programmers should *think* about the feature, and how it should impact the way they use Rust. It should explain the impact as concretely as possible.
-- If applicable, provide sample error messages, deprecation warnings, or migration guidance.
-- If applicable, describe the differences between teaching this to existing Rust programmers and new Rust programmers.
-
-For implementation-oriented RFCs (e.g. for compiler internals), this section should focus on how compiler contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This is the technical portion of the RFC. Explain the design in sufficient detail that:
+This section proposes a new syntax tree data structure, which should
+be suitable for both compiler and IDE. It is heavily inspired by [PSI]
+data structure which used in [IntelliJ] based IDEs and in the Kotlin
+compiler.
 
-- Its interaction with other features is clear.
-- It is reasonably clear how the feature would be implemented.
-- Corner cases are dissected by example.
 
-The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work.
+[PSI]: http://www.jetbrains.org/intellij/sdk/docs/reference_guide/custom_language_support/implementing_parser_and_psi.html
+[IntelliJ]: https://github.com/JetBrains/intellij-community/
+[Kotlin]: https://kotlinlang.org/
+
 
 # Drawbacks
 [drawbacks]: #drawbacks
