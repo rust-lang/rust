@@ -327,7 +327,7 @@ macro_rules! newtype_index {
 #[derive(Clone, PartialEq, Eq)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
-    _marker: PhantomData<Fn(&I)>
+    _marker: PhantomData<fn(&I)>
 }
 
 // Whether `IndexVec` is `Send` depends only on the data,

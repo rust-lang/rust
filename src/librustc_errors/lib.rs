@@ -42,6 +42,8 @@ use std::cell::{RefCell, Cell};
 use std::mem;
 use std::rc::Rc;
 use std::{error, fmt};
+use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::Ordering::SeqCst;
 
 mod diagnostic;
 mod diagnostic_builder;
@@ -236,7 +238,7 @@ pub use diagnostic_builder::DiagnosticBuilder;
 pub struct Handler {
     pub flags: HandlerFlags,
 
-    err_count: Cell<usize>,
+    err_count: AtomicUsize,
     emitter: RefCell<Box<Emitter>>,
     continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<Diagnostic>>,
@@ -295,7 +297,7 @@ impl Handler {
     pub fn with_emitter_and_flags(e: Box<Emitter>, flags: HandlerFlags) -> Handler {
         Handler {
             flags,
-            err_count: Cell::new(0),
+            err_count: AtomicUsize::new(0),
             emitter: RefCell::new(e),
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
@@ -311,7 +313,7 @@ impl Handler {
     // NOTE: DO NOT call this function from rustc, as it relies on `err_count` being non-zero
     // if an error happened to avoid ICEs. This function should only be called from tools.
     pub fn reset_err_count(&self) {
-        self.err_count.set(0);
+        self.err_count.store(0, SeqCst);
     }
 
     pub fn struct_dummy<'a>(&'a self) -> DiagnosticBuilder<'a> {
@@ -507,19 +509,19 @@ impl Handler {
 
     fn bump_err_count(&self) {
         self.panic_if_treat_err_as_bug();
-        self.err_count.set(self.err_count.get() + 1);
+        self.err_count.fetch_add(1, SeqCst);
     }
 
     pub fn err_count(&self) -> usize {
-        self.err_count.get()
+        self.err_count.load(SeqCst)
     }
 
     pub fn has_errors(&self) -> bool {
-        self.err_count.get() > 0
+        self.err_count() > 0
     }
     pub fn abort_if_errors(&self) {
         let s;
-        match self.err_count.get() {
+        match self.err_count() {
             0 => {
                 if let Some(bug) = self.delayed_span_bug.borrow_mut().take() {
                     DiagnosticBuilder::new_diagnostic(self, bug).emit();
@@ -528,7 +530,7 @@ impl Handler {
             }
             1 => s = "aborting due to previous error".to_string(),
             _ => {
-                s = format!("aborting due to {} previous errors", self.err_count.get());
+                s = format!("aborting due to {} previous errors", self.err_count());
             }
         }
 

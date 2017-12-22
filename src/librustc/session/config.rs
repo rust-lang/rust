@@ -1092,6 +1092,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "prints the llvm optimization passes being run"),
     ast_json: bool = (false, parse_bool, [UNTRACKED],
         "print the AST as JSON and halt"),
+    query_threads: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
+        "execute queries on a thread pool with N threads"),
     ast_json_noexpand: bool = (false, parse_bool, [UNTRACKED],
         "print the pre-expansion AST as JSON and halt"),
     ls: bool = (false, parse_bool, [UNTRACKED],
@@ -1686,6 +1688,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                 thinlto = Some(false);
             }
         }
+    }
+
+    if debugging_opts.query_threads == Some(0) {
+        early_error(error_format, "Value for query threads must be a positive nonzero integer");
     }
 
     if codegen_units == Some(0) {
