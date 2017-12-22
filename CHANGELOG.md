@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.177
+* Rustup to *rustc 1.24.0-nightly (250b49205 2017-12-21)*
+* New lint: [`match_as_ref`]
+
 ## 0.0.176
 * Rustup to *rustc 1.24.0-nightly (0077d128d 2017-12-14)*
 
@@ -595,6 +599,7 @@ All notable changes to this project will be documented in this file.
 [`many_single_char_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#many_single_char_names
 [`map_clone`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#map_clone
 [`map_entry`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#map_entry
+[`match_as_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_as_ref
 [`match_bool`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_bool
 [`match_overlapping_arm`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_overlapping_arm
 [`match_ref_pats`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_ref_pats
