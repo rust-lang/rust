@@ -2872,6 +2872,10 @@ pub enum FpCategory {
            reason = "stable interface is via `impl f{32,64}` in later crates",
            issue = "32110")]
 pub trait Float: Sized {
+    /// Type used by `to_bits` and `from_bits`.
+    #[stable(feature = "core_float_bits", since = "1.24.0")]
+    type Bits: ops::Add<Output = Self::Bits> + From<u8> + TryFrom<u64>;
+
     /// Returns `true` if this value is NaN and false otherwise.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_nan(self) -> bool;
@@ -2933,6 +2937,13 @@ pub trait Float: Sized {
     /// Returns the minimum of the two numbers.
     #[stable(feature = "core_float_min_max", since="1.20.0")]
     fn min(self, other: Self) -> Self;
+
+    /// Raw transmutation to integer.
+    #[stable(feature = "core_float_bits", since="1.24.0")]
+    fn to_bits(self) -> Self::Bits;
+    /// Raw transmutation from integer.
+    #[stable(feature = "core_float_bits", since="1.24.0")]
+    fn from_bits(v: Self::Bits) -> Self;
 }
 
 macro_rules! from_str_radix_int_impl {

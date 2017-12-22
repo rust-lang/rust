@@ -27,11 +27,10 @@
 //! Many functions in this module only handle normal numbers. The dec2flt routines conservatively
 //! take the universally-correct slow path (Algorithm M) for very small and very large numbers.
 //! That algorithm needs only next_float() which does handle subnormals and zeros.
-use u32;
 use cmp::Ordering::{Less, Equal, Greater};
+use convert::TryInto;
 use ops::{Mul, Div, Neg};
 use fmt::{Debug, LowerExp};
-use mem::transmute;
 use num::diy_float::Fp;
 use num::FpCategory::{Infinite, Zero, Subnormal, Normal, Nan};
 use num::Float;
@@ -65,12 +64,6 @@ pub trait RawFloat : Float + Copy + Debug + LowerExp
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8);
-
-    /// Get the raw binary representation of the float.
-    fn transmute(self) -> u64;
-
-    /// Transmute the raw binary representation into a float.
-    fn from_bits(bits: u64) -> Self;
 
     /// Decode the float.
     fn unpack(self) -> Unpacked;
@@ -159,7 +152,7 @@ impl RawFloat for f32 {
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {
-        let bits: u32 = unsafe { transmute(self) };
+        let bits = self.to_bits();
         let sign: i8 = if bits >> 31 == 0 { 1 } else { -1 };
         let mut exponent: i16 = ((bits >> 23) & 0xff) as i16;
         let mantissa = if exponent == 0 {
@@ -170,16 +163,6 @@ impl RawFloat for f32 {
         // Exponent bias + mantissa shift
         exponent -= 127 + 23;
         (mantissa as u64, exponent, sign)
-    }
-
-    fn transmute(self) -> u64 {
-        let bits: u32 = unsafe { transmute(self) };
-        bits as u64
-    }
-
-    fn from_bits(bits: u64) -> f32 {
-        assert!(bits < u32::MAX as u64, "f32::from_bits: too many bits");
-        unsafe { transmute(bits as u32) }
     }
 
     fn unpack(self) -> Unpacked {
@@ -210,7 +193,7 @@ impl RawFloat for f64 {
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {
-        let bits: u64 = unsafe { transmute(self) };
+        let bits = self.to_bits();
         let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
         let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
         let mantissa = if exponent == 0 {
@@ -221,15 +204,6 @@ impl RawFloat for f64 {
         // Exponent bias + mantissa shift
         exponent -= 1023 + 52;
         (mantissa, exponent, sign)
-    }
-
-    fn transmute(self) -> u64 {
-        let bits: u64 = unsafe { transmute(self) };
-        bits
-    }
-
-    fn from_bits(bits: u64) -> f64 {
-        unsafe { transmute(bits) }
     }
 
     fn unpack(self) -> Unpacked {
@@ -296,14 +270,14 @@ pub fn encode_normal<T: RawFloat>(x: Unpacked) -> T {
         "encode_normal: exponent out of range");
     // Leave sign bit at 0 ("+"), our numbers are all positive
     let bits = (k_enc as u64) << T::EXPLICIT_SIG_BITS | sig_enc;
-    T::from_bits(bits)
+    T::from_bits(bits.try_into().unwrap_or_else(|_| unreachable!()))
 }
 
 /// Construct a subnormal. A mantissa of 0 is allowed and constructs zero.
 pub fn encode_subnormal<T: RawFloat>(significand: u64) -> T {
     assert!(significand < T::MIN_SIG, "encode_subnormal: not actually subnormal");
     // Encoded exponent is 0, the sign bit is 0, so we just have to reinterpret the bits.
-    T::from_bits(significand)
+    T::from_bits(significand.try_into().unwrap_or_else(|_| unreachable!()))
 }
 
 /// Approximate a bignum with an Fp. Rounds within 0.5 ULP with half-to-even.
@@ -363,8 +337,7 @@ pub fn next_float<T: RawFloat>(x: T) -> T {
         // too is exactly what we want!
         // Finally, f64::MAX + 1 = 7eff...f + 1 = 7ff0...0 = f64::INFINITY.
         Zero | Subnormal | Normal => {
-            let bits: u64 = x.transmute();
-            T::from_bits(bits + 1)
+            T::from_bits(x.to_bits() + T::Bits::from(1u8))
         }
     }
 }
