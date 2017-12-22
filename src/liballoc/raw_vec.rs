@@ -322,7 +322,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                     // would cause overflow
                     let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
                     match self.a.alloc_array::<T>(new_cap) {
-                        Ok(ptr) => (new_cap, ptr),
+                        Ok(ptr) => (new_cap, ptr.into()),
                         Err(e) => self.a.oom(e),
                     }
                 }

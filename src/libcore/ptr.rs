@@ -2452,6 +2452,13 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     }
 }
 
+#[unstable(feature = "unique", issue = "27730")]
+impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
+    fn from(p: NonNull<T>) -> Self {
+        Unique { pointer: p.pointer, _marker: PhantomData }
+    }
+}
+
 /// Previous name of `NonNull`.
 #[rustc_deprecated(since = "1.24", reason = "renamed to `NonNull`")]
 #[unstable(feature = "shared", issue = "27730")]
