@@ -21,8 +21,8 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![feature(shared)]
 #![feature(collections_range)]
+#![feature(nonnull)]
 #![feature(nonzero)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]

@@ -23,7 +23,7 @@ use core::iter::{repeat, FromIterator, FusedIterator};
 use core::mem;
 use core::ops::{Index, IndexMut, Place, Placer, InPlace};
 use core::ptr;
-use core::ptr::Shared;
+use core::ptr::NonNull;
 use core::slice;
 
 use core::hash::{Hash, Hasher};
@@ -895,7 +895,7 @@ impl<T> VecDeque<T> {
         self.head = drain_tail;
 
         Drain {
-            deque: Shared::from(&mut *self),
+            deque: NonNull::from(&mut *self),
             after_tail: drain_head,
             after_head: head,
             iter: Iter {
@@ -2154,7 +2154,7 @@ pub struct Drain<'a, T: 'a> {
     after_tail: usize,
     after_head: usize,
     iter: Iter<'a, T>,
-    deque: Shared<VecDeque<T>>,
+    deque: NonNull<VecDeque<T>>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]

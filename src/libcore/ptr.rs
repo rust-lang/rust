@@ -2321,7 +2321,7 @@ impl<T: ?Sized> PartialOrd for *mut T {
 /// its owning Unique.
 ///
 /// If you're uncertain of whether it's correct to use `Unique` for your purposes,
-/// consider using `Shared`, which has weaker semantics.
+/// consider using `NonNull`, which has weaker semantics.
 ///
 /// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
 /// is never dereferenced. This is so that enums may use this forbidden value
@@ -2452,18 +2452,23 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     }
 }
 
+/// Previous name of `NonNull`.
+#[rustc_deprecated(since = "1.24", reason = "renamed to `NonNull`")]
+#[unstable(feature = "shared", issue = "27730")]
+pub type Shared<T> = NonNull<T>;
+
 /// `*mut T` but non-zero and covariant.
 ///
 /// This is often the correct thing to use when building data structures using
 /// raw pointers, but is ultimately more dangerous to use because of its additional
-/// properties. If you're not sure if you should use `Shared<T>`, just use `*mut T`!
+/// properties. If you're not sure if you should use `NonNull<T>`, just use `*mut T`!
 ///
 /// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
 /// is never dereferenced. This is so that enums may use this forbidden value
-/// as a discriminant -- `Option<Shared<T>>` has the same size as `Shared<T>`.
+/// as a discriminant -- `Option<NonNull<T>>` has the same size as `NonNull<T>`.
 /// However the pointer may still dangle if it isn't dereferenced.
 ///
-/// Unlike `*mut T`, `Shared<T>` is covariant over `T`. If this is incorrect
+/// Unlike `*mut T`, `NonNull<T>` is covariant over `T`. If this is incorrect
 /// for your use case, you should include some PhantomData in your type to
 /// provide invariance, such as `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
 /// Usually this won't be necessary; covariance is correct for most safe abstractions,
@@ -2471,56 +2476,56 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
 /// provide a public API that follows the normal shared XOR mutable rules of Rust.
 #[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
            issue = "27730")]
-pub struct Shared<T: ?Sized> {
+pub struct NonNull<T: ?Sized> {
     pointer: NonZero<*const T>,
 }
 
 #[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> fmt::Debug for Shared<T> {
+impl<T: ?Sized> fmt::Debug for NonNull<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:p}", self.as_ptr())
     }
 }
 
-/// `Shared` pointers are not `Send` because the data they reference may be aliased.
+/// `NonNull` pointers are not `Send` because the data they reference may be aliased.
 // NB: This impl is unnecessary, but should provide better error messages.
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> !Send for Shared<T> { }
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<T: ?Sized> !Send for NonNull<T> { }
 
-/// `Shared` pointers are not `Sync` because the data they reference may be aliased.
+/// `NonNull` pointers are not `Sync` because the data they reference may be aliased.
 // NB: This impl is unnecessary, but should provide better error messages.
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> !Sync for Shared<T> { }
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<T: ?Sized> !Sync for NonNull<T> { }
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: Sized> Shared<T> {
-    /// Creates a new `Shared` that is dangling, but well-aligned.
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<T: Sized> NonNull<T> {
+    /// Creates a new `NonNull` that is dangling, but well-aligned.
     ///
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
     pub fn empty() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
-            Shared::new_unchecked(ptr)
+            NonNull::new_unchecked(ptr)
         }
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> Shared<T> {
-    /// Creates a new `Shared`.
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<T: ?Sized> NonNull<T> {
+    /// Creates a new `NonNull`.
     ///
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    #[unstable(feature = "shared", issue = "27730")]
+    #[unstable(feature = "nonnull", issue = "27730")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        Shared { pointer: NonZero::new_unchecked(ptr) }
+        NonNull { pointer: NonZero::new_unchecked(ptr) }
     }
 
-    /// Creates a new `Shared` if `ptr` is non-null.
+    /// Creates a new `NonNull` if `ptr` is non-null.
     pub fn new(ptr: *mut T) -> Option<Self> {
-        NonZero::new(ptr as *const T).map(|nz| Shared { pointer: nz })
+        NonZero::new(ptr as *const T).map(|nz| NonNull { pointer: nz })
     }
 
     /// Acquires the underlying `*mut` pointer.
@@ -2548,49 +2553,49 @@ impl<T: ?Sized> Shared<T> {
 
     /// Acquires the underlying pointer as a `*mut` pointer.
     #[rustc_deprecated(since = "1.19", reason = "renamed to `as_ptr` for ergonomics/consistency")]
-    #[unstable(feature = "shared", issue = "27730")]
+    #[unstable(feature = "nonnull", issue = "27730")]
     pub unsafe fn as_mut_ptr(&self) -> *mut T {
         self.as_ptr()
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> Clone for Shared<T> {
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<T: ?Sized> Clone for NonNull<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> Copy for Shared<T> { }
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<T: ?Sized> Copy for NonNull<T> { }
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsize<U> { }
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> { }
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> fmt::Pointer for Shared<T> {
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<T: ?Sized> fmt::Pointer for NonNull<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: ?Sized> From<Unique<T>> for Shared<T> {
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     fn from(unique: Unique<T>) -> Self {
-        Shared { pointer: unique.pointer }
+        NonNull { pointer: unique.pointer }
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<'a, T: ?Sized> From<&'a mut T> for Shared<T> {
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
     fn from(reference: &'a mut T) -> Self {
-        Shared { pointer: NonZero::from(reference) }
+        NonNull { pointer: NonZero::from(reference) }
     }
 }
 
-#[unstable(feature = "shared", issue = "27730")]
-impl<'a, T: ?Sized> From<&'a T> for Shared<T> {
+#[unstable(feature = "nonnull", issue = "27730")]
+impl<'a, T: ?Sized> From<&'a T> for NonNull<T> {
     fn from(reference: &'a T) -> Self {
-        Shared { pointer: NonZero::from(reference) }
+        NonNull { pointer: NonZero::from(reference) }
     }
 }
