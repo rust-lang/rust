@@ -334,11 +334,6 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                     }
                 }
             }
-            TyImplTraitUniversal(_, ref param_bounds) => for bound in param_bounds {
-                if let RegionTyParamBound(_) = *bound {
-                    self.record(&None);
-                }
-            },
             TyTraitObject(ref bounds, ref lt) => {
                 if !lt.is_elided() {
                     self.abort = true;
