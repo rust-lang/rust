@@ -87,4 +87,20 @@ fn main() {
     let x = Y(1);
     let y = Y(2);
     let z = x & &y;
+
+    check_ignore_macro();
+}
+
+macro_rules! check_if_named_foo {
+    ($expression:expr) => (
+        if stringify!($expression) == "foo" {
+            println!("foo!");
+        } else {
+            println!("not foo.");
+        }
+    )
+}
+
+fn check_ignore_macro() {
+    check_if_named_foo!(foo);
 }
