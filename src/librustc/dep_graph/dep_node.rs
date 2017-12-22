@@ -659,6 +659,8 @@ define_dep_nodes!( <'tcx>
 
     [] UpstreamMonomorphizations(CrateNum),
     [] UpstreamMonomorphizationsFor(DefId),
+
+    [] CollapseInterchangableInstances { instance: Instance<'tcx> },
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

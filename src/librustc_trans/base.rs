@@ -464,7 +464,7 @@ pub fn trans_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'tc
     info!("trans_instance({})", instance);
 
     let fn_ty = instance.ty(cx.tcx);
-    let sig = common::ty_fn_sig(cx, fn_ty);
+    let sig = common::ty_fn_sig(cx.tcx, fn_ty);
     let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
     let lldecl = match cx.instances.borrow().get(&instance) {

@@ -650,7 +650,7 @@ impl<'a, 'tcx> FnType<'tcx> {
     pub fn of_instance(cx: &CodegenCx<'a, 'tcx>, instance: &ty::Instance<'tcx>)
                        -> Self {
         let fn_ty = instance.ty(cx.tcx);
-        let sig = ty_fn_sig(cx, fn_ty);
+        let sig = ty_fn_sig(cx.tcx, fn_ty);
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         FnType::new(cx, sig, &[])
     }
