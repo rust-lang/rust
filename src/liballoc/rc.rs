@@ -311,7 +311,7 @@ impl<T> Rc<T> {
             // pointers, which ensures that the weak destructor never frees
             // the allocation while the strong destructor is running, even
             // if the weak pointer is stored inside the strong one.
-            ptr: Box::into_nonnull_raw(box RcBox {
+            ptr: Box::into_non_null_raw(box RcBox {
                 strong: Cell::new(1),
                 weak: Cell::new(1),
                 value,
@@ -1190,7 +1190,7 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         unsafe {
             Weak {
-                ptr: Box::into_nonnull_raw(box RcBox {
+                ptr: Box::into_non_null_raw(box RcBox {
                     strong: Cell::new(0),
                     weak: Cell::new(1),
                     value: uninitialized(),

@@ -290,13 +290,13 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// fn main() {
     ///     let x = Box::new(5);
-    ///     let ptr = Box::into_nonnull_raw(x);
-    ///     let x = unsafe { Box::from_nonnull_raw(ptr) };
+    ///     let ptr = Box::into_non_null_raw(x);
+    ///     let x = unsafe { Box::from_non_null_raw(ptr) };
     /// }
     /// ```
     #[stable(feature = "nonnull", since = "1.24.0")]
     #[inline]
-    pub unsafe fn from_nonnull_raw(u: NonNull<T>) -> Self {
+    pub unsafe fn from_non_null_raw(u: NonNull<T>) -> Self {
         Box(u.into())
     }
 
@@ -323,7 +323,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        Box::into_nonnull_raw(b).as_ptr()
+        Box::into_non_null_raw(b).as_ptr()
     }
 
     /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
@@ -333,17 +333,17 @@ impl<T: ?Sized> Box<T> {
     /// caller should properly destroy `T` and release the memory. The
     /// proper way to do so is to either convert the `NonNull<T>` pointer:
     ///
-    /// - Into a `Box` with the [`Box::from_nonnull_raw`] function.
+    /// - Into a `Box` with the [`Box::from_non_null_raw`] function.
     ///
     /// - Into a raw pointer and back into a `Box` with the [`Box::from_raw`]
     ///   function.
     ///
     /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_nonnull_raw(b)`
-    /// instead of `b.into_nonnull_raw()`. This
+    /// to call it as `Box::into_non_null_raw(b)`
+    /// instead of `b.into_non_null_raw()`. This
     /// is so that there is no conflict with a method on the inner type.
     ///
-    /// [`Box::from_nonnull_raw`]: struct.Box.html#method.from_nonnull_raw
+    /// [`Box::from_non_null_raw`]: struct.Box.html#method.from_non_null_raw
     /// [`Box::from_raw`]: struct.Box.html#method.from_raw
     ///
     /// # Examples
@@ -351,16 +351,16 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// fn main() {
     ///     let x = Box::new(5);
-    ///     let ptr = Box::into_nonnull_raw(x);
+    ///     let ptr = Box::into_non_null_raw(x);
     /// }
     /// ```
     #[stable(feature = "nonnull", since = "1.24.0")]
     #[inline]
-    pub fn into_nonnull_raw(b: Box<T>) -> NonNull<T> {
+    pub fn into_non_null_raw(b: Box<T>) -> NonNull<T> {
         Box::into_unique(b).into()
     }
 
-    #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_nonnull_raw instead")]
+    #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_non_null_raw instead")]
     #[inline]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
         let unique = b.0;
