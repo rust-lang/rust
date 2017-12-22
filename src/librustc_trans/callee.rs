@@ -43,6 +43,37 @@ pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     debug!("get_fn(instance={:?})", instance);
 
+    let instance = tcx.collapse_interchangable_instances(instance);
+
+    info!("get_fn(collapsed_instance={:?})", instance);
+
+    struct ShowOnPanic(String);
+    impl Drop for ShowOnPanic {
+        fn drop(&mut self) {
+            if ::std::thread::panicking() {
+                info!("{}", self.0);
+            }
+        }
+    }
+    let mut mir = Vec::new();
+    if !instance.substs.is_noop() {
+        //::rustc_mir::util::write_mir_pretty(tcx, Some(instance.def_id()), &mut mir).unwrap();
+    } else {
+        use std::io::Write;
+        write!(mir, "no substs for instance").unwrap();
+    }
+    let generics = tcx.generics_of(instance.def_id());
+
+    let _d = ShowOnPanic("mir: ".to_string() + &String::from_utf8(mir).unwrap());
+    let _c = if let Some(parent) = generics.parent {
+        let parent_generics = tcx.generics_of(parent);
+        ShowOnPanic(format!("parent generics: {:#?}", parent_generics))
+    } else {
+        ShowOnPanic("no parent generics".to_string())
+    };
+    let _b = ShowOnPanic(format!("generics: {:#?}", generics));
+    let _a = ShowOnPanic(format!("instance: {:#?}", instance));
+
     assert!(!instance.substs.needs_infer());
     assert!(!instance.substs.has_escaping_regions());
     assert!(!instance.substs.has_param_types());
@@ -56,7 +87,7 @@ pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
 
     // Create a fn pointer with the substituted signature.
-    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(cx, fn_ty));
+    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(cx.tcx, fn_ty));
     let llptrty = cx.layout_of(fn_ptr_ty).llvm_type(cx);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(cx, &sym) {

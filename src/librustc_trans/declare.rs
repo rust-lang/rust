@@ -126,7 +126,7 @@ pub fn declare_cfn(cx: &CodegenCx, name: &str, fn_type: Type) -> ValueRef {
 pub fn declare_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, name: &str,
                             fn_type: Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
-    let sig = common::ty_fn_sig(cx, fn_type);
+    let sig = common::ty_fn_sig(cx.tcx, fn_type);
     let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 

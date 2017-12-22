@@ -43,11 +43,13 @@ use std::cell::RefCell;
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::iter;
 use std::ops::Deref;
 use rustc_data_structures::sync::Lrc;
 use std::slice;
 use std::vec::IntoIter;
 use std::mem;
+use syntax::abi::Abi;
 use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
@@ -2761,6 +2763,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         crate_hash,
         trait_impls_of: trait_def::trait_impls_of_provider,
         instance_def_size_estimate,
+        collapse_interchangable_instances: |tcx, instance| instance._collapse_interchangable_instances(tcx),
         ..*providers
     };
 }
@@ -2809,5 +2812,50 @@ impl fmt::Display for SymbolName {
 impl fmt::Debug for SymbolName {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.name, fmt)
+    }
+}
+
+pub fn ty_fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           ty: Ty<'tcx>)
+                           -> ty::PolyFnSig<'tcx>
+{
+    match ty.sty {
+        ty::TyFnDef(..) |
+        // Shims currently have type TyFnPtr. Not sure this should remain.
+        ty::TyFnPtr(_) => ty.fn_sig(tcx),
+        ty::TyClosure(def_id, substs) => {
+            let sig = substs.closure_sig(def_id, tcx);
+
+            let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
+            sig.map_bound(|sig| tcx.mk_fn_sig(
+                iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                sig.output(),
+                sig.variadic,
+                sig.unsafety,
+                sig.abi
+            ))
+        }
+        ty::TyGenerator(def_id, substs, _) => {
+            let sig = substs.generator_poly_sig(def_id, tcx);
+
+            let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
+            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+
+            sig.map_bound(|sig| {
+                let state_did = tcx.lang_items().gen_state().unwrap();
+                let state_adt_ref = tcx.adt_def(state_did);
+                let state_substs = tcx.mk_substs([sig.yield_ty.into(),
+                    sig.return_ty.into()].iter());
+                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+
+                tcx.mk_fn_sig(iter::once(env_ty),
+                    ret_ty,
+                    false,
+                    hir::Unsafety::Normal,
+                    Abi::Rust
+                )
+            })
+        }
+        _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
     }
 }

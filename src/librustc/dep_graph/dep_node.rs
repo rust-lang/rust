@@ -640,6 +640,7 @@ define_dep_nodes!( <'tcx>
     [] NormalizeProjectionTy(CanonicalProjectionGoal<'tcx>),
     [] NormalizeTyAfterErasingRegions(ParamEnvAnd<'tcx, Ty<'tcx>>),
     [] DropckOutlives(CanonicalTyGoal<'tcx>),
+    [] CollapseInterchangableInstances { instance: Instance<'tcx> },
 
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
 

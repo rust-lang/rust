@@ -30,13 +30,12 @@ use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
 
 use libc::{c_uint, c_char};
-use std::iter;
 
-use syntax::abi::Abi;
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use context::CodegenCx;
+pub use rustc::ty::ty_fn_sig;
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.needs_drop(tcx, ty::ParamEnv::reveal_all())
@@ -399,51 +398,3 @@ pub fn shift_mask_val<'a, 'tcx>(
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }
 }
-
-pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                           ty: Ty<'tcx>)
-                           -> ty::PolyFnSig<'tcx>
-{
-    match ty.sty {
-        ty::TyFnDef(..) |
-        // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::TyFnPtr(_) => ty.fn_sig(cx.tcx),
-        ty::TyClosure(def_id, substs) => {
-            let tcx = cx.tcx;
-            let sig = substs.closure_sig(def_id, tcx);
-
-            let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-            sig.map_bound(|sig| tcx.mk_fn_sig(
-                iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
-                sig.output(),
-                sig.variadic,
-                sig.unsafety,
-                sig.abi
-            ))
-        }
-        ty::TyGenerator(def_id, substs, _) => {
-            let tcx = cx.tcx;
-            let sig = substs.generator_poly_sig(def_id, cx.tcx);
-
-            let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
-            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
-
-            sig.map_bound(|sig| {
-                let state_did = tcx.lang_items().gen_state().unwrap();
-                let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.mk_substs([sig.yield_ty.into(),
-                    sig.return_ty.into()].iter());
-                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
-
-                tcx.mk_fn_sig(iter::once(env_ty),
-                    ret_ty,
-                    false,
-                    hir::Unsafety::Normal,
-                    Abi::Rust
-                )
-            })
-        }
-        _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
-    }
-}
-
