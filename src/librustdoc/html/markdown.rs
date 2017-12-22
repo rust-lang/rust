@@ -1169,6 +1169,8 @@ pub fn markdown_links(md: &str, render_type: RenderType) -> Vec<String> {
                     let s = unsafe { (*link).as_bytes() };
                     let s = str::from_utf8(&s).unwrap().to_owned();
 
+                    debug!("found link: {}", s);
+
                     links.push(s);
                 }
 
@@ -1214,6 +1216,7 @@ pub fn markdown_links(md: &str, render_type: RenderType) -> Vec<String> {
 
             for ev in iter {
                 if let Event::Start(Tag::Link(dest, _)) = ev {
+                    debug!("found link: {}", dest);
                     links.push(dest.into_owned());
                 }
             }

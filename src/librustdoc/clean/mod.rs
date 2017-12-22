@@ -23,8 +23,9 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::Spanned;
+use syntax::feature_gate::UnstableFeatures;
 use syntax::ptr::P;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, Symbol};
 use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
 use rustc::middle::const_val::ConstVal;
@@ -33,6 +34,7 @@ use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::lowering::Resolver;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, AdtKind};
 use rustc::middle::stability;
@@ -43,7 +45,7 @@ use rustc::hir;
 
 use rustc_const_math::ConstInt;
 use std::default::Default;
-use std::{mem, slice, vec};
+use std::{mem, slice, vec, iter};
 use std::iter::FromIterator;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -53,6 +55,7 @@ use core::DocContext;
 use doctree;
 use visit_ast;
 use html::item_type::ItemType;
+use html::markdown::markdown_links;
 
 pub mod inline;
 pub mod cfg;
@@ -633,6 +636,7 @@ pub struct Attributes {
     pub other_attrs: Vec<ast::Attribute>,
     pub cfg: Option<Rc<Cfg>>,
     pub span: Option<syntax_pos::Span>,
+    pub links: Vec<(String, DefId)>,
 }
 
 impl Attributes {
@@ -762,11 +766,13 @@ impl Attributes {
                 Some(attr.clone())
             })
         }).collect();
+
         Attributes {
             doc_strings,
             other_attrs,
             cfg: if cfg == Cfg::True { None } else { Some(Rc::new(cfg)) },
             span: sp,
+            links: vec![],
         }
     }
 
@@ -795,7 +801,38 @@ impl AttributesExt for Attributes {
 
 impl Clean<Attributes> for [ast::Attribute] {
     fn clean(&self, cx: &DocContext) -> Attributes {
-        Attributes::from_ast(cx.sess().diagnostic(), self)
+        let mut attrs = Attributes::from_ast(cx.sess().diagnostic(), self);
+
+        if UnstableFeatures::from_environment().is_nightly_build() {
+            let dox = attrs.collapsed_doc_value().unwrap_or_else(String::new);
+            for link in markdown_links(&dox, cx.render_type) {
+                if !link.starts_with("::") {
+                    // FIXME (misdreavus): can only support absolute paths because of limitations
+                    // in Resolver. this may, with a lot of effort, figure out how to resolve paths
+                    // within scopes, but the one use of `resolve_hir_path` i found in the HIR
+                    // lowering code itself used an absolute path. we're brushing up against some
+                    // structural limitations in the compiler already, but this may be a design one
+                    // as well >_>
+                    continue;
+                }
+
+                let mut path = hir::Path {
+                    span: DUMMY_SP,
+                    def: Def::Err,
+                    segments: iter::once(keywords::CrateRoot.name()).chain({
+                        link.split("::").skip(1).map(Symbol::intern)
+                    }).map(hir::PathSegment::from_name).collect(),
+                };
+
+                cx.resolver.borrow_mut().resolve_hir_path(&mut path, false);
+
+                if path.def != Def::Err {
+                    attrs.links.push((link, path.def.def_id()));
+                }
+            }
+        }
+
+        attrs
     }
 }
 
