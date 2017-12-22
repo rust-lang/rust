@@ -435,7 +435,7 @@ macro_rules! int_impl {
         }
 
         /// Checked integer division. Computes `self / rhs`, returning `None`
-        /// if `rhs == 0` or the operation results in overflow.
+        /// if `rhs == 0` or the division results in overflow.
         ///
         /// # Examples
         ///
@@ -457,7 +457,7 @@ macro_rules! int_impl {
         }
 
         /// Checked integer remainder. Computes `self % rhs`, returning `None`
-        /// if `rhs == 0` or the operation results in overflow.
+        /// if `rhs == 0` or the division results in overflow.
         ///
         /// # Examples
         ///
@@ -1599,7 +1599,7 @@ macro_rules! uint_impl {
         }
 
         /// Checked integer division. Computes `self / rhs`, returning `None`
-        /// if `rhs == 0` or the operation results in overflow.
+        /// if `rhs == 0`.
         ///
         /// # Examples
         ///
@@ -1619,7 +1619,7 @@ macro_rules! uint_impl {
         }
 
         /// Checked integer remainder. Computes `self % rhs`, returning `None`
-        /// if `rhs == 0` or the operation results in overflow.
+        /// if `rhs == 0`.
         ///
         /// # Examples
         ///
