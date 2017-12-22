@@ -38,8 +38,8 @@ be `0.1.0`.
 
 ## Reusability
 
-In theory, parsing can be a pure function, which takes a `&str` as an
-input, and produces a `ParseTree` as an output.
+In theory, the parser can be a pure function, which takes a `&str` as
+an input, and produces a `ParseTree` as an output.
 
 This is great for reusability: for example, you can compile this
 function to WASM and use it for fast client-side validation of syntax
@@ -64,13 +64,13 @@ Unfortunately, the current libsyntax is far from this ideal. For
 example, even the lexer makes use of the `FileMap` which is
 essentially a global state of the compiler which represents all know
 files. As a data point, it turned out to be easier to move `rustfmt`
-inside of main `rustc` repository than to move libsyntax outside!
+into the main `rustc` repository than to move libsyntax outside!
 
 
 ## IDE support
 
 There is one big difference in how IDEs and compilers typically treat
-source code. 
+source code.
 
 In the compiler, it is convenient to transform the source
 code into Abstract Syntax Tree form, which is independent of the
@@ -86,9 +86,8 @@ necessary to correctly handle certain code-editing actions like
 autoindentation or joining lines. IDE also must be able to produce
 partial parse trees when some input is missing or invalid.
 
-Currently rustc uses the AST approach, which preserves the source code
-information to some extent by storing spans in the AST.
-
+Currently rustc uses the AST approach, and preserves some of the
+source code information in the form of spans in the AST.
 
 
 # Guide-level explanation
@@ -114,8 +113,8 @@ compiler.
 ## Untyped Tree
 
 The main idea is to store the minimal amount of information in the
-tree itself, and instead lean heavily on the source code string for
-the actual data about identifier names, constant values etc.
+tree itself, and instead lean heavily on the source code for the
+actual data about identifier names, constant values etc.
 
 All nodes in the tree are of the same type and store a constant for
 the syntactic category of the element and a range in the source code.
@@ -129,70 +128,70 @@ syntactic categories
 pub struct NodeKind(u16);
 
 pub struct File {
-    text: String,
-    nodes: Vec<NodeData>,
+	text: String,
+	nodes: Vec<NodeData>,
 }
 
 struct NodeData {
-    kind: NodeKind,
-    range: (u32, u32),
-    parent: Option<u32>,
-    first_child: Option<u32>,
-    next_sibling: Option<u32>,
+	kind: NodeKind,
+	range: (u32, u32),
+	parent: Option<u32>,
+	first_child: Option<u32>,
+	next_sibling: Option<u32>,
 }
 
 #[derive(Clone, Copy)]
 pub struct Node<'f> {
-    file: &'f File,
-    idx: u32,
+	file: &'f File,
+	idx: u32,
 }
 
 pub struct Children<'f> {
-    next: Option<Node<'f>>,
+	next: Option<Node<'f>>,
 }
 
 impl File {
-    pub fn root<'f>(&'f self) -> Node<'f> {
-        assert!(!self.nodes.is_empty());
-        Node { file: self, idx: 0 }
-    }
+	pub fn root<'f>(&'f self) -> Node<'f> {
+		assert!(!self.nodes.is_empty());
+		Node { file: self, idx: 0 }
+	}
 }
 
 impl<'f> Node<'f> {
-    pub fn kind(&self) -> NodeKind {
-        self.data().kind
-    }
+	pub fn kind(&self) -> NodeKind {
+		self.data().kind
+	}
 
-    pub fn text(&self) -> &'f str {
-        let (start, end) = self.data().range;
-        &self.file.text[start as usize..end as usize]
-    }
+	pub fn text(&self) -> &'f str {
+		let (start, end) = self.data().range;
+		&self.file.text[start as usize..end as usize]
+	}
 
-    pub fn parent(&self) -> Option<Node<'f>> {
-        self.as_node(self.data().parent)
-    }
+	pub fn parent(&self) -> Option<Node<'f>> {
+		self.as_node(self.data().parent)
+	}
 
-    pub fn children(&self) -> Children<'f> {
-        Children { next: self.as_node(self.data().first_child) }
-    }
+	pub fn children(&self) -> Children<'f> {
+		Children { next: self.as_node(self.data().first_child) }
+	}
 
-    fn data(&self) -> &'f NodeData {
-        &self.file.nodes[self.idx as usize]
-    }
+	fn data(&self) -> &'f NodeData {
+		&self.file.nodes[self.idx as usize]
+	}
 
-    fn as_node(&self, idx: Option<u32>) -> Option<Node<'f>> {
-        idx.map(|idx| Node { file: self.file, idx })
-    }
+	fn as_node(&self, idx: Option<u32>) -> Option<Node<'f>> {
+		idx.map(|idx| Node { file: self.file, idx })
+	}
 }
 
 impl<'f> Iterator for Children<'f> {
-    type Item = Node<'f>;
+	type Item = Node<'f>;
 
-    fn next(&mut self) -> Option<Node<'f>> {
-        let next = self.next;
-        self.next = next.and_then(|node| node.as_node(node.data().next_sibling));
-        next
-    }
+	fn next(&mut self) -> Option<Node<'f>> {
+		let next = self.next;
+		self.next = next.and_then(|node| node.as_node(node.data().next_sibling));
+		next
+	}
 }
 
 pub const ERROR: NodeKind = NodeKind(0);
@@ -215,10 +214,10 @@ Here is a rust snippet and the corresponding parse tree:
 
 ```rust
 struct Foo {
-    field1: u32,
-    &
-    // non-doc comment
-    field2:
+	field1: u32,
+	&
+	// non-doc comment
+	field2:
 }
 ```
 
@@ -227,30 +226,30 @@ struct Foo {
 FILE
   STRUCT_DEF
     STRUCT_KW
-	WHITESPACE
-	IDENT
-	WHITESPACE
-	L_CURLY
-	WHITESPACE
-	FIELD_DEF
-	  IDENT
-	  COLON
-	  WHITESPACE
-	  TYPE_REF
-	    IDENT
-	COMMA
-	WHITESPACE
-	ERROR
-	  AMP
-	WHITESPACE
-	FIELD_DEF
-	  LINE_COMMENT
-	  WHITESPACE
-	  IDENT
-	  COLON
-	  ERROR
-	WHITESPACE
-	R_CURLY
+    WHITESPACE
+    IDENT
+    WHITESPACE
+    L_CURLY
+    WHITESPACE
+    FIELD_DEF
+      IDENT
+      COLON
+      WHITESPACE
+      TYPE_REF
+        IDENT
+    COMMA
+    WHITESPACE
+    ERROR
+      AMP
+    WHITESPACE
+    FIELD_DEF
+      LINE_COMMENT
+      WHITESPACE
+      IDENT
+      COLON
+      ERROR
+    WHITESPACE
+    R_CURLY
 ```
 
 Note several features of the tree:
@@ -259,36 +258,40 @@ Note several features of the tree:
 
 * The node for `STRUCT_DEF` contains the error element for `&`, but
   still represents the following field correctly.
-  
+
 * The second field of the struct is incomplete: `FIELD_DEF` node for
   it contains an `ERROR` element, but nevertheless has the correct
   `NodeKind`.
-  
+
 * The non-documenting comment is correctly attached to the following
   field.
-  
+
 
 ## Typed Tree
-  
+
 It's hard to work with this raw parse tree, because it is untyped:
 node containing a struct definition has the same API as the node for
 the struct field. But it's possible to add a strongly typed layer on
-top of this raw tree, and get a zero-cost typed AST. Here is an
-example which adds type-safe wrappers for structs and fields:
+top of this raw tree, and get a zero-cost AST. Here is an example
+which adds type-safe wrappers for structs and fields:
 
 ```rust
+// generic infrastructure
+
 pub trait AstNode<'f>: Copy + 'f {
-    fn new(node: Node<'f>) -> Option<Self>;
-    fn node(&self) -> Node<'f>;
+	fn new(node: Node<'f>) -> Option<Self>;
+	fn node(&self) -> Node<'f>;
 }
 
 pub fn child_of_kind<'f>(node: Node<'f>, kind: NodeKind) -> Option<Node<'f>> {
-    node.children().find(|child| child.kind() == kind)
+	node.children().find(|child| child.kind() == kind)
 }
 
 pub fn ast_children<'f, A: AstNode<'f>>(node: Node<'f>) -> Box<Iterator<Item=A> + 'f> {
-    Box::new(node.children().filter_map(A::new))
+	Box::new(node.children().filter_map(A::new))
 }
+
+// AST elements, specific to Rust
 
 #[derive(Clone, Copy)]
 pub struct StructDef<'f>(Node<'f>);
@@ -300,48 +303,51 @@ pub struct FieldDef<'f>(Node<'f>);
 pub struct TypeRef<'f>(Node<'f>);
 
 pub trait NameOwner<'f>: AstNode<'f> {
-    fn name_ident(&self) -> Node<'f> {
-        child_of_kind(self.node(), IDENT).unwrap()
-    }
+	fn name_ident(&self) -> Node<'f> {
+		child_of_kind(self.node(), IDENT).unwrap()
+	}
 
-    fn name(&self) -> &'f str { self.name_ident().text() }
+	fn name(&self) -> &'f str { self.name_ident().text() }
 }
 
 
 impl<'f> AstNode<'f> for StructDef<'f> {
-    fn new(node: Node<'f>) -> Option<Self> {
-        if node.kind() == STRUCT_DEF { Some(StructDef(node)) } else { None }
-    }
-    fn node(&self) -> Node<'f> { self.0 }
-}
-
-impl<'f> AstNode<'f> for FieldDef<'f> {
-    fn new(node: Node<'f>) -> Option<Self> {
-        if node.kind() == FIELD_DEF { Some(FieldDef(node)) } else { None }
-    }
-    fn node(&self) -> Node<'f> { self.0 }
-}
-
-impl<'f> AstNode<'f> for TypeRef<'f> {
-    fn new(node: Node<'f>) -> Option<Self> {
-        if node.kind() == TYPE_REF { Some(TypeRef(node)) } else { None }
-    }
-    fn node(&self) -> Node<'f> { self.0 }
+	fn new(node: Node<'f>) -> Option<Self> {
+		if node.kind() == STRUCT_DEF { Some(StructDef(node)) } else { None }
+	}
+	fn node(&self) -> Node<'f> { self.0 }
 }
 
 impl<'f> NameOwner<'f> for StructDef<'f> {}
-impl<'f> NameOwner<'f> for FieldDef<'f> {}
 
 impl<'f> StructDef<'f> {
-    pub fn fields(&self) -> Box<Iterator<Item=FieldDef<'f>> + 'f> {
-        ast_children(self.node())
-    }
+	pub fn fields(&self) -> Box<Iterator<Item=FieldDef<'f>> + 'f> {
+		ast_children(self.node())
+	}
+}
+
+
+impl<'f> AstNode<'f> for FieldDef<'f> {
+	fn new(node: Node<'f>) -> Option<Self> {
+		if node.kind() == FIELD_DEF { Some(FieldDef(node)) } else { None }
+	}
+	fn node(&self) -> Node<'f> { self.0 }
 }
 
 impl<'f> FieldDef<'f> {
-    pub fn type_ref(&self) -> Option<TypeRef<'f>> {
-        ast_children(self.node()).next()
-    }
+	pub fn type_ref(&self) -> Option<TypeRef<'f>> {
+		ast_children(self.node()).next()
+	}
+}
+
+impl<'f> NameOwner<'f> for FieldDef<'f> {}
+
+
+impl<'f> AstNode<'f> for TypeRef<'f> {
+	fn new(node: Node<'f>) -> Option<Self> {
+		if node.kind() == TYPE_REF { Some(TypeRef(node)) } else { None }
+	}
+	fn node(&self) -> Node<'f> { self.0 }
 }
 ```
 
@@ -371,9 +377,11 @@ plan is suggested:
 * RFC discussion about the theoretical feasibility of the proposal.
 
 * Implementation of the proposal as a completely separate crates.io
-  crate.
-  
-* A prototype implementation of the macro expansion on top of the new sytnax tree.
+  crate, by refactoring existing libsyntax source code to produce a
+  new tree.
+
+* A prototype implementation of the macro expansion on top of the new
+  sytnax tree.
 
 * Additional round of discussion/RFC about merging with the mainline
   compiler.
@@ -390,8 +398,9 @@ plan is suggested:
 [alternatives]: #alternatives
 
 - Incrementally add more information about source code to the current AST.
-- Move the current libsyntax to crates.io as is. 
+- Move the current libsyntax to crates.io as is.
 - Explore alternative representations for the parse tree.
+- Use parser generator instead of hand written parser.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
