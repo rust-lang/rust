@@ -258,10 +258,15 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
             return self;
         }
         match self.ty(tcx).sty {
-            ty::TyFnDef(_def_id, _) => {
-                // TODO: is fn a lang_item?
+            ty::TyFnDef(def_id, _) => {
+                let attrs = tcx.item_attrs(def_id);
+                if attrs.iter().find(|attr| {
+                    attr.name().map(|n|n.as_str() == "lang").unwrap_or(false)
+                }).is_some() {
+                    return self; // Lang items dont work otherwise
+                }
             }
-            _ => return self,
+            _ => return self, // Closures dont work otherwise
         }
 
         let used_substs = used_substs_for_instance(tcx, self);
