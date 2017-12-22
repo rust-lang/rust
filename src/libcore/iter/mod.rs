@@ -332,7 +332,10 @@ pub use self::traits::FusedIterator;
 #[unstable(feature = "trusted_len", issue = "37572")]
 pub use self::traits::TrustedLen;
 #[unstable(feature = "unbounded_iter", issue = "0")]
-pub use self::traits::{UnboundedIterator, UnboundedIteratorAuto};
+pub use self::traits::UnboundedIterator;
+// FIXME: #46813
+//#[unstable(feature = "unbounded_iter", issue = "0")]
+//pub use self::traits::UnboundedIteratorAuto;
 
 mod iterator;
 mod range;
@@ -705,6 +708,7 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
 }
 
 // StepBy specialization trait
+// FIXME: #36262
 #[doc(hidden)]
 trait StepByImpl {
     fn size_hint(&self) -> (usize, Option<usize>);
@@ -976,6 +980,7 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
 }
 
 // Chain specialization trait
+// FIXME: #36262
 #[doc(hidden)]
 trait ChainImpl {
     fn size_hint(&self) -> (usize, Option<usize>);
@@ -1577,6 +1582,7 @@ impl<I: DoubleEndedIterator, P> DoubleEndedIterator for Filter<I, P>
 }
 
 // Filter specialization trait
+// FIXME: #36262
 #[doc(hidden)]
 trait FilterImpl {
     fn size_hint(&self) -> (usize, Option<usize>);
@@ -1721,6 +1727,7 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
 }
 
 // FilterMap specialization trait
+// FIXME: #36262
 #[doc(hidden)]
 trait FilterMapImpl {
     fn size_hint(&self) -> (usize, Option<usize>);
@@ -2170,6 +2177,7 @@ impl<I: Iterator, P> Iterator for SkipWhile<I, P>
 }
 
 // SkipWhile specialization trait
+// FIXME: #36262
 #[doc(hidden)]
 trait SkipWhileImpl {
     fn size_hint(&self) -> (usize, Option<usize>);
@@ -2418,6 +2426,7 @@ impl<I> DoubleEndedIterator for Skip<I> where I: DoubleEndedIterator + ExactSize
 }
 
 // Skip specialization trait
+// FIXME: #36262
 #[doc(hidden)]
 trait SkipImpl {
     fn size_hint(&self) -> (usize, Option<usize>);
@@ -2755,6 +2764,7 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
 }
 
 // FlatMap specialization trait
+// FIXME: #36262
 #[doc(hidden)]
 trait FlatMapImpl {
     fn size_hint(&self) -> (usize, Option<usize>);
