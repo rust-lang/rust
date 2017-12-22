@@ -13,7 +13,7 @@
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 //!
-//! *[See also the `f64` primitive type](../primitive.f64.html).*
+//! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
