@@ -86,6 +86,7 @@
 #![feature(ascii_ctype)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(case_folding)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
 #![feature(const_fn)]

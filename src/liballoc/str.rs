@@ -1887,6 +1887,44 @@ impl str {
         result
     }
 
+    /// Returns the case folding of this string slice, as a new [`String`].
+    ///
+    /// This is recommended over `to_lowercase` or `to_uppercase` when comparing strings
+    /// in a case-insensitive way; see the Motivation section below.
+    ///
+    /// Since some characters can expand into multiple characters when case
+    /// folding, this function returns a [`String`] instead of modifying the
+    /// parameter in-place.
+    ///
+    /// [`String`]: string/struct.String.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(case_folding)]
+    /// let s = "HELLO";
+    ///
+    /// assert_eq!("hello", s.fold_case());
+    /// ```
+    ///
+    /// Note that this is different than `to_lowercase` for some languages.
+    ///
+    /// ```
+    /// #![feature(case_folding)]
+    /// let odysseus = "ὈΔΥΣΣΕΎΣ";
+    ///
+    /// assert_eq!("ὀδυσσεύσ", odysseus.fold_case());
+    /// assert_eq!("ὀδυσσεύς", odysseus.to_lowercase());
+    /// ```
+    #[unstable(feature = "case_folding", issue = "0")]
+    pub fn fold_case(&self) -> String {
+        let mut s = String::with_capacity(self.len());
+        s.extend(self.chars().flat_map(|c| c.fold_case()));
+        s
+    }
+
     /// Returns the lowercase equivalent of this string slice, as a new [`String`].
     ///
     /// 'Lowercase' is defined according to the terms of the Unicode Derived Core Property
@@ -1995,7 +2033,7 @@ impl str {
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
         s.extend(self.chars().flat_map(|c| c.to_uppercase()));
-        return s;
+        s
     }
 
     /// Escapes each char in `s` with [`char::escape_debug`].
