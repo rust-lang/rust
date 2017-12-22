@@ -27,6 +27,7 @@
 #![feature(iterator_try_fold)]
 #![feature(iter_rfind)]
 #![feature(iter_rfold)]
+#![feature(nonnull)]
 #![feature(nonzero)]
 #![feature(pattern)]
 #![feature(raw)]
@@ -41,7 +42,6 @@
 #![feature(trusted_len)]
 #![feature(try_from)]
 #![feature(try_trait)]
-#![feature(unique)]
 #![feature(exact_chunks)]
 
 extern crate core;
