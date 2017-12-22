@@ -10,8 +10,6 @@
 
 // Don't fail if we encounter a NonZero<*T> where T is an unsized type
 
-#![feature(nonnull)]
-
 use std::ptr::NonNull;
 
 fn main() {

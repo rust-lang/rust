@@ -288,16 +288,13 @@ impl<T: ?Sized> Box<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(nonnull)]
-    ///
     /// fn main() {
     ///     let x = Box::new(5);
     ///     let ptr = Box::into_nonnull_raw(x);
     ///     let x = unsafe { Box::from_nonnull_raw(ptr) };
     /// }
     /// ```
-    #[unstable(feature = "nonnull", reason = "needs an RFC to flesh out design",
-               issue = "27730")]
+    #[stable(feature = "nonnull", since = "1.24.0")]
     #[inline]
     pub unsafe fn from_nonnull_raw(u: NonNull<T>) -> Self {
         Box(u.into())
@@ -352,15 +349,12 @@ impl<T: ?Sized> Box<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(nonnull)]
-    ///
     /// fn main() {
     ///     let x = Box::new(5);
     ///     let ptr = Box::into_nonnull_raw(x);
     /// }
     /// ```
-    #[unstable(feature = "nonnull", reason = "needs an RFC to flesh out design",
-               issue = "27730")]
+    #[stable(feature = "nonnull", since = "1.24.0")]
     #[inline]
     pub fn into_nonnull_raw(b: Box<T>) -> NonNull<T> {
         Box::into_unique(b).into()
