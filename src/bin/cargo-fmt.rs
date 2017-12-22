@@ -35,10 +35,10 @@ fn main() {
     std::process::exit(exit_status);
 }
 
-fn execute() -> i32 {
-    let success = 0;
-    let failure = 1;
+const SUCCESS: i32 = 0;
+const FAILURE: i32 = 1;
 
+fn execute() -> i32 {
     let mut opts = getopts::Options::new();
     opts.optflag("h", "help", "show this message");
     opts.optflag("q", "quiet", "no output printed to stdout");
@@ -49,6 +49,7 @@ fn execute() -> i32 {
         "specify package to format (only usable in workspaces)",
         "<package>",
     );
+    opts.optflag("", "version", "print rustfmt version and exit");
     opts.optflag("", "all", "format all packages (only usable in workspaces)");
 
     // If there is any invalid argument passed to `cargo fmt`, return without formatting.
@@ -58,7 +59,7 @@ fn execute() -> i32 {
             is_package_arg = arg.starts_with("--package");
         } else if !is_package_arg {
             print_usage_to_stderr(&opts, &format!("Invalid argument: `{}`.", arg));
-            return failure;
+            return FAILURE;
         } else {
             is_package_arg = false;
         }
@@ -68,7 +69,7 @@ fn execute() -> i32 {
         Ok(m) => m,
         Err(e) => {
             print_usage_to_stderr(&opts, &e.to_string());
-            return failure;
+            return FAILURE;
         }
     };
 
@@ -78,30 +79,21 @@ fn execute() -> i32 {
         (true, false) => Verbosity::Verbose,
         (true, true) => {
             print_usage_to_stderr(&opts, "quiet mode and verbose mode are not compatible");
-            return failure;
+            return FAILURE;
         }
     };
 
     if matches.opt_present("h") {
         print_usage_to_stdout(&opts, "");
-        return success;
+        return SUCCESS;
+    }
+
+    if matches.opt_present("version") {
+        return handle_command_status(get_version(verbosity), &opts);
     }
 
     let strategy = CargoFmtStrategy::from_matches(&matches);
-
-    match format_crate(verbosity, &strategy) {
-        Err(e) => {
-            print_usage_to_stderr(&opts, &e.to_string());
-            failure
-        }
-        Ok(status) => {
-            if status.success() {
-                success
-            } else {
-                status.code().unwrap_or(failure)
-            }
-        }
-    }
+    handle_command_status(format_crate(verbosity, &strategy), &opts)
 }
 
 macro_rules! print_usage {
@@ -130,6 +122,26 @@ pub enum Verbosity {
     Quiet,
 }
 
+fn handle_command_status(status: Result<ExitStatus, io::Error>, opts: &getopts::Options) -> i32 {
+    match status {
+        Err(e) => {
+            print_usage_to_stderr(&opts, &e.to_string());
+            FAILURE
+        }
+        Ok(status) => {
+            if status.success() {
+                SUCCESS
+            } else {
+                status.code().unwrap_or(FAILURE)
+            }
+        }
+    }
+}
+
+fn get_version(verbosity: Verbosity) -> Result<ExitStatus, io::Error> {
+    run_rustfmt(&vec![], &vec![String::from("--version")], verbosity)
+}
+
 fn format_crate(
     verbosity: Verbosity,
     strategy: &CargoFmtStrategy,
@@ -152,7 +164,7 @@ fn format_crate(
         .map(|t| t.path)
         .collect();
 
-    format_files(&files, &rustfmt_args, verbosity)
+    run_rustfmt(&files, &rustfmt_args, verbosity)
 }
 
 fn get_fmt_args() -> Vec<String> {
@@ -323,7 +335,7 @@ fn add_targets(target_paths: &[cargo_metadata::Target], targets: &mut HashSet<Ta
     }
 }
 
-fn format_files(
+fn run_rustfmt(
     files: &[PathBuf],
     fmt_args: &[String],
     verbosity: Verbosity,
