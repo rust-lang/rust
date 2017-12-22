@@ -305,7 +305,18 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             // whatever crate we happened to encounter first in this
             // traversal, but not globally minimal across all crates.
             let bfs_queue = &mut VecDeque::new();
-            for &cnum in tcx.crates().iter() {
+
+            // Preferring shortest paths alone does not guarantee a
+            // deterministic result; so sort by crate num to avoid
+            // hashtable iteration non-determinism. This only makes
+            // things as deterministic as crate-nums assignment is,
+            // which is to say, its not deterministic in general. But
+            // we believe that libstd is consistently assigned crate
+            // num 1, so it should be enough to resolve #46112.
+            let mut crates: Vec<CrateNum> = (*tcx.crates()).clone();
+            crates.sort();
+
+            for &cnum in crates.iter() {
                 // Ignore crates without a corresponding local `extern crate` item.
                 if tcx.missing_extern_crate_item(cnum) {
                     continue

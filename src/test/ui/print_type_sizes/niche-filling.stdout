@@ -69,11 +69,11 @@ print-type-size type: `MyOption<bool>`: 1 bytes, alignment: 1 bytes
 print-type-size     variant `None`: 0 bytes
 print-type-size     variant `Some`: 1 bytes
 print-type-size         field `.0`: 1 bytes
-print-type-size type: `MyOption<core::cmp::Ordering>`: 1 bytes, alignment: 1 bytes
+print-type-size type: `MyOption<std::cmp::Ordering>`: 1 bytes, alignment: 1 bytes
 print-type-size     variant `None`: 0 bytes
 print-type-size     variant `Some`: 1 bytes
 print-type-size         field `.0`: 1 bytes
-print-type-size type: `core::cmp::Ordering`: 1 bytes, alignment: 1 bytes
+print-type-size type: `std::cmp::Ordering`: 1 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Less`: 0 bytes
 print-type-size     variant `Equal`: 0 bytes
