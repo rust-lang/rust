@@ -1849,7 +1849,7 @@ impl SelfKind {
 
 fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Generics, name: &[&str]) -> bool {
     single_segment_ty(ty).map_or(false, |seg| {
-        generics.ty_params.iter().any(|param| {
+        generics.ty_params().any(|param| {
             param.name == seg.name && param.bounds.iter().any(|bound| {
                 if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
                     let path = &ptr.trait_ref.path;

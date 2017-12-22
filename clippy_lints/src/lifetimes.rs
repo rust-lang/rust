@@ -2,7 +2,7 @@ use reexport::*;
 use rustc::lint::*;
 use rustc::hir::def::Def;
 use rustc::hir::*;
-use rustc::hir::intravisit::{walk_fn_decl, walk_generics, walk_ty, walk_ty_param_bound, NestedVisitorMap, Visitor};
+use rustc::hir::intravisit::*;
 use std::collections::{HashMap, HashSet};
 use syntax::codemap::Span;
 use utils::{in_external_macro, last_path_segment, span_lint};
@@ -101,7 +101,7 @@ fn check_fn_inner<'a, 'tcx>(
     }
 
     let mut bounds_lts = Vec::new();
-    for typ in &generics.ty_params {
+    for typ in generics.ty_params() {
         for bound in &typ.bounds {
             if let TraitTyParamBound(ref trait_ref, _) = *bound {
                 let params = &trait_ref
@@ -122,7 +122,7 @@ fn check_fn_inner<'a, 'tcx>(
             }
         }
     }
-    if could_use_elision(cx, decl, body, &generics.lifetimes, bounds_lts) {
+    if could_use_elision(cx, decl, body, &generics.params, bounds_lts) {
         span_lint(
             cx,
             NEEDLESS_LIFETIMES,
@@ -137,7 +137,7 @@ fn could_use_elision<'a, 'tcx: 'a>(
     cx: &LateContext<'a, 'tcx>,
     func: &'tcx FnDecl,
     body: Option<BodyId>,
-    named_lts: &'tcx [LifetimeDef],
+    named_generics: &'tcx [GenericParam],
     bounds_lts: Vec<&'tcx Lifetime>,
 ) -> bool {
     // There are two scenarios where elision works:
@@ -147,7 +147,7 @@ fn could_use_elision<'a, 'tcx: 'a>(
     // level of the current item.
 
     // check named LTs
-    let allowed_lts = allowed_lts_from(named_lts);
+    let allowed_lts = allowed_lts_from(named_generics);
 
     // these will collect all the lifetimes for references in arg/return types
     let mut input_visitor = RefVisitor::new(cx);
@@ -222,11 +222,13 @@ fn could_use_elision<'a, 'tcx: 'a>(
     }
 }
 
-fn allowed_lts_from(named_lts: &[LifetimeDef]) -> HashSet<RefLt> {
+fn allowed_lts_from(named_generics: &[GenericParam]) -> HashSet<RefLt> {
     let mut allowed_lts = HashSet::new();
-    for lt in named_lts {
-        if lt.bounds.is_empty() {
-            allowed_lts.insert(RefLt::Named(lt.lifetime.name.name()));
+    for par in named_generics.iter() {
+        if let GenericParam::Lifetime(ref lt) = *par {
+            if lt.bounds.is_empty() {
+                allowed_lts.insert(RefLt::Named(lt.lifetime.name.name()));
+            }
         }
     }
     allowed_lts.insert(RefLt::Unnamed);
@@ -332,11 +334,6 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                     }
                 }
             }
-            TyImplTraitUniversal(_, ref param_bounds) => for bound in param_bounds {
-                if let RegionTyParamBound(_) = *bound {
-                    self.record(&None);
-                }
-            },
             TyTraitObject(ref bounds, ref lt) => {
                 if !lt.is_elided() {
                     self.abort = true;
@@ -370,7 +367,7 @@ fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &
                     return true;
                 }
                 // if the bounds define new lifetimes, they are fine to occur
-                let allowed_lts = allowed_lts_from(&pred.bound_lifetimes);
+                let allowed_lts = allowed_lts_from(&pred.bound_generic_params);
                 // now walk the bounds
                 for bound in pred.bounds.iter() {
                     walk_ty_param_bound(&mut visitor, bound);
@@ -408,12 +405,15 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
         self.map.remove(&lifetime.name.name());
     }
 
-    fn visit_lifetime_def(&mut self, _: &'tcx LifetimeDef) {
+    fn visit_generic_param(&mut self, param: &'tcx GenericParam) {
         // don't actually visit `<'a>` or `<'a: 'b>`
         // we've already visited the `'a` declarations and
         // don't want to spuriously remove them
         // `'b` in `'a: 'b` is useless unless used elsewhere in
         // a non-lifetime bound
+        if param.is_type_param() {
+            walk_generic_param(self, param)
+        }
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
@@ -422,8 +422,7 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
 
 fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx FnDecl, generics: &'tcx Generics) {
     let hs = generics
-        .lifetimes
-        .iter()
+        .lifetimes()
         .map(|lt| (lt.lifetime.name.name(), lt.lifetime.span))
         .collect();
     let mut checker = LifetimeChecker { map: hs };

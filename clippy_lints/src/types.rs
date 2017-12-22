@@ -957,7 +957,7 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             TyTraitObject(ref param_bounds, _) => {
                 let has_lifetime_parameters = param_bounds
                     .iter()
-                    .any(|bound| !bound.bound_lifetimes.is_empty());
+                    .any(|bound| bound.bound_generic_params.iter().any(|gen| gen.is_lifetime_param()));
                 if has_lifetime_parameters {
                     // complex trait bounds like A<'a, 'b>
                     (50 * self.nest, 1)
