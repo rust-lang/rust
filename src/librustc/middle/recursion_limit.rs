@@ -35,7 +35,7 @@ fn update_limit(sess: &Session, krate: &ast::Crate, limit: &Cell<usize>,
         }
 
         if let Some(s) = attr.value_str() {
-            if let Some(n) = s.as_str().parse().ok() {
+            if let Some(n) = s.with_str(|str| str.parse()).ok() {
                 limit.set(n);
                 return;
             }

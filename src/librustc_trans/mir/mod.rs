@@ -266,7 +266,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 }
 
                 debug!("alloc: {:?} ({}) -> place", local, name);
-                let place = PlaceRef::alloca(&bcx, layout, &name.as_str());
+                let place = name.with_str(|str| PlaceRef::alloca(&bcx, layout, str));
                 if dbg {
                     let (scope, span) = mircx.debug_loc(decl.source_info);
                     declare_local(&bcx, &mircx.debug_context, name, layout.ty, scope,

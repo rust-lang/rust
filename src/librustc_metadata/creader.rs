@@ -131,7 +131,7 @@ impl<'a> CrateLoader<'a> {
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
             let source = &self.cstore.get_crate_data(cnum).source;
-            if let Some(locs) = self.sess.opts.externs.get(&*name.as_str()) {
+            if let Some(locs) = name.with_str(|str| self.sess.opts.externs.get(str)) {
                 let found = locs.iter().any(|l| {
                     let l = fs::canonicalize(l).ok();
                     source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
@@ -957,9 +957,9 @@ impl<'a> CrateLoader<'a> {
                 // We have an allocator. We detect separately what kind it is, to allow for some
                 // flexibility in misconfiguration.
                 let attrs = data.get_item_attrs(CRATE_DEF_INDEX, self.sess);
-                let kind_interned = attr::first_attr_value_str_by_name(&attrs, "rustc_alloc_kind")
-                    .map(Symbol::as_str);
-                let kind_str = kind_interned
+                let kind_string = attr::first_attr_value_str_by_name(&attrs, "rustc_alloc_kind")
+                    .map(|s| s.to_string());
+                let kind_str = kind_string
                     .as_ref()
                     .map(|s| s as &str);
                 let alloc_kind = match kind_str {
@@ -1062,7 +1062,9 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
                 debug!("resolving extern crate stmt. ident: {} rename: {:?}", item.ident, rename);
                 let rename = match rename {
                     Some(rename) => {
-                        validate_crate_name(Some(self.sess), &rename.as_str(), Some(item.span));
+                        rename.with_str(|str| {
+                            validate_crate_name(Some(self.sess), str, Some(item.span))
+                        });
                         rename
                     }
                     None => item.ident.name,

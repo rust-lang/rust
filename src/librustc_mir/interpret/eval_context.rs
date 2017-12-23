@@ -251,7 +251,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Bool(b) => PrimVal::from_bool(b),
             Char(c) => PrimVal::from_char(c),
 
-            Str(ref s) => return self.str_to_value(s),
+            Str(ref s) => return s.with(|str| self.str_to_value(str)),
 
             ByteStr(ref bs) => {
                 let ptr = self.memory.allocate_cached(bs.data);

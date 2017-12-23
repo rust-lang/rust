@@ -532,7 +532,7 @@ pub fn run(mut krate: clean::Crate,
     // going to emit HTML
     if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
         for attr in attrs.lists("doc") {
-            let name = attr.name().map(|s| s.as_str());
+            let name = attr.name().map(|s| s.to_string());
             match (name.as_ref().map(|s| &s[..]), attr.value_str()) {
                 (Some("html_favicon_url"), Some(s)) => {
                     scx.layout.favicon = s.to_string();
@@ -3025,7 +3025,7 @@ fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
 
     for attr in &it.attrs.other_attrs {
         let name = attr.name().unwrap();
-        if !ATTRIBUTE_WHITELIST.contains(&&*name.as_str()) {
+        if name.with_str(|str| !ATTRIBUTE_WHITELIST.contains(&str)) {
             continue;
         }
         if let Some(s) = render_attribute(&attr.meta().unwrap()) {

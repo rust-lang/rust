@@ -50,7 +50,7 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
                 let name = path1.node;
 
                 // Skip anything that looks like `_foo`
-                if name.as_str().starts_with("_") {
+                if name.with_str(|str| str.starts_with("_")) {
                     return
                 }
 

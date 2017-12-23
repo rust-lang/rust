@@ -61,7 +61,7 @@ pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
         data => data.as_interned_str()
     };
 
-    let namespace_name = CString::new(namespace_name.as_bytes()).unwrap();
+    let namespace_name = namespace_name.with(|str| CString::new(str.as_bytes()).unwrap());
 
     let scope = unsafe {
         llvm::LLVMRustDIBuilderCreateNameSpace(

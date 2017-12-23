@@ -91,15 +91,15 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
 
         debug!("symbol {}", &symbol_name);
 
-        match *self.as_mono_item() {
+        symbol_name.name.with(|symbol_name| match *self.as_mono_item() {
             MonoItem::Static(node_id) => {
-                predefine_static(ccx, node_id, linkage, visibility, &symbol_name);
+                predefine_static(ccx, node_id, linkage, visibility, symbol_name);
             }
             MonoItem::Fn(instance) => {
-                predefine_fn(ccx, instance, linkage, visibility, &symbol_name);
+                predefine_fn(ccx, instance, linkage, visibility, symbol_name);
             }
             MonoItem::GlobalAsm(..) => {}
-        }
+        });
 
         debug!("END PREDEFINING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx()),

@@ -182,11 +182,14 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
-                    options.contains(&(&c.name().as_str(),
-                                      match c.value_str().map(|s| s.as_str()) {
-                                          Some(ref s) => Some(s),
-                                          None => None
-                                      }))
+                    c.name().with_str(|str| {
+                        match c.value_str().map(|s| s.as_str()) {
+                            Some(ref s) => s.with(|value| {
+                                options.contains(&(str, Some(value)))
+                            }),
+                            None => options.contains(&(str, None)),
+                        }
+                    })
                 }) {
                     debug!("evaluate: skipping {:?} due to condition", command);
                     continue
@@ -229,42 +232,44 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
     {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
-        let parser = Parser::new(&self.0);
-        let types = &generics.types;
-        let mut result = Ok(());
-        for token in parser {
-            match token {
-                Piece::String(_) => (), // Normal string, no need to check it
-                Piece::NextArgument(a) => match a.position {
-                    // `{Self}` is allowed
-                    Position::ArgumentNamed(s) if s == "Self" => (),
-                    // `{ThisTraitsName}` is allowed
-                    Position::ArgumentNamed(s) if s == name => (),
-                    // So is `{A}` if A is a type parameter
-                    Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                        t.name == s
-                    }) {
-                        Some(_) => (),
-                        None => {
-                            span_err!(tcx.sess, span, E0230,
-                                      "there is no type parameter \
-                                       {} on trait {}",
-                                      s, name);
+        self.0.with(|str| {
+            let parser = Parser::new(str);
+            let types = &generics.types;
+            let mut result = Ok(());
+            for token in parser {
+                match token {
+                    Piece::String(_) => (), // Normal string, no need to check it
+                    Piece::NextArgument(a) => match a.position {
+                        // `{Self}` is allowed
+                        Position::ArgumentNamed(s) if s == "Self" => (),
+                        // `{ThisTraitsName}` is allowed
+                        Position::ArgumentNamed(s) if s == name => (),
+                        // So is `{A}` if A is a type parameter
+                        Position::ArgumentNamed(s) => match types.iter().find(|t| {
+                            t.name == s
+                        }) {
+                            Some(_) => (),
+                            None => {
+                                span_err!(tcx.sess, span, E0230,
+                                        "there is no type parameter \
+                                        {} on trait {}",
+                                        s, name);
+                                result = Err(ErrorReported);
+                            }
+                        },
+                        // `{:1}` and `{}` are not to be used
+                        Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
+                            span_err!(tcx.sess, span, E0231,
+                                    "only named substitution \
+                                    parameters are allowed");
                             result = Err(ErrorReported);
                         }
-                    },
-                    // `{:1}` and `{}` are not to be used
-                    Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
-                        span_err!(tcx.sess, span, E0231,
-                                  "only named substitution \
-                                   parameters are allowed");
-                        result = Err(ErrorReported);
                     }
                 }
             }
-        }
 
-        result
+            result
+        })
     }
 
     pub fn format(&self,
@@ -280,28 +285,30 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
              trait_ref.substs.type_for_def(param).to_string())
         }).collect::<FxHashMap<String, String>>();
 
-        let parser = Parser::new(&self.0);
-        parser.map(|p| {
-            match p {
-                Piece::String(s) => s,
-                Piece::NextArgument(a) => match a.position {
-                    Position::ArgumentNamed(s) => match generic_map.get(s) {
-                        Some(val) => val,
-                        None if s == name => {
-                            &trait_str
+        self.0.with(|str| {
+            let parser = Parser::new(str);
+            parser.map(|p| {
+                match p {
+                    Piece::String(s) => s,
+                    Piece::NextArgument(a) => match a.position {
+                        Position::ArgumentNamed(s) => match generic_map.get(s) {
+                            Some(val) => val,
+                            None if s == name => {
+                                &trait_str
+                            }
+                            None => {
+                                bug!("broken on_unimplemented {:?} for {:?}: \
+                                    no argument matching {:?}",
+                                    self.0, trait_ref, s)
+                            }
+                        },
+                        _ => {
+                            bug!("broken on_unimplemented {:?} - bad \
+                                format arg", self.0)
                         }
-                        None => {
-                            bug!("broken on_unimplemented {:?} for {:?}: \
-                                  no argument matching {:?}",
-                                 self.0, trait_ref, s)
-                        }
-                    },
-                    _ => {
-                        bug!("broken on_unimplemented {:?} - bad \
-                              format arg", self.0)
                     }
                 }
-            }
-        }).collect()
+            }).collect()
+        })
     }
 }

@@ -40,7 +40,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::codemap;
-use syntax::symbol::{InternedString, Symbol};
+use syntax::symbol::InternedString;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
 
@@ -488,12 +488,12 @@ impl<'a, 'tcx> CrateMetadata {
 
         ty::VariantDef {
             did: self.local_def_id(data.struct_ctor.unwrap_or(index)),
-            name: Symbol::intern(&self.item_name(index)),
+            name: self.item_name(index).as_symbol(),
             fields: item.children.decode(self).map(|index| {
                 let f = self.entry(index);
                 ty::FieldDef {
                     did: self.local_def_id(index),
-                    name: Symbol::intern(&self.item_name(index)),
+                    name: self.item_name(index).as_symbol(),
                     vis: f.visibility.decode(self)
                 }
             }).collect(),
@@ -681,7 +681,8 @@ impl<'a, 'tcx> CrateMetadata {
                             if let Some(def) = self.get_def(child_index) {
                                 callback(def::Export {
                                     def,
-                                    ident: Ident::from_str(&self.item_name(child_index)),
+                                    ident: Ident::with_empty_ctxt(self.item_name(child_index)
+                                                                      .as_symbol()),
                                     vis: self.get_visibility(child_index),
                                     span: self.entry(child_index).span.decode((self, sess)),
                                     is_import: false,
@@ -700,7 +701,7 @@ impl<'a, 'tcx> CrateMetadata {
                 let span = child.span.decode((self, sess));
                 if let (Some(def), Some(name)) =
                     (self.get_def(child_index), def_key.disambiguated_data.data.get_opt_name()) {
-                    let ident = Ident::from_str(&name);
+                    let ident = Ident::with_empty_ctxt(name.as_symbol());
                     let vis = self.get_visibility(child_index);
                     let is_import = false;
                     callback(def::Export { def, ident, vis, span, is_import });
@@ -838,7 +839,7 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         ty::AssociatedItem {
-            name: Symbol::intern(&name),
+            name: name.as_symbol(),
             kind,
             vis: item.visibility.decode(self),
             defaultness: container.defaultness(),
@@ -903,7 +904,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id)
             .children
             .decode(self)
-            .map(|index| Symbol::intern(&self.item_name(index)))
+            .map(|index| self.item_name(index).as_symbol())
             .collect()
     }
 

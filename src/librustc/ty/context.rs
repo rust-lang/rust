@@ -1240,7 +1240,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
         let cname = self.crate_name(LOCAL_CRATE).as_str();
-        self.sess.consider_optimizing(&cname, msg)
+        cname.with(|str| self.sess.consider_optimizing(str, msg))
     }
 
     pub fn lang_items(self) -> Rc<middle::lang_items::LanguageItems> {

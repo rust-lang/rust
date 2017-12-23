@@ -317,7 +317,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                     ConstEvalErr { span: e.span, kind: LayoutError(err) }
                 })
             };
-            match &tcx.item_name(def_id)[..] {
+            match &*tcx.item_name(def_id).to_string() {
                 "size_of" => {
                     let size = layout_of(substs.type_at(0))?.size.bytes();
                     return Ok(mk_const(Integral(Usize(ConstUsize::new(size,
@@ -613,14 +613,14 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             }
         }
         LitKind::Float(n, fty) => {
-            parse_float(&n.as_str(), fty).map(Float)
+            n.with_str(|str| parse_float(str, fty).map(Float))
         }
         LitKind::FloatUnsuffixed(n) => {
             let fty = match ty.sty {
                 ty::TyFloat(fty) => fty,
                 _ => bug!()
             };
-            parse_float(&n.as_str(), fty).map(Float)
+            n.with_str(|str| parse_float(str, fty).map(Float))
         }
         LitKind::Bool(b) => Ok(Bool(b)),
         LitKind::Char(c) => Ok(Char(c)),

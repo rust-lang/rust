@@ -134,26 +134,27 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     // It's the opposite of '=&' which means that the memory
                     // cannot be shared with any other operand (usually when
                     // a register is clobbered early.)
-                    let constraint_str = constraint.as_str();
-                    let mut ch = constraint_str.chars();
-                    let output = match ch.next() {
-                        Some('=') => None,
-                        Some('+') => {
-                            Some(Symbol::intern(&format!("={}", ch.as_str())))
-                        }
-                        _ => {
-                            cx.span_err(span, "output operand constraint lacks '=' or '+'");
-                            None
-                        }
-                    };
+                    constraint.with_str(|constraint_str| {
+                        let mut ch = constraint_str.chars();
+                        let output = match ch.next() {
+                            Some('=') => None,
+                            Some('+') => {
+                                Some(Symbol::intern(&format!("={}", ch.as_str())))
+                            }
+                            _ => {
+                                cx.span_err(span, "output operand constraint lacks '=' or '+'");
+                                None
+                            }
+                        };
 
-                    let is_rw = output.is_some();
-                    let is_indirect = constraint_str.contains("*");
-                    outputs.push(ast::InlineAsmOutput {
-                        constraint: output.unwrap_or(constraint),
-                        expr: out,
-                        is_rw,
-                        is_indirect,
+                        let is_rw = output.is_some();
+                        let is_indirect = constraint_str.contains("*");
+                        outputs.push(ast::InlineAsmOutput {
+                            constraint: output.unwrap_or(constraint),
+                            expr: out,
+                            is_rw,
+                            is_indirect,
+                        });
                     });
                 }
             }
@@ -166,9 +167,9 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
 
                     let (constraint, _str_style) = panictry!(p.parse_str());
 
-                    if constraint.as_str().starts_with("=") {
+                    if constraint.with_str(|str| str.starts_with("=")) {
                         cx.span_err(p.prev_span, "input operand constraint contains '='");
-                    } else if constraint.as_str().starts_with("+") {
+                    } else if constraint.with_str(|str| str.starts_with("+")) {
                         cx.span_err(p.prev_span, "input operand constraint contains '+'");
                     }
 
@@ -190,7 +191,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
 
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.prev_span, "expected a clobber, found an option");
-                    } else if s.as_str().starts_with("{") || s.as_str().ends_with("}") {
+                    } else if s.with_str(|str| str.starts_with("{") || str.ends_with("}")) {
                         cx.span_err(p.prev_span, "clobber should not be surrounded by braces");
                     }
 

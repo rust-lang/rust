@@ -135,11 +135,11 @@ enum ResolutionError<'a> {
     /// error E0409: variable `{}` is bound in inconsistent ways within the same match arm
     VariableBoundWithDifferentMode(Name, Span),
     /// error E0415: identifier is bound more than once in this parameter list
-    IdentifierBoundMoreThanOnceInParameterList(&'a str),
+    IdentifierBoundMoreThanOnceInParameterList(Symbol),
     /// error E0416: identifier is bound more than once in the same pattern
-    IdentifierBoundMoreThanOnceInSamePattern(&'a str),
+    IdentifierBoundMoreThanOnceInSamePattern(Symbol),
     /// error E0426: use of undeclared label
-    UndeclaredLabel(&'a str, Option<Name>),
+    UndeclaredLabel(Symbol, Option<Name>),
     /// error E0429: `self` imports are only allowed within a { } list
     SelfImportsOnlyAllowedWithin,
     /// error E0430: `self` import can only appear once in the list
@@ -2414,7 +2414,7 @@ impl<'a> Resolver<'a> {
                     self,
                     ident.span,
                     ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
-                        &ident.node.name.as_str())
+                        ident.node.name)
                 );
             }
             Some(..) if pat_src == PatternSource::FnParam => {
@@ -2423,7 +2423,7 @@ impl<'a> Resolver<'a> {
                     self,
                     ident.span,
                     ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
-                        &ident.node.name.as_str())
+                        ident.node.name)
                 );
             }
             Some(..) if pat_src == PatternSource::Match => {
@@ -3320,7 +3320,7 @@ impl<'a> Resolver<'a> {
         let name = path[path.len() - 1].node.name;
         // Make sure error reporting is deterministic.
         names.sort_by_key(|name| name.as_str());
-        match find_best_match_for_name(names.iter(), &name.as_str(), None) {
+        match name.with_str(|str| find_best_match_for_name(names.iter(), str, None)) {
             Some(found) if found != name => Some(found),
             _ => None,
         }
@@ -3370,12 +3370,14 @@ impl<'a> Resolver<'a> {
                         // the closest match
                         let close_match = self.search_label(label.node, |rib, ident| {
                             let names = rib.bindings.iter().map(|(id, _)| &id.name);
-                            find_best_match_for_name(names, &*ident.name.as_str(), None)
+                            ident.name.with_str(|str| {
+                                find_best_match_for_name(names, str, None)
+                            })
                         });
                         self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
                                       label.span,
-                                      ResolutionError::UndeclaredLabel(&label.node.name.as_str(),
+                                      ResolutionError::UndeclaredLabel(label.node.name,
                                                                        close_match));
                     }
                     Some(def @ Def::Label(_)) => {
@@ -3979,7 +3981,7 @@ fn names_to_string(idents: &[SpannedIdent]) -> String {
         if i > 0 {
             result.push_str("::");
         }
-        result.push_str(&ident.node.name.as_str());
+        ident.node.name.with_str(|str| result.push_str(str));
     }
     result
 }

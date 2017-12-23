@@ -164,26 +164,29 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 if let (&Some(attr::RustcDeprecation {since: dep_since, ..}),
                         &attr::Stable {since: stab_since}) = (&stab.rustc_depr, &stab.level) {
                     // Explicit version of iter::order::lt to handle parse errors properly
-                    for (dep_v, stab_v) in
-                            dep_since.as_str().split(".").zip(stab_since.as_str().split(".")) {
-                        if let (Ok(dep_v), Ok(stab_v)) = (dep_v.parse::<u64>(), stab_v.parse()) {
-                            match dep_v.cmp(&stab_v) {
-                                Ordering::Less => {
-                                    self.tcx.sess.span_err(item_sp, "An API can't be stabilized \
-                                                                     after it is deprecated");
-                                    break
+                    dep_since.with_str(|dep_since| stab_since.with_str(|stab_since| {
+                        for (dep_v, stab_v) in dep_since.split(".").zip(stab_since.split(".")) {
+                            if let (Ok(dep_v), Ok(stab_v)) = (dep_v.parse::<u64>(),
+                                                              stab_v.parse()) {
+                                match dep_v.cmp(&stab_v) {
+                                    Ordering::Less => {
+                                        self.tcx.sess.span_err(item_sp,
+                                                               "An API can't be stabilized \
+                                                                after it is deprecated");
+                                        break
+                                    }
+                                    Ordering::Equal => continue,
+                                    Ordering::Greater => break,
                                 }
-                                Ordering::Equal => continue,
-                                Ordering::Greater => break,
+                            } else {
+                                // Act like it isn't less because the question is now nonsensical,
+                                // and this makes us not do anything else interesting.
+                                self.tcx.sess.span_err(item_sp, "Invalid stability or deprecation \
+                                                                version found");
+                                break
                             }
-                        } else {
-                            // Act like it isn't less because the question is now nonsensical,
-                            // and this makes us not do anything else interesting.
-                            self.tcx.sess.span_err(item_sp, "Invalid stability or deprecation \
-                                                             version found");
-                            break
                         }
-                    }
+                    }))
                 }
 
                 let hir_id = self.tcx.hir.node_to_hir_id(id);
@@ -620,8 +623,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
                 let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(error_id);
                 if fresh {
-                    emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
-                                     GateIssue::Library(Some(issue)), &msg);
+                    feature.with_str(|str| {
+                        emit_feature_err(&self.sess.parse_sess,
+                                         str,
+                                         span,
+                                         GateIssue::Library(Some(issue)),
+                                         &msg)
+                    });
                 }
             }
             Some(_) => {
@@ -742,7 +750,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     remaining_lib_features.remove(&Symbol::intern("proc_macro"));
 
     for &(ref stable_lang_feature, span) in &sess.features.borrow().declared_stable_lang_features {
-        let version = find_lang_feature_accepted_version(&stable_lang_feature.as_str())
+        let version = stable_lang_feature.with_str(|str| find_lang_feature_accepted_version(str))
             .expect("unexpectedly couldn't find version feature was stabilized");
         tcx.lint_node(lint::builtin::STABLE_FEATURES,
                       ast::CRATE_NODE_ID,

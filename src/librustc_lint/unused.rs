@@ -120,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     // check for #[must_use="..."]
                     if let Some(s) = attr.value_str() {
                         msg.push_str(": ");
-                        msg.push_str(&s.as_str());
+                        s.with_str(|str| msg.push_str(str));
                     }
                     cx.span_lint(UNUSED_MUST_USE, sp, &msg);
                     return true;

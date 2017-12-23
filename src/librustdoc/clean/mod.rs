@@ -234,7 +234,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 for attr in attrs.lists("doc") {
                     if let Some(v) = attr.value_str() {
                         if attr.check_name("primitive") {
-                            prim = PrimitiveType::from_str(&v.as_str());
+                            prim = v.with_str(|str| PrimitiveType::from_str(str));
                             if prim.is_some() {
                                 break;
                             }
@@ -846,8 +846,9 @@ impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
         let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem);
         let empty = cx.tcx.intern_substs(&[]);
-        let path = external_path(cx, &cx.tcx.item_name(did),
-            Some(did), false, vec![], empty);
+        let path = cx.tcx.item_name(did).with(|str| {
+            external_path(cx, str, Some(did), false, vec![], empty)
+        });
         inline::record_extern_fqn(cx, did, TypeKind::Trait);
         TraitBound(PolyTrait {
             trait_: ResolvedPath {
@@ -937,8 +938,9 @@ fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self
 impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         inline::record_extern_fqn(cx, self.def_id, TypeKind::Trait);
-        let path = external_path(cx, &cx.tcx.item_name(self.def_id),
-                                 Some(self.def_id), true, vec![], self.substs);
+        let path = cx.tcx.item_name(self.def_id).with(|str| {
+            external_path(cx, str, Some(self.def_id), true, vec![], self.substs)
+        });
 
         debug!("ty::TraitRef\n  subst: {:?}\n", self.substs);
 
@@ -2233,8 +2235,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     AdtKind::Enum => TypeKind::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
-                let path = external_path(cx, &cx.tcx.item_name(did),
-                                         None, false, vec![], substs);
+                let path = cx.tcx.item_name(did).with(|str| {
+                    external_path(cx, str, None, false, vec![], substs)
+                });
                 ResolvedPath {
                     path,
                     typarams: None,
@@ -2244,8 +2247,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             }
             ty::TyForeign(did) => {
                 inline::record_extern_fqn(cx, did, TypeKind::Foreign);
-                let path = external_path(cx, &cx.tcx.item_name(did),
-                                         None, false, vec![], Substs::empty());
+                let path = cx.tcx.item_name(did).with(|str| {
+                    external_path(cx, str, None, false, vec![], Substs::empty())
+                });
                 ResolvedPath {
                     path: path,
                     typarams: None,
@@ -2262,8 +2266,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     reg.clean(cx).map(|b| typarams.push(RegionBound(b)));
                     for did in obj.auto_traits() {
                         let empty = cx.tcx.intern_substs(&[]);
-                        let path = external_path(cx, &cx.tcx.item_name(did),
-                            Some(did), false, vec![], empty);
+                        let path = cx.tcx.item_name(did).with(|str| {
+                            external_path(cx, str, Some(did), false, vec![], empty)
+                        });
                         inline::record_extern_fqn(cx, did, TypeKind::Trait);
                         let bound = TraitBound(PolyTrait {
                             trait_: ResolvedPath {
@@ -2285,8 +2290,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                         });
                     }
 
-                    let path = external_path(cx, &cx.tcx.item_name(did), Some(did),
-                        false, bindings, principal.0.substs);
+                    let path = cx.tcx.item_name(did).with(|str| {
+                        external_path(cx, str, Some(did), false, bindings, principal.0.substs)
+                    });
                     ResolvedPath {
                         path,
                         typarams: Some(typarams),
@@ -2693,7 +2699,7 @@ fn qpath_to_string(p: &hir::QPath) -> String {
             s.push_str("::");
         }
         if seg.name != keywords::CrateRoot.name() {
-            s.push_str(&*seg.name.as_str());
+            seg.name.with_str(|str| s.push_str(str));
         }
     }
     s

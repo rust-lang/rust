@@ -167,7 +167,7 @@ fn macro_bang_format(path: &ast::Path) -> ExpnFormat {
         if segment.identifier.name != keywords::CrateRoot.name() &&
             segment.identifier.name != keywords::DollarCrate.name()
         {
-            path_str.push_str(&segment.identifier.name.as_str())
+            segment.identifier.name.with_str(|str| path_str.push_str(str))
         }
     }
 
@@ -978,9 +978,9 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {
                         self.cx.current_expansion.directory_ownership =
                             DirectoryOwnership::Owned { relative: None };
-                        module.directory.push(&*path.as_str());
+                        path.with_str(|str| module.directory.push(str));
                     } else {
-                        module.directory.push(&*item.ident.name.as_str());
+                        item.ident.name.with_str(|str| module.directory.push(str));
                     }
                 } else {
                     let path = self.cx.parse_sess.codemap().span_to_unmapped_path(inner);

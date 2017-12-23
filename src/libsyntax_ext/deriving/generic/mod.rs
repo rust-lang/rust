@@ -467,10 +467,10 @@ impl<'a> TraitDef<'a> {
                 attrs.extend(item.attrs
                     .iter()
                     .filter(|a| {
-                        a.name().is_some() && match &*a.name().unwrap().as_str() {
+                        a.name().is_some() && a.name().unwrap().with_str(|str| match str {
                             "allow" | "warn" | "deny" | "forbid" | "stable" | "unstable" => true,
                             _ => false,
-                        }
+                        })
                     })
                     .cloned());
                 push(Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() })))

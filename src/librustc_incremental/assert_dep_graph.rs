@@ -128,7 +128,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                 let dep_node = match dep_node_interned {
                     None => def_path_hash.to_dep_node(DepKind::Hir),
                     Some(n) => {
-                        match DepNode::from_label_string(&n.as_str(), def_path_hash) {
+                        match n.with_str(|str| DepNode::from_label_string(str, def_path_hash)) {
                             Ok(n) => n,
                             Err(()) => {
                                 self.tcx.sess.span_fatal(
@@ -143,7 +143,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     Some(n) => {
-                        match DepNode::from_label_string(&n.as_str(), def_path_hash) {
+                        match n.with_str(|str| DepNode::from_label_string(str, def_path_hash)) {
                             Ok(n) => n,
                             Err(()) => {
                                 self.tcx.sess.span_fatal(

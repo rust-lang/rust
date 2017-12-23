@@ -1210,9 +1210,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             } else {
                 let best_name = {
                     let names = applicable_close_candidates.iter().map(|cand| &cand.name);
-                    find_best_match_for_name(names,
-                                             &self.method_name.unwrap().as_str(),
-                                             None)
+                    self.method_name.unwrap().with_str(|str| {
+                        find_best_match_for_name(names,
+                                                str,
+                                                None)
+                    })
                 }.unwrap();
                 Ok(applicable_close_candidates
                    .into_iter()
@@ -1353,14 +1355,16 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn impl_or_trait_item(&self, def_id: DefId) -> Vec<ty::AssociatedItem> {
         if let Some(name) = self.method_name {
             if self.allow_similar_names {
-                let max_dist = max(name.as_str().len(), 3) / 3;
-                self.tcx.associated_items(def_id)
-                    .filter(|x| {
-                        let dist = lev_distance(&*name.as_str(), &x.name.as_str());
-                        Namespace::from(x.kind) == Namespace::Value && dist > 0
-                        && dist <= max_dist
-                    })
-                    .collect()
+                name.with_str(|name| {
+                    let max_dist = max(name.len(), 3) / 3;
+                    self.tcx.associated_items(def_id)
+                        .filter(|x| {
+                            let dist = x.name.with_str(|x_name| lev_distance(name, x_name));
+                            Namespace::from(x.kind) == Namespace::Value && dist > 0
+                            && dist <= max_dist
+                        })
+                        .collect()
+                })
             } else {
                 self.fcx
                     .associated_item(def_id, name, Namespace::Value)

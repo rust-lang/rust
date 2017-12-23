@@ -243,7 +243,7 @@ pub fn token_to_string(tok: &Token) -> String {
             };
 
             if let Some(s) = suf {
-                out.push_str(&s.as_str())
+                s.with_str(|str| out.push_str(str))
             }
 
             out
@@ -601,7 +601,7 @@ pub trait PrintState<'a> {
             return self.writer().word(&ltrl.lit);
         }
         match lit.node {
-            ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
+            ast::LitKind::Str(st, style) => st.with_str(|str| self.print_string(str, style)),
             ast::LitKind::Byte(byte) => {
                 let mut res = String::from("b'");
                 res.extend(ascii::escape_default(byte).map(|c| c as char));
@@ -630,7 +630,7 @@ pub trait PrintState<'a> {
             ast::LitKind::Float(ref f, t) => {
                 self.writer().word(&format!("{}{}", &f, t.ty_to_string()))
             }
-            ast::LitKind::FloatUnsuffixed(ref f) => self.writer().word(&f.as_str()),
+            ast::LitKind::FloatUnsuffixed(ref f) => f.with_str(|str| self.writer().word(str)),
             ast::LitKind::Bool(val) => {
                 if val { self.writer().word("true") } else { self.writer().word("false") }
             }
@@ -718,7 +718,7 @@ pub trait PrintState<'a> {
         }
         self.maybe_print_comment(attr.span.lo())?;
         if attr.is_sugared_doc {
-            self.writer().word(&attr.value_str().unwrap().as_str())?;
+            attr.value_str().unwrap().with_str(|str| self.writer().word(str))?;
             self.writer().hardbreak()
         } else {
             match attr.style {
@@ -734,7 +734,7 @@ pub trait PrintState<'a> {
                     }
                     if segment.identifier.name != keywords::CrateRoot.name() &&
                        segment.identifier.name != keywords::DollarCrate.name() {
-                        self.writer().word(&segment.identifier.name.as_str())?;
+                        segment.identifier.name.with_str(|str| self.writer().word(str))?;
                     } else if segment.identifier.name == keywords::DollarCrate.name() {
                         self.print_dollar_crate(segment.identifier.ctxt)?;
                     }
@@ -761,15 +761,15 @@ pub trait PrintState<'a> {
         self.ibox(INDENT_UNIT)?;
         match item.node {
             ast::MetaItemKind::Word => {
-                self.writer().word(&item.name.as_str())?;
+                item.name.with_str(|str| self.writer().word(str))?;
             }
             ast::MetaItemKind::NameValue(ref value) => {
-                self.word_space(&item.name.as_str())?;
+                item.name.with_str(|str| self.word_space(str))?;
                 self.word_space("=")?;
                 self.print_literal(value)?;
             }
             ast::MetaItemKind::List(ref items) => {
-                self.writer().word(&item.name.as_str())?;
+                item.name.with_str(|str| self.writer().word(str))?;
                 self.popen()?;
                 self.commasep(Consistent,
                               &items[..],
@@ -1176,12 +1176,13 @@ impl<'a> State<'a> {
             ast::ItemKind::ExternCrate(ref optional_path) => {
                 self.head(&visibility_qualified(&item.vis, "extern crate"))?;
                 if let Some(p) = *optional_path {
-                    let val = p.as_str();
-                    if val.contains('-') {
-                        self.print_string(&val, ast::StrStyle::Cooked)?;
-                    } else {
-                        self.print_name(p)?;
-                    }
+                    p.with_str(|val| {
+                        if val.contains('-') {
+                            self.print_string(&val, ast::StrStyle::Cooked)
+                        } else {
+                            self.print_name(p)
+                        }
+                    })?;
                     self.s.space()?;
                     self.s.word("as")?;
                     self.s.space()?;
@@ -1258,7 +1259,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::GlobalAsm(ref ga) => {
                 self.head(&visibility_qualified(&item.vis, "global_asm!"))?;
-                self.s.word(&ga.asm.as_str())?;
+                ga.asm.with_str(|str| self.s.word(str))?;
                 self.end()?;
             }
             ast::ItemKind::Ty(ref ty, ref generics) => {
@@ -2278,19 +2279,20 @@ impl<'a> State<'a> {
             ast::ExprKind::InlineAsm(ref a) => {
                 self.s.word("asm!")?;
                 self.popen()?;
-                self.print_string(&a.asm.as_str(), a.asm_str_style)?;
+                a.asm.with_str(|str| self.print_string(str, a.asm_str_style))?;
                 self.word_space(":")?;
 
                 self.commasep(Inconsistent, &a.outputs, |s, out| {
-                    let constraint = out.constraint.as_str();
-                    let mut ch = constraint.chars();
-                    match ch.next() {
-                        Some('=') if out.is_rw => {
-                            s.print_string(&format!("+{}", ch.as_str()),
-                                           ast::StrStyle::Cooked)?
+                    out.constraint.with_str(|constraint| {
+                        let mut ch = constraint.chars();
+                        match ch.next() {
+                            Some('=') if out.is_rw => {
+                                s.print_string(&format!("+{}", ch.as_str()),
+                                            ast::StrStyle::Cooked)
+                            }
+                            _ => s.print_string(&constraint, ast::StrStyle::Cooked)
                         }
-                        _ => s.print_string(&constraint, ast::StrStyle::Cooked)?
-                    }
+                    })?;
                     s.popen()?;
                     s.print_expr(&out.expr)?;
                     s.pclose()?;
@@ -2300,7 +2302,7 @@ impl<'a> State<'a> {
                 self.word_space(":")?;
 
                 self.commasep(Inconsistent, &a.inputs, |s, &(co, ref o)| {
-                    s.print_string(&co.as_str(), ast::StrStyle::Cooked)?;
+                    co.with_str(|str| s.print_string(str, ast::StrStyle::Cooked))?;
                     s.popen()?;
                     s.print_expr(o)?;
                     s.pclose()?;
@@ -2311,7 +2313,7 @@ impl<'a> State<'a> {
 
                 self.commasep(Inconsistent, &a.clobbers,
                                    |s, co| {
-                    s.print_string(&co.as_str(), ast::StrStyle::Cooked)?;
+                    co.with_str(|str| s.print_string(str, ast::StrStyle::Cooked))?;
                     Ok(())
                 })?;
 
@@ -2379,7 +2381,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ident(&mut self, ident: ast::Ident) -> io::Result<()> {
-        self.s.word(&ident.name.as_str())?;
+        ident.name.with_str(|str| self.s.word(str))?;
         self.ann.post(self, NodeIdent(&ident))
     }
 
@@ -2388,7 +2390,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
-        self.s.word(&name.as_str())?;
+        name.with_str(|str| self.s.word(str))?;
         self.ann.post(self, NodeName(&name))
     }
 

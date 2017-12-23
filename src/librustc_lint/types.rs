@@ -186,8 +186,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             ast::LitKind::Float(v, _) |
                             ast::LitKind::FloatUnsuffixed(v) => {
                                 match t {
-                                    ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                                    ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
+                                    ast::FloatTy::F32 =>
+                                        v.with_str(|str| str.parse().map(f32::is_infinite)),
+                                    ast::FloatTy::F64 =>
+                                        v.with_str(|str| str.parse().map(f64::is_infinite)),
                                 }
                             }
                             _ => bug!(),

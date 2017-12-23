@@ -402,27 +402,27 @@ pub fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Hand
     use ast::LitKind;
 
     match lit {
-       token::Byte(i) => (true, Some(LitKind::Byte(byte_lit(&i.as_str()).0))),
-       token::Char(i) => (true, Some(LitKind::Char(char_lit(&i.as_str(), diag).0))),
+       token::Byte(i) => (true, Some(LitKind::Byte(i.with_str(|str| byte_lit(str).0)))),
+       token::Char(i) => (true, Some(LitKind::Char(i.with_str(|str| char_lit(str, diag).0)))),
 
         // There are some valid suffixes for integer and float literals,
         // so all the handling is done internally.
-        token::Integer(s) => (false, integer_lit(&s.as_str(), suf, diag)),
-        token::Float(s) => (false, float_lit(&s.as_str(), suf, diag)),
+        token::Integer(s) => (false, integer_lit(s, suf, diag)),
+        token::Float(s) => (false, float_lit(s, suf, diag)),
 
         token::Str_(s) => {
-            let s = Symbol::intern(&str_lit(&s.as_str(), diag));
+            let s = Symbol::intern(&s.with_str(|str| str_lit(str, diag)));
             (true, Some(LitKind::Str(s, ast::StrStyle::Cooked)))
         }
         token::StrRaw(s, n) => {
-            let s = Symbol::intern(&raw_str_lit(&s.as_str()));
+            let s = Symbol::intern(&s.with_str(|str| raw_str_lit(str)));
             (true, Some(LitKind::Str(s, ast::StrStyle::Raw(n))))
         }
         token::ByteStr(i) => {
-            (true, Some(LitKind::ByteStr(byte_str_lit(&i.as_str()))))
+            (true, Some(LitKind::ByteStr(i.with_str(|str| byte_str_lit(str)))))
         }
         token::ByteStrRaw(i, _) => {
-            (true, Some(LitKind::ByteStr(Rc::new(i.to_string().into_bytes()))))
+            (true, Some(LitKind::ByteStr(Rc::new(i.with_str(|str| str.to_string()).into_bytes()))))
         }
     }
 }
@@ -435,7 +435,7 @@ fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, 
         None => return Some(ast::LitKind::FloatUnsuffixed(data)),
     };
 
-    Some(match &*suffix.as_str() {
+    Some(match &*suffix.with_str(|str| str.to_string()) {
         "f32" => ast::LitKind::Float(data, ast::FloatTy::F32),
         "f64" => ast::LitKind::Float(data, ast::FloatTy::F64),
         suf => {
@@ -456,11 +456,11 @@ fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, 
         }
     })
 }
-pub fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
+pub fn float_lit(s: Symbol, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                  -> Option<ast::LitKind> {
     debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is deferred until trans
-    let s = s.chars().filter(|&c| c != '_').collect::<String>();
+    let s = s.with_str(|str| str.chars().filter(|&c| c != '_').collect::<String>());
     filtered_float_lit(Symbol::intern(&s), suffix, diag)
 }
 
@@ -556,11 +556,11 @@ pub fn byte_str_lit(lit: &str) -> Rc<Vec<u8>> {
     Rc::new(res)
 }
 
-pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
+pub fn integer_lit(s: Symbol, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                    -> Option<ast::LitKind> {
     // s can only be ascii, byte indexing is fine
 
-    let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
+    let s2 = s.with_str(|str| str.chars().filter(|&c| c != '_').collect::<String>());
     let mut s = &s2[..];
 
     debug!("integer_lit: {}, {:?}", s, suffix);
@@ -580,7 +580,7 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler
 
     // 1f64 and 2f32 etc. are valid float literals.
     if let Some(suf) = suffix {
-        if looks_like_width_suffix(&['f'], &suf.as_str()) {
+        if suf.with_str(|str| looks_like_width_suffix(&['f'], str)) {
             let err = match base {
                 16 => Some("hexadecimal float literal is not supported"),
                 8 => Some("octal float literal is not supported"),
@@ -599,10 +599,10 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler
     }
 
     if let Some(suf) = suffix {
-        if suf.as_str().is_empty() {
+        if suf.with_str(|str| str.is_empty()) {
             err!(diag, |span, diag| diag.span_bug(span, "found empty literal suffix in Some"));
         }
-        ty = match &*suf.as_str() {
+        ty = match &*suf.with_str(|str| str.to_string()) {
             "isize" => ast::LitIntType::Signed(ast::IntTy::Is),
             "i8"  => ast::LitIntType::Signed(ast::IntTy::I8),
             "i16" => ast::LitIntType::Signed(ast::IntTy::I16),
@@ -635,7 +635,7 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler
 
                 ty
             }
-        }
+        };
     }
 
     debug!("integer_lit: the type is {:?}, base {:?}, the new string is {:?}, the original \

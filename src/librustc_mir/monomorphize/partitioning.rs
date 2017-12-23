@@ -144,7 +144,7 @@ pub trait CodegenUnitExt<'tcx> {
     }
 
     fn work_product_id(&self) -> WorkProductId {
-        WorkProductId::from_cgu_name(self.name())
+        self.name().with(|str| WorkProductId::from_cgu_name(str))
     }
 
     fn items_in_deterministic_order<'a>(&self,
@@ -220,7 +220,9 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
-        merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name.as_str());
+        tcx.crate_name.with_str(|str| {
+            merge_codegen_units(&mut initial_partitioning, count, str)
+        });
 
         debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
@@ -631,7 +633,7 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut mod_path = String::with_capacity(64);
 
     let def_path = tcx.def_path(def_id);
-    mod_path.push_str(&tcx.crate_name(def_path.krate).as_str());
+    tcx.crate_name(def_path.krate).with_str(|str| mod_path.push_str(str));
 
     for part in tcx.def_path(def_id)
                    .data
@@ -643,7 +645,7 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         }
                     }) {
         mod_path.push_str("-");
-        mod_path.push_str(&part.data.as_interned_str());
+        part.data.as_interned_str().with(|str| mod_path.push_str(str));
     }
 
     if volatile {
@@ -669,7 +671,7 @@ fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             debug!("CodegenUnit {}:", cgu.name());
 
             for (trans_item, linkage) in cgu.items() {
-                let symbol_name = trans_item.symbol_name(tcx);
+                let symbol_name = trans_item.symbol_name(tcx).to_string();
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map(|i| &symbol_name[i ..])
                                                    .unwrap_or("<no hash>");

@@ -528,11 +528,13 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "extern crate"))?;
                 if let Some(p) = *optional_path {
                     let val = p.as_str();
-                    if val.contains("-") {
-                        self.print_string(&val, ast::StrStyle::Cooked)?;
-                    } else {
-                        self.print_name(p)?;
-                    }
+                    val.with(|str| {
+                        if str.contains("-") {
+                            self.print_string(str, ast::StrStyle::Cooked)
+                        } else {
+                            self.print_name(p)
+                        }
+                    })?;
                     self.s.space()?;
                     self.s.word("as")?;
                     self.s.space()?;
@@ -623,7 +625,7 @@ impl<'a> State<'a> {
             }
             hir::ItemGlobalAsm(ref ga) => {
                 self.head(&visibility_qualified(&item.vis, "global asm"))?;
-                self.s.word(&ga.asm.as_str())?;
+                ga.asm.with_str(|str| self.s.word(str))?;
                 self.end()?
             }
             hir::ItemTy(ref ty, ref generics) => {
@@ -1469,20 +1471,21 @@ impl<'a> State<'a> {
             hir::ExprInlineAsm(ref a, ref outputs, ref inputs) => {
                 self.s.word("asm!")?;
                 self.popen()?;
-                self.print_string(&a.asm.as_str(), a.asm_str_style)?;
+                a.asm.with_str(|str| self.print_string(str, a.asm_str_style))?;
                 self.word_space(":")?;
 
                 let mut out_idx = 0;
                 self.commasep(Inconsistent, &a.outputs, |s, out| {
-                    let constraint = out.constraint.as_str();
-                    let mut ch = constraint.chars();
-                    match ch.next() {
-                        Some('=') if out.is_rw => {
-                            s.print_string(&format!("+{}", ch.as_str()),
-                                           ast::StrStyle::Cooked)?
+                    out.constraint.with_str(|constraint| {
+                        let mut ch = constraint.chars();
+                        match ch.next() {
+                            Some('=') if out.is_rw => {
+                                s.print_string(&format!("+{}", ch.as_str()),
+                                            ast::StrStyle::Cooked)
+                            }
+                            _ => s.print_string(&constraint, ast::StrStyle::Cooked)
                         }
-                        _ => s.print_string(&constraint, ast::StrStyle::Cooked)?,
-                    }
+                    })?;
                     s.popen()?;
                     s.print_expr(&outputs[out_idx])?;
                     s.pclose()?;
@@ -1494,7 +1497,7 @@ impl<'a> State<'a> {
 
                 let mut in_idx = 0;
                 self.commasep(Inconsistent, &a.inputs, |s, co| {
-                    s.print_string(&co.as_str(), ast::StrStyle::Cooked)?;
+                    co.with_str(|str| s.print_string(str, ast::StrStyle::Cooked))?;
                     s.popen()?;
                     s.print_expr(&inputs[in_idx])?;
                     s.pclose()?;
@@ -1505,7 +1508,7 @@ impl<'a> State<'a> {
                 self.word_space(":")?;
 
                 self.commasep(Inconsistent, &a.clobbers, |s, co| {
-                    s.print_string(&co.as_str(), ast::StrStyle::Cooked)?;
+                    co.with_str(|str| s.print_string(str, ast::StrStyle::Cooked))?;
                     Ok(())
                 })?;
 
@@ -1578,7 +1581,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
-        self.s.word(&name.as_str())?;
+        name.with_str(|str| self.s.word(str))?;
         self.ann.post(self, NodeName(&name))
     }
 
@@ -1936,7 +1939,7 @@ impl<'a> State<'a> {
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
             s.ibox(indent_unit)?;
             if let Some(name) = arg_names.get(i) {
-                s.s.word(&name.node.as_str())?;
+                name.node.with_str(|str| s.s.word(str))?;
                 s.s.word(":")?;
                 s.s.space()?;
             } else if let Some(body_id) = body_id {

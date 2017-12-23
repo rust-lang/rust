@@ -77,7 +77,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       it: &hir::ForeignItem) {
     let param = |n| tcx.mk_param(n, Symbol::intern(&format!("P{}", n)));
-    let name = it.name.as_str();
+    let name = it.name.to_string();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
@@ -346,7 +346,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let def_id = tcx.hir.local_def_id(it.id);
     let i_n_tps = tcx.generics_of(def_id).types.len();
-    let name = it.name.as_str();
+    let name = it.name.to_string();
 
     let (n_tps, inputs, output) = match &*name {
         "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {

@@ -727,10 +727,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let param_node_id = tcx.hir.as_local_node_id(ty_param_def_id).unwrap();
         let param_name = tcx.hir.ty_param_name(param_node_id);
-        self.one_bound_for_assoc_type(suitable_bounds,
-                                      &param_name.as_str(),
-                                      assoc_name,
-                                      span)
+        param_name.with_str(|str| {
+            self.one_bound_for_assoc_type(suitable_bounds,
+                                          str,
+                                          assoc_name,
+                                          span)
+        })
     }
 
 
@@ -845,10 +847,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             _ => {
                 // Don't print TyErr to the user.
                 if !ty.references_error() {
-                    self.report_ambiguous_associated_type(span,
-                                                          &ty.to_string(),
-                                                          "Trait",
-                                                          &assoc_name.as_str());
+                    assoc_name.with_str(|str| {
+                        self.report_ambiguous_associated_type(span,
+                                                              &ty.to_string(),
+                                                              "Trait",
+                                                              str);
+                    });
                 }
                 return (tcx.types.err, Def::Err);
             }
@@ -892,10 +896,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             ty
         } else {
             let path_str = tcx.item_path_str(trait_def_id);
-            self.report_ambiguous_associated_type(span,
-                                                  "Type",
-                                                  &path_str,
-                                                  &item_segment.name.as_str());
+            item_segment.name.with_str(|str| {
+                self.report_ambiguous_associated_type(span,
+                                                      "Type",
+                                                      &path_str,
+                                                      str)
+            });
             return tcx.types.err;
         };
 

@@ -197,7 +197,8 @@ impl<'a> LintLevelsBuilder<'a> {
                       "malformed lint attribute");
         };
         for attr in attrs {
-            let level = match attr.name().and_then(|name| Level::from_str(&name.as_str())) {
+            let level = match attr.name()
+                                  .and_then(|name| name.with_str(|str| Level::from_str(str))) {
                 None => continue,
                 Some(lvl) => lvl,
             };
@@ -221,7 +222,7 @@ impl<'a> LintLevelsBuilder<'a> {
                     }
                 };
                 let name = word.name();
-                match store.check_lint_name(&name.as_str()) {
+                match name.with_str(|str| store.check_lint_name(str)) {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintSource::Node(name, li.span);
                         for id in ids {
@@ -256,8 +257,8 @@ impl<'a> LintLevelsBuilder<'a> {
                                                 src,
                                                 Some(li.span.into()),
                                                 &msg);
-                        if name.as_str().chars().any(|c| c.is_uppercase()) {
-                            let name_lower = name.as_str().to_lowercase();
+                        if name.with_str(|str| str.chars().any(|c| c.is_uppercase())) {
+                            let name_lower = name.with_str(|str| str.to_lowercase());
                             if let CheckLintNameResult::NoLint =
                                     store.check_lint_name(&name_lower) {
                                 db.emit();

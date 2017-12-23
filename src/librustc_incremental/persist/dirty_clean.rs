@@ -312,7 +312,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(LABEL) {
                 let value = expect_associated_value(self.tcx, &item);
-                return Some(self.resolve_labels(&item, value.as_str().as_ref()));
+                return Some(value.with_str(|str| self.resolve_labels(&item, str)));
             }
         }
         None
@@ -323,7 +323,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(EXCEPT) {
                 let value = expect_associated_value(self.tcx, &item);
-                return self.resolve_labels(&item, value.as_str().as_ref());
+                return value.with_str(|str| self.resolve_labels(&item, str));
             }
         }
         // if no `label` or `except` is given, only the node's group are asserted

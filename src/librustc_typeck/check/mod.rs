@@ -3039,7 +3039,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         });
 
-        find_best_match_for_name(names, &name, None)
+        name.with(|str| find_best_match_for_name(names, str, None))
     }
 
     fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<ast::Name> {

@@ -510,11 +510,11 @@ pub fn set_link_section(ccx: &CrateContext,
                         llval: ValueRef,
                         attrs: &[ast::Attribute]) {
     if let Some(sect) = attr::first_attr_value_str_by_name(attrs, "link_section") {
-        if contains_null(&sect.as_str()) {
+        if sect.with_str(|str| contains_null(str)) {
             ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));
         }
         unsafe {
-            let buf = CString::new(sect.as_str().as_bytes()).unwrap();
+            let buf = sect.with_str(|str| CString::new(str.as_bytes()).unwrap());
             llvm::LLVMSetSection(llval, buf.as_ptr());
         }
     }
@@ -1076,7 +1076,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {
                     output.push_str(" ");
-                    output.push_str(&cgu_name);
+                    cgu_name.with(|str| output.push_str(str));
 
                     let linkage_abbrev = match linkage {
                         Linkage::External => "External",

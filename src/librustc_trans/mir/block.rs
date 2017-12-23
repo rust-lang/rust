@@ -459,10 +459,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Handle intrinsics old trans wants Expr's for, ourselves.
                 let intrinsic = match def {
                     Some(ty::InstanceDef::Intrinsic(def_id))
-                        => Some(bcx.tcx().item_name(def_id)),
+                        => Some(bcx.tcx().item_name(def_id).to_string()),
                     _ => None
                 };
-                let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
+                let intrinsic = intrinsic.as_ref().map(|s| &**s);
 
                 if intrinsic == Some("transmute") {
                     let &(ref dest, target) = destination.as_ref().unwrap();

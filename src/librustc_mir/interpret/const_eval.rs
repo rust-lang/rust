@@ -228,8 +228,8 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeEvaluator {
     ) -> EvalResult<'tcx> {
         let substs = instance.substs;
 
-        let intrinsic_name = &ecx.tcx.item_name(instance.def_id())[..];
-        match intrinsic_name {
+        let intrinsic_name = ecx.tcx.item_name(instance.def_id()).to_string();
+        match &*intrinsic_name {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
                 let elem_align = ecx.layout_of(elem_ty)?.align.abi();

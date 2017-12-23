@@ -165,7 +165,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
 
         let attributes = tcx.get_attrs(def_id);
         if let Some(name) = attr::first_attr_value_str_by_name(&attributes, "linkage") {
-            if let Some(linkage) = linkage_by_name(&name.as_str()) {
+            if let Some(linkage) = name.with_str(|str| linkage_by_name(str)) {
                 Some(linkage)
             } else {
                 let span = tcx.hir.span_if_local(def_id);
@@ -427,7 +427,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
         // some_crate::
         if !(self.omit_local_crate_name && def_id.is_local()) {
-            output.push_str(&self.tcx.crate_name(def_path.krate).as_str());
+            self.tcx.crate_name(def_path.krate).with_str(|str| output.push_str(str));
             output.push_str("::");
         }
 
@@ -467,8 +467,8 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
         for projection in projections {
             let projection = projection.skip_binder();
-            let name = &self.tcx.associated_item(projection.item_def_id).name.as_str();
-            output.push_str(name);
+            let name = self.tcx.associated_item(projection.item_def_id).name;
+            name.with_str(|str| output.push_str(str));
             output.push_str("=");
             self.push_type_name(projection.ty, output);
             output.push_str(", ");

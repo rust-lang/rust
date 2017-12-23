@@ -183,7 +183,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } else if actual.is_enum() {
                     "variant"
                 } else {
-                    match (item_name.as_str().chars().next(), actual.is_fresh_ty()) {
+                    match (item_name.with_str(|str| str.chars().next()), actual.is_fresh_ty()) {
                         (Some(name), false) if name.is_lowercase() => {
                             "function or associated item"
                         }

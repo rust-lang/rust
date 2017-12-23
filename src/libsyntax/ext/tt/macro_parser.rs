@@ -392,7 +392,7 @@ fn inner_parse_loop(sess: &ParseSess,
                 TokenTree::MetaVarDecl(_, _, id) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
-                    if may_begin_with(&*id.name.as_str(), token) {
+                    if id.name.with_str(|str| may_begin_with(str, token)) {
                         bb_items.push(item);
                     }
                 }
@@ -482,7 +482,9 @@ pub fn parse(sess: &ParseSess,
             if let TokenTree::MetaVarDecl(span, _, ident) = item.top_elts.get_tt(item.idx) {
                 let match_cur = item.match_cur;
                 item.push_match(match_cur,
-                    MatchedNonterminal(Rc::new(parse_nt(&mut parser, span, &ident.name.as_str()))));
+                    MatchedNonterminal(Rc::new(ident.name.with_str(|str| parse_nt(&mut parser,
+                                                                                  span,
+                                                                                  str)))));
                 item.idx += 1;
                 item.match_cur += 1;
             } else {

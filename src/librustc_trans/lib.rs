@@ -188,7 +188,9 @@ impl rustc_trans_utils::trans_crate::TransCrate for LlvmTransCrate {
     }
 
     fn link_binary(sess: &Session, trans: &Self::TranslatedCrate, outputs: &OutputFilenames) {
-        back::link::link_binary(sess, trans, outputs, &trans.crate_name.as_str());
+        trans.crate_name.with_str(|str| {
+            back::link::link_binary(sess, trans, outputs, str);
+        });
     }
 
     fn dump_incremental_data(trans: &Self::TranslatedCrate) {

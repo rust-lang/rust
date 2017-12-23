@@ -533,7 +533,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                       name: ast::Name,
                       node_type: &str,
                       participle: &str) {
-        if !name.as_str().starts_with("_") {
+        if !name.with_str(|str| str.starts_with("_")) {
             self.tcx
                 .lint_node(lint::builtin::DEAD_CODE,
                            id,

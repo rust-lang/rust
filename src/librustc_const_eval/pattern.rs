@@ -111,7 +111,7 @@ fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
     match *value {
         ConstVal::Float(ref x) => write!(f, "{}", x),
         ConstVal::Integral(ref i) => write!(f, "{}", i),
-        ConstVal::Str(ref s) => write!(f, "{:?}", &s[..]),
+        ConstVal::Str(ref s) => write!(f, "{}", s),
         ConstVal::ByteStr(b) => write!(f, "{:?}", b.data),
         ConstVal::Bool(b) => write!(f, "{:?}", b),
         ConstVal::Char(c) => write!(f, "{:?}", c),

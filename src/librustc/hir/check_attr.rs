@@ -49,11 +49,11 @@ impl<'a> CheckAttrVisitor<'a> {
     /// Check any attribute.
     fn check_attribute(&self, attr: &ast::Attribute, item: &ast::Item, target: Target) {
         if let Some(name) = attr.name() {
-            match &*name.as_str() {
+            name.with_str(|str| match str {
                 "inline" => self.check_inline(attr, item, target),
                 "repr" => self.check_repr(attr, item, target),
                 _ => (),
-            }
+            })
         }
     }
 
@@ -86,7 +86,7 @@ impl<'a> CheckAttrVisitor<'a> {
                 None => continue,
             };
 
-            let (message, label) = match &*name.as_str() {
+            let (message, label) = match &*name.to_string() {
                 "C" => {
                     is_c = true;
                     if target != Target::Struct &&

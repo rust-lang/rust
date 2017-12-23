@@ -22,7 +22,7 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<String> {
     for attr in tcx.hir.krate().attrs.iter() {
         if attr.path == "link_args" {
             if let Some(linkarg) = attr.value_str() {
-                collector.add_link_args(&linkarg.as_str());
+                linkarg.with_str(|str| collector.add_link_args(str));
             }
         }
     }
@@ -49,7 +49,7 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector {
         // First, add all of the custom #[link_args] attributes
         for m in it.attrs.iter().filter(|a| a.check_name("link_args")) {
             if let Some(linkarg) = m.value_str() {
-                self.add_link_args(&linkarg.as_str());
+                linkarg.with_str(|str| self.add_link_args(str));
             }
         }
     }

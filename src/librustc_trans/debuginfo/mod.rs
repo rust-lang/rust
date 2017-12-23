@@ -390,7 +390,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             substs.types().zip(names).map(|(ty, name)| {
                 let actual_type = cx.tcx().fully_normalize_associated_types_in(&ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
-                let name = CString::new(name.as_str().as_bytes()).unwrap();
+                let name = name.with_str(|str| CString::new(str.as_bytes()).unwrap());
                 unsafe {
                     llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
@@ -480,7 +480,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     };
     let align = cx.align_of(variable_type);
 
-    let name = CString::new(variable_name.as_str().as_bytes()).unwrap();
+    let name = variable_name.with_str(|str| CString::new(str.as_bytes()).unwrap());
     match (variable_access, &[][..]) {
         (DirectVariable { alloca }, address_operations) |
         (IndirectVariable {alloca, address_operations}, _) => {

@@ -190,11 +190,12 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         if let Some(&llval) = cx.const_cstr_cache().borrow().get(&s) {
             return llval;
         }
-
-        let sc = llvm::LLVMConstStringInContext(cx.llcx(),
-                                                s.as_ptr() as *const c_char,
-                                                s.len() as c_uint,
-                                                !null_terminated as Bool);
+        let sc = s.with(|s| {
+            llvm::LLVMConstStringInContext(cx.llcx(),
+                                           s.as_ptr() as *const c_char,
+                                           s.len() as c_uint,
+                                           !null_terminated as Bool)
+        });
         let sym = cx.generate_local_symbol_name("str");
         let g = declare::define_global(cx, &sym[..], val_ty(sc)).unwrap_or_else(||{
             bug!("symbol `{}` is already defined", sym);
@@ -211,7 +212,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
-    let len = s.len();
+    let len = s.with(|str| str.len());
     let cs = consts::ptrcast(C_cstr(cx, s, false),
         cx.layout_of(cx.tcx().mk_str()).llvm_type(cx).ptr_to());
     C_fat_ptr(cx, cs, C_usize(cx, len as u64))

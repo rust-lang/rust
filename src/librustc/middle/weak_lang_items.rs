@@ -130,7 +130,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
         if let Some(lang_item) = lang_items::extract(&i.attrs) {
-            self.register(&lang_item.as_str(), i.span);
+            lang_item.with_str(|str| self.register(str, i.span));
         }
         intravisit::walk_foreign_item(self, i)
     }

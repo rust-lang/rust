@@ -1337,10 +1337,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                       out: &mut String) {
         match loan_path.kind {
             LpUpvar(ty::UpvarId { var_id: id, closure_expr_id: _ }) => {
-                out.push_str(&self.tcx.hir.name(self.tcx.hir.hir_to_node_id(id)).as_str());
+                let name = self.tcx.hir.name(self.tcx.hir.hir_to_node_id(id));
+                name.with_str(|str| out.push_str(str));
             }
             LpVar(id) => {
-                out.push_str(&self.tcx.hir.name(id).as_str());
+                self.tcx.hir.name(id).with_str(|str| out.push_str(str));
             }
 
             LpDowncast(ref lp_base, variant_def_id) => {
@@ -1356,7 +1357,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 match fname {
                     mc::NamedField(fname) => {
                         out.push('.');
-                        out.push_str(&fname.as_str());
+                        fname.with_str(|str| out.push_str(str));
                     }
                     mc::PositionalField(idx) => {
                         out.push('.');

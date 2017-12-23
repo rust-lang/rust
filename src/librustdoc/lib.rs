@@ -521,7 +521,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         // Process all of the crate attributes, extracting plugin metadata along
         // with the passes which we are supposed to run.
         for attr in krate.module.as_ref().unwrap().attrs.lists("doc") {
-            let name = attr.name().map(|s| s.as_str());
+            let name = attr.name().map(|s| s.to_string());
             let name = name.as_ref().map(|s| &s[..]);
             if attr.is_word() {
                 if name == Some("no_default_passes") {
@@ -533,9 +533,9 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
                     Some("plugins") => &mut plugins,
                     _ => continue,
                 };
-                for p in value.as_str().split_whitespace() {
+                value.with_str(|str| for p in str.split_whitespace() {
                     sink.push(p.to_string());
-                }
+                });
             }
         }
 

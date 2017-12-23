@@ -86,7 +86,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
         AsmDialect::Intel => llvm::AsmDialect::Intel,
     };
 
-    let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
+    let asm = ia.asm.with_str(|str| CString::new(str.as_bytes()).unwrap());
     let constraint_cstr = CString::new(all_constraints).unwrap();
     let r = bcx.inline_asm_call(
         asm.as_ptr(),
@@ -121,7 +121,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
 
 pub fn trans_global_asm<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   ga: &hir::GlobalAsm) {
-    let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
+    let asm = ga.asm.with_str(|str| CString::new(str.as_bytes()).unwrap());
     unsafe {
         llvm::LLVMRustAppendModuleInlineAsm(ccx.llmod(), asm.as_ptr());
     }

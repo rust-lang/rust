@@ -399,7 +399,7 @@ fn link_rlib<'a>(sess: &'a Session,
             NativeLibraryKind::NativeFramework |
             NativeLibraryKind::NativeUnknown => continue,
         }
-        ab.add_native_library(&lib.name.as_str());
+        lib.name.with_str(|str| ab.add_native_library(str));
     }
 
     // After adding all files to the archive, we need to update the
@@ -1025,13 +1025,13 @@ fn add_local_native_libraries(cmd: &mut Linker,
 
     let search_path = archive_search_paths(sess);
     for lib in relevant_libs {
-        match lib.kind {
-            NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
-            NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
-            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
-            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(&lib.name.as_str(),
+        lib.name.with_str(|str| match lib.kind {
+            NativeLibraryKind::NativeUnknown => cmd.link_dylib(str),
+            NativeLibraryKind::NativeFramework => cmd.link_framework(str),
+            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(str),
+            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(str,
                                                                         &search_path)
-        }
+        })
     }
 }
 
@@ -1343,23 +1343,23 @@ fn add_upstream_native_libraries(cmd: &mut Linker,
             if !relevant_lib(sess, &lib) {
                 continue
             }
-            match lib.kind {
-                NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
-                NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
+            lib.name.with_str(|str| match lib.kind {
+                NativeLibraryKind::NativeUnknown => cmd.link_dylib(str),
+                NativeLibraryKind::NativeFramework => cmd.link_framework(str),
                 NativeLibraryKind::NativeStaticNobundle => {
                     // Link "static-nobundle" native libs only if the crate they originate from
                     // is being linked statically to the current crate.  If it's linked dynamically
                     // or is an rlib already included via some other dylib crate, the symbols from
                     // native libs will have already been included in that dylib.
                     if data[cnum.as_usize() - 1] == Linkage::Static {
-                        cmd.link_staticlib(&lib.name.as_str())
+                        cmd.link_staticlib(str)
                     }
                 },
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously
                 NativeLibraryKind::NativeStatic => {}
-            }
+            })
         }
     }
 }

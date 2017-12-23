@@ -864,11 +864,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         for attr in attrs {
             if attr.check_name("doc") {
                 if let Some(val) = attr.value_str() {
-                    if attr.is_sugared_doc {
-                        result.push_str(&strip_doc_comment_decoration(&val.as_str()));
+                    val.with_str(|str| if attr.is_sugared_doc {
+                        result.push_str(&strip_doc_comment_decoration(str));
                     } else {
-                        result.push_str(&val.as_str());
-                    }
+                        result.push_str(str);
+                    });
                     result.push('\n');
                 }
             }

@@ -357,14 +357,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             //
             // Currently I'm leaving it for what I need for `try`.
             if self.tcx.trait_of_item(item) == Some(trait_ref.def_id) {
-                method = self.tcx.item_name(item);
+                method = self.tcx.item_name(item).to_string();
                 flags.push(("from_method", None));
                 flags.push(("from_method", Some(&*method)));
             }
         }
 
         if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
-            desugaring = k.as_symbol().as_str();
+            desugaring = k.as_symbol().to_string();
             flags.push(("from_desugaring", None));
             flags.push(("from_desugaring", Some(&*desugaring)));
         }

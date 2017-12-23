@@ -166,11 +166,11 @@ fn parse_args(ecx: &mut ExtCtxt,
                     return None;
                 }
             };
-            let name: &str = &ident.name.as_str();
+            let name = ident.name.to_string();
 
             panictry!(p.expect(&token::Eq));
             let e = panictry!(p.parse_expr());
-            if let Some(prev) = names.get(name) {
+            if let Some(prev) = names.get(&name) {
                 ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", name))
                     .span_note(args[*prev].span, "previously here")
                     .emit();
@@ -728,8 +728,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         invalid_refs: Vec::new(),
     };
 
-    let fmt_str = &*fmt.node.0.as_str();
-    let mut parser = parse::Parser::new(fmt_str);
+    let fmt_str = fmt.node.0.to_string();
+    let mut parser = parse::Parser::new(&fmt_str);
     let mut pieces = vec![];
 
     loop {
@@ -842,7 +842,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
                 ($kind:ident) => {{
                     let mut show_doc_note = false;
 
-                    for sub in foreign::$kind::iter_subs(fmt_str) {
+                    for sub in foreign::$kind::iter_subs(&fmt_str) {
                         let trn = match sub.translate() {
                             Some(trn) => trn,
 
