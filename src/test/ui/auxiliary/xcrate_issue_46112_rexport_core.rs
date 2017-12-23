@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Test that when a crate is linked under another name that name is used in global paths
+#![crate_type="lib"]
 
-// aux-build:issue_1920.rs
-
-extern crate issue_1920 as bar;
-
-fn assert_clone<T>() where T : Clone { }
-
-fn main() {
-    assert_clone::<bar::S>();
-    //~^ ERROR `bar::S: std::clone::Clone` is not satisfied
-}
+pub extern crate core;
