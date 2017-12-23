@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for 32-bits floats (`f32` type)
+//! This module provides constants which are specific to the implementation
+//! of the `f32` floating point data type.
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! *[See also the `f32` primitive type](../../std/primitive.f32.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
