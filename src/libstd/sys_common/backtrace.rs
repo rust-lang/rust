@@ -128,7 +128,7 @@ fn filter_frames(frames: &[Frame],
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
 #[inline(never)]
 pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
-    where F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+    where F: FnOnce() -> T, F: Send, T: Send
 {
     f()
 }

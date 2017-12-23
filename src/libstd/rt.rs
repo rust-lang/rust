@@ -29,9 +29,8 @@ pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 // To reduce the generated code of the new `lang_start`, this function is doing
 // the real work.
 #[cfg(not(any(test, stage0)))]
-fn lang_start_real<F>(main: F, argc: isize, argv: *const *const u8) -> !
-    where F: FnOnce() -> i32 + Send + ::panic::UnwindSafe + 'static
-{
+fn lang_start_internal(main: &(Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
+                       argc: isize, argv: *const *const u8) -> ! {
     use panic;
     use sys;
     use sys_common;
@@ -75,7 +74,7 @@ fn lang_start_real<F>(main: F, argc: isize, argv: *const *const u8) -> !
 fn lang_start<T: ::termination::Termination + 'static>
     (main: fn() -> T, argc: isize, argv: *const *const u8) -> !
 {
-    lang_start_real(move || main().report(), argc, argv)
+    lang_start_internal(&move || main().report(), argc, argv)
 }
 
 #[cfg(all(not(test), stage0))]
