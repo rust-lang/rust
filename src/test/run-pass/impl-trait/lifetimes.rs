@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait, underscore_lifetimes, universal_impl_trait)]
+#![feature(conservative_impl_trait, underscore_lifetimes, universal_impl_trait, nested_impl_trait)]
 #![allow(warnings)]
 
 use std::fmt::Debug;
