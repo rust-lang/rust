@@ -71,7 +71,7 @@ unsafe fn atomic_rmw<T, F: Fn(u32) -> u32>(ptr: *mut T, f: F) -> u32 {
 }
 
 // Generic atomic compare-exchange operation
-unsafe fn atomic_cmpxchg<T>(oldval: u32, newval: u32, ptr: *mut T) -> u32 {
+unsafe fn atomic_cmpxchg<T>(ptr: *mut T, oldval: u32, newval: u32) -> u32 {
     let aligned_ptr = align_ptr(ptr);
     let (shift, mask) = get_shift_mask(ptr);
 
@@ -99,8 +99,8 @@ macro_rules! atomic_rmw {
 macro_rules! atomic_cmpxchg {
     ($name:ident, $ty:ty) => {
         #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-        pub unsafe extern "C" fn $name(oldval: $ty, newval: $ty, ptr: *mut $ty) -> $ty {
-            atomic_cmpxchg(oldval as u32, newval as u32, ptr) as $ty
+        pub unsafe extern "C" fn $name(ptr: *mut $ty, oldval: $ty, newval: $ty) -> $ty {
+            atomic_cmpxchg(ptr, oldval as u32, newval as u32) as $ty
         }
     }
 }
