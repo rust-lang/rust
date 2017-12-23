@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for 64-bits floats (`f64` type)
+//! This module provides constants which are specific to the implementation
+//! of the `f64` floating point data type.
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -248,28 +253,12 @@ impl Float for f64 {
     /// Returns the maximum of the two numbers.
     #[inline]
     fn max(self, other: f64) -> f64 {
-        // IEEE754 says: maxNum(x, y) is the canonicalized number y if x < y, x if y < x, the
-        // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
-        // is either x or y, canonicalized (this means results might differ among implementations).
-        // When either x or y is a signalingNaN, then the result is according to 6.2.
-        //
-        // Since we do not support sNaN in Rust yet, we do not need to handle them.
-        // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
-        // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if self < other || self.is_nan() { other } else { self }) * 1.0
+        unsafe { intrinsics::maxnumf64(self, other) }
     }
 
     /// Returns the minimum of the two numbers.
     #[inline]
     fn min(self, other: f64) -> f64 {
-        // IEEE754 says: minNum(x, y) is the canonicalized number x if x < y, y if y < x, the
-        // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
-        // is either x or y, canonicalized (this means results might differ among implementations).
-        // When either x or y is a signalingNaN, then the result is according to 6.2.
-        //
-        // Since we do not support sNaN in Rust yet, we do not need to handle them.
-        // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
-        // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if self < other || other.is_nan() { self } else { other }) * 1.0
+        unsafe { intrinsics::minnumf64(self, other) }
     }
 }
