@@ -259,10 +259,8 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         }
         match self.ty(tcx).sty {
             ty::TyFnDef(def_id, _) => {
-                let attrs = tcx.item_attrs(def_id);
-                if attrs.iter().find(|attr| {
-                    attr.name().map(|n|n.as_str() == "lang").unwrap_or(false)
-                }).is_some() {
+                //let attrs = tcx.item_attrs(def_id);
+                if tcx.lang_items().items().iter().find(|l|**l == Some(def_id)).is_some() {
                     return self; // Lang items dont work otherwise
                 }
             }
