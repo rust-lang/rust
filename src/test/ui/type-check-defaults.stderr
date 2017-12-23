@@ -1,7 +1,7 @@
 error[E0277]: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfied
-  --> $DIR/type-check-defaults.rs:17:19
+  --> $DIR/type-check-defaults.rs:16:19
    |
-17 | struct WellFormed<Z = Foo<i32, i32>>(Z);
+16 | struct WellFormed<Z = Foo<i32, i32>>(Z);
    |                   ^ a collection of type `i32` cannot be built from an iterator over elements of type `i32`
    |
    = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
@@ -17,69 +17,69 @@ error[E0277]: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfi
    = note: required by `Foo`
 
 error[E0277]: the trait bound `A: std::iter::Iterator` is not satisfied
-  --> $DIR/type-check-defaults.rs:20:1
+  --> $DIR/type-check-defaults.rs:21:1
    |
-20 | struct WellFormedProjection<A, T=<A as Iterator>::Item>(A, T);
+21 | struct WellFormedProjection<A, T=<A as Iterator>::Item>(A, T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `A` is not an iterator; maybe try calling `.iter()` or a similar method
    |
    = help: the trait `std::iter::Iterator` is not implemented for `A`
    = help: consider adding a `where A: std::iter::Iterator` bound
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:22:1
+  --> $DIR/type-check-defaults.rs:24:1
    |
-22 | struct Bounds<T:Copy=String>(T);
+24 | struct Bounds<T:Copy=String>(T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
    = note: required by `std::marker::Copy`
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:24:1
+  --> $DIR/type-check-defaults.rs:27:1
    |
-24 | struct WhereClause<T=String>(T) where T: Copy;
+27 | struct WhereClause<T=String>(T) where T: Copy;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
    = note: required by `std::marker::Copy`
 
 error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:26:1
+  --> $DIR/type-check-defaults.rs:30:1
    |
-26 | trait TraitBound<T:Copy=String> {}
+30 | trait TraitBound<T:Copy=String> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::string::String`
    |
    = note: required by `std::marker::Copy`
 
 error[E0277]: the trait bound `Self: std::marker::Copy` is not satisfied
-  --> $DIR/type-check-defaults.rs:28:1
+  --> $DIR/type-check-defaults.rs:33:1
    |
-28 | trait SelfBound<T:Copy=Self> {}
+33 | trait SelfBound<T:Copy=Self> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `Self`
    |
    = help: consider adding a `where Self: std::marker::Copy` bound
    = note: required by `std::marker::Copy`
 
 error[E0277]: the trait bound `i32: std::ops::Add<u8>` is not satisfied
-  --> $DIR/type-check-defaults.rs:30:1
+  --> $DIR/type-check-defaults.rs:36:1
    |
-30 | trait FooTrait<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
+36 | trait FooTrait<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `i32 + u8`
    |
    = help: the trait `std::ops::Add<u8>` is not implemented for `i32`
    = note: required by `std::ops::Add`
 
 error[E0277]: the trait bound `TwoParams<i32, U>: Trait` is not satisfied
-  --> $DIR/type-check-defaults.rs:36:1
+  --> $DIR/type-check-defaults.rs:43:1
    |
-36 | struct Bogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait;
+43 | struct Bogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `TwoParams<i32, U>`
    |
    = help: consider adding a `where TwoParams<i32, U>: Trait` bound
    = note: required by `Trait`
 
 error[E0277]: the trait bound `TwoParams<T, i32>: Trait` is not satisfied
-  --> $DIR/type-check-defaults.rs:36:1
+  --> $DIR/type-check-defaults.rs:43:1
    |
-36 | struct Bogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait;
+43 | struct Bogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `TwoParams<T, i32>`
    |
    = help: consider adding a `where TwoParams<T, i32>: Trait` bound

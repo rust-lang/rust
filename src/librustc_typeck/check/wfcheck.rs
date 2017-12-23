@@ -387,7 +387,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             let d = param_def.def_id;
             fcx.register_wf_obligation(fcx.tcx.type_of(d), fcx.tcx.def_span(d), self.code.clone());
             // Check the clauses are well-formed when the param is substituted by it's default.
-            // In trait definitions, predicates as `Self: Trait` and `Self: Super` are problematic.
+            // In trait definitions, the predicate `Self: Trait` is problematic.
             // Therefore we skip such predicates. This means we check less than we could.
             for pred in predicates.predicates.iter().filter(|p| !(is_trait && p.has_self_ty())) {
                 let mut skip = true;
@@ -418,9 +418,20 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                         }
                     }
                 });
-                if !skip {
-                    substituted_predicates.push(pred.subst(fcx.tcx, substs));
-                }
+                if skip { continue; }
+                substituted_predicates.push(match pred {
+                    // In trait predicates, substitute defaults only for the LHS.
+                    ty::Predicate::Trait(trait_pred) => {
+                        let t_pred = trait_pred.skip_binder();
+                        let self_ty = t_pred.self_ty().subst(fcx.tcx, substs);
+                        let mut trait_substs = t_pred.trait_ref.substs.to_vec();
+                        trait_substs[0] = self_ty.into();
+                        let trait_ref = ty::TraitRef::new(t_pred.def_id(),
+                                                          fcx.tcx.intern_substs(&trait_substs));
+                        ty::Predicate::Trait(ty::Binder(trait_ref).to_poly_trait_predicate())
+                    }
+                    _ => pred.subst(fcx.tcx, substs)
+                });
             }
         }
 
