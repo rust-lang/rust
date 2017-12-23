@@ -290,17 +290,17 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                              "`self` imports are only allowed within a { } list")
         }
         ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0430,
-                             "`self` import can only appear once in the list")
+            let mut err = struct_span_err!(resolver.session, span, E0430,
+                                           "`self` import can only appear once in an import list");
+            err.span_label(span, "can only appear once in an import list");
+            err
         }
         ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0431,
-                             "`self` import can only appear in an import list with a \
-                              non-empty prefix")
+            let mut err = struct_span_err!(resolver.session, span, E0431,
+                                           "`self` import can only appear in an import list with \
+                                            a non-empty prefix");
+            err.span_label(span, "can only appear in an import list with a non-empty prefix");
+            err
         }
         ResolutionError::UnresolvedImport(name) => {
             let (span, msg) = match name {
@@ -320,18 +320,17 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err
         }
         ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0434,
-                             "{}",
-                             "can't capture dynamic environment in a fn item; use the || { ... } \
-                              closure form instead")
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0434,
+                                           "{}",
+                                           "can't capture dynamic environment in a fn item");
+            err.help("use the `|| { ... }` closure form instead");
+            err
         }
         ResolutionError::AttemptToUseNonConstantValueInConstant => {
-            let mut err = struct_span_err!(resolver.session,
-                             span,
-                             E0435,
-                             "attempt to use a non-constant value in a constant");
+            let mut err = struct_span_err!(resolver.session, span, E0435,
+                                           "attempt to use a non-constant value in a constant");
             err.span_label(span, "non-constant value");
             err
         }
@@ -351,8 +350,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             let mut err = struct_span_err!(resolver.session, span, E0128,
                                            "type parameters with a default cannot use \
                                             forward declared identifiers");
-            err.span_label(span, format!("defaulted type parameters \
-                                           cannot be forward declared"));
+            err.span_label(span, format!("defaulted type parameters cannot be forward declared"));
             err
         }
     }
@@ -3950,7 +3948,7 @@ impl<'a> Resolver<'a> {
 
                     feature_err(&self.session.parse_sess, feature,
                                 attr.span, GateIssue::Language, msg)
-                        .span_note(binding.span(), "procedural macro imported here")
+                        .span_label(binding.span(), "procedural macro imported here")
                         .emit();
                 }
             }

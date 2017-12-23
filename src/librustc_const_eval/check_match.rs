@@ -402,8 +402,8 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             );
                             // if we had a catchall pattern, hint at that
                             if let Some(catchall) = catchall {
-                                err.span_label(pat.span, "this is an unreachable pattern");
-                                err.span_note(catchall, "this pattern matches any value");
+                                err.span_label(pat.span, "unreachable pattern");
+                                err.span_label(catchall, "matches any value");
                             }
                             err.emit();
                         },

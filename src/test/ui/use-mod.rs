@@ -10,7 +10,7 @@
 
 use foo::bar::{
     self,
-//~^ ERROR `self` import can only appear once in the list
+//~^ ERROR `self` import can only appear once in an import list
     Bar,
     self
 //~^ ERROR the name `bar` is defined multiple times

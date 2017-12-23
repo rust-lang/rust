@@ -9,19 +9,17 @@ warning[E0170]: pattern binding `Nil` is named the same as one of the variants o
 error: unreachable pattern
   --> $DIR/issue-30302.rs:25:9
    |
+23 |         Nil => true,
+   |         --- matches any value
+24 | //~^ WARN pattern binding `Nil` is named the same as one of the variants of the type `Stack`
 25 |         _ => false
-   |         ^ this is an unreachable pattern
+   |         ^ unreachable pattern
    |
 note: lint level defined here
   --> $DIR/issue-30302.rs:14:9
    |
 14 | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
-note: this pattern matches any value
-  --> $DIR/issue-30302.rs:23:9
-   |
-23 |         Nil => true,
-   |         ^^^
 
 error: aborting due to previous error
 
