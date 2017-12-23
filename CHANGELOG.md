@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [0.3.4] 2017-12-23
+
+### Added
+
+- Add `--version` flag to `cargo-fmt`, allow `carfo fmt --version`.
+
+### Fixed
+
+- Rustup to `rustc 1.24.0-nightly (5165ee9e2 2017-12-22)`.
+
 ## [0.3.3] 2017-12-22
 
 ### Added
