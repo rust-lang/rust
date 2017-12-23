@@ -575,7 +575,7 @@ impl String {
             return Cow::Borrowed("");
         };
 
-        const REPLACEMENT: &'static str = "\u{FFFD}";
+        const REPLACEMENT: &str = "\u{FFFD}";
 
         let mut res = String::with_capacity(v.len());
         res.push_str(first_valid);
@@ -1707,6 +1707,7 @@ impl<'a, 'b> Pattern<'a> for &'b String {
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(partialeq_ne_impl))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for String {
     #[inline]
@@ -1721,6 +1722,7 @@ impl PartialEq for String {
 
 macro_rules! impl_eq {
     ($lhs:ty, $rhs: ty) => {
+        #[cfg_attr(feature = "cargo-clippy", allow(partialeq_ne_impl))]
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
             #[inline]
@@ -1729,6 +1731,7 @@ macro_rules! impl_eq {
             fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&self[..], &other[..]) }
         }
 
+        #[cfg_attr(feature = "cargo-clippy", allow(partialeq_ne_impl))]
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, 'b> PartialEq<$lhs> for $rhs {
             #[inline]
@@ -1969,7 +1972,7 @@ impl ops::DerefMut for String {
 /// [`String`]: struct.String.html
 /// [`from_str`]: ../../std/str/trait.FromStr.html#tymethod.from_str
 #[stable(feature = "str_parse_error", since = "1.5.0")]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum ParseError {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1978,13 +1981,6 @@ impl FromStr for String {
     #[inline]
     fn from_str(s: &str) -> Result<String, ParseError> {
         Ok(String::from(s))
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl Clone for ParseError {
-    fn clone(&self) -> ParseError {
-        match *self {}
     }
 }
 

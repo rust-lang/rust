@@ -965,7 +965,7 @@ pub trait FusedIterator: Iterator {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 
-/// An iterator that reports an accurate length using size_hint.
+/// An iterator that reports an accurate length using `size_hint`.
 ///
 /// The iterator reports a size hint where it is either exact
 /// (lower bound is equal to upper bound), or the upper bound is [`None`].

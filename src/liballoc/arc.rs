@@ -1095,7 +1095,7 @@ impl<T: ?Sized> Clone for Weak<T> {
             }
         }
 
-        return Weak { ptr: self.ptr };
+        Weak { ptr: self.ptr }
     }
 }
 

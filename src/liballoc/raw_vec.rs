@@ -18,23 +18,25 @@ use super::boxed::Box;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
 /// a buffer of memory on the heap without having to worry about all the corner cases
-/// involved. This type is excellent for building your own data structures like Vec and VecDeque.
+/// involved. This type is excellent for building your own data structures like `Vec` and
+/// `VecDeque`.
+///
 /// In particular:
 ///
-/// * Produces Unique::empty() on zero-sized types
-/// * Produces Unique::empty() on zero-length allocations
+/// * Produces `Unique::empty()` on zero-sized types
+/// * Produces `Unique::empty()` on zero-length allocations
 /// * Catches all overflows in capacity computations (promotes them to "capacity overflow" panics)
-/// * Guards against 32-bit systems allocating more than isize::MAX bytes
+/// * Guards against 32-bit systems allocating more than `isize::MAX` bytes
 /// * Guards against overflowing your length
 /// * Aborts on OOM
-/// * Avoids freeing Unique::empty()
-/// * Contains a ptr::Unique and thus endows the user with all related benefits
+/// * Avoids freeing `Unique::empty()`
+/// * Contains a `ptr::Unique` and thus endows the user with all related benefits
 ///
 /// This type does not in anyway inspect the memory that it manages. When dropped it *will*
-/// free its memory, but it *won't* try to Drop its contents. It is up to the user of RawVec
-/// to handle the actual things *stored* inside of a RawVec.
+/// free its memory, but it *won't* try to Drop its contents. It is up to the user of `RawVec`
+/// to handle the actual things *stored* inside of a `RawVec`.
 ///
-/// Note that a RawVec always forces its capacity to be usize::MAX for zero-sized types.
+/// Note that a `RawVec` always forces its capacity to be `usize::MAX` for zero-sized types.
 /// This enables you to use capacity growing logic catch the overflows in your length
 /// that might occur with zero-sized types.
 ///

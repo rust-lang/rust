@@ -416,7 +416,7 @@ fn test_is_char_boundary() {
         }
     }
 }
-const LOREM_PARAGRAPH: &'static str = "\
+const LOREM_PARAGRAPH: &str = "\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem sit amet dolor \
 ultricies condimentum. Praesent iaculis purus elit, ac malesuada quam malesuada in. Duis sed orci \
 eros. Suspendisse sit amet magna mollis, mollis nunc luctus, imperdiet mi. Integer fringilla non \

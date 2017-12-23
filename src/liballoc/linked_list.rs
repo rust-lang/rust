@@ -1032,7 +1032,7 @@ impl<'a, T> IterMut<'a, T> {
     }
 }
 
-/// An iterator produced by calling `drain_filter` on LinkedList.
+/// An iterator produced by calling `drain_filter` on `LinkedList`.
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 pub struct DrainFilter<'a, T: 'a, F: 'a>
     where F: FnMut(&mut T) -> bool,
