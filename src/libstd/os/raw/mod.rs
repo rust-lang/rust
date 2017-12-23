@@ -83,7 +83,7 @@ use fmt;
 /// and `*mut c_void` is equivalent to C's `void*`. That said, this is
 /// *not* the same as C's `void` return type, which is Rust's `()` type.
 ///
-/// [pointer]: ../primitive.pointer.html
+/// [pointer]: ../../primitive.pointer.html
 // NB: For LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
 //     LLVM bitcode. The enum used here ensures this and prevents misuse
