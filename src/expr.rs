@@ -2081,7 +2081,7 @@ where
                     {
                         let one_line_before = all_simple_before
                             && definitive_tactic(
-                                &item_vec[..num_args_before - 1],
+                                &item_vec[..num_args_before],
                                 ListTactic::HorizontalVertical,
                                 Separator::Comma,
                                 nested_shape.width,
@@ -2140,8 +2140,8 @@ fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<(bo
         .iter()
         .find(|&&(s, _)| s == callee_str)
     {
-        let all_simple_before = num_args_before >= 1 && args.len() >= num_args_before
-            && is_every_args_simple(&args[..num_args_before]);
+        let all_simple_before =
+            args.len() >= num_args_before && is_every_args_simple(&args[..num_args_before]);
 
         let all_simple_after =
             args.len() >= num_args_before + 1 && is_every_args_simple(&args[num_args_before + 1..]);

@@ -272,6 +272,7 @@ fn special_case_macros() {
 
     assert_eq!(left, right, "Ahoy there, {}!", target);
     assert_eq!(left, right, "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')", result, input, expected);
+    assert_eq!(first_realllllllllllly_long_variable_that_doesnt_fit_one_one_line, second_reallllllllllly_long_variable_that_doesnt_fit_one_one_line, "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')", result, input, expected);
     assert_eq!(left + 42, right, "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')", result, input, expected);
     assert_eq!(left, right, "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26);
 

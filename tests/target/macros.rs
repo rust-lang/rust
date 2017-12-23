@@ -735,6 +735,12 @@ fn special_case_macros() {
         result, input, expected
     );
     assert_eq!(
+        first_realllllllllllly_long_variable_that_doesnt_fit_one_one_line,
+        second_reallllllllllly_long_variable_that_doesnt_fit_one_one_line,
+        "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')",
+        result, input, expected
+    );
+    assert_eq!(
         left + 42,
         right,
         "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')",
