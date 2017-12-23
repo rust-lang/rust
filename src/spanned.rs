@@ -105,6 +105,15 @@ impl Spanned for ast::Arg {
     }
 }
 
+impl Spanned for ast::GenericParam {
+    fn span(&self) -> Span {
+        match *self {
+            ast::GenericParam::Lifetime(ref lifetime_def) => lifetime_def.span(),
+            ast::GenericParam::Type(ref ty) => ty.span(),
+        }
+    }
+}
+
 impl Spanned for ast::StructField {
     fn span(&self) -> Span {
         span_with_attrs_lo_hi!(self, self.span.lo(), self.ty.span.hi())
