@@ -1608,7 +1608,7 @@ mod traits {
         fn ne(&self, other: &str) -> bool { !(*self).eq(other) }
     }
 
-    #[stable(feature = "rust1", since = "1.24.0")]
+    #[unstable(feature = "str_str_ref_partialeq", issue = "46934")]
     impl<'a> PartialEq<&'a str> for str {
         #[inline]
         fn eq(&self, other: &&'a str) -> bool { self == *other }
@@ -1616,7 +1616,7 @@ mod traits {
         fn ne(&self, other: &&'a str) -> bool { self != *other }
     }
 
-    #[stable(feature = "rust1", since = "1.24.0")]
+    #[unstable(feature = "str_str_ref_partialeq", issue = "46934")]
     impl<'a> PartialEq<str> for &'a str {
         #[inline]
         fn eq(&self, other: &str) -> bool { *self == other }
