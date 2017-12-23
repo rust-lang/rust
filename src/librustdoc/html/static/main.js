@@ -349,6 +349,7 @@
     function initSearch(rawSearchIndex) {
         var currentResults, index, searchIndex;
         var MAX_LEV_DISTANCE = 3;
+        var MAX_RESULTS = 200;
         var params = getQueryStringParams();
 
         // Populate search bar with query string search term when provided,
@@ -371,15 +372,134 @@
             var valLower = query.query.toLowerCase(),
                 val = valLower,
                 typeFilter = itemTypeFromName(query.type),
-                results = {},
+                results = {}, results_in_args = {}, results_returned = {},
                 split = valLower.split("::");
 
-            // remove empty keywords
-            for (var j = 0; j < split.length; ++j) {
-                split[j].toLowerCase();
-                if (split[j] === "") {
-                    split.splice(j, 1);
+            for (var z = 0; z < split.length; ++z) {
+                if (split[z] === "") {
+                    split.splice(z, 1);
+                    z -= 1;
                 }
+            }
+
+            function transformResults(results, isType) {
+                var out = [];
+                for (i = 0; i < results.length; ++i) {
+                    if (results[i].id > -1) {
+                        var obj = searchIndex[results[i].id];
+                        obj.lev = results[i].lev;
+                        if (isType !== true || obj.type) {
+                            out.push(obj);
+                        }
+                    }
+                    if (out.length >= MAX_RESULTS) {
+                        break;
+                    }
+                }
+                return out;
+            }
+
+            function sortResults(results, isType) {
+                var ar = [];
+                for (var entry in results) {
+                    if (results.hasOwnProperty(entry)) {
+                        ar.push(results[entry]);
+                    }
+                }
+                results = ar;
+                var nresults = results.length;
+                for (var i = 0; i < nresults; ++i) {
+                    results[i].word = searchWords[results[i].id];
+                    results[i].item = searchIndex[results[i].id] || {};
+                }
+                // if there are no results then return to default and fail
+                if (results.length === 0) {
+                    return [];
+                }
+
+                results.sort(function(aaa, bbb) {
+                    var a, b;
+
+                    // Sort by non levenshtein results and then levenshtein results by the distance
+                    // (less changes required to match means higher rankings)
+                    a = (aaa.lev);
+                    b = (bbb.lev);
+                    if (a !== b) { return a - b; }
+
+                    // sort by crate (non-current crate goes later)
+                    a = (aaa.item.crate !== window.currentCrate);
+                    b = (bbb.item.crate !== window.currentCrate);
+                    if (a !== b) { return a - b; }
+
+                    // sort by exact match (mismatch goes later)
+                    a = (aaa.word !== valLower);
+                    b = (bbb.word !== valLower);
+                    if (a !== b) { return a - b; }
+
+                    // sort by item name length (longer goes later)
+                    a = aaa.word.length;
+                    b = bbb.word.length;
+                    if (a !== b) { return a - b; }
+
+                    // sort by item name (lexicographically larger goes later)
+                    a = aaa.word;
+                    b = bbb.word;
+                    if (a !== b) { return (a > b ? +1 : -1); }
+
+                    // sort by index of keyword in item name (no literal occurrence goes later)
+                    a = (aaa.index < 0);
+                    b = (bbb.index < 0);
+                    if (a !== b) { return a - b; }
+                    // (later literal occurrence, if any, goes later)
+                    a = aaa.index;
+                    b = bbb.index;
+                    if (a !== b) { return a - b; }
+
+                    // special precedence for primitive pages
+                    if ((aaa.item.ty === TY_PRIMITIVE) && (bbb.item.ty !== TY_PRIMITIVE)) {
+                        return -1;
+                    }
+                    if ((bbb.item.ty === TY_PRIMITIVE) && (aaa.item.ty !== TY_PRIMITIVE)) {
+                        return 1;
+                    }
+
+                    // sort by description (no description goes later)
+                    a = (aaa.item.desc === '');
+                    b = (bbb.item.desc === '');
+                    if (a !== b) { return a - b; }
+
+                    // sort by type (later occurrence in `itemTypes` goes later)
+                    a = aaa.item.ty;
+                    b = bbb.item.ty;
+                    if (a !== b) { return a - b; }
+
+                    // sort by path (lexicographically larger goes later)
+                    a = aaa.item.path;
+                    b = bbb.item.path;
+                    if (a !== b) { return (a > b ? +1 : -1); }
+
+                    // que sera, sera
+                    return 0;
+                });
+
+                for (var i = 0; i < results.length; ++i) {
+                    var result = results[i];
+
+                    // this validation does not make sense when searching by types
+                    if (result.dontValidate) {
+                        continue;
+                    }
+                    var name = result.item.name.toLowerCase(),
+                        path = result.item.path.toLowerCase(),
+                        parent = result.item.parent;
+
+                    if (isType !== true &&
+                        validateResult(name, path, split, parent) === false)
+                    {
+                        result.id = -1;
+                    }
+                }
+                return transformResults(results);
             }
 
             function extractGenerics(val) {
@@ -402,13 +522,13 @@
                 // match as well.
                 var lev_distance = MAX_LEV_DISTANCE + 1;
                 if (val.generics.length > 0) {
-                    if (obj.generics &&
-                        obj.generics.length >= val.generics.length) {
+                    if (obj.generics && obj.generics.length >= val.generics.length) {
                         var elems = obj.generics.slice(0);
-                        for (var y = 0;
-                             y < val.generics.length;
-                             ++y) {
-                            // The point here is to find the type that matches the most.
+                        var total = 0;
+                        var done = 0;
+                        // We need to find the type that matches the most to remove it in order
+                        // to move forward.
+                        for (var y = 0; y < val.generics.length; ++y) {
                             var lev = { pos: -1, lev: MAX_LEV_DISTANCE + 1};
                             for (var x = 0; x < elems.length; ++x) {
                                 var tmp_lev = levenshtein(elems[x], val.generics[y]);
@@ -420,14 +540,14 @@
                             if (lev.pos !== -1) {
                                 elems.splice(lev.pos, 1);
                                 lev_distance = Math.min(lev.lev, lev_distance);
+                                total += lev.lev;
+                                done += 1;
                             } else {
                                 return MAX_LEV_DISTANCE + 1;
                             }
                         }
-                        return lev_distance;
+                        return lev_distance;//Math.ceil(total / done);
                     }
-                } else {
-                    return 0;
                 }
                 return MAX_LEV_DISTANCE + 1;
             }
@@ -463,9 +583,13 @@
                     }
                     // If the type has generics but don't match, then it won't return at this point.
                     // Otherwise, `checkGenerics` will return 0 and it'll return.
-                    var tmp_lev = checkGenerics(obj, val);
-                    if (tmp_lev <= MAX_LEV_DISTANCE) {
-                        return tmp_lev;
+                    if (obj.generics && obj.generics.length !== 0) {
+                        var tmp_lev = checkGenerics(obj, val);
+                        if (tmp_lev <= MAX_LEV_DISTANCE) {
+                            return tmp_lev;
+                        }
+                    } else {
+                        return 0;
                     }
                 }
                 // Names didn't match so let's check if one of the generic types could.
@@ -479,12 +603,11 @@
                     }
                     return false;
                 }
-                var new_lev = levenshtein(obj.name, val.name);
-                if (new_lev < lev_distance) {
-                    if ((lev = checkGenerics(obj, val)) <= MAX_LEV_DISTANCE) {
-                        lev_distance = Math.min(Math.min(new_lev, lev), lev_distance);
-                    }
+                var lev_distance = Math.min(levenshtein(obj.name, val.name), lev_distance);
+                if (lev_distance <= MAX_LEV_DISTANCE) {
+                    lev_distance = Math.min(checkGenerics(obj, val), lev_distance);
                 } else if (obj.generics && obj.generics.length > 0) {
+                    // We can check if the type we're looking for is inside the generics!
                     for (var x = 0; x < obj.generics.length; ++x) {
                         lev_distance = Math.min(levenshtein(obj.generics[x], val.name),
                                                 lev_distance);
@@ -529,6 +652,49 @@
                 return literalSearch === true ? false : lev_distance;
             }
 
+            function checkPath(startsWith, lastElem, ty) {
+                var ret_lev = MAX_LEV_DISTANCE + 1;
+                var path = ty.path.split("::");
+
+                if (ty.parent && ty.parent.name) {
+                    path.push(ty.parent.name.toLowerCase());
+                }
+
+                if (startsWith.length > path.length) {
+                    return MAX_LEV_DISTANCE + 1;
+                }
+                for (var i = 0; i < path.length; ++i) {
+                    if (i + startsWith.length > path.length) {
+                        break;
+                    }
+                    var lev_total = 0;
+                    var aborted = false;
+                    for (var x = 0; x < startsWith.length; ++x) {
+                        var lev = levenshtein(path[i + x], startsWith[x]);
+                        if (lev > MAX_LEV_DISTANCE) {
+                            aborted = true;
+                            break;
+                        }
+                        lev_total += lev;
+                    }
+                    if (aborted === false) {
+                        var extra = MAX_LEV_DISTANCE + 1;
+                        if (i + startsWith.length < path.length) {
+                            extra = levenshtein(path[i + startsWith.length], lastElem);
+                        }
+                        if (extra > MAX_LEV_DISTANCE) {
+                            extra = levenshtein(ty.name, lastElem);
+                        }
+                        if (extra < MAX_LEV_DISTANCE + 1) {
+                            lev_total += extra;
+                            ret_lev = Math.min(ret_lev,
+                                               Math.round(lev_total / (startsWith.length + 1)));
+                        }
+                    }
+                }
+                return ret_lev;
+            }
+
             function typePassesFilter(filter, type) {
                 // No filter
                 if (filter < 0) return true;
@@ -551,18 +717,24 @@
                 return false;
             }
 
+            function generateId(ty) {
+                if (ty.parent && ty.parent.name) {
+                    return itemTypes[ty.ty] + ty.path + ty.parent.name + ty.name;
+                }
+                return itemTypes[ty.ty] + ty.path + ty.name;
+            }
+
             // quoted values mean literal search
             var nSearchWords = searchWords.length;
             if ((val.charAt(0) === "\"" || val.charAt(0) === "'") &&
                 val.charAt(val.length - 1) === val.charAt(0))
             {
-                var results_length = 0;
                 val = extractGenerics(val.substr(1, val.length - 2));
                 for (var i = 0; i < nSearchWords; ++i) {
                     var in_args = findArg(searchIndex[i], val, true);
                     var returned = checkReturned(searchIndex[i], val, true);
                     var ty = searchIndex[i];
-                    var fullId = itemTypes[ty.ty] + ty.path + ty.name;
+                    var fullId = generateId(ty);
 
                     if (searchWords[i] === val.name) {
                         // filter type: ... queries
@@ -570,30 +742,31 @@
                             results[fullId] === undefined)
                         {
                             results[fullId] = {id: i, index: -1};
-                            results_length += 1;
                         }
                     } else if ((in_args === true || returned === true) &&
                                typePassesFilter(typeFilter, searchIndex[i].ty)) {
-                        if (results[fullId] === undefined) {
+                        if (in_args === true || returned === true) {
+                            if (in_args === true) {
+                                results_in_args[fullId] = {
+                                    id: i,
+                                    index: -1,
+                                    dontValidate: true,
+                                };
+                            }
+                            if (returned === true) {
+                                results_returned[fullId] = {
+                                    id: i,
+                                    index: -1,
+                                    dontValidate: true,
+                                };
+                            }
+                        } else {
                             results[fullId] = {
                                 id: i,
                                 index: -1,
                                 dontValidate: true,
-                                in_args: in_args,
-                                returned: returned,
                             };
-                            results_length += 1;
-                        } else {
-                            if (in_args === true) {
-                                results[fullId].in_args = true;
-                            }
-                            if (returned === true) {
-                                results[fullId].returned = true;
-                            }
                         }
-                    }
-                    if (results_length === max) {
-                        break;
                     }
                 }
                 query.inputs = [val];
@@ -617,7 +790,7 @@
                     if (!type) {
                         continue;
                     }
-                    var fullId = itemTypes[ty.ty] + ty.path + ty.name;
+                    var fullId = generateId(ty);
 
                     // allow searching for void (no output) functions as well
                     var typeOutput = type.output ? type.output.name : "";
@@ -635,23 +808,26 @@
                             }
                             in_args = allFound;
                         }
-                        if (in_args === true || returned === true || module === true) {
-                            if (results[fullId] !== undefined) {
-                                if (returned === true) {
-                                    results[fullId].returned = true;
-                                }
-                                if (in_args === true) {
-                                    results[fullId].in_args = true;
-                                }
-                            } else {
-                                results[fullId] = {
-                                    id: i,
-                                    index: -1,
-                                    dontValidate: true,
-                                    returned: returned,
-                                    in_args: in_args,
-                                };
-                            }
+                        if (in_args === true) {
+                            results_in_args[fullId] = {
+                                id: i,
+                                index: -1,
+                                dontValidate: true,
+                            };
+                        }
+                        if (returned === true) {
+                            results_returned[fullId] = {
+                                id: i,
+                                index: -1,
+                                dontValidate: true,
+                            };
+                        }
+                        if (module === true) {
+                            results[fullId] = {
+                                id: i,
+                                index: -1,
+                                dontValidate: true,
+                            };
                         }
                     }
                 }
@@ -665,189 +841,114 @@
                 query.search = val;
                 // gather matching search results up to a certain maximum
                 val = val.replace(/\_/g, "");
-                var valGenerics = extractGenerics(val);
-                var results_length = 0;
-                for (var i = 0; i < split.length; ++i) {
-                    for (var j = 0; j < nSearchWords; ++j) {
-                        var lev_distance;
-                        var ty = searchIndex[j];
-                        if (!ty) {
-                            continue;
-                        }
-                        var returned = false;
-                        var in_args = false;
-                        var index = -1;
-                        // we want lev results to go lower than others
-                        var lev = MAX_LEV_DISTANCE;
-                        var fullId = itemTypes[ty.ty] + ty.path + ty.name;
 
-                        if (searchWords[j].indexOf(split[i]) > -1 ||
-                            searchWords[j].indexOf(val) > -1 ||
-                            searchWords[j].replace(/_/g, "").indexOf(val) > -1)
-                        {
-                            // filter type: ... queries
-                            if (typePassesFilter(typeFilter, ty) &&
-                                results[fullId] === undefined) {
-                                index = searchWords[j].replace(/_/g, "").indexOf(val);
-                            }
+                var valGenerics = extractGenerics(val);
+
+                var paths = valLower.split("::");
+                var j;
+                for (j = 0; j < paths.length; ++j) {
+                    if (paths[j] === "") {
+                        paths.splice(j, 1);
+                        j -= 1;
+                    }
+                }
+                val = paths[paths.length - 1];
+                var startsWith = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
+
+                for (j = 0; j < nSearchWords; ++j) {
+                    var lev_distance;
+                    var ty = searchIndex[j];
+                    if (!ty) {
+                        continue;
+                    }
+                    var lev_add = 0;
+                    if (paths.length > 1) {
+                        var lev = checkPath(startsWith, paths[paths.length - 1], ty);
+                        if (lev > MAX_LEV_DISTANCE) {
+                            continue;
+                        } else if (lev > 0) {
+                            lev_add = 1;
                         }
-                        if ((lev_distance = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
-                            if (typePassesFilter(typeFilter, ty) &&
-                                (results[fullId] === undefined ||
-                                 results[fullId].lev > lev_distance)) {
-                                lev = Math.min(lev, lev_distance);
-                                index = Math.max(0, index);
-                            }
+                    }
+
+                    var returned = MAX_LEV_DISTANCE + 1;
+                    var in_args = MAX_LEV_DISTANCE + 1;
+                    var index = -1;
+                    // we want lev results to go lower than others
+                    var lev = MAX_LEV_DISTANCE + 1;
+                    var fullId = generateId(ty);
+
+                    if (searchWords[j].indexOf(split[i]) > -1 ||
+                        searchWords[j].indexOf(val) > -1 ||
+                        searchWords[j].replace(/_/g, "").indexOf(val) > -1)
+                    {
+                        // filter type: ... queries
+                        if (typePassesFilter(typeFilter, ty.ty) && results[fullId] === undefined) {
+                            index = searchWords[j].replace(/_/g, "").indexOf(val);
                         }
-                        if ((lev_distance = findArg(searchIndex[j], valGenerics))
-                            <= MAX_LEV_DISTANCE) {
-                            if (typePassesFilter(typeFilter, ty) &&
-                                (results[fullId] === undefined ||
-                                 results[fullId].lev > lev_distance)) {
-                                in_args = true;
-                                lev = Math.min(lev_distance, lev);
-                                index = Math.max(0, index);
-                            }
+                    }
+                    if ((lev = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
+                        if (typePassesFilter(typeFilter, ty.ty) === false) {
+                            lev = MAX_LEV_DISTANCE + 1;
+                        } else {
+                            lev += 1;
                         }
-                        if ((lev_distance = checkReturned(searchIndex[j], valGenerics)) <=
-                            MAX_LEV_DISTANCE) {
-                            if (typePassesFilter(typeFilter, ty) &&
-                                (results[fullId] === undefined ||
-                                 results[fullId].lev > lev_distance)) {
-                                returned = true;
-                                lev = Math.min(lev_distance, lev);
-                                index = Math.max(0, index);
-                            }
+                    }
+                    if ((in_args = findArg(ty, valGenerics)) <= MAX_LEV_DISTANCE) {
+                        if (typePassesFilter(typeFilter, ty.ty) === false) {
+                            in_args = MAX_LEV_DISTANCE + 1;
                         }
+                    }
+                    if ((returned = checkReturned(ty, valGenerics)) <= MAX_LEV_DISTANCE) {
+                        if (typePassesFilter(typeFilter, ty.ty) === false) {
+                            returned = MAX_LEV_DISTANCE + 1;
+                        }
+                    }
+
+                    lev += lev_add;
+                    if (in_args <= MAX_LEV_DISTANCE) {
+                        if (results_in_args[fullId] === undefined) {
+                            results_in_args[fullId] = {
+                                id: j,
+                                index: index,
+                                lev: in_args,
+                            };
+                        }
+                        results_in_args[fullId].lev =
+                            Math.min(results_in_args[fullId].lev, in_args);
+                    }
+                    if (returned <= MAX_LEV_DISTANCE) {
+                        if (results_returned[fullId] === undefined) {
+                            results_returned[fullId] = {
+                                id: j,
+                                index: index,
+                                lev: returned,
+                            };
+                        }
+                        results_returned[fullId].lev =
+                            Math.min(results_returned[fullId].lev, returned);
+                    }
+                    if (index !== -1 || lev <= MAX_LEV_DISTANCE) {
                         if (index !== -1) {
-                            if (results[fullId] === undefined) {
-                                results[fullId] = {
-                                    id: j,
-                                    index: index,
-                                    lev: lev,
-                                    in_args: in_args,
-                                    returned: returned,
-                                };
-                                results_length += 1;
-                            } else {
-                                if (results[fullId].lev > lev) {
-                                    results[fullId].lev = lev;
-                                }
-                                if (in_args === true) {
-                                    results[fullId].in_args = true;
-                                }
-                                if (returned === true) {
-                                    results[fullId].returned = true;
-                                }
-                            }
+                            lev = 0;
                         }
-                        if (results_length === max) {
-                            break;
+                        if (results[fullId] === undefined) {
+                            results[fullId] = {
+                                id: j,
+                                index: index,
+                                lev: lev,
+                            };
                         }
+                        results[fullId].lev = Math.min(results[fullId].lev, lev);
                     }
                 }
             }
 
-            var ar = [];
-            for (var entry in results) {
-                if (results.hasOwnProperty(entry)) {
-                    ar.push(results[entry]);
-                }
-            }
-            results = ar;
-            var nresults = results.length;
-            for (var i = 0; i < nresults; ++i) {
-                results[i].word = searchWords[results[i].id];
-                results[i].item = searchIndex[results[i].id] || {};
-            }
-            // if there are no results then return to default and fail
-            if (results.length === 0) {
-                return [];
-            }
-
-            results.sort(function sortResults(aaa, bbb) {
-                var a, b;
-
-                // Sort by non levenshtein results and then levenshtein results by the distance
-                // (less changes required to match means higher rankings)
-                a = (aaa.lev);
-                b = (bbb.lev);
-                if (a !== b) { return a - b; }
-
-                // sort by crate (non-current crate goes later)
-                a = (aaa.item.crate !== window.currentCrate);
-                b = (bbb.item.crate !== window.currentCrate);
-                if (a !== b) { return a - b; }
-
-                // sort by exact match (mismatch goes later)
-                a = (aaa.word !== valLower);
-                b = (bbb.word !== valLower);
-                if (a !== b) { return a - b; }
-
-                // sort by item name length (longer goes later)
-                a = aaa.word.length;
-                b = bbb.word.length;
-                if (a !== b) { return a - b; }
-
-                // sort by item name (lexicographically larger goes later)
-                a = aaa.word;
-                b = bbb.word;
-                if (a !== b) { return (a > b ? +1 : -1); }
-
-                // sort by index of keyword in item name (no literal occurrence goes later)
-                a = (aaa.index < 0);
-                b = (bbb.index < 0);
-                if (a !== b) { return a - b; }
-                // (later literal occurrence, if any, goes later)
-                a = aaa.index;
-                b = bbb.index;
-                if (a !== b) { return a - b; }
-
-                // special precedence for primitive pages
-                if ((aaa.item.ty === TY_PRIMITIVE) && (bbb.item.ty !== TY_PRIMITIVE)) {
-                    return -1;
-                }
-                if ((bbb.item.ty === TY_PRIMITIVE) && (aaa.item.ty !== TY_PRIMITIVE)) {
-                    return 1;
-                }
-
-                // sort by description (no description goes later)
-                a = (aaa.item.desc === '');
-                b = (bbb.item.desc === '');
-                if (a !== b) { return a - b; }
-
-                // sort by type (later occurrence in `itemTypes` goes later)
-                a = aaa.item.ty;
-                b = bbb.item.ty;
-                if (a !== b) { return a - b; }
-
-                // sort by path (lexicographically larger goes later)
-                a = aaa.item.path;
-                b = bbb.item.path;
-                if (a !== b) { return (a > b ? +1 : -1); }
-
-                // que sera, sera
-                return 0;
-            });
-
-            for (var i = 0; i < results.length; ++i) {
-                var result = results[i];
-
-                // this validation does not make sense when searching by types
-                if (result.dontValidate) {
-                    continue;
-                }
-                var name = result.item.name.toLowerCase(),
-                    path = result.item.path.toLowerCase(),
-                    parent = result.item.parent;
-
-                if (result.returned === false && result.param === false &&
-                    validateResult(name, path, split, parent) === false)
-                {
-                    result.id = -1;
-                }
-            }
-            return results;
+            return {
+                'in_args': sortResults(results_in_args, true),
+                'returned': sortResults(results_returned, true),
+                'others': sortResults(results),
+            };
         }
 
         /**
@@ -1125,10 +1226,8 @@
 
         function search(e) {
             var query,
-                filterdata = [],
                 obj, i, len,
                 results = {"in_args": [], "returned": [], "others": []},
-                maxResults = 200,
                 resultIndex;
             var params = getQueryStringParams();
 
@@ -1154,40 +1253,7 @@
                 }
             }
 
-            resultIndex = execQuery(query, 20000, index);
-            len = resultIndex.length;
-            for (i = 0; i < len; ++i) {
-                if (resultIndex[i].id > -1) {
-                    var added = false;
-                    obj = searchIndex[resultIndex[i].id];
-                    filterdata.push([obj.name, obj.ty, obj.path, obj.desc]);
-                    if (obj.type) {
-                        if (results['returned'].length < maxResults &&
-                            resultIndex[i].returned === true)
-                        {
-                            results['returned'].push(obj);
-                            added = true;
-                        }
-                        if (results['in_args'].length < maxResults &&
-                            resultIndex[i].in_args === true)
-                        {
-                            results['in_args'].push(obj);
-                            added = true;
-                        }
-                    }
-                    if (results['others'].length < maxResults &&
-                        (added === false ||
-                         (query.search && obj.name.indexOf(query.search) !== -1))) {
-                        results['others'].push(obj);
-                    }
-                }
-                if (results['others'].length >= maxResults &&
-                    results['in_args'].length >= maxResults &&
-                    results['returned'].length >= maxResults) {
-                    break;
-                }
-            }
-
+            results = execQuery(query, 20000, index);
             showResults(results);
         }
 
