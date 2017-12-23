@@ -407,8 +407,8 @@ impl Term {
 
     /// Get a reference to the interned string.
     #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn as_str(&self) -> &str {
-        unsafe { &*(&*self.0.as_str() as *const str) }
+    pub fn with_str<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
+        self.0.with_str(f)
     }
 }
 
