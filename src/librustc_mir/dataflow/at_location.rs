@@ -149,6 +149,18 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     fn reconstruct_statement_effect(&mut self, loc: Location) {
         self.stmt_gen.reset_to_empty();
         self.stmt_kill.reset_to_empty();
+        {
+            let mut sets = BlockSets {
+                on_entry: &mut self.curr_state,
+                gen_set: &mut self.stmt_gen,
+                kill_set: &mut self.stmt_kill,
+            };
+            self.base_results
+                .operator()
+                .before_statement_effect(&mut sets, loc);
+        }
+        self.apply_local_effect(loc);
+
         let mut sets = BlockSets {
             on_entry: &mut self.curr_state,
             gen_set: &mut self.stmt_gen,
@@ -162,6 +174,18 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     fn reconstruct_terminator_effect(&mut self, loc: Location) {
         self.stmt_gen.reset_to_empty();
         self.stmt_kill.reset_to_empty();
+        {
+            let mut sets = BlockSets {
+                on_entry: &mut self.curr_state,
+                gen_set: &mut self.stmt_gen,
+                kill_set: &mut self.stmt_kill,
+            };
+            self.base_results
+                .operator()
+                .before_terminator_effect(&mut sets, loc);
+        }
+        self.apply_local_effect(loc);
+
         let mut sets = BlockSets {
             on_entry: &mut self.curr_state,
             gen_set: &mut self.stmt_gen,

@@ -363,7 +363,7 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 statement_index: data.statements.len(),
             };
 
-            let storage_liveness = state_for_location(loc, &analysis, &storage_live);
+            let storage_liveness = state_for_location(loc, &analysis, &storage_live, mir);
 
             storage_liveness_map.insert(block, storage_liveness.clone());
 
