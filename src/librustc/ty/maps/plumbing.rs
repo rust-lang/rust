@@ -978,4 +978,5 @@ impl_load_from_cache!(
     SymbolName => def_symbol_name,
     ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
     ContainsExternIndicator => contains_extern_indicator,
+    CheckMatch => check_match,
 );

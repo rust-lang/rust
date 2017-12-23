@@ -102,7 +102,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::type_param_predicates<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::coherent_trait<'tcx> {
-    fn describe(tcx: TyCtxt, (_, def_id): (CrateNum, DefId)) -> String {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("coherence checking all impls of trait `{}`",
                 tcx.item_path_str(def_id))
     }
@@ -647,5 +647,6 @@ impl_disk_cacheable_query!(unsafety_check_result, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(borrowck, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(mir_borrowck, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(mir_const_qualif, |def_id| def_id.is_local());
+impl_disk_cacheable_query!(check_match, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(contains_extern_indicator, |_| true);
 impl_disk_cacheable_query!(def_symbol_name, |_| true);
