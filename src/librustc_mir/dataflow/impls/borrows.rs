@@ -22,6 +22,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::sync::Lrc;
 
 use dataflow::{BitDenotation, BlockSets, InitialFlow};
 pub use dataflow::indexes::{BorrowIndex, ReserveOrActivateIndex};
@@ -44,7 +45,7 @@ use std::rc::Rc;
 pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
-    scope_tree: Rc<region::ScopeTree>,
+    scope_tree: Lrc<region::ScopeTree>,
     root_scope: Option<region::Scope>,
 
     /// The fundamental map relating bitvector indexes to the borrows
@@ -273,7 +274,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
 
     pub fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> { &self.borrows }
 
-    pub fn scope_tree(&self) -> &Rc<region::ScopeTree> { &self.scope_tree }
+    pub fn scope_tree(&self) -> &Lrc<region::ScopeTree> { &self.scope_tree }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
         &self.borrows[idx].location

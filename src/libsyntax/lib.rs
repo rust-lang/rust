@@ -26,6 +26,8 @@
 #![feature(i128_type)]
 #![feature(const_atomic_usize_new)]
 
+#![recursion_limit="256"]
+
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
 extern crate rustc_cratesio_shim;

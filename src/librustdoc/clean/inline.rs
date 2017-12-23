@@ -13,7 +13,7 @@
 use std::collections::BTreeMap;
 use std::io;
 use std::iter::once;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 use syntax::ast;
 use rustc::hir;
@@ -403,7 +403,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
 }
 
 struct InlinedConst {
-    nested_bodies: Rc<BTreeMap<hir::BodyId, hir::Body>>
+    nested_bodies: Lrc<BTreeMap<hir::BodyId, hir::Body>>
 }
 
 impl hir::print::PpAnn for InlinedConst {

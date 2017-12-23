@@ -16,7 +16,7 @@ use symbol::keywords;
 use syntax_pos::{DUMMY_SP, Span, BytePos};
 use tokenstream;
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Delimited {
@@ -77,9 +77,9 @@ pub enum KleeneOp {
 #[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum TokenTree {
     Token(Span, token::Token),
-    Delimited(Span, Rc<Delimited>),
+    Delimited(Span, Lrc<Delimited>),
     /// A kleene-style repetition sequence
-    Sequence(Span, Rc<SequenceRepetition>),
+    Sequence(Span, Lrc<SequenceRepetition>),
     /// E.g. `$var`
     MetaVar(Span, ast::Ident),
     /// E.g. `$var:expr`. This is only used in the left hand side of MBE macros.
@@ -189,7 +189,7 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
                 let sequence = parse(delimited.tts.into(), expect_matchers, sess);
                 let (separator, op) = parse_sep_and_kleene_op(trees, span, sess);
                 let name_captures = macro_parser::count_names(&sequence);
-                TokenTree::Sequence(span, Rc::new(SequenceRepetition {
+                TokenTree::Sequence(span, Lrc::new(SequenceRepetition {
                     tts: sequence,
                     separator,
                     op,
@@ -215,7 +215,7 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
         },
         tokenstream::TokenTree::Token(span, tok) => TokenTree::Token(span, tok),
         tokenstream::TokenTree::Delimited(span, delimited) => {
-            TokenTree::Delimited(span, Rc::new(Delimited {
+            TokenTree::Delimited(span, Lrc::new(Delimited {
                 delim: delimited.delim,
                 tts: parse(delimited.tts.into(), expect_matchers, sess),
             }))

@@ -10,6 +10,8 @@
 
 #![allow(non_camel_case_types)]
 
+use rustc_data_structures::sync::LockCell;
+
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
 use std::ffi::CString;
@@ -205,7 +207,7 @@ pub fn to_readable_str(mut val: usize) -> String {
     groups.join("_")
 }
 
-pub fn record_time<T, F>(accu: &Cell<Duration>, f: F) -> T where
+pub fn record_time<T, F>(accu: &LockCell<Duration>, f: F) -> T where
     F: FnOnce() -> T,
 {
     let start = Instant::now();

@@ -10,6 +10,7 @@
 
 //! The main parser interface
 
+use rustc_data_structures::sync::{Lrc, Lock};
 use ast::{self, CrateConfig};
 use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, Span, FileMap, NO_EXPANSION, FileName};
@@ -21,11 +22,9 @@ use str::char_at;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 
-use std::cell::RefCell;
 use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::str;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
@@ -46,18 +45,18 @@ pub struct ParseSess {
     pub span_diagnostic: Handler,
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
-    pub missing_fragment_specifiers: RefCell<HashSet<Span>>,
+    pub missing_fragment_specifiers: Lock<HashSet<Span>>,
     // Spans where a `mod foo;` statement was included in a non-mod.rs file.
     // These are used to issue errors if the non_modrs_mods feature is not enabled.
-    pub non_modrs_mods: RefCell<Vec<(ast::Ident, Span)>>,
+    pub non_modrs_mods: Lock<Vec<(ast::Ident, Span)>>,
     /// Used to determine and report recursive mod inclusions
-    included_mod_stack: RefCell<Vec<PathBuf>>,
-    code_map: Rc<CodeMap>,
+    included_mod_stack: Lock<Vec<PathBuf>>,
+    code_map: Lrc<CodeMap>,
 }
 
 impl ParseSess {
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
-        let cm = Rc::new(CodeMap::new(file_path_mapping));
+        let cm = Lrc::new(CodeMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(ColorConfig::Auto,
                                                 true,
                                                 false,
@@ -65,15 +64,15 @@ impl ParseSess {
         ParseSess::with_span_handler(handler, cm)
     }
 
-    pub fn with_span_handler(handler: Handler, code_map: Rc<CodeMap>) -> ParseSess {
+    pub fn with_span_handler(handler: Handler, code_map: Lrc<CodeMap>) -> ParseSess {
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
             config: HashSet::new(),
-            missing_fragment_specifiers: RefCell::new(HashSet::new()),
-            included_mod_stack: RefCell::new(vec![]),
+            missing_fragment_specifiers: Lock::new(HashSet::new()),
+            included_mod_stack: Lock::new(vec![]),
             code_map,
-            non_modrs_mods: RefCell::new(vec![]),
+            non_modrs_mods: Lock::new(vec![]),
         }
     }
 
@@ -183,7 +182,7 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 }
 
 /// Given a filemap and config, return a parser
-pub fn filemap_to_parser(sess: & ParseSess, filemap: Rc<FileMap>, ) -> Parser {
+pub fn filemap_to_parser(sess: & ParseSess, filemap: Lrc<FileMap>) -> Parser {
     let end_pos = filemap.end_pos;
     let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap, None));
 
@@ -206,7 +205,7 @@ pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser {
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's codemap and return the new filemap.
 fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
-                   -> Rc<FileMap> {
+                   -> Lrc<FileMap> {
     match sess.codemap().load_file(path) {
         Ok(filemap) => filemap,
         Err(e) => {
@@ -220,7 +219,7 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a filemap, produce a sequence of token-trees
-pub fn filemap_to_stream(sess: &ParseSess, filemap: Rc<FileMap>, override_span: Option<Span>)
+pub fn filemap_to_stream(sess: &ParseSess, filemap: Lrc<FileMap>, override_span: Option<Span>)
                          -> TokenStream {
     let mut srdr = lexer::StringReader::new(sess, filemap);
     srdr.override_span = override_span;
@@ -422,7 +421,7 @@ pub fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Hand
             (true, Some(LitKind::ByteStr(byte_str_lit(&i.as_str()))))
         }
         token::ByteStrRaw(i, _) => {
-            (true, Some(LitKind::ByteStr(Rc::new(i.to_string().into_bytes()))))
+            (true, Some(LitKind::ByteStr(Lrc::new(i.to_string().into_bytes()))))
         }
     }
 }
@@ -496,7 +495,7 @@ pub fn byte_lit(lit: &str) -> (u8, usize) {
     }
 }
 
-pub fn byte_str_lit(lit: &str) -> Rc<Vec<u8>> {
+pub fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
     let mut res = Vec::with_capacity(lit.len());
 
     // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
@@ -553,7 +552,7 @@ pub fn byte_str_lit(lit: &str) -> Rc<Vec<u8>> {
         }
     }
 
-    Rc::new(res)
+    Lrc::new(res)
 }
 
 pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)

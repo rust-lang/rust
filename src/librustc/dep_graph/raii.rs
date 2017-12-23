@@ -10,14 +10,14 @@
 
 use super::graph::CurrentDepGraph;
 
-use std::cell::RefCell;
+use rustc_data_structures::sync::Lock;
 
 pub struct IgnoreTask<'graph> {
-    graph: &'graph RefCell<CurrentDepGraph>,
+    graph: &'graph Lock<CurrentDepGraph>,
 }
 
 impl<'graph> IgnoreTask<'graph> {
-    pub(super) fn new(graph: &'graph RefCell<CurrentDepGraph>) -> IgnoreTask<'graph> {
+    pub(super) fn new(graph: &'graph Lock<CurrentDepGraph>) -> IgnoreTask<'graph> {
         graph.borrow_mut().push_ignore();
         IgnoreTask {
             graph,

@@ -31,6 +31,7 @@ use errors::emitter::ColorConfig;
 use std::cell::{RefCell, Cell};
 use std::mem;
 use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::path::PathBuf;
 
 use visit_ast::RustdocVisitor;
@@ -134,7 +135,7 @@ pub fn run_core(search_paths: SearchPaths,
         ..config::basic_options().clone()
     };
 
-    let codemap = Rc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
+    let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
     let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
                                                                true,
                                                                false,

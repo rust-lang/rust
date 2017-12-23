@@ -27,19 +27,19 @@
 #![feature(specialization)]
 
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hasher, Hash};
 use std::ops::{Add, Sub};
 use std::path::PathBuf;
-use std::rc::Rc;
 
 use rustc_data_structures::stable_hasher::StableHasher;
-
-extern crate rustc_data_structures;
+use rustc_data_structures::sync::{Lrc, Lock};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
+
+extern crate rustc_data_structures;
 
 extern crate serialize;
 extern crate serialize as rustc_serialize; // used by deriving
@@ -675,22 +675,22 @@ pub struct FileMap {
     /// Indicates which crate this FileMap was imported from.
     pub crate_of_origin: u32,
     /// The complete source code
-    pub src: Option<Rc<String>>,
+    pub src: Option<Lrc<String>>,
     /// The source code's hash
     pub src_hash: u128,
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
-    pub external_src: RefCell<ExternalSource>,
+    pub external_src: Lock<ExternalSource>,
     /// The start position of this source in the CodeMap
     pub start_pos: BytePos,
     /// The end position of this source in the CodeMap
     pub end_pos: BytePos,
     /// Locations of lines beginnings in the source code
-    pub lines: RefCell<Vec<BytePos>>,
+    pub lines: Lock<Vec<BytePos>>,
     /// Locations of multi-byte characters in the source code
-    pub multibyte_chars: RefCell<Vec<MultiByteChar>>,
+    pub multibyte_chars: Lock<Vec<MultiByteChar>>,
     /// Width of characters that are not narrow in the source code
-    pub non_narrow_chars: RefCell<Vec<NonNarrowChar>>,
+    pub non_narrow_chars: Lock<Vec<NonNarrowChar>>,
     /// A hash of the filename, used for speeding up the incr. comp. hashing.
     pub name_hash: u128,
 }
@@ -820,10 +820,10 @@ impl Decodable for FileMap {
                 end_pos,
                 src: None,
                 src_hash,
-                external_src: RefCell::new(ExternalSource::AbsentOk),
-                lines: RefCell::new(lines),
-                multibyte_chars: RefCell::new(multibyte_chars),
-                non_narrow_chars: RefCell::new(non_narrow_chars),
+                external_src: Lock::new(ExternalSource::AbsentOk),
+                lines: Lock::new(lines),
+                multibyte_chars: Lock::new(multibyte_chars),
+                non_narrow_chars: Lock::new(non_narrow_chars),
                 name_hash,
             })
         })
@@ -861,14 +861,14 @@ impl FileMap {
             name_was_remapped,
             unmapped_path: Some(unmapped_path),
             crate_of_origin: 0,
-            src: Some(Rc::new(src)),
+            src: Some(Lrc::new(src)),
             src_hash,
-            external_src: RefCell::new(ExternalSource::Unneeded),
+            external_src: Lock::new(ExternalSource::Unneeded),
             start_pos,
             end_pos: Pos::from_usize(end_pos),
-            lines: RefCell::new(Vec::new()),
-            multibyte_chars: RefCell::new(Vec::new()),
-            non_narrow_chars: RefCell::new(Vec::new()),
+            lines: Lock::new(Vec::new()),
+            multibyte_chars: Lock::new(Vec::new()),
+            non_narrow_chars: Lock::new(Vec::new()),
             name_hash,
         }
     }
@@ -1124,7 +1124,7 @@ impl Sub for CharPos {
 #[derive(Debug, Clone)]
 pub struct Loc {
     /// Information about the original source
-    pub file: Rc<FileMap>,
+    pub file: Lrc<FileMap>,
     /// The (1-based) line number
     pub line: usize,
     /// The (0-based) column offset
@@ -1141,14 +1141,14 @@ pub struct LocWithOpt {
     pub filename: FileName,
     pub line: usize,
     pub col: CharPos,
-    pub file: Option<Rc<FileMap>>,
+    pub file: Option<Lrc<FileMap>>,
 }
 
 // used to be structural records. Better names, anyone?
 #[derive(Debug)]
-pub struct FileMapAndLine { pub fm: Rc<FileMap>, pub line: usize }
+pub struct FileMapAndLine { pub fm: Lrc<FileMap>, pub line: usize }
 #[derive(Debug)]
-pub struct FileMapAndBytePos { pub fm: Rc<FileMap>, pub pos: BytePos }
+pub struct FileMapAndBytePos { pub fm: Lrc<FileMap>, pub pos: BytePos }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LineInfo {
@@ -1163,7 +1163,7 @@ pub struct LineInfo {
 }
 
 pub struct FileLines {
-    pub file: Rc<FileMap>,
+    pub file: Lrc<FileMap>,
     pub lines: Vec<LineInfo>
 }
 
