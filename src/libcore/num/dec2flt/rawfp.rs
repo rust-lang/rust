@@ -28,8 +28,8 @@
 //! take the universally-correct slow path (Algorithm M) for very small and very large numbers.
 //! That algorithm needs only next_float() which does handle subnormals and zeros.
 use cmp::Ordering::{Less, Equal, Greater};
-use convert::TryInto;
-use ops::{Mul, Div, Neg};
+use convert::{TryFrom, TryInto};
+use ops::{Add, Mul, Div, Neg};
 use fmt::{Debug, LowerExp};
 use num::diy_float::Fp;
 use num::FpCategory::{Infinite, Zero, Subnormal, Normal, Nan};
@@ -55,12 +55,23 @@ impl Unpacked {
 ///
 /// Should **never ever** be implemented for other types or be used outside the dec2flt module.
 /// Inherits from `Float` because there is some overlap, but all the reused methods are trivial.
-pub trait RawFloat : Float + Copy + Debug + LowerExp
-                    + Mul<Output=Self> + Div<Output=Self> + Neg<Output=Self>
+pub trait RawFloat
+    : Float
+    + Copy
+    + Debug
+    + LowerExp
+    + Mul<Output=Self>
+    + Div<Output=Self>
+    + Neg<Output=Self>
+where
+    Self: Float<Bits = <Self as RawFloat>::RawBits>
 {
     const INFINITY: Self;
     const NAN: Self;
     const ZERO: Self;
+
+    /// Same as `Float::Bits` with extra traits.
+    type RawBits: Add<Output = Self::RawBits> + From<u8> + TryFrom<u64>;
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8);
@@ -142,6 +153,8 @@ macro_rules! other_constants {
 }
 
 impl RawFloat for f32 {
+    type RawBits = u32;
+
     const SIG_BITS: u8 = 24;
     const EXP_BITS: u8 = 8;
     const CEIL_LOG5_OF_MAX_SIG: i16 = 11;
@@ -183,6 +196,8 @@ impl RawFloat for f32 {
 
 
 impl RawFloat for f64 {
+    type RawBits = u64;
+
     const SIG_BITS: u8 = 53;
     const EXP_BITS: u8 = 11;
     const CEIL_LOG5_OF_MAX_SIG: i16 = 23;

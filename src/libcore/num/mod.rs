@@ -2874,7 +2874,7 @@ pub enum FpCategory {
 pub trait Float: Sized {
     /// Type used by `to_bits` and `from_bits`.
     #[stable(feature = "core_float_bits", since = "1.24.0")]
-    type Bits: ops::Add<Output = Self::Bits> + From<u8> + TryFrom<u64>;
+    type Bits;
 
     /// Returns `true` if this value is NaN and false otherwise.
     #[stable(feature = "core", since = "1.6.0")]
