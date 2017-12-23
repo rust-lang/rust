@@ -393,21 +393,43 @@ plan is suggested:
 - No harm will be done as long as the new libsyntax exists as an
   experiemt on crates.io. However, actually using it in the compiler
   and other tools would require massive refactorings.
+  
+- Proposed syntax tree requires to keep the original source code
+  available, which might increase memory usage of the
+  compiler. However, it should be possible to throw the original tree
+  and source code away after conversion to HIR.
 
 # Rationale and alternatives
 [alternatives]: #alternatives
 
-- Incrementally add more information about source code to the current AST.
-- Move the current libsyntax to crates.io as is.
+- Incrementally add more information about source code to the current
+  AST.
+
+- Move the current libsyntax to crates.io as is. In the past, there
+  were several failed attempts to do that.
+
 - Explore alternative representations for the parse tree.
-- Use parser generator instead of hand written parser.
+
+- Use parser generator instead of hand written parser. Using the
+  parser from libsyntax directly would be easier, and hand-written
+  LL-style parsers usually have much better error recovery than
+  generated LR-style ones.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
 - Is it at all possible to represent Rust parser as a pure function of
-  the source code?
+  the source code? It seems like the answer is yes, because the
+  language and especially macros were cleverly designed with this
+  use-case in mind.
+  
+  
 - Is it possible to implement macro expansion using the proposed
-  framework?
+  framework? This is the main question of this RFC. The proposed
+  solution of synthesizing source code on the fly seems workable: it's
+  not that different from the current implementation, which
+  synthesizes token trees.
+  
+  
 - How to actually phase out current libsyntax, if libsyntax2.0 turns
   out to be a success?
