@@ -57,6 +57,7 @@ mod apple_base;
 mod apple_ios_base;
 mod arm_base;
 mod bitrig_base;
+mod cloudabi_base;
 mod dragonfly_base;
 mod emscripten_base;
 mod freebsd_base;
@@ -227,6 +228,11 @@ supported_targets! {
     ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
 
     ("msp430-none-elf", msp430_none_elf),
+
+    ("aarch64-unknown-cloudabi", aarch64_unknown_cloudabi),
+    ("armv7-unknown-cloudabi-eabihf", armv7_unknown_cloudabi_eabihf),
+    ("i686-unknown-cloudabi", i686_unknown_cloudabi),
+    ("x86_64-unknown-cloudabi", x86_64_unknown_cloudabi),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
