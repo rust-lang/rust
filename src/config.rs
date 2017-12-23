@@ -17,9 +17,9 @@ use std::fs::File;
 use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
+use Summary;
 use file_lines::FileLines;
 use lists::{ListTactic, SeparatorPlace, SeparatorTactic};
-use Summary;
 
 /// Check if we're in a nightly build.
 ///

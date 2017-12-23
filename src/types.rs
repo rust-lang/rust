@@ -16,7 +16,6 @@ use syntax::codemap::{self, BytePos, Span};
 use syntax::print::pprust;
 use syntax::symbol::keywords;
 
-use spanned::Spanned;
 use codemap::SpanUtils;
 use config::{IndentStyle, TypeDensity};
 use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens, PairParts};
@@ -26,6 +25,7 @@ use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTac
 use macros::{rewrite_macro, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use spanned::Spanned;
 use utils::{colon_spaces, extra_offset, first_line_width, format_abi, format_mutability,
             last_line_width, mk_sp};
 
