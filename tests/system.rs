@@ -137,8 +137,7 @@ fn self_tests() {
     }
 
     assert_eq!(
-        warnings,
-        0,
+        warnings, 0,
         "Rustfmt's code generated {} warnings",
         warnings
     );

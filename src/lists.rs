@@ -160,10 +160,8 @@ pub enum DefinitiveListTactic {
     Vertical,
     Horizontal,
     Mixed,
-    // Special case tactic for `format!()` variants.
-    FormatCall,
-    // Special case tactic for `write!()` varianta.
-    WriteCall,
+    // Special case tactic for `format!()`, `write!()` style macros.
+    SpecialMacro(bool, bool, usize),
 }
 
 impl DefinitiveListTactic {
@@ -271,7 +269,7 @@ where
     I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
 {
-    let mut tactic = formatting.tactic;
+    let tactic = formatting.tactic;
     let sep_len = formatting.separator.len();
 
     // Now that we know how we will layout, we can decide for sure if there
@@ -313,26 +311,33 @@ where
             DefinitiveListTactic::Horizontal if !first => {
                 result.push(' ');
             }
-            DefinitiveListTactic::FormatCall if !first => {
-                result.push('\n');
-                result.push_str(indent_str);
-                tactic = DefinitiveListTactic::Horizontal;
-            }
-            DefinitiveListTactic::WriteCall => {
-                let second = i == 1;
-                let third = i == 2;
-
-                if first {
+            DefinitiveListTactic::SpecialMacro(
+                one_line_before,
+                one_line_after,
+                num_args_before,
+            ) => {
+                if i == 0 {
                     // Nothing
-                } else if second {
+                } else if i < num_args_before {
+                    if one_line_before {
+                        result.push(' ');
+                    } else {
+                        result.push('\n');
+                        result.push_str(indent_str);
+                    }
+                } else if i == num_args_before {
                     result.push('\n');
                     result.push_str(indent_str);
-                } else if third {
+                } else if i == num_args_before + 1 {
                     result.push('\n');
                     result.push_str(indent_str);
-                    tactic = DefinitiveListTactic::Horizontal;
-                } else {
-                    unreachable!();
+                } else if i > num_args_before + 1 {
+                    if one_line_after {
+                        result.push(' ');
+                    } else {
+                        result.push('\n');
+                        result.push_str(indent_str);
+                    }
                 }
             }
             DefinitiveListTactic::Vertical if !first => {

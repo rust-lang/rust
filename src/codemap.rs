@@ -86,11 +86,9 @@ impl LineRangeUtils for CodeMap {
         let hi = self.lookup_char_pos(span.hi());
 
         assert_eq!(
-            lo.file.name,
-            hi.file.name,
+            lo.file.name, hi.file.name,
             "span crossed file boundary: lo: {:?}, hi: {:?}",
-            lo,
-            hi
+            lo, hi
         );
 
         LineRange {
