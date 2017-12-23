@@ -1062,6 +1062,7 @@ fn test_contains() {
     assert!(!strings.contains(&String::from("A")));
     assert!(strings.contains(&"AB"));
     assert!(!strings.contains(&"BC"));
+    assert!(strings.contains("AB"));
 }
 
 #[test]
