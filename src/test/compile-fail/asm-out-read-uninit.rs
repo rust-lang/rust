@@ -13,6 +13,9 @@
 // ignore-powerpc
 // ignore-sparc
 
+// revisions: ast mir
+//[mir]compile-flags: -Z borrowck=mir
+
 #![feature(asm)]
 
 fn foo(x: isize) { println!("{}", x); }
@@ -24,7 +27,9 @@ fn foo(x: isize) { println!("{}", x); }
 pub fn main() {
     let x: isize;
     unsafe {
-        asm!("mov $1, $0" : "=r"(x) : "r"(x)); //~ ERROR use of possibly uninitialized variable: `x`
+        asm!("mov $1, $0" : "=r"(x) : "r"(x));
+        //[ast]~^ ERROR use of possibly uninitialized variable: `x`
+        //[mir]~^^ ERROR use of possibly uninitialized variable: `x`
     }
     foo(x);
 }

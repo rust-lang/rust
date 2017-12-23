@@ -278,6 +278,16 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 }
                 self.gather_rvalue(rval);
             }
+            StatementKind::InlineAsm { ref outputs, ref inputs, ref asm } => {
+                for (output, kind) in outputs.iter().zip(&asm.outputs) {
+                    if !kind.is_indirect {
+                        self.gather_init(output, InitKind::Deep);
+                    }
+                }
+                for input in inputs {
+                    self.gather_operand(input);
+                }
+            }
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
                 self.gather_move(&Place::Local(local));
@@ -286,7 +296,6 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 span_bug!(stmt.source_info.span,
                           "SetDiscriminant should not exist during borrowck");
             }
-            StatementKind::InlineAsm { .. } |
             StatementKind::EndRegion(_) |
             StatementKind::Validate(..) |
             StatementKind::Nop => {}
