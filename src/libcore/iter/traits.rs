@@ -1000,8 +1000,10 @@ unsafe impl<'a, I: TrustedLen + ?Sized> TrustedLen for &'a mut I {}
 ///
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 /// [`.size_hint`]: ../../std/iter/trait.Iterator.html#method.size_hint
+// We can't implement FusedIterator for T where T: UnboundedIterator due to
+// a clash for &'a mut I. Thus, we need to make it a supertrait.
 #[unstable(feature = "unbounded_iter", issue = "0")]
-pub unsafe trait UnboundedIterator : Iterator {}
+pub unsafe trait UnboundedIterator : FusedIterator {}
 
 #[unstable(feature = "unbounded_iter", issue = "0")]
 unsafe impl<'a, I: UnboundedIterator + ?Sized> UnboundedIterator for &'a mut I {}

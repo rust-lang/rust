@@ -682,7 +682,7 @@ impl<I> CycleImpl for Cycle<I> where I: Clone + Iterator {
     }
 }
 
-// Specialized StepBy impl for an underlying UnboundedIterator
+// Specialized Cycle impl for an underlying UnboundedIterator
 impl<I> CycleImpl for Cycle<I> where I: Clone + UnboundedIterator {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -781,6 +781,11 @@ impl<I: UnboundedIterator> StepByImpl for StepBy<I> {
            reason = "unstable replacement of Range::step_by",
            issue = "27741")]
 impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
+
+#[unstable(feature = "iterator_step_by",
+           reason = "unstable replacement of Range::step_by",
+           issue = "27741")]
+impl<I> FusedIterator for StepBy<I> where I: FusedIterator {}
 
 #[unstable(feature = "iterator_step_by",
            reason = "unstable replacement of Range::step_by",
@@ -1091,7 +1096,7 @@ unsafe impl<A, B> TrustedLen for Chain<A, B>
 #[unstable(feature = "unbounded_iter", issue = "0")]
 unsafe impl<A, B> UnboundedIterator for Chain<A, B>
     where A: UnboundedIterator,
-          B: Iterator<Item=A::Item>,
+          B: FusedIterator<Item=A::Item>,
 //          (A, B): UnboundedIteratorAuto
 {}
 //#[unstable(feature = "unbounded_iter", issue = "0")]
@@ -2807,7 +2812,7 @@ trait FlatMapImpl {
     fn size_hint(&self) -> (usize, Option<usize>);
 }
 
-// General StepBy impl
+// General FlatMap impl
 impl<I: Iterator, U: IntoIterator, F> FlatMapImpl for FlatMap<I, U, F>
     where F: FnMut(I::Item) -> U,
 {
