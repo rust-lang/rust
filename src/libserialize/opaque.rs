@@ -175,11 +175,12 @@ impl<'a> Decoder<'a> {
     }
 
     pub fn read_raw_bytes(&mut self, s: &mut [u8]) -> Result<(), String> {
-        let len = s.len();
+        let start = self.position;
+        let end = start + s.len();
 
-        self.position += len;
+        s.copy_from_slice(&self.data[start..end]);
 
-        s.copy_from_slice(&self.data[0..len]);
+        self.position = end;
 
         Ok(())
     }
