@@ -102,11 +102,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
                 if let ast::LitKind::Bool(true) = lit.node {
                     if lit.span.ctxt() == SyntaxContext::empty() {
                         let msg = "denote infinite loops with `loop { ... }`";
-                        let mut err = cx.struct_span_lint(WHILE_TRUE, e.span, msg);
                         let condition_span = cx.tcx.sess.codemap().def_span(e.span);
-                        err.span_suggestion_short(condition_span,
-                                                  "use `loop`",
-                                                  "loop".to_owned());
+                        let mut err = cx.struct_span_lint(WHILE_TRUE, condition_span, msg);
+                        err.span_suggestion_short(condition_span, "use `loop`", "loop".to_owned());
                         err.emit();
                     }
                 }
