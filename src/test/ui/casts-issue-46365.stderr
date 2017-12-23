@@ -1,0 +1,8 @@
+error[E0412]: cannot find type `Ipsum` in this scope
+  --> $DIR/casts-issue-46365.rs:12:12
+   |
+12 |     ipsum: Ipsum //~ ERROR cannot find type `Ipsum`
+   |            ^^^^^ not found in this scope
+
+error: aborting due to previous error
+
