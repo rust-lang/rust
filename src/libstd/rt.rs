@@ -26,10 +26,11 @@
 // Reexport some of our utilities which are expected by other crates.
 pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
+// To reduce the generated code of the new `lang_start`, this function is doing
+// the real work.
 #[cfg(not(any(test, stage0)))]
-#[lang = "start"]
-fn lang_start<T: ::termination::Termination + 'static>
-    (main: fn() -> T, argc: isize, argv: *const *const u8) -> !
+fn lang_start_real<F>(main: F, argc: isize, argv: *const *const u8) -> !
+    where F: FnOnce() -> i32 + Send + ::panic::UnwindSafe + 'static
 {
     use panic;
     use sys;
@@ -59,14 +60,22 @@ fn lang_start<T: ::termination::Termination + 'static>
         // Let's run some code!
         #[cfg(feature = "backtrace")]
         let exit_code = panic::catch_unwind(|| {
-            ::sys_common::backtrace::__rust_begin_short_backtrace(move || main().report())
+            ::sys_common::backtrace::__rust_begin_short_backtrace(move || main())
         });
         #[cfg(not(feature = "backtrace"))]
-        let exit_code = panic::catch_unwind(move || main().report());
+        let exit_code = panic::catch_unwind(move || main());
 
         sys_common::cleanup();
         exit_code.unwrap_or(101)
     });
+}
+
+#[cfg(not(any(test, stage0)))]
+#[lang = "start"]
+fn lang_start<T: ::termination::Termination + 'static>
+    (main: fn() -> T, argc: isize, argv: *const *const u8) -> !
+{
+    lang_start_real(move || main().report(), argc, argv)
 }
 
 #[cfg(all(not(test), stage0))]
