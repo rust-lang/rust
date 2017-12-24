@@ -1811,6 +1811,12 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
     )
 }
 
+/// A list of `format!`-like macros, that take a long format string and a list of arguments to
+/// format.
+///
+/// Organized as a list of `(&str, usize)` tuples, giving the name of the macro and the number of
+/// arguments before the format string (none for `format!("format", ...)`, one for `assert!(result,
+/// "format", ...)`, two for `assert_eq!(left, right, "format", ...)`).
 const SPECIAL_MACRO_WHITELIST: &[(&str, usize)] = &[
     // format! like macros
     // From the Rust Standard Library.
