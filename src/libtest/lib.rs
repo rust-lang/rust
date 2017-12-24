@@ -59,7 +59,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::any::Any;
 use std::boxed::FnBox;
 use std::cmp;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::env;
 use std::fmt;
 use std::fs::File;
@@ -872,42 +872,76 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     Ok(())
 }
 
-// A simple console test runner
-pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
 
-    fn callback<T: Write>(event: &TestEvent, st: &mut ConsoleTestState<T>) -> io::Result<()> {
+/// In multi-threaded modes tests may, of course, start and complete asynchronously.
+///
+/// However our simple line-at-a-time console output presents the illusion they run one
+/// at a time. But, we would still like to show at least one of the tests currently running,
+/// so that slow tests are visible.
+///
+/// This state machine reduces test events to a linear order: at most one can be visibly
+/// pending at a time, and it essentially owns the line of output until it's complete.
+struct SerializedResults<'a, T: Write + 'a> {
+    st: &'a mut ConsoleTestState<T>,
+
+    // The test, if any, that's been printed to the terminal and is waiting for its result
+    // to be available.
+    printed_test: Option<TestName>,
+
+    // Deque of tests that have started, in the order they started.
+    waiting_tests: VecDeque<(TestDesc, NamePadding)>,
+
+    // Map of tests that have completed and not yet been printed.
+    finished_tests: HashMap<TestName, TestResult>,
+}
+
+impl<'a, T: Write> SerializedResults<'a, T> {
+    fn new(st: &'a mut ConsoleTestState<T>) -> SerializedResults<'a, T> {
+        SerializedResults {
+            st: st,
+            printed_test: None,
+            waiting_tests: VecDeque::new(),
+            finished_tests: HashMap::new(),
+        }
+    }
+
+    fn callback(&mut self, event: &TestEvent) -> io::Result<()> {
         match (*event).clone() {
-            TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
-            TeFilteredOut(filtered_out) => Ok(st.filtered_out = filtered_out),
-            TeWait(ref test, padding) => st.write_test_start(test, padding),
-            TeTimeout(ref test) => st.write_timeout(test),
+            TeFiltered(ref filtered_tests) => self.st.write_run_start(filtered_tests.len()),
+            TeFilteredOut(filtered_out) => Ok(self.st.filtered_out = filtered_out),
+            TeWait(ref test, padding) => {
+                self.waiting_tests.push_back((test.clone(), padding));
+                self.advance()
+            },
+            TeTimeout(ref test) => self.st.write_timeout(test),
             TeResult(test, result, stdout) => {
-                st.write_log_result(&test, &result)?;
-                st.write_result(&result)?;
+                self.st.write_log_result(&test, &result)?;
+                self.finished_tests.insert(test.name.clone(), result.clone());
+                self.advance()?;
                 match result {
                     TrOk => {
-                        st.passed += 1;
-                        st.not_failures.push((test, stdout));
+                        self.st.passed += 1;
+                        self.st.not_failures.push((test, stdout));
                     }
-                    TrIgnored => st.ignored += 1,
-                    TrAllowedFail => st.allowed_fail += 1,
+                    TrIgnored => self.st.ignored += 1,
+                    TrAllowedFail => self.st.allowed_fail += 1,
                     TrBench(bs) => {
-                        st.metrics.insert_metric(test.name.as_slice(),
+                        self.st.metrics.insert_metric(test.name.as_slice(),
                                                  bs.ns_iter_summ.median,
                                                  bs.ns_iter_summ.max - bs.ns_iter_summ.min);
-                        st.measured += 1
+                        self.st.measured += 1
                     }
                     TrFailed => {
-                        st.failed += 1;
-                        st.failures.push((test, stdout));
+                        self.st.failed += 1;
+                        self.st.failures.push((test, stdout));
                     }
                     TrFailedMsg(msg) => {
-                        st.failed += 1;
+                        self.st.failed += 1;
                         let mut stdout = stdout;
                         stdout.extend_from_slice(
                             format!("note: {}", msg).as_bytes()
                         );
-                        st.failures.push((test, stdout));
+                        self.st.failures.push((test, stdout));
                     }
                 }
                 Ok(())
@@ -915,6 +949,36 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         }
     }
 
+    // Print as much queued state as possible.
+    fn advance(&mut self) -> io::Result<()> {
+        loop {
+            // 1. If there's a test name already printed, and we have a result for it,
+            // print that result to finish the line.
+            if let Some(printed_test_name) = self.printed_test.take() {
+                if let Some(result) = self.finished_tests.remove(&printed_test_name) {
+                    self.st.write_result(&result)?;
+                } else {
+                    // Result for this test hasn't arrived yet, can't do any more until it does.
+                    self.printed_test = Some(printed_test_name);
+                    return Ok(());
+                }
+            }
+            // 2. If there are queued up tests, complete or not, print out the first one. Then,
+            // loop again to see if we find its result.
+            if let Some(next_test) = self.waiting_tests.pop_front() {
+                self.st.write_test_start(&next_test.0, next_test.1)?;
+                self.printed_test = Some(next_test.0.name);
+            } else {
+                // No more waiting (or complete) tests, can't do any more.
+                return Ok(());
+            }
+        }
+    }
+}
+
+
+// A simple console test runner
+pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
     let mut st = ConsoleTestState::new(opts, None::<io::Stdout>)?;
     fn len_if_padded(t: &TestDescAndFn) -> usize {
         match t.testfn.padding() {
@@ -926,7 +990,10 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         let n = t.desc.name.as_slice();
         st.max_name_len = n.len();
     }
-    run_tests(opts, tests, |x| callback(&x, &mut st))?;
+    {
+        let mut serialized = SerializedResults::new(&mut st);
+        run_tests(opts, tests, |x| serialized.callback(&x))?;
+    }
     return st.write_run_finish();
 }
 
@@ -1105,6 +1172,7 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
                 let test = remaining.pop().unwrap();
                 let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
                 running_tests.insert(test.desc.clone(), timeout);
+                callback(TeWait(test.desc.clone(), PadNone))?;
                 run_test(opts, !opts.run_tests, test, tx.clone());
                 pending += 1;
             }
@@ -1128,7 +1196,6 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
             let (desc, result, stdout) = res.unwrap();
             running_tests.remove(&desc);
 
-            callback(TeWait(desc.clone(), PadNone))?;
             callback(TeResult(desc, result, stdout))?;
             pending -= 1;
         }
@@ -2031,5 +2098,12 @@ mod tests {
             })
         }
         bench::benchmark(f);
+    }
+
+    #[test]
+    pub fn test_slow() {
+        use std::{thread, time};
+
+        thread::sleep(time::Duration::from_secs(5));
     }
 }
