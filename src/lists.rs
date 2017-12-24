@@ -160,7 +160,7 @@ pub enum DefinitiveListTactic {
     Vertical,
     Horizontal,
     Mixed,
-    // Special case tactic for `format!()`, `write!()` style macros.
+    /// Special case tactic for `format!()`, `write!()` style macros.
     SpecialMacro(bool, bool, usize),
 }
 
@@ -325,13 +325,10 @@ where
                         result.push('\n');
                         result.push_str(indent_str);
                     }
-                } else if i == num_args_before {
+                } else if i <= num_args_before + 1 {
                     result.push('\n');
                     result.push_str(indent_str);
-                } else if i == num_args_before + 1 {
-                    result.push('\n');
-                    result.push_str(indent_str);
-                } else if i > num_args_before + 1 {
+                } else {
                     if one_line_after {
                         result.push(' ');
                     } else {
