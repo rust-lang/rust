@@ -1357,9 +1357,6 @@ impl<'a, 'tcx> LayoutDetails {
                     if packed && def.repr.align > 0 {
                         bug!("Union cannot be packed and aligned");
                     }
-                    if variants.len() != 1 {
-                        bug!("Union must be represented as a single variant");
-                    }
 
                     let mut align = if def.repr.packed() {
                         dl.i8_align
