@@ -552,6 +552,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 });
             }
             TerminatorKind::Goto { target: _ }
+            | TerminatorKind::Abort
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdges { .. } => {
                 // no data used, thus irrelevant to borrowck

@@ -334,6 +334,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         match term.kind {
             TerminatorKind::Goto { target: _ } |
             TerminatorKind::Resume |
+            TerminatorKind::Abort |
             TerminatorKind::GeneratorDrop |
             TerminatorKind::FalseEdges { .. } |
             TerminatorKind::Unreachable => { }

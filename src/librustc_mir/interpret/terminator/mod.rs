@@ -163,6 +163,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             GeneratorDrop => unimplemented!(),
             DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
+            Abort => unimplemented!(),
             FalseEdges { .. } => bug!("should have been eliminated by `simplify_branches` mir pass"),
             Unreachable => return err!(Unreachable),
         }

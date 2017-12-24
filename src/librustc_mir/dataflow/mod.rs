@@ -771,6 +771,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
         match bb_data.terminator().kind {
             mir::TerminatorKind::Return |
             mir::TerminatorKind::Resume |
+            mir::TerminatorKind::Abort |
             mir::TerminatorKind::GeneratorDrop |
             mir::TerminatorKind::Unreachable => {}
             mir::TerminatorKind::Goto { ref target } |

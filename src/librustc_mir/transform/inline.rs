@@ -806,6 +806,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *kind = TerminatorKind::Goto { target: tgt }
                 }
             }
+            TerminatorKind::Abort => { }
             TerminatorKind::Unreachable => { }
             TerminatorKind::FalseEdges { ref mut real_target, ref mut imaginary_targets } => {
                 *real_target = self.update_target(*real_target);

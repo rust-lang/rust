@@ -73,6 +73,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             TerminatorKind::DropAndReplace { .. } |
             TerminatorKind::GeneratorDrop |
             TerminatorKind::Resume |
+            TerminatorKind::Abort |
             TerminatorKind::Return |
             TerminatorKind::Unreachable |
             TerminatorKind::FalseEdges { .. } => {

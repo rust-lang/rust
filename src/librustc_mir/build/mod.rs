@@ -20,6 +20,7 @@ use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
+use rustc_back::PanicStrategy;
 use rustc_const_eval::pattern::{BindingMode, PatternKind};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use shim;
@@ -353,6 +354,27 @@ macro_rules! unpack {
     };
 }
 
+fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                         fn_id: ast::NodeId,
+                                         abi: Abi)
+                                         -> bool {
+
+    // Not callable from C, so we can safely unwind through these
+    if abi == Abi::Rust || abi == Abi::RustCall { return false; }
+
+    // We never unwind, so it's not relevant to stop an unwind
+    if tcx.sess.panic_strategy() != PanicStrategy::Unwind { return false; }
+
+    // We cannot add landing pads, so don't add one
+    if tcx.sess.no_landing_pads() { return false; }
+
+    // This is a special case: some functions have a C abi but are meant to
+    // unwind anyway. Don't stop them.
+    if tcx.has_attr(tcx.hir.local_def_id(fn_id), "unwind") { return false; }
+
+    return true;
+}
+
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
@@ -383,6 +405,10 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, block, |builder| {
+        if should_abort_on_panic(tcx, fn_id, abi) {
+            builder.schedule_abort();
+        }
+
         let arg_scope_s = (arg_scope, source_info);
         unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, block, |builder| {
             builder.args_and_body(block, &arguments, arg_scope, &body.value)

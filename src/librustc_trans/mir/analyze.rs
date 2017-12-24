@@ -236,6 +236,7 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
             match data.terminator().kind {
                 TerminatorKind::Goto { .. } |
                 TerminatorKind::Resume |
+                TerminatorKind::Abort |
                 TerminatorKind::Return |
                 TerminatorKind::GeneratorDrop |
                 TerminatorKind::Unreachable |

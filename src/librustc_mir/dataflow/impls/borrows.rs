@@ -496,6 +496,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     }
                 }
             }
+            mir::TerminatorKind::Abort |
             mir::TerminatorKind::SwitchInt {..} |
             mir::TerminatorKind::Drop {..} |
             mir::TerminatorKind::DropAndReplace {..} |

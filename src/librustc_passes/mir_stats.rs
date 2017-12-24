@@ -113,6 +113,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             TerminatorKind::Goto { .. } => "TerminatorKind::Goto",
             TerminatorKind::SwitchInt { .. } => "TerminatorKind::SwitchInt",
             TerminatorKind::Resume => "TerminatorKind::Resume",
+            TerminatorKind::Abort => "TerminatorKind::Abort",
             TerminatorKind::Return => "TerminatorKind::Return",
             TerminatorKind::Unreachable => "TerminatorKind::Unreachable",
             TerminatorKind::Drop { .. } => "TerminatorKind::Drop",

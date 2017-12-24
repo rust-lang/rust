@@ -180,6 +180,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
             }
 
+            mir::TerminatorKind::Abort => {
+                // Call core::intrinsics::abort()
+                let fnname = bcx.ccx.get_intrinsic(&("llvm.trap"));
+                bcx.call(fnname, &[], None);
+                bcx.unreachable();
+            }
+
             mir::TerminatorKind::Goto { target } => {
                 funclet_br(self, bcx, target);
             }
