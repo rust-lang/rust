@@ -435,6 +435,9 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         // RustCall pseudo-ABI untuples the last argument.
         spread_arg = Some(Local::new(arguments.len()));
     }
+    let closure_expr_id = tcx.hir.local_def_id(fn_id);
+    info!("fn_id {:?} has attrs {:?}", closure_expr_id,
+          tcx.get_attrs(closure_expr_id));
 
     // Gather the upvars of a closure, if any.
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
@@ -604,7 +607,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     scope: ARGUMENT_VISIBILITY_SCOPE,
                     span: pattern.map_or(self.fn_span, |pat| pat.span)
                 },
-                lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
+                syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
                 name,
                 internal: false,
                 is_user_variable: false,

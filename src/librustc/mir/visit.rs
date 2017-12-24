@@ -703,7 +703,7 @@ macro_rules! make_mir_visitor {
                     name: _,
                     ref $($mutability)* source_info,
                     internal: _,
-                    ref $($mutability)* lexical_scope,
+                    ref $($mutability)* syntactic_scope,
                     is_user_variable: _,
                 } = *local_decl;
 
@@ -712,7 +712,7 @@ macro_rules! make_mir_visitor {
                     source_info: *source_info,
                 });
                 self.visit_source_info(source_info);
-                self.visit_visibility_scope(lexical_scope);
+                self.visit_visibility_scope(syntactic_scope);
             }
 
             fn super_visibility_scope(&mut self,

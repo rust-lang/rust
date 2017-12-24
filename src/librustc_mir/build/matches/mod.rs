@@ -196,16 +196,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             pattern: &Pattern<'tcx>)
                             -> Option<VisibilityScope> {
         assert!(!(var_scope.is_some() && lint_level.is_explicit()),
-               "can't have both a var and a lint scope at the same time");
+                "can't have both a var and a lint scope at the same time");
+        let mut syntactic_scope = self.visibility_scope;
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if var_scope.is_none() {
                 var_scope = Some(this.new_visibility_scope(scope_span,
                                                            LintLevel::Inherited,
                                                            None));
                 // If we have lints, create a new visibility scope
-                // that marks the lints for the locals.
+                // that marks the lints for the locals. See the comment
+                // on the `syntactic_scope` field for why this is needed.
                 if lint_level.is_explicit() {
-                    this.visibility_scope =
+                    syntactic_scope =
                         this.new_visibility_scope(scope_span, lint_level, None);
                 }
             }
@@ -213,12 +215,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 span,
                 scope: var_scope.unwrap()
             };
-            this.declare_binding(source_info, mutability, name, var, ty);
+            this.declare_binding(source_info, syntactic_scope, mutability, name, var, ty);
         });
-        // Pop any scope we created for the locals.
-        if let Some(var_scope) = var_scope {
-            self.visibility_scope = var_scope;
-        }
         var_scope
     }
 
@@ -783,21 +781,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn declare_binding(&mut self,
                        source_info: SourceInfo,
+                       syntactic_scope: VisibilityScope,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>)
                        -> Local
     {
-        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?})",
-               var_id, name, var_ty, source_info);
+        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?}, \
+                syntactic_scope={:?})",
+               var_id, name, var_ty, source_info, syntactic_scope);
 
         let var = self.local_decls.push(LocalDecl::<'tcx> {
             mutability,
             ty: var_ty.clone(),
             name: Some(name),
             source_info,
-            lexical_scope: self.visibility_scope,
+            syntactic_scope,
             internal: false,
             is_user_variable: true,
         });

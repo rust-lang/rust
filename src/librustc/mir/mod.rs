@@ -481,11 +481,83 @@ pub struct LocalDecl<'tcx> {
     /// Source info of the local.
     pub source_info: SourceInfo,
 
-    /// The *lexical* visibility scope the local is defined
+    /// The *syntactic* visibility scope the local is defined
     /// in. If the local was defined in a let-statement, this
     /// is *within* the let-statement, rather than outside
     /// of it.
-    pub lexical_scope: VisibilityScope,
+    ///
+    /// This is needed because visibility scope of locals within a let-statement
+    /// is weird.
+    ///
+    /// The reason is that we want the local to be *within* the let-statement
+    /// for lint purposes, but we want the local to be *after* the let-statement
+    /// for names-in-scope purposes.
+    ///
+    /// That's it, if we have a let-statement like the one in this
+    /// function:
+    /// ```
+    /// fn foo(x: &str) {
+    ///     #[allow(unused_mut)]
+    ///     let mut x: u32 = { // <- one unused mut
+    ///         let mut y: u32 = x.parse().unwrap();
+    ///         y + 2
+    ///     };
+    ///     drop(x);
+    /// }
+    /// ```
+    ///
+    /// Then, from a lint point of view, the declaration of `x: u32`
+    /// (and `y: u32`) are within the `#[allow(unused_mut)]` scope - the
+    /// lint scopes are the same as the AST/HIR nesting.
+    ///
+    /// However, from a name lookup point of view, the scopes look more like
+    /// as if the let-statements were `match` expressions:
+    ///
+    /// ```
+    /// fn foo(x: &str) {
+    ///     match {
+    ///         match x.parse().unwrap() {
+    ///             y => y + 2
+    ///         }
+    ///     } {
+    ///         x => drop(x)
+    ///     };
+    /// }
+    /// ```
+    ///
+    /// We care about the name-lookup scopes for debuginfo - if the
+    /// debuginfo instruction pointer is at the call to `x.parse()`, we
+    /// want `x` to refer to `x: &str`, but if it is at the call to
+    /// `drop(x)`, we want it to refer to `x: u32`.
+    ///
+    /// To allow both uses to work, we need to have more than a single scope
+    /// for a local. We have the `syntactic_scope` represent the
+    /// "syntactic" lint scope (with a variable being under its let
+    /// block) while the source-info scope represents the "local variable"
+    /// scope (where the "rest" of a block is under all prior let-statements).
+    ///
+    /// The end result looks like this:
+    ///
+    /// ROOT SCOPE
+    ///  │{ argument x: &str }
+    ///  │
+    ///  │ │{ #[allow(unused_mut] } // this is actually split into 2 scopes
+    ///  │ │                        // in practice because I'm lazy.
+    ///  │ │
+    ///  │ │← x.syntactic_scope
+    ///  │ │← `x.parse().unwrap()`
+    ///  │ │
+    ///  │ │ │← y.syntactic_scope
+    ///  │ │
+    ///  │ │ │{ let y: u32 }
+    ///  │ │ │
+    ///  │ │ │← y.source_info.scope
+    ///  │ │ │← `y + 2`
+    ///  │
+    ///  │ │{ let x: u32 }
+    ///  │ │← x.source_info.scope
+    ///  │ │← `drop(x)` // this accesses `x: u32`
+    pub syntactic_scope: VisibilityScope,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -500,7 +572,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
-            lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
+            syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
             internal: false,
             is_user_variable: false
         }
@@ -517,7 +589,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
-            lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
+            syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
             internal: true,
             is_user_variable: false
         }
@@ -535,7 +607,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
-            lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
+            syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
             internal: false,
             name: None,     // FIXME maybe we do want some name here?
             is_user_variable: false
