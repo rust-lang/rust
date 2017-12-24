@@ -22,7 +22,7 @@ use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
 use config::{BraceStyle, Config, Density, IndentStyle};
-use expr::{choose_rhs, format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
+use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
             ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
@@ -1430,8 +1430,7 @@ pub fn rewrite_struct_field(
     lhs_max_width: usize,
 ) -> Option<String> {
     if contains_skip(&field.attrs) {
-        let snippet = context.snippet(mk_sp(field.attrs[0].span.lo(), field.span.hi()));
-        return Some(snippet.to_owned());
+        return Some(context.snippet(field.span()).to_owned());
     }
 
     let type_annotation_spacing = type_annotation_spacing(context.config);
@@ -1468,24 +1467,25 @@ pub fn rewrite_struct_field(
     if prefix.is_empty() && !attrs_str.is_empty() && attrs_extendable && spacing.is_empty() {
         spacing.push(' ');
     }
-    let ty_shape = shape.offset_left(overhead + spacing.len())?;
-    let mut orig_ty = field.ty.rewrite(context, ty_shape);
+    let orig_ty = shape
+        .offset_left(overhead + spacing.len())
+        .and_then(|ty_shape| field.ty.rewrite(context, ty_shape));
     if let Some(ref ty) = orig_ty {
         if !ty.contains('\n') {
             return Some(attr_prefix + &spacing + ty);
         }
     }
 
+    let is_prefix_empty = prefix.is_empty();
     // We must use multiline. We are going to put attributes and a field on different lines.
-    // 1 = " "
-    let rhs_shape = shape.offset_left(last_line_width(&prefix) + 1)?;
-    orig_ty = field.ty.rewrite(context, rhs_shape);
-    let field_str = if prefix.is_empty() {
-        orig_ty?
+    let field_str = rewrite_assign_rhs(context, prefix, &*field.ty, shape)?;
+    // Remove a leading white-space from `rewrite_assign_rhs()` when rewriting a tuple struct.
+    let field_str = if is_prefix_empty {
+        field_str.trim_left()
     } else {
-        prefix + &choose_rhs(context, &*field.ty, rhs_shape, orig_ty)?
+        &field_str
     };
-    combine_strs_with_missing_comments(context, &attrs_str, &field_str, missing_span, shape, false)
+    combine_strs_with_missing_comments(context, &attrs_str, field_str, missing_span, shape, false)
 }
 
 pub struct StaticParts<'a> {
