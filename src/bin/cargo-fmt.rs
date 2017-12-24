@@ -17,15 +17,15 @@ extern crate cargo_metadata;
 extern crate getopts;
 extern crate serde_json as json;
 
+use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
+use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::str;
-use std::collections::HashSet;
-use std::iter::FromIterator;
 
 use getopts::{Matches, Options};
 
@@ -125,7 +125,7 @@ pub enum Verbosity {
 fn handle_command_status(status: Result<ExitStatus, io::Error>, opts: &getopts::Options) -> i32 {
     match status {
         Err(e) => {
-            print_usage_to_stderr(&opts, &e.to_string());
+            print_usage_to_stderr(opts, &e.to_string());
             FAILURE
         }
         Ok(status) => {
@@ -139,7 +139,7 @@ fn handle_command_status(status: Result<ExitStatus, io::Error>, opts: &getopts::
 }
 
 fn get_version(verbosity: Verbosity) -> Result<ExitStatus, io::Error> {
-    run_rustfmt(&vec![], &vec![String::from("--version")], verbosity)
+    run_rustfmt(&[], &[String::from("--version")], verbosity)
 }
 
 fn format_crate(

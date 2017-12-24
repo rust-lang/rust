@@ -24,8 +24,8 @@ use std::str::FromStr;
 use getopts::{Matches, Options};
 
 use rustfmt::{run, FileName, Input, Summary};
-use rustfmt::file_lines::FileLines;
 use rustfmt::config::{get_toml_path, Color, Config, WriteMode};
+use rustfmt::file_lines::FileLines;
 
 type FmtError = Box<error::Error + Send + Sync>;
 type FmtResult<T> = std::result::Result<T, FmtError>;

@@ -422,21 +422,9 @@ impl Rewrite for ast::WherePredicate {
 
                 let colon = type_bound_colon(context);
 
-                if bound_generic_params
-                    .iter()
-                    .filter(|p| p.is_lifetime_param())
-                    .count() > 0
+                if let Some(lifetime_str) =
+                    rewrite_lifetime_param(context, shape, bound_generic_params)
                 {
-                    let lifetime_str: String = bound_generic_params
-                        .iter()
-                        .filter_map(|p| match p {
-                            &ast::GenericParam::Lifetime(ref l) => Some(l),
-                            _ => None,
-                        })
-                        .map(|lt| lt.rewrite(context, shape))
-                        .collect::<Option<Vec<_>>>()?
-                        .join(", ");
-
                     // 6 = "for<> ".len()
                     let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
                     let ty_shape = shape.offset_left(used_width)?;
@@ -598,21 +586,9 @@ impl Rewrite for ast::TyParam {
 
 impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        if self.bound_generic_params
-            .iter()
-            .filter(|p| p.is_lifetime_param())
-            .count() > 0
+        if let Some(lifetime_str) =
+            rewrite_lifetime_param(context, shape, &self.bound_generic_params)
         {
-            let lifetime_str: String = self.bound_generic_params
-                .iter()
-                .filter_map(|p| match p {
-                    &ast::GenericParam::Lifetime(ref l) => Some(l),
-                    _ => None,
-                })
-                .map(|lt| lt.rewrite(context, shape))
-                .collect::<Option<Vec<_>>>()?
-                .join(", ");
-
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let path_str = self.trait_ref
@@ -762,31 +738,13 @@ fn rewrite_bare_fn(
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
 
-    if bare_fn
-        .generic_params
-        .iter()
-        .filter(|p| p.is_lifetime_param())
-        .count() > 0
+    if let Some(ref lifetime_str) = rewrite_lifetime_param(context, shape, &bare_fn.generic_params)
     {
         result.push_str("for<");
         // 6 = "for<> ".len(), 4 = "for<".
         // This doesn't work out so nicely for mutliline situation with lots of
         // rightward drift. If that is a problem, we could use the list stuff.
-        result.push_str(&bare_fn
-            .generic_params
-            .iter()
-            .filter_map(|p| match p {
-                &ast::GenericParam::Lifetime(ref l) => Some(l),
-                _ => None,
-            })
-            .map(|l| {
-                l.rewrite(
-                    context,
-                    Shape::legacy(shape.width.checked_sub(6)?, shape.indent + 4),
-                )
-            })
-            .collect::<Option<Vec<_>>>()?
-            .join(", "));
+        result.push_str(lifetime_str);
         result.push_str("> ");
     }
 
@@ -839,5 +797,24 @@ pub fn can_be_overflowed_type(context: &RewriteContext, ty: &ast::Ty, len: usize
             can_be_overflowed_type(context, &*mutty.ty, len)
         }
         _ => false,
+    }
+}
+
+/// Returns `None` if there is no `LifetimeDef` in the given generic parameters.
+fn rewrite_lifetime_param(
+    context: &RewriteContext,
+    shape: Shape,
+    generic_params: &[ast::GenericParam],
+) -> Option<String> {
+    let result = generic_params
+        .iter()
+        .filter(|p| p.is_lifetime_param())
+        .map(|lt| lt.rewrite(context, shape))
+        .collect::<Option<Vec<_>>>()?
+        .join(", ");
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
     }
 }
