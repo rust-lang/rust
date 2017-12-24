@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![allow(warnings)]
-#![feature(conservative_impl_trait)]
+#![feature(conservative_impl_trait, nested_impl_trait)]
 
 trait Id<T> {}
 trait Lt<'a> {}
