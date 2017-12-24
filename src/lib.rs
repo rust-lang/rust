@@ -44,6 +44,7 @@ use comment::{CharClasses, FullCodeCharKind};
 use config::Config;
 use filemap::FileMap;
 use issues::{BadIssueSeeker, Issue};
+use shape::Indent;
 use utils::use_colored_tty;
 use visitor::{FmtVisitor, SnippetProvider};
 
@@ -529,6 +530,55 @@ fn parse_input(
     }
 }
 
+/// Format the given snippet. The snippet is expected to be *complete* code.
+/// When we cannot parse the given snippet, this function returns `None`.
+pub fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
+    let mut out: Vec<u8> = Vec::with_capacity(snippet.len() * 2);
+    let input = Input::Text(snippet.into());
+    let mut config = config.clone();
+    config.set().write_mode(config::WriteMode::Plain);
+    match format_input(input, &config, Some(&mut out)) {
+        // `format_input()` returns an empty string on parsing error.
+        Ok(..) if out.is_empty() && !snippet.is_empty() => None,
+        Ok(..) => String::from_utf8(out).ok(),
+        Err(..) => None,
+    }
+}
+
+/// Format the given code block. Mainly targeted for code block in comment.
+/// The code block may be incomplete (i.e. parser may be unable to parse it).
+/// To avoid panic in parser, we wrap the code block with a dummy function.
+/// The returned code block does *not* end with newline.
+pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
+    // Wrap the given code block with `fn main()` if it does not have one.
+    let fn_main_prefix = "fn main() {\n";
+    let snippet = fn_main_prefix.to_owned() + code_snippet + "\n}";
+
+    // Trim "fn main() {" on the first line and "}" on the last line,
+    // then unindent the whole code block.
+    format_snippet(&snippet, config).map(|s| {
+        // 2 = "}\n"
+        s[fn_main_prefix.len()..s.len().checked_sub(2).unwrap_or(0)]
+            .lines()
+            .map(|line| {
+                if line.len() > config.tab_spaces() {
+                    // Make sure that the line has leading whitespaces.
+                    let indent_str =
+                        Indent::from_width(config, config.tab_spaces()).to_string(config);
+                    if line.starts_with(indent_str.as_ref()) {
+                        &line[config.tab_spaces()..]
+                    } else {
+                        line
+                    }
+                } else {
+                    line
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    })
+}
+
 pub fn format_input<T: Write>(
     input: Input,
     config: &Config,
@@ -648,5 +698,88 @@ pub fn run(input: Input, config: &Config) -> Summary {
             summary.add_operational_error();
             summary
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{format_code_block, format_snippet, Config};
+
+    #[test]
+    fn test_no_panic_on_format_snippet_and_format_code_block() {
+        // `format_snippet()` and `format_code_block()` should not panic
+        // even when we cannot parse the given snippet.
+        let snippet = "let";
+        assert!(format_snippet(snippet, &Config::default()).is_none());
+        assert!(format_code_block(snippet, &Config::default()).is_none());
+    }
+
+    fn test_format_inner<F>(formatter: F, input: &str, expected: &str) -> bool
+    where
+        F: Fn(&str, &Config) -> Option<String>,
+    {
+        let output = formatter(input, &Config::default());
+        output.is_some() && output.unwrap() == expected
+    }
+
+    #[test]
+    fn test_format_snippet() {
+        let snippet = "fn main() { println!(\"hello, world\"); }";
+        let expected = "fn main() {\n    \
+                        println!(\"hello, world\");\n\
+                        }\n";
+        assert!(test_format_inner(format_snippet, snippet, expected));
+    }
+
+    #[test]
+    fn test_format_code_block() {
+        // simple code block
+        let code_block = "let x=3;";
+        let expected = "let x = 3;";
+        assert!(test_format_inner(format_code_block, code_block, expected));
+
+        // more complex code block, taken from chains.rs.
+        let code_block =
+"let (nested_shape, extend) = if !parent_rewrite_contains_newline && is_continuable(&parent) {
+(
+chain_indent(context, shape.add_offset(parent_rewrite.len())),
+context.config.indent_style() == IndentStyle::Visual || is_small_parent,
+)
+} else if is_block_expr(context, &parent, &parent_rewrite) {
+match context.config.indent_style() {
+// Try to put the first child on the same line with parent's last line
+IndentStyle::Block => (parent_shape.block_indent(context.config.tab_spaces()), true),
+// The parent is a block, so align the rest of the chain with the closing
+// brace.
+IndentStyle::Visual => (parent_shape, false),
+}
+} else {
+(
+chain_indent(context, shape.add_offset(parent_rewrite.len())),
+false,
+)
+};
+";
+        let expected =
+"let (nested_shape, extend) = if !parent_rewrite_contains_newline && is_continuable(&parent) {
+    (
+        chain_indent(context, shape.add_offset(parent_rewrite.len())),
+        context.config.indent_style() == IndentStyle::Visual || is_small_parent,
+    )
+} else if is_block_expr(context, &parent, &parent_rewrite) {
+    match context.config.indent_style() {
+        // Try to put the first child on the same line with parent's last line
+        IndentStyle::Block => (parent_shape.block_indent(context.config.tab_spaces()), true),
+        // The parent is a block, so align the rest of the chain with the closing
+        // brace.
+        IndentStyle::Visual => (parent_shape, false),
+    }
+} else {
+    (
+        chain_indent(context, shape.add_offset(parent_rewrite.len())),
+        false,
+    )
+};";
+        assert!(test_format_inner(format_code_block, code_block, expected));
     }
 }
