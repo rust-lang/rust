@@ -213,19 +213,6 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
         .any(|a| a.meta().map_or(false, |a| is_skip(&a)))
 }
 
-// Find the end of a TyParam
-#[inline]
-pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
-    typaram
-        .bounds
-        .last()
-        .map_or(typaram.span, |bound| match *bound {
-            ast::RegionTyParamBound(ref lt) => lt.span,
-            ast::TraitTyParamBound(ref prt, _) => prt.span,
-        })
-        .hi()
-}
-
 #[inline]
 pub fn semicolon_for_expr(context: &RewriteContext, expr: &ast::Expr) -> bool {
     match expr.node {

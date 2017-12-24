@@ -135,6 +135,7 @@ fn rewrite_closure_with_block(
         id: ast::NodeId::new(0),
         rules: ast::BlockCheckMode::Default,
         span: body.span,
+        recovered: false,
     };
     let block = ::expr::rewrite_block_with_visitor(context, "", &block, shape, false)?;
     Some(format!("{} {}", prefix, block))

@@ -59,11 +59,11 @@
 //!            .qux
 //! ```
 
-use shape::Shape;
 use config::IndentStyle;
 use expr::rewrite_call;
 use macros::convert_try_mac;
 use rewrite::{Rewrite, RewriteContext};
+use shape::Shape;
 use utils::{first_line_width, last_line_extendable, last_line_width, mk_sp,
             trimmed_last_line_width, wrap_str};
 

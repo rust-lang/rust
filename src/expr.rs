@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::min;
 use std::borrow::Cow;
+use std::cmp::min;
 use std::iter::{repeat, ExactSizeIterator};
 
 use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, CodeMap, Span};
 
-use spanned::Spanned;
 use chains::rewrite_chain;
 use closures;
 use codemap::{LineRangeUtils, SpanUtils};
@@ -29,6 +28,7 @@ use macros::{rewrite_macro, MacroArg, MacroPosition};
 use patterns::{can_be_overflowed_pat, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use spanned::Spanned;
 use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{colon_spaces, contains_skip, extra_offset, first_line_width, inner_attributes,

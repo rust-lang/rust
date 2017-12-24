@@ -15,13 +15,12 @@ use syntax::attr::HasAttrs;
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
-use expr::rewrite_literal;
-use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, remove_trailing_white_spaces,
               CodeCharKind, CommentCodeSlices, FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
+use expr::rewrite_literal;
 use items::{format_impl, format_trait, format_trait_alias, rewrite_associated_impl_type,
             rewrite_associated_type, rewrite_type_alias, FnSig, StaticParts, StructParts};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
@@ -30,6 +29,7 @@ use macros::{rewrite_macro, MacroPosition};
 use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use spanned::Spanned;
 use utils::{self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
 
 fn is_use_item(item: &ast::Item) -> bool {

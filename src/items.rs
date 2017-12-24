@@ -18,7 +18,6 @@ use syntax::ast::{CrateSugar, ImplItem};
 use syntax::codemap::{BytePos, Span};
 use syntax::visit;
 
-use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
@@ -29,10 +28,11 @@ use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, L
             ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
+use spanned::Spanned;
 use types::join_bounds;
-use utils::{colon_spaces, contains_skip, end_typaram, first_line_width, format_abi,
-            format_constness, format_defaultness, format_mutability, format_unsafety,
-            format_visibility, is_attributes_extendable, last_line_contains_single_line_comment,
+use utils::{colon_spaces, contains_skip, first_line_width, format_abi, format_constness,
+            format_defaultness, format_mutability, format_unsafety, format_visibility,
+            is_attributes_extendable, last_line_contains_single_line_comment,
             last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, starts_with_newline,
             stmt_expr, trim_newlines, trimmed_last_line_width};
 use vertical::rewrite_with_alignment;
@@ -1871,12 +1871,8 @@ fn rewrite_fn_base(
         .generics
         .params
         .iter()
-        .filter_map(|p| match p {
-            &ast::GenericParam::Type(ref t) => Some(t),
-            _ => None,
-        })
         .last()
-        .map_or(lo_after_visibility, |tp| end_typaram(tp));
+        .map_or(lo_after_visibility, |param| param.span().hi());
     let args_end = if fd.inputs.is_empty() {
         context
             .codemap
@@ -2346,47 +2342,13 @@ fn rewrite_generics_inner(
     // FIXME: convert bounds to where clauses where they get too big or if
     // there is a where clause at all.
 
-    // Wrapper type
-    enum GenericsArg<'a> {
-        Lifetime(&'a ast::LifetimeDef),
-        TyParam(&'a ast::TyParam),
-    }
-    impl<'a> Rewrite for GenericsArg<'a> {
-        fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-            match *self {
-                GenericsArg::Lifetime(lifetime) => lifetime.rewrite(context, shape),
-                GenericsArg::TyParam(ty) => ty.rewrite(context, shape),
-            }
-        }
-    }
-    impl<'a> Spanned for GenericsArg<'a> {
-        fn span(&self) -> Span {
-            match *self {
-                GenericsArg::Lifetime(lifetime) => lifetime.span(),
-                GenericsArg::TyParam(ty) => ty.span(),
-            }
-        }
-    }
-
     if generics.params.is_empty() {
         return Some(String::new());
     }
 
-    let generics_args = generics
-        .params
-        .iter()
-        .filter_map(|p| match p {
-            &ast::GenericParam::Lifetime(ref l) => Some(l),
-            _ => None,
-        })
-        .map(|lt| GenericsArg::Lifetime(lt))
-        .chain(generics.params.iter().filter_map(|ty| match ty {
-            &ast::GenericParam::Type(ref ty) => Some(GenericsArg::TyParam(ty)),
-            _ => None,
-        }));
     let items = itemize_list(
         context.codemap,
-        generics_args,
+        generics.params.iter(),
         ">",
         ",",
         |arg| arg.span().lo(),
@@ -2866,5 +2828,14 @@ impl Rewrite for ast::ForeignItem {
             shape,
             false,
         )
+    }
+}
+
+impl Rewrite for ast::GenericParam {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        match *self {
+            ast::GenericParam::Lifetime(ref lifetime_def) => lifetime_def.rewrite(context, shape),
+            ast::GenericParam::Type(ref ty) => ty.rewrite(context, shape),
+        }
     }
 }

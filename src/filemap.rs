@@ -120,7 +120,7 @@ where
     match config.write_mode() {
         WriteMode::Replace => {
             let filename = filename_to_path();
-            if let Ok((ori, fmt)) = source_and_formatted_text(text, &filename, config) {
+            if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
                 if fmt != ori {
                     // Do a little dance to make writing safer - write to a temp file
                     // rename the original to a .bk, then rename the temp file to the
@@ -141,7 +141,7 @@ where
         WriteMode::Overwrite => {
             // Write text directly over original file if there is a diff.
             let filename = filename_to_path();
-            let (source, formatted) = source_and_formatted_text(text, &filename, config)?;
+            let (source, formatted) = source_and_formatted_text(text, filename, config)?;
             if source != formatted {
                 let file = File::create(filename)?;
                 write_system_newlines(file, text, config)?;
@@ -156,7 +156,7 @@ where
         }
         WriteMode::Diff => {
             let filename = filename_to_path();
-            if let Ok((ori, fmt)) = source_and_formatted_text(text, &filename, config) {
+            if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
                 let mismatch = make_diff(&ori, &fmt, 3);
                 let has_diff = !mismatch.is_empty();
                 print_diff(
@@ -169,7 +169,7 @@ where
         }
         WriteMode::Checkstyle => {
             let filename = filename_to_path();
-            let diff = create_diff(&filename, text, config)?;
+            let diff = create_diff(filename, text, config)?;
             output_checkstyle_file(out, filename, diff)?;
         }
     }

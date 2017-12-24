@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
 use std::io;
+use std::path::{Path, PathBuf};
 
 use syntax::ast;
 use syntax::codemap::{self, FileName};

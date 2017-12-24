@@ -12,7 +12,6 @@ use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSynt
 use syntax::codemap::{self, BytePos, Span};
 use syntax::ptr;
 
-use spanned::Spanned;
 use codemap::SpanUtils;
 use comment::FindUncommented;
 use expr::{can_be_overflowed_expr, rewrite_call_inner, rewrite_pair, rewrite_unary_prefix,
@@ -22,6 +21,7 @@ use lists::{itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_sh
 use macros::{rewrite_macro, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use spanned::Spanned;
 use types::{rewrite_path, PathContext};
 use utils::{format_mutability, mk_sp};
 
