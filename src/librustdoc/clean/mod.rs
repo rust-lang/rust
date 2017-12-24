@@ -33,7 +33,6 @@ use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::traits::Reveal;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, AdtKind};
 use rustc::middle::stability;
@@ -2062,7 +2061,7 @@ impl Clean<Type> for hir::Ty {
             TySlice(ref ty) => Slice(box ty.clean(cx)),
             TyArray(ref ty, n) => {
                 let def_id = cx.tcx.hir.body_owner_def_id(n);
-                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                let param_env = cx.tcx.param_env(def_id);
                 let substs = Substs::identity_for_item(cx.tcx, def_id);
                 let n = cx.tcx.const_eval(param_env.and((def_id, substs))).unwrap();
                 let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
@@ -2191,6 +2190,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::TyStr => Primitive(PrimitiveType::Str),
             ty::TySlice(ty) => Slice(box ty.clean(cx)),
             ty::TyArray(ty, n) => {
+                let mut n = cx.tcx.lift(&n).unwrap();
+                if let ConstVal::Unevaluated(def_id, substs) = n.val {
+                    let param_env = cx.tcx.param_env(def_id);
+                    n = cx.tcx.const_eval(param_env.and((def_id, substs))).unwrap()
+                };
                 let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
                     n.to_string()
                 } else if let ConstVal::Unevaluated(def_id, _) = n.val {
