@@ -17,7 +17,7 @@ use sys_common::wtf8::{Wtf8, Wtf8Buf};
 use mem;
 use rc::Rc;
 use sync::Arc;
-use sys_common::{AsInner, IntoInner};
+use sys_common::{AsInner, IntoInner, FromInner};
 
 #[derive(Clone, Hash)]
 pub struct Buf {
@@ -27,6 +27,12 @@ pub struct Buf {
 impl IntoInner<Wtf8Buf> for Buf {
     fn into_inner(self) -> Wtf8Buf {
         self.inner
+    }
+}
+
+impl FromInner<Wtf8Buf> for Buf {
+    fn from_inner(inner: Wtf8Buf) -> Self {
+        Buf { inner }
     }
 }
 

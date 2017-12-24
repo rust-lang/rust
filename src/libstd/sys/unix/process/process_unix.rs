@@ -26,6 +26,8 @@ impl Command {
 
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
+        let envp = self.capture_env();
+
         if self.saw_nul() {
             return Err(io::Error::new(ErrorKind::InvalidInput,
                                       "nul byte found in provided data"));
@@ -38,7 +40,7 @@ impl Command {
             match cvt(libc::fork())? {
                 0 => {
                     drop(input);
-                    let err = self.do_exec(theirs);
+                    let err = self.do_exec(theirs, envp.as_ref());
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
                     let bytes = [
                         (errno >> 24) as u8,
@@ -99,13 +101,15 @@ impl Command {
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
+        let envp = self.capture_env();
+
         if self.saw_nul() {
             return io::Error::new(ErrorKind::InvalidInput,
                                   "nul byte found in provided data")
         }
 
         match self.setup_io(default, true) {
-            Ok((_, theirs)) => unsafe { self.do_exec(theirs) },
+            Ok((_, theirs)) => unsafe { self.do_exec(theirs, envp.as_ref()) },
             Err(e) => e,
         }
     }
@@ -140,7 +144,11 @@ impl Command {
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
-    unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
+    unsafe fn do_exec(
+        &mut self,
+        stdio: ChildPipes,
+        maybe_envp: Option<&CStringArray>
+    ) -> io::Error {
         use sys::{self, cvt_r};
 
         macro_rules! t {
@@ -180,7 +188,7 @@ impl Command {
         if let Some(ref cwd) = *self.get_cwd() {
             t!(cvt(libc::chdir(cwd.as_ptr())));
         }
-        if let Some(ref envp) = *self.get_envp() {
+        if let Some(envp) = maybe_envp {
             *sys::os::environ() = envp.as_ptr();
         }
 

@@ -513,7 +513,7 @@ impl Command {
     pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Command
         where K: AsRef<OsStr>, V: AsRef<OsStr>
     {
-        self.inner.env(key.as_ref(), val.as_ref());
+        self.inner.env_mut().set(key.as_ref(), val.as_ref());
         self
     }
 
@@ -546,7 +546,7 @@ impl Command {
         where I: IntoIterator<Item=(K, V)>, K: AsRef<OsStr>, V: AsRef<OsStr>
     {
         for (ref key, ref val) in vars {
-            self.inner.env(key.as_ref(), val.as_ref());
+            self.inner.env_mut().set(key.as_ref(), val.as_ref());
         }
         self
     }
@@ -567,7 +567,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env_remove<K: AsRef<OsStr>>(&mut self, key: K) -> &mut Command {
-        self.inner.env_remove(key.as_ref());
+        self.inner.env_mut().remove(key.as_ref());
         self
     }
 
@@ -587,7 +587,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env_clear(&mut self) -> &mut Command {
-        self.inner.env_clear();
+        self.inner.env_mut().clear();
         self
     }
 
@@ -1713,6 +1713,27 @@ mod tests {
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
+    }
+
+    #[test]
+    fn test_capture_env_at_spawn() {
+        use env;
+
+        let mut cmd = env_cmd();
+        cmd.env("RUN_TEST_NEW_ENV1", "123");
+
+        // This variable will not be present if the environment has already
+        // been captured above.
+        env::set_var("RUN_TEST_NEW_ENV2", "456");
+        let result = cmd.output().unwrap();
+        env::remove_var("RUN_TEST_NEW_ENV2");
+
+        let output = String::from_utf8_lossy(&result.stdout).to_string();
+
+        assert!(output.contains("RUN_TEST_NEW_ENV1=123"),
+                "didn't find RUN_TEST_NEW_ENV1 inside of:\n\n{}", output);
+        assert!(output.contains("RUN_TEST_NEW_ENV2=456"),
+                "didn't find RUN_TEST_NEW_ENV2 inside of:\n\n{}", output);
     }
 
     // Regression tests for #30858.
