@@ -2480,7 +2480,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
             if other.is_contiguous() {
                 ptr::copy(buf.offset(tail as isize), buf, len);
             } else {
-                if (tail - head) >= cmp::min((cap - tail), head) {
+                if (tail - head) >= cmp::min(cap - tail, head) {
                     // There is enough free space in the centre for the shortest block so we can
                     // do this in at most three copy moves.
                     if (cap - tail) > head {

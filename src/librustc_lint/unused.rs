@@ -302,6 +302,18 @@ impl EarlyLintPass for UnusedParens {
             Assign(_, ref value) => (value, "assigned value", false),
             AssignOp(.., ref value) => (value, "assigned value", false),
             InPlace(_, ref value) => (value, "emplacement value", false),
+            Call(_, ref args) => {
+                for arg in args {
+                    self.check_unused_parens_core(cx, arg, "function argument", false)
+                }
+                return;
+            },
+            MethodCall(_, ref args) => {
+                for arg in &args[1..] { // first "argument" is self (which sometimes needs parens)
+                    self.check_unused_parens_core(cx, arg, "method argument", false)
+                }
+                return;
+            }
             _ => return,
         };
         self.check_unused_parens_core(cx, &value, msg, struct_lit_needs_parens);

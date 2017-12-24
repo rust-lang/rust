@@ -311,8 +311,8 @@ pub mod guard {
 
     #[cfg(target_os = "macos")]
     pub unsafe fn current() -> Option<usize> {
-        Some((libc::pthread_get_stackaddr_np(libc::pthread_self()) as usize -
-              libc::pthread_get_stacksize_np(libc::pthread_self())))
+        Some(libc::pthread_get_stackaddr_np(libc::pthread_self()) as usize -
+             libc::pthread_get_stacksize_np(libc::pthread_self()))
     }
 
     #[cfg(any(target_os = "openbsd", target_os = "bitrig"))]

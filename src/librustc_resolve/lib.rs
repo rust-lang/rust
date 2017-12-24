@@ -963,7 +963,7 @@ impl<'a> ModuleData<'a> {
             unresolved_invocations: RefCell::new(FxHashSet()),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
-            globs: RefCell::new((Vec::new())),
+            globs: RefCell::new(Vec::new()),
             traits: RefCell::new(None),
             populated: Cell::new(normal_ancestor_id.is_local()),
             span,
