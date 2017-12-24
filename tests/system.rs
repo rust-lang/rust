@@ -36,7 +36,10 @@ const DIFF_CONTEXT_SIZE: usize = 3;
 fn get_test_files(path: &Path, recursive: bool) -> Vec<PathBuf> {
     let mut files = vec![];
     if path.is_dir() {
-        for entry in fs::read_dir(path).expect("Couldn't read source dir") {
+        for entry in fs::read_dir(path).expect(&format!(
+            "Couldn't read directory {}",
+            path.to_str().unwrap()
+        )) {
             let entry = entry.expect("Couldn't get DirEntry");
             let path = entry.path();
             if path.is_dir() && recursive {
