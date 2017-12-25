@@ -1,11 +1,3 @@
-error[E0658]: the struct `#[repr(align(u16))]` attribute is experimental (see issue #33626)
-  --> $DIR/gated-features-attr-spans.rs:13:1
-   |
-13 | #[repr(align(16))] //~ ERROR is experimental
-   | ^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(repr_align)] to the crate attributes to enable
-
 error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
   --> $DIR/gated-features-attr-spans.rs:20:1
    |
@@ -30,5 +22,5 @@ warning: `#[must_use]` on functions is experimental (see issue #43302)
    |
    = help: add #![feature(fn_must_use)] to the crate attributes to enable
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
