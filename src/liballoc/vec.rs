@@ -732,8 +732,8 @@ impl<T> Vec<T> {
         assert!(index <= len);
 
         // space for the new element
-        if len == self.buf.cap() {
-            self.buf.double();
+        if len >= self.buf.cap() {
+            self.buf.double(len);
         }
 
         unsafe {
@@ -967,8 +967,8 @@ impl<T> Vec<T> {
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.cap() {
-            self.buf.double();
+        if self.len >= self.buf.cap() {
+            self.buf.double(self.len);
         }
         unsafe {
             let end = self.as_mut_ptr().offset(self.len as isize);
@@ -1920,7 +1920,7 @@ impl<T> Vec<T> {
         //      }
         while let Some(element) = iterator.next() {
             let len = self.len();
-            if len == self.capacity() {
+            if len >= self.capacity() {
                 let (lower, _) = iterator.size_hint();
                 self.reserve(lower.saturating_add(1));
             }
@@ -2534,8 +2534,8 @@ impl<'a, T> Placer<T> for PlaceBack<'a, T> {
     fn make_place(self) -> Self {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.vec.len == self.vec.buf.cap() {
-            self.vec.buf.double();
+        if self.vec.len >= self.vec.buf.cap() {
+            self.vec.buf.double(self.vec.len);
         }
         self
     }

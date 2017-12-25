@@ -285,7 +285,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// ```
     #[inline(never)]
     #[cold]
-    pub fn double(&mut self) {
+    pub fn double(&mut self, used_cap: usize) {
         unsafe {
             let elem_size = mem::size_of::<T>();
 
@@ -318,12 +318,28 @@ impl<T, A: Alloc> RawVec<T, A> {
                     }
                 }
                 None => {
-                    // skip to 4 because tiny Vec's are dumb; but not if that
-                    // would cause overflow
-                    let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
-                    match self.a.alloc_array::<T>(new_cap) {
-                        Ok(ptr) => (new_cap, ptr),
-                        Err(e) => self.a.oom(e),
+                    if used_cap == 0 {
+                        // skip to 4 because tiny Vec's are dumb; but not if that
+                        // would cause overflow
+                        let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
+                        match self.a.alloc_array::<T>(new_cap) {
+                            Ok(ptr) => (new_cap, ptr),
+                            Err(e) => self.a.oom(e),
+                        }
+                    } else {
+                        // Copy on Write (String), assume the source data is Copy
+                        let new_cap = 2 * used_cap;
+                        let new_size = new_cap * elem_size;
+                        alloc_guard(new_size);
+
+                        let ptr = match self.a.alloc_array::<T>(new_cap) {
+                            Ok(ptr) => ptr,
+                            Err(e) => self.a.oom(e),
+                        };
+
+                        ptr::copy_nonoverlapping(self.ptr.as_ptr(), ptr.as_ptr(), used_cap);
+
+                        (new_cap, ptr)
                     }
                 }
             };
@@ -411,8 +427,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             // panic.
 
             // Don't actually need any more capacity.
-            // Wrapping in case they gave a bad `used_cap`.
-            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap {
+            if used_cap.checked_add(needed_extra_cap).expect("capacity overflow") <= self.cap() {
                 return;
             }
 
@@ -434,6 +449,15 @@ impl<T, A: Alloc> RawVec<T, A> {
                 Ok(ptr) => Unique::new_unchecked(ptr as *mut T),
                 Err(e) => self.a.oom(e),
             };
+
+            // CoW of a literal
+            if used_cap > self.cap() {
+                ptr::copy_nonoverlapping(
+                            self.ptr.as_ptr(),
+                            uniq.as_ptr(),
+                            used_cap);
+            }
+
             self.ptr = uniq;
             self.cap = new_cap;
         }
@@ -512,8 +536,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             // panic.
 
             // Don't actually need any more capacity.
-            // Wrapping in case they give a bad `used_cap`
-            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap {
+            if used_cap.checked_add(needed_extra_cap).expect("capacity overflow") <= self.cap() {
                 return;
             }
 
@@ -536,6 +559,15 @@ impl<T, A: Alloc> RawVec<T, A> {
                 Ok(ptr) => Unique::new_unchecked(ptr as *mut T),
                 Err(e) => self.a.oom(e),
             };
+
+            // CoW of a literal
+            if used_cap > self.cap() {
+                ptr::copy_nonoverlapping(
+                            self.ptr.as_ptr(),
+                            uniq.as_ptr(),
+                            used_cap);
+            }
+
             self.ptr = uniq;
             self.cap = new_cap;
         }
@@ -567,12 +599,11 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             // Don't actually need any more capacity. If the current `cap` is 0, we can't
             // reallocate in place.
-            // Wrapping in case they give a bad `used_cap`
             let old_layout = match self.current_layout() {
                 Some(layout) => layout,
                 None => return false,
             };
-            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap {
+            if used_cap.checked_add(needed_extra_cap).expect("capacity overflow") <= self.cap() {
                 return false;
             }
 
@@ -617,8 +648,8 @@ impl<T, A: Alloc> RawVec<T, A> {
             return;
         }
 
-        // This check is my waterloo; it's the only thing Vec wouldn't have to do.
-        assert!(self.cap >= amount, "Tried to shrink to a larger capacity");
+        // If capacity is less than size, assume we're doing some CoW shenanigans (String)
+        if self.cap < amount { return; }
 
         if amount == 0 {
             // We want to create a new zero-length vector within the
