@@ -81,7 +81,34 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     err.span_label(move_span, format!("value moved{} here", move_msg));
                 };
             }
-            //FIXME: add note for closure
+
+            if let Some(ty) = self.retrieve_type_for_place(place) {
+                let needs_note = match ty.sty {
+                    ty::TypeVariants::TyClosure(id, _) => {
+                        let tables = self.tcx.typeck_tables_of(id);
+                        let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
+                        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+                        if let Some(_) = tables.closure_kind_origins().get(hir_id) {
+                            false
+                        } else {
+                            true
+                        }
+                    },
+                    _ => true,
+                };
+
+                if needs_note {
+                    let note_msg = match self.describe_place(place) {
+                        Some(name) => format!("`{}`", name),
+                        None => "value".to_owned(),
+                    };
+
+                    err.note(&format!("move occurs because {} has type `{}`, \
+                                       which does not implement the `Copy` trait",
+                                       note_msg, ty));
+                }
+            }
+
             err.emit();
         }
     }
@@ -720,5 +747,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // Retrieve span of given borrow from the current MIR representation
     fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
         self.mir.source_info(borrow.location).span
+    }
+
+    // Retrieve type of a place for the current MIR representation
+    fn retrieve_type_for_place(&self, place: &Place<'tcx>) -> Option<ty::Ty> {
+        match place {
+            Place::Local(local) => {
+                let local = &self.mir.local_decls[*local];
+                Some(local.ty)
+            },
+            Place::Static(ref st) => Some(st.ty),
+            Place::Projection(ref proj) => {
+                match proj.elem {
+                    ProjectionElem::Field(_, ty) => Some(ty),
+                    _ => None,
+                }
+            },
+        }
     }
 }
