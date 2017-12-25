@@ -223,6 +223,7 @@ pub fn run_core(search_paths: SearchPaths,
                                                   resolve::MakeGlobMap::No,
                                                   &mut crate_loader,
                                                   &resolver_arenas);
+        resolver.resolve_imports();
         resolver.resolve_crate(&expanded_crate);
 
         let ctxt = DocContext {

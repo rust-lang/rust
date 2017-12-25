@@ -28,7 +28,7 @@ use rustc::util::common::{ErrorReported, time};
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_incremental;
-use rustc_resolve::{MakeGlobMap, Resolver};
+use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
 use rustc_trans_utils::trans_crate::TransCrate;
@@ -139,6 +139,14 @@ pub fn compile_input(trans: Box<TransCrate>,
 
         let crate_name =
             ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
+
+        // Currently, we ignore the name resolution data structures for the purposes of dependency
+        // tracking. Instead we will run name resolution and include its output in the hash of each
+        // item, much like we do for macro expansion. In other words, the hash reflects not just
+        // its contents but the results of name resolution on those contents. Hopefully we'll push
+        // this back at some point.
+        let mut crate_loader = CrateLoader::new(sess, &cstore, &crate_name);
+        let resolver_arenas = Resolver::arenas();
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
                 sess,
@@ -148,6 +156,8 @@ pub fn compile_input(trans: Box<TransCrate>,
                 &crate_name,
                 addl_plugins,
                 control.make_glob_map,
+                &resolver_arenas,
+                &mut crate_loader,
                 |expanded_crate| {
                     let mut state = CompileState::state_after_expand(
                         input, sess, outdir, output, &cstore, expanded_crate, &crate_name,
@@ -569,13 +579,15 @@ pub struct ExpansionResult {
 /// standard library and prelude, and name resolution.
 ///
 /// Returns `None` if we're aborting after handling -W help.
-pub fn phase_2_configure_and_expand<F>(sess: &Session,
-                                       cstore: &CStore,
+pub fn phase_2_configure_and_expand<'a, F>(sess: &'a Session,
+                                       cstore: &'a CStore,
                                        krate: ast::Crate,
                                        registry: Option<Registry>,
                                        crate_name: &str,
                                        addl_plugins: Option<Vec<String>>,
                                        make_glob_map: MakeGlobMap,
+                                       resolver_arenas: &'a ResolverArenas<'a>,
+                                       crate_loader: &'a mut CrateLoader,
                                        after_expand: F)
                                        -> Result<ExpansionResult, CompileIncomplete>
     where F: FnOnce(&ast::Crate) -> CompileResult,
@@ -666,19 +678,12 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         return Err(CompileIncomplete::Stopped);
     }
 
-    // Currently, we ignore the name resolution data structures for the purposes of dependency
-    // tracking. Instead we will run name resolution and include its output in the hash of each
-    // item, much like we do for macro expansion. In other words, the hash reflects not just
-    // its contents but the results of name resolution on those contents. Hopefully we'll push
-    // this back at some point.
-    let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name);
-    let resolver_arenas = Resolver::arenas();
     let mut resolver = Resolver::new(sess,
                                      cstore,
                                      &krate,
                                      crate_name,
                                      make_glob_map,
-                                     &mut crate_loader,
+                                     crate_loader,
                                      &resolver_arenas);
     resolver.whitelisted_legacy_custom_derives = whitelisted_legacy_custom_derives;
     syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features.borrow().quote);
