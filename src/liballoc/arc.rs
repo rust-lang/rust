@@ -1377,7 +1377,8 @@ impl<'a, T: Clone> From<&'a [T]> for Arc<[T]> {
 impl<'a> From<&'a str> for Arc<str> {
     #[inline]
     fn from(v: &str) -> Arc<str> {
-        unsafe { mem::transmute(<Arc<[u8]>>::from(v.as_bytes())) }
+        let arc = Arc::<[u8]>::from(v.as_bytes());
+        unsafe { Arc::from_raw(Arc::into_raw(arc) as *const str) }
     }
 }
 
