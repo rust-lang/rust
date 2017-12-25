@@ -726,6 +726,21 @@ impl ThinModule {
         run_pass_manager(cgcx, tm, llmod, config, true);
         cgcx.save_temp_bitcode(&mtrans, "thin-lto-after-pm");
         timeline.record("thin-done");
+
+        // FIXME: this is a hack around a bug in LLVM right now. Discovered in
+        // #46910 it was found out that on 32-bit MSVC LLVM will hit a codegen
+        // error if there's an available_externally function in the LLVM module.
+        // Typically we don't actually use these functions but ThinLTO makes
+        // heavy use of them when inlining across modules.
+        //
+        // Tracked upstream at https://bugs.llvm.org/show_bug.cgi?id=35736 this
+        // function call (and its definition on the C++ side of things)
+        // shouldn't be necessary eventually and we can safetly delete these few
+        // lines.
+        llvm::LLVMRustThinLTORemoveAvailableExternally(llmod);
+        cgcx.save_temp_bitcode(&mtrans, "thin-lto-after-rm-ae");
+        timeline.record("no-ae");
+
         Ok(mtrans)
     }
 }
