@@ -151,6 +151,22 @@ pub trait Resolver {
     /// We must keep the set of definitions up to date as we add nodes that weren't in the AST.
     /// This should only return `None` during testing.
     fn definitions(&mut self) -> &mut Definitions;
+
+    /// Given suffix ["b","c","d"], returns path `::cratename::b::c::d` when
+    /// The path is also resolved according to `is_value`.
+    fn std_path(&mut self, span: Span, crate_root: Option<&str>,
+                components: &[&str], is_value: bool) -> hir::Path {
+        let mut path = hir::Path {
+            span,
+            def: Def::Err,
+            segments: iter::once(keywords::CrateRoot.name()).chain({
+                crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
+            }).map(hir::PathSegment::from_name).collect(),
+        };
+
+        self.resolve_hir_path(&mut path, is_value);
+        path
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -3625,16 +3641,7 @@ impl<'a> LoweringContext<'a> {
     /// `fld.cx.use_std`, and `::core::b::c::d` otherwise.
     /// The path is also resolved according to `is_value`.
     fn std_path(&mut self, span: Span, components: &[&str], is_value: bool) -> hir::Path {
-        let mut path = hir::Path {
-            span,
-            def: Def::Err,
-            segments: iter::once(keywords::CrateRoot.name()).chain({
-                self.crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
-            }).map(hir::PathSegment::from_name).collect(),
-        };
-
-        self.resolver.resolve_hir_path(&mut path, is_value);
-        path
+        self.resolver.std_path(span, self.crate_root, components, is_value)
     }
 
     fn signal_block_expr(&mut self,

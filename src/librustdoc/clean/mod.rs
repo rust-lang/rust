@@ -25,7 +25,7 @@ use syntax::attr;
 use syntax::codemap::Spanned;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::ptr::P;
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
 use rustc::middle::const_val::ConstVal;
@@ -45,7 +45,7 @@ use rustc::hir;
 
 use rustc_const_math::ConstInt;
 use std::default::Default;
-use std::{mem, slice, vec, iter};
+use std::{mem, slice, vec};
 use std::iter::FromIterator;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -816,15 +816,14 @@ impl Clean<Attributes> for [ast::Attribute] {
                     continue;
                 }
 
-                let mut path = hir::Path {
-                    span: DUMMY_SP,
-                    def: Def::Err,
-                    segments: iter::once(keywords::CrateRoot.name()).chain({
-                        link.split("::").skip(1).map(Symbol::intern)
-                    }).map(hir::PathSegment::from_name).collect(),
+                let path = {
+                    // This allocation could be avoided if std_path could take an iterator;
+                    // but it can't because that would break object safety. This can still be
+                    // fixed.
+                    let components = link.split("::").skip(1).collect::<Vec<_>>();
+                    println!("{:?}", components);
+                    cx.resolver.borrow_mut().std_path(DUMMY_SP, None, &components, false)
                 };
-
-                cx.resolver.borrow_mut().resolve_hir_path(&mut path, false);
 
                 if path.def != Def::Err {
                     attrs.links.push((link, path.def.def_id()));
