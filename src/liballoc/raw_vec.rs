@@ -269,7 +269,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     ///
     /// impl<T> MyVec<T> {
     ///     pub fn push(&mut self, elem: T) {
-    ///         if self.len == self.buf.cap() { self.buf.double(); }
+    ///         if self.len >= self.buf.cap() { self.buf.double(self.len); }
     ///         // double would have aborted or panicked if the len exceeded
     ///         // `isize::MAX` so this is safe to do unchecked now.
     ///         unsafe {
