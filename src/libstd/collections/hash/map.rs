@@ -1184,6 +1184,34 @@ impl<K, V, S> HashMap<K, V, S>
         self.search(k).map(|bucket| bucket.into_refs().1)
     }
 
+    /// Returns the key-value pair corresponding to the supplied key.
+    ///
+    /// The supplied key may be any borrowed form of the map's key type, but
+    /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
+    /// the key type.
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_get_key_value)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.get_key_value(&1), Some((&1, &"a")));
+    /// assert_eq!(map.get_key_value(&2), None);
+    /// ```
+    #[unstable(feature = "map_get_key_value", issue = "49347")]
+    pub fn get_key_value<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
+        where K: Borrow<Q>,
+              Q: Hash + Eq
+    {
+        self.search(k).map(|bucket| bucket.into_refs())
+    }
+
     /// Returns true if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but

@@ -576,6 +576,33 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
+    /// Returns the key-value pair corresponding to the supplied key.
+    ///
+    /// The supplied key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_get_key_value)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.get_key_value(&1), Some((&1, &"a")));
+    /// assert_eq!(map.get_key_value(&2), None);
+    /// ```
+    #[unstable(feature = "map_get_key_value", issue = "49347")]
+    pub fn get_key_value<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
+        where K: Borrow<Q>,
+              Q: Ord
+    {
+        match search::search_tree(self.root.as_ref(), k) {
+            Found(handle) => Some(handle.into_kv()),
+            GoDown(_) => None,
+        }
+    }
+
     /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
