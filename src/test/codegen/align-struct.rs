@@ -32,13 +32,14 @@ pub enum Enum4 {
     A(i32),
     B(i32),
 }
-// CHECK: %Enum4 = type { [2 x i32] }
+// CHECK: %Enum4 = type { [0 x i32], i32, [1 x i32] }
+// CHECK: %"Enum4::A" = type { [1 x i32], i32, [0 x i32] }
 
 pub enum Enum64 {
     A(Align64),
     B(i32),
 }
-// CHECK: %Enum64 = type { [16 x i64] }
+// CHECK: %Enum64 = type { [0 x i32], i32, [31 x i32] }
 // CHECK: %"Enum64::A" = type { [8 x i64], %Align64, [0 x i64] }
 
 // CHECK-LABEL: @align64
