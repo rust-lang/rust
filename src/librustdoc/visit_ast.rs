@@ -40,11 +40,11 @@ use doctree::*;
 // also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?
 
-pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
-    cstore: &'tcx CrateStore,
+pub struct RustdocVisitor<'a, 'b: 'a, 'tcx: 'b, 'rcx: 'b> {
+    cstore: &'a CrateStore,
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
-    pub cx: &'a core::DocContext<'a, 'tcx, 'rcx>,
+    pub cx: &'a core::DocContext<'b, 'tcx, 'rcx>,
     view_item_stack: FxHashSet<ast::NodeId>,
     inlining: bool,
     /// Is the current module and all of its parents public?
@@ -52,9 +52,9 @@ pub struct RustdocVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
     reexported_macros: FxHashSet<DefId>,
 }
 
-impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
-    pub fn new(cstore: &'tcx CrateStore,
-               cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> RustdocVisitor<'a, 'tcx, 'rcx> {
+impl<'a, 'b, 'tcx, 'rcx> RustdocVisitor<'a, 'b, 'tcx, 'rcx> {
+    pub fn new(cstore: &'a CrateStore,
+               cx: &'a core::DocContext<'b, 'tcx, 'rcx>) -> RustdocVisitor<'a, 'b, 'tcx, 'rcx> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet();
         stack.insert(ast::CRATE_NODE_ID);

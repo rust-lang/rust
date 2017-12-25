@@ -127,7 +127,7 @@ pub struct Crate {
     pub masked_crates: FxHashSet<CrateNum>,
 }
 
-impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> {
+impl<'a, 'b, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'b, 'tcx, 'rcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
         use ::visit_lib::LibEmbargoVisitor;
 
@@ -821,7 +821,6 @@ impl Clean<Attributes> for [ast::Attribute] {
                     // but it can't because that would break object safety. This can still be
                     // fixed.
                     let components = link.split("::").skip(1).collect::<Vec<_>>();
-                    println!("{:?}", components);
                     cx.resolver.borrow_mut().std_path(DUMMY_SP, None, &components, false)
                 };
 

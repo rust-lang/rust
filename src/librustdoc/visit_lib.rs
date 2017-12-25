@@ -22,7 +22,7 @@ use clean::{AttributesExt, NestedAttributesExt};
 
 /// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
 /// specific rustdoc annotations into account (i.e. `doc(hidden)`)
-pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b, 'rcx: 'a> {
+pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b, 'rcx: 'b> {
     cx: &'a ::core::DocContext<'b, 'tcx, 'rcx>,
     // Accessibility levels for reachable nodes
     access_levels: RefMut<'a, AccessLevels<DefId>>,

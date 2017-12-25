@@ -44,9 +44,9 @@ pub use rustc::session::search_paths::SearchPaths;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
-pub struct DocContext<'a, 'tcx: 'a, 'rcx> {
+pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub resolver: RefCell<resolve::Resolver<'rcx>>,
+    pub resolver: &'a RefCell<resolve::Resolver<'rcx>>,
     pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -162,33 +162,51 @@ pub fn run_core(search_paths: SearchPaths,
 
     let name = ::rustc_trans_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
 
-    let driver::ExpansionResult {
-        expanded_crate,
-        defs,
-        analysis,
-        resolutions,
-        mut hir_forest
-    } = {
-        let result = driver::phase_2_configure_and_expand(&sess,
-                                                          &cstore,
-                                                          krate,
-                                                          None,
-                                                          &name,
-                                                          None,
-                                                          resolve::MakeGlobMap::No,
-                                                          |_| Ok(()));
-        abort_on_err(result, &sess)
+    let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
+
+    let resolver_arenas = resolve::Resolver::arenas();
+    let result = driver::phase_2_configure_and_expand_inner(&sess,
+                                                      &cstore,
+                                                      krate,
+                                                      None,
+                                                      &name,
+                                                      None,
+                                                      resolve::MakeGlobMap::No,
+                                                      &resolver_arenas,
+                                                      &mut crate_loader,
+                                                      |_| Ok(()));
+    let driver::InnerExpansionResult {
+        mut hir_forest,
+        resolver,
+        ..
+    } = abort_on_err(result, &sess);
+
+    // We need to hold on to the complete resolver, so we clone everything
+    // for the analysis passes to use. Suboptimal, but necessary in the
+    // current architecture.
+    let defs = resolver.definitions.clone();
+    let resolutions = ty::Resolutions {
+        freevars: resolver.freevars.clone(),
+        export_map: resolver.export_map.clone(),
+        trait_map: resolver.trait_map.clone(),
+        maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
+        maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
+    };
+    let analysis = ty::CrateAnalysis {
+        access_levels: Rc::new(AccessLevels::default()),
+        name: name.to_string(),
+        glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
     };
 
     let arenas = AllArenas::new();
-    let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
-    let resolver_arenas = resolve::Resolver::arenas();
     let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
     let output_filenames = driver::build_output_filenames(&input,
                                                           &None,
                                                           &None,
                                                           &[],
                                                           &sess);
+
+    let resolver = RefCell::new(resolver);
 
     abort_on_err(driver::phase_3_run_analysis_passes(&*trans,
                                                      control,
@@ -215,20 +233,9 @@ pub fn run_core(search_paths: SearchPaths,
                                   .collect()
         };
 
-        // Set up a Resolver so that the doc cleaning can look up paths in the docs
-        let mut resolver = resolve::Resolver::new(&sess,
-                                                  &*cstore,
-                                                  &expanded_crate,
-                                                  &name,
-                                                  resolve::MakeGlobMap::No,
-                                                  &mut crate_loader,
-                                                  &resolver_arenas);
-        resolver.resolve_imports();
-        resolver.resolve_crate(&expanded_crate);
-
         let ctxt = DocContext {
             tcx,
-            resolver: RefCell::new(resolver),
+            resolver: &resolver,
             populated_all_crate_impls: Cell::new(false),
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),
