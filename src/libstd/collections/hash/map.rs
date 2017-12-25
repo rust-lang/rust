@@ -1121,6 +1121,36 @@ impl<K, V, S> HashMap<K, V, S>
         self.search(k).into_occupied_bucket().map(|bucket| bucket.into_refs().1)
     }
 
+    /// Returns a references to the key-value pair corresponding to the supplied
+    /// key.
+    ///
+    /// The supplied key may be any borrowed form of the map's key type, but
+    /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
+    /// the key type.
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(hashmap_get_pair)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.get_pair(&1), Some((&1, &"a")));
+    /// assert_eq!(map.get_pair(&2), None);
+    /// ```
+    #[unstable(feature = "hashmap_get_pair", issue = "43143")]
+    #[inline]
+    pub fn get_pair<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
+        where K: Borrow<Q>,
+              Q: Hash + Eq
+    {
+        self.search(k).into_occupied_bucket().map(|bucket| bucket.into_refs())
+    }
+
     /// Returns true if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but
