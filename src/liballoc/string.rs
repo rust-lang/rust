@@ -384,6 +384,38 @@ impl String {
         String { vec: Vec::new() }
     }
 
+    #[inline]
+    #[unstable(feature = "lit_strings", reason = "its TOO lit", issue = "42069")]
+    /// Creates a Copy on Write (CoW) String from a literal.
+    ///
+    /// This defers allocating and copying the literal until it's completely
+    /// necessary, while still producing a seemingly uniquely owned String.
+    /// The only strange thing about the String will be that it reports a capacity of 0.
+    ///
+    /// In the best-case, this will completely eliminate the allocation-and-copy
+    /// that String::from would perform. In the worst-case, this is just moving
+    /// that allocation-and-copy to a later part of the program. Although moving
+    /// work may have subtle consequences for caching and latency.
+    ///
+    /// CoW strings must reallocate in a few places that other Strings wouldn't:
+    ///
+    /// * mutable/owned views: `deref_mut`, `as_mut_str`, `into_vec`, etc.
+    /// * in-place mutations: `make_lowercase_ascii`, `make_uppercase_ascii`
+    /// * removals: `remove(1)`, `drain(1..3)`, etc.
+    ///
+    /// Note that truncations (like `pop`, `clear`, or `remove(0)`) don't *require*
+    /// reallocations, but implementations may still reallocate in these cases
+    /// because this is easier to implement, or to avoid slowing down the common case.
+    pub fn literally(lit: &'static str) -> String {
+        unsafe {
+            String { vec: Vec::from_raw_parts(
+                lit.as_ptr() as *mut _,
+                lit.len(),
+                0,
+            )}
+        }
+    }
+
     /// Creates a new empty `String` with a particular capacity.
     ///
     /// `String`s have an internal buffer to hold their data. The capacity is
@@ -745,7 +777,8 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_bytes(self) -> Vec<u8> {
+    pub fn into_bytes(mut self) -> Vec<u8> {
+        self.make_unique();
         self.vec
     }
 
@@ -783,6 +816,7 @@ impl String {
     #[inline]
     #[stable(feature = "string_as_str", since = "1.7.0")]
     pub fn as_mut_str(&mut self) -> &mut str {
+        // make_unique handled by deref_mut
         self
     }
 
@@ -1085,6 +1119,10 @@ impl String {
 
         let next = idx + ch.len_utf8();
         let len = self.len();
+
+        // FIXME: don't use make_unique; create a new buffer and copy only what we need.
+        self.make_unique();
+
         unsafe {
             ptr::copy(self.vec.as_ptr().offset(next as isize),
                       self.vec.as_mut_ptr().offset(idx as isize),
@@ -1116,6 +1154,9 @@ impl String {
     pub fn retain<F>(&mut self, mut f: F)
         where F: FnMut(char) -> bool
     {
+        // FIXME: don't use make_unique; create a new buffer and copy only what we need when CoW!
+        self.make_unique();
+
         let len = self.len();
         let mut del_bytes = 0;
         let mut idx = 0;
@@ -1256,6 +1297,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
+        self.make_unique();
         &mut self.vec
     }
 
@@ -1386,6 +1428,9 @@ impl String {
     pub fn drain<R>(&mut self, range: R) -> Drain
         where R: RangeArgument<usize>
     {
+        // FIXME: do something a lot smarter than a blind clone here
+        self.make_unique();
+
         // Memory safety
         //
         // The String version of Drain does not have the memory safety issues
@@ -1488,9 +1533,20 @@ impl String {
     /// let b = s.into_boxed_str();
     /// ```
     #[stable(feature = "box_str", since = "1.4.0")]
-    pub fn into_boxed_str(self) -> Box<str> {
+    pub fn into_boxed_str(mut self) -> Box<str> {
+        self.make_unique();
+
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
+    }
+
+    /// Ensure the string isn't CoW, we're about to mutate its contents!
+    ///
+    /// FIXME: some places can do something smarter with capacity and copies!
+    #[inline]
+    fn make_unique(&mut self) {
+        if self.capacity() > 0 { return }
+        *self = String { vec: self.vec.clone() }
     }
 }
 
@@ -1586,7 +1642,18 @@ impl fmt::Display for FromUtf16Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for String {
     fn clone(&self) -> Self {
-        String { vec: self.vec.clone() }
+        if self.capacity() == 0 {
+            unsafe {
+                // String literal, memcopy is a valid clone
+                String { vec: Vec::from_raw_parts(
+                    self.as_ptr() as *mut _,
+                    self.len(),
+                    0
+                )}
+            }
+        } else {
+            String { vec: self.vec.clone() }
+        }
     }
 
     fn clone_from(&mut self, source: &Self) {
@@ -1920,7 +1987,7 @@ impl ops::IndexMut<ops::RangeFrom<usize>> for String {
 impl ops::IndexMut<ops::RangeFull> for String {
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
-        unsafe { str::from_utf8_unchecked_mut(&mut *self.vec) }
+        self
     }
 }
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
@@ -1952,6 +2019,7 @@ impl ops::Deref for String {
 impl ops::DerefMut for String {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
+        self.make_unique();
         unsafe { str::from_utf8_unchecked_mut(&mut *self.vec) }
     }
 }
