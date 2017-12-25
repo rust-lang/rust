@@ -240,6 +240,12 @@ declare_lint! {
    "detects single use lifetimes"
 }
 
+declare_lint! {
+    pub TYVAR_BEHIND_RAW_POINTER,
+    Warn,
+    "raw pointer to an inference variable"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -284,7 +290,8 @@ impl LintPass for HardwiredLints {
             UNUSED_UNSAFE,
             UNUSED_MUT,
             COERCE_NEVER,
-            SINGLE_USE_LIFETIME
+            SINGLE_USE_LIFETIME,
+            TYVAR_BEHIND_RAW_POINTER
         )
     }
 }

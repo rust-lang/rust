@@ -770,7 +770,7 @@ fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
         let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
         let db = data.as_mut_ptr()
                     as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
-        let buf = &mut (*db).ReparseTarget as *mut _;
+        let buf = &mut (*db).ReparseTarget as *mut c::WCHAR;
         let mut i = 0;
         // FIXME: this conversion is very hacky
         let v = br"\??\";

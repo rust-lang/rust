@@ -453,7 +453,7 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     let k = CString::new(k.as_bytes())?;
     unsafe {
         ENV_LOCK.lock();
-        let s = libc::getenv(k.as_ptr()) as *const _;
+        let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
         let ret = if s.is_null() {
             None
         } else {

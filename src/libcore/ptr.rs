@@ -1829,7 +1829,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst = Vec::with_capacity(elts);
+    ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
     ///     dst.as_mut_ptr().copy_from(ptr, elts);
     ///     dst
@@ -1868,7 +1868,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst = Vec::with_capacity(elts);
+    ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
     ///     dst.as_mut_ptr().copy_from_nonoverlapping(ptr, elts);
     ///     dst

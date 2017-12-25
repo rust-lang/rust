@@ -27,6 +27,7 @@ use syntax::ast;
 use syntax::util::lev_distance::{lev_distance, find_best_match_for_name};
 use syntax_pos::Span;
 use rustc::hir;
+use rustc::lint;
 use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -249,7 +250,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // think cause spurious errors. Really though this part should
         // take place in the `self.probe` below.
         let steps = if mode == Mode::MethodCall {
-            match self.create_steps(span, self_ty, is_suggestion) {
+            match self.create_steps(span, scope_expr_id, self_ty, is_suggestion) {
                 Some(steps) => steps,
                 None => {
                     return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(),
@@ -291,6 +292,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn create_steps(&self,
                     span: Span,
+                    scope_expr_id: ast::NodeId,
                     self_ty: Ty<'tcx>,
                     is_suggestion: IsSuggestion)
                     -> Option<Vec<CandidateStep<'tcx>>> {
@@ -318,18 +320,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match final_ty.sty {
             ty::TyInfer(ty::TyVar(_)) => {
                 // Ended in an inference variable. If we are doing
-                // a real method lookup, this is a hard error (it's an
-                // ambiguity and we can't make progress).
+                // a real method lookup, this is a hard error because it's
+                // possible that there will be multiple applicable methods.
                 if !is_suggestion.0 {
                     if reached_raw_pointer
                     && !self.tcx.sess.features.borrow().arbitrary_self_types {
-                        // only produce a warning in this case, because inference variables used to
-                        // be allowed here in some cases for raw pointers
-                        struct_span_warn!(self.tcx.sess, span, E0619,
-                            "the type of this value must be known in this context")
-                        .note("this will be made into a hard error in a future version of \
-                               the compiler")
-                        .emit();
+                        // this case used to be allowed by the compiler,
+                        // so we do a future-compat lint here
+                        // (see https://github.com/rust-lang/rust/issues/46906)
+                        self.tcx.lint_node(
+                            lint::builtin::TYVAR_BEHIND_RAW_POINTER,
+                            scope_expr_id,
+                            span,
+                            &format!("the type of this value must be known in this context"));
                     } else {
                         let t = self.structurally_resolved_type(span, final_ty);
                         assert_eq!(t, self.tcx.types.err);

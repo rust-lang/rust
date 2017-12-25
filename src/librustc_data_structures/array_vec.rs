@@ -138,7 +138,7 @@ impl<A: Array> ArrayVec<A> {
             // Use the borrow in the IterMut to indicate borrowing behavior of the
             // whole Drain iterator (like &mut T).
             let range_slice = {
-                let arr = &mut self.values as &mut [ManuallyDrop<_>];
+                let arr = &mut self.values as &mut [ManuallyDrop<<A as Array>::Element>];
                 slice::from_raw_parts_mut(arr.as_mut_ptr().offset(start as isize),
                                           end - start)
             };
@@ -255,12 +255,13 @@ impl<'a, A: Array> Drop for Drain<'a, A> {
 
         if self.tail_len > 0 {
             unsafe {
-                let source_array_vec = self.array_vec.as_mut();
+                let source_array_vec: &mut ArrayVec<A> = self.array_vec.as_mut();
                 // memmove back untouched tail, update to new length
                 let start = source_array_vec.len();
                 let tail = self.tail_start;
                 {
-                    let arr = &mut source_array_vec.values as &mut [ManuallyDrop<_>];
+                    let arr =
+                        &mut source_array_vec.values as &mut [ManuallyDrop<<A as Array>::Element>];
                     let src = arr.as_ptr().offset(tail as isize);
                     let dst = arr.as_mut_ptr().offset(start as isize);
                     ptr::copy(src, dst, self.tail_len);
