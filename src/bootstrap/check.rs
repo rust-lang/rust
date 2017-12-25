@@ -1166,7 +1166,7 @@ impl Step for Crate {
             }
             Mode::Librustc => {
                 builder.ensure(compile::Rustc { compiler, target });
-                compile::rustc_cargo(build, &compiler, target, &mut cargo);
+                compile::rustc_cargo(build, target, &mut cargo);
                 ("librustc", "rustc-main")
             }
             _ => panic!("can only test libraries"),

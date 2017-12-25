@@ -485,7 +485,7 @@ impl Step for Rustc {
         build.clear_if_dirty(&stage_out, &libtest_stamp(build, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
-        rustc_cargo(build, &compiler, target, &mut cargo);
+        rustc_cargo(build, target, &mut cargo);
         run_cargo(build,
                   &mut cargo,
                   &librustc_stamp(build, compiler, target));
@@ -500,7 +500,6 @@ impl Step for Rustc {
 
 /// Same as `std_cargo`, but for libtest
 pub fn rustc_cargo(build: &Build,
-                   _compiler: &Compiler,
                    target: Interned<String>,
                    cargo: &mut Command) {
     cargo.arg("--features").arg(build.rustc_features())
