@@ -1,7 +1,6 @@
 language: shell
 sudo: required
 dist: trusty
-group: deprecated-2017Q4
 services:
   - docker
 
@@ -191,6 +190,13 @@ env:
 before_install:
   - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
   - mkdir -p $HOME/rustsrc
+  # FIXME(#46924): these two commands are required to enable IPv6,
+  # they shouldn't exist, please revert once more official solutions appeared.
+  # see https://github.com/travis-ci/travis-ci/issues/8891#issuecomment-353403729
+  - if [ "$TRAVIS_OS_NAME" = linux ]; then
+      echo '{"ipv6":true,"fixed-cidr-v6":"fe80::/64"}' | sudo tee /etc/docker/daemon.json;
+      sudo service docker restart;
+    fi
 
 install:
   - case "$TRAVIS_OS_NAME" in
