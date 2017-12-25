@@ -26,6 +26,14 @@
 // Reexport some of our utilities which are expected by other crates.
 pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
+#[cfg(feature = "backtrace")]
+pub use sys_common::backtrace::mark_start as mark_backtrace_start;
+
+#[cfg(not(feature = "backtrace"))]
+pub fn mark_backtrace_start(f: &mut FnMut()) {
+    f();
+}
+
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: fn(), argc: isize, argv: *const *const u8) -> isize {
@@ -56,7 +64,8 @@ fn lang_start(main: fn(), argc: isize, argv: *const *const u8) -> isize {
         // Let's run some code!
         #[cfg(feature = "backtrace")]
         let res = panic::catch_unwind(|| {
-            ::sys_common::backtrace::__rust_begin_short_backtrace(main)
+            let mut main = main;
+            ::sys_common::backtrace::mark_start(&mut main)
         });
         #[cfg(not(feature = "backtrace"))]
         let res = panic::catch_unwind(mem::transmute::<_, fn()>(main));

@@ -40,6 +40,7 @@
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
+#![feature(rt)]
 
 extern crate getopts;
 extern crate term;
@@ -1331,14 +1332,14 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
             DynBenchFn(bench) => {
                 DynTestFn(Box::new(move || {
                     bench::run_once(|b| {
-                        __rust_begin_short_backtrace(|| bench.run(b))
+                        begin_short_backtrace(|| bench.run(b))
                     })
                 }))
             }
             StaticBenchFn(benchfn) => {
                 DynTestFn(Box::new(move || {
                     bench::run_once(|b| {
-                        __rust_begin_short_backtrace(|| benchfn(b))
+                        begin_short_backtrace(|| benchfn(b))
                     })
                 }))
             }
@@ -1440,20 +1441,25 @@ pub fn run_test(opts: &TestOpts,
         }
         DynTestFn(f) => {
             let cb = move || {
-                __rust_begin_short_backtrace(f)
+                begin_short_backtrace(f)
             };
             run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb))
         }
         StaticTestFn(f) =>
             run_test_inner(desc, monitor_ch, opts.nocapture,
-                           Box::new(move || __rust_begin_short_backtrace(f))),
+                           Box::new(move || begin_short_backtrace(f))),
     }
 }
 
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
-#[inline(never)]
-fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
-    f()
+/// Clean the backtrace by using std::rt::mark_backtrace_start
+fn begin_short_backtrace<F: FnOnce()>(f: F) {
+    let mut f = Some(f);
+    let mut r = None;
+    std::rt::mark_backtrace_start(&mut || {
+        let f = f.take().unwrap();
+        r = Some(f());
+    });
+    r.unwrap()
 }
 
 fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> TestResult {

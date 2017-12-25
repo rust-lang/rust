@@ -31,11 +31,11 @@ pub use sys_common::gnu::libbacktrace::foreach_symbol_fileline;
 #[cfg(not(target_os = "emscripten"))]
 pub fn resolve_symname<F>(frame: Frame, callback: F, bc: &BacktraceContext) -> io::Result<()>
 where
-    F: FnOnce(Option<&str>) -> io::Result<()>
+    F: FnOnce(Option<(&str, usize)>) -> io::Result<()>
 {
-    ::sys_common::gnu::libbacktrace::resolve_symname(frame, |symname| {
-        if symname.is_some() {
-            callback(symname)
+    ::sys_common::gnu::libbacktrace::resolve_symname(frame, |syminfo| {
+        if syminfo.is_some() {
+            callback(syminfo)
         } else {
             dladdr::resolve_symname(frame, callback, bc)
         }
