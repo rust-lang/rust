@@ -830,6 +830,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                     attrs.links.push((link, path.def.def_id()));
                 }
             }
+
+            cx.sess().abort_if_errors();
         }
 
         attrs
