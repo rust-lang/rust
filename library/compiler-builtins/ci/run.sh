@@ -1,5 +1,8 @@
 set -ex
 
+# FIXME(japarix/xargo#186) this shouldn't be necessary
+export RUST_TARGET_PATH=`pwd`
+
 case $1 in
     thumb*)
         cargo=xargo
