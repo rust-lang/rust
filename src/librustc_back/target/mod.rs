@@ -151,6 +151,7 @@ supported_targets! {
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
     ("arm-unknown-linux-musleabi", arm_unknown_linux_musleabi),
     ("arm-unknown-linux-musleabihf", arm_unknown_linux_musleabihf),
+    ("armv4t-unknown-linux-gnueabi", armv4t_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
