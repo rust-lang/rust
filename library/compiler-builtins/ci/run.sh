@@ -115,6 +115,7 @@ RUSTFLAGS="-C debug-assertions=no" \
 # TODO(#79) fix the undefined references problem for debug-assertions+lto
 if [ -z "$DEBUG_LTO_BUILD_DOESNT_WORK" ]; then
   RUSTFLAGS="-C debug-assertions=no" \
+    CARGO_INCREMENTAL=0 \
     $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics -- -C lto
 fi
 $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics --release -- -C lto
