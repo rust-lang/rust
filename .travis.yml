@@ -194,7 +194,7 @@ before_install:
   # they shouldn't exist, please revert once more official solutions appeared.
   # see https://github.com/travis-ci/travis-ci/issues/8891#issuecomment-353403729
   - if [ "$TRAVIS_OS_NAME" = linux ]; then
-      echo '{"ipv6":true,"fixed-cidr-v6":"fe80::/64"}' | sudo tee /etc/docker/daemon.json;
+      echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json;
       sudo service docker restart;
     fi
 
