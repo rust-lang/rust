@@ -17,9 +17,6 @@ Compiler
 - [rustc now avoids unnecessary copies of arguments that are
   simple bindings][45380] This should improve memory usage on average by 5-10%.
 - [Updated musl used to build musl rustc to 1.1.17][45393]
-- [Refactored type memory layouts and ABIs.][45225] This will reduce
-  memory size for some types. Eg. `io::Result<()>` is now 16 bytes
-  where it was previously 24.
 
 Libraries
 ---------
@@ -66,7 +63,6 @@ Compatibility Notes
 
 [44042]: https://github.com/rust-lang/rust/pull/44042
 [44932]: https://github.com/rust-lang/rust/pull/44932
-[45225]: https://github.com/rust-lang/rust/pull/45225
 [45267]: https://github.com/rust-lang/rust/pull/45267
 [45324]: https://github.com/rust-lang/rust/pull/45324
 [45326]: https://github.com/rust-lang/rust/pull/45326
