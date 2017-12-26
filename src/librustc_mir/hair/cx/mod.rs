@@ -27,6 +27,7 @@ use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use syntax::ast;
+use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
@@ -78,8 +79,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
         // the settings for the crate they are translated in.
-        let mut check_overflow = attrs.iter()
-            .any(|item| item.check_name("rustc_inherit_overflow_checks"));
+        let mut check_overflow = attr::contains_name(attrs, "rustc_inherit_overflow_checks");
 
         // Respect -C overflow-checks.
         check_overflow |= tcx.sess.overflow_checks();

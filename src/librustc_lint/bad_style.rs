@@ -221,9 +221,7 @@ impl LintPass for NonSnakeCase {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_crate(&mut self, cx: &LateContext, cr: &hir::Crate) {
-        let attr_crate_name = cr.attrs
-            .iter()
-            .find(|at| at.check_name("crate_name"))
+        let attr_crate_name = attr::find_by_name(&cr.attrs, "crate_name")
             .and_then(|at| at.value_str().map(|s| (at, s)));
         if let Some(ref name) = cx.tcx.sess.opts.crate_name {
             self.check_snake_case(cx, "crate", name, None);

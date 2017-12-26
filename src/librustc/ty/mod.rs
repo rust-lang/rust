@@ -2402,7 +2402,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Determine whether an item is annotated with an attribute
     pub fn has_attr(self, did: DefId, attr: &str) -> bool {
-        self.get_attrs(did).iter().any(|item| item.check_name(attr))
+        attr::contains_name(&self.get_attrs(did), attr)
     }
 
     /// Returns true if this is an `auto trait`.

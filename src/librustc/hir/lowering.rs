@@ -1571,7 +1571,7 @@ impl<'a> LoweringContext<'a> {
             bounds,
             default: tp.default.as_ref().map(|x| self.lower_ty(x, ImplTraitContext::Disallowed)),
             span: tp.span,
-            pure_wrt_drop: tp.attrs.iter().any(|attr| attr.check_name("may_dangle")),
+            pure_wrt_drop: attr::contains_name(&tp.attrs, "may_dangle"),
             synthetic: tp.attrs.iter()
                                .filter(|attr| attr.check_name("rustc_synthetic"))
                                .map(|_| hir::SyntheticTyParamKind::ImplTrait)
@@ -1611,7 +1611,7 @@ impl<'a> LoweringContext<'a> {
         let def = hir::LifetimeDef {
             lifetime: self.lower_lifetime(&l.lifetime),
             bounds: self.lower_lifetimes(&l.bounds),
-            pure_wrt_drop: l.attrs.iter().any(|attr| attr.check_name("may_dangle")),
+            pure_wrt_drop: attr::contains_name(&l.attrs, "may_dangle"),
             in_band: false,
         };
 
@@ -2331,7 +2331,7 @@ impl<'a> LoweringContext<'a> {
         let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
-            if !def.legacy || i.attrs.iter().any(|attr| attr.path == "macro_export") {
+            if !def.legacy || attr::contains_name(&i.attrs, "macro_export") {
                 let body = self.lower_token_stream(def.stream());
                 self.exported_macros.push(hir::MacroDef {
                     name,

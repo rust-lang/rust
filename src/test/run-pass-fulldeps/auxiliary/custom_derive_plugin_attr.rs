@@ -21,6 +21,7 @@ extern crate rustc;
 extern crate rustc_plugin;
 
 use syntax::ast;
+use syntax::attr;
 use syntax::ext::base::{MultiDecorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::symbol::Symbol;
@@ -80,7 +81,7 @@ fn totalsum_substructure(cx: &mut ExtCtxt, trait_span: Span,
     };
 
     fields.iter().fold(cx.expr_isize(trait_span, 0), |acc, ref item| {
-        if item.attrs.iter().find(|a| a.check_name("ignore")).is_some() {
+        if attr::contains_name(&item.attrs, "ignore") {
             acc
         } else {
             cx.expr_binary(item.span, ast::BinOpKind::Add, acc,

@@ -13,7 +13,7 @@ use rustc::session::Session;
 use rustc::middle::cstore::{self, LinkMeta};
 use rustc::hir::svh::Svh;
 use std::path::{Path, PathBuf};
-use syntax::ast;
+use syntax::{ast, attr};
 use syntax_pos::Span;
 
 pub fn out_filename(sess: &Session,
@@ -69,8 +69,8 @@ pub fn find_crate_name(sess: Option<&Session>,
     // as used. After doing this, however, we still prioritize a crate name from
     // the command line over one found in the #[crate_name] attribute. If we
     // find both we ensure that they're the same later on as well.
-    let attr_crate_name = attrs.iter().find(|at| at.check_name("crate_name"))
-                               .and_then(|at| at.value_str().map(|s| (at, s)));
+    let attr_crate_name = attr::find_by_name(attrs, "crate_name")
+        .and_then(|at| at.value_str().map(|s| (at, s)));
 
     if let Some(sess) = sess {
         if let Some(ref s) = sess.opts.crate_name {

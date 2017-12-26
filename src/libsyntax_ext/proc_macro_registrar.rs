@@ -13,6 +13,7 @@ use std::mem;
 use errors;
 
 use syntax::ast::{self, Ident, NodeId};
+use syntax::attr;
 use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
@@ -248,8 +249,7 @@ impl<'a> CollectProcMacros<'a> {
 impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         if let ast::ItemKind::MacroDef(..) = item.node {
-            if self.is_proc_macro_crate &&
-               item.attrs.iter().any(|attr| attr.path == "macro_export") {
+            if self.is_proc_macro_crate && attr::contains_name(&item.attrs, "macro_export") {
                 let msg =
                     "cannot export macro_rules! macros from a `proc-macro` crate type currently";
                 self.handler.span_err(item.span, msg);
