@@ -52,7 +52,58 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 .span_label(span, format!("use of possibly uninitialized {}", item_msg))
                 .emit();
         } else {
-            let msg = ""; //FIXME: add "partially " or "collaterally "
+            // FIXME Should these be moved to impl Place?
+            fn is_deep_projection<'tcx>(
+                projected_place: &Place<'tcx>,
+                place: &Place<'tcx>
+            ) -> bool {
+                let mut cursor = projected_place;
+                let mut is_proj = false;
+                loop {
+                    if cursor == place {
+                        return is_proj;
+                    }
+                    let proj = match *cursor {
+                        Place::Local(..) | Place::Static(..) => return false,
+                        Place::Projection(ref proj) => proj
+                    };
+                    is_proj = true;
+                    cursor = &proj.base;
+                }
+            }
+
+            fn root_place<'d, 'tcx>(place: &'d Place<'tcx>) -> &'d Place<'tcx> {
+                let mut cursor = place;
+                loop {
+                    let proj = match *cursor {
+                        Place::Local(..) | Place::Static(..) => return cursor,
+                        Place::Projection(ref proj) => proj,
+                    };
+                    cursor = &proj.base;
+                }
+            }
+
+            let mut msg = "";
+            let move_place = &self.move_data.move_paths[mpi].place;
+
+            // Scenarios:
+            // 1. Already moved a.b.c and trying to move a or a.b => partial move
+            // 2. Already moved a.b.c and trying to move a.b.c.d => collateral move
+            // 3. Anything else => move
+            if move_place == place {
+                msg = "";
+            } else if is_deep_projection(&move_place, place) {
+                msg = "partially ";
+            } else {
+                match (move_place, place) {
+                    (&Place::Projection(..), &Place::Projection(..)) => {
+                        if root_place(move_place) == root_place(place) {
+                           msg = "collaterally ";
+                        }
+                    },
+                    _ => {}
+                }
+            }
 
             let mut err = self.tcx.cannot_act_on_moved_value(
                 span,
