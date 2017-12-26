@@ -416,7 +416,20 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                 self.kill_borrows_on_local(sets, &local, is_activations)
             }
 
-            mir::StatementKind::InlineAsm { .. } |
+            mir::StatementKind::InlineAsm { ref outputs, ref asm, .. } => {
+                for (output, kind) in outputs.iter().zip(&asm.outputs) {
+                    if !kind.is_indirect && !kind.is_rw {
+                        // Make sure there are no remaining borrows for direct
+                        // output variables.
+                        if let Place::Local(ref local) = *output {
+                            // FIXME: Handle the case in which we're assigning over
+                            // a projection (`foo.bar`).
+                            self.kill_borrows_on_local(sets, local, is_activations);
+                        }
+                    }
+                }
+            }
+
             mir::StatementKind::SetDiscriminant { .. } |
             mir::StatementKind::StorageLive(..) |
             mir::StatementKind::Validate(..) |

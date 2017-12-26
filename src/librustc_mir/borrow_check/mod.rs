@@ -392,7 +392,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                         self.mutate_place(
                             context,
                             (output, span),
-                            Deep,
+                            if o.is_rw { Deep } else { Shallow(None) },
                             if o.is_rw { WriteAndRead } else { JustWrite },
                             flow_state,
                         );
