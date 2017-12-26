@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for 64-bits floats (`f64` type)
+//! This module provides constants which are specific to the implementation
+//! of the `f64` floating point data type.
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
