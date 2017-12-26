@@ -1584,7 +1584,7 @@ mod tests {
              = if cfg!(target_os = "windows") {
                  Command::new("cmd").args(&["/C", "mkdir ."]).output().unwrap()
              } else {
-                 Command::new("mkdir").arg(".").output().unwrap()
+                 Command::new("mkdir").arg("./").output().unwrap()
              };
 
         assert!(status.code() == Some(1));

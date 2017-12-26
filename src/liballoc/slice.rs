@@ -699,7 +699,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_at(self, mid)
     }
 
-    /// Divides one `&mut` into two at an index.
+    /// Divides one mutable slice into two at an index.
     ///
     /// The first will contain all indices from `[0, mid)` (excluding
     /// the index `mid` itself) and the second will contain all
