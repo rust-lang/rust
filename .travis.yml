@@ -179,6 +179,17 @@ matrix:
     - env: IMAGE=x86_64-gnu-incremental
       if: branch = auto
 
+    - stage: publish toolstate
+      if: branch = master AND type = push
+      before_install: []
+      install: []
+      cache: false
+      sudo: false
+      script:
+        MESSAGE_FILE=$(mktemp -t msg.XXXXXX);
+        . src/ci/docker/x86_64-gnu-tools/repo.sh;
+        commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE"
+
 env:
   global:
     - SCCACHE_BUCKET=rust-lang-ci-sccache2
@@ -186,6 +197,8 @@ env:
     - AWS_ACCESS_KEY_ID=AKIAJAMV3QAMMA6AXHFQ
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "j96XxTVOSUf4s4r4htIxn/fvIa5DWbMgLqWl7r8z2QfgUwscmkMXAwXuFNc7s7bGTpV/+CgDiMFFM6BAFLGKutytIF6oA02s9b+usQYnM0th7YQ2AIgm9GtMTJCJp4AoyfFmh8F2faUICBZlfVLUJ34udHEe35vOklix+0k4WDo="
+    # TOOLSTATE_REPO_ACCESS_TOKEN=...
+    - secure: "cFh8thThqEJLC98XKI5pfqflUzOlxsYPRW20AWRaYOOgYHPTiGWypTXiPbGSKaeAXTZoOA+DpQtEmefc0U6lt9dHc7a/MIaK6isFurjlnKYiLOeTruzyu1z7PWCeZ/jKXsU2RK/88DBtlNwfMdaMIeuKj14IVfpepPPL71ETbuk="
 
 before_install:
   - zcat $HOME/docker/rust-ci.tar.gz | docker load || true

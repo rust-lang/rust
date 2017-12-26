@@ -23,7 +23,7 @@ use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::io::Read;
 
-use build_helper::{self, output, BuildExpectation};
+use build_helper::{self, output};
 
 use builder::{Kind, RunConfig, ShouldRun, Builder, Compiler, Step};
 use cache::{INTERNER, Interned};
@@ -65,21 +65,17 @@ impl fmt::Display for TestKind {
     }
 }
 
-fn try_run_expecting(build: &Build, cmd: &mut Command, expect: BuildExpectation) -> bool {
+fn try_run(build: &Build, cmd: &mut Command) -> bool {
     if !build.fail_fast {
-        if !build.try_run(cmd, expect) {
+        if !build.try_run(cmd) {
             let mut failures = build.delayed_failures.borrow_mut();
             failures.push(format!("{:?}", cmd));
             return false;
         }
     } else {
-        build.run_expecting(cmd, expect);
+        build.run(cmd);
     }
     true
-}
-
-fn try_run(build: &Build, cmd: &mut Command) {
-    try_run_expecting(build, cmd, BuildExpectation::None);
 }
 
 fn try_run_quiet(build: &Build, cmd: &mut Command) {
@@ -259,12 +255,8 @@ impl Step for Rls {
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        if try_run_expecting(
-            build,
-            &mut cargo,
-            builder.build.config.toolstate.rls.passes(ToolState::Testing),
-        ) {
-            build.save_toolstate("rls", ToolState::Testing);
+        if try_run(build, &mut cargo) {
+            build.save_toolstate("rls", ToolState::TestPass);
         }
     }
 }
@@ -309,12 +301,8 @@ impl Step for Rustfmt {
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        if try_run_expecting(
-            build,
-            &mut cargo,
-            builder.build.config.toolstate.rustfmt.passes(ToolState::Testing),
-        ) {
-            build.save_toolstate("rustfmt", ToolState::Testing);
+        if try_run(build, &mut cargo) {
+            build.save_toolstate("rustfmt", ToolState::TestPass);
         }
     }
 }
@@ -363,12 +351,8 @@ impl Step for Miri {
 
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
-            if try_run_expecting(
-                build,
-                &mut cargo,
-                builder.build.config.toolstate.miri.passes(ToolState::Testing),
-            ) {
-                build.save_toolstate("miri", ToolState::Testing);
+            if try_run(build, &mut cargo) {
+                build.save_toolstate("miri", ToolState::TestPass);
             }
         } else {
             eprintln!("failed to test miri: could not build");
@@ -422,12 +406,8 @@ impl Step for Clippy {
 
             builder.add_rustc_lib_path(compiler, &mut cargo);
 
-            if try_run_expecting(
-                build,
-                &mut cargo,
-                builder.build.config.toolstate.clippy.passes(ToolState::Testing),
-            ) {
-                build.save_toolstate("clippy-driver", ToolState::Testing);
+            if try_run(build, &mut cargo) {
+                build.save_toolstate("clippy-driver", ToolState::TestPass);
             }
         } else {
             eprintln!("failed to test clippy: could not build");

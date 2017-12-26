@@ -99,6 +99,7 @@ exec docker \
   --env LOCAL_USER_ID=`id -u` \
   --env TRAVIS \
   --env TRAVIS_BRANCH \
+  --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --volume "$HOME/.cargo:/cargo" \
   --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --init \

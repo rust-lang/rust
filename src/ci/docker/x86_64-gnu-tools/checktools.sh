@@ -13,7 +13,9 @@
 set -eu
 
 X_PY="$1"
-TOOLSTATE_FILE="$2"
+TOOLSTATE_FILE="$(realpath $2)"
+OS="$3"
+COMMIT="$(git rev-parse HEAD)"
 
 touch "$TOOLSTATE_FILE"
 
@@ -23,17 +25,22 @@ python2.7 "$X_PY" test --no-fail-fast \
     src/tools/rustfmt \
     src/tools/miri \
     src/tools/clippy
-TEST_RESULT=$?
 set -e
 
-# FIXME: Upload this file to the repository.
 cat "$TOOLSTATE_FILE"
 
-# FIXME: After we can properly inform dev-tool maintainers about failure,
-#        comment out the `exit 0` below.
 if [ "$RUST_RELEASE_CHANNEL" = nightly ]; then
-    # exit 0
-    true
+    . "$(dirname $0)/repo.sh"
+    MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
+    echo "($OS CI update)" > "$MESSAGE_FILE"
+    commit_toolstate_change "$MESSAGE_FILE" \
+        sed -i "1 a\\
+$COMMIT\t$(cat "$TOOLSTATE_FILE")
+" "history/$OS.tsv"
+    rm -f "$MESSAGE_FILE"
+    exit 0
 fi
 
-exit $TEST_RESULT
+if grep -q fail "$TOOLSTATE_FILE"; then
+    exit 4
+fi
