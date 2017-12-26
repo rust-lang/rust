@@ -1,7 +1,7 @@
 FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  g++ \
+  clang \
   make \
   file \
   curl \
@@ -16,16 +16,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
-COPY dist-x86_64-freebsd/build-toolchain.sh /tmp/
-RUN /tmp/build-toolchain.sh x86_64
+COPY scripts/freebsd-toolchain.sh /tmp/
+RUN /tmp/freebsd-toolchain.sh x86_64
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV \
     AR_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-ar \
-    CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-gcc \
-    CXX_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-g++
+    CC_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-clang \
+    CXX_x86_64_unknown_freebsd=x86_64-unknown-freebsd10-clang++
 
 ENV HOSTS=x86_64-unknown-freebsd
 
