@@ -1896,7 +1896,7 @@ pub struct GeneratorLayout<'tcx> {
 ///
 /// Example: If type check produces a closure with the closure substs:
 ///
-/// ```
+/// ```text
 /// ClosureSubsts = [
 ///     i8,                                  // the "closure kind"
 ///     for<'x> fn(&'a &'x u32) -> &'x u32,  // the "closure signature"
@@ -1907,7 +1907,7 @@ pub struct GeneratorLayout<'tcx> {
 /// here, there is one unique free region (`'a`) but it appears
 /// twice. We would "renumber" each occurence to a unique vid, as follows:
 ///
-/// ```
+/// ```text
 /// ClosureSubsts = [
 ///     i8,                                  // the "closure kind"
 ///     for<'x> fn(&'1 &'x u32) -> &'x u32,  // the "closure signature"
