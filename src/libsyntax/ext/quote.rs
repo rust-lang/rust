@@ -669,7 +669,11 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec![mk_name(cx, sp, ast::Ident::with_empty_ctxt(ident))]);
         }
 
-        token::Interpolated(_) => panic!("quote! with interpolated token"),
+        token::Interpolated(_) => {
+            cx.span_err(sp, "quote! with interpolated token");
+            // Use dummy name.
+            "Interpolated"
+        }
 
         token::Eq           => "Eq",
         token::Lt           => "Lt",
