@@ -552,10 +552,7 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
                        rust_main: ValueRef,
                        rust_main_def_id: DefId,
                        use_start_lang_item: bool) {
-        // The libstd lang_start function does not return anything, while user defined lang start
-        // returns a isize
-        let start_output_ty = if use_start_lang_item { Type::void(ccx) } else { Type::c_int(ccx) };
-        let llfty = Type::func(&[Type::c_int(ccx), Type::i8p(ccx).ptr_to()], &start_output_ty);
+        let llfty = Type::func(&[Type::c_int(ccx), Type::i8p(ccx).ptr_to()], &Type::c_int(ccx));
 
         let main_ret_ty = ccx.tcx().fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -600,12 +597,7 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         };
 
         let result = bld.call(start_fn, &args, None);
-
-        if use_start_lang_item {
-            bld.ret_void();
-        } else {
-            bld.ret(bld.intcast(result, Type::c_int(ccx), true));
-        }
+        bld.ret(bld.intcast(result, Type::c_int(ccx), true));
     }
 }
 

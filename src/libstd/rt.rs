@@ -30,19 +30,18 @@ pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 // the real work.
 #[cfg(not(any(test, stage0)))]
 fn lang_start_internal(main: &(Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
-                       argc: isize, argv: *const *const u8) -> ! {
+                       argc: isize, argv: *const *const u8) -> isize {
     use panic;
     use sys;
     use sys_common;
     use sys_common::thread_info;
     use thread::Thread;
-    use process;
     #[cfg(not(feature = "backtrace"))]
     use mem;
 
     sys::init();
 
-    process::exit(unsafe {
+    unsafe {
         let main_guard = sys::thread::guard::init();
         sys::stack_overflow::init();
 
@@ -65,14 +64,14 @@ fn lang_start_internal(main: &(Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
         let exit_code = panic::catch_unwind(move || main());
 
         sys_common::cleanup();
-        exit_code.unwrap_or(101)
-    });
+        exit_code.unwrap_or(101) as isize
+    }
 }
 
 #[cfg(not(any(test, stage0)))]
 #[lang = "start"]
 fn lang_start<T: ::termination::Termination + 'static>
-    (main: fn() -> T, argc: isize, argv: *const *const u8) -> !
+    (main: fn() -> T, argc: isize, argv: *const *const u8) -> isize
 {
     lang_start_internal(&move || main().report(), argc, argv)
 }
