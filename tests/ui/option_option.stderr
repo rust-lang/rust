@@ -1,0 +1,57 @@
+error: consider using `Option<T>` instead of `Option<Option<T>>`
+ --> $DIR/option_option.rs:1:13
+  |
+1 | fn input(_: Option<Option<u8>>) {
+  |             ^^^^^^^^^^^^^^^^^^
+  |
+  = note: `-D option-option` implied by `-D warnings`
+  = help: `Option<_>` is easier to use than `Option<Option<_>`
+
+error: consider using `Option<T>` instead of `Option<Option<T>>`
+ --> $DIR/option_option.rs:4:16
+  |
+4 | fn output() -> Option<Option<u8>> {
+  |                ^^^^^^^^^^^^^^^^^^
+  |
+  = help: `Option<_>` is easier to use than `Option<Option<_>`
+
+error: consider using `Option<T>` instead of `Option<Option<T>>`
+ --> $DIR/option_option.rs:8:27
+  |
+8 | fn output_nested() -> Vec<Option<Option<u8>>> {
+  |                           ^^^^^^^^^^^^^^^^^^
+  |
+  = help: `Option<_>` is easier to use than `Option<Option<_>`
+
+error: consider using `Option<T>` instead of `Option<Option<T>>`
+  --> $DIR/option_option.rs:13:30
+   |
+13 | fn output_nested_nested() -> Option<Option<Option<u8>>> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `Option<_>` is easier to use than `Option<Option<_>`
+
+error: consider using `Option<T>` instead of `Option<Option<T>>`
+  --> $DIR/option_option.rs:18:8
+   |
+18 |     x: Option<Option<u8>>,
+   |        ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `Option<_>` is easier to use than `Option<Option<_>`
+
+error: consider using `Option<T>` instead of `Option<Option<T>>`
+  --> $DIR/option_option.rs:22:11
+   |
+22 |     Tuple(Option<Option<u8>>),
+   |           ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `Option<_>` is easier to use than `Option<Option<_>`
+
+error: consider using `Option<T>` instead of `Option<Option<T>>`
+  --> $DIR/option_option.rs:23:15
+   |
+23 |     Struct{x: Option<Option<u8>>},
+   |               ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `Option<_>` is easier to use than `Option<Option<_>`
+

@@ -599,6 +599,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::IMPLICIT_HASHER,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
+        types::OPTION_OPTION,
         types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
         types::UNNECESSARY_CAST,

@@ -42,6 +42,26 @@ declare_lint! {
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 
+/// **What it does:** Checks for use of `Option<Option<_>>` in function signatures and type
+/// definitions
+///
+/// **Why is this bad?** `Option<_>` represents an optional value. `Option<Option<_>>`
+/// represents an optional optional value which is logically the same thing as an optional
+/// value but has an unneeded extra level of wrapping.
+///
+/// **Known problems:** None.
+///
+/// **Example**
+/// ```rust
+/// fn x() -> Option<Option<u32>> {
+///     None
+/// }
+declare_lint! {
+    pub OPTION_OPTION,
+    Warn,
+    "usage of `Option<Option<T>>`"
+}
+
 /// **What it does:** Checks for usage of any `LinkedList`, suggesting to use a
 /// `Vec` or a `VecDeque` (formerly called `RingBuf`).
 ///
@@ -97,7 +117,7 @@ declare_lint! {
 
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(BOX_VEC, LINKEDLIST, BORROWED_BOX)
+        lint_array!(BOX_VEC, OPTION_OPTION, LINKEDLIST, BORROWED_BOX)
     }
 }
 
@@ -142,6 +162,23 @@ fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
     }
 }
 
+/// Check if `qpath` has last segment with type parameter matching `path`
+fn match_type_parameter(cx: &LateContext, qpath: &QPath, path: &[&str]) -> bool {
+    let last = last_path_segment(qpath);
+    if_chain! {
+        if let Some(ref params) = last.parameters;
+        if !params.parenthesized;
+        if let Some(vec) = params.types.get(0);
+        if let TyPath(ref qpath) = vec.node;
+        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id)));
+        if match_def_path(cx.tcx, did, path);
+        then {
+            return true;
+        }
+    }
+    false
+}
+
 /// Recursively check for `TypePass` lints in the given type. Stop at the first
 /// lint found.
 ///
@@ -157,24 +194,26 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
             let def = cx.tables.qpath_def(qpath, hir_id);
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
-                    let last = last_path_segment(qpath);
-                    if_chain! {
-                        if let Some(ref params) = last.parameters;
-                        if !params.parenthesized;
-                        if let Some(vec) = params.types.get(0);
-                        if let TyPath(ref qpath) = vec.node;
-                        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id)));
-                        if match_def_path(cx.tcx, did, &paths::VEC);
-                        then {
-                            span_help_and_lint(
-                                cx,
-                                BOX_VEC,
-                                ast_ty.span,
-                                "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
-                                "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
-                            );
-                            return; // don't recurse into the type
-                        }
+                    if match_type_parameter(cx, qpath, &paths::VEC) {
+                        span_help_and_lint(
+                            cx,
+                            BOX_VEC,
+                            ast_ty.span,
+                            "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                            "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
+                        );
+                        return; // don't recurse into the type
+                    }
+                } else if match_def_path(cx.tcx, def_id, &paths::OPTION) {
+                    if match_type_parameter(cx, qpath, &paths::OPTION) {
+                        span_help_and_lint(
+                            cx,
+                            OPTION_OPTION,
+                            ast_ty.span,
+                            "consider using `Option<T>` instead of `Option<Option<T>>`",
+                            "`Option<_>` is easier to use than `Option<Option<_>`",
+                        );
+                        return; // don't recurse into the type
                     }
                 } else if match_def_path(cx.tcx, def_id, &paths::LINKED_LIST) {
                     span_help_and_lint(
