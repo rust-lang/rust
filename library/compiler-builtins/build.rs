@@ -52,8 +52,8 @@ fn main() {
     }
 
     // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures.
-    if llvm_target[0] == "armv5te" {
-        println!("cargo:rustc-cfg=armv5te")
+    if llvm_target[0] == "armv4t" || llvm_target[0] == "armv5te" {
+        println!("cargo:rustc-cfg=kernel_user_helpers")
     }
 }
 

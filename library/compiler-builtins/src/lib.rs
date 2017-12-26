@@ -52,7 +52,7 @@ pub mod mem;
 #[cfg(target_arch = "arm")]
 pub mod arm;
 
-#[cfg(all(armv5te, target_os = "linux", target_arch = "arm"))]
+#[cfg(all(kernel_user_helpers, target_os = "linux", target_arch = "arm"))]
 pub mod arm_linux;
 
 #[cfg(target_arch = "x86")]
