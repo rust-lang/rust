@@ -103,6 +103,8 @@ macro_rules! int_impl {
         ///
         /// # Examples
         ///
+        /// Basic usage:
+        ///
         /// ```
         /// assert_eq!(i8::min_value(), -128);
         /// ```
@@ -115,6 +117,8 @@ macro_rules! int_impl {
         /// Returns the largest value that can be represented by this integer type.
         ///
         /// # Examples
+        ///
+        /// Basic usage:
         ///
         /// ```
         /// assert_eq!(i8::max_value(), 127);
@@ -1252,6 +1256,8 @@ macro_rules! uint_impl {
         ///
         /// # Examples
         ///
+        /// Basic usage:
+        ///
         /// ```
         /// assert_eq!(u8::min_value(), 0);
         /// ```
@@ -1262,6 +1268,8 @@ macro_rules! uint_impl {
         /// Returns the largest value that can be represented by this integer type.
         ///
         /// # Examples
+        ///
+        /// Basic usage:
         ///
         /// ```
         /// assert_eq!(u8::max_value(), 255);
