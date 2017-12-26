@@ -5,6 +5,7 @@ error[E0308]: match arms have incompatible types
    |  _____________^
 21 | |         0 => x,
 22 | |         _ => y,
+   | |              - match arm with an incompatible type
 23 | |     };
    | |_____^ expected bound lifetime parameter 'a, found concrete lifetime
    |
@@ -12,11 +13,6 @@ error[E0308]: match arms have incompatible types
               found type `&for<'a> Foo<&'a u8, &'a u8>`
    = note: this was previously accepted by the compiler but has been phased out
    = note: for more information, see https://github.com/rust-lang/rust/issues/45852
-note: match arm with an incompatible type
-  --> $DIR/old-lub-glb-object.rs:22:14
-   |
-22 |         _ => y,
-   |              ^
 
 error: aborting due to previous error
 
