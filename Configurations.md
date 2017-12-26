@@ -1815,3 +1815,97 @@ What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff,
 - **Default value**: `"Overwrite"`
 - **Possible values**: `"Checkstyle"`, `"Coverage"`, `"Diff"`, `"Display"`, `"Overwrite"`, `"Plain"`, `"Replace"`
 - **Stable**: No
+
+## `blank_lines_upper_bound`
+
+Maximum number of blank lines which can be put between items. If more than this number of consecutive empty
+lines are found, they are trimmed down to match this integer.
+
+- **Default value**: `1`
+- **Possible values**: *unsigned integer*
+- **Stable**: No
+
+### Example
+Original Code:
+
+```rust
+fn foo() {
+    println!("a");
+}
+
+
+
+fn bar() {
+    println!("b");
+
+
+    println!("c");
+}
+```
+
+#### `1` (default):
+```rust
+fn foo() {
+    println!("a");
+}
+
+fn bar() {
+    println!("b");
+
+    println!("c");
+}
+```
+
+#### `2` (default):
+```rust
+fn foo() {
+    println!("a");
+}
+
+
+fn bar() {
+    println!("b");
+
+
+    println!("c");
+}
+```
+
+See also: [`blank_lines_lower_bound`](#blank_lines_lower_bound)
+
+## `blank_lines_lower_bound`
+
+Minimum number of blank lines which must be put between items. If two items have fewer blank lines between
+them, additional blank lines are inserted.
+
+- **Default value**: `0`
+- **Possible values**: *unsigned integer*
+- **Stable**: No
+
+### Example
+Original Code (rustfmt will not change it with the default value of `0`):
+
+```rust
+fn foo() {
+    println!("a");
+}
+fn bar() {
+    println!("b");
+    println!("c");
+}
+```
+
+#### `1`
+```rust
+fn foo() {
+
+    println!("a");
+}
+
+fn bar() {
+
+    println!("b");
+
+    println!("c");
+}
+```
