@@ -272,34 +272,6 @@ impl<T: ?Sized> Box<T> {
         Box(Unique::new_unchecked(raw))
     }
 
-    /// Constructs a `Box` from a `NonNull<T>` pointer.
-    ///
-    /// After calling this function, the memory is owned by a `Box` and `T` can
-    /// then be destroyed and released upon drop.
-    ///
-    /// # Safety
-    ///
-    /// A `NonNull<T>` can be safely created via [`NonNull::new`] and thus doesn't
-    /// necessarily own the data pointed to nor is the data guaranteed to live
-    /// as long as the pointer.
-    ///
-    /// [`NonNull::new`]: ../../core/ptr/struct.NonNull.html#method.new
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// fn main() {
-    ///     let x = Box::new(5);
-    ///     let ptr = Box::into_non_null_raw(x);
-    ///     let x = unsafe { Box::from_non_null_raw(ptr) };
-    /// }
-    /// ```
-    #[stable(feature = "nonnull", since = "1.24.0")]
-    #[inline]
-    pub unsafe fn from_non_null_raw(u: NonNull<T>) -> Self {
-        Box(u.into())
-    }
-
     /// Consumes the `Box`, returning the wrapped raw pointer.
     ///
     /// After calling this function, the caller is responsible for the
@@ -331,19 +303,15 @@ impl<T: ?Sized> Box<T> {
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
     /// caller should properly destroy `T` and release the memory. The
-    /// proper way to do so is to either convert the `NonNull<T>` pointer:
-    ///
-    /// - Into a `Box` with the [`Box::from_non_null_raw`] function.
-    ///
-    /// - Into a raw pointer and back into a `Box` with the [`Box::from_raw`]
-    ///   function.
+    /// proper way to do so is to convert the `NonNull<T>` pointer
+    /// into a raw pointer and back into a `Box` with the [`Box::from_raw`]
+    /// function.
     ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::into_non_null_raw(b)`
     /// instead of `b.into_non_null_raw()`. This
     /// is so that there is no conflict with a method on the inner type.
     ///
-    /// [`Box::from_non_null_raw`]: struct.Box.html#method.from_non_null_raw
     /// [`Box::from_raw`]: struct.Box.html#method.from_raw
     ///
     /// # Examples
