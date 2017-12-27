@@ -89,15 +89,15 @@ use rustc_trans_utils::trans_crate::TransCrate;
 
 mod diagnostics;
 
-pub(crate) mod back {
+mod back {
+    pub use rustc_trans_utils::symbol_names;
     mod archive;
     pub mod bytecode;
     mod command;
-    pub(crate) mod linker;
+    pub mod linker;
     pub mod link;
     mod lto;
-    pub(crate) mod symbol_export;
-    pub(crate) use rustc_trans_utils::symbol_names;
+    pub mod symbol_export;
     pub mod write;
     mod rpath;
 }
@@ -258,8 +258,8 @@ pub struct ModuleTranslation {
     /// as the crate name and disambiguator.
     name: String,
     llmod_id: String,
-    pub source: ModuleSource,
-    pub kind: ModuleKind,
+    source: ModuleSource,
+    kind: ModuleKind,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -270,14 +270,14 @@ pub enum ModuleKind {
 }
 
 impl ModuleTranslation {
-    pub fn llvm(&self) -> Option<&ModuleLlvm> {
+    fn llvm(&self) -> Option<&ModuleLlvm> {
         match self.source {
             ModuleSource::Translated(ref llvm) => Some(llvm),
             ModuleSource::Preexisting(_) => None,
         }
     }
 
-    pub fn into_compiled_module(self,
+    fn into_compiled_module(self,
                                 emit_obj: bool,
                                 emit_bc: bool,
                                 emit_bc_compressed: bool,
@@ -317,16 +317,16 @@ impl ModuleTranslation {
 
 #[derive(Debug)]
 pub struct CompiledModule {
-    pub name: String,
-    pub llmod_id: String,
-    pub kind: ModuleKind,
-    pub pre_existing: bool,
-    pub object: Option<PathBuf>,
-    pub bytecode: Option<PathBuf>,
-    pub bytecode_compressed: Option<PathBuf>,
+    name: String,
+    llmod_id: String,
+    kind: ModuleKind,
+    pre_existing: bool,
+    object: Option<PathBuf>,
+    bytecode: Option<PathBuf>,
+    bytecode_compressed: Option<PathBuf>,
 }
 
-pub enum ModuleSource {
+enum ModuleSource {
     /// Copy the `.o` files or whatever from the incr. comp. directory.
     Preexisting(WorkProduct),
 
@@ -337,7 +337,7 @@ pub enum ModuleSource {
 #[derive(Debug)]
 pub struct ModuleLlvm {
     llcx: llvm::ContextRef,
-    pub llmod: llvm::ModuleRef,
+    llmod: llvm::ModuleRef,
     tm: llvm::TargetMachineRef,
 }
 
@@ -355,12 +355,12 @@ impl Drop for ModuleLlvm {
 }
 
 pub struct CrateTranslation {
-    pub crate_name: Symbol,
-    pub modules: Vec<CompiledModule>,
+    crate_name: Symbol,
+    modules: Vec<CompiledModule>,
     allocator_module: Option<CompiledModule>,
     metadata_module: CompiledModule,
-    pub link: rustc::middle::cstore::LinkMeta,
-    pub metadata: rustc::middle::cstore::EncodedMetadata,
+    link: rustc::middle::cstore::LinkMeta,
+    metadata: rustc::middle::cstore::EncodedMetadata,
     windows_subsystem: Option<String>,
     linker_info: back::linker::LinkerInfo,
     crate_info: CrateInfo,
