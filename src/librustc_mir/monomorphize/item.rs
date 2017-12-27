@@ -18,9 +18,8 @@ use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::OptLevel;
-use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::Substs;
 use syntax::ast;
 use syntax::attr::{self, InlineAttr};
 use std::fmt::{self, Write};
@@ -214,8 +213,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             MonoItem::GlobalAsm(..) => return true
         };
 
-        let predicates = tcx.predicates_of(def_id).predicates.subst(tcx, substs);
-        traits::normalize_and_test_predicates(tcx, predicates)
+        tcx.substitute_normalize_and_test_predicates((def_id, &substs))
     }
 
     fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {

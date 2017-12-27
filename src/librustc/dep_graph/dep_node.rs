@@ -633,6 +633,8 @@ define_dep_nodes!( <'tcx>
     [anon] NormalizeTy,
     // We use this for most things when incr. comp. is turned off.
     [] Null,
+
+    [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

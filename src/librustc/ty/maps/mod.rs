@@ -360,6 +360,9 @@ define_maps! { <'tcx>
     // however, which uses this query as a kind of cache.
     [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
     [] fn fully_normalize_monormophic_ty: normalize_ty_node(Ty<'tcx>) -> Ty<'tcx>,
+
+    [] fn substitute_normalize_and_test_predicates:
+        substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -499,4 +502,9 @@ fn vtable_methods_node<'tcx>(trait_ref: ty::PolyTraitRef<'tcx>) -> DepConstructo
 }
 fn normalize_ty_node<'tcx>(_: Ty<'tcx>) -> DepConstructor<'tcx> {
     DepConstructor::NormalizeTy
+}
+
+fn substitute_normalize_and_test_predicates_node<'tcx>(key: (DefId, &'tcx Substs<'tcx>))
+                                            -> DepConstructor<'tcx> {
+    DepConstructor::SubstituteNormalizeAndTestPredicates { key }
 }
