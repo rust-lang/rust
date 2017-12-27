@@ -44,3 +44,9 @@ pub enum State {
 struct Fields(
     #[cfg_attr(feature = "serde_derive", serde(state_with = "::base::serialization::shared"))] Arc<Vec<InternedStr>>,
 );
+
+// #2309
+pub struct A {
+#[doc="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"]
+pub foos:Vec<bool>
+}
