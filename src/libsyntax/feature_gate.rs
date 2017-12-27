@@ -1446,7 +1446,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
         if !name.as_str().is_ascii() {
-            gate_feature_post!(&self, non_ascii_idents, sp,
+            gate_feature_post!(&self,
+                               non_ascii_idents,
+                               self.context.parse_sess.codemap().def_span(sp),
                                "non-ascii idents are not fully supported.");
         }
     }
