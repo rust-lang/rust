@@ -123,6 +123,8 @@
 #![feature(inclusive_range_methods)]
 #![feature(rustc_const_unstable)]
 #![feature(const_vec_new)]
+#![feature(never_type)]
+#![feature(crate_in_paths)]
 
 #![cfg_attr(not(test), feature(fn_traits, i128))]
 #![cfg_attr(test, feature(test))]
@@ -144,6 +146,7 @@ mod macros;
 // Heaps provided for low-level allocation strategies
 
 pub mod alloc;
+pub mod abort_adapter;
 
 #[unstable(feature = "futures_api",
            reason = "futures in libcore are unstable",
