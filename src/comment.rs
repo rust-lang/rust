@@ -318,41 +318,65 @@ fn rewrite_comment_inner(
 
     let mut result = String::with_capacity(orig.len() * 2);
     result.push_str(opener);
+    let mut code_block_buffer = String::with_capacity(128);
     let mut is_prev_line_multi_line = false;
     let mut inside_code_block = false;
     let comment_line_separator = format!("\n{}{}", indent_str, line_start);
+    let join_code_block_with_comment_line_separator = |s: &str| {
+        let mut result = String::with_capacity(s.len() + 128);
+        let mut iter = s.lines().peekable();
+        while let Some(line) = iter.next() {
+            result.push_str(line);
+            result.push_str(match iter.peek() {
+                Some(ref next_line) if next_line.is_empty() => comment_line_separator.trim_right(),
+                Some(..) => &comment_line_separator,
+                None => "",
+            });
+        }
+        result
+    };
+
     for (i, (line, has_leading_whitespace)) in lines.enumerate() {
         let is_last = i == count_newlines(orig);
-        if result == opener {
-            let force_leading_whitespace = opener == "/* " && count_newlines(orig) == 0;
-            if !has_leading_whitespace && !force_leading_whitespace && result.ends_with(' ') {
-                result.pop();
-            }
-            if line.is_empty() {
-                continue;
-            }
-        } else if is_prev_line_multi_line && !line.is_empty() {
-            result.push(' ')
-        } else if is_last && !closer.is_empty() && line.is_empty() {
-            result.push('\n');
-            result.push_str(&indent_str);
-        } else {
-            result.push_str(&comment_line_separator);
-            if !has_leading_whitespace && result.ends_with(' ') {
-                result.pop();
-            }
-        }
 
-        if line.starts_with("```") {
-            inside_code_block = !inside_code_block;
-        }
         if inside_code_block {
-            if line.is_empty() && result.ends_with(' ') {
-                result.pop();
-            } else {
+            if line.starts_with("```") {
+                inside_code_block = false;
+                result.push_str(&comment_line_separator);
+                let code_block = ::format_code_block(&code_block_buffer, config)
+                    .unwrap_or_else(|| code_block_buffer.to_owned());
+                result.push_str(&join_code_block_with_comment_line_separator(&code_block));
+                code_block_buffer.clear();
+                result.push_str(&comment_line_separator);
                 result.push_str(line);
+            } else {
+                code_block_buffer.push_str(line);
+                code_block_buffer.push('\n');
             }
+
             continue;
+        } else {
+            inside_code_block = line.starts_with("```");
+
+            if result == opener {
+                let force_leading_whitespace = opener == "/* " && count_newlines(orig) == 0;
+                if !has_leading_whitespace && !force_leading_whitespace && result.ends_with(' ') {
+                    result.pop();
+                }
+                if line.is_empty() {
+                    continue;
+                }
+            } else if is_prev_line_multi_line && !line.is_empty() {
+                result.push(' ')
+            } else if is_last && !closer.is_empty() && line.is_empty() {
+                result.push('\n');
+                result.push_str(&indent_str);
+            } else {
+                result.push_str(&comment_line_separator);
+                if !has_leading_whitespace && result.ends_with(' ') {
+                    result.pop();
+                }
+            }
         }
 
         if config.wrap_comments() && line.len() > fmt.shape.width && !has_url(line) {
