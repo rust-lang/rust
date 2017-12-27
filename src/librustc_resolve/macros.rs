@@ -429,7 +429,15 @@ impl<'a> Resolver<'a> {
             let def = match self.resolve_path(&path, Some(MacroNS), false, span) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
-                    def @ _ => Ok(def),
+                    def @ _ => {
+                        if path_res.unresolved_segments() > 0 {
+                            self.found_unresolved_macro = true;
+                            self.session.span_err(span, "fail to resolve non-ident macro path");
+                            Err(Determinacy::Determined)
+                        } else {
+                            Ok(def)
+                        }
+                    }
                 },
                 PathResult::Module(..) => unreachable!(),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
