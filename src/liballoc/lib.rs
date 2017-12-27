@@ -112,6 +112,7 @@
 #![feature(maybe_uninit_extra, maybe_uninit_slice, maybe_uninit_array)]
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
+#![feature(never_type)]
 
 // Allow testing this library
 
@@ -128,6 +129,7 @@ mod macros;
 // Heaps provided for low-level allocation strategies
 
 pub mod alloc;
+pub mod abort_adapter;
 
 // Primitive types using the heaps above
 

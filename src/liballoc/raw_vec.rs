@@ -422,7 +422,8 @@ impl<T, A: Alloc<Err = AllocErr>> RawVec<T, A> {
         -> Result<usize, CollectionAllocErr> {
 
         // Nothing we can really do about these checks :(
-        let required_cap = used_cap.checked_add(needed_extra_cap).ok_or(CollectionAllocErr::CapacityOverflow)?;
+        let required_cap = used_cap.checked_add(needed_extra_cap)
+            .ok_or(CollectionAllocErr::CapacityOverflow)?;
         // Cannot overflow, because `cap <= isize::MAX`, and type of `cap` is `usize`.
         let double_cap = self.cap * 2;
         // `double_cap` guarantees exponential growth.
@@ -651,10 +652,12 @@ impl<T, A: Alloc<Err = AllocErr>> RawVec<T, A> {
 
             // Nothing we can really do about these checks :(
             let new_cap = match strategy {
-                Exact => used_cap.checked_add(needed_extra_cap).ok_or(CollectionAllocErr::CapacityOverflow)?,
+                Exact => used_cap.checked_add(needed_extra_cap)
+                    .ok_or(CollectionAllocErr::CapacityOverflow)?,
                 Amortized => self.amortized_new_size(used_cap, needed_extra_cap)?,
             };
-            let new_layout = Layout::array::<T>(new_cap).map_err(|_| CollectionAllocErr::CapacityOverflow)?;
+            let new_layout = Layout::array::<T>(new_cap)
+                .map_err(|_| CollectionAllocErr::CapacityOverflow)?;
 
             alloc_guard(new_layout.size())?;
 
