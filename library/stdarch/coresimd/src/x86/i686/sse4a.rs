@@ -55,7 +55,7 @@ pub unsafe fn _mm_insert_si64(x: i64x2, y: i64x2) -> i64x2 {
     insertq(x, mem::transmute(y))
 }
 
-/// Non-temporal store of `a.1` into `p`.
+/// Non-temporal store of `a.0` into `p`.
 #[inline(always)]
 #[target_feature = "+sse4a"]
 #[cfg_attr(test, assert_instr(movntsd))]
@@ -63,7 +63,7 @@ pub unsafe fn _mm_stream_sd(p: *mut f64, a: f64x2) {
     movntsd(p, a);
 }
 
-/// Non-temporal store of `a.3` into `p`.
+/// Non-temporal store of `a.0` into `p`.
 #[inline(always)]
 #[target_feature = "+sse4a"]
 #[cfg_attr(test, assert_instr(movntss))]
@@ -125,7 +125,7 @@ mod tests {
 
             sse4a::_mm_stream_sd(d, x);
         }
-        assert_eq!(mem.data[0], 4.0);
+        assert_eq!(mem.data[0], 3.0);
         assert_eq!(mem.data[1], 2.0);
     }
 
@@ -147,7 +147,7 @@ mod tests {
 
             sse4a::_mm_stream_ss(d, x);
         }
-        assert_eq!(mem.data[0], 8.0);
+        assert_eq!(mem.data[0], 5.0);
         assert_eq!(mem.data[1], 2.0);
         assert_eq!(mem.data[2], 3.0);
         assert_eq!(mem.data[3], 4.0);
