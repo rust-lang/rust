@@ -30,8 +30,26 @@ use rustfmt::rustfmt_diff::*;
 
 const DIFF_CONTEXT_SIZE: usize = 3;
 
-fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> PathBuf {
-    dir_entry.expect("Couldn't get DirEntry").path().to_owned()
+// Returns a `Vec` containing `PathBuf`s of files with a rs extension in the
+// given path. The `recursive` argument controls if files from subdirectories
+// are also returned.
+fn get_test_files(path: &Path, recursive: bool) -> Vec<PathBuf> {
+    let mut files = vec![];
+    if path.is_dir() {
+        for entry in fs::read_dir(path).expect(&format!(
+            "Couldn't read directory {}",
+            path.to_str().unwrap()
+        )) {
+            let entry = entry.expect("Couldn't get DirEntry");
+            let path = entry.path();
+            if path.is_dir() && recursive {
+                files.append(&mut get_test_files(&path, recursive));
+            } else if path.extension().map_or(false, |f| f == "rs") {
+                files.push(path);
+            }
+        }
+    }
+    files
 }
 
 // Integration tests. The files in the tests/source are formatted and compared
@@ -41,10 +59,7 @@ fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> PathBuf {
 #[test]
 fn system_tests() {
     // Get all files in the tests/source directory.
-    let files = fs::read_dir("tests/source").expect("Couldn't read source dir");
-    // Turn a DirEntry into a String that represents the relative path to the
-    // file.
-    let files = files.map(get_path_string);
+    let files = get_test_files(Path::new("tests/source"), true);
     let (_reports, count, fails) = check_files(files);
 
     // Display results.
@@ -56,8 +71,7 @@ fn system_tests() {
 // the only difference is the coverage mode
 #[test]
 fn coverage_tests() {
-    let files = fs::read_dir("tests/coverage/source").expect("Couldn't read source dir");
-    let files = files.map(get_path_string);
+    let files = get_test_files(Path::new("tests/coverage/source"), true);
     let (_reports, count, fails) = check_files(files);
 
     println!("Ran {} tests in coverage mode.", count);
@@ -102,9 +116,7 @@ fn assert_output(source: &Path, expected_filename: &Path) {
 #[test]
 fn idempotence_tests() {
     // Get all files in the tests/target directory.
-    let files = fs::read_dir("tests/target")
-        .expect("Couldn't read target dir")
-        .map(get_path_string);
+    let files = get_test_files(Path::new("tests/target"), true);
     let (_reports, count, fails) = check_files(files);
 
     // Display results.
@@ -116,13 +128,10 @@ fn idempotence_tests() {
 // no warnings are emitted.
 #[test]
 fn self_tests() {
-    let files = fs::read_dir("src/bin")
-        .expect("Couldn't read src dir")
-        .chain(fs::read_dir("tests").expect("Couldn't read tests dir"))
-        .map(get_path_string);
-    // Hack because there's no `IntoIterator` impl for `[T; N]`.
-    let files = files.chain(Some(PathBuf::from("src/lib.rs")).into_iter());
-    let files = files.chain(Some(PathBuf::from("build.rs")).into_iter());
+    let mut files = get_test_files(Path::new("src/bin"), false);
+    files.append(&mut get_test_files(Path::new("tests"), false));
+    files.push(PathBuf::from("src/lib.rs"));
+    files.push(PathBuf::from("build.rs"));
 
     let (reports, count, fails) = check_files(files);
     let mut warnings = 0;
@@ -197,15 +206,12 @@ fn format_lines_errors_are_reported() {
 
 // For each file, run rustfmt and collect the output.
 // Returns the number of files checked and the number of failures.
-fn check_files<I>(files: I) -> (Vec<FormatReport>, u32, u32)
-where
-    I: Iterator<Item = PathBuf>,
-{
+fn check_files(files: Vec<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
     let mut count = 0;
     let mut fails = 0;
     let mut reports = vec![];
 
-    for file_name in files.filter(|f| f.extension().map_or(false, |f| f == "rs")) {
+    for file_name in files {
         debug!("Testing '{}'...", file_name.display());
 
         match idempotent_check(file_name) {
