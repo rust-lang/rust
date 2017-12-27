@@ -267,9 +267,22 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         // Moves out of scalar and scalar pair fields are trivial.
         if let &mir::Place::Projection(ref proj) = place {
-            if let mir::ProjectionElem::Field(ref f, _) = proj.elem {
-                if let Some(o) = self.maybe_trans_consume_direct(bcx, &proj.base) {
-                    return Some(o.extract_field(bcx, f.index()));
+            if let Some(o) = self.maybe_trans_consume_direct(bcx, &proj.base) {
+                match proj.elem {
+                    mir::ProjectionElem::Field(ref f, _) => {
+                        return Some(o.extract_field(bcx, f.index()));
+                    }
+                    mir::ProjectionElem::Index(_) |
+                    mir::ProjectionElem::ConstantIndex { .. } => {
+                        // ZSTs don't require any actual memory access.
+                        // FIXME(eddyb) deduplicate this with the identical
+                        // checks in `trans_consume` and `extract_field`.
+                        let elem = o.layout.field(bcx.ccx, 0);
+                        if elem.is_zst() {
+                            return Some(OperandRef::new_zst(bcx.ccx, elem));
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
