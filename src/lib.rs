@@ -42,7 +42,7 @@ use syntax::parse::{self, ParseSess};
 
 use checkstyle::{output_footer, output_header};
 use comment::{CharClasses, FullCodeCharKind};
-use config::Config;
+pub use config::Config;
 use filemap::FileMap;
 use issues::{BadIssueSeeker, Issue};
 use shape::Indent;
