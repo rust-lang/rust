@@ -11,4 +11,3 @@ test = false
 proc-macro2 = { version = "0.1", features = ["unstable"] }
 quote = { git = 'https://github.com/dtolnay/quote' }
 syn = { git = 'https://github.com/dtolnay/syn', features = ["full"] }
-synom = { git = 'https://github.com/dtolnay/syn' }

@@ -14,9 +14,8 @@ extern crate proc_macro2;
 extern crate proc_macro;
 #[macro_use]
 extern crate quote;
-extern crate syn;
 #[macro_use]
-extern crate synom;
+extern crate syn;
 
 use proc_macro2::TokenStream;
 
@@ -124,13 +123,13 @@ struct Invoc {
     args: Vec<(syn::Ident, syn::Expr)>,
 }
 
-impl synom::Synom for Invoc {
+impl syn::synom::Synom for Invoc {
     named!(parse -> Self, map!(parens!(do_parse!(
         instr: syn!(syn::Ident) >>
         args: many0!(do_parse!(
-            syn!(syn::tokens::Comma) >>
+            syn!(syn::token::Comma) >>
             name: syn!(syn::Ident) >>
-            syn!(syn::tokens::Eq) >>
+            syn!(syn::token::Eq) >>
             expr: syn!(syn::Expr) >>
             (name, expr)
         )) >>
