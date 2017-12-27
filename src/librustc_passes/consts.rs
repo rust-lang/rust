@@ -25,7 +25,7 @@
 // by borrowck::gather_loans
 
 use rustc::ty::cast::CastKind;
-use rustc_const_eval::ConstContext;
+use rustc_mir::const_eval::ConstContext;
 use rustc::middle::const_val::ConstEvalErr;
 use rustc::middle::const_val::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll};
 use rustc::middle::const_val::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};

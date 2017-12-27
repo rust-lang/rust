@@ -16,6 +16,8 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 #![deny(warnings)]
 
+#![feature(slice_patterns)]
+#![feature(from_ref)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(catch_expr)]
@@ -38,6 +40,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(nonzero)]
 #![feature(underscore_lifetimes)]
 
+extern crate arena;
 #[macro_use]
 extern crate bitflags;
 #[macro_use] extern crate log;
@@ -52,7 +55,6 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_back;
 extern crate rustc_const_math;
-extern crate rustc_const_eval;
 extern crate core; // for NonZero
 extern crate log_settings;
 extern crate rustc_apfloat;
@@ -69,6 +71,7 @@ pub mod transform;
 pub mod util;
 pub mod interpret;
 pub mod monomorphize;
+pub mod const_eval;
 
 use rustc::ty::maps::Providers;
 
@@ -77,6 +80,7 @@ pub fn provide(providers: &mut Providers) {
     shim::provide(providers);
     transform::provide(providers);
     providers.const_eval = interpret::const_eval_provider;
+    providers.check_match = const_eval::check_match::check_match;
 }
 
 __build_diagnostic_array! { librustc_mir, DIAGNOSTICS }

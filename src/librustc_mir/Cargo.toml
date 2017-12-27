@@ -9,13 +9,13 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
+arena = { path = "../libarena" }
 bitflags = "1.0"
 graphviz = { path = "../libgraphviz" }
 log = "0.4"
 log_settings = "0.1.1"
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
-rustc_const_eval = { path = "../librustc_const_eval" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }

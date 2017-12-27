@@ -15,7 +15,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::ty::layout::{self, LayoutOf};
 use middle::const_val::ConstVal;
-use rustc_const_eval::ConstContext;
+use rustc_mir::const_eval::ConstContext;
 use rustc::mir::interpret::{Value, PrimVal};
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};

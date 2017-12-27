@@ -21,7 +21,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
 use rustc_back::PanicStrategy;
-use rustc_const_eval::pattern::{BindingMode, PatternKind};
+use const_eval::pattern::{BindingMode, PatternKind};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use shim;
 use std::mem;

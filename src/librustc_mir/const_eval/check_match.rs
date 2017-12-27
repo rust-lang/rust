@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use _match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
-use _match::Usefulness::*;
-use _match::WitnessPreference::*;
+use const_eval::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
+use const_eval::_match::Usefulness::*;
+use const_eval::_match::WitnessPreference::*;
 
-use pattern::{Pattern, PatternContext, PatternError, PatternKind};
+use const_eval::pattern::{Pattern, PatternContext, PatternError, PatternKind};
 
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};

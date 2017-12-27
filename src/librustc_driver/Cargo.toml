@@ -17,7 +17,6 @@ rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
 rustc_back = { path = "../librustc_back" }
 rustc_borrowck = { path = "../librustc_borrowck" }
-rustc_const_eval = { path = "../librustc_const_eval" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_incremental = { path = "../librustc_incremental" }

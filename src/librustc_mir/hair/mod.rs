@@ -27,7 +27,7 @@ use self::cx::Cx;
 
 pub mod cx;
 
-pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
+pub use const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
 
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {

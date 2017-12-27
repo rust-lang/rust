@@ -5,7 +5,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::middle::const_val::ErrKind::{CheckMatchError, TypeckError};
 use rustc::middle::const_val::{ConstEvalErr, ConstVal};
-use rustc_const_eval::{lookup_const_by_id, ConstContext};
+use const_eval::{lookup_const_by_id, ConstContext};
 use rustc::mir::Field;
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -306,16 +306,19 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeEvaluator {
 
 pub fn const_val_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, mir::Field, Value, Ty<'tcx>)>,
+    param_env: ty::ParamEnv<'tcx>,
+    instance: ty::Instance<'tcx>,
+    field: mir::Field,
+    val: Value,
+    ty: Ty<'tcx>,
 ) -> ::rustc::middle::const_val::EvalResult<'tcx> {
-    trace!("const_val_field: {:#?}", key);
-    match const_val_field_inner(tcx, key) {
+    match const_val_field_inner(tcx, param_env, instance, field, val, ty) {
         Ok((field, ty)) => Ok(tcx.mk_const(ty::Const {
             val: ConstVal::Value(field),
             ty,
         })),
         Err(err) => Err(ConstEvalErr {
-            span: tcx.def_span(key.value.0.def_id()),
+            span: tcx.def_span(instance.def_id()),
             kind: err.into(),
         }),
     }
@@ -323,11 +326,14 @@ pub fn const_val_field<'a, 'tcx>(
 
 fn const_val_field_inner<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, mir::Field, Value, Ty<'tcx>)>,
+    param_env: ty::ParamEnv<'tcx>,
+    instance: ty::Instance<'tcx>,
+    field: mir::Field,
+    value: Value,
+    ty: Ty<'tcx>,
 ) -> ::rustc::mir::interpret::EvalResult<'tcx, (Value, Ty<'tcx>)> {
-    trace!("const_val_field: {:#?}", key);
-    let (instance, field, value, ty) = key.value;
-    let mut ecx = mk_eval_cx(tcx, instance, key.param_env).unwrap();
+    trace!("const_val_field: {:?}, {:?}, {:?}, {:?}", instance, field, value, ty);
+    let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let (mut field, ty) = match value {
         Value::ByValPair(..) | Value::ByVal(_) => ecx.read_field(value, field, ty)?.expect("const_val_field on non-field"),
         Value::ByRef(ptr, align) => {
@@ -348,11 +354,13 @@ fn const_val_field_inner<'a, 'tcx>(
 
 pub fn const_discr<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, Value, Ty<'tcx>)>,
+    param_env: ty::ParamEnv<'tcx>,
+    instance: ty::Instance<'tcx>,
+    value: Value,
+    ty: Ty<'tcx>,
 ) -> EvalResult<'tcx, u128> {
-    trace!("const_discr: {:#?}", key);
-    let (instance, value, ty) = key.value;
-    let mut ecx = mk_eval_cx(tcx, instance, key.param_env).unwrap();
+    trace!("const_discr: {:?}, {:?}, {:?}", instance, value, ty);
+    let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let (ptr, align) = match value {
         Value::ByValPair(..) | Value::ByVal(_) => {
             let layout = ecx.layout_of(ty)?;

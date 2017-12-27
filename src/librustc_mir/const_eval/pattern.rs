@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use eval;
+use const_eval::eval;
+use interpret::{const_val_field, const_discr};
 
 use rustc::middle::const_val::{ConstEvalErr, ConstVal, ConstAggregate};
 use rustc::mir::{Field, BorrowKind, Mutability};
@@ -693,7 +694,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             return match expr.node {
                 hir::ExprLit(ref lit) => {
                     let ty = self.tables.expr_ty(expr);
-                    match ::eval::lit_to_const(&lit.node, self.tcx, ty, false) {
+                    match super::eval::lit_to_const(&lit.node, self.tcx, ty, false) {
                         Ok(value) => PatternKind::Constant {
                             value: self.tcx.mk_const(ty::Const {
                                 ty,
@@ -716,7 +717,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         hir::ExprLit(ref lit) => lit,
                         _ => span_bug!(expr.span, "not a literal: {:?}", expr),
                     };
-                    match ::eval::lit_to_const(&lit.node, self.tcx, ty, true) {
+                    match super::eval::lit_to_const(&lit.node, self.tcx, ty, true) {
                         Ok(value) => PatternKind::Constant {
                             value: self.tcx.mk_const(ty::Const {
                                 ty,
@@ -782,9 +783,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
                 match cv.val {
                     ConstVal::Value(val) => {
-                        let discr = self.tcx.const_discr(self.param_env.and((
-                            instance, val, cv.ty
-                        ))).unwrap();
+                        let discr = const_discr(
+                            self.tcx, self.param_env, instance, val, cv.ty
+                        ).unwrap();
                         let variant_index = adt_def
                             .discriminants(self.tcx)
                             .position(|var| var.to_u128_unchecked() == discr)
@@ -801,8 +802,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 .map(|(i, _)| {
                                 let field = Field::new(i);
                                 let val = match cv.val {
-                                    ConstVal::Value(miri) => self.tcx.const_val_field(
-                                        self.param_env.and((instance, field, miri, cv.ty)),
+                                    ConstVal::Value(miri) => const_val_field(
+                                        self.tcx, self.param_env, instance, field, miri, cv.ty,
                                     ).unwrap(),
                                     _ => bug!("{:#?} is not a valid tuple", cv),
                                 };
@@ -844,8 +845,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                             ConstVal::Aggregate(ConstAggregate::Struct(consts)) => {
                                 consts.iter().find(|&&(name, _)| name == f.name).unwrap().1
                             },
-                            ConstVal::Value(miri) => self.tcx.const_val_field(
-                                self.param_env.and((instance, field, miri, cv.ty)),
+                            ConstVal::Value(miri) => const_val_field(
+                                self.tcx, self.param_env, instance, field, miri, cv.ty,
                             ).unwrap(),
                             _ => bug!("{:#?} is not a valid tuple", cv),
                         };
@@ -862,8 +863,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         let field = Field::new(i);
                         let val = match cv.val {
                             ConstVal::Aggregate(ConstAggregate::Tuple(consts)) => consts[i],
-                            ConstVal::Value(miri) => self.tcx.const_val_field(
-                                self.param_env.and((instance, field, miri, cv.ty)),
+                            ConstVal::Value(miri) => const_val_field(
+                                self.tcx, self.param_env, instance, field, miri, cv.ty,
                             ).unwrap(),
                             _ => bug!("{:#?} is not a valid tuple", cv),
                         };
@@ -882,8 +883,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         let val = match cv.val {
                             ConstVal::Aggregate(ConstAggregate::Array(consts)) => consts[i],
                             ConstVal::Aggregate(ConstAggregate::Repeat(cv, _)) => cv,
-                            ConstVal::Value(miri) => self.tcx.const_val_field(
-                                self.param_env.and((instance, field, miri, cv.ty)),
+                            ConstVal::Value(miri) => const_val_field(
+                                self.tcx, self.param_env, instance, field, miri, cv.ty,
                             ).unwrap(),
                             _ => bug!("{:#?} is not a valid tuple", cv),
                         };
