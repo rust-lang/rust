@@ -151,9 +151,8 @@ when a pull request contains unformatted code. Using `--write-mode=diff` instruc
 rustfmt to exit with an error code if the input is not formatted correctly.
 It will also print any found differences.
 
-(These instructions use the Syntex version of Rustfmt. If you want to use the
-nightly version replace `install rustfmt` with `install rustfmt-nightly`,
-however you must then only run this with the nightly toolchain).
+(These instructions use the nightly version of Rustfmt. If you want to use the
+Syntex version replace `install rustfmt-nightly` with `install rustfmt`).
 
 A minimal Travis setup could look like this:
 
