@@ -17,7 +17,7 @@ use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use alloc::{Alloc, Layout, Global, handle_alloc_error};
+use alloc::{Alloc, AllocHelper, AllocErr, Layout, Global, handle_alloc_error};
 use collections::CollectionAllocErr;
 use collections::CollectionAllocErr::*;
 use boxed::Box;
@@ -50,13 +50,13 @@ use boxed::Box;
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
 #[allow(missing_debug_implementations)]
-pub struct RawVec<T, A: Alloc = Global> {
+pub struct RawVec<T, A: Alloc + AllocHelper<Err = AllocErr> = Global> {
     ptr: Unique<T>,
     cap: usize,
     a: A,
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc + AllocHelper<Err = AllocErr>> RawVec<T, A> {
     /// Like `new` but parameterized over the choice of allocator for
     /// the returned RawVec.
     pub const fn new_in(a: A) -> Self {
@@ -157,7 +157,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc + AllocHelper<Err = AllocErr>> RawVec<T, A> {
     /// Reconstitutes a RawVec from a pointer, capacity, and allocator.
     ///
     /// # Undefined Behavior
@@ -200,7 +200,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc + AllocHelper<Err = AllocErr>> RawVec<T, A> {
     /// Gets a raw pointer to the start of the allocation. Note that this is
     /// Unique::empty() if `cap = 0` or T is zero-sized. In the former case, you must
     /// be careful.
@@ -421,7 +421,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve_exact(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.reserve_internal(used_cap, needed_extra_cap, Infallible, Exact) {
             Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocErr) => unreachable!(),
+            Err(CollectionAllocErr::AllocErr) => unreachable!(),
             Ok(()) => { /* yay */ }
          }
      }
@@ -501,7 +501,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.reserve_internal(used_cap, needed_extra_cap, Infallible, Amortized) {
             Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocErr) => unreachable!(),
+            Err(CollectionAllocErr::AllocErr) => unreachable!(),
             Ok(()) => { /* yay */ }
         }
     }
@@ -640,7 +640,7 @@ enum ReserveStrategy {
 
 use self::ReserveStrategy::*;
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc + AllocHelper<Err = AllocErr>> RawVec<T, A> {
     fn reserve_internal(
         &mut self,
         used_cap: usize,
@@ -693,7 +693,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc + AllocHelper<Err = AllocErr>> RawVec<T, A> {
     /// Converts the entire buffer into `Box<[T], A>`.
     ///
     /// While it is not *strictly* Undefined Behavior to call
@@ -712,7 +712,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc + AllocHelper<Err = AllocErr>> RawVec<T, A> {
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     pub unsafe fn dealloc_buffer(&mut self) {
         let elem_size = mem::size_of::<T>();
@@ -724,7 +724,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-unsafe impl<#[may_dangle] T, A: Alloc> Drop for RawVec<T, A> {
+unsafe impl<#[may_dangle] T, A: Alloc + AllocHelper<Err = AllocErr>> Drop for RawVec<T, A> {
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     fn drop(&mut self) {
         unsafe { self.dealloc_buffer(); }

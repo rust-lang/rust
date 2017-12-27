@@ -122,6 +122,12 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 
 #[cfg(not(test))]
 #[unstable(feature = "allocator_api", issue = "32838")]
+impl AllocHelper for Global {
+    type Err = AllocErr;
+}
+
+#[cfg(not(test))]
+#[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Alloc for Global {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
