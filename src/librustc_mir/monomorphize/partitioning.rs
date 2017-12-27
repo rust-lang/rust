@@ -305,6 +305,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let codegen_unit = codegen_units.entry(codegen_unit_name.clone())
                                             .or_insert_with(make_codegen_unit);
 
+        let mut can_be_internalized = true;
         let (linkage, visibility) = match trans_item.explicit_linkage(tcx) {
             Some(explicit_linkage) => (explicit_linkage, Visibility::Default),
             None => {
@@ -312,7 +313,28 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     MonoItem::Fn(ref instance) => {
                         let visibility = match instance.def {
                             InstanceDef::Item(def_id) => {
-                                if def_id.is_local() {
+                                // The `start_fn` lang item is actually a
+                                // monomorphized instance of a function in the
+                                // standard library, used for the `main`
+                                // function. We don't want to export it so we
+                                // tag it with `Hidden` visibility but this
+                                // symbol is only referenced from the actual
+                                // `main` symbol which we unfortunately don't
+                                // know anything about during
+                                // partitioning/collection. As a result we
+                                // forcibly keep this symbol out of the
+                                // `internalization_candidates` set.
+                                //
+                                // FIXME: eventually we don't want to always
+                                // force this symbol to have hidden
+                                // visibility, it should indeed be a candidate
+                                // for internalization, but we have to
+                                // understand that it's referenced from the
+                                // `main` symbol we'll generate later.
+                                if tcx.lang_items().start_fn() == Some(def_id) {
+                                    can_be_internalized = false;
+                                    Visibility::Hidden
+                                } else if def_id.is_local() {
                                     if tcx.is_exported_symbol(def_id) {
                                         Visibility::Default
                                     } else {
@@ -346,7 +368,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
         };
-        if visibility == Visibility::Hidden {
+        if visibility == Visibility::Hidden && can_be_internalized {
             internalization_candidates.insert(trans_item);
         }
 

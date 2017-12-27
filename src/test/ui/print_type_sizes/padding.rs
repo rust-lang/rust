@@ -19,6 +19,7 @@
 // aligned (while on most it is 8-byte aligned) and so the resulting
 // padding and overall computed sizes can be quite different.
 
+#![feature(start)]
 #![allow(dead_code)]
 
 struct S {
@@ -37,4 +38,7 @@ enum E2 {
     B(S),
 }
 
-fn main() { }
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
+    0
+}

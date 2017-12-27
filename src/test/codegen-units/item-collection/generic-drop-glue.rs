@@ -13,6 +13,7 @@
 // compile-flags:-Zinline-in-all-cgus
 
 #![deny(dead_code)]
+#![feature(start)]
 
 struct StructWithDrop<T1, T2> {
     x: T1,
@@ -53,8 +54,9 @@ impl Drop for NonGenericWithDrop {
     fn drop(&mut self) {}
 }
 
-//~ TRANS_ITEM fn generic_drop_glue::main[0]
-fn main() {
+//~ TRANS_ITEM fn generic_drop_glue::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<generic_drop_glue::StructWithDrop[0]<i8, char>> @@ generic_drop_glue0[Internal]
     //~ TRANS_ITEM fn generic_drop_glue::{{impl}}[0]::drop[0]<i8, char>
     let _ = StructWithDrop { x: 0i8, y: 'a' }.x;
@@ -94,4 +96,6 @@ fn main() {
         EnumNoDrop::A(x) => x,
         EnumNoDrop::B(x) => x as f64
     };
+
+    0
 }

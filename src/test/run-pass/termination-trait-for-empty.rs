@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z print-type-sizes
-// must-compile-successfully
+#![feature(termination_trait)]
 
-#![feature(never_type)]
-#![feature(start)]
-
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
-    let _x: Option<!> = None;
-    let _y: Result<u32, !> = Ok(42);
-    0
-}
+fn main() {}

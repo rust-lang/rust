@@ -19,6 +19,8 @@
 // 2. For an enum, the print-type-sizes output will also include the
 //    size of each variant.
 
+#![feature(start)]
+
 pub struct SevenBytes([u8;  7]);
 pub struct FiftyBytes([u8; 50]);
 
@@ -27,6 +29,8 @@ pub enum Enum {
     Large(FiftyBytes),
 }
 
-pub fn main() {
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     let _e: Enum;
+    0
 }

@@ -308,6 +308,7 @@
 #![feature(str_char)]
 #![feature(str_internals)]
 #![feature(str_utf16)]
+#![feature(termination_trait)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
@@ -499,6 +500,11 @@ mod memchr;
 // The runtime entry point and a few unstable public functions used by the
 // compiler
 pub mod rt;
+// The trait to support returning arbitrary types in the main function
+mod termination;
+
+#[unstable(feature = "termination_trait", issue = "43301")]
+pub use self::termination::Termination;
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`

@@ -194,11 +194,12 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
-use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
+use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::traits;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
+use rustc::session::config;
 use rustc::mir::{self, Location};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
@@ -211,6 +212,8 @@ use monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 use rustc_data_structures::bitvec::BitVector;
 
 use syntax::attr;
+
+use std::iter;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum MonoItemCollectionMode {
@@ -328,6 +331,8 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let entry_fn = tcx.sess.entry_fn.borrow().map(|(node_id, _)| {
             tcx.hir.local_def_id(node_id)
         });
+
+        debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
         let mut visitor = RootCollector {
             tcx,
@@ -951,16 +956,8 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 // actually used somewhere. Just declaring them is insufficient.
             }
             hir::ItemFn(..) => {
-                let tcx = self.tcx;
-                let def_id = tcx.hir.local_def_id(item.id);
-
-                if self.is_root(def_id) {
-                    debug!("RootCollector: ItemFn({})",
-                           def_id_to_string(tcx, def_id));
-
-                    let instance = Instance::mono(tcx, def_id);
-                    self.output.push(MonoItem::Fn(instance));
-                }
+                let def_id = self.tcx.hir.local_def_id(item.id);
+                self.push_if_root(def_id);
             }
         }
     }
@@ -973,16 +970,8 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
         match ii.node {
             hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
-                let tcx = self.tcx;
-                let def_id = tcx.hir.local_def_id(ii.id);
-
-                if self.is_root(def_id) {
-                    debug!("RootCollector: MethodImplItem({})",
-                           def_id_to_string(tcx, def_id));
-
-                    let instance = Instance::mono(tcx, def_id);
-                    self.output.push(MonoItem::Fn(instance));
-                }
+                let def_id = self.tcx.hir.local_def_id(ii.id);
+                self.push_if_root(def_id);
             }
             _ => { /* Nothing to do here */ }
         }
@@ -1002,6 +991,56 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
                                     "rustc_std_internal_symbol")
             }
         }
+    }
+
+    /// If `def_id` represents a root, then push it onto the list of
+    /// outputs. (Note that all roots must be monomorphic.)
+    fn push_if_root(&mut self, def_id: DefId) {
+        if self.is_root(def_id) {
+            debug!("RootCollector::push_if_root: found root def_id={:?}", def_id);
+
+            let instance = Instance::mono(self.tcx, def_id);
+            self.output.push(create_fn_mono_item(instance));
+
+            self.push_extra_entry_roots(def_id);
+        }
+    }
+
+    /// As a special case, when/if we encounter the
+    /// `main()` function, we also have to generate a
+    /// monomorphized copy of the start lang item based on
+    /// the return type of `main`. This is not needed when
+    /// the user writes their own `start` manually.
+    fn push_extra_entry_roots(&mut self, def_id: DefId) {
+        if self.entry_fn != Some(def_id) {
+            return;
+        }
+
+        if self.tcx.sess.entry_type.get() != Some(config::EntryMain) {
+            return;
+        }
+
+        let start_def_id = match self.tcx.lang_items().require(StartFnLangItem) {
+            Ok(s) => s,
+            Err(err) => self.tcx.sess.fatal(&err),
+        };
+        let main_ret_ty = self.tcx.fn_sig(def_id).output();
+
+        // Given that `main()` has no arguments,
+        // then its return type cannot have
+        // late-bound regions, since late-bound
+        // regions must appear in the argument
+        // listing.
+        let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
+
+        let start_instance = Instance::resolve(
+            self.tcx,
+            ty::ParamEnv::empty(traits::Reveal::All),
+            start_def_id,
+            self.tcx.mk_substs(iter::once(Kind::from(main_ret_ty)))
+        ).unwrap();
+
+        self.output.push(create_fn_mono_item(start_instance));
     }
 }
 

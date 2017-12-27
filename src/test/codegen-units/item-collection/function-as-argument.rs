@@ -12,6 +12,7 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 fn take_fn_once<T1, T2, F: FnOnce(T1, T2)>(f: F, x: T1, y: T2) {
     (f)(x, y)
@@ -23,8 +24,9 @@ fn take_fn_pointer<T1, T2>(f: fn(T1, T2), x: T1, y: T2) {
     (f)(x, y)
 }
 
-//~ TRANS_ITEM fn function_as_argument::main[0]
-fn main() {
+//~ TRANS_ITEM fn function_as_argument::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
 
     //~ TRANS_ITEM fn function_as_argument::take_fn_once[0]<u32, &str, fn(u32, &str)>
     //~ TRANS_ITEM fn function_as_argument::function[0]<u32, &str>
@@ -43,4 +45,6 @@ fn main() {
     //~ TRANS_ITEM fn function_as_argument::take_fn_pointer[0]<f32, i64>
     //~ TRANS_ITEM fn function_as_argument::function[0]<f32, i64>
     take_fn_pointer(function, 0f32, 0i64);
+
+    0
 }

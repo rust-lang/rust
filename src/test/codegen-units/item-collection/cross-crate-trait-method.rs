@@ -12,15 +12,16 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 // aux-build:cgu_export_trait_method.rs
 extern crate cgu_export_trait_method;
 
 use cgu_export_trait_method::Trait;
 
-//~ TRANS_ITEM fn cross_crate_trait_method::main[0]
-fn main()
-{
+//~ TRANS_ITEM fn cross_crate_trait_method::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     // The object code of these methods is contained in the external crate, so
     // calling them should *not* introduce codegen items in the current crate.
     let _: (u32, u32) = Trait::without_default_impl(0);
@@ -55,4 +56,6 @@ fn main()
     let _: (char, char) = Trait::without_default_impl_generic('c');
     //~ TRANS_ITEM fn cgu_export_trait_method::{{impl}}[0]::without_default_impl_generic[0]<bool>
     let _: (char, bool) = Trait::without_default_impl_generic(false);
+
+    0
 }

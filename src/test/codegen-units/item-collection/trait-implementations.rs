@@ -12,6 +12,7 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 pub trait SomeTrait {
     fn foo(&self);
@@ -55,8 +56,9 @@ impl<T> SomeGenericTrait<T> for f32 {
     fn bar<T2>(&self, _: T, _: T2) {}
 }
 
-//~ TRANS_ITEM fn trait_implementations::main[0]
-fn main() {
+//~ TRANS_ITEM fn trait_implementations::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
    //~ TRANS_ITEM fn trait_implementations::{{impl}}[1]::bar[0]<char>
    0i32.bar('x');
 
@@ -77,4 +79,6 @@ fn main() {
 
    //~ TRANS_ITEM fn trait_implementations::{{impl}}[3]::bar[0]<&str, &str>
    0f32.bar("&str", "&str");
+
+   0
 }

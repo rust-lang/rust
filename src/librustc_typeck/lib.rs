@@ -116,6 +116,7 @@ use syntax::abi::Abi;
 use syntax_pos::Span;
 
 use std::iter;
+
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
 mod diagnostics;
@@ -200,10 +201,22 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
                 _ => ()
             }
+
+            let actual = tcx.fn_sig(main_def_id);
+            let expected_return_type = if tcx.lang_items().termination().is_some()
+                && tcx.sess.features.borrow().termination_trait {
+                // we take the return type of the given main function, the real check is done
+                // in `check_fn`
+                actual.output().skip_binder()
+            } else {
+                // standard () main return type
+                tcx.mk_nil()
+            };
+
             let se_ty = tcx.mk_fn_ptr(ty::Binder(
                 tcx.mk_fn_sig(
                     iter::empty(),
-                    tcx.mk_nil(),
+                    expected_return_type,
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust
@@ -214,7 +227,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 tcx,
                 &ObligationCause::new(main_span, main_id, ObligationCauseCode::MainFunctionType),
                 se_ty,
-                tcx.mk_fn_ptr(tcx.fn_sig(main_def_id)));
+                tcx.mk_fn_ptr(actual));
         }
         _ => {
             span_bug!(main_span,

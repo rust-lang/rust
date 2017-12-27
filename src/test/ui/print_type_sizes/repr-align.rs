@@ -20,6 +20,7 @@
 // padding and overall computed sizes can be quite different.
 #![feature(attr_literals)]
 #![feature(repr_align)]
+#![feature(start)]
 #![allow(dead_code)]
 
 #[repr(align(16))]
@@ -39,6 +40,8 @@ struct S {
     d: i8,
 }
 
-fn main() {
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     let _s: S = Default::default();
+    0
 }

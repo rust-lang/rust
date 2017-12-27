@@ -21,6 +21,7 @@
 // aligned (while on most it is 8-byte aligned) and so the resulting
 // padding and overall computed sizes can be quite different.
 
+#![feature(start)]
 #![feature(nonzero)]
 #![allow(dead_code)]
 
@@ -76,7 +77,8 @@ pub enum Enum4<A, B, C, D> {
     Four(D)
 }
 
-pub fn main() {
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     let _x: MyOption<NonZero<u32>> = Default::default();
     let _y: EmbeddedDiscr = Default::default();
     let _z: MyOption<IndirectNonZero<u32>> = Default::default();
@@ -87,4 +89,5 @@ pub fn main() {
     let _e: Enum4<(), char, (), ()> = Enum4::One(());
     let _f: Enum4<(), (), bool, ()> = Enum4::One(());
     let _g: Enum4<(), (), (), MyOption<u8>> = Enum4::One(());
+    0
 }

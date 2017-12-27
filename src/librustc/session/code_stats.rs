@@ -155,11 +155,19 @@ impl CodeStats {
 
                     // Include field alignment in output only if it caused padding injection
                     if min_offset != offset {
-                        let pad = offset - min_offset;
-                        println!("print-type-size {}padding: {} bytes",
-                                 indent, pad);
-                        println!("print-type-size {}field `.{}`: {} bytes, alignment: {} bytes",
-                                 indent, name, size, align);
+                        if offset > min_offset {
+                            let pad = offset - min_offset;
+                            println!("print-type-size {}padding: {} bytes",
+                                     indent, pad);
+                            println!("print-type-size {}field `.{}`: {} bytes, \
+                                      alignment: {} bytes",
+                                     indent, name, size, align);
+                        } else {
+                            println!("print-type-size {}field `.{}`: {} bytes, \
+                                      offset: {} bytes, \
+                                      alignment: {} bytes",
+                                     indent, name, size, offset, align);
+                        }
                     } else {
                         println!("print-type-size {}field `.{}`: {} bytes",
                                  indent, name, size);

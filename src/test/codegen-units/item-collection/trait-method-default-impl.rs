@@ -12,6 +12,7 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 trait SomeTrait {
     fn foo(&self) { }
@@ -46,8 +47,9 @@ impl<T1> SomeGenericTrait<T1> for u32 {
     // since nothing is monomorphic here, nothing should be generated unless used somewhere.
 }
 
-//~ TRANS_ITEM fn trait_method_default_impl::main[0]
-fn main() {
+//~ TRANS_ITEM fn trait_method_default_impl::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     //~ TRANS_ITEM fn trait_method_default_impl::SomeTrait[0]::bar[0]<i8, char>
     let _ = 1i8.bar('c');
 
@@ -65,4 +67,6 @@ fn main() {
 
     //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u32, i16, ()>
     0u32.bar(0i16, ());
+
+    0
 }

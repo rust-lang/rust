@@ -15,6 +15,7 @@
 #![deny(dead_code)]
 #![feature(coerce_unsized)]
 #![feature(unsize)]
+#![feature(start)]
 
 use std::marker::Unsize;
 use std::ops::CoerceUnsized;
@@ -53,9 +54,9 @@ struct Wrapper<T: ?Sized>(*const T);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
 
-//~ TRANS_ITEM fn unsizing::main[0]
-fn main()
-{
+//~ TRANS_ITEM fn unsizing::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     // simple case
     let bool_sized = &true;
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<bool> @@ unsizing0[Internal]
@@ -83,4 +84,6 @@ fn main()
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<u32> @@ unsizing0[Internal]
     //~ TRANS_ITEM fn unsizing::{{impl}}[3]::foo[0]
     let _wrapper_sized = wrapper_sized as Wrapper<Trait>;
+
+    0
 }

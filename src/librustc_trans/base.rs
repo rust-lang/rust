@@ -44,6 +44,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::ty::maps::Providers;
 use rustc::dep_graph::{DepNode, DepConstructor};
+use rustc::ty::subst::Kind;
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo};
@@ -79,6 +80,7 @@ use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
 use std::i32;
+use std::iter;
 use std::sync::mpsc;
 use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
@@ -540,17 +542,25 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
     let et = ccx.sess().entry_type.get().unwrap();
     match et {
-        config::EntryMain => create_entry_fn(ccx, span, main_llfn, true),
-        config::EntryStart => create_entry_fn(ccx, span, main_llfn, false),
+        config::EntryMain => create_entry_fn(ccx, span, main_llfn, main_def_id, true),
+        config::EntryStart => create_entry_fn(ccx, span, main_llfn, main_def_id, false),
         config::EntryNone => {}    // Do nothing.
     }
 
-    fn create_entry_fn(ccx: &CrateContext,
+    fn create_entry_fn<'ccx>(ccx: &'ccx CrateContext,
                        sp: Span,
                        rust_main: ValueRef,
+                       rust_main_def_id: DefId,
                        use_start_lang_item: bool) {
-        // Signature of native main(), corresponding to C's `int main(int, char **)`
         let llfty = Type::func(&[Type::c_int(ccx), Type::i8p(ccx).ptr_to()], &Type::c_int(ccx));
+
+        let main_ret_ty = ccx.tcx().fn_sig(rust_main_def_id).output();
+        // Given that `main()` has no arguments,
+        // then its return type cannot have
+        // late-bound regions, since late-bound
+        // regions must appear in the argument
+        // listing.
+        let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
 
         if declare::get_defined_value(ccx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
@@ -577,8 +587,8 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = ccx.tcx().require_lang_item(StartFnLangItem);
-            let start_instance = Instance::mono(ccx.tcx(), start_def_id);
-            let start_fn = callee::get_fn(ccx, start_instance);
+            let start_fn = callee::resolve_and_get_fn(ccx, start_def_id, ccx.tcx().mk_substs(
+                iter::once(Kind::from(main_ret_ty))));
             (start_fn, vec![bld.pointercast(rust_main, Type::i8p(ccx).ptr_to()),
                             arg_argc, arg_argv])
         } else {
@@ -587,8 +597,6 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         };
 
         let result = bld.call(start_fn, &args, None);
-
-        // Return rust start function's result from native main()
         bld.ret(bld.intcast(result, Type::c_int(ccx), true));
     }
 }

@@ -15,7 +15,10 @@
 // that one cannot control the sizes of these types with the same sort
 // of enum-variant manipulation tricks.
 
-pub fn main() {
+#![feature(start)]
+
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     let _byte: u8 = 0;
     let _word: usize = 0;
     let _tuple: (u8, usize)= (0, 0);
@@ -25,4 +28,6 @@ pub fn main() {
 
     fn id(x: u8) -> u8 { x };
     fn bye(_: u8) -> ! { loop { } }
+
+    0
 }
