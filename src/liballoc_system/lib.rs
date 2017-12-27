@@ -213,6 +213,16 @@ mod platform {
             struct Stderr;
 
             impl Write for Stderr {
+                #[cfg(target_os = "cloudabi")]
+                fn write_str(&mut self, _: &str) -> fmt::Result {
+                    // CloudABI does not have any reserved file descriptor
+                    // numbers. We should not attempt to write to file
+                    // descriptor #2, as it may be associated with any kind of
+                    // resource.
+                    Ok(())
+                }
+
+                #[cfg(not(target_os = "cloudabi"))]
                 fn write_str(&mut self, s: &str) -> fmt::Result {
                     unsafe {
                         libc::write(libc::STDERR_FILENO,
