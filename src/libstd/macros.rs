@@ -460,9 +460,12 @@ pub mod builtin {
     /// With [`column!`] and [`file!`], these macros provide debugging information for
     /// developers about the location within the source.
     ///
-    /// The expanded expression has type `u32`, and the returned line is not
-    /// the invocation of the `line!()` macro itself, but rather the first macro
-    /// invocation leading up to the invocation of the `line!()` macro.
+    /// The expanded expression has type `u32` and is 1-based, so the first line
+    /// in each file evaluates to 1, the second to 2, etc. This is consistent
+    /// with error messages by common compilers or popular editors.
+    /// The returned line is not the invocation of the `line!` macro itself,
+    /// but rather the first macro invocation leading up to the invocation
+    /// of the `line!` macro.
     ///
     /// [`column!`]: macro.column.html
     /// [`file!`]: macro.file.html
@@ -482,9 +485,12 @@ pub mod builtin {
     /// With [`line!`] and [`file!`], these macros provide debugging information for
     /// developers about the location within the source.
     ///
-    /// The expanded expression has type `u32`, and the returned column is not
-    /// the invocation of the `column!` macro itself, but rather the first macro
-    /// invocation leading up to the invocation of the `column!` macro.
+    /// The expanded expression has type `u32` and is 1-based, so the first column
+    /// in each line evaluates to 1, the second to 2, etc. This is consistent
+    /// with error messages by common compilers or popular editors.
+    /// The returned column is not the invocation of the `column!` macro itself,
+    /// but rather the first macro invocation leading up to the invocation
+    /// of the `column!` macro.
     ///
     /// [`line!`]: macro.line.html
     /// [`file!`]: macro.file.html

@@ -49,7 +49,7 @@ pub fn expand_column(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.codemap().lookup_char_pos(topmost.lo());
 
-    base::MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32))
+    base::MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32 + 1))
 }
 
 /* __rust_unstable_column!(): expands to the current column number */
