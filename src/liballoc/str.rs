@@ -35,7 +35,7 @@ use core::ptr;
 use core::iter::FusedIterator;
 use core::unicode::conversions;
 
-use crate::alloc::Alloc;
+use crate::alloc::{Alloc, AllocErr};
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::slice::{SliceConcatExt, SliceIndex};
@@ -586,6 +586,6 @@ impl str {
 /// ```
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 #[inline]
-pub unsafe fn from_boxed_utf8_unchecked<A: Alloc>(v: Box<[u8], A>) -> Box<str, A> {
+pub unsafe fn from_boxed_utf8_unchecked<A: Alloc<Err=AllocErr>>(v: Box<[u8], A>) -> Box<str, A> {
     Box::map_raw(v, |p| p as *mut str)
 }

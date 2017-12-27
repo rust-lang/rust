@@ -7,8 +7,8 @@ use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use crate::alloc::{Alloc, Layout, Global, handle_alloc_error};
-use crate::collections::CollectionAllocErr::{self, *};
+use crate::alloc::{Alloc, AllocErr, Layout, Global, handle_alloc_error};
+use crate::collections::CollectionAllocErr;
 use crate::boxed::Box;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
@@ -39,13 +39,13 @@ use crate::boxed::Box;
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
 #[allow(missing_debug_implementations)]
-pub struct RawVec<T, A: Alloc = Global> {
+pub struct RawVec<T, A: Alloc<Err = AllocErr> = Global> {
     ptr: Unique<T>,
     cap: usize,
     a: A,
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc<Err = AllocErr>> RawVec<T, A> {
     /// Like `new` but parameterized over the choice of allocator for
     /// the returned RawVec.
     pub const fn new_in(a: A) -> Self {
@@ -146,7 +146,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc<Err = AllocErr>> RawVec<T, A> {
     /// Reconstitutes a RawVec from a pointer, capacity, and allocator.
     ///
     /// # Undefined Behavior
@@ -189,7 +189,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc<Err = AllocErr>> RawVec<T, A> {
     /// Gets a raw pointer to the start of the allocation. Note that this is
     /// Unique::empty() if `cap = 0` or T is zero-sized. In the former case, you must
     /// be careful.
@@ -409,8 +409,8 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// Aborts on OOM
     pub fn reserve_exact(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.reserve_internal(used_cap, needed_extra_cap, Infallible, Exact) {
-            Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocErr) => unreachable!(),
+            Err(CollectionAllocErr::CapacityOverflow) => capacity_overflow(),
+            Err(CollectionAllocErr::AllocErr) => unreachable!(),
             Ok(()) => { /* yay */ }
          }
      }
@@ -422,7 +422,7 @@ impl<T, A: Alloc> RawVec<T, A> {
         -> Result<usize, CollectionAllocErr> {
 
         // Nothing we can really do about these checks :(
-        let required_cap = used_cap.checked_add(needed_extra_cap).ok_or(CapacityOverflow)?;
+        let required_cap = used_cap.checked_add(needed_extra_cap).ok_or(CollectionAllocErr::CapacityOverflow)?;
         // Cannot overflow, because `cap <= isize::MAX`, and type of `cap` is `usize`.
         let double_cap = self.cap * 2;
         // `double_cap` guarantees exponential growth.
@@ -489,8 +489,8 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// ```
     pub fn reserve(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.reserve_internal(used_cap, needed_extra_cap, Infallible, Amortized) {
-            Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocErr) => unreachable!(),
+            Err(CollectionAllocErr::CapacityOverflow) => capacity_overflow(),
+            Err(CollectionAllocErr::AllocErr) => unreachable!(),
             Ok(()) => { /* yay */ }
         }
     }
@@ -629,7 +629,7 @@ enum ReserveStrategy {
 
 use ReserveStrategy::*;
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc<Err = AllocErr>> RawVec<T, A> {
     fn reserve_internal(
         &mut self,
         used_cap: usize,
@@ -638,8 +638,6 @@ impl<T, A: Alloc> RawVec<T, A> {
         strategy: ReserveStrategy,
     ) -> Result<(), CollectionAllocErr> {
         unsafe {
-            use crate::alloc::AllocErr;
-
             // NOTE: we don't early branch on ZSTs here because we want this
             // to actually catch "asking for more than usize::MAX" in that case.
             // If we make it past the first branch then we are guaranteed to
@@ -653,10 +651,10 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             // Nothing we can really do about these checks :(
             let new_cap = match strategy {
-                Exact => used_cap.checked_add(needed_extra_cap).ok_or(CapacityOverflow)?,
+                Exact => used_cap.checked_add(needed_extra_cap).ok_or(CollectionAllocErr::CapacityOverflow)?,
                 Amortized => self.amortized_new_size(used_cap, needed_extra_cap)?,
             };
-            let new_layout = Layout::array::<T>(new_cap).map_err(|_| CapacityOverflow)?;
+            let new_layout = Layout::array::<T>(new_cap).map_err(|_| CollectionAllocErr::CapacityOverflow)?;
 
             alloc_guard(new_layout.size())?;
 
@@ -682,7 +680,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc<Err = AllocErr>> RawVec<T, A> {
     /// Converts the entire buffer into `Box<[T], A>`.
     ///
     /// Note that this will correctly reconstitute any `cap` changes
@@ -703,7 +701,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: Alloc<Err = AllocErr>> RawVec<T, A> {
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     pub unsafe fn dealloc_buffer(&mut self) {
         let elem_size = mem::size_of::<T>();
@@ -715,7 +713,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-unsafe impl<#[may_dangle] T, A: Alloc> Drop for RawVec<T, A> {
+unsafe impl<#[may_dangle] T, A: Alloc<Err = AllocErr>> Drop for RawVec<T, A> {
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     fn drop(&mut self) {
         unsafe { self.dealloc_buffer(); }
@@ -736,7 +734,7 @@ unsafe impl<#[may_dangle] T, A: Alloc> Drop for RawVec<T, A> {
 #[inline]
 fn alloc_guard(alloc_size: usize) -> Result<(), CollectionAllocErr> {
     if mem::size_of::<usize>() < 8 && alloc_size > core::isize::MAX as usize {
-        Err(CapacityOverflow)
+        Err(CollectionAllocErr::CapacityOverflow)
     } else {
         Ok(())
     }

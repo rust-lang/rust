@@ -991,7 +991,7 @@ impl String {
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>  {
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
         self.vec.try_reserve_exact(additional)
     }
 
