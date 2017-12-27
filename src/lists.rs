@@ -161,7 +161,7 @@ pub enum DefinitiveListTactic {
     Horizontal,
     Mixed,
     /// Special case tactic for `format!()`, `write!()` style macros.
-    SpecialMacro(bool, bool, usize),
+    SpecialMacro(usize),
 }
 
 impl DefinitiveListTactic {
@@ -311,30 +311,16 @@ where
             DefinitiveListTactic::Horizontal if !first => {
                 result.push(' ');
             }
-            DefinitiveListTactic::SpecialMacro(
-                one_line_before,
-                one_line_after,
-                num_args_before,
-            ) => {
+            DefinitiveListTactic::SpecialMacro(num_args_before) => {
                 if i == 0 {
                     // Nothing
                 } else if i < num_args_before {
-                    if one_line_before {
-                        result.push(' ');
-                    } else {
-                        result.push('\n');
-                        result.push_str(indent_str);
-                    }
+                    result.push(' ');
                 } else if i <= num_args_before + 1 {
                     result.push('\n');
                     result.push_str(indent_str);
                 } else {
-                    if one_line_after {
-                        result.push(' ');
-                    } else {
-                        result.push('\n');
-                        result.push_str(indent_str);
-                    }
+                    result.push(' ');
                 }
             }
             DefinitiveListTactic::Vertical if !first => {

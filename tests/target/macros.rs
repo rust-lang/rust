@@ -694,8 +694,10 @@ fn special_case_macros() {
     assert!(result == 42, "Ahoy there, {}!", target);
     assert!(
         result == 42,
-        "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')",
-        result, input, expected
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
+        result,
+        input,
+        expected
     );
     assert!(
         result == 42,
@@ -731,23 +733,28 @@ fn special_case_macros() {
     assert_eq!(left, right, "Ahoy there, {}!", target);
     assert_eq!(
         left, right,
-        "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')",
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
         result, input, expected
     );
     assert_eq!(
         first_realllllllllllly_long_variable_that_doesnt_fit_one_one_line,
         second_reallllllllllly_long_variable_that_doesnt_fit_one_one_line,
-        "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')",
-        result, input, expected
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
+        result,
+        input,
+        expected
     );
     assert_eq!(
         left + 42,
         right,
-        "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')",
-        result, input, expected
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
+        result,
+        input,
+        expected
     );
     assert_eq!(
-        left, right,
+        left,
+        right,
         "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
         1,
         2,
@@ -780,7 +787,7 @@ fn special_case_macros() {
     write!(&mut s, "Ahoy there, {}!", target);
     write!(
         &mut s,
-        "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')",
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
         result, input, expected
     );
     write!(
@@ -817,7 +824,7 @@ fn special_case_macros() {
     writeln!(&mut s, "Ahoy there, {}!", target);
     writeln!(
         &mut s,
-        "Arr! Batten down the hatches, we got '{}' but not '{}' (we expected '{}')",
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
         result, input, expected
     );
     writeln!(

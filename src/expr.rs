@@ -2082,18 +2082,16 @@ where
                 tactic = default_tactic();
 
                 if tactic == DefinitiveListTactic::Vertical {
-                    if let Some((all_simple_before, all_simple_after, num_args_before)) =
+                    if let Some((all_simple, num_args_before)) =
                         maybe_get_args_offset(callee_str, args)
                     {
-                        let one_line_before = all_simple_before
+                        let one_line = all_simple
                             && definitive_tactic(
                                 &item_vec[..num_args_before],
                                 ListTactic::HorizontalVertical,
                                 Separator::Comma,
                                 nested_shape.width,
-                            ) == DefinitiveListTactic::Horizontal;
-
-                        let one_line_after = all_simple_after
+                            ) == DefinitiveListTactic::Horizontal
                             && definitive_tactic(
                                 &item_vec[num_args_before + 1..],
                                 ListTactic::HorizontalVertical,
@@ -2101,11 +2099,9 @@ where
                                 nested_shape.width,
                             ) == DefinitiveListTactic::Horizontal;
 
-                        tactic = DefinitiveListTactic::SpecialMacro(
-                            one_line_before,
-                            one_line_after,
-                            num_args_before,
-                        );
+                        if one_line {
+                            tactic = DefinitiveListTactic::SpecialMacro(num_args_before);
+                        };
                     }
                 }
             }
@@ -2141,18 +2137,14 @@ fn is_every_args_simple<T: ToExpr>(lists: &[&T]) -> bool {
 }
 
 /// In case special-case style is required, returns an offset from which we start horizontal layout.
-fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<(bool, bool, usize)> {
+fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<(bool, usize)> {
     if let Some(&(_, num_args_before)) = SPECIAL_MACRO_WHITELIST
         .iter()
         .find(|&&(s, _)| s == callee_str)
     {
-        let all_simple_before =
-            args.len() >= num_args_before && is_every_args_simple(&args[..num_args_before]);
+        let all_simple = args.len() >= num_args_before && is_every_args_simple(args);
 
-        let all_simple_after =
-            args.len() >= num_args_before + 1 && is_every_args_simple(&args[num_args_before + 1..]);
-
-        Some((all_simple_before, all_simple_after, num_args_before))
+        Some((all_simple, num_args_before))
     } else {
         None
     }
