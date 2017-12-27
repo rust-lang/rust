@@ -22,3 +22,8 @@ impl SomeTrait for usize {}
 impl SomeTrait for SomeStruct {
     // deliberately multi-line impl
 }
+
+pub trait AnotherTrait {}
+
+// @has foo/trait.AnotherTrait.html '//a/@href' '../src/foo/issue-43893.rs.html#29'
+impl<T> AnotherTrait for T {}
