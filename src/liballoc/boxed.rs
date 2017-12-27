@@ -295,7 +295,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        Box::into_non_null_raw(b).as_ptr()
+        Box::into_raw_non_null(b).as_ptr()
     }
 
     /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
@@ -308,8 +308,8 @@ impl<T: ?Sized> Box<T> {
     /// function.
     ///
     /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_non_null_raw(b)`
-    /// instead of `b.into_non_null_raw()`. This
+    /// to call it as `Box::into_raw_non_null(b)`
+    /// instead of `b.into_raw_non_null()`. This
     /// is so that there is no conflict with a method on the inner type.
     ///
     /// [`Box::from_raw`]: struct.Box.html#method.from_raw
@@ -319,16 +319,16 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// fn main() {
     ///     let x = Box::new(5);
-    ///     let ptr = Box::into_non_null_raw(x);
+    ///     let ptr = Box::into_raw_non_null(x);
     /// }
     /// ```
     #[stable(feature = "nonnull", since = "1.24.0")]
     #[inline]
-    pub fn into_non_null_raw(b: Box<T>) -> NonNull<T> {
+    pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
         Box::into_unique(b).into()
     }
 
-    #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_non_null_raw instead")]
+    #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_raw_non_null instead")]
     #[inline]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
         let unique = b.0;
