@@ -1162,6 +1162,8 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
                     out_filenames.push(p);
                 }
             }
+            // Do not include the dep-info file in itself as a target
+            OutputType::DepInfo => { }
             _ => {
                 out_filenames.push(file);
             }
