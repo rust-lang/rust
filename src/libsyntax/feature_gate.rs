@@ -523,7 +523,7 @@ declare_features! (
     (accepted, loop_break_value, "1.19.0", Some(37339)),
     // Permits numeric fields in struct expressions and patterns.
     (accepted, relaxed_adts, "1.19.0", Some(35626)),
-   // Coerces non capturing closures to function pointers
+    // Coerces non capturing closures to function pointers
     (accepted, closure_to_fn_coercion, "1.19.0", Some(39817)),
     // Allows attributes on struct literal fields.
     (accepted, struct_field_attributes, "1.20.0", Some(38814)),

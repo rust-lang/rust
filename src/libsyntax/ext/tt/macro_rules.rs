@@ -889,8 +889,8 @@ fn is_legal_fragment_specifier(sess: &ParseSess,
         "item" | "block" | "stmt" | "expr" | "pat" |
         "path" | "ty" | "ident" | "meta" | "tt" | "" => true,
         "lifetime" => {
-            if     !features.borrow().macro_lifetime_matcher
-                && !attr::contains_name(attrs, "allow_internal_unstable") {
+            if !features.borrow().macro_lifetime_matcher &&
+               !attr::contains_name(attrs, "allow_internal_unstable") {
                 let explain = feature_gate::EXPLAIN_LIFETIME_MATCHER;
                 emit_feature_err(sess,
                                  "macro_lifetime_matcher",
@@ -901,8 +901,8 @@ fn is_legal_fragment_specifier(sess: &ParseSess,
             true
         },
         "vis" => {
-            if     !features.borrow().macro_vis_matcher
-                && !attr::contains_name(attrs, "allow_internal_unstable") {
+            if !features.borrow().macro_vis_matcher &&
+               !attr::contains_name(attrs, "allow_internal_unstable") {
                 let explain = feature_gate::EXPLAIN_VIS_MATCHER;
                 emit_feature_err(sess,
                                  "macro_vis_matcher",
