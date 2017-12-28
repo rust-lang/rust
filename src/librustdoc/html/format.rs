@@ -435,32 +435,10 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
 fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                  print_all: bool, use_absolute: bool) -> fmt::Result {
     let last = path.segments.last().unwrap();
-    let rel_root = match &*path.segments[0].name {
-        "self" => Some("./".to_string()),
-        _ => None,
-    };
 
     if print_all {
-        let amt = path.segments.len() - 1;
-        match rel_root {
-            Some(mut root) => {
-                for seg in &path.segments[..amt] {
-                    if "super" == seg.name || "self" == seg.name || w.alternate() {
-                        write!(w, "{}::", seg.name)?;
-                    } else {
-                        root.push_str(&seg.name);
-                        root.push_str("/");
-                        write!(w, "<a class=\"mod\" href=\"{}index.html\">{}</a>::",
-                               root,
-                               seg.name)?;
-                    }
-                }
-            }
-            None => {
-                for seg in &path.segments[..amt] {
-                    write!(w, "{}::", seg.name)?;
-                }
-            }
+        for seg in &path.segments[..path.segments.len() - 1] {
+            write!(w, "{}::", seg.name)?;
         }
     }
     if w.alternate() {
