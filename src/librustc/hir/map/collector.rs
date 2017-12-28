@@ -77,26 +77,23 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 body_ids: _,
             } = *krate;
 
-            root_mod_sig_dep_index = dep_graph.with_task(
+            root_mod_sig_dep_index = dep_graph.empty_task(
                 root_mod_def_path_hash.to_dep_node(DepKind::Hir),
                 &hcx,
                 HirItemLike { item_like: (module, attrs, span), hash_bodies: false },
-                identity_fn
             ).1;
-            root_mod_full_dep_index = dep_graph.with_task(
+            root_mod_full_dep_index = dep_graph.empty_task(
                 root_mod_def_path_hash.to_dep_node(DepKind::HirBody),
                 &hcx,
                 HirItemLike { item_like: (module, attrs, span), hash_bodies: true },
-                identity_fn
             ).1;
         }
 
         {
-            dep_graph.with_task(
+            dep_graph.empty_task(
                 DepNode::new_no_params(DepKind::AllLocalTraitImpls),
                 &hcx,
                 &krate.trait_impls,
-                identity_fn
             );
         }
 
@@ -149,12 +146,11 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let (_, crate_dep_node_index) = self
             .dep_graph
-            .with_task(DepNode::new_no_params(DepKind::Krate),
+            .empty_task(DepNode::new_no_params(DepKind::Krate),
                        &self.hcx,
                        ((node_hashes, upstream_crates),
                         (commandline_args_hash,
-                         crate_disambiguator.to_fingerprint())),
-                       identity_fn);
+                         crate_disambiguator.to_fingerprint())));
 
         let svh = Svh::new(self.dep_graph
                                .fingerprint_of(crate_dep_node_index)
@@ -247,18 +243,16 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let def_path_hash = self.definitions.def_path_hash(dep_node_owner);
 
-        self.current_signature_dep_index = self.dep_graph.with_task(
+        self.current_signature_dep_index = self.dep_graph.empty_task(
             def_path_hash.to_dep_node(DepKind::Hir),
             &self.hcx,
             HirItemLike { item_like, hash_bodies: false },
-            identity_fn
         ).1;
 
-        self.current_full_dep_index = self.dep_graph.with_task(
+        self.current_full_dep_index = self.dep_graph.empty_task(
             def_path_hash.to_dep_node(DepKind::HirBody),
             &self.hcx,
             HirItemLike { item_like, hash_bodies: true },
-            identity_fn
         ).1;
 
         self.hir_body_nodes.push((def_path_hash, self.current_full_dep_index));
@@ -498,12 +492,6 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
         self.visit_nested_impl_item(id);
     }
-}
-
-// We use this with DepGraph::with_task(). Since we are handling only input
-// values here, the "task" computing them just passes them through.
-fn identity_fn<T>(_: &StableHashingContext, item_like: T) -> T {
-    item_like
 }
 
 // This is a wrapper structure that allows determining if span values within

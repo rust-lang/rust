@@ -193,6 +193,23 @@ impl DepGraph {
             |data, key| data.borrow_mut().pop_task(key))
     }
 
+    pub fn empty_task<C, R, HCX>(&self,
+                                   key: DepNode,
+                                   cx: C,
+                                   result: R)
+                                   -> (R, DepNodeIndex)
+        where C: DepGraphSafe + StableHashingContextProvider<ContextType=HCX>,
+              R: HashStable<HCX>,
+    {
+        fn identity_fn<C, A>(_: C, arg: A) -> A {
+            arg
+        }
+
+        self.with_task_impl(key, cx, result, identity_fn,
+            |_data, _key| {},
+            |data, key| data.borrow_mut().alloc_node(key, Vec::new()))
+    }
+
     fn with_task_impl<C, A, R, HCX>(&self,
                                     key: DepNode,
                                     cx: C,
