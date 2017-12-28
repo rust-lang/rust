@@ -61,38 +61,38 @@ use syntax::ast;
 use syntax_pos::Span;
 
 pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _ignore = tcx.dep_graph.in_ignore();
+    tcx.dep_graph.with_ignore(|| {
+        if tcx.sess.opts.debugging_opts.dump_dep_graph {
+            dump_graph(tcx);
+        }
 
-    if tcx.sess.opts.debugging_opts.dump_dep_graph {
-        dump_graph(tcx);
-    }
+        // if the `rustc_attrs` feature is not enabled, then the
+        // attributes we are interested in cannot be present anyway, so
+        // skip the walk.
+        if !tcx.sess.features.borrow().rustc_attrs {
+            return;
+        }
 
-    // if the `rustc_attrs` feature is not enabled, then the
-    // attributes we are interested in cannot be present anyway, so
-    // skip the walk.
-    if !tcx.sess.features.borrow().rustc_attrs {
-        return;
-    }
+        // Find annotations supplied by user (if any).
+        let (if_this_changed, then_this_would_need) = {
+            let mut visitor = IfThisChanged { tcx,
+                                            if_this_changed: vec![],
+                                            then_this_would_need: vec![] };
+            visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.hir.krate().attrs);
+            tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+            (visitor.if_this_changed, visitor.then_this_would_need)
+        };
 
-    // Find annotations supplied by user (if any).
-    let (if_this_changed, then_this_would_need) = {
-        let mut visitor = IfThisChanged { tcx,
-                                          if_this_changed: vec![],
-                                          then_this_would_need: vec![] };
-        visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.hir.krate().attrs);
-        tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
-        (visitor.if_this_changed, visitor.then_this_would_need)
-    };
+        if !if_this_changed.is_empty() || !then_this_would_need.is_empty() {
+            assert!(tcx.sess.opts.debugging_opts.query_dep_graph,
+                    "cannot use the `#[{}]` or `#[{}]` annotations \
+                    without supplying `-Z query-dep-graph`",
+                    ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED);
+        }
 
-    if !if_this_changed.is_empty() || !then_this_would_need.is_empty() {
-        assert!(tcx.sess.opts.debugging_opts.query_dep_graph,
-                "cannot use the `#[{}]` or `#[{}]` annotations \
-                 without supplying `-Z query-dep-graph`",
-                ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED);
-    }
-
-    // Check paths.
-    check_paths(tcx, &if_this_changed, &then_this_would_need);
+        // Check paths.
+        check_paths(tcx, &if_this_changed, &then_this_would_need);
+    })
 }
 
 type Sources = Vec<(Span, DefId, DepNode)>;

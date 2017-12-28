@@ -180,7 +180,7 @@ pub fn lower_crate(sess: &Session,
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
-    let _ignore = dep_graph.in_ignore();
+    dep_graph.assert_ignored();
 
     LoweringContext {
         crate_root: std_inject::injected_crate_name(),

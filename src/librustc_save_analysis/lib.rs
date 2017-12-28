@@ -1077,21 +1077,21 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     config: Option<Config>,
     mut handler: H,
 ) {
-    let _ignore = tcx.dep_graph.in_ignore();
+    tcx.dep_graph.with_ignore(|| {
+        assert!(analysis.glob_map.is_some());
 
-    assert!(analysis.glob_map.is_some());
+        info!("Dumping crate {}", cratename);
 
-    info!("Dumping crate {}", cratename);
+        let save_ctxt = SaveContext {
+            tcx,
+            tables: &ty::TypeckTables::empty(None),
+            analysis,
+            span_utils: SpanUtils::new(&tcx.sess),
+            config: find_config(config),
+        };
 
-    let save_ctxt = SaveContext {
-        tcx,
-        tables: &ty::TypeckTables::empty(None),
-        analysis,
-        span_utils: SpanUtils::new(&tcx.sess),
-        config: find_config(config),
-    };
-
-    handler.save(save_ctxt, krate, cratename)
+        handler.save(save_ctxt, krate, cratename)
+    })
 }
 
 fn find_config(supplied: Option<Config>) -> Config {
