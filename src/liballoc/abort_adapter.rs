@@ -54,7 +54,10 @@ unsafe impl<A: Alloc> Alloc for AbortAdapter<A> {
                       ptr: NonNull<u8>,
                       layout: Layout,
                       new_size: usize) -> Result<NonNull<u8>, Self::Err> {
-        self.0.realloc(ptr, layout, new_size).or_else(|_| handle_alloc_error(layout))
+        self.0.realloc(ptr, layout, new_size).or_else(|_| {
+            let layout = Layout::from_size_align_unchecked(new_size, layout.align());
+            handle_alloc_error(layout)
+        })
     }
 
     unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, Self::Err> {

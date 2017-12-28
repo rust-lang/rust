@@ -125,6 +125,7 @@
 #![feature(const_vec_new)]
 #![feature(never_type)]
 #![feature(crate_in_paths)]
+#![feature(exhaustive_patterns)]
 
 #![cfg_attr(not(test), feature(fn_traits, i128))]
 #![cfg_attr(test, feature(test))]

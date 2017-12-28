@@ -47,6 +47,7 @@ use core::ptr;
 use core::iter::FusedIterator;
 use core::unicode::conversions;
 
+use alloc::{Alloc, AllocHelper};
 use borrow::{Borrow, ToOwned};
 use boxed::Box;
 use slice::{SliceConcatExt, SliceIndex};
@@ -605,6 +606,10 @@ impl str {
 /// ```
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 #[inline]
-pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
-    Box::from_raw(Box::into_raw(v) as *mut str)
+pub unsafe fn from_boxed_utf8_unchecked
+    <A: Alloc + AllocHelper + Clone>
+    (v: Box<[u8], A>) -> Box<str, A>
+{
+    let (u, a) = Box::into_both(v);
+    Box::from_raw_in(u.as_ptr() as *mut str, a)
 }
