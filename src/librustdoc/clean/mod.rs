@@ -308,6 +308,11 @@ impl Item {
     pub fn collapsed_doc_value(&self) -> Option<String> {
         self.attrs.collapsed_doc_value()
     }
+
+    pub fn links(&self) -> Vec<(String, String)> {
+        self.attrs.links()
+    }
+
     pub fn is_crate(&self) -> bool {
         match self.inner {
             StrippedItem(box ModuleItem(Module { is_crate: true, ..})) |
@@ -790,6 +795,20 @@ impl Attributes {
         } else {
             None
         }
+    }
+
+    /// Get links as a vector
+    ///
+    /// Cache must be populated before call
+    pub fn links(&self) -> Vec<(String, String)> {
+        use html::format::href;
+        self.links.iter().filter_map(|&(ref s, did)| {
+            if let Some((href, ..)) = href(did) {
+                Some((s.clone(), href))
+            } else {
+                None
+            }
+        }).collect()
     }
 }
 

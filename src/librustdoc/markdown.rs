@@ -104,7 +104,7 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
     } else {
         // Save the state of USED_ID_MAP so it only gets updated once even
         // though we're rendering twice.
-        render_text(|ty| format!("{}", Markdown(text, ty)))
+        render_text(|ty| format!("{}", Markdown(text, &[], ty)))
     };
 
     let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);

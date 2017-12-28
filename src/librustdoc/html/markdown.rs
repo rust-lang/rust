@@ -56,15 +56,16 @@ pub enum RenderType {
 /// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
-// The second parameter is whether we need a shorter version or not.
-pub struct Markdown<'a>(pub &'a str, pub RenderType);
+/// The second parameter is a list of link replacements
+// The third parameter is whether we need a shorter version or not.
+pub struct Markdown<'a>(pub &'a str, pub &'a [(String, String)], pub RenderType);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
 pub struct MarkdownWithToc<'a>(pub &'a str, pub RenderType);
 /// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
 pub struct MarkdownHtml<'a>(pub &'a str, pub RenderType);
 /// A unit struct like `Markdown`, that renders only the first paragraph.
-pub struct MarkdownSummaryLine<'a>(pub &'a str);
+pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
 
 /// Controls whether a line will be hidden or shown in HTML output.
 ///
@@ -244,6 +245,38 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                         tooltip));
             Some(Event::Html(s.into()))
         })
+    }
+}
+
+/// Make headings links with anchor ids and build up TOC.
+struct LinkReplacer<'a, 'b, I: Iterator<Item = Event<'a>>> {
+    inner: I,
+    links: &'b [(String, String)]
+}
+
+impl<'a, 'b, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, 'b, I> {
+    fn new(iter: I, links: &'b [(String, String)]) -> Self {
+        LinkReplacer {
+            inner: iter,
+            links
+        }
+    }
+}
+
+impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let event = self.inner.next();
+        if let Some(Event::Start(Tag::Link(dest, text))) = event {
+            if let Some(&(_, ref replace)) = self.links.into_iter().find(|link| &*link.0 == &*dest) {
+                Some(Event::Start(Tag::Link(replace.to_owned().into(), text)))
+            } else {
+                Some(Event::Start(Tag::Link(dest, text)))
+            }
+        } else {
+            event
+        }
     }
 }
 
@@ -996,7 +1029,7 @@ impl LangString {
 
 impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let Markdown(md, render_type) = *self;
+        let Markdown(md, links, render_type) = *self;
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
@@ -1012,7 +1045,7 @@ impl<'a> fmt::Display for Markdown<'a> {
             let mut s = String::with_capacity(md.len() * 3 / 2);
 
             html::push_html(&mut s,
-                            Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
+                            Footnotes::new(CodeBlocks::new(LinkReplacer::new(HeadingLinks::new(p, None), links))));
 
             fmt.write_str(&s)
         }
@@ -1079,7 +1112,7 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
 
 impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownSummaryLine(md) = *self;
+        let MarkdownSummaryLine(md, links) = *self;
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
 
@@ -1087,7 +1120,7 @@ impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
 
         let mut s = String::new();
 
-        html::push_html(&mut s, SummaryLine::new(p));
+        html::push_html(&mut s, LinkReplacer::new(SummaryLine::new(p), links));
 
         fmt.write_str(&s)
     }
