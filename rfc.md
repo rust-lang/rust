@@ -30,11 +30,65 @@ other tools, and eventual libsyntax removal.
 
 Note that this RFC does not propose to stabilize any API for working
 with rust syntax: the semver version of the hypothetical library would
-be `0.1.0`.
+be `0.1.0`. It is intended to be used by tools, which are currently
+closely related to the compiler: `rustc`, `rustfmt`, `clippy`, `rls`
+and hypothetical `rustfix`. While it would be possible to create
+third-party tools on top of the new libsyntax, the burden of adopting
+to breaking changes would be on authors of such tools.
 
 
 # Motivation
 [motivation]: #motivation
+
+There are two main drawbacks with the current version of libsyntax:
+
+* It is tightly integrated with the compiler and hard to use
+  independently
+
+* The AST representation is not well-suited for use inside IDEs
+
+
+## IDE support
+
+There are several differences in how IDEs and compilers typically
+treat source code.
+
+In the compiler, it is convenient to transform the source
+code into Abstract Syntax Tree form, which is independent of the
+surface syntax. For example, it's convenient to discard comments,
+whitespaces and desugar some syntactic constructs in terms of the
+simpler ones.
+
+In contrast, IDEs work much closer to the source code, so it is
+crucial to preserve full information about the original text. For
+example, IDE may adjust indentation after typing a `}` which closes a
+block, and to do this correctly, IDE must be aware of syntax (that is,
+that `}` indeed closes some block, and is not a syntax error) and of
+all whitespaces and comments. So, IDE suitable AST should explicitly
+account for syntactic elements, not considered important by the
+compiler.
+
+Another difference is that IDEs typically work with incomplete and
+syntactically invalid code. This boils down to two parser properties.
+First, the parser must produce syntax tree even if some required input
+is missing. For example, for input `fn foo` the function node should
+be present in the parse, despite the fact that there is no parameters
+or body. Second, the parser must be able to skip over parts of input
+it can't recognize and aggressively recover from errors. That is, the
+syntax tree data structure should be able to handle both missing and
+extra nodes.
+
+IDEs also need the ability to incrementally reparse and relex source
+code after the user types. A smart IDE would use syntax tree structure
+to handle editing commands (for example, to add/remove trailing commas
+after join/split lines actions), so parsing time can be very
+noticeable.
+
+
+Currently rustc uses the classical AST approach, and preserves some of
+the source code information in the form of spans in the AST. It is not
+clear if this structure can full fill all IDE requirements.
+
 
 ## Reusability
 
@@ -67,29 +121,6 @@ files. As a data point, it turned out to be easier to move `rustfmt`
 into the main `rustc` repository than to move libsyntax outside!
 
 
-## IDE support
-
-There is one big difference in how IDEs and compilers typically treat
-source code.
-
-In the compiler, it is convenient to transform the source
-code into Abstract Syntax Tree form, which is independent of the
-surface syntax. For example, it's convenient to discard comments,
-whitespaces and desugar some syntactic constructs in terms of the
-simpler ones.
-
-In contrast, for IDEs it is crucial to have a lossless view of the
-source code because, for example, it's important to preserve comments
-during refactorings. Ideally, IDEs should be able to incrementally
-relex and reparse the file as the user types, because syntax tree is
-necessary to correctly handle certain code-editing actions like
-autoindentation or joining lines. IDE also must be able to produce
-partial parse trees when some input is missing or invalid.
-
-Currently rustc uses the AST approach, and preserves some of the
-source code information in the form of spans in the AST.
-
-
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
@@ -99,11 +130,33 @@ Not applicable.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This section proposes a new syntax tree data structure, which should
-be suitable for both compiler and IDE. It is heavily inspired by [PSI]
-data structure which used in [IntelliJ] based IDEs and in the [Kotlin]
-compiler.
+It is not clear if a single parser can accommodate the needs of the
+compiler and the IDE, but there is hope that it is possible. The RFC
+proposes to develop libsynax2.0 as an experimental crates.io crate. If
+the experiment turns out to be a success, the second RFC will propose
+to integrate it with all existing tools and `rustc`.
 
+Next, a syntax tree data structure is proposed for libsyntax2.0. It
+seems to have the following important properties:
+
+* It is lossless and faithfully represents the original source code,
+  including explicit nodes for comments and whitespace.
+
+* It is flexible and allows to encode arbitrary node structure,
+  even for invalid syntax.
+
+* It is minimal: it stores small amount of data and has no
+  dependencies. For instance, it does not need compiler's string
+  interner or literal data representation.
+
+* While the tree itself is minimal, it is extensible in a sense that
+  it possible to associate arbitrary data with certain nodes in a
+  type-safe way.
+
+
+It is not clear if this representation is the best one. It is heavily
+inspired by [PSI] data structure which used in [IntelliJ] based IDEs
+and in the [Kotlin] compiler.
 
 [PSI]: http://www.jetbrains.org/intellij/sdk/docs/reference_guide/custom_language_support/implementing_parser_and_psi.html
 [IntelliJ]: https://github.com/JetBrains/intellij-community/
@@ -351,6 +404,11 @@ impl<'f> AstNode<'f> for TypeRef<'f> {
 }
 ```
 
+Note that although AST wrappers provide a type-safe access to the
+tree, they are still represented as indexes, so clients of the syntax
+tree can easily associated additional data with AST nodes by storing
+it in a side-table.
+
 
 ## Missing Source Code
 
@@ -374,7 +432,8 @@ This RFC proposes huge changes to the internals of the compiler, so
 it's important to proceed carefully and incrementally. The following
 plan is suggested:
 
-* RFC discussion about the theoretical feasibility of the proposal.
+* RFC discussion about the theoretical feasibility of the proposal,
+  and the best representation representation for the syntax tree.
 
 * Implementation of the proposal as a completely separate crates.io
   crate, by refactoring existing libsyntax source code to produce a
@@ -393,11 +452,11 @@ plan is suggested:
 - No harm will be done as long as the new libsyntax exists as an
   experiemt on crates.io. However, actually using it in the compiler
   and other tools would require massive refactorings.
-  
-- Proposed syntax tree requires to keep the original source code
-  available, which might increase memory usage of the
-  compiler. However, it should be possible to throw the original tree
-  and source code away after conversion to HIR.
+
+- It's difficult to know upfront if the proposed syntax tree would
+  actually work well in both the compiler and IDE. It may be possible
+  that some drawbacks will be discovered during implementation.
+
 
 # Rationale and alternatives
 [alternatives]: #alternatives
@@ -422,14 +481,14 @@ plan is suggested:
   the source code? It seems like the answer is yes, because the
   language and especially macros were cleverly designed with this
   use-case in mind.
-  
-  
+
+
 - Is it possible to implement macro expansion using the proposed
   framework? This is the main question of this RFC. The proposed
   solution of synthesizing source code on the fly seems workable: it's
   not that different from the current implementation, which
   synthesizes token trees.
-  
-  
+
+
 - How to actually phase out current libsyntax, if libsyntax2.0 turns
   out to be a success?
