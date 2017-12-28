@@ -825,22 +825,44 @@ impl Clean<Attributes> for [ast::Attribute] {
         if UnstableFeatures::from_environment().is_nightly_build() {
             let dox = attrs.collapsed_doc_value().unwrap_or_else(String::new);
             for link in markdown_links(&dox, cx.render_type) {
-                if !link.starts_with("::") {
-                    // FIXME (misdreavus): can only support absolute paths because of limitations
-                    // in Resolver. this may, with a lot of effort, figure out how to resolve paths
-                    // within scopes, but the one use of `resolve_hir_path` i found in the HIR
-                    // lowering code itself used an absolute path. we're brushing up against some
-                    // structural limitations in the compiler already, but this may be a design one
-                    // as well >_>
-                    continue;
-                }
-
                 let path = {
+                    let is_value: bool;
+                    let path_str = if let Some(prefix) =
+                        ["struct", "enum", "type", "trait", "union"].iter()
+                                                                    .find(|p| link.starts_with(**p)) {
+                        is_value = false;
+                        link.trim_left_matches(prefix).trim()
+                    } else if let Some(prefix) =
+                        ["const", "static"].iter()
+                                           .find(|p| link.starts_with(**p)) {
+                        is_value = true;
+                        link.trim_left_matches(prefix).trim()
+                    } else if link.ends_with("()") {
+                        is_value = true;
+                        link.trim_right_matches("()").trim()
+                    } else if link.ends_with("!") {
+                        // FIXME (misdreavus): macros are resolved with different machinery
+                        continue;
+                    } else {
+                        is_value = false;
+                        link.trim()
+                    };
+
+                    if !path_str.starts_with("::") {
+                        // FIXME (misdreavus): can only support absolute paths because of limitations
+                        // in Resolver. this may, with a lot of effort, figure out how to resolve paths
+                        // within scopes, but the one use of `resolve_hir_path` i found in the HIR
+                        // lowering code itself used an absolute path. we're brushing up against some
+                        // structural limitations in the compiler already, but this may be a design one
+                        // as well >_>
+                        continue;
+                    }
+
                     // This allocation could be avoided if resolve_str_path could take an iterator;
                     // but it can't because that would break object safety. This can still be
                     // fixed.
-                    let components = link.split("::").skip(1).collect::<Vec<_>>();
-                    cx.resolver.borrow_mut().resolve_str_path(DUMMY_SP, None, &components, false)
+                    let components = path_str.split("::").skip(1).collect::<Vec<_>>();
+                    cx.resolver.borrow_mut().resolve_str_path(DUMMY_SP, None, &components, is_value)
                 };
 
                 if path.def != Def::Err {
