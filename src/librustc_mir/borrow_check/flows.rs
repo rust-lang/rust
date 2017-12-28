@@ -15,10 +15,10 @@
 
 use rustc::mir::{BasicBlock, Location};
 
-use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use dataflow::{EverInitializedPlaces, MovingOutStatements};
-use dataflow::{ActiveBorrows, FlowAtLocation, FlowsAtLocation};
-use dataflow::move_paths::HasMoveData;
+use analysis::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use analysis::dataflow::{EverInitializedPlaces, MovingOutStatements};
+use analysis::dataflow::{ActiveBorrows, FlowAtLocation, FlowsAtLocation};
+use analysis::dataflow::move_paths::HasMoveData;
 use std::fmt;
 
 // (forced to be `pub` due to its use as an associated type below.)

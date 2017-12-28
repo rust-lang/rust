@@ -11,7 +11,7 @@
 pub use super::*;
 
 use rustc::mir::*;
-use dataflow::BitDenotation;
+use analysis::dataflow::BitDenotation;
 
 #[derive(Copy, Clone)]
 pub struct MaybeStorageLive<'a, 'tcx: 'a> {

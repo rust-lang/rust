@@ -19,8 +19,8 @@ use std::rc::Rc;
 
 use super::{MirBorrowckCtxt, Context};
 use super::{InitializationRequiringAction, PrefixSet};
-use dataflow::{ActiveBorrows, BorrowData, FlowAtLocation, MovingOutStatements};
-use dataflow::move_paths::MovePathIndex;
+use analysis::dataflow::{ActiveBorrows, BorrowData, FlowAtLocation, MovingOutStatements};
+use analysis::dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {

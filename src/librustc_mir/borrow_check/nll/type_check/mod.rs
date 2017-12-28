@@ -14,9 +14,9 @@
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
 use borrow_check::nll::universal_regions::UniversalRegions;
-use dataflow::FlowAtLocation;
-use dataflow::MaybeInitializedPlaces;
-use dataflow::move_paths::MoveData;
+use analysis::dataflow::FlowAtLocation;
+use analysis::dataflow::MaybeInitializedPlaces;
+use analysis::dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
@@ -32,7 +32,7 @@ use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
-use util::liveness::LivenessResults;
+use analysis::liveness::LivenessResults;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;

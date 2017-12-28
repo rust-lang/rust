@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dataflow::{FlowAtLocation, FlowsAtLocation};
+use analysis::dataflow::{FlowAtLocation, FlowsAtLocation};
 use borrow_check::nll::region_infer::Cause;
-use dataflow::MaybeInitializedPlaces;
-use dataflow::move_paths::{HasMoveData, MoveData};
+use analysis::dataflow::MaybeInitializedPlaces;
+use analysis::dataflow::move_paths::{HasMoveData, MoveData};
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::mir::Local;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -21,7 +21,7 @@ use rustc::util::common::ErrorReported;
 use borrow_check::nll::type_check::AtLocation;
 use rustc_data_structures::fx::FxHashSet;
 use syntax::codemap::DUMMY_SP;
-use util::liveness::LivenessResults;
+use analysis::liveness::LivenessResults;
 
 use super::TypeChecker;
 

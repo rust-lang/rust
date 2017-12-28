@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
-use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use dataflow::{DataflowResults};
-use dataflow::{on_all_children_bits, on_all_drop_children_bits};
-use dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
-use dataflow::MoveDataParamEnv;
-use dataflow::{self, do_dataflow, DebugFormatted};
+use analysis::dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
+use analysis::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use analysis::dataflow::{DataflowResults};
+use analysis::dataflow::{on_all_children_bits, on_all_drop_children_bits};
+use analysis::dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
+use analysis::dataflow::MoveDataParamEnv;
+use analysis::dataflow::{self, do_dataflow, DebugFormatted};
 use rustc::hir;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;

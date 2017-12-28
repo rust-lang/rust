@@ -23,7 +23,7 @@ use syntax::ast;
 use syntax::symbol::Symbol;
 
 use std::rc::Rc;
-use util;
+use analysis::alignment::is_disaligned;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
@@ -150,7 +150,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     context: PlaceContext<'tcx>,
                     location: Location) {
         if let PlaceContext::Borrow { .. } = context {
-            if util::is_disaligned(self.tcx, self.mir, self.param_env, place) {
+            if is_disaligned(self.tcx, self.mir, self.param_env, place) {
                 let source_info = self.source_info;
                 let lint_root =
                     self.visibility_scope_info[source_info.scope].lint_root;

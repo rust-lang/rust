@@ -60,9 +60,9 @@ extern crate byteorder;
 
 mod diagnostics;
 
+pub mod analysis;
 mod borrow_check;
 mod build;
-mod dataflow;
 mod hair;
 mod shim;
 pub mod transform;

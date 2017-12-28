@@ -14,7 +14,7 @@ use rustc::ty::TyCtxt;
 
 use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
-use util;
+use analysis::alignment::is_disaligned;
 
 // This pass moves values being dropped that are within a packed
 // struct to a separate local before dropping them, to ensure that
@@ -84,7 +84,7 @@ fn add_moves_for_packed_drops_patch<'a, 'tcx>(
 
         match terminator.kind {
             TerminatorKind::Drop { ref location, .. }
-                if util::is_disaligned(tcx, mir, param_env, location) =>
+                if is_disaligned(tcx, mir, param_env, location) =>
             {
                 add_move_for_packed_drop(tcx, mir, &mut patch, terminator,
                                          loc, data.is_cleanup);

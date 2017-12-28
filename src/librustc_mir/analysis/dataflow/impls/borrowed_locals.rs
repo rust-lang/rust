@@ -12,7 +12,7 @@ pub use super::*;
 
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
-use dataflow::BitDenotation;
+use analysis::dataflow::BitDenotation;
 
 /// This calculates if any part of a MIR local could have previously been borrowed.
 /// This means that once a local has been borrowed, its bit will always be set

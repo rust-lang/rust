@@ -67,7 +67,7 @@ use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, GeneratorInterior};
 use rustc::ty::subst::Substs;
 use util::dump_mir;
-use util::liveness::{self, LivenessMode};
+use analysis::liveness::{self, LivenessMode};
 use rustc_const_math::ConstInt;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -78,8 +78,8 @@ use std::mem;
 use transform::{MirPass, MirSource};
 use transform::simplify;
 use transform::no_landing_pads::no_landing_pads;
-use dataflow::{do_dataflow, DebugFormatted, state_for_location};
-use dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use analysis::dataflow::{do_dataflow, DebugFormatted, state_for_location};
+use analysis::dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
 
 pub struct StateTransform;
 

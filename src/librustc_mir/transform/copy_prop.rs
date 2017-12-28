@@ -34,7 +34,7 @@ use rustc::mir::{Constant, Local, LocalKind, Location, Place, Mir, Operand, Rval
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
 use transform::{MirPass, MirSource};
-use util::def_use::DefUseAnalysis;
+use analysis::def_use::DefUseAnalysis;
 
 pub struct CopyPropagation;
 

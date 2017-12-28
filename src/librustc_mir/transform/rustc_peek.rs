@@ -18,16 +18,17 @@ use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
 use transform::{MirPass, MirSource};
 
-use dataflow::{do_dataflow, DebugFormatted};
-use dataflow::MoveDataParamEnv;
-use dataflow::BitDenotation;
-use dataflow::DataflowResults;
-use dataflow::{DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use dataflow::move_paths::{MovePathIndex, LookupResult};
-use dataflow::move_paths::{HasMoveData, MoveData};
-use dataflow;
+use analysis::dataflow::{do_dataflow, DebugFormatted};
+use analysis::dataflow::MoveDataParamEnv;
+use analysis::dataflow::BitDenotation;
+use analysis::dataflow::DataflowResults;
+use analysis::dataflow::{DefinitelyInitializedPlaces, MaybeInitializedPlaces};
+use analysis::dataflow::MaybeUninitializedPlaces;
+use analysis::dataflow::move_paths::{MovePathIndex, LookupResult};
+use analysis::dataflow::move_paths::{HasMoveData, MoveData};
+use analysis::dataflow;
 
-use dataflow::has_rustc_mir_with;
+use analysis::dataflow::has_rustc_mir_with;
 
 pub struct SanityCheck;
 

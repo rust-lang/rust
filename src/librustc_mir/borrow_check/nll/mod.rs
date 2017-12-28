@@ -16,11 +16,11 @@ use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::io;
+use analysis::liveness::{LivenessResults, LocalSet};
+use analysis::dataflow::FlowAtLocation;
+use analysis::dataflow::MaybeInitializedPlaces;
+use analysis::dataflow::move_paths::MoveData;
 use transform::MirSource;
-use util::liveness::{LivenessResults, LocalSet};
-use dataflow::FlowAtLocation;
-use dataflow::MaybeInitializedPlaces;
-use dataflow::move_paths::MoveData;
 
 use util as mir_util;
 use util::pretty::{self, ALIGN};

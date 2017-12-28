@@ -15,8 +15,8 @@ use rustc::mir::{BasicBlock, Location};
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
 use rustc_data_structures::indexed_vec::Idx;
 
-use dataflow::{BitDenotation, BlockSets, DataflowResults};
-use dataflow::move_paths::{HasMoveData, MovePathIndex};
+use analysis::dataflow::{BitDenotation, BlockSets, DataflowResults};
+use analysis::dataflow::move_paths::{HasMoveData, MovePathIndex};
 
 use std::iter;
 

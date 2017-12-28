@@ -10,12 +10,12 @@
 
 use borrow_check::{Context, MirBorrowckCtxt};
 use borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
-use dataflow::BorrowData;
+use analysis::dataflow::BorrowData;
 use rustc::mir::{Local, Location, Mir};
 use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
-use util::liveness::{self, DefUse, LivenessMode};
+use analysis::liveness::{self, DefUse, LivenessMode};
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     pub(in borrow_check) fn explain_why_borrow_contains_point(

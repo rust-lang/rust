@@ -31,17 +31,17 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::Span;
 
-use dataflow::{do_dataflow, DebugFormatted};
-use dataflow::FlowAtLocation;
-use dataflow::MoveDataParamEnv;
-use dataflow::{DataflowAnalysis, DataflowResultsConsumer};
-use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use dataflow::{EverInitializedPlaces, MovingOutStatements};
-use dataflow::{BorrowData, Borrows, ReserveOrActivateIndex};
-use dataflow::{ActiveBorrows, Reservations};
-use dataflow::indexes::BorrowIndex;
-use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
-use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
+use analysis::dataflow::{do_dataflow, DebugFormatted};
+use analysis::dataflow::FlowAtLocation;
+use analysis::dataflow::MoveDataParamEnv;
+use analysis::dataflow::{DataflowAnalysis, DataflowResultsConsumer};
+use analysis::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use analysis::dataflow::{EverInitializedPlaces, MovingOutStatements};
+use analysis::dataflow::{BorrowData, Borrows, ReserveOrActivateIndex};
+use analysis::dataflow::{ActiveBorrows, Reservations};
+use analysis::dataflow::indexes::BorrowIndex;
+use analysis::dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
+use analysis::dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
 use std::iter;

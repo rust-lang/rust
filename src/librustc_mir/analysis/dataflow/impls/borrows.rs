@@ -23,8 +23,8 @@ use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
-use dataflow::{BitDenotation, BlockSets, InitialFlow};
-pub use dataflow::indexes::{BorrowIndex, ReserveOrActivateIndex};
+use analysis::dataflow::{BitDenotation, BlockSets, InitialFlow};
+pub use analysis::dataflow::indexes::{BorrowIndex, ReserveOrActivateIndex};
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::ToRegionVid;
 
