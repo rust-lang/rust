@@ -133,8 +133,8 @@ features = ["c"]
 - [ ] arm/unordsf2vfp.S
 - [x] ashldi3.c
 - [x] ashrdi3.c
-- [ ] comparedf2.c
-- [ ] comparesf2.c
+- [x] comparedf2.c
+- [x] comparesf2.c
 - [x] divdf3.c
 - [x] divdi3.c
 - [x] divmoddi4.c

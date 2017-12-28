@@ -4,6 +4,7 @@ use core::ops;
 use super::int::Int;
 
 pub mod conv;
+pub mod cmp;
 pub mod add;
 pub mod pow;
 pub mod sub;
