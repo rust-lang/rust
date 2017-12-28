@@ -141,10 +141,10 @@ pub fn remove(sess: &Session, path: &Path) {
 
 /// Perform the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
-pub fn link_binary(sess: &Session,
-                   trans: &CrateTranslation,
-                   outputs: &OutputFilenames,
-                   crate_name: &str) -> Vec<PathBuf> {
+pub(crate) fn link_binary(sess: &Session,
+                          trans: &CrateTranslation,
+                          outputs: &OutputFilenames,
+                          crate_name: &str) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
@@ -201,9 +201,9 @@ fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilen
     out_filename
 }
 
-pub fn each_linked_rlib(sess: &Session,
-                        info: &CrateInfo,
-                        f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
+pub(crate) fn each_linked_rlib(sess: &Session,
+                               info: &CrateInfo,
+                               f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
     let crates = info.used_crates_static.iter();
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable)
@@ -247,7 +247,7 @@ pub fn each_linked_rlib(sess: &Session,
 /// It's unusual for a crate to not participate in LTO. Typically only
 /// compiler-specific and unstable crates have a reason to not participate in
 /// LTO.
-pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool {
+pub(crate) fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool {
     // If our target enables builtin function lowering in LLVM then the
     // crates providing these functions don't participate in LTO (e.g.
     // no_builtins or compiler builtins crates).

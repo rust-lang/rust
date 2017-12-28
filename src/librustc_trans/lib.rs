@@ -250,7 +250,7 @@ impl TransCrate for LlvmTransCrate {
     }
 }
 
-pub struct ModuleTranslation {
+struct ModuleTranslation {
     /// The name of the module. When the crate may be saved between
     /// compilations, incremental compilation requires that name be
     /// unique amongst **all** crates.  Therefore, it should contain
@@ -263,7 +263,7 @@ pub struct ModuleTranslation {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ModuleKind {
+enum ModuleKind {
     Regular,
     Metadata,
     Allocator,
@@ -316,7 +316,7 @@ impl ModuleTranslation {
 }
 
 #[derive(Debug)]
-pub struct CompiledModule {
+struct CompiledModule {
     name: String,
     llmod_id: String,
     kind: ModuleKind,
@@ -335,7 +335,7 @@ enum ModuleSource {
 }
 
 #[derive(Debug)]
-pub struct ModuleLlvm {
+struct ModuleLlvm {
     llcx: llvm::ContextRef,
     llmod: llvm::ModuleRef,
     tm: llvm::TargetMachineRef,
@@ -354,7 +354,7 @@ impl Drop for ModuleLlvm {
     }
 }
 
-pub struct CrateTranslation {
+struct CrateTranslation {
     crate_name: Symbol,
     modules: Vec<CompiledModule>,
     allocator_module: Option<CompiledModule>,
@@ -367,7 +367,7 @@ pub struct CrateTranslation {
 }
 
 // Misc info we load from metadata to persist beyond the tcx
-pub struct CrateInfo {
+struct CrateInfo {
     panic_runtime: Option<CrateNum>,
     compiler_builtins: Option<CrateNum>,
     profiler_runtime: Option<CrateNum>,
