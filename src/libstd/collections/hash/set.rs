@@ -1,3 +1,5 @@
+use alloc::alloc::AllocErr;
+
 use crate::borrow::Borrow;
 use crate::collections::CollectionAllocErr;
 use crate::fmt;
@@ -383,7 +385,7 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[inline]
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr<AllocErr>> {
         self.map.try_reserve(additional)
     }
 

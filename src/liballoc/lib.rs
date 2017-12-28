@@ -113,6 +113,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
 #![feature(never_type)]
+#![feature(exhaustive_patterns)]
 
 // Allow testing this library
 

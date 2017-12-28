@@ -4,6 +4,8 @@ use self::Entry::*;
 
 use hashbrown::hash_map as base;
 
+use alloc::alloc::AllocErr;
+
 use crate::borrow::Borrow;
 use crate::cell::Cell;
 use crate::collections::CollectionAllocErr;
@@ -588,7 +590,7 @@ where
     /// ```
     #[inline]
     #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr<AllocErr>> {
         self.base
             .try_reserve(additional)
             .map_err(map_collection_alloc_err)
@@ -2542,10 +2544,10 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 }
 
 #[inline]
-fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> CollectionAllocErr {
+fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> CollectionAllocErr<AllocErr> {
     match err {
         hashbrown::CollectionAllocErr::CapacityOverflow => CollectionAllocErr::CapacityOverflow,
-        hashbrown::CollectionAllocErr::AllocErr => CollectionAllocErr::AllocErr,
+        hashbrown::CollectionAllocErr::AllocErr => CollectionAllocErr::AllocErr(AllocErr),
     }
 }
 

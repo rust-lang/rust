@@ -19,6 +19,7 @@ use core::ptr::{self, NonNull};
 use core::slice;
 use core::hash::{Hash, Hasher};
 
+use crate::alloc::AllocErr;
 use crate::collections::CollectionAllocErr;
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
@@ -549,7 +550,7 @@ impl<T> VecDeque<T> {
             .expect("capacity overflow");
 
         if new_cap > old_cap {
-            self.buf.reserve_exact(used_cap, new_cap - used_cap);
+            let Ok(()) = self.buf.reserve_exact(used_cap, new_cap - used_cap);
             unsafe {
                 self.handle_cap_increase(old_cap);
             }
@@ -593,7 +594,9 @@ impl<T> VecDeque<T> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>  {
+    pub fn try_reserve_exact(&mut self, additional: usize)
+        -> Result<(), CollectionAllocErr<AllocErr>>
+    {
         self.try_reserve(additional)
     }
 
@@ -631,7 +634,7 @@ impl<T> VecDeque<T> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr<AllocErr>> {
         let old_cap = self.cap();
         let used_cap = self.len() + 1;
         let new_cap = used_cap.checked_add(additional)
@@ -748,7 +751,7 @@ impl<T> VecDeque<T> {
                 debug_assert!(self.head < self.tail);
             }
 
-            self.buf.shrink_to_fit(target_cap);
+            let Ok(()) = self.buf.shrink_to_fit(target_cap);
 
             debug_assert!(self.head < self.cap());
             debug_assert!(self.tail < self.cap());
@@ -1885,7 +1888,7 @@ impl<T> VecDeque<T> {
     fn grow_if_necessary(&mut self) {
         if self.is_full() {
             let old_cap = self.cap();
-            self.buf.double();
+            let Ok(()) = self.buf.double();
             unsafe {
                 self.handle_cap_increase(old_cap);
             }
@@ -2721,7 +2724,7 @@ impl<T> From<Vec<T>> for VecDeque<T> {
             if !buf.cap().is_power_of_two() || (buf.cap() < (MINIMUM_CAPACITY + 1)) ||
                (buf.cap() == len) {
                 let cap = cmp::max(buf.cap() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
-                buf.reserve_exact(len, cap - len);
+                let Ok(()) = buf.reserve_exact(len, cap - len);
             }
 
             VecDeque {
