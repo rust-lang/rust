@@ -853,7 +853,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
         ty::TyAdt(adt, substs) => {
             if adt.is_box() {
                 // Use T as the sub pattern type of Box<T>.
-                vec![substs[0].as_type().unwrap()]
+                vec![ty.boxed_ty()]
             } else {
                 adt.variants[ctor.variant_index_for_adt(adt)].fields.iter().map(|field| {
                     let is_visible = adt.is_enum()

@@ -823,9 +823,6 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
             ptr_vtable(a, b)
         }
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
-            ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())
-        }
 
         (&ty::TyAdt(source_adt_def, source_substs),
          &ty::TyAdt(target_adt_def, target_substs)) => {

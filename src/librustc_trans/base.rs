@@ -236,12 +236,6 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
             let ptr_ty = bcx.ccx.layout_of(b).llvm_type(bcx.ccx).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
         }
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
-            let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
-            assert!(bcx.ccx.shared().type_is_sized(a));
-            let ptr_ty = bcx.ccx.layout_of(b).llvm_type(bcx.ccx).ptr_to();
-            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
-        }
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
@@ -278,31 +272,25 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                      dst: PlaceRef<'tcx>) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
-    let coerce_ptr = || {
-        let (base, info) = match src.load(bcx).val {
-            OperandValue::Pair(base, info) => {
-                // fat-ptr to fat-ptr unsize preserves the vtable
-                // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
-                // So we need to pointercast the base to ensure
-                // the types match up.
-                let thin_ptr = dst.layout.field(bcx.ccx, abi::FAT_PTR_ADDR);
-                (bcx.pointercast(base, thin_ptr.llvm_type(bcx.ccx)), info)
-            }
-            OperandValue::Immediate(base) => {
-                unsize_thin_ptr(bcx, base, src_ty, dst_ty)
-            }
-            OperandValue::Ref(..) => bug!()
-        };
-        OperandValue::Pair(base, info).store(bcx, dst);
-    };
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::TyRef(..), &ty::TyRef(..)) |
         (&ty::TyRef(..), &ty::TyRawPtr(..)) |
         (&ty::TyRawPtr(..), &ty::TyRawPtr(..)) => {
-            coerce_ptr()
-        }
-        (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
-            coerce_ptr()
+            let (base, info) = match src.load(bcx).val {
+                OperandValue::Pair(base, info) => {
+                    // fat-ptr to fat-ptr unsize preserves the vtable
+                    // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
+                    // So we need to pointercast the base to ensure
+                    // the types match up.
+                    let thin_ptr = dst.layout.field(bcx.ccx, abi::FAT_PTR_ADDR);
+                    (bcx.pointercast(base, thin_ptr.llvm_type(bcx.ccx)), info)
+                }
+                OperandValue::Immediate(base) => {
+                    unsize_thin_ptr(bcx, base, src_ty, dst_ty)
+                }
+                OperandValue::Ref(..) => bug!()
+            };
+            OperandValue::Pair(base, info).store(bcx, dst);
         }
 
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
