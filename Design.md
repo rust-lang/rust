@@ -116,7 +116,7 @@ until they are ready, and the 'do no harm' principle (see next section).
 
 ### First, do no harm
 
-Until rustfmt it perfect, there will always be a trade-off between doing more and
+Until rustfmt is perfect, there will always be a trade-off between doing more and
 doing existing things well. I want to err on the side of the latter.
 Specifically, rustfmt should never take OK code and make it look worse. If we
 can't make it better, we should leave it as is. That might mean being less
@@ -154,7 +154,7 @@ Our visitor keeps track of the desired current indent due to blocks (
 `visit_*` methods is a bit hacky and is meant to be temporary until it can be
 done properly.
 
-There are a bunch of methods called `rewrite_*`. There do the bulk of the
+There are a bunch of methods called `rewrite_*`. They do the bulk of the
 reformatting. These take the AST node to be reformatted (this may not literally
 be an AST node from syntex_syntax: there might be multiple parameters
 describing a logical node), the current indent, and the current width budget.
