@@ -36,8 +36,6 @@ fn lang_start_internal(main: &(Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
     use sys_common;
     use sys_common::thread_info;
     use thread::Thread;
-    #[cfg(not(feature = "backtrace"))]
-    use mem;
 
     sys::init();
 
