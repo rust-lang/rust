@@ -96,6 +96,18 @@ impl Annotatable {
             _ => panic!("expected Item")
         }
     }
+
+    pub fn derive_allowed(&self) -> bool {
+        match *self {
+            Annotatable::Item(ref item) => match item.node {
+                ast::ItemKind::Struct(..) |
+                ast::ItemKind::Enum(..) |
+                ast::ItemKind::Union(..) => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
 }
 
 // A more flexible ItemDecorator.

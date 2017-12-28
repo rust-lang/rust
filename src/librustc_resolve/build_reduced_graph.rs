@@ -358,8 +358,7 @@ impl<'a> Resolver<'a> {
 
                 let mut ctor_vis = vis;
 
-                let has_non_exhaustive = item.attrs.iter()
-                    .any(|item| item.check_name("non_exhaustive"));
+                let has_non_exhaustive = attr::contains_name(&item.attrs, "non_exhaustive");
 
                 // If the structure is marked as non_exhaustive then lower the visibility
                 // to within the crate.

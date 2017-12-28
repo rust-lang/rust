@@ -51,8 +51,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn invalid_non_exhaustive_attribute(&self, variant: &Variant) {
-        let has_non_exhaustive = variant.node.attrs.iter()
-            .any(|attr| attr.check_name("non_exhaustive"));
+        let has_non_exhaustive = attr::contains_name(&variant.node.attrs, "non_exhaustive");
         if has_non_exhaustive {
             self.err_handler().span_err(variant.span,
                                         "#[non_exhaustive] is not yet supported on variants");
@@ -308,7 +307,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
                 attr::first_attr_value_str_by_name(&item.attrs, "path");
-                if item.attrs.iter().any(|attr| attr.check_name("warn_directory_ownership")) {
+                if attr::contains_name(&item.attrs, "warn_directory_ownership") {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
                     let msg = "cannot declare a new module at this location";
                     self.session.buffer_lint(lint, item.id, item.span, msg);

@@ -386,15 +386,15 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 }
 
 fn is_ignored(i: &ast::Item) -> bool {
-    i.attrs.iter().any(|attr| attr.check_name("ignore"))
+    attr::contains_name(&i.attrs, "ignore")
 }
 
 fn is_allowed_fail(i: &ast::Item) -> bool {
-    i.attrs.iter().any(|attr| attr.check_name("allow_fail"))
+    attr::contains_name(&i.attrs, "allow_fail")
 }
 
 fn should_panic(i: &ast::Item, cx: &TestCtxt) -> ShouldPanic {
-    match i.attrs.iter().find(|attr| attr.check_name("should_panic")) {
+    match attr::find_by_name(&i.attrs, "should_panic") {
         Some(attr) => {
             let sd = cx.span_diagnostic;
             if attr.is_value_str() {
