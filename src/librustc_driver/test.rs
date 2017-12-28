@@ -28,7 +28,6 @@ use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{OutputFilenames, OutputTypes};
-use rustc_trans_utils::trans_crate::TransCrate;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
