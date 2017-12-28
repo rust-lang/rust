@@ -127,7 +127,7 @@ pub struct Crate {
     pub masked_crates: FxHashSet<CrateNum>,
 }
 
-impl<'a, 'b, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'b, 'tcx, 'rcx> {
+impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
         use ::visit_lib::LibEmbargoVisitor;
 
@@ -836,11 +836,11 @@ impl Clean<Attributes> for [ast::Attribute] {
                 }
 
                 let path = {
-                    // This allocation could be avoided if std_path could take an iterator;
+                    // This allocation could be avoided if resolve_str_path could take an iterator;
                     // but it can't because that would break object safety. This can still be
                     // fixed.
                     let components = link.split("::").skip(1).collect::<Vec<_>>();
-                    cx.resolver.borrow_mut().std_path(DUMMY_SP, None, &components, false)
+                    cx.resolver.borrow_mut().resolve_str_path(DUMMY_SP, None, &components, false)
                 };
 
                 if path.def != Def::Err {

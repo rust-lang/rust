@@ -152,9 +152,9 @@ pub trait Resolver {
     /// This should only return `None` during testing.
     fn definitions(&mut self) -> &mut Definitions;
 
-    /// Given suffix ["b","c","d"], returns path `::cratename::b::c::d` when
-    /// The path is also resolved according to `is_value`.
-    fn std_path(&mut self, span: Span, crate_root: Option<&str>,
+    /// Given suffix ["b","c","d"], creates a HIR path for `[::crate_root]::b::c::d` and resolves
+    /// it based on `is_value`.
+    fn resolve_str_path(&mut self, span: Span, crate_root: Option<&str>,
                 components: &[&str], is_value: bool) -> hir::Path {
         let mut path = hir::Path {
             span,
@@ -3641,7 +3641,7 @@ impl<'a> LoweringContext<'a> {
     /// `fld.cx.use_std`, and `::core::b::c::d` otherwise.
     /// The path is also resolved according to `is_value`.
     fn std_path(&mut self, span: Span, components: &[&str], is_value: bool) -> hir::Path {
-        self.resolver.std_path(span, self.crate_root, components, is_value)
+        self.resolver.resolve_str_path(span, self.crate_root, components, is_value)
     }
 
     fn signal_block_expr(&mut self,

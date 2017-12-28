@@ -576,8 +576,8 @@ pub struct InnerExpansionResult<'a> {
 /// standard library and prelude, and name resolution.
 ///
 /// Returns `None` if we're aborting after handling -W help.
-pub fn phase_2_configure_and_expand<'a, F>(sess: &'a Session,
-                                       cstore: &'a CStore,
+pub fn phase_2_configure_and_expand<F>(sess: &Session,
+                                       cstore: &CStore,
                                        krate: ast::Crate,
                                        registry: Option<Registry>,
                                        crate_name: &str,
@@ -593,8 +593,9 @@ pub fn phase_2_configure_and_expand<'a, F>(sess: &'a Session,
     // this back at some point.
     let mut crate_loader = CrateLoader::new(sess, &cstore, &crate_name);
     let resolver_arenas = Resolver::arenas();
-    let result = phase_2_configure_and_expand_inner(sess, cstore, krate, registry, crate_name, addl_plugins,
-                                                    make_glob_map, &resolver_arenas, &mut crate_loader, after_expand);
+    let result = phase_2_configure_and_expand_inner(sess, cstore, krate, registry, crate_name,
+                                                    addl_plugins, make_glob_map, &resolver_arenas,
+                                                    &mut crate_loader, after_expand);
     match result {
         Ok(InnerExpansionResult {expanded_crate, resolver, hir_forest}) => {
             Ok(ExpansionResult {

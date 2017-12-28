@@ -269,7 +269,8 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I>
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
         if let Some(Event::Start(Tag::Link(dest, text))) = event {
-            if let Some(&(_, ref replace)) = self.links.into_iter().find(|link| &*link.0 == &*dest) {
+            if let Some(&(_, ref replace)) = self.links.into_iter().find(|link| &*link.0 == &*dest)
+            {
                 Some(Event::Start(Tag::Link(replace.to_owned().into(), text)))
             } else {
                 Some(Event::Start(Tag::Link(dest, text)))
@@ -1045,7 +1046,11 @@ impl<'a> fmt::Display for Markdown<'a> {
             let mut s = String::with_capacity(md.len() * 3 / 2);
 
             html::push_html(&mut s,
-                            Footnotes::new(CodeBlocks::new(LinkReplacer::new(HeadingLinks::new(p, None), links))));
+                            Footnotes::new(
+                                CodeBlocks::new(
+                                    LinkReplacer::new(
+                                        HeadingLinks::new(p, None),
+                                        links))));
 
             fmt.write_str(&s)
         }
@@ -1233,6 +1238,7 @@ pub fn markdown_links(md: &str, render_type: RenderType) -> Vec<String> {
                 hoedown_document_free(document);
 
                 hoedown_html_renderer_free(renderer);
+                hoedown_buffer_free(ob);
 
                 opaque.links.unwrap()
             }

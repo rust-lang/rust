@@ -1867,7 +1867,8 @@ fn render_markdown(w: &mut fmt::Formatter,
                    prefix: &str,
                    scx: &SharedContext)
                    -> fmt::Result {
-    let (hoedown_output, pulldown_output) = render_text(|ty| format!("{}", Markdown(md_text, &links, ty)));
+    let (hoedown_output, pulldown_output) =
+        render_text(|ty| format!("{}", Markdown(md_text, &links, ty)));
     let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
     differences.retain(|s| {
         match *s {
@@ -1899,7 +1900,13 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        render_markdown(w, &markdown, item.links(), item.source.clone(), cx.render_type, prefix, &cx.shared)?;
+        render_markdown(w,
+                        &markdown,
+                        item.links(),
+                        item.source.clone(),
+                        cx.render_type,
+                        prefix,
+                        &cx.shared)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -1925,7 +1932,13 @@ fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
                  cx: &Context, prefix: &str) -> fmt::Result {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
-        render_markdown(w, &*s, item.links(), item.source.clone(), cx.render_type, prefix, &cx.shared)?;
+        render_markdown(w,
+                        &*s,
+                        item.links(),
+                        item.source.clone(),
+                        cx.render_type,
+                        prefix,
+                        &cx.shared)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -3339,7 +3352,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
-            write!(w, "<div class='docblock'>{}</div>", Markdown(&*dox, &i.impl_item.links(), cx.render_type))?;
+            write!(w, "<div class='docblock'>{}</div>",
+                   Markdown(&*dox, &i.impl_item.links(), cx.render_type))?;
         }
     }
 
