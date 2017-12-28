@@ -1,0 +1,6 @@
+Grammar(
+    syntax_kinds: [
+        "IDENT",
+        "WHITESPACE",
+    ]
+)
