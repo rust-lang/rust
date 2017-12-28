@@ -2051,7 +2051,7 @@ impl<'a> LoweringContext<'a> {
                         .chain(path.segments.iter())
                         .cloned()
                         .collect(),
-                    span: path.span.to(prefix.span),
+                    span: path.span
                 };
 
                 // Correctly resolve `self` imports

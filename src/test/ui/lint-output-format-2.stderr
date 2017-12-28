@@ -1,8 +1,8 @@
 warning: use of deprecated item 'lint_output_format::foo': text
-  --> $DIR/lint-output-format-2.rs:20:5
+  --> $DIR/lint-output-format-2.rs:20:26
    |
 20 | use lint_output_format::{foo, bar};
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                          ^^^
    |
    = note: #[warn(deprecated)] on by default
 
