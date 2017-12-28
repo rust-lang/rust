@@ -3,4 +3,6 @@ name = "libsyntax2"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
-[dependencies]
+[dev-dependencies]
+file = "1.1.1"
+difference = "1.0.0"
