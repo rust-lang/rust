@@ -133,6 +133,8 @@ features = ["c"]
 - [ ] arm/unordsf2vfp.S
 - [x] ashldi3.c
 - [x] ashrdi3.c
+- [ ] comparedf2.c
+- [ ] comparesf2.c
 - [x] divdf3.c
 - [x] divdi3.c
 - [x] divmoddi4.c
@@ -301,8 +303,6 @@ These builtins are never called by LLVM.
 - ~~clzti2.c~~
 - ~~cmpdi2.c~~
 - ~~cmpti2.c~~
-- ~~comparedf2.c~~
-- ~~comparesf2.c~~
 - ~~ctzdi2.c~~
 - ~~ctzsi2.c~~
 - ~~ctzti2.c~~
