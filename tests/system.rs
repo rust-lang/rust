@@ -86,7 +86,7 @@ fn verify_config_test_names() {
         Path::new("tests/target/configs"),
     ] {
         for entry in fs::read_dir(path).expect("Couldn't read configs directory") {
-            let entry = entry.expect("Couldn't get DirEntry");
+            let entry = entry.expect("Couldn't get directory entry");
             let path = entry.path();
             if path.is_dir() {
                 let config_name = path.file_name().unwrap().to_str().unwrap();
