@@ -561,7 +561,8 @@ struct MyOpaque {
                            *const hoedown_buffer, *const hoedown_renderer_data,
                            libc::size_t),
     toc_builder: Option<TocBuilder>,
-    links: Option<Vec<String>>,
+    links_out: Option<Vec<String>>,
+    links_replace: Vec<(String, String)>,
 }
 
 extern {
@@ -771,8 +772,62 @@ extern fn hoedown_codespan(
 
 pub fn render(w: &mut fmt::Formatter,
               s: &str,
+              links: &[(String, String)],
               print_toc: bool,
               html_flags: libc::c_uint) -> fmt::Result {
+    extern fn hoedown_link(
+        ob: *mut hoedown_buffer,
+        content: *const hoedown_buffer,
+        link: *const hoedown_buffer,
+        title: *const hoedown_buffer,
+        data: *const hoedown_renderer_data,
+        _line: libc::size_t
+    ) -> libc::c_int {
+        if link.is_null() {
+            return 0;
+        }
+
+        let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
+        let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
+
+        let link = {
+            let s = unsafe { (*link).as_bytes() };
+            str::from_utf8(s).unwrap().to_owned()
+        };
+
+        let link = if let Some(&(_, ref new_target)) = opaque.links_replace
+                                                             .iter()
+                                                             .find(|t| &*t.0 == &*link) {
+            new_target.to_owned()
+        } else {
+            return 0;
+        };
+
+        let content = unsafe {
+            content.as_ref().map(|c| {
+                let s = c.as_bytes();
+                str::from_utf8(s).unwrap().to_owned()
+            })
+        };
+
+        let title = unsafe {
+            title.as_ref().map(|t| {
+                let s = t.as_bytes();
+                str::from_utf8(s).unwrap().to_owned()
+            })
+        };
+
+        let link_out = format!("<a href=\"{link}\"{title}>{content}</a>",
+                               link = link,
+                               title = title.map_or(String::new(),
+                                                    |t| format!(" title=\"{}\"", t)),
+                               content = content.unwrap_or(String::new()));
+
+        unsafe { hoedown_buffer_put(ob, link_out.as_ptr(), link_out.len()); }
+
+        //return "anything but 0" to show we've written the link in
+        1
+    }
 
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
@@ -780,13 +835,15 @@ pub fn render(w: &mut fmt::Formatter,
         let mut opaque = MyOpaque {
             dfltblk: (*renderer).blockcode.unwrap(),
             toc_builder: if print_toc {Some(TocBuilder::new())} else {None},
-            links: None,
+            links_out: None,
+            links_replace: links.to_vec(),
         };
         (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
                 = &mut opaque as *mut _ as *mut libc::c_void;
         (*renderer).blockcode = Some(hoedown_block);
         (*renderer).header = Some(hoedown_header);
         (*renderer).codespan = Some(hoedown_codespan);
+        (*renderer).link = Some(hoedown_link);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, s.as_ptr(),
@@ -1035,7 +1092,7 @@ impl<'a> fmt::Display for Markdown<'a> {
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
         if render_type == RenderType::Hoedown {
-            render(fmt, md, false, 0)
+            render(fmt, md, links, false, 0)
         } else {
             let mut opts = Options::empty();
             opts.insert(OPTION_ENABLE_TABLES);
@@ -1062,7 +1119,7 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
         let MarkdownWithToc(md, render_type) = *self;
 
         if render_type == RenderType::Hoedown {
-            render(fmt, md, true, 0)
+            render(fmt, md, &[], true, 0)
         } else {
             let mut opts = Options::empty();
             opts.insert(OPTION_ENABLE_TABLES);
@@ -1091,7 +1148,7 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
         if render_type == RenderType::Hoedown {
-            render(fmt, md, false, HOEDOWN_HTML_ESCAPE)
+            render(fmt, md, &[], false, HOEDOWN_HTML_ESCAPE)
         } else {
             let mut opts = Options::empty();
             opts.insert(OPTION_ENABLE_TABLES);
@@ -1203,7 +1260,7 @@ pub fn markdown_links(md: &str, render_type: RenderType) -> Vec<String> {
                 let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
                 let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
-                if let Some(ref mut links) = opaque.links {
+                if let Some(ref mut links) = opaque.links_out {
                     let s = unsafe { (*link).as_bytes() };
                     let s = str::from_utf8(&s).unwrap().to_owned();
 
@@ -1223,7 +1280,8 @@ pub fn markdown_links(md: &str, render_type: RenderType) -> Vec<String> {
                 let mut opaque = MyOpaque {
                     dfltblk: (*renderer).blockcode.unwrap(),
                     toc_builder: None,
-                    links: Some(vec![]),
+                    links_out: Some(vec![]),
+                    links_replace: vec![],
                 };
                 (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
                         = &mut opaque as *mut _ as *mut libc::c_void;
@@ -1240,7 +1298,7 @@ pub fn markdown_links(md: &str, render_type: RenderType) -> Vec<String> {
                 hoedown_html_renderer_free(renderer);
                 hoedown_buffer_free(ob);
 
-                opaque.links.unwrap()
+                opaque.links_out.unwrap()
             }
         }
         RenderType::Pulldown => {
