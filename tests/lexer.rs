@@ -1,9 +1,13 @@
 extern crate file;
 #[macro_use(assert_diff)]
 extern crate difference;
+extern crate libsyntax2;
 
 use std::path::{PathBuf, Path};
 use std::fs::read_dir;
+use std::fmt::Write;
+
+use libsyntax2::{Token, next_token};
 
 #[test]
 fn lexer_tests() {
@@ -46,10 +50,22 @@ fn lexer_test_case(path: &Path) {
     )
 }
 
-fn tokenize(text: &str) -> Vec<()> {
-    Vec::new()
+fn tokenize(text: &str) -> Vec<Token> {
+    let mut text = text;
+    let mut acc = Vec::new();
+    while !text.is_empty() {
+        let token = next_token(text);
+        acc.push(token);
+        let len: u32 = token.len.into();
+        text = &text[len as usize..];
+    }
+    acc
 }
 
-fn dump_tokens(tokens: &[()]) -> String {
-    "IDENT 5\nKEYWORD 1\nIDENT 5\n".to_string()
+fn dump_tokens(tokens: &[Token]) -> String {
+    let mut acc = String::new();
+    for token in tokens {
+        write!(acc, "{:?} {}\n", token.kind, token.len).unwrap()
+    }
+    acc
 }
