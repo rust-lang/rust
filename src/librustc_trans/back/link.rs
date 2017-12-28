@@ -708,10 +708,25 @@ fn link_natively(sess: &Session,
             info!("linker stdout:\n{}", escape_string(&prog.stdout));
         },
         Err(e) => {
-            sess.struct_err(&format!("could not exec the linker `{}`: {}", pname.display(), e))
-                .note(&format!("{:?}", &cmd))
-                .emit();
-            if sess.target.target.options.is_like_msvc && e.kind() == io::ErrorKind::NotFound {
+            let linker_not_found = e.kind() == io::ErrorKind::NotFound;
+
+            let mut linker_error = {
+                if linker_not_found {
+                    sess.struct_err(&format!("linker `{}` not found", pname.display()))
+                } else {
+                    sess.struct_err(&format!("could not exec the linker `{}`", pname.display()))
+                }
+            };
+
+            linker_error.note(&format!("{}", e));
+
+            if !linker_not_found {
+                linker_error.note(&format!("{:?}", &cmd));
+            }
+
+            linker_error.emit();
+
+            if sess.target.target.options.is_like_msvc && linker_not_found {
                 sess.note_without_error("the msvc targets depend on the msvc linker \
                     but `link.exe` was not found");
                 sess.note_without_error("please ensure that VS 2013 or VS 2015 was installed \
