@@ -13,7 +13,7 @@
 use intrinsics::{self, Intrinsic};
 use llvm;
 use llvm::{ValueRef};
-use abi::{Abi, FnType, PassMode};
+use abi::{Abi, FnType, LlvmType, PassMode};
 use mir::place::PlaceRef;
 use mir::operand::{OperandRef, OperandValue};
 use base::*;

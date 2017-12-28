@@ -31,8 +31,9 @@
 #![feature(inclusive_range)]
 #![feature(slice_patterns)]
 
+#[macro_use]
+extern crate bitflags;
 extern crate syntax;
-extern crate rand;
 extern crate serialize;
 #[macro_use] extern crate log;
 

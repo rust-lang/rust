@@ -13,7 +13,7 @@ use rustc::middle::lang_items;
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::mir;
-use abi::{Abi, FnType, ArgType, PassMode};
+use abi::{Abi, FnType, ArgType, LlvmType, PassMode};
 use base;
 use callee;
 use builder::Builder;

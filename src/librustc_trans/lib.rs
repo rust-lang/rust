@@ -33,8 +33,6 @@
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 
-#[macro_use]
-extern crate bitflags;
 extern crate flate2;
 extern crate libc;
 #[macro_use] extern crate rustc;

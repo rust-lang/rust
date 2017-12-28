@@ -2115,8 +2115,8 @@ dependencies = [
 name = "rustc_target"
 version = "0.0.0"
 dependencies = [
+ "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
@@ -2138,7 +2138,6 @@ dependencies = [
 name = "rustc_trans"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",

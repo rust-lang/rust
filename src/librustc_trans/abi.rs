@@ -37,53 +37,14 @@ use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, Size, TyLayout};
-use rustc::ty::layout::{HasDataLayout, LayoutOf};
+use rustc::ty::layout::{self, LayoutOf, Size, TyLayout};
 
 use libc::c_uint;
 use std::cmp;
 
 pub use syntax::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum PassMode {
-    /// Ignore the argument (useful for empty struct).
-    Ignore,
-    /// Pass the argument directly.
-    Direct(ArgAttributes),
-    /// Pass a pair's elements directly in two arguments.
-    Pair(ArgAttributes, ArgAttributes),
-    /// Pass the argument after casting it, to either
-    /// a single uniform or a pair of registers.
-    Cast(CastTarget),
-    /// Pass the argument indirectly via a hidden pointer.
-    Indirect(ArgAttributes),
-}
-
-// Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
-// of this module
-pub use self::attr_impl::ArgAttribute;
-
-#[allow(non_upper_case_globals)]
-#[allow(unused)]
-mod attr_impl {
-    // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
-    bitflags! {
-        #[derive(Default)]
-        pub struct ArgAttribute: u16 {
-            const ByVal     = 1 << 0;
-            const NoAlias   = 1 << 1;
-            const NoCapture = 1 << 2;
-            const NonNull   = 1 << 3;
-            const ReadOnly  = 1 << 4;
-            const SExt      = 1 << 5;
-            const StructRet = 1 << 6;
-            const ZExt      = 1 << 7;
-            const InReg     = 1 << 8;
-        }
-    }
-}
+pub use rustc_target::abi::call::*;
 
 macro_rules! for_each_kind {
     ($flags: ident, $f: ident, $($kind: ident),+) => ({
@@ -91,41 +52,24 @@ macro_rules! for_each_kind {
     })
 }
 
-impl ArgAttribute {
+trait ArgAttributeExt {
+    fn for_each_kind<F>(&self, f: F) where F: FnMut(llvm::Attribute);
+}
+
+impl ArgAttributeExt for ArgAttribute {
     fn for_each_kind<F>(&self, mut f: F) where F: FnMut(llvm::Attribute) {
         for_each_kind!(self, f,
                        ByVal, NoAlias, NoCapture, NonNull, ReadOnly, SExt, StructRet, ZExt, InReg)
     }
 }
 
-/// A compact representation of LLVM attributes (at least those relevant for this module)
-/// that can be manipulated without interacting with LLVM's Attribute machinery.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct ArgAttributes {
-    regular: ArgAttribute,
-    pointee_size: Size,
-    pointee_align: Option<Align>
+pub trait ArgAttributesExt {
+    fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef);
+    fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef);
 }
 
-impl ArgAttributes {
-    fn new() -> Self {
-        ArgAttributes {
-            regular: ArgAttribute::default(),
-            pointee_size: Size::from_bytes(0),
-            pointee_align: None,
-        }
-    }
-
-    pub fn set(&mut self, attr: ArgAttribute) -> &mut Self {
-        self.regular = self.regular | attr;
-        self
-    }
-
-    pub fn contains(&self, attr: ArgAttribute) -> bool {
-        self.regular.contains(attr)
-    }
-
-    pub fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
+impl ArgAttributesExt for ArgAttributes {
+    fn apply_llfn(&self, idx: AttributePlace, llfn: ValueRef) {
         let mut regular = self.regular;
         unsafe {
             let deref = self.pointee_size.bytes();
@@ -150,7 +94,7 @@ impl ArgAttributes {
         }
     }
 
-    pub fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
+    fn apply_callsite(&self, idx: AttributePlace, callsite: ValueRef) {
         let mut regular = self.regular;
         unsafe {
             let deref = self.pointee_size.bytes();
@@ -175,67 +119,13 @@ impl ArgAttributes {
         }
     }
 }
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum RegKind {
-    Integer,
-    Float,
-    Vector
+
+pub trait LlvmType {
+    fn llvm_type(&self, cx: &CodegenCx) -> Type;
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Reg {
-    pub kind: RegKind,
-    pub size: Size,
-}
-
-macro_rules! reg_ctor {
-    ($name:ident, $kind:ident, $bits:expr) => {
-        pub fn $name() -> Reg {
-            Reg {
-                kind: RegKind::$kind,
-                size: Size::from_bits($bits)
-            }
-        }
-    }
-}
-
-impl Reg {
-    reg_ctor!(i8, Integer, 8);
-    reg_ctor!(i16, Integer, 16);
-    reg_ctor!(i32, Integer, 32);
-    reg_ctor!(i64, Integer, 64);
-
-    reg_ctor!(f32, Float, 32);
-    reg_ctor!(f64, Float, 64);
-}
-
-impl Reg {
-    pub fn align(&self, cx: &CodegenCx) -> Align {
-        let dl = cx.data_layout();
-        match self.kind {
-            RegKind::Integer => {
-                match self.size.bits() {
-                    1 => dl.i1_align,
-                    2...8 => dl.i8_align,
-                    9...16 => dl.i16_align,
-                    17...32 => dl.i32_align,
-                    33...64 => dl.i64_align,
-                    65...128 => dl.i128_align,
-                    _ => bug!("unsupported integer: {:?}", self)
-                }
-            }
-            RegKind::Float => {
-                match self.size.bits() {
-                    32 => dl.f32_align,
-                    64 => dl.f64_align,
-                    _ => bug!("unsupported float: {:?}", self)
-                }
-            }
-            RegKind::Vector => dl.vector_align(self.size)
-        }
-    }
-
-    pub fn llvm_type(&self, cx: &CodegenCx) -> Type {
+impl LlvmType for Reg {
+    fn llvm_type(&self, cx: &CodegenCx) -> Type {
         match self.kind {
             RegKind::Integer => Type::ix(cx, self.size.bits()),
             RegKind::Float => {
@@ -249,36 +139,6 @@ impl Reg {
                 Type::vector(&Type::i8(cx), self.size.bytes())
             }
         }
-    }
-}
-
-/// An argument passed entirely registers with the
-/// same kind (e.g. HFA / HVA on PPC64 and AArch64).
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Uniform {
-    pub unit: Reg,
-
-    /// The total size of the argument, which can be:
-    /// * equal to `unit.size` (one scalar/vector)
-    /// * a multiple of `unit.size` (an array of scalar/vectors)
-    /// * if `unit.kind` is `Integer`, the last element
-    ///   can be shorter, i.e. `{ i64, i64, i32 }` for
-    ///   64-bit integers with a total size of 20 bytes
-    pub total: Size,
-}
-
-impl From<Reg> for Uniform {
-    fn from(unit: Reg) -> Uniform {
-        Uniform {
-            unit,
-            total: unit.size
-        }
-    }
-}
-
-impl Uniform {
-    pub fn align(&self, cx: &CodegenCx) -> Align {
-        self.unit.align(cx)
     }
 }
 
@@ -381,51 +241,8 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct CastTarget {
-    pub prefix: [Option<RegKind>; 8],
-    pub prefix_chunk: Size,
-    pub rest: Uniform,
-}
-
-impl From<Reg> for CastTarget {
-    fn from(unit: Reg) -> CastTarget {
-        CastTarget::from(Uniform::from(unit))
-    }
-}
-
-impl From<Uniform> for CastTarget {
-    fn from(uniform: Uniform) -> CastTarget {
-        CastTarget {
-            prefix: [None; 8],
-            prefix_chunk: Size::from_bytes(0),
-            rest: uniform
-        }
-    }
-}
-
-impl CastTarget {
-    pub fn pair(a: Reg, b: Reg) -> CastTarget {
-        CastTarget {
-            prefix: [Some(a.kind), None, None, None, None, None, None, None],
-            prefix_chunk: a.size,
-            rest: Uniform::from(b)
-        }
-    }
-
-    pub fn size(&self, cx: &CodegenCx) -> Size {
-        (self.prefix_chunk * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
-            .abi_align(self.rest.align(cx)) + self.rest.total
-    }
-
-    pub fn align(&self, cx: &CodegenCx) -> Align {
-        self.prefix.iter()
-            .filter_map(|x| x.map(|kind| Reg { kind: kind, size: self.prefix_chunk }.align(cx)))
-            .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)),
-                |acc, align| acc.max(align))
-    }
-
-    pub fn llvm_type(&self, cx: &CodegenCx) -> Type {
+impl LlvmType for CastTarget {
+    fn llvm_type(&self, cx: &CodegenCx) -> Type {
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
         let rest_count = self.rest.total.bytes() / self.rest.unit.size.bytes();
         let rem_bytes = self.rest.total.bytes() % self.rest.unit.size.bytes();
