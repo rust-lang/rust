@@ -592,9 +592,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                     self.trans_argument(&bcx, op, &mut llargs, &fn_ty.args[i]);
                 }
-                if let Some(tup) = untuple {
-                    self.trans_arguments_untupled(&bcx, tup, &mut llargs,
-                        &fn_ty.args[first_args.len()..])
+                if let Some(tuple) = untuple {
+                    let tuple = self.trans_operand(&bcx, tuple);
+                    for (i, arg) in fn_ty.args[first_args.len()..].iter().enumerate() {
+                        let op = tuple.extract_field(&bcx, i);
+                        self.trans_argument(&bcx, op, &mut llargs, arg);
+                    }
                 }
 
                 let fn_ptr = match (llfn, instance) {
@@ -690,29 +693,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
 
         llargs.push(llval);
-    }
-
-    fn trans_arguments_untupled(&mut self,
-                                bcx: &Builder<'a, 'tcx>,
-                                operand: &mir::Operand<'tcx>,
-                                llargs: &mut Vec<ValueRef>,
-                                args: &[ArgType<'tcx>]) {
-        let tuple = self.trans_operand(bcx, operand);
-
-        // Handle both by-ref and immediate tuples.
-        if let Ref(llval, align) = tuple.val {
-            let tuple_ptr = PlaceRef::new_sized(llval, tuple.layout, align);
-            for i in 0..tuple.layout.fields.count() {
-                let field_ptr = tuple_ptr.project_field(bcx, i);
-                self.trans_argument(bcx, field_ptr.load(bcx), llargs, &args[i]);
-            }
-        } else {
-            // If the tuple is immediate, the elements are as well.
-            for i in 0..tuple.layout.fields.count() {
-                let op = tuple.extract_field(bcx, i);
-                self.trans_argument(bcx, op, llargs, &args[i]);
-            }
-        }
     }
 
     fn get_personality_slot(&mut self, bcx: &Builder<'a, 'tcx>) -> PlaceRef<'tcx> {

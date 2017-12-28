@@ -431,7 +431,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 elem: mir::ProjectionElem::Deref
             }) => {
                 // Load the pointer from its location.
-                self.trans_consume(bcx, base).deref(bcx.ccx)
+                self.trans_consume(bcx, base).deref(bcx)
             }
             mir::Place::Projection(ref projection) => {
                 let tr_base = self.trans_place(bcx, &projection.base);

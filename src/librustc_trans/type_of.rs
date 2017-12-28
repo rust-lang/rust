@@ -252,6 +252,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                     ccx.layout_of(ty).llvm_type(ccx).ptr_to()
                 }
+                // FIXME(eddyb) remove this Box special-case.
                 ty::TyAdt(def, _) if def.is_box() => {
                     ccx.layout_of(self.ty.boxed_ty()).llvm_type(ccx).ptr_to()
                 }
@@ -340,10 +341,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             ty::TyRef(..) |
             ty::TyRawPtr(_) => {
                 return self.field(ccx, index).llvm_type(ccx);
-            }
-            ty::TyAdt(def, _) if def.is_box() => {
-                let ptr_ty = ccx.tcx().mk_mut_ptr(self.ty.boxed_ty());
-                return ccx.layout_of(ptr_ty).scalar_pair_element_llvm_type(ccx, index);
             }
             _ => {}
         }

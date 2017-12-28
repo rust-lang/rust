@@ -128,7 +128,7 @@ pub fn str(_: &[u8]) {
 pub fn trait_borrow(_: &Drop) {
 }
 
-// CHECK: @trait_box(%"core::ops::drop::Drop"* noalias nonnull, {}* noalias nonnull readonly)
+// CHECK: @trait_box(i8* noalias nonnull, i8* noalias nonnull readonly)
 #[no_mangle]
 pub fn trait_box(_: Box<Drop>) {
 }
