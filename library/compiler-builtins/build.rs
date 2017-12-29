@@ -5443,7 +5443,6 @@ mod c {
                     "arm/bswapsi2.S",
                     "arm/clzdi2.S",
                     "arm/clzsi2.S",
-                    "arm/comparesf2.S",
                     "arm/divmodsi4.S",
                     "arm/modsi3.S",
                     "arm/switch16.S",
