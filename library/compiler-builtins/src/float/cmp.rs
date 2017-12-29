@@ -115,24 +115,24 @@ intrinsics! {
     }
 
     #[arm_aeabi_alias = fcmpun]
-    pub extern "C" fn __unordsf2(a: f32, b: f32) -> bool {
-        unord(a, b)
+    pub extern "C" fn __unordsf2(a: f32, b: f32) -> i32 {
+        unord(a, b) as i32
     }
 
-    pub extern "C" fn __eqsf2(a: f32, b: f32) -> bool {
-        cmp(a, b).to_le_abi() != 0
+    pub extern "C" fn __eqsf2(a: f32, b: f32) -> i32 {
+        cmp(a, b).to_le_abi()
     }
 
-    pub extern "C" fn __ltsf2(a: f32, b: f32) -> bool {
-        cmp(a, b).to_le_abi() != 0
+    pub extern "C" fn __ltsf2(a: f32, b: f32) -> i32 {
+        cmp(a, b).to_le_abi()
     }
 
-    pub extern "C" fn __nesf2(a: f32, b: f32) -> bool {
-        cmp(a, b).to_le_abi() != 0
+    pub extern "C" fn __nesf2(a: f32, b: f32) -> i32 {
+        cmp(a, b).to_le_abi()
     }
 
-    pub extern "C" fn __gtsf2(a: f32, b: f32) -> bool {
-        cmp(a, b).to_ge_abi() != 0
+    pub extern "C" fn __gtsf2(a: f32, b: f32) -> i32 {
+        cmp(a, b).to_ge_abi()
     }
 
     pub extern "C" fn __ledf2(a: f64, b: f64) -> i32 {
@@ -144,23 +144,23 @@ intrinsics! {
     }
 
     #[arm_aeabi_alias = dcmpun]
-    pub extern "C" fn __unorddf2(a: f64, b: f64) -> bool {
-        unord(a, b)
+    pub extern "C" fn __unorddf2(a: f64, b: f64) -> i32 {
+        unord(a, b) as i32
     }
 
-    pub extern "C" fn __eqdf2(a: f64, b: f64) -> bool {
-        cmp(a, b).to_le_abi() != 0
+    pub extern "C" fn __eqdf2(a: f64, b: f64) -> i32 {
+        cmp(a, b).to_le_abi()
     }
 
-    pub extern "C" fn __ltdf2(a: f64, b: f64) -> bool {
-        cmp(a, b).to_le_abi() != 0
+    pub extern "C" fn __ltdf2(a: f64, b: f64) -> i32 {
+        cmp(a, b).to_le_abi()
     }
 
-    pub extern "C" fn __nedf2(a: f64, b: f64) -> bool {
-        cmp(a, b).to_le_abi() != 0
+    pub extern "C" fn __nedf2(a: f64, b: f64) -> i32 {
+        cmp(a, b).to_le_abi()
     }
 
-    pub extern "C" fn __gtdf2(a: f32, b: f32) -> bool {
-        cmp(a, b).to_ge_abi() != 0
+    pub extern "C" fn __gtdf2(a: f32, b: f32) -> i32 {
+        cmp(a, b).to_ge_abi()
     }
 }
