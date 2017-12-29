@@ -57,6 +57,10 @@ fn main() {
         // This "unstable-options" can be removed when `--crate-version` is stabilized
         cmd.arg("-Z").arg("unstable-options")
            .arg("--crate-version").arg(version);
+
+        // While we can assume that `-Z unstable-options` is set, let's also force rustdoc to panic
+        // if pulldown rendering differences are found
+        cmd.arg("--deny-render-differences");
     }
 
     std::process::exit(match cmd.status() {

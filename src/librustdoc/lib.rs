@@ -257,6 +257,10 @@ pub fn opts() -> Vec<RustcOptGroup> {
             o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
                                                          program, rather than alphabetically")
         }),
+        unstable("deny-render-differences", |o| {
+            o.optflag("", "deny-render-differences", "abort doc runs when markdown rendering \
+                                                      differences are found")
+        }),
     ]
 }
 
@@ -393,6 +397,7 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     let output_format = matches.opt_str("w");
+    let deny_render_differences = matches.opt_present("deny-render-differences");
     let res = acquire_input(PathBuf::from(input), externs, &matches, move |out| {
         let Output { krate, passes, renderinfo } = out;
         info!("going to format");
@@ -404,7 +409,8 @@ pub fn main_args(args: &[String]) -> isize {
                                   css_file_extension,
                                   renderinfo,
                                   render_type,
-                                  sort_modules_alphabetically)
+                                  sort_modules_alphabetically,
+                                  deny_render_differences)
                     .expect("failed to generate documentation");
                 0
             }

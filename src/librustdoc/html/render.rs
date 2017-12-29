@@ -495,7 +495,8 @@ pub fn run(mut krate: clean::Crate,
            css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
            render_type: RenderType,
-           sort_modules_alphabetically: bool) -> Result<(), Error> {
+           sort_modules_alphabetically: bool,
+           deny_render_differences: bool) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -658,6 +659,11 @@ pub fn run(mut krate: clean::Crate,
             for d in diffs {
                 render_difference(d, &mut intro_msg, span, text);
             }
+        }
+
+        if deny_render_differences {
+            println!("Aborting with {} rendering differences", markdown_warnings.len());
+            ::std::process::exit(1);
         }
     }
 
