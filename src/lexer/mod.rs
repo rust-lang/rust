@@ -31,7 +31,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
         return WHITESPACE;
     }
 
-    return ERROR
+    ERROR
 }
 
 fn string_literal_start(c: char, c1: Option<char>, c2: Option<char>) -> bool {
