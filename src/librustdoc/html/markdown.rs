@@ -800,7 +800,7 @@ pub fn render(w: &mut fmt::Formatter,
                                                              .find(|t| &*t.0 == &*link) {
             new_target.to_owned()
         } else {
-            return 0;
+            link
         };
 
         let content = unsafe {
