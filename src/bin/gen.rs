@@ -40,28 +40,20 @@ impl Grammar {
             ).unwrap();
         }
         acc.push_str("\n");
+        write!(acc, "static INFOS: [SyntaxInfo; {}] = [\n", self.syntax_kinds.len()).unwrap();
         for kind in self.syntax_kinds.iter() {
             let sname = scream(kind);
             write!(
                 acc,
-                "static {sname}_INFO: SyntaxInfo = SyntaxInfo {{\n   name: \"{sname}\",\n}};\n",
+                "    SyntaxInfo {{ name: \"{sname}\" }},\n",
                 sname = sname
             ).unwrap();
         }
+        acc.push_str("];\n");
         acc.push_str("\n");
 
         acc.push_str("pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {\n");
-        acc.push_str("    match kind {\n");
-        for kind in self.syntax_kinds.iter() {
-            let sname = scream(kind);
-            write!(
-                acc,
-                "        {sname} => &{sname}_INFO,\n",
-                sname = sname
-            ).unwrap();
-        }
-        acc.push_str("        _ => unreachable!()\n");
-        acc.push_str("    }\n");
+        acc.push_str("    &INFOS[kind.0 as usize]\n");
         acc.push_str("}\n");
         acc
     }
