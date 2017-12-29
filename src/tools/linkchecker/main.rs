@@ -132,7 +132,16 @@ fn check(cache: &mut Cache,
     // Unfortunately we're not 100% full of valid links today to we need a few
     // whitelists to get this past `make check` today.
     // FIXME(#32129)
-    if file.ends_with("std/string/struct.String.html") {
+    if file.ends_with("std/string/struct.String.html") ||
+       file.ends_with("interpret/struct.ValTy.html") ||
+       file.ends_with("symbol/struct.InternedString.html") ||
+       file.ends_with("ast/struct.ThinVec.html") ||
+       file.ends_with("util/struct.ThinVec.html") ||
+       file.ends_with("util/struct.RcSlice.html") ||
+       file.ends_with("layout/struct.TyLayout.html") ||
+       file.ends_with("ty/struct.Slice.html") ||
+       file.ends_with("ty/enum.Attributes.html") ||
+       file.ends_with("ty/struct.SymbolName.html") {
         return None;
     }
     // FIXME(#32553)
@@ -144,7 +153,16 @@ fn check(cache: &mut Cache,
        file.ends_with("struct.BTreeSet.html") ||
        file.ends_with("btree_map/struct.BTreeMap.html") ||
        file.ends_with("hash_map/struct.HashMap.html") ||
-       file.ends_with("hash_set/struct.HashSet.html") {
+       file.ends_with("hash_set/struct.HashSet.html") ||
+       file.ends_with("sync/struct.Lrc.html") ||
+       file.ends_with("sync/struct.RwLock.html") {
+        return None;
+    }
+    // FIXME(#47038)
+    if file.ends_with("deriving/generic/index.html") ||
+       file.ends_with("deriving/generic/macro.vec.html") ||
+       file.ends_with("deriving/custom/macro.panic.html") ||
+       file.ends_with("proc_macro_impl/macro.panic.html") {
         return None;
     }
 
