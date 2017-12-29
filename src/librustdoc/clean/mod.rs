@@ -34,7 +34,6 @@ use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::lowering::Resolver;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, AdtKind};
 use rustc::middle::stability;
@@ -826,25 +825,25 @@ impl Clean<Attributes> for [ast::Attribute] {
             let dox = attrs.collapsed_doc_value().unwrap_or_else(String::new);
             for link in markdown_links(&dox, cx.render_type) {
                 let path = {
-                    let is_value: bool;
+                    let is_value;
                     let path_str = if let Some(prefix) =
                         ["struct", "enum", "type", "trait", "union"].iter()
                                                                     .find(|p| link.starts_with(**p)) {
-                        is_value = false;
+                        is_value = Some(false);
                         link.trim_left_matches(prefix).trim()
                     } else if let Some(prefix) =
                         ["const", "static"].iter()
                                            .find(|p| link.starts_with(**p)) {
-                        is_value = true;
+                        is_value = Some(true);
                         link.trim_left_matches(prefix).trim()
                     } else if link.ends_with("()") {
-                        is_value = true;
+                        is_value = Some(true);
                         link.trim_right_matches("()").trim()
                     } else if link.ends_with("!") {
                         // FIXME (misdreavus): macros are resolved with different machinery
                         continue;
                     } else {
-                        is_value = false;
+                        is_value = None;
                         link.trim()
                     };
 
@@ -862,12 +861,34 @@ impl Clean<Attributes> for [ast::Attribute] {
                     // but it can't because that would break object safety. This can still be
                     // fixed.
                     let components = path_str.split("::").skip(1).collect::<Vec<_>>();
-                    cx.resolver.borrow_mut().resolve_str_path(DUMMY_SP, None, &components, is_value)
+                    let resolve = |is_val| cx.resolver.borrow_mut().resolve_str_path_error(DUMMY_SP, None, &components, is_val);
+
+                    if let Some(is_value) = is_value {
+                        if let Ok(path) = resolve(is_value) {
+                            path
+                        } else {
+                            // this could just be a normal link or a broken link
+                            // we could potentially check if something is
+                            // "intra-doc-link-like" and warn in that case
+                            continue;
+                        }
+                    } else {
+                        // try both!
+                        // It is imperative we search for not-a-value first
+                        // Otherwise we will find struct ctors for when we are looking
+                        // for structs, etc, and the link won't work.
+                        if let Ok(path) = resolve(false) {
+                            path
+                        } else if let Ok(path) = resolve(true) {
+                            path
+                        } else {
+                            // this could just be a normal link
+                            continue;
+                        }
+                    }
                 };
 
-                if path.def != Def::Err {
-                    attrs.links.push((link, path.def.def_id()));
-                }
+                attrs.links.push((link, path.def.def_id()));
             }
 
             cx.sess().abort_if_errors();
