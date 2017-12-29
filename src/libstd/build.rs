@@ -20,9 +20,10 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
     let host = env::var("HOST").expect("HOST was not set");
     if cfg!(feature = "backtrace") &&
-        !target.contains("msvc") &&
+        !target.contains("cloudabi") &&
         !target.contains("emscripten") &&
         !target.contains("fuchsia") &&
+        !target.contains("msvc") &&
         !target.contains("wasm32")
     {
         let _ = build_libbacktrace(&host, &target);
@@ -74,6 +75,12 @@ fn main() {
         println!("cargo:rustc-link-lib=zircon");
         println!("cargo:rustc-link-lib=fdio");
         println!("cargo:rustc-link-lib=launchpad"); // for std::process
+    } else if target.contains("cloudabi") {
+        if cfg!(feature = "backtrace") {
+            println!("cargo:rustc-link-lib=unwind");
+        }
+        println!("cargo:rustc-link-lib=c");
+        println!("cargo:rustc-link-lib=compiler_rt");
     }
 }
 
