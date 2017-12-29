@@ -96,7 +96,7 @@ environment:
 matrix:
   fast_finish: true
 
-clone_depth: 1
+clone_depth: 2
 build: false
 
 install:
