@@ -23,11 +23,13 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(no_crate_inject, attr(deny(warnings))))]
 #![deny(warnings)]
+
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(generic_param_attrs)]
 #![cfg_attr(test, feature(test))]
+
 #![allow(deprecated)]
 
 extern crate alloc;
