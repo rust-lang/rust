@@ -52,16 +52,20 @@ features = ["c"]
 ## Contributing
 
 1. Pick one or more intrinsics from the [pending list](#progress).
-2. Fork this repository
-3. Port the intrinsic(s) and their corresponding [unit tests][1] from their [C implementation][2] to
-   Rust.
-4. Send a Pull Request (PR)
-5. Once the PR passes our extensive [testing infrastructure][3], we'll merge it!
+2. Fork this repository.
+3. Port the intrinsic(s) and their corresponding [unit tests][1] from their
+   [C implementation][2] to Rust.
+4. Implement a [test generator][3] to compare the behavior of the ported intrinsic(s)
+   with their implementation on the testing host. Note that randomized compiler-builtin tests
+   should be run using `cargo test --features gen-tests`.
+4. Send a Pull Request (PR).
+5. Once the PR passes our extensive [testing infrastructure][4], we'll merge it!
 6. Celebrate :tada:
 
 [1]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/test/builtins/Unit
 [2]: https://github.com/rust-lang/compiler-rt/tree/8598065bd965d9713bfafb6c1e766d63a7b17b89/lib/builtins
-[3]: https://travis-ci.org/rust-lang-nursery/compiler-builtins
+[3]: https://github.com/rust-lang-nursery/compiler-builtins/blob/0ba07e49264a54cb5bbd4856fcea083bb3fbec15/build.rs#L180-L265
+[4]: https://travis-ci.org/rust-lang-nursery/compiler-builtins
 
 ### Porting Reminders
 
