@@ -1,7 +1,7 @@
 //! `i686` Streaming SIMD Extensions (SSE)
 
 use v128::f32x4;
-use v64::{__m64, i16x4, i32x2, i8x8, u16x4, u8x8};
+use v64::*;
 use core::mem;
 use x86::i586;
 use x86::i686::mmx;
@@ -184,7 +184,7 @@ pub unsafe fn _m_pavgw(a: u16x4, b: u16x4) -> u16x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(psadbw))]
-pub unsafe fn _mm_sad_pu8(a: u8x8, b: u8x8) -> u64 {
+pub unsafe fn _mm_sad_pu8(a: u8x8, b: u8x8) -> __m64 {
     mem::transmute(psadbw(mem::transmute(a), mem::transmute(b)))
 }
 
@@ -195,8 +195,8 @@ pub unsafe fn _mm_sad_pu8(a: u8x8, b: u8x8) -> u64 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(psadbw))]
-pub unsafe fn _m_psadbw(a: u8x8, b: u8x8) -> u64 {
-    _mm_sad_pu8(a, b)
+pub unsafe fn _m_psadbw(a: u8x8, b: u8x8) -> __m64 {
+    mem::transmute(_mm_sad_pu8(a, b))
 }
 
 /// Converts two elements of a 64-bit vector of [2 x i32] into two
@@ -330,7 +330,7 @@ pub unsafe fn _m_pmovmskb(a: i16x4) -> i32 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(pshufw, imm8 = 0))]
-pub unsafe fn _mm_shuffle_pi16(a: i16x4, imm8: i8) -> i16x4 {
+pub unsafe fn _mm_shuffle_pi16(a: i16x4, imm8: i32) -> i16x4 {
     macro_rules! call {
         ($imm8:expr) => { mem::transmute(pshufw(mem::transmute(a), $imm8)) }
     }
@@ -342,7 +342,7 @@ pub unsafe fn _mm_shuffle_pi16(a: i16x4, imm8: i8) -> i16x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(pshufw, imm8 = 0))]
-pub unsafe fn _m_pshufw(a: i16x4, imm8: i8) -> i16x4 {
+pub unsafe fn _m_pshufw(a: i16x4, imm8: i32) -> i16x4 {
     _mm_shuffle_pi16(a, imm8)
 }
 
@@ -408,6 +408,9 @@ pub unsafe fn _mm_cvtps_pi8(a: f32x4) -> i8x8 {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(windows))]
+    use std::mem;
+
     use v128::f32x4;
     use v64::{i16x4, i32x2, i8x8, u16x4, u8x8};
     use x86::i686::sse;
@@ -481,14 +484,15 @@ mod tests {
     }
 
     #[simd_test = "sse"]
+    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_sad_pu8() {
         let a = u8x8::new(255, 254, 253, 252, 1, 2, 3, 4);
         let b = u8x8::new(0, 0, 0, 0, 2, 1, 2, 1);
         let r = sse::_mm_sad_pu8(a, b);
-        assert_eq!(r, 1020);
+        assert_eq!(r, mem::transmute(u16x4::new(1020, 0, 0, 0)));
 
         let r = sse::_m_psadbw(a, b);
-        assert_eq!(r, 1020);
+        assert_eq!(r, mem::transmute(u16x4::new(1020, 0, 0, 0)));
     }
 
     #[simd_test = "sse"]

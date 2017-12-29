@@ -5,7 +5,7 @@ use core::ptr;
 
 use simd_llvm::simd_shuffle4;
 use v128::*;
-use v64::f32x2;
+use v64::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -764,7 +764,7 @@ pub unsafe fn _mm_setzero_ps() -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(shufps, mask = 3))]
-pub unsafe fn _mm_shuffle_ps(a: f32x4, b: f32x4, mask: i32) -> f32x4 {
+pub unsafe fn _mm_shuffle_ps(a: f32x4, b: f32x4, mask: u32) -> f32x4 {
     let mask = (mask & 0xFF) as u8;
 
     macro_rules! shuffle_done {
@@ -884,7 +884,7 @@ pub unsafe fn _mm_movemask_ps(a: f32x4) -> i32 {
 /// let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
 /// let data: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
 ///
-/// let r = unsafe { _mm_loadh_pi(a, data[..].as_ptr()) };
+/// let r = unsafe { _mm_loadh_pi(a, data[..].as_ptr() as *const _) };
 ///
 /// assert_eq!(r, f32x4::new(1.0, 2.0, 5.0, 6.0));
 /// #
@@ -906,7 +906,7 @@ pub unsafe fn _mm_movemask_ps(a: f32x4) -> i32 {
            assert_instr(unpcklps))]
 // TODO: This function is actually not limited to floats, but that's what
 // what matches the C type most closely: (__m128, *const __m64) -> __m128
-pub unsafe fn _mm_loadh_pi(a: f32x4, p: *const f32) -> f32x4 {
+pub unsafe fn _mm_loadh_pi(a: f32x4, p: *const __m64) -> f32x4 {
     let q = p as *const f32x2;
     let b: f32x2 = *q;
     let bb = simd_shuffle4(b, b, [0, 1, 0, 1]);
@@ -936,7 +936,7 @@ pub unsafe fn _mm_loadh_pi(a: f32x4, p: *const f32) -> f32x4 {
 /// let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
 /// let data: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
 ///
-/// let r = unsafe { _mm_loadl_pi(a, data[..].as_ptr()) };
+/// let r = unsafe { _mm_loadl_pi(a, data[..].as_ptr() as *const _) };
 ///
 /// assert_eq!(r, f32x4::new(5.0, 6.0, 3.0, 4.0));
 /// #
@@ -957,7 +957,7 @@ pub unsafe fn _mm_loadh_pi(a: f32x4, p: *const f32) -> f32x4 {
 #[cfg_attr(all(test, target_arch = "x86", not(target_feature = "sse2")),
            assert_instr(movss))]
 // TODO: Like _mm_loadh_pi, this also isn't limited to floats.
-pub unsafe fn _mm_loadl_pi(a: f32x4, p: *const f32) -> f32x4 {
+pub unsafe fn _mm_loadl_pi(a: f32x4, p: *const __m64) -> f32x4 {
     let q = p as *const f32x2;
     let b: f32x2 = *q;
     let bb = simd_shuffle4(b, b, [0, 1, 0, 1]);
@@ -1070,14 +1070,14 @@ pub unsafe fn _mm_loadr_ps(p: *const f32) -> f32x4 {
 // On i586 (no SSE2) it just generates plain MOV instructions.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
            assert_instr(movhpd))]
-pub unsafe fn _mm_storeh_pi(p: *mut u64, a: f32x4) {
+pub unsafe fn _mm_storeh_pi(p: *mut __m64, a: f32x4) {
     #[cfg(target_arch = "x86")]
     {
         // If this is a `f64x2` then on i586, LLVM generates fldl & fstpl which
         // is just silly
         let a64: u64x2 = mem::transmute(a);
         let a_hi = a64.extract(1);
-        *p = a_hi;
+        *(p as *mut u64) = a_hi;
     }
     #[cfg(target_arch = "x86_64")]
     {
@@ -1103,14 +1103,14 @@ pub unsafe fn _mm_storeh_pi(p: *mut u64, a: f32x4) {
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2"),
                target_family = "windows"),
            assert_instr(movsd))]
-pub unsafe fn _mm_storel_pi(p: *mut u64, a: f32x4) {
+pub unsafe fn _mm_storel_pi(p: *mut __m64, a: f32x4) {
     #[cfg(target_arch = "x86")]
     {
         // Same as for _mm_storeh_pi: i586 code gen would use floating point
         // stack.
         let a64: u64x2 = mem::transmute(a);
         let a_hi = a64.extract(0);
-        *p = a_hi;
+        *(p as *mut u64) = a_hi;
     }
     #[cfg(target_arch = "x86_64")]
     {
@@ -1671,6 +1671,8 @@ extern "C" {
     fn prefetch(p: *const u8, rw: i32, loc: i32, ty: i32);
     #[link_name = "llvm.x86.sse.cmp.ss"]
     fn cmpss(a: f32x4, b: f32x4, imm8: i8) -> f32x4;
+    #[link_name = "llvm.x86.mmx.movnt.dq"]
+    fn movntdq(a: *mut __m64, b: __m64);
 }
 
 /// Stores `a` into the memory at `mem_addr` using a non-temporal memory hint.
@@ -1687,14 +1689,10 @@ pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: f32x4) {
 /// Store 64-bits of integer data from a into memory using a non-temporal
 /// memory hint.
 #[inline(always)]
-#[target_feature = "+sse"]
-// generates movnti on i686 and x86_64 but just a mov on i586
-#[cfg_attr(all(test,
-               any(target_arch = "x86_64",
-                   all(target_arch = "x86", target_feature = "sse2"))),
-           assert_instr(movnti))]
-pub unsafe fn _mm_stream_pi(mem_addr: *mut i64, a: i64) {
-    ::core::intrinsics::nontemporal_store(mem_addr, a);
+#[target_feature = "+sse,+mmx"]
+#[cfg_attr(test, assert_instr(movntq))]
+pub unsafe fn _mm_stream_pi(mem_addr: *mut __m64, a: __m64) {
+    movntdq(mem_addr, a)
 }
 
 #[cfg(test)]
@@ -2967,20 +2965,22 @@ mod tests {
     }
 
     #[simd_test = "sse"]
+    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_loadh_pi() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let x: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
         let p = x[..].as_ptr();
-        let r = sse::_mm_loadh_pi(a, p);
+        let r = sse::_mm_loadh_pi(a, p as *const _);
         assert_eq!(r, f32x4::new(1.0, 2.0, 5.0, 6.0));
     }
 
     #[simd_test = "sse"]
+    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_loadl_pi() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let x: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
         let p = x[..].as_ptr();
-        let r = sse::_mm_loadl_pi(a, p);
+        let r = sse::_mm_loadl_pi(a, p as *const _);
         assert_eq!(r, f32x4::new(5.0, 6.0, 3.0, 4.0));
     }
 
@@ -3049,10 +3049,11 @@ mod tests {
     }
 
     #[simd_test = "sse"]
+    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_storeh_pi() {
         let mut vals = [0.0f32; 8];
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
-        sse::_mm_storeh_pi(vals.as_mut_ptr() as *mut f32 as *mut u64, a);
+        sse::_mm_storeh_pi(vals.as_mut_ptr() as *mut _, a);
 
         assert_eq!(vals[0], 3.0);
         assert_eq!(vals[1], 4.0);
@@ -3060,10 +3061,11 @@ mod tests {
     }
 
     #[simd_test = "sse"]
+    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_storel_pi() {
         let mut vals = [0.0f32; 8];
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
-        sse::_mm_storel_pi(vals.as_mut_ptr() as *mut f32 as *mut u64, a);
+        sse::_mm_storel_pi(vals.as_mut_ptr() as *mut _, a);
 
         assert_eq!(vals[0], 1.0);
         assert_eq!(vals[1], 2.0);
@@ -3295,11 +3297,15 @@ mod tests {
         }
     }
 
-    #[simd_test = "sse"]
+    #[simd_test = "sse,mmx"]
+    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_stream_pi() {
-        let a: i64 = 7;
-        let mut mem = ::std::boxed::Box::<i64>::new(-1);
-        sse::_mm_stream_pi(&mut *mem as *mut i64, a);
+        use std::mem;
+        use v64::*;
+
+        let a = mem::transmute(i8x8::new(0, 0, 0, 0, 0, 0, 0, 7));
+        let mut mem = ::std::boxed::Box::<__m64>::new(mem::transmute(i8x8::splat(1)));
+        sse::_mm_stream_pi(&mut *mem as *mut _ as *mut _, a);
         assert_eq!(a, *mem);
     }
 }

@@ -1,0 +1,18 @@
+[package]
+name = "stdsimd-verify"
+version = "0.1.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+
+[dependencies]
+proc-macro2 = { version = "0.1", features = ["unstable"] }
+quote = { git = 'https://github.com/dtolnay/quote' }
+syn = { git = 'https://github.com/dtolnay/syn', features =["full"] }
+
+[lib]
+proc-macro = true
+test = false
+
+[dev-dependencies]
+serde = "1.0"
+serde_derive = "1.0"
+serde-xml-rs = "0.2"

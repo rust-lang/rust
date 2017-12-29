@@ -607,69 +607,69 @@ pub unsafe fn _mm256_xor_ps(a: f32x8, b: f32x8) -> f32x8 {
 }
 
 /// Equal (ordered, non-signaling)
-pub const _CMP_EQ_OQ: u8 = 0x00;
+pub const _CMP_EQ_OQ: i32 = 0x00;
 /// Less-than (ordered, signaling)
-pub const _CMP_LT_OS: u8 = 0x01;
+pub const _CMP_LT_OS: i32 = 0x01;
 /// Less-than-or-equal (ordered, signaling)
-pub const _CMP_LE_OS: u8 = 0x02;
+pub const _CMP_LE_OS: i32 = 0x02;
 /// Unordered (non-signaling)
-pub const _CMP_UNORD_Q: u8 = 0x03;
+pub const _CMP_UNORD_Q: i32 = 0x03;
 /// Not-equal (unordered, non-signaling)
-pub const _CMP_NEQ_UQ: u8 = 0x04;
+pub const _CMP_NEQ_UQ: i32 = 0x04;
 /// Not-less-than (unordered, signaling)
-pub const _CMP_NLT_US: u8 = 0x05;
+pub const _CMP_NLT_US: i32 = 0x05;
 /// Not-less-than-or-equal (unordered, signaling)
-pub const _CMP_NLE_US: u8 = 0x06;
+pub const _CMP_NLE_US: i32 = 0x06;
 /// Ordered (non-signaling)
-pub const _CMP_ORD_Q: u8 = 0x07;
+pub const _CMP_ORD_Q: i32 = 0x07;
 /// Equal (unordered, non-signaling)
-pub const _CMP_EQ_UQ: u8 = 0x08;
+pub const _CMP_EQ_UQ: i32 = 0x08;
 /// Not-greater-than-or-equal (unordered, signaling)
-pub const _CMP_NGE_US: u8 = 0x09;
+pub const _CMP_NGE_US: i32 = 0x09;
 /// Not-greater-than (unordered, signaling)
-pub const _CMP_NGT_US: u8 = 0x0a;
+pub const _CMP_NGT_US: i32 = 0x0a;
 /// False (ordered, non-signaling)
-pub const _CMP_FALSE_OQ: u8 = 0x0b;
+pub const _CMP_FALSE_OQ: i32 = 0x0b;
 /// Not-equal (ordered, non-signaling)
-pub const _CMP_NEQ_OQ: u8 = 0x0c;
+pub const _CMP_NEQ_OQ: i32 = 0x0c;
 /// Greater-than-or-equal (ordered, signaling)
-pub const _CMP_GE_OS: u8 = 0x0d;
+pub const _CMP_GE_OS: i32 = 0x0d;
 /// Greater-than (ordered, signaling)
-pub const _CMP_GT_OS: u8 = 0x0e;
+pub const _CMP_GT_OS: i32 = 0x0e;
 /// True (unordered, non-signaling)
-pub const _CMP_TRUE_UQ: u8 = 0x0f;
+pub const _CMP_TRUE_UQ: i32 = 0x0f;
 /// Equal (ordered, signaling)
-pub const _CMP_EQ_OS: u8 = 0x10;
+pub const _CMP_EQ_OS: i32 = 0x10;
 /// Less-than (ordered, non-signaling)
-pub const _CMP_LT_OQ: u8 = 0x11;
+pub const _CMP_LT_OQ: i32 = 0x11;
 /// Less-than-or-equal (ordered, non-signaling)
-pub const _CMP_LE_OQ: u8 = 0x12;
+pub const _CMP_LE_OQ: i32 = 0x12;
 /// Unordered (signaling)
-pub const _CMP_UNORD_S: u8 = 0x13;
+pub const _CMP_UNORD_S: i32 = 0x13;
 /// Not-equal (unordered, signaling)
-pub const _CMP_NEQ_US: u8 = 0x14;
+pub const _CMP_NEQ_US: i32 = 0x14;
 /// Not-less-than (unordered, non-signaling)
-pub const _CMP_NLT_UQ: u8 = 0x15;
+pub const _CMP_NLT_UQ: i32 = 0x15;
 /// Not-less-than-or-equal (unordered, non-signaling)
-pub const _CMP_NLE_UQ: u8 = 0x16;
+pub const _CMP_NLE_UQ: i32 = 0x16;
 /// Ordered (signaling)
-pub const _CMP_ORD_S: u8 = 0x17;
+pub const _CMP_ORD_S: i32 = 0x17;
 /// Equal (unordered, signaling)
-pub const _CMP_EQ_US: u8 = 0x18;
+pub const _CMP_EQ_US: i32 = 0x18;
 /// Not-greater-than-or-equal (unordered, non-signaling)
-pub const _CMP_NGE_UQ: u8 = 0x19;
+pub const _CMP_NGE_UQ: i32 = 0x19;
 /// Not-greater-than (unordered, non-signaling)
-pub const _CMP_NGT_UQ: u8 = 0x1a;
+pub const _CMP_NGT_UQ: i32 = 0x1a;
 /// False (ordered, signaling)
-pub const _CMP_FALSE_OS: u8 = 0x1b;
+pub const _CMP_FALSE_OS: i32 = 0x1b;
 /// Not-equal (ordered, signaling)
-pub const _CMP_NEQ_OS: u8 = 0x1c;
+pub const _CMP_NEQ_OS: i32 = 0x1c;
 /// Greater-than-or-equal (ordered, non-signaling)
-pub const _CMP_GE_OQ: u8 = 0x1d;
+pub const _CMP_GE_OQ: i32 = 0x1d;
 /// Greater-than (ordered, non-signaling)
-pub const _CMP_GT_OQ: u8 = 0x1e;
+pub const _CMP_GT_OQ: i32 = 0x1e;
 /// True (unordered, signaling)
-pub const _CMP_TRUE_US: u8 = 0x1f;
+pub const _CMP_TRUE_US: i32 = 0x1f;
 
 /// Compare packed double-precision (64-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
@@ -677,7 +677,7 @@ pub const _CMP_TRUE_US: u8 = 0x1f;
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
 #[cfg_attr(test, assert_instr(vcmpeqpd, imm8 = 0))] // TODO Validate vcmppd
-pub unsafe fn _mm_cmp_pd(a: f64x2, b: f64x2, imm8: u8) -> f64x2 {
+pub unsafe fn _mm_cmp_pd(a: f64x2, b: f64x2, imm8: i32) -> f64x2 {
     macro_rules! call {
         ($imm8:expr) => { vcmppd(a, b, $imm8) }
     }
@@ -690,7 +690,7 @@ pub unsafe fn _mm_cmp_pd(a: f64x2, b: f64x2, imm8: u8) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vcmpeqpd, imm8 = 0))] // TODO Validate vcmppd
-pub unsafe fn _mm256_cmp_pd(a: f64x4, b: f64x4, imm8: u8) -> f64x4 {
+pub unsafe fn _mm256_cmp_pd(a: f64x4, b: f64x4, imm8: i32) -> f64x4 {
     macro_rules! call {
         ($imm8:expr) => { vcmppd256(a, b, $imm8) }
     }
@@ -703,7 +703,7 @@ pub unsafe fn _mm256_cmp_pd(a: f64x4, b: f64x4, imm8: u8) -> f64x4 {
 #[inline(always)]
 #[target_feature = "+avx,+sse"]
 #[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
-pub unsafe fn _mm_cmp_ps(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
+pub unsafe fn _mm_cmp_ps(a: f32x4, b: f32x4, imm8: i32) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => { vcmpps(a, b, $imm8) }
     }
@@ -716,7 +716,7 @@ pub unsafe fn _mm_cmp_ps(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
-pub unsafe fn _mm256_cmp_ps(a: f32x8, b: f32x8, imm8: u8) -> f32x8 {
+pub unsafe fn _mm256_cmp_ps(a: f32x8, b: f32x8, imm8: i32) -> f32x8 {
     macro_rules! call {
         ($imm8:expr) => { vcmpps256(a, b, $imm8) }
     }
@@ -731,7 +731,7 @@ pub unsafe fn _mm256_cmp_ps(a: f32x8, b: f32x8, imm8: u8) -> f32x8 {
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
 #[cfg_attr(test, assert_instr(vcmpeqsd, imm8 = 0))] // TODO Validate vcmpsd
-pub unsafe fn _mm_cmp_sd(a: f64x2, b: f64x2, imm8: u8) -> f64x2 {
+pub unsafe fn _mm_cmp_sd(a: f64x2, b: f64x2, imm8: i32) -> f64x2 {
     macro_rules! call {
         ($imm8:expr) => { vcmpsd(a, b, $imm8) }
     }
@@ -746,7 +746,7 @@ pub unsafe fn _mm_cmp_sd(a: f64x2, b: f64x2, imm8: u8) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+avx,+sse"]
 #[cfg_attr(test, assert_instr(vcmpeqss, imm8 = 0))] // TODO Validate vcmpss
-pub unsafe fn _mm_cmp_ss(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
+pub unsafe fn _mm_cmp_ss(a: f32x4, b: f32x4, imm8: i32) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => { vcmpss(a, b, $imm8) }
     }
@@ -860,48 +860,6 @@ pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
         _ => simd_shuffle2(i64x4::from(a), b, [2, 3]),
     };
     __m128i::from(dst)
-}
-
-/// Extract an 8-bit integer from `a`, selected with `imm8`. Returns a 32-bit
-/// integer containing the zero-extended integer data.
-///
-/// See [LLVM commit D20468][https://reviews.llvm.org/D20468].
-#[inline(always)]
-#[target_feature = "+avx"]
-// This intrinsic has no corresponding instruction.
-pub unsafe fn _mm256_extract_epi8(a: i8x32, imm8: i32) -> i32 {
-    let imm8 = (imm8 & 31) as u32;
-    (a.extract_unchecked(imm8) as i32) & 0xFF
-}
-
-/// Extract a 16-bit integer from `a`, selected with `imm8`. Returns a 32-bit
-/// integer containing the zero-extended integer data.
-///
-/// See [LLVM commit D20468][https://reviews.llvm.org/D20468].
-#[inline(always)]
-#[target_feature = "+avx"]
-// This intrinsic has no corresponding instruction.
-pub unsafe fn _mm256_extract_epi16(a: i16x16, imm8: i32) -> i32 {
-    let imm8 = (imm8 & 15) as u32;
-    (a.extract_unchecked(imm8) as i32) & 0xFFFF
-}
-
-/// Extract a 32-bit integer from `a`, selected with `imm8`.
-#[inline(always)]
-#[target_feature = "+avx"]
-// This intrinsic has no corresponding instruction.
-pub unsafe fn _mm256_extract_epi32(a: i32x8, imm8: i32) -> i32 {
-    let imm8 = (imm8 & 7) as u32;
-    a.extract_unchecked(imm8)
-}
-
-/// Extract a 64-bit integer from `a`, selected with `imm8`.
-#[inline(always)]
-#[target_feature = "+avx"]
-// This intrinsic has no corresponding instruction.
-pub unsafe fn _mm256_extract_epi64(a: i64x4, imm8: i32) -> i64 {
-    let imm8 = (imm8 & 3) as u32;
-    a.extract_unchecked(imm8)
 }
 
 /// Zero the contents of all XMM or YMM registers.
@@ -1138,7 +1096,7 @@ pub unsafe fn _mm_permute_pd(a: f64x2, imm8: i32) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x5))]
-pub unsafe fn _mm256_permute2f128_ps(a: f32x8, b: f32x8, imm8: i8) -> f32x8 {
+pub unsafe fn _mm256_permute2f128_ps(a: f32x8, b: f32x8, imm8: i32) -> f32x8 {
     macro_rules! call {
         ($imm8:expr) => { vperm2f128ps256(a, b, $imm8) }
     }
@@ -1150,7 +1108,7 @@ pub unsafe fn _mm256_permute2f128_ps(a: f32x8, b: f32x8, imm8: i8) -> f32x8 {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x31))]
-pub unsafe fn _mm256_permute2f128_pd(a: f64x4, b: f64x4, imm8: i8) -> f64x4 {
+pub unsafe fn _mm256_permute2f128_pd(a: f64x4, b: f64x4, imm8: i32) -> f64x4 {
     macro_rules! call {
         ($imm8:expr) => { vperm2f128pd256(a, b, $imm8) }
     }
@@ -1163,7 +1121,7 @@ pub unsafe fn _mm256_permute2f128_pd(a: f64x4, b: f64x4, imm8: i8) -> f64x4 {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x31))]
 pub unsafe fn _mm256_permute2f128_si256(
-    a: i32x8, b: i32x8, imm8: i8
+    a: i32x8, b: i32x8, imm8: i32
 ) -> i32x8 {
     macro_rules! call {
         ($imm8:expr) => { vperm2f128si256(a, b, $imm8) }
@@ -3144,47 +3102,6 @@ mod tests {
         let r = avx::_mm256_extractf128_si256(__m256i::from(a), 0);
         let e = i64x2::new(4, 3);
         assert_eq!(r, __m128i::from(e));
-    }
-
-    #[simd_test = "avx"]
-    unsafe fn _mm256_extract_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = i8x32::new(
-            -1, 1, 2, 3, 4, 5, 6, 7,
-            8, 9, 10, 11, 12, 13, 14, 15,
-            16, 17, 18, 19, 20, 21, 22, 23,
-            24, 25, 26, 27, 28, 29, 30, 31
-        );
-        let r1 = avx::_mm256_extract_epi8(a, 0);
-        let r2 = avx::_mm256_extract_epi8(a, 35);
-        assert_eq!(r1, 0xFF);
-        assert_eq!(r2, 3);
-    }
-
-    #[simd_test = "avx"]
-    unsafe fn _mm256_extract_epi16() {
-        let a =
-            i16x16::new(-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-        let r1 = avx::_mm256_extract_epi16(a, 0);
-        let r2 = avx::_mm256_extract_epi16(a, 19);
-        assert_eq!(r1, 0xFFFF);
-        assert_eq!(r2, 3);
-    }
-
-    #[simd_test = "avx"]
-    unsafe fn _mm256_extract_epi32() {
-        let a = i32x8::new(-1, 1, 2, 3, 4, 5, 6, 7);
-        let r1 = avx::_mm256_extract_epi32(a, 0);
-        let r2 = avx::_mm256_extract_epi32(a, 11);
-        assert_eq!(r1, -1);
-        assert_eq!(r2, 3);
-    }
-
-    #[simd_test = "avx"]
-    unsafe fn _mm256_extract_epi64() {
-        let a = i64x4::new(0, 1, 2, 3);
-        let r = avx::_mm256_extract_epi64(a, 3);
-        assert_eq!(r, 3);
     }
 
     #[simd_test = "avx"]

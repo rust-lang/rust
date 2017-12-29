@@ -12,6 +12,7 @@ categories = ["hardware-support"]
 license = "MIT/Apache-2.0"
 
 [workspace]
+members = ["stdsimd-verify"]
 
 [badges]
 travis-ci = { repository = "BurntSushi/stdsimd" }

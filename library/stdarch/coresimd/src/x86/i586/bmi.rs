@@ -27,8 +27,8 @@ pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
 #[cfg(not(target_arch = "x86"))]
-pub unsafe fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
-    _bextr2_u64(a, (start & 0xff_u64) | ((len & 0xff_u64) << 8_u64))
+pub unsafe fn _bextr_u64(a: u64, start: u32, len: u32) -> u64 {
+    _bextr2_u64(a, ((start & 0xff) | ((len & 0xff) << 8)) as u64)
 }
 
 /// Extracts bits of `a` specified by `control` into
@@ -133,16 +133,6 @@ pub unsafe fn _blsr_u64(x: u64) -> u64 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(tzcnt))]
-pub unsafe fn _tzcnt_u16(x: u16) -> u16 {
-    x.trailing_zeros() as u16
-}
-
-/// Counts the number of trailing least significant zero bits.
-///
-/// When the source operand is 0, it returns its size in bits.
-#[inline(always)]
-#[target_feature = "+bmi"]
-#[cfg_attr(test, assert_instr(tzcnt))]
 pub unsafe fn _tzcnt_u32(x: u32) -> u32 {
     x.trailing_zeros()
 }
@@ -163,8 +153,8 @@ pub unsafe fn _tzcnt_u64(x: u64) -> u64 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(tzcnt))]
-pub unsafe fn _mm_tzcnt_u32(x: u32) -> u32 {
-    x.trailing_zeros()
+pub unsafe fn _mm_tzcnt_32(x: u32) -> i32 {
+    x.trailing_zeros() as i32
 }
 
 /// Counts the number of trailing least significant zero bits.
@@ -173,8 +163,8 @@ pub unsafe fn _mm_tzcnt_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(tzcnt))]
-pub unsafe fn _mm_tzcnt_u64(x: u64) -> u64 {
-    x.trailing_zeros() as u64
+pub unsafe fn _mm_tzcnt_64(x: u64) -> i64 {
+    x.trailing_zeros() as i64
 }
 
 #[allow(dead_code)]
@@ -288,13 +278,6 @@ mod tests {
         // TODO: test the behavior when the input is 0
         let r = bmi::_blsr_u64(0b0011_0000u64);
         assert_eq!(r, 0b0010_0000u64);
-    }
-
-    #[simd_test = "bmi"]
-    unsafe fn _tzcnt_u16() {
-        assert_eq!(bmi::_tzcnt_u16(0b0000_0001u16), 0u16);
-        assert_eq!(bmi::_tzcnt_u16(0b0000_0000u16), 16u16);
-        assert_eq!(bmi::_tzcnt_u16(0b1001_0000u16), 4u16);
     }
 
     #[simd_test = "bmi"]

@@ -47,7 +47,7 @@ pub unsafe fn _mm_shuffle_pi8(a: u8x8, b: u8x8) -> u8x8 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(palignr, n = 15))]
-pub unsafe fn _mm_alignr_pi8(a: u8x8, b: u8x8, n: u8) -> u8x8 {
+pub unsafe fn _mm_alignr_pi8(a: u8x8, b: u8x8, n: i32) -> u8x8 {
     macro_rules! call {
         ($imm8:expr) => {
             mem::transmute(palignrb(mem::transmute(a), mem::transmute(b), $imm8))

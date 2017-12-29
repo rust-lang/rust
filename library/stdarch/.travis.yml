@@ -24,6 +24,8 @@ matrix:
     - env: DOCUMENTATION
       install: true
       script: ci/dox.sh
+    - script: cargo test --manifest-path stdsimd-verify/Cargo.toml
+      install: true
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
       script: |
         cargo install rustfmt-nightly --force
@@ -40,6 +42,8 @@ install:
 
 script:
   - cargo generate-lockfile
+  # FIXME (travis-ci/travis-ci#8920) shouldn't be necessary...
+  - python -c "import fcntl; fcntl.fcntl(1, fcntl.F_SETFL, 0)"
   - ci/run-docker.sh $TARGET $FEATURES
 
 notifications:

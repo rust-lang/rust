@@ -40,10 +40,10 @@ pub fn assert_instr(
     };
     let name = &func.ident;
     let assert_name = syn::Ident::from(
-        &format!("assert_{}_{}", name.sym.as_str(), instr.sym.as_str())[..],
+        &format!("assert_{}_{}", name.as_ref(), instr.as_ref())[..],
     );
     let shim_name =
-        syn::Ident::from(&format!("{}_shim", name.sym.as_str())[..]);
+        syn::Ident::from(format!("{}_shim", name.as_ref()));
     let (to_test, test_name) = if invoc.args.len() == 0 {
         (TokenStream::empty(), &func.ident)
     } else {
@@ -59,7 +59,7 @@ pub fn assert_instr(
                 syn::Pat::Ident(ref i) => &i.ident,
                 _ => panic!("must have bare arguments"),
             };
-            match invoc.args.iter().find(|a| a.0 == ident.sym.as_str()) {
+            match invoc.args.iter().find(|a| a.0 == ident.as_ref()) {
                 Some(&(_, ref tts)) => {
                     input_vals.push(quote! { #tts });
                 }
@@ -78,8 +78,7 @@ pub fn assert_instr(
                     .get(0)
                     .item()
                     .ident
-                    .sym
-                    .as_str()
+                    .as_ref()
                     .starts_with("target")
             })
             .collect::<Vec<_>>();

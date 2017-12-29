@@ -36,7 +36,7 @@ extern "C" {
 #[inline(always)]
 #[target_feature = "+xsave"]
 #[cfg_attr(test, assert_instr(xsave))]
-pub unsafe fn _xsave(mem_addr: *mut u8, save_mask: u64) -> () {
+pub unsafe fn _xsave(mem_addr: *mut u8, save_mask: u64) {
     xsave(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
@@ -49,7 +49,7 @@ pub unsafe fn _xsave(mem_addr: *mut u8, save_mask: u64) -> () {
 #[inline(always)]
 #[target_feature = "+xsave"]
 #[cfg_attr(test, assert_instr(xrstor))]
-pub unsafe fn _xrstor(mem_addr: *const u8, rs_mask: u64) -> () {
+pub unsafe fn _xrstor(mem_addr: *const u8, rs_mask: u64) {
     xrstor(mem_addr, (rs_mask >> 32) as u32, rs_mask as u32);
 }
 
@@ -65,7 +65,7 @@ const _XCR_XFEATURE_ENABLED_MASK: u32 = 0;
 #[inline(always)]
 #[target_feature = "+xsave"]
 #[cfg_attr(test, assert_instr(xsetbv))]
-pub unsafe fn _xsetbv(a: u32, val: u64) -> () {
+pub unsafe fn _xsetbv(a: u32, val: u64) {
     xsetbv(a, (val >> 32) as u32, val as u32);
 }
 
@@ -88,7 +88,7 @@ pub unsafe fn _xgetbv(xcr_no: u32) -> u64 {
 #[inline(always)]
 #[target_feature = "+xsave,+xsaveopt"]
 #[cfg_attr(test, assert_instr(xsaveopt))]
-pub unsafe fn _xsaveopt(mem_addr: *mut u8, save_mask: u64) -> () {
+pub unsafe fn _xsaveopt(mem_addr: *mut u8, save_mask: u64) {
     xsaveopt(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
@@ -101,7 +101,7 @@ pub unsafe fn _xsaveopt(mem_addr: *mut u8, save_mask: u64) -> () {
 #[inline(always)]
 #[target_feature = "+xsave,+xsavec"]
 #[cfg_attr(test, assert_instr(xsavec))]
-pub unsafe fn _xsavec(mem_addr: *mut u8, save_mask: u64) -> () {
+pub unsafe fn _xsavec(mem_addr: *mut u8, save_mask: u64) {
     xsavec(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
@@ -115,7 +115,7 @@ pub unsafe fn _xsavec(mem_addr: *mut u8, save_mask: u64) -> () {
 #[inline(always)]
 #[target_feature = "+xsave,+xsaves"]
 #[cfg_attr(test, assert_instr(xsaves))]
-pub unsafe fn _xsaves(mem_addr: *mut u8, save_mask: u64) -> () {
+pub unsafe fn _xsaves(mem_addr: *mut u8, save_mask: u64) {
     xsaves(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
@@ -131,7 +131,7 @@ pub unsafe fn _xsaves(mem_addr: *mut u8, save_mask: u64) -> () {
 #[inline(always)]
 #[target_feature = "+xsave,+xsaves"]
 #[cfg_attr(test, assert_instr(xrstors))]
-pub unsafe fn _xrstors(mem_addr: *const u8, rs_mask: u64) -> () {
+pub unsafe fn _xrstors(mem_addr: *const u8, rs_mask: u64) {
     xrstors(mem_addr, (rs_mask >> 32) as u32, rs_mask as u32);
 }
 

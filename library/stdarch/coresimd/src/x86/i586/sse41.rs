@@ -61,7 +61,7 @@ pub unsafe fn _mm_blendv_epi8(a: i8x16, b: i8x16, mask: i8x16) -> i8x16 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pblendw, imm8 = 0xF0))]
-pub unsafe fn _mm_blend_epi16(a: i16x8, b: i16x8, imm8: u8) -> i16x8 {
+pub unsafe fn _mm_blend_epi16(a: i16x8, b: i16x8, imm8: i32) -> i16x8 {
     macro_rules! call {
         ($imm8:expr) => { pblendw(a, b, $imm8) }
     }
@@ -91,7 +91,7 @@ pub unsafe fn _mm_blendv_ps(a: f32x4, b: f32x4, mask: f32x4) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(blendpd, imm2 = 0b10))]
-pub unsafe fn _mm_blend_pd(a: f64x2, b: f64x2, imm2: u8) -> f64x2 {
+pub unsafe fn _mm_blend_pd(a: f64x2, b: f64x2, imm2: i32) -> f64x2 {
     macro_rules! call {
         ($imm2:expr) => { blendpd(a, b, $imm2) }
     }
@@ -103,7 +103,7 @@ pub unsafe fn _mm_blend_pd(a: f64x2, b: f64x2, imm2: u8) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(blendps, imm4 = 0b0101))]
-pub unsafe fn _mm_blend_ps(a: f32x4, b: f32x4, imm4: u8) -> f32x4 {
+pub unsafe fn _mm_blend_ps(a: f32x4, b: f32x4, imm4: i32) -> f32x4 {
     macro_rules! call {
         ($imm4:expr) => { blendps(a, b, $imm4) }
     }
@@ -116,7 +116,7 @@ pub unsafe fn _mm_blend_ps(a: f32x4, b: f32x4, imm4: u8) -> f32x4 {
 #[target_feature = "+sse4.1"]
 // TODO: Add test for Windows
 #[cfg_attr(all(test, not(windows)), assert_instr(extractps, imm8 = 0))]
-pub unsafe fn _mm_extract_ps(a: f32x4, imm8: u8) -> i32 {
+pub unsafe fn _mm_extract_ps(a: f32x4, imm8: i32) -> i32 {
     mem::transmute(a.extract(imm8 as u32 & 0b11))
 }
 
@@ -167,7 +167,7 @@ pub unsafe fn _mm_extract_epi32(a: i32x4, imm8: i32) -> i32 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(insertps, imm8 = 0b1010))]
-pub unsafe fn _mm_insert_ps(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
+pub unsafe fn _mm_insert_ps(a: f32x4, b: f32x4, imm8: i32) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => { insertps(a, b, $imm8) }
     }
@@ -179,7 +179,7 @@ pub unsafe fn _mm_insert_ps(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pinsrb, imm8 = 0))]
-pub unsafe fn _mm_insert_epi8(a: i8x16, i: i8, imm8: u8) -> i8x16 {
+pub unsafe fn _mm_insert_epi8(a: i8x16, i: i8, imm8: i32) -> i8x16 {
     a.replace((imm8 & 0b1111) as u32, i)
 }
 
@@ -188,7 +188,7 @@ pub unsafe fn _mm_insert_epi8(a: i8x16, i: i8, imm8: u8) -> i8x16 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(pinsrd, imm8 = 0))]
-pub unsafe fn _mm_insert_epi32(a: i32x4, i: i32, imm8: u8) -> i32x4 {
+pub unsafe fn _mm_insert_epi32(a: i32x4, i: i32, imm8: i32) -> i32x4 {
     a.replace((imm8 & 0b11) as u32, i)
 }
 
@@ -391,7 +391,7 @@ pub unsafe fn _mm_cvtepu32_epi64(a: u32x4) -> i64x2 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(dppd, imm8 = 0))]
-pub unsafe fn _mm_dp_pd(a: f64x2, b: f64x2, imm8: u8) -> f64x2 {
+pub unsafe fn _mm_dp_pd(a: f64x2, b: f64x2, imm8: i32) -> f64x2 {
     macro_rules! call {
         ($imm8:expr) => { dppd(a, b, $imm8) }
     }
@@ -408,7 +408,7 @@ pub unsafe fn _mm_dp_pd(a: f64x2, b: f64x2, imm8: u8) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(dpps, imm8 = 0))]
-pub unsafe fn _mm_dp_ps(a: f32x4, b: f32x4, imm8: u8) -> f32x4 {
+pub unsafe fn _mm_dp_ps(a: f32x4, b: f32x4, imm8: i32) -> f32x4 {
     macro_rules! call {
         ($imm8:expr) => { dpps(a, b, $imm8) }
     }
@@ -705,7 +705,7 @@ pub unsafe fn _mm_mullo_epi32(a: i32x4, b: i32x4) -> i32x4 {
 #[inline(always)]
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(mpsadbw, imm8 = 0))]
-pub unsafe fn _mm_mpsadbw_epu8(a: u8x16, b: u8x16, imm8: u8) -> u16x8 {
+pub unsafe fn _mm_mpsadbw_epu8(a: u8x16, b: u8x16, imm8: i32) -> u16x8 {
     macro_rules! call {
         ($imm8:expr) => { mpsadbw(a, b, $imm8) }
     }

@@ -22,10 +22,10 @@ use stdsimd_test::assert_instr;
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(imul))]
 #[cfg_attr(all(test, target_arch = "x86"), assert_instr(mulx))]
 #[target_feature = "+bmi2"]
-pub unsafe fn _mulx_u32(a: u32, b: u32) -> (u32, u32) {
+pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
     let result: u64 = (a as u64) * (b as u64);
-    let hi = (result >> 32) as u32;
-    (result as u32, hi)
+    *hi = (result >> 32) as u32;
+    result as u32
 }
 
 /// Unsigned multiply without affecting flags.
@@ -36,10 +36,10 @@ pub unsafe fn _mulx_u32(a: u32, b: u32) -> (u32, u32) {
 #[cfg_attr(test, assert_instr(mulx))]
 #[target_feature = "+bmi2"]
 #[cfg(not(target_arch = "x86"))] // calls an intrinsic
-pub unsafe fn _mulx_u64(a: u64, b: u64) -> (u64, u64) {
+pub unsafe fn _mulx_u64(a: u64, b: u64, hi: &mut u64) -> u64 {
     let result: u128 = (a as u128) * (b as u128);
-    let hi = (result >> 64) as u64;
-    (result as u64, hi)
+    *hi = (result >> 64) as u64;
+    result as u64
 }
 
 /// Zero higher bits of `a` >= `index`.
@@ -55,8 +55,8 @@ pub unsafe fn _bzhi_u32(a: u32, index: u32) -> u32 {
 #[target_feature = "+bmi2"]
 #[cfg_attr(test, assert_instr(bzhi))]
 #[cfg(not(target_arch = "x86"))]
-pub unsafe fn _bzhi_u64(a: u64, index: u64) -> u64 {
-    x86_bmi2_bzhi_64(a, index)
+pub unsafe fn _bzhi_u64(a: u64, index: u32) -> u64 {
+    x86_bmi2_bzhi_64(a, index as u64)
 }
 
 /// Scatter contiguous low order bits of `a` to the result at the positions
@@ -196,7 +196,8 @@ mod tests {
     unsafe fn _mulx_u32() {
         let a: u32 = 4_294_967_200;
         let b: u32 = 2;
-        let (lo, hi): (u32, u32) = bmi2::_mulx_u32(a, b);
+        let mut hi = 0;
+        let lo = bmi2::_mulx_u32(a, b, &mut hi);
         /*
 result = 8589934400
        = 0b0001_1111_1111_1111_1111_1111_1111_0100_0000u64
@@ -212,7 +213,8 @@ result = 8589934400
     unsafe fn _mulx_u64() {
         let a: u64 = 9_223_372_036_854_775_800;
         let b: u64 = 100;
-        let (lo, hi): (u64, u64) = bmi2::_mulx_u64(a, b);
+        let mut hi = 0;
+        let lo = bmi2::_mulx_u64(a, b, &mut hi);
         /*
 result = 922337203685477580000 =
 0b00110001_1111111111111111_1111111111111111_1111111111111111_1111110011100000

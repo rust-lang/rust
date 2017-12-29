@@ -2933,9 +2933,9 @@ mod tests {
         let b =
             i8x16::new(15, 14, 2, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
         let r = sse2::_mm_cmpeq_epi8(a, b);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         assert_eq!(
             r,
-            #[cfg_attr(rustfmt, rustfmt_skip)]
             i8x16::new(
                 0, 0, 0xFFu8 as i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
             )
@@ -3219,9 +3219,9 @@ mod tests {
         let a = i16x8::new(0x80, -0x81, 0, 0, 0, 0, 0, 0);
         let b = i16x8::new(0, 0, 0, 0, 0, 0, -0x81, 0x80);
         let r = sse2::_mm_packs_epi16(a, b);
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         assert_eq!(
             r,
-            #[cfg_attr(rustfmt, rustfmt_skip)]
             i8x16::new(
                 0x7F, -0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0x80, 0x7F
             )
@@ -3268,7 +3268,8 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn _mm_movemask_epi8() {
-        let a = i8x16::from(#[cfg_attr(rustfmt, rustfmt_skip)] u8x16::new(
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let a = i8x16::from(u8x16::new(
             0b1000_0000, 0b0, 0b1000_0000, 0b01, 0b0101, 0b1111_0000, 0, 0,
                 0, 0, 0b1111_0000, 0b0101, 0b01, 0b1000_0000, 0b0, 0b1000_0000, ));
         let r = sse2::_mm_movemask_epi8(a);

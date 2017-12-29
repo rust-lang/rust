@@ -44,16 +44,16 @@ pub unsafe fn _lzcnt_u64(x: u64) -> u64 {
 #[inline(always)]
 #[target_feature = "+popcnt"]
 #[cfg_attr(test, assert_instr(popcnt))]
-pub unsafe fn _popcnt32(x: u32) -> u32 {
-    x.count_ones()
+pub unsafe fn _popcnt32(x: i32) -> i32 {
+    x.count_ones() as i32
 }
 
 /// Counts the bits that are set.
 #[inline(always)]
 #[target_feature = "+popcnt"]
 #[cfg_attr(test, assert_instr(popcnt))]
-pub unsafe fn _popcnt64(x: u64) -> u64 {
-    x.count_ones() as u64
+pub unsafe fn _popcnt64(x: i64) -> i32 {
+    x.count_ones() as i32
 }
 
 #[cfg(test)]
@@ -64,21 +64,21 @@ mod tests {
 
     #[simd_test = "lzcnt"]
     unsafe fn _lzcnt_u32() {
-        assert_eq!(abm::_lzcnt_u32(0b0101_1010u32), 25u32);
+        assert_eq!(abm::_lzcnt_u32(0b0101_1010), 25);
     }
 
     #[simd_test = "lzcnt"]
     unsafe fn _lzcnt_u64() {
-        assert_eq!(abm::_lzcnt_u64(0b0101_1010u64), 57u64);
+        assert_eq!(abm::_lzcnt_u64(0b0101_1010), 57);
     }
 
     #[simd_test = "popcnt"]
     unsafe fn _popcnt32() {
-        assert_eq!(abm::_popcnt32(0b0101_1010u32), 4);
+        assert_eq!(abm::_popcnt32(0b0101_1010), 4);
     }
 
     #[simd_test = "popcnt"]
     unsafe fn _popcnt64() {
-        assert_eq!(abm::_popcnt64(0b0101_1010u64), 4);
+        assert_eq!(abm::_popcnt64(0b0101_1010), 4);
     }
 }

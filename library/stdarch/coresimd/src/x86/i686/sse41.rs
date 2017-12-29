@@ -15,31 +15,6 @@ extern "C" {
     fn ptestnzc(a: i64x2, mask: i64x2) -> i32;
 }
 
-/// Extract an 64-bit integer from `a` selected with `imm8`
-#[inline(always)]
-#[target_feature = "+sse4.1"]
-// TODO: Add test for Windows
-#[cfg_attr(all(test, not(windows), target_arch = "x86_64"),
-           assert_instr(pextrq, imm8 = 1))]
-// On x86 this emits 2 pextrd instructions
-#[cfg_attr(all(test, not(windows), target_arch = "x86"),
-           assert_instr(pextrd, imm8 = 1))]
-pub unsafe fn _mm_extract_epi64(a: i64x2, imm8: i32) -> i64 {
-    let imm8 = (imm8 & 1) as u32;
-    a.extract_unchecked(imm8)
-}
-
-/// Return a copy of `a` with the 64-bit integer from `i` inserted at a
-/// location specified by `imm8`.
-#[inline(always)]
-#[target_feature = "+sse4.1"]
-#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(pinsrq, imm8 = 0))]
-// On x86 this emits 2 pinsrd instructions
-#[cfg_attr(all(test, target_arch = "x86"), assert_instr(pinsrd, imm8 = 0))]
-pub unsafe fn _mm_insert_epi64(a: i64x2, i: i64, imm8: u8) -> i64x2 {
-    a.replace((imm8 & 0b1) as u32, i)
-}
-
 /// Tests whether the specified bits in a 128-bit integer vector are all
 /// zeros.
 ///
@@ -164,25 +139,6 @@ mod tests {
     use stdsimd_test::simd_test;
     use x86::i686::sse41;
     use v128::*;
-
-    #[simd_test = "sse4.1"]
-    unsafe fn _mm_extract_epi64() {
-        let a = i64x2::new(0, 1);
-        let r = sse41::_mm_extract_epi64(a, 1);
-        assert_eq!(r, 1);
-        let r = sse41::_mm_extract_epi64(a, 3);
-        assert_eq!(r, 1);
-    }
-
-    #[simd_test = "sse4.1"]
-    unsafe fn _mm_insert_epi64() {
-        let a = i64x2::splat(0);
-        let e = i64x2::splat(0).replace(1, 32);
-        let r = sse41::_mm_insert_epi64(a, 32, 1);
-        assert_eq!(r, e);
-        let r = sse41::_mm_insert_epi64(a, 32, 3);
-        assert_eq!(r, e);
-    }
 
     #[simd_test = "sse4.1"]
     unsafe fn _mm_testz_si128() {

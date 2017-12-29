@@ -22,7 +22,9 @@ echo "FEATURES=${FEATURES}"
 echo "OBJDUMP=${OBJDUMP}"
 
 cargo_test() {
-    cmd="cargo test --all --target=$TARGET --features $FEATURES --verbose $1 -- --nocapture $2"
+    cmd="cargo test --target=$TARGET --features $FEATURES $1"
+    cmd="$cmd -p coresimd -p stdsimd"
+    cmd="$cmd -- $2"
     $cmd
 }
 
