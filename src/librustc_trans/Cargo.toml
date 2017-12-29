@@ -11,7 +11,7 @@ test = false
 
 [dependencies]
 bitflags = "1.0"
-flate2 = "0.2"
+flate2 = "1.0"
 jobserver = "0.1.5"
 log = "0.3"
 num_cpus = "1.0"

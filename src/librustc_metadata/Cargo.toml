@@ -9,7 +9,7 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-flate2 = "0.2"
+flate2 = "1.0"
 log = "0.3"
 proc_macro = { path = "../libproc_macro" }
 rustc = { path = "../librustc" }

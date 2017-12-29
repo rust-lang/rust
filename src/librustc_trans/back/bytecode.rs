@@ -74,7 +74,7 @@ pub fn encode(identifier: &str, bytecode: &[u8]) -> Vec<u8> {
     encoded.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0]);
 
     let before = encoded.len();
-    DeflateEncoder::new(&mut encoded, Compression::Fast)
+    DeflateEncoder::new(&mut encoded, Compression::fast())
         .write_all(bytecode)
         .unwrap();
     let after = encoded.len();
