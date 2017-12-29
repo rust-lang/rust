@@ -4982,8 +4982,6 @@ mod c {
                 "clzdi2.c",
                 "clzsi2.c",
                 "cmpdi2.c",
-                "comparedf2.c",
-                "comparesf2.c",
                 "ctzdi2.c",
                 "ctzsi2.c",
                 "divdc3.c",
