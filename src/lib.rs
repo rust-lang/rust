@@ -1,3 +1,5 @@
+extern crate unicode_xid;
+
 mod text;
 mod tree;
 mod lexer;

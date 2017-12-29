@@ -1,7 +1,10 @@
 use std::fmt;
+use std::ops;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TextUnit(u32);
+pub struct TextUnit(
+    pub(crate) u32
+);
 
 impl TextUnit {
     pub fn len_of_char(c: char) -> TextUnit {
@@ -28,5 +31,31 @@ impl fmt::Display for TextUnit {
 impl From<TextUnit> for u32 {
     fn from(tu: TextUnit) -> u32 {
         tu.0
+    }
+}
+
+impl ops::Add<TextUnit> for TextUnit {
+    type Output = TextUnit;
+    fn add(self, rhs: TextUnit) -> TextUnit {
+        TextUnit(self.0 + rhs.0)
+    }
+}
+
+impl ops::AddAssign<TextUnit> for TextUnit {
+    fn add_assign(&mut self, rhs: TextUnit) {
+        self.0 += rhs.0
+    }
+}
+
+impl ops::Sub<TextUnit> for TextUnit {
+    type Output = TextUnit;
+    fn sub(self, rhs: TextUnit) -> TextUnit {
+        TextUnit(self.0 - rhs.0)
+    }
+}
+
+impl ops::SubAssign<TextUnit> for TextUnit {
+    fn sub_assign(&mut self, rhs: TextUnit) {
+        self.0 -= rhs.0
     }
 }

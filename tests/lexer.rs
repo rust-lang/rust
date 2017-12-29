@@ -41,13 +41,15 @@ fn lexer_test_case(path: &Path) {
         dump_tokens(&tokens)
     };
     let expected = file::get_text(&path.with_extension("txt")).unwrap();
-
-    assert_diff!(
-        expected.as_str(),
-        actual.as_str(),
-        "\n",
-        0
-    )
+    let expected = expected.as_str();
+    let actual = actual.as_str();
+    if expected == actual {
+        return
+    }
+    if expected.trim() == actual.trim() {
+        panic!("Whitespace difference!")
+    }
+    assert_diff!(expected, actual, "\n", 0)
 }
 
 fn tokenize(text: &str) -> Vec<Token> {

@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
+unicode-xid = "0.1.0"
+
 serde = "1.0.26"
 serde_derive = "1.0.26"
 file = "1.1.1"
