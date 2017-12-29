@@ -32,6 +32,17 @@ impl<'s> Ptr<'s> {
         Some(ch)
     }
 
+    pub fn bump_while<F: Fn(char) -> bool>(&mut self, pred: F) {
+        loop {
+            match self.next() {
+                Some(c) if pred(c) => {
+                    self.bump();
+                },
+                _ => return,
+            }
+        }
+    }
+
     fn chars(&self) -> Chars {
         self.text[self.len.0 as usize ..].chars()
     }

@@ -1,6 +1,8 @@
 Grammar(
     syntax_kinds: [
+        "ERROR",
         "IDENT",
+        "UNDERSCORE",
         "WHITESPACE",
     ]
 )
