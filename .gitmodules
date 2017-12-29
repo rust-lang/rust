@@ -21,10 +21,10 @@
 [submodule "src/tools/cargo"]
 	path = src/tools/cargo
 	url = https://github.com/rust-lang/cargo.git
-[submodule "reference"]
+[submodule "src/doc/reference"]
 	path = src/doc/reference
 	url = https://github.com/rust-lang-nursery/reference.git
-[submodule "book"]
+[submodule "src/doc/book"]
 	path = src/doc/book
 	url = https://github.com/rust-lang/book.git
 [submodule "src/tools/rls"]
