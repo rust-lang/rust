@@ -677,7 +677,7 @@ mod tests {
         c.set_position(<usize>::max_value() as u64 + 1);
         assert!(c.write_all(&[1, 2, 3]).is_err());
     }
-    
+
     #[test]
     fn vec_read_exact_past_end() {
         let mut in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
