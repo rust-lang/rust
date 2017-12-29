@@ -155,18 +155,7 @@ pub trait Resolver {
     /// Given suffix ["b","c","d"], creates a HIR path for `[::crate_root]::b::c::d` and resolves
     /// it based on `is_value`.
     fn resolve_str_path(&mut self, span: Span, crate_root: Option<&str>,
-                components: &[&str], is_value: bool) -> hir::Path {
-        let mut path = hir::Path {
-            span,
-            def: Def::Err,
-            segments: iter::once(keywords::CrateRoot.name()).chain({
-                crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
-            }).map(hir::PathSegment::from_name).collect(),
-        };
-
-        self.resolve_hir_path(&mut path, is_value);
-        path
-    }
+                components: &[&str], is_value: bool) -> hir::Path;
 }
 
 #[derive(Clone, Copy, Debug)]

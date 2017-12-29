@@ -1407,6 +1407,64 @@ impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
 
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_hir_path(&mut self, path: &mut hir::Path, is_value: bool) {
+        self.resolve_hir_path_cb(path, is_value,
+                                 |resolver, span, error| resolve_error(resolver, span, error))
+    }
+
+    fn resolve_str_path(&mut self, span: Span, crate_root: Option<&str>,
+                components: &[&str], is_value: bool) -> hir::Path {
+        self.resolve_str_path_cb(span, crate_root, components, is_value,
+                                 |resolver, span, error| resolve_error(resolver, span, error))
+    }
+
+    fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
+        self.def_map.get(&id).cloned()
+    }
+
+    fn definitions(&mut self) -> &mut Definitions {
+        &mut self.definitions
+    }
+}
+
+impl<'a> Resolver<'a> {
+    /// resolve_str_path, but takes a callback in case there was an error
+    fn resolve_str_path_cb<F>(&mut self, span: Span, crate_root: Option<&str>,
+                components: &[&str], is_value: bool, error_callback: F) -> hir::Path 
+            where F: for<'b, 'c> FnOnce(&'c mut Resolver, Span, ResolutionError<'b>)
+        {
+        use std::iter;
+        let mut path = hir::Path {
+            span,
+            def: Def::Err,
+            segments: iter::once(keywords::CrateRoot.name()).chain({
+                crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
+            }).map(hir::PathSegment::from_name).collect(),
+        };
+
+        self.resolve_hir_path_cb(&mut path, is_value, error_callback);
+        path
+    }
+
+    /// Rustdoc uses this to resolve things in a recoverable way. ResolutionError<'a>
+    /// isn't something that can be returned because it can't be made to live that long,
+    /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
+    /// just that an error occured.
+    pub fn resolve_str_path_error(&mut self, span: Span, crate_root: Option<&str>,
+                components: &[&str], is_value: bool) -> Result<hir::Path, ()> {
+        let mut errored = false;
+        let path = self.resolve_str_path_cb(span, crate_root, components, is_value,
+                                            |_, _, _| errored = true);
+        if errored || path.def == Def::Err {
+            Err(())
+        } else {
+            Ok(path)
+        }
+    }
+
+    /// resolve_hir_path, but takes a callback in case there was an error
+    fn resolve_hir_path_cb<F>(&mut self, path: &mut hir::Path, is_value: bool, error_callback: F)
+            where F: for<'c, 'b> FnOnce(&'c mut Resolver, Span, ResolutionError<'b>)
+        {
         let namespace = if is_value { ValueNS } else { TypeNS };
         let hir::Path { ref segments, span, ref mut def } = *path;
         let path: Vec<SpannedIdent> = segments.iter()
@@ -1418,23 +1476,15 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
                 *def = path_res.base_def(),
             PathResult::NonModule(..) => match self.resolve_path(&path, None, true, span) {
                 PathResult::Failed(span, msg, _) => {
-                    resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                    error_callback(self, span, ResolutionError::FailedToResolve(&msg));
                 }
                 _ => {}
             },
             PathResult::Indeterminate => unreachable!(),
             PathResult::Failed(span, msg, _) => {
-                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                error_callback(self, span, ResolutionError::FailedToResolve(&msg));
             }
         }
-    }
-
-    fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
-        self.def_map.get(&id).cloned()
-    }
-
-    fn definitions(&mut self) -> &mut Definitions {
-        &mut self.definitions
     }
 }
 
