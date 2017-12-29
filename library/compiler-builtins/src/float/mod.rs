@@ -26,6 +26,9 @@ pub trait Float:
     /// A uint of the same with as the float
     type Int: Int;
 
+    /// A int of the same with as the float
+    type SignedInt: Int;
+
     const ZERO: Self;
     const ONE: Self;
 
@@ -59,6 +62,9 @@ pub trait Float:
     /// Returns `self` transmuted to `Self::Int`
     fn repr(self) -> Self::Int;
 
+    /// Returns `self` transmuted to `Self::SignedInt`
+    fn signed_repr(self) -> Self::SignedInt;
+
     #[cfg(test)]
     /// Checks if two floats have the same bit representation. *Except* for NaNs! NaN can be
     /// represented in multiple different ways. This method returns `true` if two NaNs are
@@ -78,9 +84,10 @@ pub trait Float:
 // FIXME: Some of this can be removed if RFC Issue #1424 is resolved
 //        https://github.com/rust-lang/rfcs/issues/1424
 macro_rules! float_impl {
-    ($ty:ident, $ity:ident, $bits:expr, $significand_bits:expr) => {
+    ($ty:ident, $ity:ident, $sity:ident, $bits:expr, $significand_bits:expr) => {
         impl Float for $ty {
             type Int = $ity;
+            type SignedInt = $sity;
             const ZERO: Self = 0.0;
             const ONE: Self = 1.0;
 
@@ -93,6 +100,9 @@ macro_rules! float_impl {
             const EXPONENT_MASK: Self::Int = !(Self::SIGN_MASK | Self::SIGNIFICAND_MASK);
 
             fn repr(self) -> Self::Int {
+                unsafe { mem::transmute(self) }
+            }
+            fn signed_repr(self) -> Self::SignedInt {
                 unsafe { mem::transmute(self) }
             }
             #[cfg(test)]
@@ -120,5 +130,5 @@ macro_rules! float_impl {
     }
 }
 
-float_impl!(f32, u32, 32, 23);
-float_impl!(f64, u64, 64, 52);
+float_impl!(f32, u32, i32, 32, 23);
+float_impl!(f64, u64, i64, 64, 52);

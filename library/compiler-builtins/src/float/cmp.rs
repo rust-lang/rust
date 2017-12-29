@@ -1,3 +1,5 @@
+#![allow(unreachable_code)]
+
 use int::{Int, CastInto};
 use float::Float;
 
@@ -35,18 +37,19 @@ fn cmp<F: Float>(a: F, b: F) -> Result where
     i32: CastInto<F::Int>,
     F::Int: CastInto<i32>,
 {
-    let one = F::Int::ONE;
-    let zero = F::Int::ZERO;
+    let one   = F::Int::ONE;
+    let zero  = F::Int::ZERO;
+    let szero = F::SignedInt::ZERO;
 
     let sign_bit =      F::SIGN_MASK as F::Int;
     let abs_mask =      sign_bit - one;
     let exponent_mask = F::EXPONENT_MASK;
     let inf_rep =       exponent_mask;
 
-    let a_rep = a.repr();
-    let b_rep = b.repr();
-    let a_abs = a_rep & abs_mask;
-    let b_abs = b_rep & abs_mask;
+    let a_rep  = a.repr();
+    let b_rep  = b.repr();
+    let a_abs  = a_rep & abs_mask;
+    let b_abs  = b_rep & abs_mask;
 
     // If either a or b is NaN, they are unordered.
     if a_abs > inf_rep || b_abs > inf_rep {
@@ -58,12 +61,15 @@ fn cmp<F: Float>(a: F, b: F) -> Result where
         return Result::Equal
     }
 
+    let a_srep = a.signed_repr();
+    let b_srep = b.signed_repr();
+
     // If at least one of a and b is positive, we get the same result comparing
     // a and b as signed integers as we would with a fp_ting-point compare.
-    if a_rep & b_rep >= zero {
-        if a_rep < b_rep {
+    if a_srep & b_srep >= szero {
+        if a_srep < b_srep {
             return Result::Less
-        } else if a_rep == b_rep {
+        } else if a_srep == b_srep {
             return Result::Equal
         } else {
             return Result::Greater
@@ -75,9 +81,9 @@ fn cmp<F: Float>(a: F, b: F) -> Result where
     // complement integer representation; if integers are represented in a
     // sign-magnitude representation, then this flip is incorrect).
     else {
-        if a_rep > b_rep {
+        if a_srep > b_srep {
             return Result::Less
-        } else if a_rep == b_rep {
+        } else if a_srep == b_srep {
             return Result::Equal
         } else {
             return Result::Greater
