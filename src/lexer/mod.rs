@@ -22,6 +22,14 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
     // They are not identifiers, and are handled further down.
     let ident_start = is_ident_start(c) && !string_literal_start(c, ptr.next(), ptr.nnext());
     if ident_start {
+        let is_single_letter = match ptr.next() {
+            None => true,
+            Some(c) if !is_ident_continue(c) => true,
+            _ => false,
+        };
+        if is_single_letter {
+            return if c == '_' { UNDERSCORE } else { IDENT };
+        }
         ptr.bump_while(is_ident_continue);
         return IDENT;
     }
