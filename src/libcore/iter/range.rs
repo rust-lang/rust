@@ -269,7 +269,7 @@ range_incl_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
 
 // We can safely implement `UnboundedIterator` for all RangeFrom because
 // `Step::add_one` will always return `Self` or diverge, which is exactly
-// the contract `UnboundedIterator` describes.
+// what the contract `UnboundedIterator` describes.
 #[unstable(feature = "unbounded_iter", issue = "0")]
 unsafe impl<A: Step> UnboundedIterator for ops::RangeFrom<A> {}
 

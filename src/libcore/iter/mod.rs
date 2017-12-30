@@ -1650,7 +1650,7 @@ impl<I: UnboundedIterator, P> FilterImpl for Filter<I, P>
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         // If the underlying iterator is unbounded, we will either filter out all items
-        // and thus diverge, or filter some of the infinitely many items out.
+        // and thus diverge, or filter out some of the infinitely many items.
         (usize::MAX, None)
     }
 }
