@@ -52,6 +52,8 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
         '~' => return TILDE,
         '?' => return QUESTION,
         '$' => return DOLLAR,
+
+        // Multi-byte tokens.
         '.' => return match (ptr.next(), ptr.nnext()) {
             (Some('.'), Some('.')) => {
                 ptr.bump();
@@ -75,6 +77,24 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                 COLONCOLON
             }
             _ => COLON
+        },
+        '=' => return match ptr.next() {
+            Some('=') => {
+                ptr.bump();
+                EQEQ
+            }
+            Some('>') => {
+                ptr.bump();
+                FAT_ARROW
+            }
+            _ => EQ,
+        },
+        '!' => return match ptr.next() {
+            Some('=') => {
+                ptr.bump();
+                NEQ
+            }
+            _ => NOT,
         },
         _ => (),
     }

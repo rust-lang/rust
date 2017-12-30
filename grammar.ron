@@ -25,5 +25,10 @@ Grammar(
         "COLON",
         "COLONCOLON",
         "DOLLAR",
+        "EQ",
+        "EQEQ",
+        "FAT_ARROW",
+        "NEQ",
+        "NOT",
     ]
 )

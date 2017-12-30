@@ -26,8 +26,13 @@ pub const QUESTION: SyntaxKind = SyntaxKind(21);
 pub const COLON: SyntaxKind = SyntaxKind(22);
 pub const COLONCOLON: SyntaxKind = SyntaxKind(23);
 pub const DOLLAR: SyntaxKind = SyntaxKind(24);
+pub const EQ: SyntaxKind = SyntaxKind(25);
+pub const EQEQ: SyntaxKind = SyntaxKind(26);
+pub const FAT_ARROW: SyntaxKind = SyntaxKind(27);
+pub const NEQ: SyntaxKind = SyntaxKind(28);
+pub const NOT: SyntaxKind = SyntaxKind(29);
 
-static INFOS: [SyntaxInfo; 25] = [
+static INFOS: [SyntaxInfo; 30] = [
     SyntaxInfo { name: "ERROR" },
     SyntaxInfo { name: "IDENT" },
     SyntaxInfo { name: "UNDERSCORE" },
@@ -53,6 +58,11 @@ static INFOS: [SyntaxInfo; 25] = [
     SyntaxInfo { name: "COLON" },
     SyntaxInfo { name: "COLONCOLON" },
     SyntaxInfo { name: "DOLLAR" },
+    SyntaxInfo { name: "EQ" },
+    SyntaxInfo { name: "EQEQ" },
+    SyntaxInfo { name: "FAT_ARROW" },
+    SyntaxInfo { name: "NEQ" },
+    SyntaxInfo { name: "NOT" },
 ];
 
 pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {
