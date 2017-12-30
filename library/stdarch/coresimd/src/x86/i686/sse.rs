@@ -221,6 +221,56 @@ pub unsafe fn _mm_cvt_pi2ps(a: f32x4, b: i32x2) -> f32x4 {
     _mm_cvtpi32_ps(a, b)
 }
 
+/// Converts a 64-bit vector of [4 x i16] into a 128-bit vector of [4 x
+/// float].
+#[inline(always)]
+#[target_feature = "+sse"]
+pub unsafe fn _mm_cvtpi16_ps(a: i16x4) -> f32x4 {
+    let b = mmx::_mm_setzero_si64();
+    let b = mmx::_mm_cmpgt_pi16(mem::transmute(b), a);
+    let c = mmx::_mm_unpackhi_pi16(a, b);
+    let r = i586::_mm_setzero_ps();
+    let r = cvtpi2ps(r, mem::transmute(c));
+    let r = i586::_mm_movelh_ps(r, r);
+    let c = mmx::_mm_unpacklo_pi16(a, b);
+    cvtpi2ps(r, mem::transmute(c))
+}
+
+/// Converts a 64-bit vector of 16-bit unsigned integer values into a
+/// 128-bit vector of [4 x float].
+#[inline(always)]
+#[target_feature = "+sse"]
+pub unsafe fn _mm_cvtpu16_ps(a: u16x4) -> f32x4 {
+    let b = mem::transmute(mmx::_mm_setzero_si64());
+    let c = mmx::_mm_unpackhi_pi16(a.as_i16x4(), b);
+    let r = i586::_mm_setzero_ps();
+    let r = cvtpi2ps(r, mem::transmute(c));
+    let r = i586::_mm_movelh_ps(r, r);
+    let c = mmx::_mm_unpacklo_pi16(a.as_i16x4(), b);
+    cvtpi2ps(r, mem::transmute(c))
+}
+
+/// Converts the lower four 8-bit values from a 64-bit vector of [8 x i8]
+/// into a 128-bit vector of [4 x float].
+#[inline(always)]
+#[target_feature = "+sse"]
+pub unsafe fn _mm_cvtpi8_ps(a: i8x8) -> f32x4 {
+    let b = mmx::_mm_setzero_si64();
+    let b = mmx::_mm_cmpgt_pi8(mem::transmute(b), a);
+    let b = mmx::_mm_unpacklo_pi8(a, b);
+    _mm_cvtpi16_ps(mem::transmute(b))
+}
+
+/// Converts the lower four unsigned 8-bit integer values from a 64-bit
+/// vector of [8 x u8] into a 128-bit vector of [4 x float].
+#[inline(always)]
+#[target_feature = "+sse"]
+pub unsafe fn _mm_cvtpu8_ps(a: u8x8) -> f32x4 {
+    let b = mmx::_mm_setzero_si64();
+    let b = mmx::_mm_unpacklo_pi8(a.as_i8x8(), mem::transmute(b));
+    _mm_cvtpi16_ps(mem::transmute(b))
+}
+
 /// Converts the two 32-bit signed integer values from each 64-bit vector
 /// operand of [2 x i32] into a 128-bit vector of [4 x float].
 #[inline(always)]
@@ -504,6 +554,38 @@ mod tests {
         assert_eq!(r, expected);
 
         let r = sse::_mm_cvt_pi2ps(a, b);
+        assert_eq!(r, expected);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_cvtpi16_ps() {
+        let a = i16x4::new(1, 2, 3, 4);
+        let expected = f32x4::new(1., 2., 3., 4.);
+        let r = sse::_mm_cvtpi16_ps(a);
+        assert_eq!(r, expected);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_cvtpu16_ps() {
+        let a = u16x4::new(1, 2, 3, 4);
+        let expected = f32x4::new(1., 2., 3., 4.);
+        let r = sse::_mm_cvtpu16_ps(a);
+        assert_eq!(r, expected);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_cvtpi8_ps() {
+        let a = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let expected = f32x4::new(1., 2., 3., 4.);
+        let r = sse::_mm_cvtpi8_ps(a);
+        assert_eq!(r, expected);
+    }
+
+    #[simd_test = "sse"]
+    unsafe fn _mm_cvtpu8_ps() {
+        let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let expected = f32x4::new(1., 2., 3., 4.);
+        let r = sse::_mm_cvtpu8_ps(a);
         assert_eq!(r, expected);
     }
 
