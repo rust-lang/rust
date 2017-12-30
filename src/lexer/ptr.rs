@@ -56,6 +56,7 @@ impl<'s> Ptr<'s> {
     }
 
     fn chars(&self) -> Chars {
-        self.text[self.len.0 as usize ..].chars()
+        let len: u32 = self.len.into();
+        self.text[len as usize ..].chars()
     }
 }

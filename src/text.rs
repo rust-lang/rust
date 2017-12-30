@@ -2,9 +2,7 @@ use std::fmt;
 use std::ops;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TextUnit(
-    pub(crate) u32
-);
+pub struct TextUnit(u32);
 
 impl TextUnit {
     pub fn len_of_char(c: char) -> TextUnit {

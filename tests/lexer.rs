@@ -31,6 +31,7 @@ fn lexer_test_cases() -> Vec<PathBuf> {
             acc.push(path);
         }
     }
+    acc.sort();
     acc
 }
 
@@ -38,7 +39,7 @@ fn lexer_test_case(path: &Path) {
     let actual = {
         let text = file::get_text(path).unwrap();
         let tokens = tokenize(&text);
-        dump_tokens(&tokens)
+        dump_tokens(&tokens, &text)
     };
     let expected = file::get_text(&path.with_extension("txt")).unwrap();
     let expected = expected.as_str();
@@ -64,10 +65,15 @@ fn tokenize(text: &str) -> Vec<Token> {
     acc
 }
 
-fn dump_tokens(tokens: &[Token]) -> String {
+fn dump_tokens(tokens: &[Token], text: &str) -> String {
     let mut acc = String::new();
+    let mut offset = 0;
     for token in tokens {
-        write!(acc, "{:?} {}\n", token.kind, token.len).unwrap()
+        let len: u32 = token.len.into();
+        let len = len as usize;
+        let token_text = &text[offset..offset + len];
+        offset += len;
+        write!(acc, "{:?} {} {:?}\n", token.kind, token.len, token_text).unwrap()
     }
     acc
 }
