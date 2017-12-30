@@ -88,9 +88,9 @@ pub unsafe fn _mm_hadds_pi16(a: i16x4, b: i16x4) -> i16x4 {
 /// packed 64-bit vectors of [4 x i16].
 #[inline(always)]
 #[target_feature = "+ssse3"]
-#[cfg_attr(test, assert_instr(phsubsw))]
+#[cfg_attr(test, assert_instr(phsubw))]
 pub unsafe fn _mm_hsub_pi16(a: i16x4, b: i16x4) -> i16x4 {
-    mem::transmute(phsubsw(mem::transmute(a), mem::transmute(b)))
+    mem::transmute(phsubw(mem::transmute(a), mem::transmute(b)))
 }
 
 /// Horizontally subtracts the adjacent pairs of values contained in 2

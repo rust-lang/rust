@@ -697,7 +697,7 @@ pub unsafe fn _mm_cvtps_epi32(a: f32x4) -> i32x4 {
 /// `0`.
 #[inline(always)]
 #[target_feature = "+sse2"]
-// no particular instruction to test
+#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movd))]
 pub unsafe fn _mm_cvtsi32_si128(a: i32) -> i32x4 {
     i32x4::new(a, 0, 0, 0)
 }
@@ -705,7 +705,7 @@ pub unsafe fn _mm_cvtsi32_si128(a: i32) -> i32x4 {
 /// Return the lowest element of `a`.
 #[inline(always)]
 #[target_feature = "+sse2"]
-// no particular instruction to test
+#[cfg_attr(all(test, not(windows)), assert_instr(movd))] // FIXME mov on windows
 pub unsafe fn _mm_cvtsi128_si32(a: i32x4) -> i32 {
     a.extract(0)
 }
@@ -826,7 +826,11 @@ pub unsafe fn _mm_setzero_si128() -> __m128i {
 /// Load 64-bit integer from memory into first element of returned vector.
 #[inline(always)]
 #[target_feature = "+sse2"]
-// no particular instruction to test
+// FIXME movsd on windows
+#[cfg_attr(all(test, not(windows),
+               not(all(target_os = "linux", target_arch = "x86_64")),
+               target_arch = "x86_64"),
+           assert_instr(movq))]
 pub unsafe fn _mm_loadl_epi64(mem_addr: *const i64x2) -> i64x2 {
     i64x2::new((*mem_addr).extract(0), 0)
 }
@@ -901,7 +905,11 @@ pub unsafe fn _mm_storeu_si128(mem_addr: *mut __m128i, a: __m128i) {
 /// `mem_addr` does not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+sse2"]
-// no particular instruction to test
+// FIXME mov on windows, movlps on i686
+#[cfg_attr(all(test, not(windows),
+               not(all(target_os = "linux", target_arch = "x86_64")),
+               target_arch = "x86_64"),
+           assert_instr(movq))]
 pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
     ptr::copy_nonoverlapping(
         &a as *const _ as *const u8,
@@ -934,7 +942,9 @@ pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
 /// element is zero.
 #[inline(always)]
 #[target_feature = "+sse2"]
-// no particular instruction to test
+// FIXME movd on windows, movd on i686
+#[cfg_attr(all(test, not(windows), target_arch = "x86_64"),
+           assert_instr(movq))]
 pub unsafe fn _mm_move_epi64(a: i64x2) -> i64x2 {
     simd_shuffle2(a, i64x2::splat(0), [0, 2])
 }
@@ -1752,7 +1762,7 @@ pub unsafe fn _mm_cvtsd_ss(a: f32x4, b: f64x2) -> f32x4 {
 /// Return the lower double-precision (64-bit) floating-point element of "a".
 #[inline(always)]
 #[target_feature = "+sse2"]
-// no particular instruction to test
+#[cfg_attr(all(test, windows), assert_instr(movsd))] // FIXME movq/movlps/mov on other platform
 pub unsafe fn _mm_cvtsd_f64(a: f64x2) -> f64 {
     a.extract(0)
 }
@@ -1839,6 +1849,7 @@ pub unsafe fn _mm_setr_pd(a: f64, b: f64) -> f64x2 {
 /// zeros.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(xorps))] // FIXME xorpd expected
 pub unsafe fn _mm_setzero_pd() -> f64x2 {
     f64x2::splat(0_f64)
 }
@@ -1991,6 +2002,7 @@ pub unsafe fn _mm_storel_pd(mem_addr: *mut f64, a: f64x2) {
 /// into both elements of returned vector.
 #[inline(always)]
 #[target_feature = "+sse2"]
+//#[cfg_attr(test, assert_instr(movapd))] FIXME movapd expected
 pub unsafe fn _mm_load1_pd(mem_addr: *const f64) -> f64x2 {
     let d = *mem_addr;
     f64x2::new(d, d)
@@ -2000,6 +2012,7 @@ pub unsafe fn _mm_load1_pd(mem_addr: *const f64) -> f64x2 {
 /// into both elements of returned vector.
 #[inline(always)]
 #[target_feature = "+sse2"]
+//#[cfg_attr(test, assert_instr(movapd))] FIXME movapd expected
 pub unsafe fn _mm_load_pd1(mem_addr: *const f64) -> f64x2 {
     let d = *mem_addr;
     f64x2::new(d, d)
