@@ -90,6 +90,15 @@ pub unsafe fn strlen(mut s: *const c_char) -> usize {
     return n
 }
 
+pub unsafe fn strnlen(mut s: *const c_char, maxlen: usize) -> usize {
+    let mut n = 0;
+    while n < maxlen && *s != 0 {
+        n += 1;
+        s = s.offset(1);
+    }
+    return n
+}
+
 pub unsafe fn abort_internal() -> ! {
     ::intrinsics::abort();
 }
