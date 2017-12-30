@@ -47,6 +47,8 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
         '}' => return R_CURLY,
         '[' => return L_BRACK,
         ']' => return R_BRACK,
+        '<' => return L_ANGLE,
+        '>' => return R_ANGLE,
         '@' => return AT,
         '#' => return POUND,
         '~' => return TILDE,

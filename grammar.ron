@@ -18,6 +18,8 @@ Grammar(
         "R_CURLY",
         "L_BRACK",
         "R_BRACK",
+        "L_ANGLE",
+        "R_ANGLE",
         "AT",
         "POUND",
         "TILDE",

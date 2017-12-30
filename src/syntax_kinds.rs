@@ -19,20 +19,22 @@ pub const L_CURLY: SyntaxKind = SyntaxKind(14);
 pub const R_CURLY: SyntaxKind = SyntaxKind(15);
 pub const L_BRACK: SyntaxKind = SyntaxKind(16);
 pub const R_BRACK: SyntaxKind = SyntaxKind(17);
-pub const AT: SyntaxKind = SyntaxKind(18);
-pub const POUND: SyntaxKind = SyntaxKind(19);
-pub const TILDE: SyntaxKind = SyntaxKind(20);
-pub const QUESTION: SyntaxKind = SyntaxKind(21);
-pub const COLON: SyntaxKind = SyntaxKind(22);
-pub const COLONCOLON: SyntaxKind = SyntaxKind(23);
-pub const DOLLAR: SyntaxKind = SyntaxKind(24);
-pub const EQ: SyntaxKind = SyntaxKind(25);
-pub const EQEQ: SyntaxKind = SyntaxKind(26);
-pub const FAT_ARROW: SyntaxKind = SyntaxKind(27);
-pub const NEQ: SyntaxKind = SyntaxKind(28);
-pub const NOT: SyntaxKind = SyntaxKind(29);
+pub const L_ANGLE: SyntaxKind = SyntaxKind(18);
+pub const R_ANGLE: SyntaxKind = SyntaxKind(19);
+pub const AT: SyntaxKind = SyntaxKind(20);
+pub const POUND: SyntaxKind = SyntaxKind(21);
+pub const TILDE: SyntaxKind = SyntaxKind(22);
+pub const QUESTION: SyntaxKind = SyntaxKind(23);
+pub const COLON: SyntaxKind = SyntaxKind(24);
+pub const COLONCOLON: SyntaxKind = SyntaxKind(25);
+pub const DOLLAR: SyntaxKind = SyntaxKind(26);
+pub const EQ: SyntaxKind = SyntaxKind(27);
+pub const EQEQ: SyntaxKind = SyntaxKind(28);
+pub const FAT_ARROW: SyntaxKind = SyntaxKind(29);
+pub const NEQ: SyntaxKind = SyntaxKind(30);
+pub const NOT: SyntaxKind = SyntaxKind(31);
 
-static INFOS: [SyntaxInfo; 30] = [
+static INFOS: [SyntaxInfo; 32] = [
     SyntaxInfo { name: "ERROR" },
     SyntaxInfo { name: "IDENT" },
     SyntaxInfo { name: "UNDERSCORE" },
@@ -51,6 +53,8 @@ static INFOS: [SyntaxInfo; 30] = [
     SyntaxInfo { name: "R_CURLY" },
     SyntaxInfo { name: "L_BRACK" },
     SyntaxInfo { name: "R_BRACK" },
+    SyntaxInfo { name: "L_ANGLE" },
+    SyntaxInfo { name: "R_ANGLE" },
     SyntaxInfo { name: "AT" },
     SyntaxInfo { name: "POUND" },
     SyntaxInfo { name: "TILDE" },
