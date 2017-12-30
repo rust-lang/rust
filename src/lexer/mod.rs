@@ -37,6 +37,47 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
         return scan_number(c, ptr);
     }
 
+    // One-byte tokens.
+    match c {
+        ';' => return SEMI,
+        ',' => return COMMA,
+        '(' => return L_PAREN,
+        ')' => return R_PAREN,
+        '{' => return L_CURLY,
+        '}' => return R_CURLY,
+        '[' => return L_BRACK,
+        ']' => return R_BRACK,
+        '@' => return AT,
+        '#' => return POUND,
+        '~' => return TILDE,
+        '?' => return QUESTION,
+        '$' => return DOLLAR,
+        '.' => return match (ptr.next(), ptr.nnext()) {
+            (Some('.'), Some('.')) => {
+                ptr.bump();
+                ptr.bump();
+                DOTDOTDOT
+            },
+            (Some('.'), Some('=')) => {
+                ptr.bump();
+                ptr.bump();
+                DOTDOTEQ
+            },
+            (Some('.'), _) => {
+                ptr.bump();
+                DOTDOT
+            },
+            _ => DOT
+        },
+        ':' => return match ptr.next() {
+            Some(':') => {
+                ptr.bump();
+                COLONCOLON
+            }
+            _ => COLON
+        },
+        _ => (),
+    }
     ERROR
 }
 
