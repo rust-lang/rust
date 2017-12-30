@@ -5,7 +5,7 @@ services:
   - docker
 
 git:
-  depth: 1
+  depth: 2
   submodules: false
 
 matrix:
