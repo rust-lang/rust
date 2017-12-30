@@ -782,6 +782,11 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
     ifn!("llvm.fabs.f32", fn(t_f32) -> t_f32);
     ifn!("llvm.fabs.f64", fn(t_f64) -> t_f64);
 
+    ifn!("llvm.minnum.f32", fn(t_f32, t_f32) -> t_f32);
+    ifn!("llvm.minnum.f64", fn(t_f64, t_f64) -> t_f64);
+    ifn!("llvm.maxnum.f32", fn(t_f32, t_f32) -> t_f32);
+    ifn!("llvm.maxnum.f64", fn(t_f64, t_f64) -> t_f64);
+
     ifn!("llvm.floor.f32", fn(t_f32) -> t_f32);
     ifn!("llvm.floor.f64", fn(t_f64) -> t_f64);
     ifn!("llvm.ceil.f32", fn(t_f32) -> t_f32);
