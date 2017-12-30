@@ -46,5 +46,3 @@ while [[ "$1" != "" ]]; do
         cp $BUILD_DIR/$STDERR_NAME $MYDIR/$STDERR_NAME
     fi
 done
-
-

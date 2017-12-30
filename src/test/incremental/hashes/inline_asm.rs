@@ -236,6 +236,3 @@ pub fn change_options(_a: i32) -> i32 {
     }
     _out
 }
-
-
-

@@ -651,5 +651,3 @@ mod change_trait_bound_indirectly_where {
         Variant1(T)
     }
 }
-
-
