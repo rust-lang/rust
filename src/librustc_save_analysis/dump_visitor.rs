@@ -1252,7 +1252,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                          root_item: &'l ast::Item,
                          prefix: &ast::Path) {
         let path = &use_tree.prefix;
-        let access = access_from!(self.save_ctxt, root_item);
+
+        // The access is calculated using the current tree ID, but with the root tree's visibility
+        // (since nested trees don't have their own visibility).
+        let access = Access {
+            public: root_item.vis == ast::Visibility::Public,
+            reachable: self.save_ctxt.analysis.access_levels.is_reachable(id),
+        };
 
         // The parent def id of a given use tree is always the enclosing item.
         let parent = self.save_ctxt.tcx.hir.opt_local_def_id(id)
