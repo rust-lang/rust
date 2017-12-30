@@ -4,5 +4,7 @@ Grammar(
         "IDENT",
         "UNDERSCORE",
         "WHITESPACE",
+        "INT_NUMBER",
+        "FLOAT_NUMBER",
     ]
 )

@@ -26,6 +26,18 @@ impl<'s> Ptr<'s> {
         chars.next()
     }
 
+    pub fn next_is(&self, c: char) -> bool {
+        self.next() == Some(c)
+    }
+
+    pub fn nnext_is(&self, c: char) -> bool {
+        self.nnext() == Some(c)
+    }
+
+    pub fn nnext_is_p<P: Fn(char) -> bool>(&self, p: P) -> bool {
+        self.nnext().map(p) == Some(true)
+    }
+
     pub fn bump(&mut self) -> Option<char> {
         let ch = self.chars().next()?;
         self.len += TextUnit::len_of_char(ch);

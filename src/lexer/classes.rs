@@ -20,3 +20,7 @@ pub fn is_whitespace(c: char) -> bool {
     //https://github.com/behnam/rust-unic/issues/192
     c.is_whitespace()
 }
+
+pub fn is_dec_digit(c: char) -> bool {
+    '0' <= c && c <= '9'
+}
