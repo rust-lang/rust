@@ -232,16 +232,9 @@ impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         let n = buf.len();
-        match Read::read_exact(&mut self.fill_buf()?, buf) {
-            Err(e) => {
-                self.pos = self.inner.as_ref().len() as u64;
-                Err(e)
-            }
-            Ok(_) => {
-                self.pos += n as u64;
-                Ok(())
-            }
-        }
+        Read::read_exact(&mut self.fill_buf()?, buf)?;
+        self.pos += n as u64;
+        Ok(())
     }
 
     #[inline]
@@ -683,6 +676,7 @@ mod tests {
         let mut in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
         let mut r = Cursor::new(vec![1]);
         assert!(r.read_exact(&mut in_buf).is_err());
+        assert_eq!(in_buf, [1, 1, 2, 3, 4, 5, 6, 7]);
         assert_eq!(r.position(), 1);
     }
 
