@@ -670,4 +670,14 @@ mod tests {
         c.set_position(<usize>::max_value() as u64 + 1);
         assert!(c.write_all(&[1, 2, 3]).is_err());
     }
+
+    #[test]
+    fn vec_read_exact_past_end() {
+        let mut in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        let mut r = Cursor::new(vec![1]);
+        assert!(r.read_exact(&mut in_buf).is_err());
+        assert_eq!(in_buf, [1, 1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(r.position(), 1);
+    }
+
 }
