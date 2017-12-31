@@ -17,7 +17,8 @@ fn main() {
 
 #[derive(Deserialize)]
 struct Grammar {
-    syntax_kinds: Vec<String>,
+    tokens: Vec<String>,
+    nodes: Vec<String>,
 }
 
 impl Grammar {
@@ -31,7 +32,12 @@ impl Grammar {
         acc.push_str("// Generated from grammar.ron\n");
         acc.push_str("use tree::{SyntaxKind, SyntaxInfo};\n");
         acc.push_str("\n");
-        for (idx, kind) in self.syntax_kinds.iter().enumerate() {
+
+        let syntax_kinds: Vec<&String> =
+            self.tokens.iter().chain(self.nodes.iter())
+                .collect();
+
+        for (idx, kind) in syntax_kinds.iter().enumerate() {
             let sname = scream(kind);
             write!(
                 acc,
@@ -40,8 +46,8 @@ impl Grammar {
             ).unwrap();
         }
         acc.push_str("\n");
-        write!(acc, "static INFOS: [SyntaxInfo; {}] = [\n", self.syntax_kinds.len()).unwrap();
-        for kind in self.syntax_kinds.iter() {
+        write!(acc, "static INFOS: [SyntaxInfo; {}] = [\n", syntax_kinds.len()).unwrap();
+        for kind in syntax_kinds.iter() {
             let sname = scream(kind);
             write!(
                 acc,

@@ -52,8 +52,9 @@ pub const THIN_ARROW: SyntaxKind = SyntaxKind(47);
 pub const COMMENT: SyntaxKind = SyntaxKind(48);
 pub const DOC_COMMENT: SyntaxKind = SyntaxKind(49);
 pub const SHEBANG: SyntaxKind = SyntaxKind(50);
+pub const FILE: SyntaxKind = SyntaxKind(51);
 
-static INFOS: [SyntaxInfo; 51] = [
+static INFOS: [SyntaxInfo; 52] = [
     SyntaxInfo { name: "ERROR" },
     SyntaxInfo { name: "IDENT" },
     SyntaxInfo { name: "UNDERSCORE" },
@@ -105,6 +106,7 @@ static INFOS: [SyntaxInfo; 51] = [
     SyntaxInfo { name: "COMMENT" },
     SyntaxInfo { name: "DOC_COMMENT" },
     SyntaxInfo { name: "SHEBANG" },
+    SyntaxInfo { name: "FILE" },
 ];
 
 pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {

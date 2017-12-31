@@ -1,5 +1,5 @@
 Grammar(
-    syntax_kinds: [
+    tokens: [
         "ERROR",
         "IDENT",
         "UNDERSCORE",
@@ -51,5 +51,8 @@ Grammar(
         "COMMENT",
         "DOC_COMMENT",
         "SHEBANG",
+    ],
+    nodes: [
+        "FILE"
     ]
 )
