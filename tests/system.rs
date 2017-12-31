@@ -52,6 +52,52 @@ fn get_test_files(path: &Path, recursive: bool) -> Vec<PathBuf> {
     files
 }
 
+fn verify_config_used(path: &Path, config_name: &str) {
+    for entry in fs::read_dir(path).expect(&format!(
+        "Couldn't read {} directory",
+        path.to_str().unwrap()
+    )) {
+        let entry = entry.expect("Couldn't get directory entry");
+        let path = entry.path();
+        if path.extension().map_or(false, |f| f == "rs") {
+            // check if "// rustfmt-<config_name>:" appears in the file.
+            let filebuf = BufReader::new(
+                fs::File::open(&path).expect(&format!("Couldn't read file {}", path.display())),
+            );
+            assert!(
+                filebuf
+                    .lines()
+                    .map(|l| l.unwrap())
+                    .take_while(|l| l.starts_with("//"))
+                    .any(|l| l.starts_with(&format!("// rustfmt-{}", config_name))),
+                format!(
+                    "config option file {} does not contain expected config name",
+                    path.display()
+                )
+            );
+        }
+    }
+}
+
+#[test]
+fn verify_config_test_names() {
+    for path in &[
+        Path::new("tests/source/configs"),
+        Path::new("tests/target/configs"),
+    ] {
+        for entry in fs::read_dir(path).expect("Couldn't read configs directory") {
+            let entry = entry.expect("Couldn't get directory entry");
+            let path = entry.path();
+            if path.is_dir() {
+                let config_name = path.file_name().unwrap().to_str().unwrap();
+
+                // Make sure that config name is used in the files in the directory.
+                verify_config_used(&path, &config_name);
+            }
+        }
+    }
+}
+
 // Integration tests. The files in the tests/source are formatted and compared
 // to their equivalent in tests/target. The target file and config can be
 // overridden by annotations in the source file. The input and output must match
