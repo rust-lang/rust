@@ -16,6 +16,17 @@ use self::strings::{is_string_literal_start, scan_char, scan_byte_char_or_string
 mod comments;
 use self::comments::{scan_shebang, scan_comment};
 
+pub fn tokenize(text: &str) -> Vec<Token> {
+    let mut text = text;
+    let mut acc = Vec::new();
+    while !text.is_empty() {
+        let token = next_token(text);
+        acc.push(token);
+        let len: u32 = token.len.into();
+        text = &text[len as usize..];
+    }
+    acc
+}
 pub fn next_token(text: &str) -> Token {
     assert!(!text.is_empty());
     let mut ptr = Ptr::new(text);

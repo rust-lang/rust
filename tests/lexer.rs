@@ -7,7 +7,7 @@ use std::path::{PathBuf, Path};
 use std::fs::read_dir;
 use std::fmt::Write;
 
-use libsyntax2::{Token, next_token};
+use libsyntax2::{Token, tokenize};
 
 #[test]
 fn lexer_tests() {
@@ -51,18 +51,6 @@ fn lexer_test_case(path: &Path) {
         panic!("Whitespace difference!")
     }
     assert_diff!(expected, actual, "\n", 0)
-}
-
-fn tokenize(text: &str) -> Vec<Token> {
-    let mut text = text;
-    let mut acc = Vec::new();
-    while !text.is_empty() {
-        let token = next_token(text);
-        acc.push(token);
-        let len: u32 = token.len.into();
-        text = &text[len as usize..];
-    }
-    acc
 }
 
 fn dump_tokens(tokens: &[Token], text: &str) -> String {
