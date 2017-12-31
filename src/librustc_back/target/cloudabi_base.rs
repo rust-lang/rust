@@ -23,7 +23,7 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         executables: true,
-        target_family: Some("unix".to_string()),
+        target_family: None,
         linker_is_gnu: true,
         pre_link_args: args,
         position_independent_executables: true,
