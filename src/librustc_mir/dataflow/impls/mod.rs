@@ -14,6 +14,7 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Mir, Location};
+use rustc_data_structures::access_tracker::AccessTracker;
 use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
@@ -364,7 +365,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
 
     fn edge_effect(
         &self,
-        sets: &mut BlockSets<Self::Idx>,
+        sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
         _source_block: mir::BasicBlock,
         edge_kind: EdgeKind<'_>,
         _target_block: mir::BasicBlock,
@@ -432,7 +433,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
 
     fn edge_effect(
         &self,
-        sets: &mut BlockSets<Self::Idx>,
+        sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
         _source_block: mir::BasicBlock,
         edge_kind: EdgeKind<'_>,
         _target_block: mir::BasicBlock,
@@ -499,7 +500,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'gcx, 'tcx
 
     fn edge_effect(
         &self,
-        sets: &mut BlockSets<Self::Idx>,
+        sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
         _source_block: mir::BasicBlock,
         edge_kind: EdgeKind<'_>,
         _target_block: mir::BasicBlock,
@@ -582,7 +583,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
 
     fn edge_effect(
         &self,
-        sets: &mut BlockSets<Self::Idx>,
+        sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
         _source_block: mir::BasicBlock,
         edge_kind: EdgeKind<'_>,
         _target_terminator: mir::BasicBlock,
@@ -689,7 +690,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
 
     fn edge_effect(
         &self,
-        sets: &mut BlockSets<Self::Idx>,
+        sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
         source_block: mir::BasicBlock,
         edge_kind: EdgeKind<'_>,
         _target_block: mir::BasicBlock,

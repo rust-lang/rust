@@ -19,6 +19,7 @@ use rustc::ty::RegionKind;
 use rustc::ty::RegionKind::ReScope;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
+use rustc_data_structures::access_tracker::AccessTracker;
 use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -679,7 +680,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Reservations<'a, 'gcx, 'tcx> {
 
     fn edge_effect(
         &self,
-        _sets: &mut BlockSets<Self::Idx>,
+        _sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
         _source_block: mir::BasicBlock,
         _edge_kind: EdgeKind<'_>,
         _target_terminator: mir::BasicBlock,
@@ -742,7 +743,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for ActiveBorrows<'a, 'gcx, 'tcx> {
 
     fn edge_effect(
         &self,
-        _sets: &mut BlockSets<Self::Idx>,
+        _sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
         _source_block: mir::BasicBlock,
         _edge_kind: EdgeKind<'_>,
         _target_terminator: mir::BasicBlock,

@@ -10,6 +10,7 @@
 
 use syntax::ast::{self, MetaItem};
 
+use rustc_data_structures::access_tracker::AccessTracker;
 use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bitslice::{bitwise, BitwiseOperator};
@@ -758,7 +759,7 @@ pub trait BitDenotation: BitwiseOperator {
     /// the rest) as a "pure function", this need not concern you.
     fn edge_effect(
         &self,
-        sets: &mut BlockSets<Self::Idx>,
+        sets: &mut AccessTracker<&mut BlockSets<Self::Idx>>,
         source_block: mir::BasicBlock,
         edge_kind: EdgeKind<'_>,
         target_terminator: mir::BasicBlock,
@@ -952,6 +953,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
         }
     }
 
+    #[allow(non_camel_case_types)] // FIXME
     fn propagate_bits_across_edges<'ek>(
         &mut self,
         sets: &mut BlockSets<'_, D::Idx>,
@@ -983,10 +985,14 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
             }
 
             // Compute the gen/kill sets for this edge.
-            self.flow_state.operator.edge_effect(sets, source, edge_kind, target);
+            let sets_mutated = {
+                let mut tracked_sets = AccessTracker::new(&mut *sets);
+                self.flow_state.operator.edge_effect(&mut tracked_sets, source, edge_kind, target);
+                AccessTracker::maybe_mutated(&tracked_sets)
+            };
 
             // If those gen/kill sets are non-empty, apply them.
-            if !sets.has_empty_local_effect() {
+            if sets_mutated {
                 if !is_saved {
                     // But first, save the "pristine" on-entry set so
                     // that we can restore it for other edges.
@@ -996,6 +1002,8 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
 
                 sets.apply_local_effect();
                 is_dirty = true;
+            } else {
+                debug_assert!(sets.has_empty_local_effect());
             }
 
             // Update the on-entry set for `target`.
