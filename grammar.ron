@@ -32,5 +32,7 @@ Grammar(
         "FAT_ARROW",
         "NEQ",
         "NOT",
+        "CHAR",
+        "LIFETIME",
     ]
 )

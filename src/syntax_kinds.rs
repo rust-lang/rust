@@ -33,8 +33,10 @@ pub const EQEQ: SyntaxKind = SyntaxKind(28);
 pub const FAT_ARROW: SyntaxKind = SyntaxKind(29);
 pub const NEQ: SyntaxKind = SyntaxKind(30);
 pub const NOT: SyntaxKind = SyntaxKind(31);
+pub const CHAR: SyntaxKind = SyntaxKind(32);
+pub const LIFETIME: SyntaxKind = SyntaxKind(33);
 
-static INFOS: [SyntaxInfo; 32] = [
+static INFOS: [SyntaxInfo; 34] = [
     SyntaxInfo { name: "ERROR" },
     SyntaxInfo { name: "IDENT" },
     SyntaxInfo { name: "UNDERSCORE" },
@@ -67,6 +69,8 @@ static INFOS: [SyntaxInfo; 32] = [
     SyntaxInfo { name: "FAT_ARROW" },
     SyntaxInfo { name: "NEQ" },
     SyntaxInfo { name: "NOT" },
+    SyntaxInfo { name: "CHAR" },
+    SyntaxInfo { name: "LIFETIME" },
 ];
 
 pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {

@@ -34,6 +34,10 @@ impl<'s> Ptr<'s> {
         self.nnext() == Some(c)
     }
 
+    pub fn next_is_p<P: Fn(char) -> bool>(&self, p: P) -> bool {
+        self.next().map(p) == Some(true)
+    }
+
     pub fn nnext_is_p<P: Fn(char) -> bool>(&self, p: P) -> bool {
         self.nnext().map(p) == Some(true)
     }
