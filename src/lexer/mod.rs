@@ -11,7 +11,7 @@ mod numbers;
 use self::numbers::scan_number;
 
 mod strings;
-use self::strings::{string_literal_start, scan_char, scan_byte_char_or_string};
+use self::strings::{string_literal_start, scan_char, scan_byte_char_or_string, scan_string, scan_raw_string};
 
 pub fn next_token(text: &str) -> Token {
     assert!(!text.is_empty());
@@ -128,6 +128,16 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
             scan_literal_suffix(ptr);
             return kind
         },
+        '"' => {
+            scan_string(ptr);
+            scan_literal_suffix(ptr);
+            return STRING;
+        }
+        'r' => {
+            scan_raw_string(ptr);
+            scan_literal_suffix(ptr);
+            return RAW_STRING;
+        }
         _ => (),
     }
     ERROR

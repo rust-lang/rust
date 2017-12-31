@@ -1,0 +1,4 @@
+STRING 7 "\"hello\""
+WHITESPACE 1 " "
+RAW_STRING 8 "r\"world\""
+WHITESPACE 1 "\n"

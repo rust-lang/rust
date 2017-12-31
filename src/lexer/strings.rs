@@ -47,6 +47,27 @@ pub(crate) fn scan_byte_char_or_string(ptr: &mut Ptr) -> SyntaxKind {
     }
 }
 
+pub(crate) fn scan_string(ptr: &mut Ptr) {
+    while let Some(c) = ptr.bump() {
+        if c == '"' {
+            return
+        }
+    }
+}
+
+pub(crate) fn scan_raw_string(ptr: &mut Ptr) {
+    if !ptr.next_is('"') {
+        return
+    }
+    ptr.bump();
+
+    while let Some(c) = ptr.bump() {
+        if c == '"' {
+            return
+        }
+    }
+}
+
 fn scan_byte(ptr: &mut Ptr) {
     if ptr.next_is('\'') {
         ptr.bump();
@@ -84,3 +105,4 @@ fn scan_char_or_byte(ptr: &mut Ptr) {
     //FIXME: deal with escape sequencies
     ptr.bump();
 }
+
