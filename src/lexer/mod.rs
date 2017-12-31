@@ -152,7 +152,10 @@ fn scan_char_or_lifetime(ptr: &mut Ptr) -> SyntaxKind {
 }
 
 fn scan_literal_suffix(ptr: &mut Ptr) {
-
+    if ptr.next_is_p(is_ident_start) {
+        ptr.bump();
+    }
+    ptr.bump_while(is_ident_continue);
 }
 
 fn scan_char_or_byte(ptr: &mut Ptr) {
