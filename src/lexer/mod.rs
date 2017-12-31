@@ -10,6 +10,9 @@ use self::classes::*;
 mod numbers;
 use self::numbers::scan_number;
 
+mod strings;
+use self::strings::{string_literal_start, scan_char, scan_byte_char_or_string};
+
 pub fn next_token(text: &str) -> Token {
     assert!(!text.is_empty());
     let mut ptr = Ptr::new(text);
@@ -101,7 +104,26 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
             _ => NOT,
         },
 
-        '\'' => return scan_char_or_lifetime(ptr),
+        // If the character is an ident start not followed by another single
+        // quote, then this is a lifetime name:
+        '\'' => return if ptr.next_is_p(is_ident_start) && !ptr.nnext_is('\'') {
+            ptr.bump();
+            while ptr.next_is_p(is_ident_continue) {
+                ptr.bump();
+            }
+            // lifetimes shouldn't end with a single quote
+            // if we find one, then this is an invalid character literal
+            if ptr.next_is('\'') {
+                ptr.bump();
+                return CHAR; // TODO: error reporting
+            }
+            LIFETIME
+        } else {
+            scan_char(ptr);
+            scan_literal_suffix(ptr);
+            CHAR
+        },
+        'b' => return scan_byte_char_or_string(ptr),
         _ => (),
     }
     ERROR
@@ -120,57 +142,9 @@ fn scan_ident(c: char, ptr: &mut Ptr) -> SyntaxKind {
     IDENT
 }
 
-fn scan_char_or_lifetime(ptr: &mut Ptr) -> SyntaxKind {
-    // Either a character constant 'a' OR a lifetime name 'abc
-    let c = match ptr.bump() {
-        Some(c) => c,
-        None => return CHAR, // TODO: error reporting is upper in the stack
-    };
-
-    // If the character is an ident start not followed by another single
-    // quote, then this is a lifetime name:
-    if is_ident_start(c) && !ptr.next_is('\'') {
-        while ptr.next_is_p(is_ident_continue) {
-            ptr.bump();
-        }
-
-        // lifetimes shouldn't end with a single quote
-        // if we find one, then this is an invalid character literal
-        if ptr.next_is('\'') {
-            ptr.bump();
-            return CHAR;
-        }
-        return LIFETIME;
-    }
-    scan_char_or_byte(ptr);
-    if !ptr.next_is('\'') {
-        return CHAR; // TODO: error reporting
-    }
-    ptr.bump();
-    scan_literal_suffix(ptr);
-    CHAR
-}
-
 fn scan_literal_suffix(ptr: &mut Ptr) {
     if ptr.next_is_p(is_ident_start) {
         ptr.bump();
     }
     ptr.bump_while(is_ident_continue);
-}
-
-fn scan_char_or_byte(ptr: &mut Ptr) {
-    //FIXME: deal with escape sequencies
-    ptr.bump();
-}
-
-fn string_literal_start(c: char, c1: Option<char>, c2: Option<char>) -> bool {
-    match (c, c1, c2) {
-        ('r', Some('"'), _) |
-        ('r', Some('#'), _) |
-        ('b', Some('"'), _) |
-        ('b', Some('\''), _) |
-        ('b', Some('r'), Some('"')) |
-        ('b', Some('r'), Some('#')) => true,
-        _ => false
-    }
 }
