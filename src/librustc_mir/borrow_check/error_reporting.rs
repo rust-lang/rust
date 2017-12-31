@@ -177,6 +177,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => return None,
         };
 
+
+        // When a closure upvar is assigned, it generates the necessary borrows and moves just
+        // above it and they all have the same span (including the upvar assignment). So, we are
+        // searching for closure upvar assignment.
         for stmt in &self.mir[location.block].statements[location.statement_index + 1..] {
             if maybe_closure_span != stmt.source_info.span {
                 break;
