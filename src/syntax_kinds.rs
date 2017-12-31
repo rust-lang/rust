@@ -40,8 +40,17 @@ pub const STRING: SyntaxKind = SyntaxKind(35);
 pub const RAW_STRING: SyntaxKind = SyntaxKind(36);
 pub const BYTE_STRING: SyntaxKind = SyntaxKind(37);
 pub const RAW_BYTE_STRING: SyntaxKind = SyntaxKind(38);
+pub const PLUS: SyntaxKind = SyntaxKind(39);
+pub const MINUS: SyntaxKind = SyntaxKind(40);
+pub const STAR: SyntaxKind = SyntaxKind(41);
+pub const SLASH: SyntaxKind = SyntaxKind(42);
+pub const CARET: SyntaxKind = SyntaxKind(43);
+pub const PERCENT: SyntaxKind = SyntaxKind(44);
+pub const AMPERSAND: SyntaxKind = SyntaxKind(45);
+pub const PIPE: SyntaxKind = SyntaxKind(46);
+pub const THIN_ARROW: SyntaxKind = SyntaxKind(47);
 
-static INFOS: [SyntaxInfo; 39] = [
+static INFOS: [SyntaxInfo; 48] = [
     SyntaxInfo { name: "ERROR" },
     SyntaxInfo { name: "IDENT" },
     SyntaxInfo { name: "UNDERSCORE" },
@@ -81,6 +90,15 @@ static INFOS: [SyntaxInfo; 39] = [
     SyntaxInfo { name: "RAW_STRING" },
     SyntaxInfo { name: "BYTE_STRING" },
     SyntaxInfo { name: "RAW_BYTE_STRING" },
+    SyntaxInfo { name: "PLUS" },
+    SyntaxInfo { name: "MINUS" },
+    SyntaxInfo { name: "STAR" },
+    SyntaxInfo { name: "SLASH" },
+    SyntaxInfo { name: "CARET" },
+    SyntaxInfo { name: "PERCENT" },
+    SyntaxInfo { name: "AMPERSAND" },
+    SyntaxInfo { name: "PIPE" },
+    SyntaxInfo { name: "THIN_ARROW" },
 ];
 
 pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {

@@ -39,5 +39,14 @@ Grammar(
         "RAW_STRING",
         "BYTE_STRING",
         "RAW_BYTE_STRING",
+        "PLUS",
+        "MINUS",
+        "STAR",
+        "SLASH",
+        "CARET",
+        "PERCENT",
+        "AMPERSAND",
+        "PIPE",
+        "THIN_ARROW",
     ]
 )

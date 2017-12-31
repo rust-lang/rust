@@ -59,6 +59,13 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
         '~' => return TILDE,
         '?' => return QUESTION,
         '$' => return DOLLAR,
+        '&' => return AMPERSAND,
+        '|' => return PIPE,
+        '+' => return PLUS,
+        '*' => return STAR,
+        '/' => return SLASH,
+        '^' => return CARET,
+        '%' => return PERCENT,
 
         // Multi-byte tokens.
         '.' => return match (ptr.next(), ptr.nnext()) {
@@ -102,6 +109,12 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                 NEQ
             }
             _ => NOT,
+        },
+        '-' => return if ptr.next_is('>') {
+            ptr.bump();
+            THIN_ARROW
+        } else {
+            MINUS
         },
 
         // If the character is an ident start not followed by another single
