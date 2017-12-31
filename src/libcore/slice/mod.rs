@@ -50,6 +50,11 @@ use mem;
 use marker::{Copy, Send, Sync, Sized, self};
 use iter_private::TrustedRandomAccess;
 
+#[unstable(feature = "slice_internals", issue = "0",
+           reason = "exposed from core to be reused in std; use the memchr crate")]
+/// Pure rust memchr implementation, taken from rust-memchr
+pub mod memchr;
+
 mod rotate;
 mod sort;
 
@@ -619,7 +624,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn contains(&self, x: &T) -> bool where T: PartialEq {
-        self.iter().any(|elt| *x == *elt)
+        x.slice_contains(self)
     }
 
     #[inline]
@@ -2613,4 +2618,28 @@ unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
         &mut *self.ptr.offset(i as isize)
     }
     fn may_have_side_effect() -> bool { false }
+}
+
+trait SliceContains: Sized {
+    fn slice_contains(&self, x: &[Self]) -> bool;
+}
+
+impl<T> SliceContains for T where T: PartialEq {
+    default fn slice_contains(&self, x: &[Self]) -> bool {
+        x.iter().any(|y| *y == *self)
+    }
+}
+
+impl SliceContains for u8 {
+    fn slice_contains(&self, x: &[Self]) -> bool {
+        memchr::memchr(*self, x).is_some()
+    }
+}
+
+impl SliceContains for i8 {
+    fn slice_contains(&self, x: &[Self]) -> bool {
+        let byte = *self as u8;
+        let bytes: &[u8] = unsafe { from_raw_parts(x.as_ptr() as *const u8, x.len()) };
+        memchr::memchr(byte, bytes).is_some()
+    }
 }
