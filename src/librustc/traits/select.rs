@@ -906,6 +906,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// For defaulted traits, we use a co-inductive strategy to solve, so
     /// that recursion is ok. This routine returns true if the top of the
     /// stack (`cycle[0]`):
+    ///
     /// - is a defaulted trait, and
     /// - it also appears in the backtrace at some position `X`; and,
     /// - all the predicates at positions `X..` between `X` an the top are

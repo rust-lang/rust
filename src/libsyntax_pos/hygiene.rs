@@ -10,10 +10,10 @@
 
 //! Machinery for hygienic macros, inspired by the MTWT[1] paper.
 //!
-//! [1] Matthew Flatt, Ryan Culpepper, David Darais, and Robert Bruce Findler.
-//! 2012. *Macros that work together: Compile-time bindings, partial expansion,
+//! [1] Matthew Flatt, Ryan Culpepper, David Darais, and Robert Bruce Findler. 2012.
+//! *Macros that work together: Compile-time bindings, partial expansion,
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
-//! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
+//! DOI=10.1017/S0956796812000093 <http://dx.doi.org/10.1017/S0956796812000093>
 
 use Span;
 use symbol::{Ident, Symbol};
@@ -224,6 +224,7 @@ impl SyntaxContext {
 
     /// Adjust this context for resolution in a scope created by the given expansion.
     /// For example, consider the following three resolutions of `f`:
+    ///
     /// ```rust
     /// mod foo { pub fn f() {} } // `f`'s `SyntaxContext` is empty.
     /// m!(f);
@@ -255,7 +256,8 @@ impl SyntaxContext {
 
     /// Adjust this context for resolution in a scope created by the given expansion
     /// via a glob import with the given `SyntaxContext`.
-    /// For example,
+    /// For example:
+    ///
     /// ```rust
     /// m!(f);
     /// macro m($i:ident) {
@@ -293,6 +295,7 @@ impl SyntaxContext {
     }
 
     /// Undo `glob_adjust` if possible:
+    ///
     /// ```rust
     /// if let Some(privacy_checking_scope) = self.reverse_glob_adjust(expansion, glob_ctxt) {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));

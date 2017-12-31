@@ -147,7 +147,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Let's work through an example to explain how it works.  Assume
     /// the current function is as follows:
     ///
-    ///     fn foo<'a, 'b>(..) -> (impl Bar<'a>, impl Bar<'b>)
+    /// ```text
+    /// fn foo<'a, 'b>(..) -> (impl Bar<'a>, impl Bar<'b>)
+    /// ```
     ///
     /// Here, we have two `impl Trait` types whose values are being
     /// inferred (the `impl Bar<'a>` and the `impl
@@ -155,13 +157,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// define underlying abstract types (`Foo1`, `Foo2`) and then, in
     /// the return type of `foo`, we *reference* those definitions:
     ///
-    ///     abstract type Foo1<'x>: Bar<'x>;
-    ///     abstract type Foo2<'x>: Bar<'x>;
-    ///     fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
-    ///                        //  ^^^^ ^^
-    ///                        //  |    |
-    ///                        //  |    substs
-    ///                        //  def_id
+    /// ```text
+    /// abstract type Foo1<'x>: Bar<'x>;
+    /// abstract type Foo2<'x>: Bar<'x>;
+    /// fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
+    ///                    //  ^^^^ ^^
+    ///                    //  |    |
+    ///                    //  |    substs
+    ///                    //  def_id
+    /// ```
     ///
     /// As indicating in the comments above, each of those references
     /// is (in the compiler) basically a substitution (`substs`)
@@ -175,8 +179,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// `Foo2`.  That is, this gives rise to higher-order (pattern) unification
     /// constraints like:
     ///
-    ///     for<'a> (Foo1<'a> = C1)
-    ///     for<'b> (Foo1<'b> = C2)
+    /// ```text
+    /// for<'a> (Foo1<'a> = C1)
+    /// for<'b> (Foo1<'b> = C2)
+    /// ```
     ///
     /// For these equation to be satisfiable, the types `C1` and `C2`
     /// can only refer to a limited set of regions. For example, `C1`
@@ -189,15 +195,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// regions. In fact, it is fairly likely that they do! Consider
     /// this possible definition of `foo`:
     ///
-    ///     fn foo<'a, 'b>(x: &'a i32, y: &'b i32) -> (impl Bar<'a>, impl Bar<'b>) {
+    /// ```text
+    /// fn foo<'a, 'b>(x: &'a i32, y: &'b i32) -> (impl Bar<'a>, impl Bar<'b>) {
     ///         (&*x, &*y)
     ///     }
+    /// ```
     ///
     /// Here, the values for the concrete types of the two impl
     /// traits will include inference variables:
     ///
-    ///     &'0 i32
-    ///     &'1 i32
+    /// ```text
+    /// &'0 i32
+    /// &'1 i32
+    /// ```
     ///
     /// Ordinarily, the subtyping rules would ensure that these are
     /// sufficiently large. But since `impl Bar<'a>` isn't a specific
@@ -207,7 +217,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// inferred type are regions that could validly appear.
     ///
     /// This is actually a bit of a tricky constraint in general. We
-    /// want to say that each variable (e.g., `'0``) can only take on
+    /// want to say that each variable (e.g., `'0`) can only take on
     /// values that were supplied as arguments to the abstract type
     /// (e.g., `'a` for `Foo1<'a>`) or `'static`, which is always in
     /// scope. We don't have a constraint quite of this kind in the current
@@ -225,7 +235,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// In some cases, there is no minimum. Consider this example:
     ///
-    ///    fn baz<'a, 'b>() -> impl Trait<'a, 'b> { ... }
+    /// ```text
+    /// fn baz<'a, 'b>() -> impl Trait<'a, 'b> { ... }
+    /// ```
     ///
     /// Here we would report an error, because `'a` and `'b` have no
     /// relation to one another.
@@ -245,8 +257,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// which is the current function. It also means that we can
     /// take "implied bounds" into account in some cases:
     ///
-    ///     trait SomeTrait<'a, 'b> { }
-    ///     fn foo<'a, 'b>(_: &'a &'b u32) -> impl SomeTrait<'a, 'b> { .. }
+    /// ```text
+    /// trait SomeTrait<'a, 'b> { }
+    /// fn foo<'a, 'b>(_: &'a &'b u32) -> impl SomeTrait<'a, 'b> { .. }
+    /// ```
     ///
     /// Here, the fact that `'b: 'a` is known only because of the
     /// implied bounds from the `&'a &'b u32` parameter, and is not

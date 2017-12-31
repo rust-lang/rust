@@ -340,8 +340,8 @@ impl AddAssign for Size {
 
 /// Alignment of a type in bytes, both ABI-mandated and preferred.
 /// Each field is a power of two, giving the alignment a maximum
-/// value of 2^(2^8 - 1), which is limited by LLVM to a i32, with
-/// a maximum capacity of 2^31 - 1 or 2147483647.
+/// value of 2<sup>(2<sup>8</sup> - 1)</sup>, which is limited by LLVM to a i32, with
+/// a maximum capacity of 2<sup>31</sup> - 1 or 2147483647.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Align {
     abi: u8,
@@ -651,11 +651,13 @@ impl Scalar {
 }
 
 /// The first half of a fat pointer.
+///
 /// - For a trait object, this is the address of the box.
 /// - For a slice, this is the base address.
 pub const FAT_PTR_ADDR: usize = 0;
 
 /// The second half of a fat pointer.
+///
 /// - For a trait object, this is the address of the vtable.
 /// - For a slice, this is the length.
 pub const FAT_PTR_EXTRA: usize = 1;

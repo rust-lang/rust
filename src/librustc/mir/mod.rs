@@ -497,6 +497,7 @@ pub struct LocalDecl<'tcx> {
     ///
     /// That's it, if we have a let-statement like the one in this
     /// function:
+    ///
     /// ```
     /// fn foo(x: &str) {
     ///     #[allow(unused_mut)]
@@ -540,6 +541,7 @@ pub struct LocalDecl<'tcx> {
     ///
     /// The end result looks like this:
     ///
+    /// ```text
     /// ROOT SCOPE
     ///  │{ argument x: &str }
     ///  │
@@ -559,6 +561,7 @@ pub struct LocalDecl<'tcx> {
     ///  │ │{ let x: u32 }
     ///  │ │← x.source_info.scope
     ///  │ │← `drop(x)` // this accesses `x: u32`
+    /// ```
     pub syntactic_scope: VisibilityScope,
 }
 

@@ -53,9 +53,9 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// expression for the indexed statement, until the end of the block.
 ///
 /// So: the following code can be broken down into the scopes beneath:
-/// ```
+///
+/// ```text
 /// let a = f().g( 'b: { let x = d(); let y = d(); x.h(y)  }   ) ;
-/// ```
 ///
 ///                                                              +-+ (D12.)
 ///                                                        +-+       (D11.)
@@ -82,6 +82,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 /// (R10.): Remainder scope for block `'b:`, stmt 1 (let y = ...).
 /// (D11.): DestructionScope for temporaries and bindings from block `'b:`.
 /// (D12.): DestructionScope for temporaries created during M1 (e.g. f()).
+/// ```
 ///
 /// Note that while the above picture shows the destruction scopes
 /// as following their corresponding node scopes, in the internal

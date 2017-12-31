@@ -367,7 +367,7 @@ pub struct TargetOptions {
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
-    /// handling COFF object files with more than 2^15 sections. Since each weak
+    /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
     /// symbol needs its own COMDAT section, weak linkage implies a large
     /// number sections that easily exceeds the given limit for larger
     /// codebases. Consequently we want a way to disallow weak linkage on some
