@@ -484,52 +484,58 @@ impl<'a, 'tcx> LoanPath<'tcx> {
     }
 }
 
-pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
-    //! Computes the `LoanPath` (if any) for a `cmt`.
-    //! Note that this logic is somewhat duplicated in
-    //! the method `compute()` found in `gather_loans::restrictions`,
-    //! which allows it to share common loan path pieces as it
-    //! traverses the CMT.
-
+// Avoid "cannot borrow immutable field `self.x` as mutable" as that implies that a field *can* be
+// mutable independently of the struct it belongs to. (#35937)
+pub fn opt_loan_path_is_field<'tcx>(cmt: &mc::cmt<'tcx>) -> (Option<Rc<LoanPath<'tcx>>>, bool) {
     let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
 
     match cmt.cat {
         Categorization::Rvalue(..) |
         Categorization::StaticItem => {
-            None
+            (None, false)
         }
 
         Categorization::Local(id) => {
-            Some(new_lp(LpVar(id)))
+            (Some(new_lp(LpVar(id))), false)
         }
 
         Categorization::Upvar(mc::Upvar { id, .. }) => {
-            Some(new_lp(LpUpvar(id)))
+            (Some(new_lp(LpUpvar(id))), false)
         }
 
         Categorization::Deref(ref cmt_base, pk) => {
-            opt_loan_path(cmt_base).map(|lp| {
+            let lp = opt_loan_path_is_field(cmt_base);
+            (lp.0.map(|lp| {
                 new_lp(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
-            })
+            }), lp.1)
         }
 
         Categorization::Interior(ref cmt_base, ik) => {
-            opt_loan_path(cmt_base).map(|lp| {
+            (opt_loan_path(cmt_base).map(|lp| {
                 let opt_variant_id = match cmt_base.cat {
                     Categorization::Downcast(_, did) =>  Some(did),
                     _ => None
                 };
                 new_lp(LpExtend(lp, cmt.mutbl, LpInterior(opt_variant_id, ik.cleaned())))
-            })
+            }), true)
         }
 
-        Categorization::Downcast(ref cmt_base, variant_def_id) =>
-            opt_loan_path(cmt_base)
-            .map(|lp| {
+        Categorization::Downcast(ref cmt_base, variant_def_id) => {
+            let lp = opt_loan_path_is_field(cmt_base);
+            (lp.0.map(|lp| {
                 new_lp(LpDowncast(lp, variant_def_id))
-            }),
-
+            }), lp.1)
+        }
     }
+}
+
+/// Computes the `LoanPath` (if any) for a `cmt`.
+/// Note that this logic is somewhat duplicated in
+/// the method `compute()` found in `gather_loans::restrictions`,
+/// which allows it to share common loan path pieces as it
+/// traverses the CMT.
+pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
+    opt_loan_path_is_field(cmt).0
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -787,14 +793,26 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     mc::NoteClosureEnv(_) | mc::NoteUpvarRef(_) => {
                         self.cmt_to_string(&err.cmt)
                     }
-                    _ => match opt_loan_path(&err.cmt) {
-                        None => {
+                    _ => match opt_loan_path_is_field(&err.cmt) {
+                        (None, true) => {
+                            format!("{} of {} binding",
+                                    self.cmt_to_string(&err.cmt),
+                                    err.cmt.mutbl.to_user_str())
+
+                        }
+                        (None, false) => {
                             format!("{} {}",
                                     err.cmt.mutbl.to_user_str(),
                                     self.cmt_to_string(&err.cmt))
 
                         }
-                        Some(lp) => {
+                        (Some(lp), true) => {
+                            format!("{} `{}` of {} binding",
+                                    self.cmt_to_string(&err.cmt),
+                                    self.loan_path_to_string(&lp),
+                                    err.cmt.mutbl.to_user_str())
+                        }
+                        (Some(lp), false) => {
                             format!("{} {} `{}`",
                                     err.cmt.mutbl.to_user_str(),
                                     self.cmt_to_string(&err.cmt),
@@ -1326,7 +1344,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 } else if let Categorization::Interior(ref cmt, _) = err.cmt.cat {
                     if let mc::MutabilityCategory::McImmutable = cmt.mutbl {
                         db.span_label(*error_span,
-                                      "cannot mutably borrow immutable field");
+                                      "cannot mutably borrow field of immutable binding");
                     }
                 }
             }
