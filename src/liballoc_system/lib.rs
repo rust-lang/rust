@@ -21,7 +21,7 @@
 #![feature(core_intrinsics)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
-#![cfg_attr(any(unix, target_os = "redox"), feature(libc))]
+#![cfg_attr(any(unix, target_os = "cloudabi", target_os = "redox"), feature(libc))]
 #![rustc_alloc_kind = "lib"]
 
 // The minimum alignment guaranteed by the architecture. This value is used to
@@ -116,7 +116,7 @@ unsafe impl Alloc for System {
     }
 }
 
-#[cfg(any(unix, target_os = "redox"))]
+#[cfg(any(unix, target_os = "cloudabi", target_os = "redox"))]
 mod platform {
     extern crate libc;
 
