@@ -23,7 +23,7 @@ use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
-use dataflow::{BitDenotation, BlockSets, InitialFlow};
+use dataflow::{BitDenotation, BlockSets, EdgeKind, InitialFlow};
 pub use dataflow::indexes::{BorrowIndex, ReserveOrActivateIndex};
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::ToRegionVid;
@@ -677,12 +677,14 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Reservations<'a, 'gcx, 'tcx> {
         self.0.terminator_effect_on_borrows(sets, location, false);
     }
 
-    fn propagate_call_return(&self,
-                             _sets: &mut BlockSets<'_, ReserveOrActivateIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             _dest_place: &mir::Place) {
-        // there are no effects on borrows from method call return...
+    fn edge_effect(
+        &self,
+        _sets: &mut BlockSets<Self::Idx>,
+        _source_block: mir::BasicBlock,
+        _edge_kind: EdgeKind<'_>,
+        _target_terminator: mir::BasicBlock,
+    ) {
+        // there are no effects on borrows from edges...
         //
         // ... but if overwriting a place can affect flow state, then
         // latter is not true; see NOTE on Assign case in
@@ -738,12 +740,14 @@ impl<'a, 'gcx, 'tcx> BitDenotation for ActiveBorrows<'a, 'gcx, 'tcx> {
         self.0.terminator_effect_on_borrows(sets, location, true);
     }
 
-    fn propagate_call_return(&self,
-                             _sets: &mut BlockSets<'_, ReserveOrActivateIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             _dest_place: &mir::Place) {
-        // there are no effects on borrows from method call return...
+    fn edge_effect(
+        &self,
+        _sets: &mut BlockSets<Self::Idx>,
+        _source_block: mir::BasicBlock,
+        _edge_kind: EdgeKind<'_>,
+        _target_terminator: mir::BasicBlock,
+    ) {
+        // there are no effects on borrows from edges...
         //
         // ... but If overwriting a place can affect flow state, then
         // latter is not true; see NOTE on Assign case in

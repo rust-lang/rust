@@ -58,12 +58,14 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
         // Terminators have no effect
     }
 
-    fn propagate_call_return(&self,
-                             _sets: &mut BlockSets<'_, Local>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             _dest_place: &mir::Place) {
-        // Nothing to do when a call returns successfully
+    fn edge_effect(
+        &self,
+        _sets: &mut BlockSets<Self::Idx>,
+        _source_block: mir::BasicBlock,
+        _edge_kind: EdgeKind<'_>,
+        _target_terminator: mir::BasicBlock,
+    ) {
+        // No special effects on edges
     }
 }
 

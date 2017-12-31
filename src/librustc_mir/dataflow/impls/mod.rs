@@ -23,7 +23,7 @@ use util::elaborate_drops::DropFlagState;
 
 use super::move_paths::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex, InitIndex};
 use super::move_paths::{LookupResult, InitKind};
-use super::{BitDenotation, BlockSets, InitialFlow};
+use super::{BitDenotation, BlockSets, EdgeKind, InitialFlow};
 
 use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
@@ -362,20 +362,29 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'gcx, 'tcx> {
         )
     }
 
-    fn propagate_call_return(&self,
-                             sets: &mut BlockSets<'_, MovePathIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             dest_place: &mir::Place) {
-        // when a call returns successfully, that means we need to set
-        // the bits for that dest_place to 1 (initialized).
-        on_lookup_result_bits(
-            self.tcx,
-            self.mir,
-            self.move_data(),
-            self.move_data().rev_lookup.find(dest_place),
-            |mpi| sets.gen(&mpi),
-        );
+    fn edge_effect(
+        &self,
+        sets: &mut BlockSets<Self::Idx>,
+        _source_block: mir::BasicBlock,
+        edge_kind: EdgeKind<'_>,
+        _target_block: mir::BasicBlock,
+    ) {
+        match edge_kind {
+            EdgeKind::CallReturn(dest_place) => {
+                // when a call returns successfully, that means we need to set
+                // the bits for that dest_place to 1 (initialized).
+                on_lookup_result_bits(
+                    self.tcx,
+                    self.mir,
+                    self.move_data(),
+                    self.move_data().rev_lookup.find(dest_place),
+                    |mpi| sets.gen(&mpi),
+                );
+            }
+
+            EdgeKind::Noop | EdgeKind::FalseEdge => {
+            }
+        }
     }
 }
 
@@ -421,20 +430,29 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'gcx, 'tcx> {
         )
     }
 
-    fn propagate_call_return(&self,
-                             sets: &mut BlockSets<'_, MovePathIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             dest_place: &mir::Place) {
-        // when a call returns successfully, that means we need to set
-        // the bits for that dest_place to 0 (initialized).
-        on_lookup_result_bits(
-            self.tcx,
-            self.mir,
-            self.move_data(),
-            self.move_data().rev_lookup.find(dest_place),
-            |mpi| sets.kill(&mpi),
-        );
+    fn edge_effect(
+        &self,
+        sets: &mut BlockSets<Self::Idx>,
+        _source_block: mir::BasicBlock,
+        edge_kind: EdgeKind<'_>,
+        _target_block: mir::BasicBlock,
+    ) {
+        match edge_kind {
+            EdgeKind::CallReturn(dest_place) => {
+                // when a call returns successfully, that means we need to set
+                // the bits for that dest_place to 0 (initialized).
+                on_lookup_result_bits(
+                    self.tcx,
+                    self.mir,
+                    self.move_data(),
+                    self.move_data().rev_lookup.find(dest_place),
+                    |mpi| sets.kill(&mpi),
+                );
+            }
+
+            EdgeKind::Noop | EdgeKind::FalseEdge => {
+            }
+        }
     }
 }
 
@@ -479,20 +497,29 @@ impl<'a, 'gcx, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'gcx, 'tcx
         )
     }
 
-    fn propagate_call_return(&self,
-                             sets: &mut BlockSets<'_, MovePathIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             dest_place: &mir::Place) {
-        // when a call returns successfully, that means we need to set
-        // the bits for that dest_place to 1 (initialized).
-        on_lookup_result_bits(
-            self.tcx,
-            self.mir,
-            self.move_data(),
-            self.move_data().rev_lookup.find(dest_place),
-            |mpi| sets.gen(&mpi),
-        );
+    fn edge_effect(
+        &self,
+        sets: &mut BlockSets<Self::Idx>,
+        _source_block: mir::BasicBlock,
+        edge_kind: EdgeKind<'_>,
+        _target_block: mir::BasicBlock,
+    ) {
+        match edge_kind {
+            EdgeKind::CallReturn(dest_place) => {
+                // when a call returns successfully, that means we need to set
+                // the bits for that dest_place to 1 (initialized).
+                on_lookup_result_bits(
+                    self.tcx,
+                    self.mir,
+                    self.move_data(),
+                    self.move_data().rev_lookup.find(dest_place),
+                    |mpi| sets.gen(&mpi),
+                );
+            }
+
+            EdgeKind::Noop | EdgeKind::FalseEdge => {
+            }
+        }
     }
 }
 
@@ -553,25 +580,34 @@ impl<'a, 'gcx, 'tcx> BitDenotation for MovingOutStatements<'a, 'gcx, 'tcx> {
                            |mpi| sets.kill_all(&path_map[mpi]));
     }
 
-    fn propagate_call_return(&self,
-                             sets: &mut BlockSets<'_, MoveOutIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             dest_place: &mir::Place) {
-        let move_data = self.move_data();
-        let bits_per_block = self.bits_per_block();
+    fn edge_effect(
+        &self,
+        sets: &mut BlockSets<Self::Idx>,
+        _source_block: mir::BasicBlock,
+        edge_kind: EdgeKind<'_>,
+        _target_terminator: mir::BasicBlock,
+    ) {
+        match edge_kind {
+            EdgeKind::CallReturn(dest_place) => {
+                let move_data = self.move_data();
+                let bits_per_block = self.bits_per_block();
 
-        let path_map = &move_data.path_map;
-        on_lookup_result_bits(
-            self.tcx,
-            self.mir,
-            move_data,
-            move_data.rev_lookup.find(dest_place),
-            |mpi| for moi in &path_map[mpi] {
-                assert!(moi.index() < bits_per_block);
-                sets.kill(&moi);
-            },
-        );
+                let path_map = &move_data.path_map;
+                on_lookup_result_bits(
+                    self.tcx,
+                    self.mir,
+                    move_data,
+                    move_data.rev_lookup.find(dest_place),
+                    |mpi| for moi in &path_map[mpi] {
+                        assert!(moi.index() < bits_per_block);
+                        sets.kill(&moi);
+                    },
+                );
+            }
+
+            EdgeKind::Noop | EdgeKind::FalseEdge => {
+            }
+        }
     }
 }
 
@@ -651,22 +687,31 @@ impl<'a, 'gcx, 'tcx> BitDenotation for EverInitializedLvals<'a, 'gcx, 'tcx> {
         );
     }
 
-    fn propagate_call_return(&self,
-                             sets: &mut BlockSets<'_, InitIndex>,
-                             call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             _dest_place: &mir::Place) {
-        let move_data = self.move_data();
-        let bits_per_block = self.bits_per_block();
-        let init_loc_map = &move_data.init_loc_map;
+    fn edge_effect(
+        &self,
+        sets: &mut BlockSets<Self::Idx>,
+        source_block: mir::BasicBlock,
+        edge_kind: EdgeKind<'_>,
+        _target_block: mir::BasicBlock,
+    ) {
+        match edge_kind {
+            EdgeKind::CallReturn(_) => {
+                let move_data = self.move_data();
+                let bits_per_block = self.bits_per_block();
+                let init_loc_map = &move_data.init_loc_map;
 
-        let call_loc = Location {
-            block: call_bb,
-            statement_index: self.mir[call_bb].statements.len(),
-        };
-        for init_index in &init_loc_map[call_loc] {
-            assert!(init_index.index() < bits_per_block);
-            sets.gen(init_index);
+                let call_loc = Location {
+                    block: source_block,
+                    statement_index: self.mir[source_block].statements.len(),
+                };
+                for init_index in &init_loc_map[call_loc] {
+                    assert!(init_index.index() < bits_per_block);
+                    sets.gen(init_index);
+                }
+            }
+
+            EdgeKind::Noop | EdgeKind::FalseEdge => {
+            }
         }
     }
 }
