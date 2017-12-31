@@ -20,6 +20,7 @@ use rustc::session::Session;
 
 use std::borrow::{Borrow, Cow};
 use std::fmt;
+use std::iter;
 use std::io;
 use std::mem;
 use std::path::PathBuf;
@@ -237,8 +238,10 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: Bi
 {
     fn walk_cfg(&mut self, in_out: &mut IdxSet<BD::Idx>) {
         let mir = self.builder.mir;
-        let mut temp_gens = IdxSetBuf::new_empty(self.builder.flow_state.sets.bits_per_block);
-        let mut temp_kills = IdxSetBuf::new_empty(self.builder.flow_state.sets.bits_per_block);
+        let bits_per_block = self.builder.flow_state.sets.bits_per_block;
+        let mut temp_gens = IdxSetBuf::new_empty(bits_per_block);
+        let mut temp_kills = IdxSetBuf::new_empty(bits_per_block);
+        let mut scratch_buf = IdxSetBuf::new_empty(bits_per_block);
         for (bb_idx, bb_data) in mir.basic_blocks().iter().enumerate() {
             let builder = &mut self.builder;
             {
@@ -256,7 +259,11 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: Bi
             };
 
             builder.propagate_bits_into_graph_successors_of(
-                sets, &mut self.changed, (mir::BasicBlock::new(bb_idx), bb_data));
+                sets,
+                &mut scratch_buf,
+                &mut self.changed,
+                (mir::BasicBlock::new(bb_idx), bb_data),
+            );
         }
     }
 }
@@ -819,8 +826,9 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
     fn propagate_bits_into_graph_successors_of(
         &mut self,
         sets: &mut BlockSets<'_, D::Idx>,
+        scratch_buf: &mut IdxSet<D::Idx>,
         changed: &mut bool,
-        (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData))
+        (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData<'tcx>))
     {
         match bb_data.terminator().kind {
             mir::TerminatorKind::Return |
