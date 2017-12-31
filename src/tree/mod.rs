@@ -56,9 +56,12 @@ impl<'f> Node<'f> {
 		self.data().kind
 	}
 
+	pub fn range(&self) -> TextRange {
+		self.data().range
+	}
+
 	pub fn text(&self) -> &'f str {
-		let range = self.data().range;
-		&self.file.text.as_str()[range]
+		&self.file.text.as_str()[self.range()]
 	}
 
 	pub fn parent(&self) -> Option<Node<'f>> {
@@ -77,6 +80,8 @@ impl<'f> Node<'f> {
 		idx.map(|idx| Node { file: self.file, idx })
 	}
 }
+
+
 
 pub struct Children<'f> {
 	next: Option<Node<'f>>,
@@ -114,5 +119,11 @@ impl ::std::ops::Index<NodeIdx> for Vec<NodeData> {
 impl ::std::ops::IndexMut<NodeIdx> for Vec<NodeData> {
 	fn index_mut(&mut self, NodeIdx(idx): NodeIdx) -> &mut NodeData {
 		&mut self[idx as usize]
+	}
+}
+
+impl<'f> fmt::Debug for Node<'f> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		write!(fmt, "{:?}@{:?}", self.kind(), self.range())
 	}
 }
