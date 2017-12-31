@@ -33,10 +33,15 @@ pub const EQEQ: SyntaxKind = SyntaxKind(28);
 pub const FAT_ARROW: SyntaxKind = SyntaxKind(29);
 pub const NEQ: SyntaxKind = SyntaxKind(30);
 pub const NOT: SyntaxKind = SyntaxKind(31);
-pub const CHAR: SyntaxKind = SyntaxKind(32);
-pub const LIFETIME: SyntaxKind = SyntaxKind(33);
+pub const LIFETIME: SyntaxKind = SyntaxKind(32);
+pub const CHAR: SyntaxKind = SyntaxKind(33);
+pub const BYTE: SyntaxKind = SyntaxKind(34);
+pub const STRING: SyntaxKind = SyntaxKind(35);
+pub const RAW_STRING: SyntaxKind = SyntaxKind(36);
+pub const BYTE_STRING: SyntaxKind = SyntaxKind(37);
+pub const RAW_BYTE_STRING: SyntaxKind = SyntaxKind(38);
 
-static INFOS: [SyntaxInfo; 34] = [
+static INFOS: [SyntaxInfo; 39] = [
     SyntaxInfo { name: "ERROR" },
     SyntaxInfo { name: "IDENT" },
     SyntaxInfo { name: "UNDERSCORE" },
@@ -69,8 +74,13 @@ static INFOS: [SyntaxInfo; 34] = [
     SyntaxInfo { name: "FAT_ARROW" },
     SyntaxInfo { name: "NEQ" },
     SyntaxInfo { name: "NOT" },
-    SyntaxInfo { name: "CHAR" },
     SyntaxInfo { name: "LIFETIME" },
+    SyntaxInfo { name: "CHAR" },
+    SyntaxInfo { name: "BYTE" },
+    SyntaxInfo { name: "STRING" },
+    SyntaxInfo { name: "RAW_STRING" },
+    SyntaxInfo { name: "BYTE_STRING" },
+    SyntaxInfo { name: "RAW_BYTE_STRING" },
 ];
 
 pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {

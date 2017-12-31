@@ -33,30 +33,51 @@ pub(crate) fn scan_byte_char_or_string(ptr: &mut Ptr) -> SyntaxKind {
     match c {
         '\'' => {
             scan_byte(ptr);
-            CHAR
+            BYTE
         }
         '"' => {
             scan_byte_string(ptr);
-            CHAR
+            BYTE_STRING
         }
         'r' => {
             scan_raw_byte_string(ptr);
-            CHAR
+            RAW_BYTE_STRING
         }
         _ => unreachable!(),
     }
 }
 
 fn scan_byte(ptr: &mut Ptr) {
-
+    if ptr.next_is('\'') {
+        ptr.bump();
+        return
+    }
+    ptr.bump();
+    if ptr.next_is('\'') {
+        ptr.bump();
+        return
+    }
 }
 
 fn scan_byte_string(ptr: &mut Ptr) {
-
+    while let Some(c) = ptr.bump() {
+        if c == '"' {
+            return
+        }
+    }
 }
 
 fn scan_raw_byte_string(ptr: &mut Ptr) {
+    if !ptr.next_is('"') {
+        return
+    }
+    ptr.bump();
 
+    while let Some(c) = ptr.bump() {
+        if c == '"' {
+            return
+        }
+    }
 }
 
 fn scan_char_or_byte(ptr: &mut Ptr) {

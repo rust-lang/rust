@@ -1,0 +1,7 @@
+BYTE 3 "b\'\'"
+WHITESPACE 1 " "
+BYTE 4 "b\'x\'"
+WHITESPACE 1 " "
+BYTE_STRING 6 "b\"foo\""
+WHITESPACE 1 " "
+RAW_BYTE_STRING 4 "br\"\""

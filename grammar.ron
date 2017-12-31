@@ -32,7 +32,12 @@ Grammar(
         "FAT_ARROW",
         "NEQ",
         "NOT",
-        "CHAR",
         "LIFETIME",
+        "CHAR",
+        "BYTE",
+        "STRING",
+        "RAW_STRING",
+        "BYTE_STRING",
+        "RAW_BYTE_STRING",
     ]
 )
