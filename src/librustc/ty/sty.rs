@@ -1647,10 +1647,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     ///
     /// Note that during type checking, we use an inference variable
     /// to represent the closure kind, because it has not yet been
-    /// inferred. Once [upvar inference] is complete, that type varibale
-    /// will be unified.
-    ///
-    /// [upvar inference]: src/librustc_typeck/check/upvar.rs
+    /// inferred. Once upvar inference (in `src/librustc_typeck/check/upvar.rs`)
+    /// is complete, that type variable will be unified.
     pub fn to_opt_closure_kind(&self) -> Option<ty::ClosureKind> {
         match self.sty {
             TyInt(int_ty) => match int_ty {
