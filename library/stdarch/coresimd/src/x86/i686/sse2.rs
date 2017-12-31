@@ -35,24 +35,6 @@ pub unsafe fn _mm_sub_si64(a: __m64, b: __m64) -> __m64 {
     psubq(a, b)
 }
 
-/// Return `a` with its lower element replaced by `b` after converting it to
-/// an `f64`.
-#[inline(always)]
-#[target_feature = "+sse2"]
-#[cfg_attr(all(test, not(target_arch = "x86")), assert_instr(cvtsi2sd))]
-pub unsafe fn _mm_cvtsi64_sd(a: f64x2, b: i64) -> f64x2 {
-    a.replace(0, b as f64)
-}
-
-/// Return `a` with its lower element replaced by `b` after converting it to
-/// an `f64`.
-#[inline(always)]
-#[target_feature = "+sse2"]
-#[cfg_attr(all(test, not(target_arch = "x86")), assert_instr(cvtsi2sd))]
-pub unsafe fn _mm_cvtsi64x_sd(a: f64x2, b: i64) -> f64x2 {
-    _mm_cvtsi64_sd(a, b)
-}
-
 /// Converts the two signed 32-bit integer elements of a 64-bit vector of
 /// [2 x i32] into two double-precision floating-point values, returned in a
 /// 128-bit vector of [2 x double].
@@ -61,40 +43,6 @@ pub unsafe fn _mm_cvtsi64x_sd(a: f64x2, b: i64) -> f64x2 {
 #[cfg_attr(test, assert_instr(cvtpi2pd))]
 pub unsafe fn _mm_cvtpi32_pd(a: i32x2) -> f64x2 {
     cvtpi2pd(mem::transmute(a))
-}
-
-/// Return a vector whose lowest element is `a` and all higher elements are
-/// `0`.
-#[inline(always)]
-#[target_feature = "+sse2"]
-// no particular instruction to test
-pub unsafe fn _mm_cvtsi64_si128(a: i64) -> i64x2 {
-    i64x2::new(a, 0)
-}
-
-/// Return a vector whose lowest element is `a` and all higher elements are
-/// `0`.
-#[inline(always)]
-#[target_feature = "+sse2"]
-// no particular instruction to test
-pub unsafe fn _mm_cvtsi64x_si128(a: i64) -> i64x2 {
-    _mm_cvtsi64_si128(a)
-}
-
-/// Return the lowest element of `a`.
-#[inline(always)]
-#[target_feature = "+sse2"]
-// no particular instruction to test
-pub unsafe fn _mm_cvtsi128_si64(a: i64x2) -> i64 {
-    a.extract(0)
-}
-
-/// Return the lowest element of `a`.
-#[inline(always)]
-#[target_feature = "+sse2"]
-// no particular instruction to test
-pub unsafe fn _mm_cvtsi128_si64x(a: i64x2) -> i64 {
-    _mm_cvtsi128_si64(a)
 }
 
 /// Initializes both 64-bit values in a 128-bit vector of [2 x i64] with
@@ -221,30 +169,11 @@ mod tests {
     }
 
     #[simd_test = "sse2"]
-    unsafe fn _mm_cvtsi64_sd() {
-        let a = f64x2::splat(3.5);
-        let r = sse2::_mm_cvtsi64_sd(a, 5);
-        assert_eq!(r, f64x2::new(5.0, 3.5));
-    }
-
-    #[simd_test = "sse2"]
     unsafe fn _mm_cvtpi32_pd() {
         let a = i32x2::new(1, 2);
         let expected = f64x2::new(1., 2.);
         let r = sse2::_mm_cvtpi32_pd(a);
         assert_eq!(r, expected);
-    }
-
-    #[simd_test = "sse2"]
-    unsafe fn _mm_cvtsi64_si128() {
-        let r = sse2::_mm_cvtsi64_si128(5);
-        assert_eq!(r, i64x2::new(5, 0));
-    }
-
-    #[simd_test = "sse2"]
-    unsafe fn _mm_cvtsi128_si64() {
-        let r = sse2::_mm_cvtsi128_si64(i64x2::new(5, 0));
-        assert_eq!(r, 5);
     }
 
     #[simd_test = "sse2"]

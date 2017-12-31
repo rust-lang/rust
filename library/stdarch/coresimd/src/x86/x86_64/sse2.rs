@@ -92,6 +92,24 @@ pub unsafe fn _mm_cvtsi128_si64x(a: i64x2) -> i64 {
     _mm_cvtsi128_si64(a)
 }
 
+/// Return `a` with its lower element replaced by `b` after converting it to
+/// an `f64`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(cvtsi2sd))]
+pub unsafe fn _mm_cvtsi64_sd(a: f64x2, b: i64) -> f64x2 {
+    a.replace(0, b as f64)
+}
+
+/// Return `a` with its lower element replaced by `b` after converting it to
+/// an `f64`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(cvtsi2sd))]
+pub unsafe fn _mm_cvtsi64x_sd(a: f64x2, b: i64) -> f64x2 {
+    _mm_cvtsi64_sd(a, b)
+}
+
 #[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
@@ -152,5 +170,12 @@ mod tests {
     unsafe fn _mm_cvtsi128_si64() {
         let r = sse2::_mm_cvtsi128_si64(i64x2::new(5, 0));
         assert_eq!(r, 5);
+    }
+
+    #[simd_test = "sse2"]
+    unsafe fn _mm_cvtsi64_sd() {
+        let a = f64x2::splat(3.5);
+        let r = sse2::_mm_cvtsi64_sd(a, 5);
+        assert_eq!(r, f64x2::new(5.0, 3.5));
     }
 }
