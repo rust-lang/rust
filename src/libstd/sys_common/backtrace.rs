@@ -195,6 +195,39 @@ fn output(w: &mut Write, idx: usize, frame: Frame,
     w.write_all(b"\n")
 }
 
+#[cfg(not(target_os = "cloudabi"))]
+fn output_fileline_relative(w: &mut Write,
+                            file: &str,
+                            line: u32,
+                            format: PrintFormat) -> io::Result<bool> {
+    use path::{self, Path};
+
+    let file_path = Path::new(file);
+    let mut already_printed = false;
+    if format == PrintFormat::Short && file_path.is_absolute() {
+        if let Ok(cwd) = env::current_dir() {
+            if let Ok(stripped) = file_path.strip_prefix(&cwd) {
+                if let Some(s) = stripped.to_str() {
+                    write!(w, "  at .{}{}:{}", path::MAIN_SEPARATOR, s, line)?;
+                    already_printed = true;
+                }
+            }
+        }
+    }
+    Ok(already_printed)
+}
+
+#[cfg(target_os = "cloudabi")]
+fn output_fileline_relative(_: &mut Write,
+                            _: &str,
+                            _: u32,
+                            _: PrintFormat) -> io::Result<bool> {
+    // CloudABI does not provide a global file system namespace, nor a
+    // process working directory. Don't attempt to make pathnames
+    // relative to the working directory.
+    Ok(false)
+}
+
 /// Print the filename and line number of the backtrace frame.
 ///
 /// See also `output`.
@@ -214,7 +247,11 @@ fn output_fileline(w: &mut Write,
     }
 
     let file = str::from_utf8(file).unwrap_or("<unknown>");
-    write!(w, "  at {}:{}\n", file, line)
+    if !output_fileline_relative(w, file, line, format)? {
+        write!(w, "  at {}:{}", file, line)?;
+    }
+
+    w.write_all(b"\n")
 }
 
 
