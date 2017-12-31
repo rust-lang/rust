@@ -3,6 +3,9 @@ use syntax_kinds::syntax_info;
 
 use std::fmt;
 
+mod file_builder;
+pub use self::file_builder::FileBuilder;
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxKind(pub(crate) u32);
 

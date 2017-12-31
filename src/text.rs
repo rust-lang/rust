@@ -32,6 +32,12 @@ impl From<TextUnit> for u32 {
     }
 }
 
+impl From<u32> for TextUnit {
+    fn from(tu: u32) -> TextUnit {
+        TextUnit::new(tu)
+    }
+}
+
 impl ops::Add<TextUnit> for TextUnit {
     type Output = TextUnit;
     fn add(self, rhs: TextUnit) -> TextUnit {
