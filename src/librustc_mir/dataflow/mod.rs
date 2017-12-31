@@ -830,47 +830,72 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
         changed: &mut bool,
         (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData<'tcx>))
     {
-        match bb_data.terminator().kind {
+        let terminator = bb_data.terminator();
+        match terminator.kind {
             mir::TerminatorKind::Return |
             mir::TerminatorKind::Resume |
             mir::TerminatorKind::Abort |
             mir::TerminatorKind::GeneratorDrop |
             mir::TerminatorKind::Unreachable => {}
-            mir::TerminatorKind::Goto { ref target } |
-            mir::TerminatorKind::Assert { ref target, cleanup: None, .. } |
-            mir::TerminatorKind::Yield { resume: ref target, drop: None, .. } |
-            mir::TerminatorKind::Drop { ref target, location: _, unwind: None } |
+            mir::TerminatorKind::Goto { target } |
+            mir::TerminatorKind::Assert { target, cleanup: None, .. } |
+            mir::TerminatorKind::Yield { resume: target, drop: None, .. } |
+            mir::TerminatorKind::Drop { target, location: _, unwind: None } |
             mir::TerminatorKind::DropAndReplace {
-                ref target, value: _, location: _, unwind: None
+                target, value: _, location: _, unwind: None
             } => {
-                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    terminator,
+                    &[target],
+                )
             }
-            mir::TerminatorKind::Yield { resume: ref target, drop: Some(ref drop), .. } => {
-                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
-                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, drop);
+            mir::TerminatorKind::Yield { resume: target, drop: Some(drop), .. } => {
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    terminator,
+                    &[target, drop],
+                )
             }
-            mir::TerminatorKind::Assert { ref target, cleanup: Some(ref unwind), .. } |
-            mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
+            mir::TerminatorKind::Assert { target, cleanup: Some(unwind), .. } |
+            mir::TerminatorKind::Drop { target, location: _, unwind: Some(unwind) } |
             mir::TerminatorKind::DropAndReplace {
-                ref target, value: _, location: _, unwind: Some(ref unwind)
+                target, value: _, location: _, unwind: Some(unwind)
             } => {
-                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
-                if !self.dead_unwinds.contains(&bb) {
-                    self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, unwind);
-                }
+                let all_targets = [target, unwind];
+                let unwind_is_dead = self.dead_unwinds.contains(&bb);
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    terminator,
+                    if unwind_is_dead { &all_targets[..1] } else { &all_targets[..] },
+                )
             }
             mir::TerminatorKind::SwitchInt { ref targets, .. } => {
-                for target in targets {
-                    self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
-                }
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    terminator,
+                    targets,
+                )
             }
-            mir::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
-                if let Some(ref unwind) = *cleanup {
+            mir::TerminatorKind::Call { cleanup, ref destination, func: _, args: _ } => {
+                if let Some(ref unwind) = cleanup {
                     if !self.dead_unwinds.contains(&bb) {
                         self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, unwind);
                     }
                 }
-                if let Some((ref dest_place, ref dest_bb)) = *destination {
+                if let Some((dest_place, dest_bb)) = destination {
                     // N.B.: This must be done *last*, after all other
                     // propagation, as documented in comment above.
                     sets.clear_local_effect();
@@ -880,12 +905,30 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                     self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, dest_bb);
                 }
             }
-            mir::TerminatorKind::FalseEdges { ref real_target, ref imaginary_targets } => {
-                self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, real_target);
-                for target in imaginary_targets {
-                    self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
-                }
+            mir::TerminatorKind::FalseEdges { real_target, ref imaginary_targets } => {
+                self.propagate_bits_across_edges(
+                    sets,
+                    scratch_buf,
+                    changed,
+                    bb,
+                    terminator,
+                    iter::once(&real_target).chain(imaginary_targets),
+                )
             }
+        }
+    }
+
+    fn propagate_bits_across_edges<'bb>(
+        &mut self,
+        sets: &mut BlockSets<'_, D::Idx>,
+        _scratch_buf: &mut IdxSet<D::Idx>,
+        changed: &mut bool,
+        _source: mir::BasicBlock,
+        _terminator: &mir::Terminator<'tcx>,
+        targets: impl IntoIterator<Item = &'bb BasicBlock>,
+    ) {
+        for target in targets {
+            self.propagate_bits_into_entry_set_for(&sets.on_entry, changed, target);
         }
     }
 
