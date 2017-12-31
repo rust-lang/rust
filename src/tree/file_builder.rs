@@ -81,7 +81,7 @@ impl FileBuilder {
     }
 
     fn add_len(&mut self, child: NodeIdx) {
-        let range = self.nodes[child.0 as usize].range;
+        let range = self.nodes[child].range;
         grow(&mut self.current_parent().range, range);
     }
 
@@ -90,13 +90,13 @@ impl FileBuilder {
     }
 
     fn current_parent(&mut self) -> &mut NodeData {
-        let NodeIdx(idx) = self.current_id();
-        &mut self.nodes[idx as usize]
+        let idx = self.current_id();
+        &mut self.nodes[idx]
     }
 
     fn current_sibling(&mut self) -> Option<&mut NodeData> {
-        let NodeIdx(idx) = self.in_progress.last().unwrap().1?;
-        Some(&mut self.nodes[idx as usize])
+        let idx = self.in_progress.last().unwrap().1?;
+        Some(&mut self.nodes[idx])
     }
 }
 

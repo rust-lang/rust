@@ -70,7 +70,7 @@ impl<'f> Node<'f> {
 	}
 
 	fn data(&self) -> &'f NodeData {
-		&self.file.nodes[self.idx.0 as usize]
+		&self.file.nodes[self.idx]
 	}
 
 	fn as_node(&self, idx: Option<NodeIdx>) -> Option<Node<'f>> {
@@ -101,4 +101,18 @@ struct NodeData {
 	parent: Option<NodeIdx>,
 	first_child: Option<NodeIdx>,
 	next_sibling: Option<NodeIdx>,
+}
+
+impl ::std::ops::Index<NodeIdx> for Vec<NodeData> {
+	type Output = NodeData;
+
+	fn index(&self, NodeIdx(idx): NodeIdx) -> &NodeData {
+		&self[idx as usize]
+	}
+}
+
+impl ::std::ops::IndexMut<NodeIdx> for Vec<NodeData> {
+	fn index_mut(&mut self, NodeIdx(idx): NodeIdx) -> &mut NodeData {
+		&mut self[idx as usize]
+	}
 }
