@@ -35,15 +35,18 @@
 #![feature(core_char_ext)]
 #![feature(str_internals)]
 #![feature(decode_utf8)]
-#![feature(fused)]
 #![feature(fn_traits)]
+#![feature(fused)]
 #![feature(lang_items)]
+#![feature(non_exhaustive)]
 #![feature(staged_api)]
 #![feature(try_from)]
 #![feature(unboxed_closures)]
 
+mod bool_trie;
 mod tables;
 mod u_str;
+mod version;
 pub mod char;
 pub mod lossy;
 
