@@ -75,7 +75,8 @@ pub fn assert_instr(
             .filter(|attr| {
                 attr.path
                     .segments
-                    .get(0)
+                    .first()
+                    .unwrap()
                     .item()
                     .ident
                     .as_ref()
