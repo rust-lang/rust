@@ -123,7 +123,11 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
             scan_literal_suffix(ptr);
             CHAR
         },
-        'b' => return scan_byte_char_or_string(ptr),
+        'b' => {
+            let kind = scan_byte_char_or_string(ptr);
+            scan_literal_suffix(ptr);
+            return kind
+        },
         _ => (),
     }
     ERROR
