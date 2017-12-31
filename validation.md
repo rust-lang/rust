@@ -6,3 +6,4 @@ Fixmes:
   base, and are in range
 * Validation for unclosed char literal
 * Strings are completely wrong: more tests and comparison with libsyntax.
+* Comment lexing is completely wrong
