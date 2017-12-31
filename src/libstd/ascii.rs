@@ -247,7 +247,7 @@ pub trait AsciiExt {
     /// Checks if the value is an ASCII graphic character:
     /// U+0021 '@' ... U+007E '~'.
     /// For strings, true if all characters in the string are
-    /// ASCII punctuation.
+    /// ASCII graphic characters.
     ///
     /// # Note
     ///
