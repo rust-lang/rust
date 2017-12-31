@@ -1099,7 +1099,8 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
 impl<'a> From<&'a str> for Rc<str> {
     #[inline]
     fn from(v: &str) -> Rc<str> {
-        unsafe { mem::transmute(<Rc<[u8]>>::from(v.as_bytes())) }
+        let rc = Rc::<[u8]>::from(v.as_bytes());
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
     }
 }
 
