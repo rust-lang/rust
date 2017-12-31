@@ -824,9 +824,7 @@ fn binaryen_assemble(cgcx: &CodegenContext,
     if cgcx.debuginfo != config::NoDebugInfo {
         options.debuginfo(true);
     }
-    if cgcx.crate_types.contains(&config::CrateTypeExecutable) {
-        options.start("main");
-    }
+
     options.stack(1024 * 1024);
     options.import_memory(cgcx.wasm_import_memory);
     let assembled = input.and_then(|input| {
@@ -1452,7 +1450,7 @@ fn start_executing_work(tcx: TyCtxt,
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
         binaryen_linker: tcx.sess.linker_flavor() == LinkerFlavor::Binaryen,
         debuginfo: tcx.sess.opts.debuginfo,
-        wasm_import_memory: wasm_import_memory,
+        wasm_import_memory,
         assembler_cmd,
     };
 

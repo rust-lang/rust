@@ -28,12 +28,74 @@ let m = new WebAssembly.Module(buffer);
 
 let memory = null;
 
+function viewstruct(data, fields) {
+  return new Uint32Array(memory.buffer).subarray(data/4, data/4 + fields);
+}
+
 function copystr(a, b) {
-  if (memory === null) {
-    return null
-  }
-  let view = new Uint8Array(memory.buffer).slice(a, a + b);
+  let view = new Uint8Array(memory.buffer).subarray(a, a + b);
   return String.fromCharCode.apply(null, view);
+}
+
+function syscall_write([fd, ptr, len]) {
+  let s = copystr(ptr, len);
+  switch (fd) {
+    case 1: process.stdout.write(s); break;
+    case 2: process.stderr.write(s); break;
+  }
+}
+
+function syscall_exit([code]) {
+  process.exit(code);
+}
+
+function syscall_args(params) {
+  let [ptr, len] = params;
+
+  // Calculate total required buffer size
+  let totalLen = -1;
+  for (let i = 2; i < process.argv.length; ++i) {
+    totalLen += Buffer.byteLength(process.argv[i]) + 1;
+  }
+  if (totalLen < 0) { totalLen = 0; }
+  params[2] = totalLen;
+
+  // If buffer is large enough, copy data
+  if (len >= totalLen) {
+    let view = new Uint8Array(memory.buffer);
+    for (let i = 2; i < process.argv.length; ++i) {
+      let value = process.argv[i];
+      Buffer.from(value).copy(view, ptr);
+      ptr += Buffer.byteLength(process.argv[i]) + 1;
+    }
+  }
+}
+
+function syscall_getenv(params) {
+  let [keyPtr, keyLen, valuePtr, valueLen] = params;
+
+  let key = copystr(keyPtr, keyLen);
+  let value = process.env[key];
+
+  if (value == null) {
+    params[4] = 0xFFFFFFFF;
+  } else {
+    let view = new Uint8Array(memory.buffer);
+    let totalLen = Buffer.byteLength(value);
+    params[4] = totalLen;
+    if (valueLen >= totalLen) {
+      Buffer.from(value).copy(view, valuePtr);
+    }
+  }
+}
+
+function syscall_time(params) {
+  let t = Date.now();
+  let secs = Math.floor(t / 1000);
+  let millis = t % 1000;
+  params[1] = Math.floor(secs / 0x100000000);
+  params[2] = secs % 0x100000000;
+  params[3] = Math.floor(millis * 1000000);
 }
 
 let imports = {};
@@ -48,68 +110,25 @@ imports.env = {
   log10: Math.log10,
   log10f: Math.log10,
 
-  // These are called in src/libstd/sys/wasm/stdio.rs and are used when
-  // debugging is enabled.
-  rust_wasm_write_stdout: function(a, b) {
-    let s = copystr(a, b);
-    if (s !== null) {
-      process.stdout.write(s);
+  rust_wasm_syscall: function(index, data) {
+    switch (index) {
+      case 1: syscall_write(viewstruct(data, 3)); return true;
+      case 2: syscall_exit(viewstruct(data, 1)); return true;
+      case 3: syscall_args(viewstruct(data, 3)); return true;
+      case 4: syscall_getenv(viewstruct(data, 5)); return true;
+      case 6: syscall_time(viewstruct(data, 4)); return true;
+      default:
+        console.log("Unsupported syscall: " + index);
+        return false;
     }
-  },
-  rust_wasm_write_stderr: function(a, b) {
-    let s = copystr(a, b);
-    if (s !== null) {
-      process.stderr.write(s);
-    }
-  },
-
-  // These are called in src/libstd/sys/wasm/args.rs and are used when
-  // debugging is enabled.
-  rust_wasm_args_count: function() {
-    if (memory === null)
-      return 0;
-    return process.argv.length - 2;
-  },
-  rust_wasm_args_arg_size: function(i) {
-    return Buffer.byteLength(process.argv[i + 2]);
-  },
-  rust_wasm_args_arg_fill: function(idx, ptr) {
-    let arg = process.argv[idx + 2];
-    let view = new Uint8Array(memory.buffer);
-    Buffer.from(arg).copy(view, ptr);
-  },
-
-  // These are called in src/libstd/sys/wasm/os.rs and are used when
-  // debugging is enabled.
-  rust_wasm_getenv_len: function(a, b) {
-    let key = copystr(a, b);
-    if (key === null) {
-      return -1;
-    }
-    if (!(key in process.env)) {
-      return -1;
-    }
-    return Buffer.byteLength(process.env[key]);
-  },
-  rust_wasm_getenv_data: function(a, b, ptr) {
-    let key = copystr(a, b);
-    let value = process.env[key];
-    let view = new Uint8Array(memory.buffer);
-    Buffer.from(value).copy(view, ptr);
-  },
+  }
 };
 
-let module_imports = WebAssembly.Module.imports(m);
-
-for (var i = 0; i < module_imports.length; i++) {
-  let imp = module_imports[i];
-  if (imp.module != 'env') {
-    continue
-  }
-  if (imp.name == 'memory' && imp.kind == 'memory') {
-    memory = new WebAssembly.Memory({initial: 20});
-    imports.env.memory = memory;
-  }
-}
-
 let instance = new WebAssembly.Instance(m, imports);
+memory = instance.exports.memory;
+try {
+  instance.exports.main();
+} catch (e) {
+  console.error(e);
+  process.exit(101);
+}
