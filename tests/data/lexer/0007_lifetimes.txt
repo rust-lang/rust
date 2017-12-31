@@ -1,0 +1,8 @@
+LIFETIME 2 "\'a"
+WHITESPACE 1 " "
+LIFETIME 4 "\'foo"
+WHITESPACE 1 " "
+LIFETIME 12 "\'foo_bar_baz"
+WHITESPACE 1 " "
+LIFETIME 2 "\'_"
+WHITESPACE 1 "\n"

@@ -101,7 +101,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
             _ => NOT,
         },
 
-        // '\'' => scan_char_or_lifetime(ptr),
+        '\'' => return scan_char_or_lifetime(ptr),
         _ => (),
     }
     ERROR
@@ -159,6 +159,7 @@ fn scan_literal_suffix(ptr: &mut Ptr) {
 }
 
 fn scan_char_or_byte(ptr: &mut Ptr) {
+    //FIXME: deal with escape sequencies
     ptr.bump();
 }
 

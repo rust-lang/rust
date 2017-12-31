@@ -1,0 +1,6 @@
+CHAR 3 "\'x\'"
+WHITESPACE 1 " "
+CHAR 3 "\' \'"
+WHITESPACE 1 " "
+CHAR 3 "\'0\'"
+WHITESPACE 1 "\n"
