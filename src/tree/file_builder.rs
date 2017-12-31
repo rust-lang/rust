@@ -1,11 +1,56 @@
 use {SyntaxKind, TextUnit, TextRange};
 use super::{NodeData, NodeIdx, File};
 
+pub trait Sink {
+    fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
+    fn start_internal(&mut self, kind: SyntaxKind);
+    fn finish_internal(&mut self);
+}
+
+
 pub struct FileBuilder {
     text: String,
     nodes: Vec<NodeData>,
     in_progress: Vec<(NodeIdx, Option<NodeIdx>)>, // (parent, last_child)
     pos: TextUnit,
+}
+
+impl Sink for FileBuilder {
+    fn leaf(&mut self, kind: SyntaxKind, len: TextUnit) {
+        let leaf = NodeData {
+            kind,
+            range: TextRange::from_len(self.pos, len),
+            parent: None,
+            first_child: None,
+            next_sibling: None,
+        };
+        self.pos += len;
+        let id = self.push_child(leaf);
+        self.add_len(id);
+    }
+
+    fn start_internal(&mut self, kind: SyntaxKind) {
+        let node = NodeData {
+            kind,
+            range: TextRange::from_len(self.pos, 0.into()),
+            parent: None,
+            first_child: None,
+            next_sibling: None,
+        };
+        let id = if self.in_progress.is_empty() {
+            self.new_node(node)
+        } else {
+            self.push_child(node)
+        };
+        self.in_progress.push((id, None))
+    }
+
+    fn finish_internal(&mut self) {
+        let (id, _) = self.in_progress.pop().unwrap();
+        if !self.in_progress.is_empty() {
+            self.add_len(id);
+        }
+    }
 }
 
 impl FileBuilder {
@@ -24,42 +69,6 @@ impl FileBuilder {
         File {
             text: self.text,
             nodes: self.nodes,
-        }
-    }
-
-    pub fn leaf(&mut self, kind: SyntaxKind, len: TextUnit) {
-        let leaf = NodeData {
-            kind,
-            range: TextRange::from_len(self.pos, len),
-            parent: None,
-            first_child: None,
-            next_sibling: None,
-        };
-        self.pos += len;
-        let id = self.push_child(leaf);
-        self.add_len(id);
-    }
-
-    pub fn start_internal(&mut self, kind: SyntaxKind) {
-        let node = NodeData {
-            kind,
-            range: TextRange::from_len(self.pos, 0.into()),
-            parent: None,
-            first_child: None,
-            next_sibling: None,
-        };
-        let id = if self.in_progress.is_empty() {
-            self.new_node(node)
-        } else {
-            self.push_child(node)
-        };
-        self.in_progress.push((id, None))
-    }
-
-    pub fn finish_internal(&mut self) {
-        let (id, _) = self.in_progress.pop().unwrap();
-        if !self.in_progress.is_empty() {
-            self.add_len(id);
         }
     }
 

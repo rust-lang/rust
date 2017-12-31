@@ -1,4 +1,4 @@
-use {Token, File, FileBuilder};
+use {Token, File, FileBuilder, Sink};
 
 use syntax_kinds::*;
 
