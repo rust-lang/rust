@@ -7,7 +7,7 @@ use std::path::{PathBuf, Path};
 use std::fs::read_dir;
 use std::fmt::Write;
 
-use libsyntax2::{tokenize, Token, Node, File, FileBuilder};
+use libsyntax2::{tokenize, parse, Token, Node, File, FileBuilder};
 
 #[test]
 fn parser_tests() {
@@ -66,11 +66,4 @@ fn dump_tree(file: &File) -> String {
             go(child, buff, level + 1)
         }
     }
-}
-
-fn parse(text: String, tokens: &[Token]) -> File {
-    let mut builder = FileBuilder::new(text);
-    builder.start_internal(libsyntax2::syntax_kinds::FILE);
-    builder.finish_internal();
-    builder.finish()
 }
