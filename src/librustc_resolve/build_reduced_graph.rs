@@ -681,7 +681,7 @@ impl<'a> Resolver<'a> {
             let result = self.resolve_ident_in_module(module, ident, MacroNS, false, false, span);
             if let Ok(binding) = result {
                 let (def, vis) = (binding.def(), binding.vis);
-                self.macro_exports.push(Export { ident, def, vis, span, is_import: true });
+                self.macro_exports.push(Export { ident, def, vis, span });
             } else {
                 span_err!(self.session, span, E0470, "reexported macro not found");
             }
