@@ -11,7 +11,7 @@ mod numbers;
 use self::numbers::scan_number;
 
 mod strings;
-use self::strings::{string_literal_start, scan_char, scan_byte_char_or_string, scan_string, scan_raw_string};
+use self::strings::{is_string_literal_start, scan_char, scan_byte_char_or_string, scan_string, scan_raw_string};
 
 pub fn next_token(text: &str) -> Token {
     assert!(!text.is_empty());
@@ -23,10 +23,7 @@ pub fn next_token(text: &str) -> Token {
 }
 
 fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
-    // Note: r as in r" or r#" is part of a raw string literal,
-    // b as in b' is part of a byte literal.
-    // They are not identifiers, and are handled further down.
-    let ident_start = is_ident_start(c) && !string_literal_start(c, ptr.next(), ptr.nnext());
+    let ident_start = is_ident_start(c) && !is_string_literal_start(c, ptr.next(), ptr.nnext());
     if ident_start {
         return scan_ident(c, ptr);
     }
