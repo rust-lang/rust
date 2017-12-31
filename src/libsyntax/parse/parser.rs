@@ -2036,19 +2036,12 @@ impl<'a> Parser<'a> {
 
     /// Parse single lifetime 'a or panic.
     pub fn expect_lifetime(&mut self) -> Lifetime {
-        let lifetime = match self.token {
-            token::Lifetime(ident) =>
-                Lifetime { ident: ident, span: self.span, id: ast::DUMMY_NODE_ID },
-            token::Interpolated(ref nt) => match nt.0 {
-                token::NtLifetime(lifetime) =>
-                    lifetime,
-                _ => self.span_bug(self.span, "not a lifetime")
-            }
-            _ => self.span_bug(self.span, "not a lifetime")
-        };
-
-        self.bump();
-        lifetime
+        if let Some(lifetime) = self.token.lifetime(self.span) {
+            self.bump();
+            lifetime
+        } else {
+            self.span_bug(self.span, "not a lifetime")
+        }
     }
 
     /// Parse mutability (`mut` or nothing).
