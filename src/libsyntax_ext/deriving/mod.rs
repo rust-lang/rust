@@ -55,10 +55,10 @@ pub mod generic;
 macro_rules! derive_traits {
     ($( $name:expr => $func:path, )+) => {
         pub fn is_builtin_trait(name: ast::Name) -> bool {
-            match &*name.as_str() {
+            name.with_str(|str| match str {
                 $( $name )|+ => true,
                 _ => false,
-            }
+            })
         }
 
         pub fn register_builtin_derives(resolver: &mut Resolver) {
@@ -125,7 +125,7 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
             ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
                 for param in params.iter() {
                     if let ast::GenericParam::Type(ref ty) = *param{
-                        typaram.push_str(&ty.ident.name.as_str());
+                        ty.ident.name.with_str(|str| typaram.push_str(str));
                     }
                 }
             }

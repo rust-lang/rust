@@ -441,7 +441,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
                     &format!("requested on the command line with `{} {}`",
                              flag, hyphen_case_lint_name));
             } else {
-                let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
+                let hyphen_case_flag_val = lint_flag_val.with_str(|str| str.replace("_", "-"));
                 sess.diag_note_once(
                     &mut err,
                     DiagnosticMessageId::from(lint),

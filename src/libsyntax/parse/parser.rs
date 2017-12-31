@@ -342,7 +342,7 @@ impl TokenCursor {
             tok => return tok,
         };
 
-        let stripped = strip_doc_comment_decoration(&name.as_str());
+        let stripped = name.with_str(|str| strip_doc_comment_decoration(str));
 
         // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
         // required to wrap the text.
@@ -368,7 +368,7 @@ impl TokenCursor {
 
         self.stack.push(mem::replace(&mut self.frame, TokenCursorFrame::new(sp, &Delimited {
             delim: token::NoDelim,
-            tts: if doc_comment_style(&name.as_str()) == AttrStyle::Inner {
+            tts: if name.with_str(|str| doc_comment_style(str)) == AttrStyle::Inner {
                 [TokenTree::Token(sp, token::Pound), TokenTree::Token(sp, token::Not), body]
                     .iter().cloned().collect::<TokenStream>().into()
             } else {
@@ -895,8 +895,7 @@ impl<'a> Parser<'a> {
         match suffix {
             None => {/* everything ok */}
             Some(suf) => {
-                let text = suf.as_str();
-                if text.is_empty() {
+                if suf.with_str(|str| str.is_empty()) {
                     self.span_bug(sp, "found empty literal suffix in Some")
                 }
                 self.span_err(sp, &format!("{} with a suffix is invalid", kind));
@@ -2602,7 +2601,7 @@ impl<'a> Parser<'a> {
                     hi = self.span;
                     self.bump();
 
-                    let index = n.as_str().parse::<usize>().ok();
+                    let index = n.with_str(|str| str.parse::<usize>().ok());
                     match index {
                         Some(n) => {
                             let id = respan(dot_span.to(hi), n);
@@ -2617,12 +2616,11 @@ impl<'a> Parser<'a> {
                   }
                   token::Literal(token::Float(n), _suf) => {
                     self.bump();
-                    let fstr = n.as_str();
                     let mut err = self.diagnostic().struct_span_err(self.prev_span,
                         &format!("unexpected token: `{}`", n));
                     err.span_label(self.prev_span, "unexpected token");
-                    if fstr.chars().all(|x| "0123456789.".contains(x)) {
-                        let float = match fstr.parse::<f64>().ok() {
+                    if n.with_str(|str| str.chars().all(|x| "0123456789.".contains(x))) {
+                        let float = match n.with_str(|str| str.parse::<f64>().ok()) {
                             Some(f) => f,
                             None => continue,
                         };
@@ -2634,7 +2632,7 @@ impl<'a> Parser<'a> {
                             s.print_usize(float.trunc() as usize)?;
                             s.pclose()?;
                             s.s.word(".")?;
-                            s.s.word(fstr.splitn(2, ".").last().unwrap())
+                            n.with_str(|str| s.s.word(str.splitn(2, ".").last().unwrap()))
                         });
                         err.span_suggestion(
                             lo.to(self.prev_span),
@@ -5783,15 +5781,17 @@ impl<'a> Parser<'a> {
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
         if let Some(path) = attr::first_attr_value_str_by_name(attrs, "path") {
-            self.directory.path.push(&path.as_str());
+            path.with_str(|str| self.directory.path.push(str));
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
-            self.directory.path.push(&id.name.as_str());
+            id.name.with_str(|str| self.directory.path.push(str));
         }
     }
 
     pub fn submod_path_from_attr(attrs: &[ast::Attribute], dir_path: &Path) -> Option<PathBuf> {
-        attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&d.as_str()))
+        attr::first_attr_value_str_by_name(attrs, "path").map(|d| {
+            d.with_str(|str| dir_path.join(str))
+        })
     }
 
     /// Returns either a path to a module, or .
@@ -6180,7 +6180,7 @@ impl<'a> Parser<'a> {
                 let sp = self.span;
                 self.expect_no_suffix(sp, "ABI spec", suf);
                 self.bump();
-                match abi::lookup(&s.as_str()) {
+                match s.with_str(|str| abi::lookup(str)) {
                     Some(abi) => Ok(Some(abi)),
                     None => {
                         let prev_span = self.prev_span;

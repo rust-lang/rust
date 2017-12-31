@@ -221,8 +221,9 @@ impl TransCrate for MetadataOnlyTransCrate {
             if crate_type != CrateType::CrateTypeRlib && crate_type != CrateType::CrateTypeDylib {
                 continue;
             }
-            let output_name =
-                out_filename(sess, crate_type, &outputs, &trans.0.crate_name.as_str());
+            let output_name = trans.0.crate_name.with_str(|str| {
+                out_filename(sess, crate_type, &outputs, str)
+            });
             let mut compressed = trans.0.metadata_version.clone();
             let metadata = if crate_type == CrateType::CrateTypeDylib {
                 DeflateEncoder::new(&mut compressed, Compression::Fast)

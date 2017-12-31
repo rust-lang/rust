@@ -85,11 +85,11 @@ fn assert_invoc(slice: &mut &[TokenTree]) {
 
 fn assert_foo(slice: &mut &[TokenTree]) {
     match slice[0].kind {
-        TokenNode::Term(ref name) => assert_eq!(name.as_str(), "fn"),
+        TokenNode::Term(ref name) => name.with_str(|str| assert_eq!(str, "fn")),
         _ => panic!("expected fn"),
     }
     match slice[1].kind {
-        TokenNode::Term(ref name) => assert_eq!(name.as_str(), "foo"),
+        TokenNode::Term(ref name) => name.with_str(|str| assert_eq!(str, "foo")),
         _ => panic!("expected foo"),
     }
     match slice[2].kind {

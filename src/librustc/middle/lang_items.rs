@@ -105,7 +105,7 @@ struct LanguageItemCollector<'a, 'tcx: 'a> {
 impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let Some(value) = extract(&item.attrs) {
-            let item_index = self.item_refs.get(&*value.as_str()).cloned();
+            let item_index = value.with_str(|str| self.item_refs.get(str).cloned());
 
             if let Some(item_index) = item_index {
                 let def_id = self.tcx.hir.local_def_id(item.id);

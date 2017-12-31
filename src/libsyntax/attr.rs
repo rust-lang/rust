@@ -370,7 +370,7 @@ impl Attribute {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
                 Symbol::intern("doc"),
-                Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())));
+                comment.with_str(|str| Symbol::intern(&strip_doc_comment_decoration(str))));
             let mut attr = if self.style == ast::AttrStyle::Outer {
                 mk_attr_outer(self.span, self.id, meta)
             } else {
@@ -466,7 +466,7 @@ pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
 }
 
 pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
-    let style = doc_comment_style(&text.as_str());
+    let style = text.with_str(|str| doc_comment_style(str));
     let lit = respan(span, LitKind::Str(text, ast::StrStyle::Cooked));
     Attribute {
         id,
@@ -600,7 +600,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
 
             // The unwraps below may look dangerous, but we've already asserted
             // that they won't fail with the loop above.
-            match &*cfg.name.as_str() {
+            cfg.name.with_str(|str| match str {
                 "any" => mis.iter().any(|mi| {
                     eval_condition(mi.meta_item().unwrap(), sess, eval)
                 }),
@@ -619,7 +619,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
                     span_err!(sess.span_diagnostic, cfg.span, E0537, "invalid predicate `{}`", p);
                     false
                 }
-            }
+            })
         },
         ast::MetaItemKind::Word | ast::MetaItemKind::NameValue(..) => {
             eval(cfg)
@@ -712,7 +712,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     )+
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match &*mi.name().as_str() {
+                            match &*mi.name.with_str(|str| str.to_string()) {
                                 $(
                                     stringify!($name)
                                         => if !get(mi, &mut $name) { continue 'outer },
@@ -731,7 +731,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                 }
             }
 
-            match &*meta.name.as_str() {
+            match &*meta.name.with_str(|str| str.to_string()) {
                 "rustc_deprecated" => {
                     if rustc_depr.is_some() {
                         span_err!(diagnostic, item_sp, E0540,
@@ -786,7 +786,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     let mut issue = None;
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match &*mi.name().as_str() {
+                            match &*mi.name().with_str(|str| str.to_string()) {
                                 "feature" => if !get(mi, &mut feature) { continue 'outer },
                                 "reason" => if !get(mi, &mut reason) { continue 'outer },
                                 "issue" => if !get(mi, &mut issue) { continue 'outer },
@@ -808,7 +808,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 level: Unstable {
                                     reason,
                                     issue: {
-                                        if let Ok(issue) = issue.as_str().parse() {
+                                        if let Ok(issue) = issue.with_str(|str| str.parse()) {
                                             issue
                                         } else {
                                             span_err!(diagnostic, attr.span(), E0545,
@@ -842,7 +842,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     let mut since = None;
                     for meta in metas {
                         if let NestedMetaItemKind::MetaItem(ref mi) = meta.node {
-                            match &*mi.name().as_str() {
+                            match &*mi.name().with_str(|str| str.to_string()) {
                                 "feature" => if !get(mi, &mut feature) { continue 'outer },
                                 "since" => if !get(mi, &mut since) { continue 'outer },
                                 _ => {
@@ -950,7 +950,7 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
             let mut note = None;
             for meta in metas {
                 if let NestedMetaItemKind::MetaItem(ref mi) = meta.node {
-                    match &*mi.name().as_str() {
+                    match &*mi.name().with_str(|str| str.to_string()) {
                         "since" => if !get(mi, &mut since) { continue 'outer },
                         "note" => if !get(mi, &mut note) { continue 'outer },
                         _ => {
@@ -1006,19 +1006,18 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
 
                 let mut recognised = false;
                 if let Some(mi) = item.word() {
-                    let word = &*mi.name().as_str();
-                    let hint = match word {
+                    let hint = mi.name().with_str(|str| match str {
                         // Can't use "extern" because it's not a lexical identifier.
                         "C" => Some(ReprExtern),
                         "packed" => Some(ReprPacked),
                         "simd" => Some(ReprSimd),
-                        _ => match int_type_of_word(word) {
+                        _ => match mi.name().with_str(|str| int_type_of_word(str)) {
                             Some(ity) => Some(ReprInt(ity)),
                             None => {
                                 None
                             }
                         }
-                    };
+                    });
 
                     if let Some(h) = hint {
                         recognised = true;
@@ -1230,9 +1229,9 @@ impl LitKind {
         match *self {
             LitKind::Str(string, ast::StrStyle::Cooked) => {
                 let mut escaped = String::new();
-                for ch in string.as_str().chars() {
+                string.with_str(|str| for ch in str.chars() {
                     escaped.extend(ch.escape_unicode());
-                }
+                });
                 Token::Literal(token::Lit::Str_(Symbol::intern(&escaped)), None)
             }
             LitKind::Str(string, ast::StrStyle::Raw(n)) => {

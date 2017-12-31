@@ -33,7 +33,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                     ast::LitKind::Str(ref s, _) |
                     ast::LitKind::Float(ref s, _) |
                     ast::LitKind::FloatUnsuffixed(ref s) => {
-                        accumulator.push_str(&s.as_str());
+                        s.with_str(|str| accumulator.push_str(str));
                     }
                     ast::LitKind::Char(c) => {
                         accumulator.push(c);

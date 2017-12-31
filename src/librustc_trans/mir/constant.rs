@@ -397,7 +397,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }
                     if let Some((ref dest, target)) = *destination {
                         let result = if fn_ty.fn_sig(tcx).abi() == Abi::RustIntrinsic {
-                            match &tcx.item_name(def_id)[..] {
+                            tcx.item_name(def_id).with(|str| match str {
                                 "size_of" => {
                                     let llval = C_usize(self.ccx,
                                         self.ccx.size_of(substs.type_at(0)).bytes());
@@ -409,7 +409,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                     Ok(Const::new(llval, tcx.types.usize))
                                 }
                                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
-                            }
+                            })
                         } else if let Some((op, is_checked)) = self.is_binop_lang_item(def_id) {
                             (||{
                                 assert_eq!(arg_vals.len(), 2);

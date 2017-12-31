@@ -103,13 +103,14 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     let arg_tys = sig.inputs();
     let ret_ty = sig.output();
-    let name = &*tcx.item_name(def_id);
+    let name = tcx.item_name(def_id).to_string();
+    let name = &*name;
 
     let llret_ty = ccx.layout_of(ret_ty).llvm_type(ccx);
     let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, fn_ty.ret.layout.align);
 
     let simple = get_simple_intrinsic(ccx, name);
-    let llval = match name {
+    let llval = match &*name {
         _ if simple.is_some() => {
             bcx.call(simple.unwrap(),
                      &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),

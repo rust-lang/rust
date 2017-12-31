@@ -18,6 +18,8 @@ use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
+use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
+use std::hash::{Hash, Hasher};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
@@ -36,7 +38,7 @@ impl Ident {
     }
 
     pub fn without_first_quote(&self) -> Ident {
-        Ident { name: Symbol::from(self.name.as_str().trim_left_matches('\'')), ctxt: self.ctxt }
+        Ident { name: Symbol::from(self.name.to_string().trim_left_matches('\'')), ctxt: self.ctxt }
     }
 
     pub fn modern(self) -> Ident {
@@ -59,10 +61,10 @@ impl fmt::Display for Ident {
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         if self.ctxt.modern() == SyntaxContext::empty() {
-            s.emit_str(&self.name.as_str())
+            self.name.with_str(|str| s.emit_str(str))
         } else { // FIXME(jseyfried) intercrate hygiene
             let mut string = "#".to_owned();
-            string.push_str(&self.name.as_str());
+            self.name.with_str(|str| string.push_str(str));
             s.emit_str(&string)
         }
     }
@@ -106,12 +108,16 @@ impl Symbol {
         with_interner(|interner| interner.gensymed(self))
     }
 
+    pub fn with_str<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
+        self.as_str().with(f)
+    }
+
     pub fn as_str(self) -> InternedString {
-        with_interner(|interner| unsafe {
-            InternedString {
-                string: ::std::mem::transmute::<&str, &str>(interner.get(self))
-            }
-        })
+        InternedString {
+            // Return an interned (non-gensymed) string so we can compare symbols
+            // in the PartialEq implementation of InternedString
+            symbol: self.interned(),
+        }
     }
 
     pub fn as_u32(self) -> u32 {
@@ -144,7 +150,7 @@ impl fmt::Display for Symbol {
 
 impl Encodable for Symbol {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.as_str())
+        Encodable::encode(&self.as_str(), s)
     }
 }
 
@@ -210,7 +216,7 @@ impl Interner {
         Symbol(!0 - self.gensyms.len() as u32 + 1)
     }
 
-    fn is_gensymed(&mut self, symbol: Symbol) -> bool {
+    fn is_gensymed(&self, symbol: Symbol) -> bool {
         symbol.0 as usize >= self.strings.len()
     }
 
@@ -330,80 +336,114 @@ declare_keywords! {
     (60, Union,          "union")
 }
 
+thread_local!(static INTERNER: RefCell<Interner> = {
+    RefCell::new(Interner::fresh())
+});
+
 // If an interner exists in TLS, return it. Otherwise, prepare a fresh one.
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    thread_local!(static INTERNER: RefCell<Interner> = {
-        RefCell::new(Interner::fresh())
-    });
     INTERNER.with(|interner| f(&mut *interner.borrow_mut()))
 }
 
-/// Represents a string stored in the thread-local interner. Because the
-/// interner lives for the life of the thread, this can be safely treated as an
-/// immortal string, as long as it never crosses between threads.
-///
-/// FIXME(pcwalton): You must be careful about what you do in the destructors
-/// of objects stored in TLS, because they may run after the interner is
-/// destroyed. In particular, they must not access string contents. This can
-/// be fixed in the future by just leaking all strings until thread death
-/// somehow.
-#[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
+/// Represents a string stored in the thread-local interner.
+/// This accesses the thread-local interner in order to get to the string.
+#[derive(Clone, Copy, Eq)]
 pub struct InternedString {
-    string: &'static str,
+    symbol: Symbol,
 }
 
-impl<U: ?Sized> ::std::convert::AsRef<U> for InternedString where str: ::std::convert::AsRef<U> {
-    fn as_ref(&self) -> &U {
-        self.string.as_ref()
+impl InternedString {
+    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
+        INTERNER.with(|interner| {
+            let str = interner.borrow_mut().get(self.symbol) as *const str;
+            // This is safe because the interner never frees strings, it just adds new ones
+            // We can access it because we know the interner is still alive
+            unsafe { f(&*str) }
+        })
+    }
+
+    pub fn as_symbol(self) -> Symbol {
+        self.symbol
     }
 }
 
-impl<T: ::std::ops::Deref<Target = str>> ::std::cmp::PartialEq<T> for InternedString {
+impl Hash for InternedString {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.with(|str| str.hash(state))
+    }
+}
+
+impl PartialOrd<InternedString> for InternedString {
+    fn partial_cmp(&self, other: &InternedString) -> Option<Ordering> {
+        if self.symbol == other.symbol {
+            return Some(Ordering::Equal);
+        }
+        self.with(|self_str| other.with(|other_str| self_str.partial_cmp(&other_str)))
+    }
+}
+
+impl Ord for InternedString {
+    fn cmp(&self, other: &InternedString) -> Ordering {
+        if self.symbol == other.symbol {
+            return Ordering::Equal;
+        }
+        self.with(|self_str| other.with(|other_str| self_str.cmp(&other_str)))
+    }
+}
+
+impl<T: ::std::ops::Deref<Target = str>> PartialEq<T> for InternedString {
     fn eq(&self, other: &T) -> bool {
-        self.string == other.deref()
+        self.with(|string| string == other.deref())
     }
 }
 
-impl ::std::cmp::PartialEq<InternedString> for str {
+impl PartialEq<InternedString> for InternedString {
     fn eq(&self, other: &InternedString) -> bool {
-        self == other.string
+        self.symbol == other.symbol
     }
 }
 
-impl<'a> ::std::cmp::PartialEq<InternedString> for &'a str {
+impl PartialEq<InternedString> for str {
     fn eq(&self, other: &InternedString) -> bool {
-        *self == other.string
+        other.with(|string| self == string)
     }
 }
 
-impl ::std::cmp::PartialEq<InternedString> for String {
+impl<'a> PartialEq<InternedString> for &'a str {
     fn eq(&self, other: &InternedString) -> bool {
-        self == other.string
+        other.with(|string| *self == string)
     }
 }
 
-impl<'a> ::std::cmp::PartialEq<InternedString> for &'a String {
+impl PartialEq<InternedString> for String {
     fn eq(&self, other: &InternedString) -> bool {
-        *self == other.string
+        other.with(|string| self == string)
+    }
+}
+
+impl<'a> PartialEq<InternedString> for &'a String {
+    fn eq(&self, other: &InternedString) -> bool {
+        other.with(|string| *self == string)
+    }
+}
+
+impl ::std::convert::From<InternedString> for String {
+    fn from(val: InternedString) -> String {
+        val.as_symbol().to_string()
     }
 }
 
 impl !Send for InternedString { }
 
-impl ::std::ops::Deref for InternedString {
-    type Target = str;
-    fn deref(&self) -> &str { self.string }
-}
-
 impl fmt::Debug for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self.string, f)
+        self.with(|str| fmt::Debug::fmt(&str, f))
     }
 }
 
 impl fmt::Display for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self.string, f)
+        self.with(|str| fmt::Display::fmt(&str, f))
     }
 }
 
@@ -415,7 +455,7 @@ impl Decodable for InternedString {
 
 impl Encodable for InternedString {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self.string)
+        self.with(|string| s.emit_str(string))
     }
 }
 

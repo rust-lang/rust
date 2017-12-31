@@ -407,8 +407,8 @@ impl Term {
 
     /// Get a reference to the interned string.
     #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn as_str(&self) -> &str {
-        unsafe { &*(&*self.0.as_str() as *const str) }
+    pub fn with_str<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
+        self.0.with_str(f)
     }
 }
 
@@ -678,8 +678,11 @@ impl TokenTree {
             },
             TokenNode::Term(symbol) => {
                 let ident = ast::Ident { name: symbol.0, ctxt: self.span.0.ctxt() };
-                let token =
-                    if symbol.0.as_str().starts_with("'") { Lifetime(ident) } else { Ident(ident) };
+                let token = if symbol.0.with_str(|str| str.starts_with("'")) {
+                    Lifetime(ident)
+                } else {
+                    Ident(ident)
+                };
                 return TokenTree::Token(self.span.0, token).into();
             }
             TokenNode::Literal(token) => return TokenTree::Token(self.span.0, token.0).into(),

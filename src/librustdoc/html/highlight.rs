@@ -222,7 +222,7 @@ impl<'a> Classifier<'a> {
                               -> io::Result<()> {
         let klass = match tas.tok {
             token::Shebang(s) => {
-                out.string(Escape(&s.as_str()), Class::None, Some(&tas))?;
+                s.with_str(|str| out.string(Escape(str), Class::None, Some(&tas)))?;
                 return Ok(());
             },
 
@@ -324,7 +324,7 @@ impl<'a> Classifier<'a> {
 
             // Keywords are also included in the identifier set.
             token::Ident(ident) => {
-                match &*ident.name.as_str() {
+                ident.name.with_str(|str| match str {
                     "ref" | "mut" => Class::RefKeyWord,
 
                     "self" |"Self" => Class::Self_,
@@ -347,7 +347,7 @@ impl<'a> Classifier<'a> {
                             Class::Ident
                         }
                     }
-                }
+                })
             }
 
             token::Lifetime(..) => Class::Lifetime,

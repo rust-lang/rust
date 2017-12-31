@@ -424,7 +424,7 @@ impl<'a> Context<'a> {
         // must be loaded via -L plus some filtering.
         if self.hash.is_none() {
             self.should_match_name = false;
-            if let Some(s) = self.sess.opts.externs.get(&self.crate_name.as_str()) {
+            if let Some(s) = self.crate_name.with_str(|str| self.sess.opts.externs.get(str)) {
                 return self.find_commandline_library(s.iter());
             }
             self.should_match_name = true;
@@ -540,7 +540,7 @@ impl<'a> Context<'a> {
                                          crate_name,
                                          pd.display(),
                                          pr.display(),
-                                         padding=8 + crate_name.len()))
+                                         padding=8 + crate_name.with(|str| str.len())))
                         }
                         &(&Some((ref p, _)), &None) | &(&None, &Some((ref p, _))) => {
                             Some(format!("\ncrate `{}`: {}", crate_name, p.display()))

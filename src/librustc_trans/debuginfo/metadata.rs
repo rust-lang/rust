@@ -792,7 +792,9 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
                              -> DIDescriptor {
     let mut name_in_debuginfo = match sess.local_crate_source_file {
         Some(ref path) => path.clone(),
-        None => PathBuf::from(&*scc.tcx().crate_name(LOCAL_CRATE).as_str()),
+        None => scc.tcx().crate_name(LOCAL_CRATE).with_str(|str| {
+            PathBuf::from(str)
+        }),
     };
 
     // The OSX linker has an idiosyncrasy where it will ignore some debuginfo
@@ -1234,7 +1236,9 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                    self.layout,
                                    self.layout.fields.offset(0),
                                    self.layout.field(cx, 0).size);
-                name.push_str(&adt.variants[niche_variants.start].name.as_str());
+                adt.variants[niche_variants.start].name.with_str(|str| {
+                    name.push_str(str);
+                });
 
                 // Create the (singleton) list of descriptions of union members.
                 vec![
@@ -1299,19 +1303,20 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    containing_scope: DIScope,
                                    span: Span)
                                    -> (DICompositeType, MemberDescriptionFactory<'tcx>) {
-    let variant_name = variant.name.as_str();
-    let unique_type_id = debug_context(cx).type_map
-                                          .borrow_mut()
-                                          .get_unique_type_id_of_enum_variant(
-                                              cx,
-                                              layout.ty,
-                                              &variant_name);
+    let metadata_stub = variant.name.with_str(|variant_name| {
+        let unique_type_id = debug_context(cx).type_map
+                                            .borrow_mut()
+                                            .get_unique_type_id_of_enum_variant(
+                                                cx,
+                                                layout.ty,
+                                                variant_name);
 
-    let metadata_stub = create_struct_stub(cx,
-                                           layout.ty,
-                                           &variant_name,
-                                           unique_type_id,
-                                           containing_scope);
+        create_struct_stub(cx,
+                           layout.ty,
+                           variant_name,
+                           unique_type_id,
+                           containing_scope)
+    });
 
     // If this is not a univariant enum, there is also the discriminant field.
     let (discr_offset, discr_arg) = match discriminant_info {
@@ -1374,7 +1379,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         .zip(&def.variants)
         .map(|(discr, v)| {
             let token = v.name.as_str();
-            let name = CString::new(token.as_bytes()).unwrap();
+            let name = token.with(|str| CString::new(str.as_bytes()).unwrap());
             unsafe {
                 llvm::LLVMRustDIBuilderCreateEnumerator(
                     DIB(cx),
@@ -1399,7 +1404,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     type_metadata(cx, discr.to_ty(cx.tcx()), syntax_pos::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
-                let name = CString::new(discriminant_name.as_bytes()).unwrap();
+                let name = discriminant_name.with(|str| CString::new(str.as_bytes()).unwrap());
                 let discriminant_type_metadata = unsafe {
                     llvm::LLVMRustDIBuilderCreateEnumerationType(
                         DIB(cx),

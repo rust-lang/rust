@@ -60,7 +60,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(ccx, fn_ty));
     let llptrty = ccx.layout_of(fn_ptr_ty).llvm_type(ccx);
 
-    let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
+    let llfn = if let Some(llfn) = sym.name.with(|str| declare::get_declared_value(ccx, str)) {
         // This is subtle and surprising, but sometimes we have to bitcast
         // the resulting fn pointer.  The reason has to do with external
         // functions.  If you have two crates that both bind the same C
@@ -92,7 +92,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             llfn
         }
     } else {
-        let llfn = declare::declare_fn(ccx, &sym, fn_ty);
+        let llfn = sym.name.with(|str| declare::declare_fn(ccx, str, fn_ty));
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 

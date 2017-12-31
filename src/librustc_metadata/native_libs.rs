@@ -63,7 +63,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             };
             let kind = items.iter().find(|k| {
                 k.check_name("kind")
-            }).and_then(|a| a.value_str()).map(Symbol::as_str);
+            }).and_then(|a| a.value_str()).map(|s| s.to_string());
             let kind = match kind.as_ref().map(|s| &s[..]) {
                 Some("static") => cstore::NativeStatic,
                 Some("static-nobundle") => cstore::NativeStaticNobundle,
@@ -114,7 +114,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
 
 impl<'a, 'tcx> Collector<'a, 'tcx> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLibrary) {
-        if lib.name.as_str().is_empty() {
+        if lib.name.with_str(|str| str.is_empty()) {
             match span {
                 Some(span) => {
                     struct_span_err!(self.tcx.sess, span, E0454,

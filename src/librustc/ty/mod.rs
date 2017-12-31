@@ -2762,12 +2762,6 @@ impl_stable_hash_for!(struct self::SymbolName {
     name
 });
 
-impl Deref for SymbolName {
-    type Target = str;
-
-    fn deref(&self) -> &str { &self.name }
-}
-
 impl fmt::Display for SymbolName {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.name, fmt)

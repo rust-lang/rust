@@ -111,14 +111,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     if let Some(extern_crate_def_id) = opt_extern_crate {
                         self.push_item_path(buffer, extern_crate_def_id);
                     } else {
-                        buffer.push(&self.crate_name(cnum).as_str());
+                        self.crate_name(cnum).with_str(|str| buffer.push(str));
                     }
                 }
             }
             RootMode::Absolute => {
                 // In absolute mode, just write the crate name
                 // unconditionally.
-                buffer.push(&self.original_crate_name(cnum).as_str());
+                self.original_crate_name(cnum).with_str(|str| buffer.push(str));
             }
         }
     }
@@ -139,12 +139,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match *self.extern_crate(cur_def) {
                     Some(ref extern_crate) if extern_crate.direct => {
                         self.push_item_path(buffer, extern_crate.def_id);
-                        cur_path.iter().rev().map(|segment| buffer.push(&segment)).count();
+                        cur_path.iter()
+                                .rev()
+                                .map(|segment| segment.with(|str| buffer.push(str)))
+                                .count();
                         return true;
                     }
                     None => {
-                        buffer.push(&self.crate_name(cur_def.krate).as_str());
-                        cur_path.iter().rev().map(|segment| buffer.push(&segment)).count();
+                        self.crate_name(cur_def.krate).with_str(|str| buffer.push(str));
+                        cur_path.iter()
+                                .rev()
+                                .map(|segment| segment.with(|str| buffer.push(str)))
+                                .count();
                         return true;
                     }
                     _ => {},
@@ -214,7 +220,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::GlobalMetaData(..) => {
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id);
-                buffer.push(&data.as_interned_str());
+                data.as_interned_str().with(|str| buffer.push(str));
             }
             DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
                 let parent_def_id = self.parent_def_id(def_id).unwrap();

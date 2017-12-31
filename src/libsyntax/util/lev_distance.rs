@@ -55,7 +55,7 @@ pub fn find_best_match_for_name<'a, T>(iter_names: T,
 
     let (case_insensitive_match, levenstein_match) = iter_names
     .filter_map(|&name| {
-        let dist = lev_distance(lookup, &name.as_str());
+        let dist = name.with_str(|name| lev_distance(lookup, name));
         if dist <= max_dist {
             Some((name, dist))
         } else {
@@ -66,7 +66,7 @@ pub fn find_best_match_for_name<'a, T>(iter_names: T,
     // (case_insensitive_match, (levenstein_match, levenstein_distance))
     .fold((None, None), |result, (candidate, dist)| {
         (
-            if candidate.as_str().to_uppercase() == lookup.to_uppercase() {
+            if candidate.with_str(|str| str.to_uppercase()) == lookup.to_uppercase() {
                 Some(candidate)
             } else {
                 result.0

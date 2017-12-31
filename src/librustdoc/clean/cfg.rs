@@ -81,7 +81,7 @@ impl Cfg {
             },
             MetaItemKind::List(ref items) => {
                 let mut sub_cfgs = items.iter().map(Cfg::parse_nested);
-                match &*name.as_str() {
+                match &*name.to_string() {
                     "all" => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
                     "any" => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
                     "not" => if sub_cfgs.len() == 1 {
@@ -163,10 +163,10 @@ impl Cfg {
             Cfg::Any(ref sub_cfgs) | Cfg::All(ref sub_cfgs) => {
                 sub_cfgs.first().map(Cfg::should_capitalize_first_letter).unwrap_or(false)
             },
-            Cfg::Cfg(name, _) => match &*name.as_str() {
+            Cfg::Cfg(name, _) => name.with_str(|str| match str {
                 "debug_assertions" | "target_endian" => true,
                 _ => false,
-            },
+            }),
         }
     }
 
@@ -319,12 +319,12 @@ impl<'a> fmt::Display for Html<'a> {
             Cfg::False => fmt.write_str("nowhere"),
 
             Cfg::Cfg(name, value) => {
-                let n = &*name.as_str();
-                let human_readable = match (n, value) {
+                let n = name.to_string();
+                let human_readable = match (&*n, value) {
                     ("unix", None) => "Unix",
                     ("windows", None) => "Windows",
                     ("debug_assertions", None) => "debug-assertions enabled",
-                    ("target_os", Some(os)) => match &*os.as_str() {
+                    ("target_os", Some(os)) => os.with_str(|str| match str {
                         "android" => "Android",
                         "bitrig" => "Bitrig",
                         "dragonfly" => "DragonFly BSD",
@@ -342,8 +342,8 @@ impl<'a> fmt::Display for Html<'a> {
                         "solaris" => "Solaris",
                         "windows" => "Windows",
                         _ => "",
-                    },
-                    ("target_arch", Some(arch)) => match &*arch.as_str() {
+                    }),
+                    ("target_arch", Some(arch)) => arch.with_str(|str| match str {
                         "aarch64" => "AArch64",
                         "arm" => "ARM",
                         "asmjs" => "asm.js",
@@ -358,22 +358,22 @@ impl<'a> fmt::Display for Html<'a> {
                         "x86" => "x86",
                         "x86_64" => "x86-64",
                         _ => "",
-                    },
-                    ("target_vendor", Some(vendor)) => match &*vendor.as_str() {
+                    }),
+                    ("target_vendor", Some(vendor)) => vendor.with_str(|str| match str {
                         "apple" => "Apple",
                         "pc" => "PC",
                         "rumprun" => "Rumprun",
                         "sun" => "Sun",
                         _ => ""
-                    },
-                    ("target_env", Some(env)) => match &*env.as_str() {
+                    }),
+                    ("target_env", Some(env)) => env.with_str(|str| match str {
                         "gnu" => "GNU",
                         "msvc" => "MSVC",
                         "musl" => "musl",
                         "newlib" => "Newlib",
                         "uclibc" => "uClibc",
                         _ => "",
-                    },
+                    }),
                     ("target_endian", Some(endian)) => return write!(fmt, "{}-endian", endian),
                     ("target_pointer_width", Some(bits)) => return write!(fmt, "{}-bit", bits),
                     _ => "",
@@ -381,9 +381,11 @@ impl<'a> fmt::Display for Html<'a> {
                 if !human_readable.is_empty() {
                     fmt.write_str(human_readable)
                 } else if let Some(v) = value {
-                    write!(fmt, "<code>{}=\"{}\"</code>", Escape(n), Escape(&*v.as_str()))
+                    v.with_str(|str| {
+                        write!(fmt, "<code>{}=\"{}\"</code>", Escape(&*n), Escape(str))
+                    })
                 } else {
-                    write!(fmt, "<code>{}</code>", Escape(n))
+                    write!(fmt, "<code>{}</code>", Escape(&*n))
                 }
             }
         }

@@ -1652,7 +1652,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             CtorKind::Fictive => {
                                 let mut struct_fmt = fmt.debug_struct("");
                                 for (field, place) in variant_def.fields.iter().zip(places) {
-                                    struct_fmt.field(&field.name.as_str(), place);
+                                    field.name.with_str(|str| struct_fmt.field(str, place));
                                 }
                                 struct_fmt.finish()
                             }
@@ -1671,7 +1671,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, place) in freevars.iter().zip(places) {
                                     let var_name = tcx.hir.name(freevar.var_id());
-                                    struct_fmt.field(&var_name.as_str(), place);
+                                    var_name.with_str(|str| struct_fmt.field(str, place));
                                 }
                             });
 
@@ -1689,7 +1689,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, place) in freevars.iter().zip(places) {
                                     let var_name = tcx.hir.name(freevar.var_id());
-                                    struct_fmt.field(&var_name.as_str(), place);
+                                    var_name.with_str(|str| struct_fmt.field(str, place));
                                 }
                                 struct_fmt.field("$state", &places[freevars.len()]);
                                 for i in (freevars.len() + 1)..places.len() {

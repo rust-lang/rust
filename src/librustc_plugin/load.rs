@@ -71,7 +71,9 @@ pub fn load_plugins(sess: &Session,
                 match plugin.name() {
                     Some(name) if !plugin.is_value_str() => {
                         let args = plugin.meta_item_list().map(ToOwned::to_owned);
-                        loader.load_plugin(plugin.span, &name.as_str(), args.unwrap_or_default());
+                        name.with_str(|str| {
+                            loader.load_plugin(plugin.span, str, args.unwrap_or_default())
+                        });
                     },
                     _ => call_malformed_plugin_attribute(sess, attr.span),
                 }

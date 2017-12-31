@@ -109,8 +109,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
 
     // Check that the description starts and ends with a newline and doesn't
     // overflow the maximum line width.
-    description.map(|raw_msg| {
-        let msg = raw_msg.as_str();
+    description.map(|raw_msg| raw_msg.with_str(|msg| {
         if !msg.starts_with("\n") || !msg.ends_with("\n") {
             ecx.span_err(span, &format!(
                 "description for error code {} doesn't start and end with a newline",
@@ -129,7 +128,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
                 code, MAX_DESCRIPTION_WIDTH
             ));
         }
-    });
+    }));
     // Add the error to the map.
     with_registered_diagnostics(|diagnostics| {
         let info = ErrorInfo {
@@ -174,10 +173,10 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
     // Output error metadata to `tmp/extended-errors/<target arch>/<crate name>.json`
     if let Ok(target_triple) = env::var("CFG_COMPILER_HOST_TRIPLE") {
         with_registered_diagnostics(|diagnostics| {
-            if let Err(e) = output_metadata(ecx,
-                                            &target_triple,
-                                            &crate_name.name.as_str(),
-                                            diagnostics) {
+            if let Err(e) = crate_name.name.with_str(|crate_name| output_metadata(ecx,
+                                                                                  &target_triple,
+                                                                                  crate_name,
+                                                                                  diagnostics)) {
                 ecx.span_bug(span, &format!(
                     "error writing metadata for triple `{}` and crate `{}`, error: {}, \
                      cause: {:?}",

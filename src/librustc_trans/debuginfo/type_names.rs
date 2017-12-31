@@ -184,13 +184,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       qualified: bool,
                       output: &mut String) {
         if qualified {
-            output.push_str(&cx.tcx().crate_name(def_id.krate).as_str());
+            cx.tcx().crate_name(def_id.krate).with_str(|str| output.push_str(str));
             for path_element in cx.tcx().def_path(def_id).data {
                 output.push_str("::");
-                output.push_str(&path_element.data.as_interned_str());
+                path_element.data.as_interned_str().with(|str| output.push_str(str));
             }
         } else {
-            output.push_str(&cx.tcx().item_name(def_id));
+            cx.tcx().item_name(def_id).with(|str| output.push_str(str));
         }
     }
 

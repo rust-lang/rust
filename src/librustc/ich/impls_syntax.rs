@@ -33,8 +33,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for InternedString {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        let s: &str = &**self;
-        s.hash_stable(hcx, hasher);
+        self.with(|str| str.hash_stable(hcx, hasher));
     }
 }
 

@@ -217,9 +217,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     _ => None
                 };
-                let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
                 let fun = unpack!(block = this.as_local_operand(block, fun));
-                if intrinsic == Some("move_val_init") {
+                if intrinsic.map(|s| s.with(|str| str == "move_val_init")).unwrap_or(false) {
                     // `move_val_init` has "magic" semantics - the second argument is
                     // always evaluated "directly" into the first one.
 

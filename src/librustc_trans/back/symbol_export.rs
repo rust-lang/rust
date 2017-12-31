@@ -92,10 +92,10 @@ pub fn provide(providers: &mut Providers) {
                 tcx.hir.local_def_id(node_id)
             })
             .map(|def_id| {
-                let name = tcx.symbol_name(Instance::mono(tcx, def_id));
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id)).to_string();
                 let export_level = export_level(tcx, def_id);
                 debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
-                (str::to_owned(&name), Some(def_id), export_level)
+                (name, Some(def_id), export_level)
             })
             .collect();
 
@@ -170,7 +170,7 @@ pub fn provide_extern(providers: &mut Providers) {
             .exported_symbol_ids(cnum)
             .iter()
             .map(|&def_id| {
-                let name = tcx.symbol_name(Instance::mono(tcx, def_id));
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id)).to_string();
                 let export_level = if compiler_builtins_and_binaryen &&
                                       tcx.contains_extern_indicator(def_id) {
                     SymbolExportLevel::C
@@ -193,7 +193,7 @@ pub fn provide_extern(providers: &mut Providers) {
                     export_level(tcx, def_id)
                 };
                 debug!("EXPORTED SYMBOL (re-export): {} ({:?})", name, export_level);
-                (str::to_owned(&name), Some(def_id), export_level)
+                (name, Some(def_id), export_level)
             })
             .collect();
 

@@ -129,7 +129,7 @@ impl<'a> Registry<'a> {
     #[unstable(feature = "rustc_private", issue = "27812")]
     #[rustc_deprecated(since = "1.15.0", reason = "replaced by macros 1.1 (RFC 1861)")]
     pub fn register_custom_derive(&mut self, name: ast::Name, extension: SyntaxExtension) {
-        assert!(name.as_str().starts_with("derive_"));
+        name.with_str(|str| assert!(str.starts_with("derive_")));
         self.whitelisted_custom_derives.push(name);
         self.register_syntax_extension(name, extension);
     }

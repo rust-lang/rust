@@ -713,7 +713,7 @@ fn check_matcher_core(sess: &ParseSess,
         'each_last: for token in &last.tokens {
             if let TokenTree::MetaVarDecl(_, ref name, ref frag_spec) = *token {
                 for next_token in &suffix_first.tokens {
-                    match is_in_follow(next_token, &frag_spec.name.as_str()) {
+                    match frag_spec.name.with_str(|str| is_in_follow(next_token, str)) {
                         Err((msg, help)) => {
                             sess.span_diagnostic.struct_span_err(next_token.span(), &msg)
                                 .help(help).emit();
@@ -751,7 +751,7 @@ fn check_matcher_core(sess: &ParseSess,
 
 fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
     if let quoted::TokenTree::MetaVarDecl(_, _, frag_spec) = *tok {
-        frag_can_be_followed_by_any(&frag_spec.name.as_str())
+        frag_spec.name.with_str(|str| frag_can_be_followed_by_any(str))
     } else {
         // (Non NT's can always be followed by anthing in matchers.)
         true
@@ -870,10 +870,12 @@ fn has_legal_fragment_specifier(sess: &ParseSess,
                                 tok: &quoted::TokenTree) -> Result<(), String> {
     debug!("has_legal_fragment_specifier({:?})", tok);
     if let quoted::TokenTree::MetaVarDecl(_, _, ref frag_spec) = *tok {
-        let frag_name = frag_spec.name.as_str();
         let frag_span = tok.span();
-        if !is_legal_fragment_specifier(sess, features, attrs, &frag_name, frag_span) {
-            return Err(frag_name.to_string());
+        let legal = frag_spec.name.with_str(|frag_name| {
+            is_legal_fragment_specifier(sess, features, attrs, frag_name, frag_span)
+        });
+        if !legal {
+            return Err(frag_spec.name.with_str(|str| str.to_string()));
         }
     }
     Ok(())

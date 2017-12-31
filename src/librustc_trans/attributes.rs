@@ -104,11 +104,11 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
     for attr in attrs {
         if attr.check_name("target_feature") {
             if let Some(val) = attr.value_str() {
-                for feat in val.as_str().split(",").map(|f| f.trim()) {
+                val.with_str(|str| for feat in str.split(",").map(|f| f.trim()) {
                     if !feat.is_empty() && !feat.contains('\0') {
                         target_features.push(feat.to_string());
                     }
-                }
+                })
             }
         } else if attr.check_name("cold") {
             Attribute::Cold.apply_llfn(Function, llfn);

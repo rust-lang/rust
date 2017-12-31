@@ -1077,12 +1077,12 @@ impl<'a> Context<'a> {
                 return;
             }
         }
-        if name.starts_with("rustc_") {
+        if name.with(|str| str.starts_with("rustc_")) {
             gate_feature!(self, rustc_attrs, attr.span,
                           "unless otherwise specified, attributes \
                            with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics");
-        } else if name.starts_with("derive_") {
+        } else if name.with(|str| str.starts_with("derive_")) {
             gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
         } else if !attr::is_known(attr) {
             // Only run the custom attribute lint during regular
@@ -1448,7 +1448,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
-        if !name.as_str().is_ascii() {
+        if !name.with_str(|str| str.is_ascii()) {
             gate_feature_post!(&self,
                                non_ascii_idents,
                                self.context.parse_sess.codemap().def_span(sp),
@@ -1579,7 +1579,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ForeignItemKind::Static(..) => {
                 let link_name = attr::first_attr_value_str_by_name(&i.attrs, "link_name");
                 let links_to_llvm = match link_name {
-                    Some(val) => val.as_str().starts_with("llvm."),
+                    Some(val) => val.with_str(|str| str.starts_with("llvm.")),
                     _ => false
                 };
                 if links_to_llvm {

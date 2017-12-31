@@ -1844,7 +1844,7 @@ pub struct StructField {
 impl StructField {
     // Still necessary in couple of places
     pub fn is_positional(&self) -> bool {
-        let first = self.name.as_str().as_bytes()[0];
+        let first = self.name.with_str(|str| str.as_bytes()[0]);
         first >= b'0' && first <= b'9'
     }
 }

@@ -162,7 +162,7 @@ impl Quote for usize {
 
 impl Quote for Term {
     fn quote(self) -> TokenStream {
-        quote!(::Term::intern((quote self.as_str())))
+        self.with_str(|str| quote!(::Term::intern((quote str))))
     }
 }
 

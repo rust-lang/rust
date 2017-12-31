@@ -125,11 +125,11 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                                                          .contains_key(&MonoItem::Static(id));
                 assert!(!defined_in_current_codegen_unit);
 
-                if declare::get_declared_value(ccx, &sym[..]).is_some() {
+                if sym.name.with(|str| declare::get_declared_value(ccx, str).is_some()) {
                     span_bug!(span, "trans: Conflicting symbol names for static?");
                 }
 
-                let g = declare::define_global(ccx, &sym[..], llty).unwrap();
+                let g = sym.name.with(|str| declare::define_global(ccx, str, llty).unwrap());
 
                 if !ccx.tcx().is_exported_symbol(def_id) {
                     unsafe {
@@ -151,7 +151,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     // extern "C" fn() from being non-null, so we can't just declare a
                     // static and call it a day. Some linkages (like weak) will make it such
                     // that the static actually has a null value.
-                    let linkage = match base::linkage_by_name(&name.as_str()) {
+                    let linkage = match name.with_str(|str| base::linkage_by_name(str)) {
                         Some(linkage) => linkage,
                         None => {
                             ccx.sess().span_fatal(span, "invalid linkage specified");
@@ -165,7 +165,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     };
                     unsafe {
                         // Declare a symbol `foo` with the desired linkage.
-                        let g1 = declare::declare_global(ccx, &sym, llty2);
+                        let g1 = sym.name.with(|str| declare::declare_global(ccx, str, llty2));
                         llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
                         // Declare an internal global `extern_with_linkage_foo` which
@@ -175,7 +175,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                         // `extern_with_linkage_foo` will instead be initialized to
                         // zero.
                         let mut real_name = "_rust_extern_with_linkage_".to_string();
-                        real_name.push_str(&sym);
+                        sym.name.with(|str| real_name.push_str(str));
                         let g2 = declare::define_global(ccx, &real_name, llty).unwrap_or_else(||{
                             ccx.sess().span_fatal(span,
                                 &format!("symbol `{}` is already defined", &sym))
@@ -186,7 +186,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     }
                 } else {
                     // Generate an external declaration.
-                    declare::declare_global(ccx, &sym, llty)
+                    sym.name.with(|str| declare::declare_global(ccx, str, llty))
                 };
 
                 (g, attrs)
@@ -207,7 +207,9 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
         // FIXME(nagisa): investigate whether it can be changed into define_global
-        let g = declare::declare_global(ccx, &sym, ccx.layout_of(ty).llvm_type(ccx));
+        let g = sym.name.with(|str| {
+            declare::declare_global(ccx, str, ccx.layout_of(ty).llvm_type(ccx))
+        });
         // Thread-local statics in some other crate need to *always* be linked
         // against in a thread-local fashion, so we need to be sure to apply the
         // thread-local attribute locally if it was present remotely. If we

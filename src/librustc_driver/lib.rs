@@ -766,7 +766,7 @@ impl RustcDefaultCalls {
                         // specifically allowing the crt-static cfg and that's
                         // it, this is intended to get into Cargo and then go
                         // through to build scripts.
-                        let value = value.as_ref().map(|s| s.as_str());
+                        let value = value.as_ref().map(|s| s.to_string());
                         let value = value.as_ref().map(|s| s.as_ref());
                         if name != "target_feature" || value != Some("crt-static") {
                             if !allow_unstable_cfg && gated_cfg.is_some() {
