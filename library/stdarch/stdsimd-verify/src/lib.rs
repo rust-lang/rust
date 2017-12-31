@@ -160,11 +160,11 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
     if path.segments.len() != 1 {
         panic!("unsupported path that needs name resolution")
     }
-    match path.segments.get(0).item().arguments {
+    match path.segments.first().unwrap().item().arguments {
         syn::PathArguments::None => {}
         _ => panic!("unsupported path that has path arguments")
     }
-    path.segments.get(0).item().ident
+    path.segments.first().unwrap().item().ident
 }
 
 fn walk(root: &Path, files: &mut Vec<syn::File>) {
@@ -193,7 +193,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
             match a {
                 syn::MetaItem::List(i) => {
                     if i.ident == "cfg_attr" {
-                        Some(i.nested.into_vec())
+                        i.nested.into_iter().next()
                     } else {
                         None
                     }
@@ -201,12 +201,11 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
                 _ => None,
             }
         })
-        .filter_map(|list| list.into_iter().nth(1))
         .filter_map(|nested| {
-            match nested {
+            match nested.into_item() {
                 syn::NestedMetaItem::MetaItem(syn::MetaItem::List(i)) => {
                     if i.ident == "assert_instr" {
-                        Some(i.nested.into_vec())
+                        i.nested.into_iter().next()
                     } else {
                         None
                     }
@@ -214,9 +213,8 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
                 _ => None,
             }
         })
-        .filter_map(|list| list.into_iter().next())
         .filter_map(|nested| {
-            match nested {
+            match nested.into_item() {
                 syn::NestedMetaItem::MetaItem(syn::MetaItem::Term(i)) => Some(i),
                 _ => None,
             }
