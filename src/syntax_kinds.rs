@@ -49,8 +49,11 @@ pub const PERCENT: SyntaxKind = SyntaxKind(44);
 pub const AMPERSAND: SyntaxKind = SyntaxKind(45);
 pub const PIPE: SyntaxKind = SyntaxKind(46);
 pub const THIN_ARROW: SyntaxKind = SyntaxKind(47);
+pub const COMMENT: SyntaxKind = SyntaxKind(48);
+pub const DOC_COMMENT: SyntaxKind = SyntaxKind(49);
+pub const SHEBANG: SyntaxKind = SyntaxKind(50);
 
-static INFOS: [SyntaxInfo; 48] = [
+static INFOS: [SyntaxInfo; 51] = [
     SyntaxInfo { name: "ERROR" },
     SyntaxInfo { name: "IDENT" },
     SyntaxInfo { name: "UNDERSCORE" },
@@ -99,6 +102,9 @@ static INFOS: [SyntaxInfo; 48] = [
     SyntaxInfo { name: "AMPERSAND" },
     SyntaxInfo { name: "PIPE" },
     SyntaxInfo { name: "THIN_ARROW" },
+    SyntaxInfo { name: "COMMENT" },
+    SyntaxInfo { name: "DOC_COMMENT" },
+    SyntaxInfo { name: "SHEBANG" },
 ];
 
 pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {

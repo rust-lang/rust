@@ -48,5 +48,8 @@ Grammar(
         "AMPERSAND",
         "PIPE",
         "THIN_ARROW",
+        "COMMENT",
+        "DOC_COMMENT",
+        "SHEBANG",
     ]
 )

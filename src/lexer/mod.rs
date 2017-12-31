@@ -13,6 +13,9 @@ use self::numbers::scan_number;
 mod strings;
 use self::strings::{is_string_literal_start, scan_char, scan_byte_char_or_string, scan_string, scan_raw_string};
 
+mod comments;
+use self::comments::{scan_shebang, scan_comment};
+
 pub fn next_token(text: &str) -> Token {
     assert!(!text.is_empty());
     let mut ptr = Ptr::new(text);
@@ -23,14 +26,24 @@ pub fn next_token(text: &str) -> Token {
 }
 
 fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
-    let ident_start = is_ident_start(c) && !is_string_literal_start(c, ptr.next(), ptr.nnext());
-    if ident_start {
-        return scan_ident(c, ptr);
-    }
-
     if is_whitespace(c) {
         ptr.bump_while(is_whitespace);
         return WHITESPACE;
+    }
+
+    match c {
+        '#' => if scan_shebang(ptr) {
+            return SHEBANG;
+        }
+        '/' => if let Some(kind) = scan_comment(ptr) {
+            return kind;
+        }
+        _ => (),
+    }
+
+    let ident_start = is_ident_start(c) && !is_string_literal_start(c, ptr.next(), ptr.nnext());
+    if ident_start {
+        return scan_ident(c, ptr);
     }
 
     if is_dec_digit(c) {
