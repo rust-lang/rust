@@ -980,8 +980,8 @@ impl<T> [T] {
     /// assert!(!v.contains(&50));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn contains(&self, x: &T) -> bool
-        where T: PartialEq
+    pub fn contains<U>(&self, x: &U) -> bool
+        where U: ?Sized, T: PartialEq<U>
     {
         core_slice::SliceExt::contains(self, x)
     }

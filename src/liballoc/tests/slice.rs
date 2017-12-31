@@ -1052,6 +1052,20 @@ fn test_shrink_to_fit() {
 }
 
 #[test]
+fn test_contains() {
+    let numbers = [1, 2, 3];
+    assert!(numbers.contains(&2));
+    assert!(!numbers.contains(&4));
+
+    let strings = vec![String::from("AB"), String::from("CD")];
+    assert!(strings.contains(&String::from("AB")));
+    assert!(!strings.contains(&String::from("A")));
+    assert!(strings.contains(&"AB"));
+    assert!(!strings.contains(&"BC"));
+    assert!(strings.contains("AB"));
+}
+
+#[test]
 fn test_starts_with() {
     assert!(b"foobar".starts_with(b"foo"));
     assert!(!b"foobar".starts_with(b"oob"));
