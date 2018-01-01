@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -C linker=llllll -Z linker-flavor=ld
-// error-pattern: the linker `llllll`
+// error-pattern: linker `llllll` not found
 
 fn main() {
 }
