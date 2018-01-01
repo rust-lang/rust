@@ -2568,7 +2568,8 @@ impl<'a> Resolver<'a> {
             let code = source.error_code(def.is_some());
             let (base_msg, fallback_label, base_span) = if let Some(def) = def {
                 (format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str),
-                 format!("not a {}", expected), span)
+                 format!("not a {}", expected),
+                 span)
             } else {
                 let item_str = path[path.len() - 1].node;
                 let item_span = path[path.len() - 1].span;
@@ -2585,7 +2586,8 @@ impl<'a> Resolver<'a> {
                     (mod_prefix, format!("`{}`", names_to_string(mod_path)))
                 };
                 (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
-                 format!("not found in {}", mod_str), item_span)
+                 format!("not found in {}", mod_str),
+                 item_span)
             };
             let code = DiagnosticId::Error(code.into());
             let mut err = this.session.struct_span_err_with_code(base_span, &base_msg, code);
@@ -2701,17 +2703,21 @@ impl<'a> Resolver<'a> {
                         return (err, candidates);
                     },
                     _ if ns == ValueNS && is_struct_like(def) => {
+                        let mut accessible_ctor = true;
                         if let Def::Struct(def_id) = def {
                             if let Some((ctor_def, ctor_vis))
                                     = this.struct_constructors.get(&def_id).cloned() {
-                                if is_expected(ctor_def) && !this.is_accessible(ctor_vis) {
+                                accessible_ctor = this.is_accessible(ctor_vis);
+                                if is_expected(ctor_def) && !accessible_ctor {
                                     err.span_label(span, format!("constructor is not visible \
                                                                    here due to private fields"));
                                 }
                             }
                         }
-                        err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
-                                                     path_str));
+                        if accessible_ctor {
+                            err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
+                                                         path_str));
+                        }
                         return (err, candidates);
                     }
                     _ => {}

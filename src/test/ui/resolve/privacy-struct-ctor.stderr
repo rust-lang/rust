@@ -6,7 +6,6 @@ error[E0423]: expected value, found struct `Z`
    |         |
    |         did you mean `S`?
    |         constructor is not visible here due to private fields
-   |         did you mean `Z { /* fields */ }`?
 help: possible better candidate is found in another module, you can import it into scope
    |
 22 |     use m::n::Z;
@@ -16,10 +15,7 @@ error[E0423]: expected value, found struct `S`
   --> $DIR/privacy-struct-ctor.rs:35:5
    |
 35 |     S;
-   |     ^
-   |     |
-   |     constructor is not visible here due to private fields
-   |     did you mean `S { /* fields */ }`?
+   |     ^ constructor is not visible here due to private fields
 help: possible better candidate is found in another module, you can import it into scope
    |
 31 | use m::S;
@@ -29,10 +25,7 @@ error[E0423]: expected value, found struct `xcrate::S`
   --> $DIR/privacy-struct-ctor.rs:40:5
    |
 40 |     xcrate::S;
-   |     ^^^^^^^^^
-   |     |
-   |     constructor is not visible here due to private fields
-   |     did you mean `xcrate::S { /* fields */ }`?
+   |     ^^^^^^^^^ constructor is not visible here due to private fields
 help: possible better candidate is found in another module, you can import it into scope
    |
 31 | use m::S;
