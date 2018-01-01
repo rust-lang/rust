@@ -31,6 +31,7 @@ extern crate ar;
 extern crate flate2;
 #[macro_use]
 extern crate log;
+extern crate libloading;
 
 #[macro_use]
 extern crate rustc;
@@ -42,6 +43,8 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
 
+pub extern crate rustc as __rustc;
+
 use rustc::ty::{TyCtxt, Instance};
 use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -50,6 +53,7 @@ use rustc::util::nodemap::NodeSet;
 
 pub mod diagnostics;
 pub mod link;
+#[macro_export]
 pub mod trans_crate;
 pub mod symbol_names;
 pub mod symbol_names_test;

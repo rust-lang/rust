@@ -56,6 +56,7 @@ extern crate rustc_demangle;
 extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
+#[macro_use]
 extern crate rustc_trans_utils;
 
 #[macro_use] extern crate log;
@@ -249,6 +250,8 @@ impl TransCrate for LlvmTransCrate {
         Ok(())
     }
 }
+
+hot_pluggable_trans_crate!(|sess| { LlvmTransCrate::new(sess) });
 
 struct ModuleTranslation {
     /// The name of the module. When the crate may be saved between

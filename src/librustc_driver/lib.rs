@@ -197,6 +197,9 @@ pub fn get_trans(sess: &Session) -> Box<TransCrate> {
         Some("metadata_only") => {
             rustc_trans_utils::trans_crate::MetadataOnlyTransCrate::new(&sess)
         }
+        Some(filename) if filename.starts_with("/") => {
+            rustc_trans_utils::trans_crate::ExternTransCrate::new(&sess, filename)
+        }
         Some(trans_name) => sess.fatal(&format!("Invalid trans {}", trans_name)),
     }
 }
