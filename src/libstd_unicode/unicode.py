@@ -151,6 +151,14 @@ def load_unicode_data(f):
 
     return (canon_decomp, compat_decomp, gencats, combines, to_upper, to_lower, to_title)
 
+def parse_casing(map_, code, key, values):
+    if values != code:
+        values = [int(i, 16) for i in values.split()]
+        for _ in range(len(values), 3):
+            values.append(0)
+        assert len(values) == 3
+        map_[key] = values
+
 def load_special_casing(f, to_upper, to_lower, to_title):
     fetch(f)
     for line in fileinput.input(f):
@@ -168,13 +176,24 @@ def load_special_casing(f, to_upper, to_lower, to_title):
         title = title.strip()
         upper = upper.strip()
         key = int(code, 16)
-        for (map_, values) in [(to_lower, lower), (to_upper, upper), (to_title, title)]:
-            if values != code:
-                values = [int(i, 16) for i in values.split()]
-                for _ in range(len(values), 3):
-                    values.append(0)
-                assert len(values) == 3
-                map_[key] = values
+        parse_casing(to_lower, code, key, lower)
+        parse_casing(to_upper, code, key, upper)
+        parse_casing(to_title, code, key, title)
+
+def load_case_folding(f, fold_case):
+    fetch(f)
+    for line in fileinput.input(f):
+        data = line.split('#')[0].split(';')
+        if len(data) == 4:
+            code, status, mapping, _comment = data
+            if status.strip() not in ('C', 'F'):  # use full case folding
+                continue
+        else:
+            continue
+        code = code.strip()
+        mapping = mapping.strip()
+        key = int(code, 16)
+        parse_casing(fold_case, code, key, mapping)
 
 def group_cats(cats):
     cats_out = {}
@@ -490,7 +509,7 @@ def emit_property_module(f, mod, tbl, emit):
             f.write("    }\n\n")
     f.write("}\n\n")
 
-def emit_conversions_module(f, to_upper, to_lower, to_title):
+def emit_conversions_module(f, to_upper, to_lower, to_title, fold_case):
     f.write("pub mod conversions {")
     f.write("""
     use core::option::Option;
@@ -510,6 +529,13 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
         }
     }
 
+    pub fn fold_case(c: char) -> [char; 3] {
+        match bsearch_case_table(c, fold_case_table) {
+            None        => [c, '\\0', '\\0'],
+            Some(index) => fold_case_table[index].1,
+        }
+    }
+
     fn bsearch_case_table(c: char, table: &'static [(char, [char; 3])]) -> Option<usize> {
         table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
     }
@@ -523,6 +549,9 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
         is_pub=False, t_type = t_type, pfun=pfun)
     emit_table(f, "to_uppercase_table",
         sorted(to_upper.items(), key=operator.itemgetter(0)),
+        is_pub=False, t_type = t_type, pfun=pfun)
+    emit_table(f, "fold_case_table",
+        sorted(fold_case.items(), key=operator.itemgetter(0)),
         is_pub=False, t_type = t_type, pfun=pfun)
     f.write("}\n\n")
 
@@ -587,6 +616,8 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
         (canon_decomp, compat_decomp, gencats, combines,
                 to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")
         load_special_casing("SpecialCasing.txt", to_upper, to_lower, to_title)
+        fold_case = {}
+        load_case_folding("CaseFolding.txt", fold_case)
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase",
                         "Cased", "Case_Ignorable"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived)
@@ -608,4 +639,4 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
 
         # normalizations and conversions module
         emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
-        emit_conversions_module(rf, to_upper, to_lower, to_title)
+        emit_conversions_module(rf, to_upper, to_lower, to_title, fold_case)

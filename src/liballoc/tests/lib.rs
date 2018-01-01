@@ -14,6 +14,7 @@
 #![feature(alloc_system)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
+#![feature(case_folding)]
 #![feature(inclusive_range_syntax)]
 #![feature(collection_placement)]
 #![feature(const_fn)]

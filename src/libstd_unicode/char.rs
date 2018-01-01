@@ -93,6 +93,28 @@ impl Iterator for ToUppercase {
 #[unstable(feature = "fused", issue = "35602")]
 impl FusedIterator for ToUppercase {}
 
+/// Returns an iterator that yields the case folding of a `char`.
+///
+/// This `struct` is created by the [`fold_case`] method on [`char`]. See
+/// its documentation for more.
+///
+/// [`fold_case`]: ../../std/primitive.char.html#method.fold_case
+/// [`char`]: ../../std/primitive.char.html
+#[unstable(feature = "case_folding", issue = "0")]
+#[derive(Debug)]
+pub struct FoldCase(CaseMappingIter);
+
+#[unstable(feature = "case_folding", issue = "0")]
+impl Iterator for FoldCase {
+    type Item = char;
+    fn next(&mut self) -> Option<char> {
+        self.0.next()
+    }
+}
+
+#[unstable(feature = "fused", issue = "35602")]
+impl FusedIterator for FoldCase {}
+
 #[derive(Debug)]
 enum CaseMappingIter {
     Three(char, char, char),
@@ -153,6 +175,13 @@ impl fmt::Display for CaseMappingIter {
             }
             CaseMappingIter::Zero => Ok(()),
         }
+    }
+}
+
+#[unstable(feature = "case_folding", issue = "0")]
+impl fmt::Display for FoldCase {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
@@ -925,6 +954,90 @@ impl char {
     #[inline]
     pub fn to_uppercase(self) -> ToUppercase {
         ToUppercase(CaseMappingIter::new(conversions::to_upper(self)))
+    }
+
+    /// Returns an iterator that yields the case folding of a `char` as one or more
+    /// `char`s.
+    ///
+    /// This is recommended over `to_lowercase` or `to_uppercase` when comparing strings
+    /// in a case-insensitive way; see the Motivation section below.
+    ///
+    /// This performs complex unconditional mappings with no tailoring: it maps
+    /// one Unicode character to its full case folding according to [`CaseFolding.txt`].
+    /// This does not use the Turkic language mapping, nor any locale-specific mapping.
+    ///
+    /// For a full reference, see [here][reference].
+    ///
+    /// [`CaseFolding.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/CaseFolding.txt
+    ///
+    /// [reference]: http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
+    ///
+    /// # Examples
+    ///
+    /// As an iterator:
+    ///
+    /// ```
+    /// #![feature(case_folding)]
+    /// for c in 'ﬃ'.fold_case() {
+    ///     print!("{}", c);
+    /// }
+    /// println!();
+    /// ```
+    ///
+    /// Using `println!` directly:
+    ///
+    /// ```
+    /// #![feature(case_folding)]
+    /// println!("{}", 'ﬃ'.fold_case());
+    /// ```
+    ///
+    /// Both are equivalent to:
+    ///
+    /// ```
+    /// println!("ffi");
+    /// ```
+    ///
+    /// Using `to_string`:
+    ///
+    /// ```
+    /// #![feature(case_folding)]
+    /// assert_eq!('ﬃ'.fold_case().to_string(), "ffi");
+    /// ```
+    ///
+    /// # Motivation
+    ///
+    /// A common way to compare text is simply converting both strings to lowercase
+    /// or uppercase, so that case doesn't matter for the comparison. For English text,
+    /// we see that this works:
+    ///
+    /// ```
+    /// assert_eq!('A'.to_lowercase().to_string(), 'a'.to_lowercase().to_string());
+    /// assert_eq!('A'.to_uppercase().to_string(), 'a'.to_uppercase().to_string());
+    /// ```
+    ///
+    /// However, for other languages, it might not:
+    ///
+    /// ```
+    /// // both 'ς' and 'σ' are lowercase 'Σ'
+    /// assert_ne!('ς'.to_lowercase().to_string(), 'Σ'.to_lowercase().to_string())
+    /// ```
+    ///
+    /// To solve this problem, Unicode offers case folding, which lets cases like the
+    /// above work:
+    ///
+    /// ```
+    /// #![feature(case_folding)]
+    /// assert_eq!('ς'.fold_case().to_string(), 'Σ'.fold_case().to_string())
+    /// ```
+    ///
+    /// Case folding is about as performant as case mapping (to lowercase or uppercase),
+    /// with the added effect of working for *almost* all languages properly. In general,
+    /// when doing case-insensitive comparisons, case folding should be preferred over
+    /// lowercase or uppercase mapping.
+    #[unstable(feature = "case_folding", issue = "0")]
+    #[inline]
+    pub fn fold_case(self) -> FoldCase {
+        FoldCase(CaseMappingIter::new(conversions::fold_case(self)))
     }
 
     /// Checks if the value is within the ASCII range.

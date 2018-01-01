@@ -1257,6 +1257,16 @@ fn trim_ws() {
 }
 
 #[test]
+fn case_folding() {
+    assert_eq!("TEST CASE".fold_case(), "test case");
+    assert_eq!("Teſt Caſe".fold_case(), "test case");
+    assert_eq!("spiﬃest".fold_case(), "spiffiest");
+    assert_eq!("straße".fold_case(), "strasse");
+    assert_eq!("ΑΣ".fold_case(), "ασ");
+    assert_eq!("山本".fold_case(), "山本");
+}
+
+#[test]
 fn to_lowercase() {
     assert_eq!("".to_lowercase(), "");
     assert_eq!("AÉǅaé ".to_lowercase(), "aéǆaé ");
