@@ -658,6 +658,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
+        for (t, _) in arguments.iter() {
+            match t.sty {
+                ty::TyNever => {
+                    let source_info = self.source_info(body.span);
+                    self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+                    let end_block = self.cfg.start_new_block();
+                    return end_block.unit();
+                },
+                _ => {}
+            }
+        }
         self.into(&Place::Local(RETURN_PLACE), block, body)
     }
 
