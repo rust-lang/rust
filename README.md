@@ -74,7 +74,7 @@ typechecking (and lints) have completed, which can significantly reduce the runt
 Alternatively, to only run clippy when testing:
 
 ```toml
-[dev-dependencies]`
+[dev-dependencies]
 clippy = { version = "*" }
 ```
 
