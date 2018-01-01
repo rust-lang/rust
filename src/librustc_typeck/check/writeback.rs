@@ -12,12 +12,13 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-use check::FnCtxt;
+use check::{FnCtxt, LvalueOp};
 use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, LvaluePreference, Ty, TyCtxt};
+use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::util::nodemap::DefIdSet;
 use syntax::ast;
@@ -159,7 +160,85 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             _ => {}
         }
     }
+
+    // Similar to operators, indexing is always assumed to be overloaded
+    // Here, correct cases where an indexing expression can be simplified
+    // to use builtin indexing because the index type is known to be
+    // usize-ish
+    fn fix_index_builtin_expr(&mut self, e: &hir::Expr) {
+        if let hir::ExprIndex(ref base, ref index) = e.node {
+            let base_ty = self.fcx.node_ty(base.hir_id);
+            let base_ty = self.fcx.resolve_type_vars_if_possible(&base_ty);
+            let index_ty = self.fcx.node_ty(index.hir_id);
+            let index_ty = self.fcx.resolve_type_vars_if_possible(&index_ty);
+
+            if index_ty.is_uint() {
+                // HACK: the *actual* type being indexed is not stored anywhere
+                // so we try to find it again here by derefs
+                let mut autoderef = self.fcx.autoderef(e.span, base_ty);
+                let builtin_ty : Option<_> = {
+                    loop {
+                        // This is essentially a duplicate of the index discovery
+                        // logic in typechecking code
+                        // Find the first type dereffable to which has builtin 
+                        // indexing - this 
+                        if let Some(_) = autoderef.next() {
+                            let current_ty = autoderef.unambiguous_final_ty();
+
+                            if current_ty.builtin_index().is_some() {
+                                // If there is a builtin index, use it
+                                break Some(current_ty);
+                            } else {
+                                // If there's an overloaded index which happens
+                                // to take a uint, stop looking - otherwise we
+                                // might incorrectly deref further
+                                let overloaded_method = 
+                                    self.fcx.try_overloaded_lvalue_op(
+                                        e.span,
+                                        base_ty,
+                                        &[index_ty],
+                                        LvaluePreference::NoPreference,
+                                        LvalueOp::Index
+                                    );
+
+                                if overloaded_method.is_some() {
+                                    break None;
+                                }
+                            }
+                        } else {
+                            break None;
+                        }
+                    }
+                };
+
+                if builtin_ty.is_some() {
+                    let mut tables = self.fcx.tables.borrow_mut();
+                 
+                    // Remove the method call record, which blocks use in
+                    // constant or static cases
+                    tables.type_dependent_defs_mut().remove(e.hir_id);
+                    tables.node_substs_mut().remove(e.hir_id);
+
+                    tables.adjustments_mut().get_mut(base.hir_id).map(|a| {
+                        // Discard the need for a mutable borrow
+                        match a.pop() {
+                            // Extra adjustment made when indexing causes a drop
+                            // of size information - we need to get rid of it
+                            // Since this is "after" the other adjustment to be
+                            // discarded, we do an extra `pop()`
+                            Some(Adjustment { kind: Adjust::Unsize, .. }) => {
+                                // So the borrow discard actually happens here
+                                a.pop();
+                            },
+                            _ => {}
+                        }
+                    });
+                }
+            }
+        }
+    }
 }
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Impl of Visitor for Resolver
@@ -176,6 +255,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, e: &'gcx hir::Expr) {
         self.fix_scalar_builtin_expr(e);
+        self.fix_index_builtin_expr(e);
 
         self.visit_node_id(e.span, e.hir_id);
 
