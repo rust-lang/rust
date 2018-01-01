@@ -203,13 +203,6 @@ pub struct TestDesc {
     pub allow_fail: bool,
 }
 
-#[derive(Clone)]
-pub struct TestPaths {
-    pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
-    pub base: PathBuf,         // e.g., compile-test, auxiliary
-    pub relative_dir: PathBuf, // e.g., foo/bar
-}
-
 #[derive(Debug)]
 pub struct TestDescAndFn {
     pub desc: TestDesc,
