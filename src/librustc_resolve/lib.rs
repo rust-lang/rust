@@ -2702,19 +2702,29 @@ impl<'a> Resolver<'a> {
                         }
                         return (err, candidates);
                     },
-                    _ if ns == ValueNS && is_struct_like(def) => {
-                        let mut accessible_ctor = true;
-                        if let Def::Struct(def_id) = def {
-                            if let Some((ctor_def, ctor_vis))
-                                    = this.struct_constructors.get(&def_id).cloned() {
-                                accessible_ctor = this.is_accessible(ctor_vis);
-                                if is_expected(ctor_def) && !accessible_ctor {
-                                    err.span_label(span, format!("constructor is not visible \
-                                                                   here due to private fields"));
-                                }
+                    (Def::Struct(def_id), _) if ns == ValueNS && is_struct_like(def) => {
+                        if let Some((ctor_def, ctor_vis))
+                                = this.struct_constructors.get(&def_id).cloned() {
+                            let accessible_ctor = this.is_accessible(ctor_vis);
+                            if is_expected(ctor_def) && !accessible_ctor {
+                                err.span_label(span, format!("constructor is not visible \
+                                                              here due to private fields"));
+                            } else if accessible_ctor {
+                                let block = match ctor_def {
+                                    Def::StructCtor(_, CtorKind::Fn) |
+                                    Def::VariantCtor(_, CtorKind::Fn) => "(/* fields */)",
+                                    Def::StructCtor(_, CtorKind::Fictive) |
+                                    Def::VariantCtor(_, CtorKind::Fictive) => {
+                                        " { /* fields */ }"
+                                    }
+                                    def => bug!("found def `{:?}` when looking for a ctor",
+                                                def),
+                                };
+                                err.span_label(span, format!("did you mean `{}{}`?",
+                                                             path_str,
+                                                             block));
                             }
-                        }
-                        if accessible_ctor {
+                        } else {
                             err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
                                                          path_str));
                         }
