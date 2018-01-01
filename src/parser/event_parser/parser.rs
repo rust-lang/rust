@@ -1,24 +1,8 @@
-use {Token, TextUnit, SyntaxKind};
+use {Token, SyntaxKind, TextUnit};
+use super::Event;
+use syntax_kinds::{WHITESPACE, COMMENT};
 
-use syntax_kinds::*;
-
-
-pub(crate) enum Event {
-    Start { kind: SyntaxKind },
-    Finish,
-    Token {
-        kind: SyntaxKind,
-        n_raw_tokens: u8,
-    }
-}
-
-pub(crate) fn parse<'t>(text: &'t str, raw_tokens: &'t [Token]) -> Vec<Event> {
-    let mut parser = Parser::new(text, raw_tokens);
-    parse_file(&mut parser);
-    parser.events
-}
-
-struct Parser<'t> {
+pub struct Parser<'t> {
     text: &'t str,
     raw_tokens: &'t [Token],
     non_ws_tokens: Vec<(usize, TextUnit)>,
@@ -28,7 +12,7 @@ struct Parser<'t> {
 }
 
 impl<'t> Parser<'t> {
-    fn new(text: &'t str, raw_tokens: &'t [Token]) -> Parser<'t> {
+    pub(crate) fn new(text: &'t str, raw_tokens: &'t [Token]) -> Parser<'t> {
         let mut non_ws_tokens = Vec::new();
         let mut len = TextUnit::new(0);
         for (idx, &token) in raw_tokens.iter().enumerate() {
@@ -49,18 +33,20 @@ impl<'t> Parser<'t> {
         }
     }
 
-    fn start(&mut self, kind: SyntaxKind) {
+    pub(crate) fn into_events(self) -> Vec<Event> {
+        assert!(self.pos == self.non_ws_tokens.len());
+        self.events
+    }
+
+    pub(crate) fn start(&mut self, kind: SyntaxKind) {
         self.event(Event::Start { kind });
     }
-    fn finish(&mut self) {
+
+    pub(crate) fn finish(&mut self) {
         self.event(Event::Finish);
     }
+
     fn event(&mut self, event: Event) {
         self.events.push(event)
     }
-}
-
-fn parse_file(p: &mut Parser) {
-    p.start(FILE);
-    p.finish();
 }
