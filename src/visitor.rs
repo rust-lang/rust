@@ -16,8 +16,8 @@ use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{combine_strs_with_missing_comments, contains_comment, remove_trailing_white_spaces,
-              CodeCharKind, CommentCodeSlices, FindUncommented};
+use comment::{combine_strs_with_missing_comments, contains_comment, CodeCharKind,
+              CommentCodeSlices, FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
 use expr::rewrite_literal;
@@ -25,7 +25,7 @@ use items::{format_impl, format_trait, format_trait_alias, rewrite_associated_im
             rewrite_associated_type, rewrite_type_alias, FnSig, StaticParts, StructParts};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
             SeparatorTactic};
-use macros::{rewrite_macro, MacroPosition};
+use macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
 use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
@@ -439,10 +439,16 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let snippet = Some(self.snippet(item.span).to_owned());
                 self.push_rewrite(item.span, snippet);
             }
-            ast::ItemKind::MacroDef(..) => {
-                // FIXME(#1539): macros 2.0
-                let mac_snippet = Some(remove_trailing_white_spaces(self.snippet(item.span)));
-                self.push_rewrite(item.span, mac_snippet);
+            ast::ItemKind::MacroDef(ref def) => {
+                let rewrite = rewrite_macro_def(
+                    &self.get_context(),
+                    self.block_indent,
+                    def,
+                    item.ident,
+                    &item.vis,
+                    item.span,
+                );
+                self.push_rewrite(item.span, rewrite);
             }
         }
     }
