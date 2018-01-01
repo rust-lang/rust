@@ -447,6 +447,9 @@ declare_features! (
 
     // Termination trait in main (RFC 1937)
     (active, termination_trait, "1.24.0", Some(43301)),
+
+    // Allows use of the :lifetime macro fragment specifier
+    (active, macro_lifetime_matcher, "1.24.0", Some(46895)),
 );
 
 declare_features! (
@@ -1225,6 +1228,9 @@ pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
 
 pub const EXPLAIN_VIS_MATCHER: &'static str =
     ":vis fragment specifier is experimental and subject to change";
+
+pub const EXPLAIN_LIFETIME_MATCHER: &'static str =
+    ":lifetime fragment specifier is experimental and subject to change";
 
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";

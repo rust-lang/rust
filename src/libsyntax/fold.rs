@@ -642,6 +642,7 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
             token::NtWhereClause(fld.fold_where_clause(where_clause)),
         token::NtArg(arg) => token::NtArg(fld.fold_arg(arg)),
         token::NtVis(vis) => token::NtVis(fld.fold_vis(vis)),
+        token::NtLifetime(lifetime) => token::NtLifetime(fld.fold_lifetime(lifetime)),
     }
 }
 

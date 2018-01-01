@@ -190,6 +190,12 @@ pub mod rt {
         }
     }
 
+    impl ToTokens for ast::Lifetime {
+        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
+            vec![TokenTree::Token(DUMMY_SP, token::Lifetime(self.ident))]
+        }
+    }
+
     macro_rules! impl_to_tokens_slice {
         ($t: ty, $sep: expr) => {
             impl ToTokens for [$t] {
