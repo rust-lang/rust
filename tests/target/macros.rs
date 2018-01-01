@@ -822,3 +822,14 @@ fn macro_in_pattern_position() {
         ) => (),
     };
 }
+
+macro foo() {}
+
+pub macro bar($x: ident + $y: expr;) {
+    fn foo($x: Foo) {
+        long_function(
+            a_long_argument_to_a_long_function_is_what_this_is(AAAAAAAAAAAAAAAAAAAAAAAAAAAA),
+            $x.bar($y),
+        );
+    }
+}
