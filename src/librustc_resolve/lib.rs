@@ -1413,8 +1413,17 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
     fn resolve_str_path(&mut self, span: Span, crate_root: Option<&str>,
                 components: &[&str], is_value: bool) -> hir::Path {
-        self.resolve_str_path_cb(span, crate_root, components, is_value,
-                                 |resolver, span, error| resolve_error(resolver, span, error))
+        use std::iter;
+        let mut path = hir::Path {
+            span,
+            def: Def::Err,
+            segments: iter::once(keywords::CrateRoot.name()).chain({
+                crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
+            }).map(hir::PathSegment::from_name).collect(),
+        };
+
+        self.resolve_hir_path(&mut path, is_value);
+        path
     }
 
     fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
@@ -1427,33 +1436,31 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    /// resolve_str_path, but takes a callback in case there was an error
-    fn resolve_str_path_cb<F>(&mut self, span: Span, crate_root: Option<&str>,
-                components: &[&str], is_value: bool, error_callback: F) -> hir::Path 
-            where F: for<'b, 'c> FnOnce(&'c mut Resolver, Span, ResolutionError<'b>)
-        {
-        use std::iter;
-        let mut path = hir::Path {
-            span,
-            def: Def::Err,
-            segments: iter::once(keywords::CrateRoot.name()).chain({
-                crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
-            }).map(hir::PathSegment::from_name).collect(),
-        };
-
-        self.resolve_hir_path_cb(&mut path, is_value, error_callback);
-        path
-    }
-
     /// Rustdoc uses this to resolve things in a recoverable way. ResolutionError<'a>
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occured.
-    pub fn resolve_str_path_error(&mut self, span: Span, crate_root: Option<&str>,
-                components: &[&str], is_value: bool) -> Result<hir::Path, ()> {
+    pub fn resolve_str_path_error(&mut self, span: Span, path_str: &str, is_value: bool) -> Result<hir::Path, ()> {
+        use std::iter;
         let mut errored = false;
-        let path = self.resolve_str_path_cb(span, crate_root, components, is_value,
-                                            |_, _, _| errored = true);
+
+        let mut path = if path_str.starts_with("::") {
+            hir::Path {
+                span,
+                def: Def::Err,
+                segments: iter::once(keywords::CrateRoot.name()).chain({
+                    path_str.split("::").skip(1).map(Symbol::intern)
+                }).map(hir::PathSegment::from_name).collect(),
+            }
+        } else {
+            hir::Path {
+                span,
+                def: Def::Err,
+                segments: path_str.split("::").map(Symbol::intern)
+                                  .map(hir::PathSegment::from_name).collect(),
+            }
+        };
+        self.resolve_hir_path_cb(&mut path, is_value, |_, _, _| errored = true);
         if errored || path.def == Def::Err {
             Err(())
         } else {
@@ -1883,8 +1890,8 @@ impl<'a> Resolver<'a> {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope<F>(&mut self, id: NodeId, f: F)
-        where F: FnOnce(&mut Resolver)
+    pub fn with_scope<F, T>(&mut self, id: NodeId, f: F) -> T
+        where F: FnOnce(&mut Resolver) -> T
     {
         let id = self.definitions.local_def_id(id);
         let module = self.module_map.get(&id).cloned(); // clones a reference
@@ -1895,13 +1902,14 @@ impl<'a> Resolver<'a> {
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
 
             self.finalize_current_module_macro_resolutions();
-            f(self);
+            let ret = f(self);
 
             self.current_module = orig_module;
             self.ribs[ValueNS].pop();
             self.ribs[TypeNS].pop();
+            ret
         } else {
-            f(self);
+            f(self)
         }
     }
 

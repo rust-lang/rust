@@ -23,6 +23,7 @@ use rustc_resolve as resolve;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
+use syntax::ast::NodeId;
 use syntax::codemap;
 use syntax::feature_gate::UnstableFeatures;
 use errors;
@@ -47,6 +48,8 @@ pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub resolver: &'a RefCell<resolve::Resolver<'rcx>>,
+    /// The stack of module NodeIds up till this point
+    pub mod_ids: RefCell<Vec<NodeId>>,
     pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -243,6 +246,7 @@ pub fn run_core(search_paths: SearchPaths,
             render_type,
             ty_substs: Default::default(),
             lt_substs: Default::default(),
+            mod_ids: Default::default(),
         };
         debug!("crate: {:?}", tcx.hir.krate());
 

@@ -472,6 +472,11 @@ impl Clean<Item> for doctree::Module {
             "".to_string()
         };
 
+        // maintain a stack of mod ids
+        // we could also pass this down through clean()
+        // but that might complicate things.
+        cx.mod_ids.borrow_mut().push(self.id);
+
         let mut items: Vec<Item> = vec![];
         items.extend(self.extern_crates.iter().map(|x| x.clean(cx)));
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
@@ -487,6 +492,8 @@ impl Clean<Item> for doctree::Module {
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
         items.extend(self.impls.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
+
+        cx.mod_ids.borrow_mut().pop();
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -847,21 +854,20 @@ impl Clean<Attributes> for [ast::Attribute] {
                         link.trim()
                     };
 
-                    if !path_str.starts_with("::") {
-                        // FIXME (misdreavus): can only support absolute paths because of limitations
-                        // in Resolver. this may, with a lot of effort, figure out how to resolve paths
-                        // within scopes, but the one use of `resolve_hir_path` i found in the HIR
-                        // lowering code itself used an absolute path. we're brushing up against some
-                        // structural limitations in the compiler already, but this may be a design one
-                        // as well >_>
-                        continue;
-                    }
-
-                    // This allocation could be avoided if resolve_str_path could take an iterator;
-                    // but it can't because that would break object safety. This can still be
-                    // fixed.
-                    let components = path_str.split("::").skip(1).collect::<Vec<_>>();
-                    let resolve = |is_val| cx.resolver.borrow_mut().resolve_str_path_error(DUMMY_SP, None, &components, is_val);
+                    let resolve = |is_val| {
+                        // In case we're in a module, try to resolve the relative
+                        // path
+                        if let Some(id) = cx.mod_ids.borrow().last() {
+                            cx.resolver.borrow_mut()
+                                       .with_scope(*id, |resolver| {
+                                            resolver.resolve_str_path_error(DUMMY_SP, &path_str, is_val)
+                                        })
+                        } else {
+                            // FIXME(Manishearth) this branch doesn't seem to ever be hit, really
+                            cx.resolver.borrow_mut()
+                                       .resolve_str_path_error(DUMMY_SP, &path_str, is_val)
+                        }
+                    };
 
                     if let Some(is_value) = is_value {
                         if let Ok(path) = resolve(is_value) {
