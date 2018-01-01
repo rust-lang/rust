@@ -849,7 +849,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         }
                         WriteKind::Move => {
                             error_reported = true;
-                            this.report_move_out_while_borrowed(context, place_span, &borrow)
+
+                            // If the move occurs due to a closure, then we want to show the span
+                            // of the place where it's used in the closure.
+                            let closure_span = this.find_closure_span(place_span.1, context.loc);
+                            if let Some((_, var_span)) = closure_span {
+                                let place_span = (place_span.0, var_span);
+                                this.report_move_into_closure(context, place_span, &borrow);
+                            } else {
+                                this.report_move_out_while_borrowed(context, place_span, &borrow);
+                            }
+
                         }
                     }
                     Control::Break

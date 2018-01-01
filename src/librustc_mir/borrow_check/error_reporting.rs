@@ -141,6 +141,30 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.emit();
     }
 
+    pub(super) fn report_move_into_closure(
+        &mut self,
+        context: Context,
+        (place, span): (&Place<'tcx>, Span),
+        borrow: &BorrowData<'tcx>,
+    ) {
+        let borrow_msg = match self.describe_place(&borrow.borrowed_place) {
+            Some(name) => format!("`{}`", name),
+            None => "value".to_owned(),
+        };
+        let mut err = self.tcx.cannot_move_into_closure(
+            span,
+            &self.describe_place(place).unwrap_or("_".to_owned()),
+            Origin::Mir,
+        );
+        err.span_label(
+            self.retrieve_borrow_span(borrow),
+            format!("borrow of {} occurs here", borrow_msg),
+        );
+        err.span_label(span, format!("move into closure occurs here"));
+        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+        err.emit();
+    }
+
     pub(super) fn report_use_while_mutably_borrowed(
         &mut self,
         context: Context,
@@ -164,7 +188,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// the local assigned at `location`.
     /// This is done by searching in statements succeeding `location`
     /// and originating from `maybe_closure_span`.
-    fn find_closure_span(
+    pub(super) fn find_closure_span(
         &self,
         maybe_closure_span: Span,
         location: Location,
@@ -176,7 +200,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Some(&Statement { kind: StatementKind::Assign(Place::Local(local), _), .. }) => local,
             _ => return None,
         };
-
 
         // When a closure upvar is assigned, it generates the necessary borrows and moves just
         // above it and they all have the same span (including the upvar assignment). So, we are
