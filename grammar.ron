@@ -1,4 +1,12 @@
 Grammar(
+    keywords: [
+        "use",
+        "fn",
+        "struct",
+        "enum",
+        "trait",
+        "impl",
+    ],
     tokens: [
         "ERROR",
         "IDENT",
@@ -53,6 +61,6 @@ Grammar(
         "SHEBANG",
     ],
     nodes: [
-        "FILE"
+        "FILE",
     ]
 )

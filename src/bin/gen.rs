@@ -17,6 +17,7 @@ fn main() {
 
 #[derive(Deserialize)]
 struct Grammar {
+    keywords: Vec<String>,
     tokens: Vec<String>,
     nodes: Vec<String>,
 }
@@ -33,8 +34,10 @@ impl Grammar {
         acc.push_str("use tree::{SyntaxKind, SyntaxInfo};\n");
         acc.push_str("\n");
 
-        let syntax_kinds: Vec<&String> =
-            self.tokens.iter().chain(self.nodes.iter())
+        let syntax_kinds: Vec<String> =
+            self.keywords.iter().map(|kw| kw_token(kw))
+                .chain(self.tokens.iter().cloned())
+                .chain(self.nodes.iter().cloned())
                 .collect();
 
         for (idx, kind) in syntax_kinds.iter().enumerate() {
@@ -60,6 +63,14 @@ impl Grammar {
 
         acc.push_str("pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {\n");
         acc.push_str("    &INFOS[kind.0 as usize]\n");
+        acc.push_str("}\n\n");
+        acc.push_str("pub(crate) fn ident_to_keyword(ident: &str) -> Option<SyntaxKind> {\n");
+        acc.push_str("   match ident {\n");
+        for kw in self.keywords.iter() {
+            write!(acc, "       {:?} => Some({}),\n", kw, kw_token(kw)).unwrap();
+        }
+        acc.push_str("       _ => None,\n");
+        acc.push_str("   }\n");
         acc.push_str("}\n");
         acc
     }
@@ -77,4 +88,8 @@ fn generated_file() -> PathBuf {
 
 fn scream(word: &str) -> String {
     word.chars().map(|c| c.to_ascii_uppercase()).collect()
+}
+
+fn kw_token(keyword: &str) -> String {
+    format!("{}_KW", scream(keyword))
 }

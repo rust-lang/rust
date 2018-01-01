@@ -59,6 +59,11 @@ impl<'s> Ptr<'s> {
         }
     }
 
+    pub fn current_token_text(&self) -> &str {
+        let len: u32 = self.len.into();
+        &self.text[..len as usize]
+    }
+
     fn chars(&self) -> Chars {
         let len: u32 = self.len.into();
         self.text[len as usize ..].chars()

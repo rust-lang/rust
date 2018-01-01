@@ -187,6 +187,9 @@ fn scan_ident(c: char, ptr: &mut Ptr) -> SyntaxKind {
         return if c == '_' { UNDERSCORE } else { IDENT };
     }
     ptr.bump_while(is_ident_continue);
+    if let Some(kind) = ident_to_keyword(ptr.current_token_text()) {
+        return kind;
+    }
     IDENT
 }
 
