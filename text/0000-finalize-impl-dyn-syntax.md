@@ -20,11 +20,12 @@ alternatives and suggests one of them for stabilization.
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-"Alternative 3" (see reference-level explanation) is selected for stabilization.
+"Alternative 2" (see reference-level explanation) is selected for stabilization.
 
 `impl Trait1 + Trait2` / `dyn Trait1 + Trait2` now require parentheses in all
-contexts - `impl(Trait1 + Trait2)` / `dyn(Trait1 + Trait2)`, similarly to other
-unary operators, e.g. `&(Trait1 + Trait2)`.
+contexts where they are used inside of unary operators `&(impl Trait1 + Trait2)`
+/ `&(dyn Trait1 + Trait2)`, similarly to trait object types without
+prefix, e.g. `&(Trait1 + Trait2)`.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -45,6 +46,11 @@ Compare this with parsing of trait object types without prefixes
 - `&A + B` is parsed as `(&A) + B` and is an error
 - `Fn() -> A + B` is parsed as `(Fn() -> A) + B`
 - `x as &A + y` is parsed as `(x as &A) + y`
+
+Also compare with unary operators in bounds themselves:
+- `for<'a> A<'a> + B` is parsed as `(for<'a> A<'a>) + B`,
+not `for<'a> (A<'a> + B)`
+- `?A + B` is parsed as `(?A) + B`, not `?(A + B)`
 
 In general, binary operations like `+` have lower priority than unary operations
 in all contexts - expressions, patterns, types. So the priorities as implemented
@@ -142,6 +148,43 @@ Cons:
 Parentheses are noise, there may be even less desire to use `dyn` in trait
 objects now, if something like `Box<Write + Send>` turns into
 `Box<dyn(Write + Send)>`.
+
+## Other alternatives
+
+Two separate grammars can be used depending on context
+(https://github.com/rust-lang/rfcs/pull/2250#issuecomment-352435687) -
+Alternative 1/2 in lists of arguments like `Box<dyn A + B>` or
+`Fn(impl A + B, impl A + B)`, and Alternative 3 otherwise (`&dyn (A + B)`).
+
+## Compatibility
+
+The alternatives are ordered by strictness from the most relaxed Alternative 1
+to the strictest Alternative 3, but switching from more strict alternatives to
+less strict is not exactly backward-compatible.
+
+Switching from 2/3 to 1 can change meaning of legal code in rare cases.
+Switching from 3 to 2/1 requires keeping around the syntax with parentheses
+after `impl` / `dyn`.
+
+Alternative 2 can be backward-compatibly extended to "relaxed 3" in which
+parentheses like `dyn (A + B)` are permitted, but technically unnecessary.
+Such parens may keep people expecting `dyn (A + B)` to work happy, but
+complicate parsing by introducing more ambiguities to the grammar.
+
+## Experimental check
+
+An application of all the alternatives to rustc and libstd codebase can be found
+in [this branch](https://github.com/petrochenkov/rust/commits/impldyntest).
+The first commit is the baseline (Alternative 1) and the next commits show
+changes required to move to Alternatives 2 and 3. Alternative 2 requires fewer
+changes compared to Alternative 3.
+
+As the RFC author interprets it, the Alternative 3 turns out to be impractical
+due to common use of `Box`es and other contexts where the parens are technically
+unnecessary, but required by Alternative 3.  
+The number of parens required by Alternative 2 is limited and they seem
+appropriate because they follow "normal" priorities for unary and binary
+operators.
 
 # Drawbacks
 [drawbacks]: #drawbacks
