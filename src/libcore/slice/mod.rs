@@ -532,7 +532,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
-        assert!(chunk_size > 0);
+        assert!(chunk_size != 0);
         ChunksMut { v: self, chunk_size: chunk_size }
     }
 
