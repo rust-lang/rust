@@ -1098,8 +1098,8 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
 /// In particular, form #1 is "desugared" to the combination of a
 /// normal trait predicate (`T : TraitRef<...>`) and one of these
 /// predicates. Form #2 is a broader form in that it also permits
-/// equality between arbitrary types. Processing an instance of Form
-/// #2 eventually yields one of these `ProjectionPredicate`
+/// equality between arbitrary types. Processing an instance of
+/// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct ProjectionPredicate<'tcx> {
@@ -1401,7 +1401,7 @@ bitflags! {
         /// fields/variants) and as such, whether downstream crates must match exhaustively on the
         /// fields/variants of this data type.
         ///
-        /// See RFC 2008 (https://github.com/rust-lang/rfcs/pull/2008).
+        /// See RFC 2008 (<https://github.com/rust-lang/rfcs/pull/2008>).
         const IS_NON_EXHAUSTIVE   = 1 << 5;
     }
 }

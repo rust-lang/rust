@@ -776,7 +776,8 @@ impl<'a> ExtCtxt<'a> {
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
     ///
     /// `span_err` should be strongly preferred where-ever possible:
-    /// this should *only* be used when
+    /// this should *only* be used when:
+    ///
     /// - continuing has a high risk of flow-on errors (e.g. errors in
     ///   declaring a macro would cause all uses of that macro to
     ///   complain about "undefined macro"), or

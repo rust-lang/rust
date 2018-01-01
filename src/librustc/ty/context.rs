@@ -778,8 +778,10 @@ impl<'tcx> CommonTypes<'tcx> {
 
 /// The central data structure of the compiler. It stores references
 /// to the various **arenas** and also houses the results of the
-/// various **compiler queries** that have been performed. See [the
-/// README](README.md) for more deatils.
+/// various **compiler queries** that have been performed. See the
+/// module-level [README] for more details.
+///
+/// [README]: https://github.com/rust-lang/rust/blob/master/src/librustc/ty/README.md
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     gcx: &'a GlobalCtxt<'gcx>,

@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! MIR datatypes and passes. See [the README](README.md) for details.
+//! MIR datatypes and passes. See the module-level [README] for details.
+//!
+//! [README]: https://github.com/rust-lang/rust/blob/master/src/librustc/mir/README.md
 
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
@@ -495,6 +497,7 @@ pub struct LocalDecl<'tcx> {
     ///
     /// That's it, if we have a let-statement like the one in this
     /// function:
+    ///
     /// ```
     /// fn foo(x: &str) {
     ///     #[allow(unused_mut)]
@@ -538,6 +541,7 @@ pub struct LocalDecl<'tcx> {
     ///
     /// The end result looks like this:
     ///
+    /// ```text
     /// ROOT SCOPE
     ///  │{ argument x: &str }
     ///  │
@@ -557,6 +561,7 @@ pub struct LocalDecl<'tcx> {
     ///  │ │{ let x: u32 }
     ///  │ │← x.source_info.scope
     ///  │ │← `drop(x)` // this accesses `x: u32`
+    /// ```
     pub syntactic_scope: VisibilityScope,
 }
 

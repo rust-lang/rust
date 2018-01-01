@@ -54,4 +54,4 @@ byteorder = { version = "1.1", features = ["i128"]}
 # tl;dr; this is not needed to get `rustc` to compile, but if you remove it then
 #        later crate stop compiling. If you can remove this and everything
 #        compiles, then please feel free to do so!
-flate2 = "0.2"
+flate2 = "1.0"

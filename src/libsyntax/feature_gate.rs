@@ -63,9 +63,9 @@ macro_rules! declare_features {
 
         /// A set of features to be used by later passes.
         pub struct Features {
-            /// #![feature] attrs for stable language features, for error reporting
+            /// `#![feature]` attrs for stable language features, for error reporting
             pub declared_stable_lang_features: Vec<(Symbol, Span)>,
-            /// #![feature] attrs for non-language (library) features
+            /// `#![feature]` attrs for non-language (library) features
             pub declared_lib_features: Vec<(Symbol, Span)>,
             $(pub $feature: bool),+
         }

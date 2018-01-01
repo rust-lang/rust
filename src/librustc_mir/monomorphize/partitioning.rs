@@ -94,7 +94,7 @@
 //!   inlined, so it can distribute function instantiations accordingly. Since
 //!   there is no way of knowing for sure which functions LLVM will decide to
 //!   inline in the end, we apply a heuristic here: Only functions marked with
-//!   #[inline] are considered for inlining by the partitioner. The current
+//!   `#[inline]` are considered for inlining by the partitioner. The current
 //!   implementation will not try to determine if a function is likely to be
 //!   inlined by looking at the functions definition.
 //!

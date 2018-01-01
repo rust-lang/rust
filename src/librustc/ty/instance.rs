@@ -28,7 +28,7 @@ pub enum InstanceDef<'tcx> {
     Item(DefId),
     Intrinsic(DefId),
 
-    /// <fn() as FnTrait>::call_*
+    /// \<fn() as FnTrait>::call_*
     /// def-id is FnTrait::call_*
     FnPtrShim(DefId, Ty<'tcx>),
 

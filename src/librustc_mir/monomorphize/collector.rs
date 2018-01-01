@@ -149,7 +149,7 @@
 //! The binary of a crate will not only contain machine code for the items
 //! defined in the source code of that crate. It will also contain monomorphic
 //! instantiations of any extern generic functions and of functions marked with
-//! #[inline].
+//! `#[inline]`.
 //! The collection algorithm handles this more or less mono. If it is
 //! about to create a mono item for something with an external `DefId`,
 //! it will take a look if the MIR for that item is available, and if so just

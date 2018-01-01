@@ -651,7 +651,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
-    DeflateEncoder::new(&mut compressed, Compression::Fast)
+    DeflateEncoder::new(&mut compressed, Compression::fast())
         .write_all(&metadata.raw_data).unwrap();
 
     let llmeta = C_bytes_in_context(metadata_llcx, &compressed);

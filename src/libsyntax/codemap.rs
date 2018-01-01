@@ -391,6 +391,7 @@ impl CodeMap {
     /// Returns `Some(span)`, a union of the lhs and rhs span.  The lhs must precede the rhs. If
     /// there are gaps between lhs and rhs, the resulting union will cross these gaps.
     /// For this to work, the spans have to be:
+    ///
     ///    * the ctxt of both spans much match
     ///    * the lhs span needs to end on the same line the rhs span begins
     ///    * the lhs span must start at or before the rhs span

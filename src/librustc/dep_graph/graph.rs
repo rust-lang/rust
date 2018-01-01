@@ -158,8 +158,8 @@ impl DepGraph {
     /// what state they have access to. In particular, we want to
     /// prevent implicit 'leaks' of tracked state into the task (which
     /// could then be read without generating correct edges in the
-    /// dep-graph -- see the [README] for more details on the
-    /// dep-graph). To this end, the task function gets exactly two
+    /// dep-graph -- see the module-level [README] for more details on
+    /// the dep-graph). To this end, the task function gets exactly two
     /// pieces of state: the context `cx` and an argument `arg`. Both
     /// of these bits of state must be of some type that implements
     /// `DepGraphSafe` and hence does not leak.
@@ -178,7 +178,7 @@ impl DepGraph {
     /// - If you need 3+ arguments, use a tuple for the
     ///   `arg` parameter.
     ///
-    /// [README]: README.md
+    /// [README]: https://github.com/rust-lang/rust/blob/master/src/librustc/dep_graph/README.md
     pub fn with_task<C, A, R, HCX>(&self,
                                    key: DepNode,
                                    cx: C,

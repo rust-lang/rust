@@ -71,13 +71,16 @@ pub enum Def {
 /// `base_def` is definition of resolved part of the
 /// path, `unresolved_segments` is the number of unresolved
 /// segments.
-///     module::Type::AssocX::AssocY::MethodOrAssocType
-///     ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-///     base_def      unresolved_segments = 3
 ///
-///     <T as Trait>::AssocX::AssocY::MethodOrAssocType
-///           ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
-///           base_def        unresolved_segments = 2
+/// ```text
+/// module::Type::AssocX::AssocY::MethodOrAssocType
+/// ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/// base_def      unresolved_segments = 3
+///
+/// <T as Trait>::AssocX::AssocY::MethodOrAssocType
+///       ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
+///       base_def        unresolved_segments = 2
+/// ```
 #[derive(Copy, Clone, Debug)]
 pub struct PathResolution {
     base_def: Def,
