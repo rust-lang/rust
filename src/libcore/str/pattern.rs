@@ -330,10 +330,12 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
                 // find something. When we find something the `finger` will be set
                 // to a UTF8 boundary.
                 self.finger += index + 1;
-                let found_char = self.finger - self.utf8_size;
-                if let Some(slice) = self.haystack.as_bytes().get(found_char..self.finger) {
-                    if slice == &self.utf8_encoded[0..self.utf8_size] {
-                        return Some((found_char, self.finger));
+                if self.finger >= self.utf8_size {
+                    let found_char = self.finger - self.utf8_size;
+                    if let Some(slice) = self.haystack.as_bytes().get(found_char..self.finger) {
+                        if slice == &self.utf8_encoded[0..self.utf8_size] {
+                            return Some((found_char, self.finger));
+                        }
                     }
                 }
             } else {
@@ -386,12 +388,15 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
                 // char in the paradigm of reverse iteration). For
                 // multibyte chars we need to skip down by the number of more
                 // bytes they have than ASCII
-                let found_char = index - (self.utf8_size - 1);
-                if let Some(slice) = haystack.get(found_char..(found_char + self.utf8_size)) {
-                    if slice == &self.utf8_encoded[0..self.utf8_size] {
-                        // move finger to before the character found (i.e. at its start index)
-                        self.finger_back = found_char;
-                        return Some((self.finger_back, self.finger_back + self.utf8_size));
+                let shift = self.utf8_size - 1;
+                if index >= shift {
+                    let found_char = index - shift;
+                    if let Some(slice) = haystack.get(found_char..(found_char + self.utf8_size)) {
+                        if slice == &self.utf8_encoded[0..self.utf8_size] {
+                            // move finger to before the character found (i.e. at its start index)
+                            self.finger_back = found_char;
+                            return Some((self.finger_back, self.finger_back + self.utf8_size));
+                        }
                     }
                 }
                 // We can't use finger_back = index - size + 1 here. If we found the last char
