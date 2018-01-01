@@ -27,6 +27,7 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         pre_link_args: args,
         position_independent_executables: true,
+        tls_model: "local-exec".to_string(),
         relro_level: RelroLevel::Full,
         exe_allocation_crate: super::maybe_jemalloc(),
         .. Default::default()
