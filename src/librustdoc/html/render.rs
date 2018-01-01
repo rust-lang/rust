@@ -2160,10 +2160,10 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        stab_docs = stab_docs,
                        docs = if cx.render_type == RenderType::Hoedown {
                            format!("{}",
-                                   shorter(Some(&Markdown(doc_value, &item.links(),
+                                   shorter(Some(&Markdown(doc_value, &myitem.links(),
                                                           RenderType::Hoedown).to_string())))
                        } else {
-                           format!("{}", MarkdownSummaryLine(doc_value, &item.links()))
+                           format!("{}", MarkdownSummaryLine(doc_value, &myitem.links()))
                        },
                        class = myitem.type_(),
                        stab = myitem.stability_class().unwrap_or("".to_string()),
