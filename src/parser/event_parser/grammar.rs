@@ -3,7 +3,8 @@ use super::parser::Parser;
 
 use syntax_kinds::*;
 
-pub fn parse_file(p: &mut Parser) {
+pub fn file(p: &mut Parser) {
     p.start(FILE);
+    //TODO: parse_shebang
     p.finish();
 }

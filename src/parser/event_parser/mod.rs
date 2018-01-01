@@ -15,6 +15,6 @@ pub(crate) enum Event {
 
 pub(crate) fn parse<'t>(text: &'t str, raw_tokens: &'t [Token]) -> Vec<Event> {
     let mut parser = parser::Parser::new(text, raw_tokens);
-    grammar::parse_file(&mut parser);
+    grammar::file(&mut parser);
     parser.into_events()
 }
