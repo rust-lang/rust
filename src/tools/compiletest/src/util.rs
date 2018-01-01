@@ -15,6 +15,7 @@ use common::Config;
 const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("android", "android"),
     ("bitrig", "bitrig"),
+    ("cloudabi", "cloudabi"),
     ("darwin", "macos"),
     ("dragonfly", "dragonfly"),
     ("freebsd", "freebsd"),
