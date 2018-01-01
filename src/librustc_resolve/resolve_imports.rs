@@ -604,17 +604,20 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.current_module = directive.parent;
         let ImportDirective { ref module_path, span, .. } = *directive;
 
-        // Extern crate mode for absolute paths needs some
-        // special support for single-segment imports.
-        let extern_absolute_paths = self.session.features.borrow().extern_absolute_paths;
-        if module_path.len() == 1 && module_path[0].node.name == keywords::CrateRoot.name() {
+        // FIXME: Last path segment is treated specially in import resolution, so extern crate
+        // mode for absolute paths needs some special support for single-segment imports.
+        if module_path.len() == 1 && (module_path[0].node.name == keywords::CrateRoot.name() ||
+                                      module_path[0].node.name == keywords::Extern.name()) {
+            let is_extern = module_path[0].node.name == keywords::Extern.name() ||
+                            self.session.features.borrow().extern_absolute_paths;
             match directive.subclass {
-                GlobImport { .. } if extern_absolute_paths => {
+                GlobImport { .. } if is_extern => {
                     return Some((directive.span,
                                  "cannot glob-import all possible crates".to_string()));
                 }
                 SingleImport { source, target, .. } => {
-                    let crate_root = if source.name == keywords::Crate.name() {
+                    let crate_root = if source.name == keywords::Crate.name() &&
+                                        module_path[0].node.name != keywords::Extern.name() {
                         if target.name == keywords::Crate.name() {
                             return Some((directive.span,
                                          "crate root imports need to be explicitly named: \
@@ -622,8 +625,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         } else {
                             Some(self.resolve_crate_root(source.ctxt.modern()))
                         }
-                    } else if extern_absolute_paths &&
-                              !token::Ident(source).is_path_segment_keyword() {
+                    } else if is_extern && !token::Ident(source).is_path_segment_keyword() {
                         let crate_id =
                             self.crate_loader.resolve_crate_from_path(source.name, directive.span);
                         let crate_root =

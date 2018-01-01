@@ -450,6 +450,9 @@ declare_features! (
 
     // Allows use of the :lifetime macro fragment specifier
     (active, macro_lifetime_matcher, "1.24.0", Some(46895)),
+
+    // `extern` in paths
+    (active, extern_in_paths, "1.23.0", Some(44660)),
 );
 
 declare_features! (
@@ -1790,6 +1793,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             if segment.identifier.name == keywords::Crate.name() {
                 gate_feature_post!(&self, crate_in_paths, segment.span,
                                    "`crate` in paths is experimental");
+            } else if segment.identifier.name == keywords::Extern.name() {
+                gate_feature_post!(&self, extern_in_paths, segment.span,
+                                   "`extern` in paths is experimental");
             }
         }
 
