@@ -217,25 +217,25 @@ See [Configurations.md](Configurations.md) for details.
 * If you get an error like `error while loading shared libraries` while starting
   up rustfmt you should try the following:
 
-On Linux:
+  On Linux:
 
-```
-export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
-```
+  ```
+  export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
+  ```
 
-On MacOS:
+  On MacOS:
 
-```
-export DYLD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH
-```
+  ```
+  export DYLD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH
+  ```
 
-On Windows (Git Bash/Mingw):
+  On Windows (Git Bash/Mingw):
 
-```
-export PATH=$(rustc --print sysroot)/lib/rustlib/x86_64-pc-windows-gnu/lib/:$PATH
-```
+  ```
+  export PATH=$(rustc --print sysroot)/lib/rustlib/x86_64-pc-windows-gnu/lib/:$PATH
+  ```
 
-(Substitute `x86_64` by `i686` and `gnu` by `msvc` depending on which version of rustc was used to install rustfmt).
+  (Substitute `x86_64` by `i686` and `gnu` by `msvc` depending on which version of rustc was used to install rustfmt).
 
 ## License
 
