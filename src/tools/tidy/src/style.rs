@@ -130,6 +130,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let skip_tab = contents.contains("ignore-tidy-tab");
         let skip_length = contents.contains("ignore-tidy-linelength");
         let skip_end_whitespace = contents.contains("ignore-tidy-end-whitespace");
+        let mut trailing_new_lines = 0;
         for (i, line) in contents.split("\n").enumerate() {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
@@ -161,10 +162,20 @@ pub fn check(path: &Path, bad: &mut bool) {
             if filename.ends_with(".cpp") && line.contains("llvm_unreachable") {
                 err(LLVM_UNREACHABLE_INFO);
             }
+            if line.is_empty() {
+                trailing_new_lines += 1;
+            } else {
+                trailing_new_lines = 0;
+            }
         }
         if !licenseck(file, &contents) {
             tidy_error!(bad, "{}: incorrect license", file.display());
         }
+        match trailing_new_lines {
+            0 => tidy_error!(bad, "{}: missing trailing newline", file.display()),
+            1 | 2 => {}
+            n => tidy_error!(bad, "{}: too many trailing newlines ({})", file.display(), n),
+        };
     })
 }
 
