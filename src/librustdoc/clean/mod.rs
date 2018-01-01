@@ -854,6 +854,13 @@ impl Clean<Attributes> for [ast::Attribute] {
                         link.trim()
                     };
 
+                    // avoid resolving things (i.e. regular links) which aren't like paths
+                    // FIXME(Manishearth) given that most links have slashes in them might be worth
+                    // doing a check for slashes first
+                    if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ch == ':' || ch == '_')) {
+                        continue;
+                    }
+
                     let resolve = |is_val| {
                         // In case we're in a module, try to resolve the relative
                         // path
