@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(repr_simd)]
-#![allow(dead_code)]
+// must-compile-successfully
 
-#[repr(simd)]
-#[derive(Copy, Clone)]
-struct LocalSimd(u8, u8);
+#[repr(C,u8)]
+enum Foo {
+    A,
+    B,
+}
 
-extern {
-    fn baz() -> LocalSimd; //~ ERROR use of SIMD type
-    fn qux(x: LocalSimd); //~ ERROR use of SIMD type
+#[repr(C)]
+#[repr(u8)]
+enum Bar {
+    A,
+    B,
 }
 
 fn main() {}
