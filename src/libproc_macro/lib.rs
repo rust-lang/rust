@@ -221,6 +221,21 @@ impl Span {
         }
     }
 
+    /// The `Span` for the tokens in the previous macro expansion from which
+    /// `self` was generated from, if any.
+    #[unstable(feature = "proc_macro", issue = "38356")]
+    pub fn parent(&self) -> Option<Span> {
+        self.0.ctxt().outer().expn_info().map(|i| Span(i.call_site))
+    }
+
+    /// The span for the origin source code that `self` was generated from. If
+    /// this `Span` wasn't generated from other macro expansions then the return
+    /// value is the same as `*self`.
+    #[unstable(feature = "proc_macro", issue = "38356")]
+    pub fn source(&self) -> Span {
+        Span(self.0.source_callsite())
+    }
+
     /// Get the starting line/column in the source file for this span.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn start(&self) -> LineColumn {
