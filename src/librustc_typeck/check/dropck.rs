@@ -59,11 +59,13 @@ pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         _ => {
             // Destructors only work on nominal types.  This was
-            // already checked by coherence, so we can panic here.
+            // already checked by coherence, but compilation may
+            // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            span_bug!(span,
-                      "should have been rejected by coherence check: {}",
-                      dtor_self_type);
+            tcx.sess.delay_span_bug(span,
+                            &format!("should have been rejected by coherence check: {}",
+                            dtor_self_type));
+            Err(ErrorReported)
         }
     }
 }
