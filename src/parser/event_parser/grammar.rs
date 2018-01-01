@@ -43,13 +43,18 @@ fn item(p: &mut Parser) -> Result {
     if p.current_is(STRUCT_KW) {
         p.start(STRUCT_ITEM);
         p.bump();
+        let _ = struct_item(p);
         p.finish();
         return OK;
     }
     ERR
 }
 
-
+fn struct_item(p: &mut Parser) -> Result{
+    p.expect(IDENT)?;
+    p.expect(L_CURLY)?;
+    p.expect(R_CURLY)
+}
 
 // Paths, types, attributes, and stuff //
 

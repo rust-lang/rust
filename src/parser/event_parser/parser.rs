@@ -69,6 +69,15 @@ impl<'t> Parser<'t> {
         Some(kind)
     }
 
+    pub(crate) fn expect(&mut self, kind: SyntaxKind) -> Result<(), ()> {
+        if kind == self.current().ok_or(())? {
+            self.bump();
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     fn event(&mut self, event: Event) {
         self.events.push(event)
     }
