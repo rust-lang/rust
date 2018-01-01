@@ -62,5 +62,6 @@ Grammar(
     ],
     nodes: [
         "FILE",
+        "STRUCT_ITEM"
     ]
 )

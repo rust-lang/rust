@@ -4,6 +4,7 @@ use syntax_kinds::*;
 mod grammar;
 mod parser;
 
+#[derive(Debug)]
 pub(crate) enum Event {
     Start { kind: SyntaxKind },
     Finish,

@@ -40,6 +40,12 @@ fn mod_items(p: &mut Parser) {
 fn item(p: &mut Parser) -> Result {
     outer_attributes(p)?;
     visibility(p)?;
+    if p.current_is(STRUCT_KW) {
+        p.start(STRUCT_ITEM);
+        p.bump();
+        p.finish();
+        return OK;
+    }
     ERR
 }
 

@@ -1,5 +1,6 @@
 use {Token, SyntaxKind, TextUnit};
-use super::Event;
+use super::{Event};
+use super::super::is_insignificant;
 use syntax_kinds::{WHITESPACE, COMMENT};
 
 pub struct Parser<'t> {
@@ -16,9 +17,8 @@ impl<'t> Parser<'t> {
         let mut non_ws_tokens = Vec::new();
         let mut len = TextUnit::new(0);
         for (idx, &token) in raw_tokens.iter().enumerate() {
-            match token.kind {
-                WHITESPACE | COMMENT => (),
-                _ => non_ws_tokens.push((idx, len)),
+            if !is_insignificant(token.kind) {
+                non_ws_tokens.push((idx, len))
             }
             len += token.len;
         }
@@ -50,13 +50,23 @@ impl<'t> Parser<'t> {
         self.event(Event::Finish);
     }
 
-    pub(crate) fn bump(&mut self) -> Option<SyntaxKind> {
+    pub(crate) fn current(&self) -> Option<SyntaxKind> {
         if self.is_eof() {
             return None;
         }
         let idx = self.non_ws_tokens[self.pos].0;
-        self.pos += 1;
         Some(self.raw_tokens[idx].kind)
+    }
+
+    pub(crate) fn current_is(&self, kind: SyntaxKind) -> bool {
+        self.current() == Some(kind)
+    }
+
+    pub(crate) fn bump(&mut self) -> Option<SyntaxKind> {
+        let kind = self.current()?;
+        self.pos += 1;
+        self.event(Event::Token { kind, n_raw_tokens: 1 });
+        Some(kind)
     }
 
     fn event(&mut self, event: Event) {

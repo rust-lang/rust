@@ -64,8 +64,14 @@ impl FileBuilder {
     }
 
     pub fn finish(self) -> File {
-        assert!(self.in_progress.is_empty());
-        assert!(self.pos == (self.text.len() as u32).into());
+        assert!(
+            self.in_progress.is_empty(),
+            "some nodes in FileBuilder are unfinished"
+        );
+        assert!(
+            self.pos == (self.text.len() as u32).into(),
+            "nodes in FileBuilder do not cover the whole file"
+        );
         File {
             text: self.text,
             nodes: self.nodes,
@@ -81,11 +87,17 @@ impl FileBuilder {
     fn push_child(&mut self, mut child: NodeData) -> NodeIdx {
         child.parent = Some(self.current_id());
         let id = self.new_node(child);
-        if let Some(sibling) = self.current_sibling() {
-            fill(&mut sibling.next_sibling, id);
-            return id
+        {
+
+            let (parent, sibling) = *self.in_progress.last().unwrap();
+            let slot = if let Some(idx) = sibling {
+                &mut self.nodes[idx].next_sibling
+            } else {
+                &mut self.nodes[parent].first_child
+            };
+            fill(slot, id);
         }
-        fill(&mut self.current_parent().first_child, id);
+        self.in_progress.last_mut().unwrap().1 = Some(id);
         id
     }
 
