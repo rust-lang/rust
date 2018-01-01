@@ -28,6 +28,7 @@
 #![feature(iter_rfind)]
 #![feature(iter_rfold)]
 #![feature(nonzero)]
+#![feature(pattern)]
 #![feature(raw)]
 #![feature(refcell_replace_swap)]
 #![feature(sip_hash_13)]
@@ -61,6 +62,7 @@ mod nonzero;
 mod num;
 mod ops;
 mod option;
+mod pattern;
 mod ptr;
 mod result;
 mod slice;
