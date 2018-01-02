@@ -80,27 +80,6 @@ impl Duration {
         Duration { secs: secs, nanos: nanos }
     }
 
-    /// Creates a new `Duration` from the specified number of whole days. Note that days are
-    /// strictly interpreted as duration math, i.e. one day is strictly twenty-four hours. This
-    /// function does not perform any calendar math or timezone math.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(duration_from)]
-    /// use std::time::Duration;
-    ///
-    /// let duration = Duration::from_days(1);
-    ///
-    /// assert_eq!(86_400, duration.as_secs());
-    /// assert_eq!(0, duration.subsec_nanos());
-    /// ```
-    #[unstable(feature = "duration_from", issue = "47097")]
-    #[inline]
-    pub fn from_days(days: u64) -> Duration {
-        Duration { secs: 86_400*days, nanos: 0 }
-    }
-
     /// Creates a new `Duration` from the specified number of whole hours.
     ///
     /// # Examples
@@ -128,7 +107,7 @@ impl Duration {
     /// #![feature(duration_from)]
     /// use std::time::Duration;
     ///
-    /// let duration = Duration::from_mins(5);
+    /// let duration = Duration::from_minutes(5);
     ///
     /// assert_eq!(300, duration.as_secs());
     /// assert_eq!(0, duration.subsec_nanos());
