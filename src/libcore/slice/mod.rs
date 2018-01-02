@@ -2450,7 +2450,6 @@ impl<'a, T> Iterator for ExactChunks<'a, T> {
         } else {
             let (_, snd) = self.v.split_at(start);
             self.v = snd;
-            assert!(self.v.len() == self.chunk_size);
             self.next()
         }
     }
@@ -2537,7 +2536,6 @@ impl<'a, T> Iterator for ExactChunksMut<'a, T> {
             let tmp = mem::replace(&mut self.v, &mut []);
             let (_, snd) = tmp.split_at_mut(start);
             self.v = snd;
-            assert!(self.v.len() == self.chunk_size);
             self.next()
         }
     }
