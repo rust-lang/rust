@@ -977,12 +977,9 @@ fn use_color(opts: &TestOpts) -> bool {
     }
 }
 
-#[cfg(target_os = "redox")]
-fn stdout_isatty() -> bool {
-    // FIXME: Implement isatty on Redox
-    false
-}
-#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+#[cfg(any(target_os = "cloudabi",
+          target_os = "redox",
+          all(target_arch = "wasm32", not(target_os = "emscripten"))))]
 fn stdout_isatty() -> bool {
     false
 }
