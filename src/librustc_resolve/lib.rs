@@ -2730,6 +2730,18 @@ impl<'a> Resolver<'a> {
                         }
                         return (err, candidates);
                     }
+                    (Def::VariantCtor(_, ctor_kind), _) if ns == ValueNS && is_struct_like(def) => {
+                        let block = match ctor_kind {
+                            CtorKind::Fn => "(/* fields */)",
+                            CtorKind::Fictive => " { /* fields */ }",
+                            def => bug!("found def `{:?}` when looking for a ctor",
+                                        def),
+                        };
+                        err.span_label(span, format!("did you mean `{}{}`?",
+                                                     path_str,
+                                                     block));
+                        return (err, candidates);
+                    }
                     _ => {}
                 }
             }
