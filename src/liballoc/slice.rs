@@ -1725,6 +1725,14 @@ impl [u8] {
            reason = "trait should not have to exist",
            issue = "27747")]
 /// An extension trait for concatenating slices
+///
+/// While this trait is unstable, the methods are stable. `SliceConcatExt` is
+/// included in the [standard library prelude], so you can use [`join()`] and
+/// [`concat()`] as if they existed on `[T]` itself.
+///
+/// [standard library prelude]: ../../std/prelude/index.html
+/// [`join()`]: #tymethod.join
+/// [`concat()`]: #tymethod.concat
 pub trait SliceConcatExt<T: ?Sized> {
     #[unstable(feature = "slice_concat_ext",
                reason = "trait should not have to exist",
