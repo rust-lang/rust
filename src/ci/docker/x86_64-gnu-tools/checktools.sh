@@ -23,16 +23,14 @@ touch "$TOOLSTATE_FILE"
 set +e
 python2.7 "$X_PY" test --no-fail-fast \
     src/tools/rls \
-    src/tools/rustfmt \
-    src/tools/miri \
-    src/tools/clippy
+    src/tools/rustfmt
 set -e
 
 cat "$TOOLSTATE_FILE"
 
 # If this PR is intended to update one of these tools, do not let the build pass
 # when they do not test-pass.
-for TOOL in rls rustfmt miri clippy; do
+for TOOL in rls rustfmt; do
     echo "Verifying status of $TOOL..."
     if echo "$CHANGED_FILES" | grep -q "^M[[:blank:]]src/tools/$TOOL$"; then
         echo "This PR updated 'src/tools/$TOOL', verifying if status is 'test-pass'..."

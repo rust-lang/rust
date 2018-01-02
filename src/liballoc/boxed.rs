@@ -300,7 +300,7 @@ impl<T: ?Sized> Box<T> {
                issue = "27730")]
     #[inline]
     pub unsafe fn from_unique(u: Unique<T>) -> Self {
-        Box(u)
+        mem::transmute(u)
     }
 
     /// Consumes the `Box`, returning the wrapped raw pointer.
@@ -362,9 +362,7 @@ impl<T: ?Sized> Box<T> {
                issue = "27730")]
     #[inline]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
-        let unique = b.0;
-        mem::forget(b);
-        unique
+        unsafe { mem::transmute(b) }
     }
 
     /// Consumes and leaks the `Box`, returning a mutable reference,

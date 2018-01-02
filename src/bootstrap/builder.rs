@@ -419,7 +419,8 @@ impl<'a> Builder<'a> {
            .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
            .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
            .env("RUSTDOC_REAL", self.rustdoc(host))
-           .env("RUSTDOC_CRATE_VERSION", self.build.rust_version());
+           .env("RUSTDOC_CRATE_VERSION", self.build.rust_version())
+           .env("RUSTC_BOOTSTRAP", "1");
         if let Some(linker) = self.build.linker(host) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
