@@ -33,10 +33,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use filetime::FileTime;
 use getopts::Options;
-use common::Config;
+use common::{Config, TestPaths};
 use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
 use common::{expected_output_path, UI_EXTENSIONS};
-use test::{ColorConfig, TestPaths};
+use test::ColorConfig;
 use util::logv;
 
 use self::header::EarlyProps;

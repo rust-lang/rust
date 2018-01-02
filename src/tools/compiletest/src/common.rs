@@ -13,7 +13,7 @@ use std::fmt;
 use std::str::FromStr;
 use std::path::PathBuf;
 
-use test::{ColorConfig, TestPaths};
+use test::ColorConfig;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -220,6 +220,13 @@ pub struct Config {
     pub llvm_components: String,
     pub llvm_cxxflags: String,
     pub nodejs: Option<String>,
+}
+
+#[derive(Clone)]
+pub struct TestPaths {
+    pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
+    pub base: PathBuf,         // e.g., compile-test, auxiliary
+    pub relative_dir: PathBuf, // e.g., foo/bar
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
