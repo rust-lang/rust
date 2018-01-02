@@ -34,7 +34,7 @@ use utils::{colon_spaces, contains_skip, first_line_width, format_abi, format_co
             format_defaultness, format_mutability, format_unsafety, format_visibility,
             is_attributes_extendable, last_line_contains_single_line_comment,
             last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, starts_with_newline,
-            stmt_expr, trim_newlines, trimmed_last_line_width};
+            stmt_expr, trimmed_last_line_width};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -674,7 +674,7 @@ pub fn format_impl(
 
             result.push('\n');
             result.push_str(&inner_indent_str);
-            result.push_str(trim_newlines(visitor.buffer.to_string().trim()));
+            result.push_str(visitor.buffer.to_string().trim());
             result.push('\n');
             result.push_str(&outer_indent_str);
         }
@@ -1073,7 +1073,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
             result.push('\n');
             result.push_str(&inner_indent_str);
-            result.push_str(trim_newlines(visitor.buffer.to_string().trim()));
+            result.push_str(visitor.buffer.to_string().trim());
             result.push('\n');
             result.push_str(&outer_indent_str);
         } else if result.contains('\n') {

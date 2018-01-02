@@ -254,17 +254,6 @@ pub fn count_newlines(input: &str) -> usize {
     input.chars().filter(|&c| c == '\n').count()
 }
 
-#[inline]
-pub fn trim_newlines(input: &str) -> &str {
-    match input.find(|c| c != '\n' && c != '\r') {
-        Some(start) => {
-            let end = input.rfind(|c| c != '\n' && c != '\r').unwrap_or(0) + 1;
-            &input[start..end]
-        }
-        None => "",
-    }
-}
-
 // Macro for deriving implementations of Serialize/Deserialize for enums
 #[macro_export]
 macro_rules! impl_enum_serialize_and_deserialize {
