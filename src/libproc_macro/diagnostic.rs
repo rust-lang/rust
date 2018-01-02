@@ -15,6 +15,7 @@ use rustc_errors as rustc;
 /// An enum representing a diagnostic level.
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Copy, Clone, Debug)]
+#[non_exhaustive]
 pub enum Level {
     /// An error.
     Error,
@@ -24,8 +25,6 @@ pub enum Level {
     Note,
     /// A help message.
     Help,
-    #[doc(hidden)]
-    __Nonexhaustive,
 }
 
 /// A structure representing a diagnostic message and associated children
@@ -128,7 +127,6 @@ pub mod __internal {
             Level::Warning => rustc::Level::Warning,
             Level::Note => rustc::Level::Note,
             Level::Help => rustc::Level::Help,
-            Level::__Nonexhaustive => unreachable!("Level::__Nonexhaustive")
         }
     }
 }

@@ -357,7 +357,8 @@ pub struct FromUtf8Error {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
-pub struct FromUtf16Error(());
+#[non_exhaustive]
+pub struct FromUtf16Error { }
 
 impl String {
     /// Creates a new empty `String`.
@@ -616,7 +617,7 @@ impl String {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
-        decode_utf16(v.iter().cloned()).collect::<Result<_, _>>().map_err(|_| FromUtf16Error(()))
+        decode_utf16(v.iter().cloned()).collect::<Result<_, _>>().map_err(|_| FromUtf16Error { })
     }
 
     /// Decode a UTF-16 encoded slice `v` into a `String`, replacing

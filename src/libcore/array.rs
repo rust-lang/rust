@@ -61,7 +61,8 @@ unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
 /// The error type returned when a conversion from a slice to an array fails.
 #[unstable(feature = "try_from", issue = "33417")]
 #[derive(Debug, Copy, Clone)]
-pub struct TryFromSliceError(());
+#[non_exhaustive]
+pub struct TryFromSliceError { }
 
 impl fmt::Display for TryFromSliceError {
     #[inline]
@@ -157,7 +158,7 @@ macro_rules! array_impls {
                         let ptr = slice.as_ptr() as *const [T; $N];
                         unsafe { Ok(&*ptr) }
                     } else {
-                        Err(TryFromSliceError(()))
+                        Err(TryFromSliceError { })
                     }
                 }
             }
@@ -171,7 +172,7 @@ macro_rules! array_impls {
                         let ptr = slice.as_mut_ptr() as *mut [T; $N];
                         unsafe { Ok(&mut *ptr) }
                     } else {
-                        Err(TryFromSliceError(()))
+                        Err(TryFromSliceError { })
                     }
                 }
             }

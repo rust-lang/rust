@@ -80,6 +80,7 @@
 #![feature(lang_items)]
 #![feature(never_type)]
 #![feature(no_core)]
+#![feature(non_exhaustive)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
 #![feature(prelude_import)]

@@ -16,6 +16,7 @@
 ///
 /// See also: <http://www.unicode.org/versions/>
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[non_exhaustive]
 pub struct UnicodeVersion {
     /// Major version.
     pub major: u32,
@@ -25,9 +26,6 @@ pub struct UnicodeVersion {
 
     /// Micro (or Update) version.
     pub micro: u32,
-
-    // Private field to keep struct expandable.
-    _priv: (),
 }
 
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
@@ -36,7 +34,6 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
     major: 10,
     minor: 0,
     micro: 0,
-    _priv: (),
 };
 
 
