@@ -313,8 +313,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             (CastTy::Ptr(_), CastTy::Int(_)) |
                             (CastTy::FnPtr, CastTy::Int(_)) =>
                                 bcx.ptrtoint(llval, ll_t_out),
-                            (CastTy::Int(_), CastTy::Ptr(_)) =>
-                                bcx.inttoptr(llval, ll_t_out),
+                            (CastTy::Int(_), CastTy::Ptr(_)) => {
+                                let usize_llval = bcx.intcast(llval, bcx.ccx.isize_ty(), signed);
+                                bcx.inttoptr(usize_llval, ll_t_out)
+                            }
                             (CastTy::Int(_), CastTy::Float) =>
                                 cast_int_to_float(&bcx, signed, llval, ll_t_in, ll_t_out),
                             (CastTy::Float, CastTy::Int(IntTy::I)) =>
