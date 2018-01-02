@@ -715,7 +715,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is out of bounds.
+    /// Panics if `index > len`.
     ///
     /// # Examples
     ///
