@@ -1390,6 +1390,5 @@ extern "rust-intrinsic" {
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
-    #[cfg(not(stage0))]
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 }
