@@ -178,7 +178,7 @@ pub fn last_line_extendable(s: &str) -> bool {
     }
     for c in s.chars().rev() {
         match c {
-            ')' | ']' | '}' | '?' => continue,
+            ')' | ']' | '}' | '?' | '>' => continue,
             '\n' => break,
             _ if c.is_whitespace() => continue,
             _ => return false,
