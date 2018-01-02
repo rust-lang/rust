@@ -2484,6 +2484,15 @@ impl<'a, T> ExactSizeIterator for ExactChunks<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for ExactChunks<'a, T> {}
 
+#[doc(hidden)]
+unsafe impl<'a, T> TrustedRandomAccess for ExactChunks<'a, T> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
+        let start = i * self.chunk_size;
+        from_raw_parts(self.v.as_ptr().offset(start as isize), self.chunk_size)
+    }
+    fn may_have_side_effect() -> bool { false }
+}
+
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last up to `chunk_size-1` elements will be omitted.
@@ -2571,6 +2580,15 @@ impl<'a, T> ExactSizeIterator for ExactChunksMut<'a, T> {
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for ExactChunksMut<'a, T> {}
+
+#[doc(hidden)]
+unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T] {
+        let start = i * self.chunk_size;
+        from_raw_parts_mut(self.v.as_mut_ptr().offset(start as isize), self.chunk_size)
+    }
+    fn may_have_side_effect() -> bool { false }
+}
 
 //
 // Free functions
