@@ -10,7 +10,7 @@
 
 //! String manipulation
 //!
-//! For more details, see std::str
+//! For more details, see [`std::str`](../../std/str/index.html).
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -852,6 +852,7 @@ macro_rules! derive_pattern_clone {
 /// For all patterns `P: Pattern<'a>` the following items will be
 /// generated (generics omitted):
 ///
+/// ```ignore (pseudo-rust)
 /// struct $forward_iterator($internal_iterator);
 /// struct $reverse_iterator($internal_iterator);
 ///
@@ -869,9 +870,10 @@ macro_rules! derive_pattern_clone {
 /// impl DoubleEndedIterator for $reverse_iterator
 ///       where P::Searcher: DoubleEndedSearcher
 /// { /* internal ends up calling Searcher::next_match() */ }
+/// ```
 ///
 /// The internal one is defined outside the macro, and has almost the same
-/// semantic as a DoubleEndedIterator by delegating to `pattern::Searcher` and
+/// semantic as a `DoubleEndedIterator` by delegating to `pattern::Searcher` and
 /// `pattern::ReverseSearcher` for both forward and reverse iteration.
 ///
 /// "Almost", because a `Searcher` and a `ReverseSearcher` for a given
@@ -1412,7 +1414,7 @@ Section: UTF-8 validation
 */
 
 // use truncation to fit u64 into usize
-const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
+const NONASCII_MASK: usize = 0x8080_8080_8080_8080u64 as usize;
 
 /// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]
@@ -1566,12 +1568,12 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 #[unstable(feature = "str_internals", issue = "0")]
 #[inline]
 pub fn utf8_char_width(b: u8) -> usize {
-    return UTF8_CHAR_WIDTH[b as usize] as usize;
+    UTF8_CHAR_WIDTH[b as usize] as usize
 }
 
 /// Mask of the value bits of a continuation byte.
 const CONT_MASK: u8 = 0b0011_1111;
-/// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte.
+/// Value of the tag bits (tag mask is `!CONT_MASK`) of a continuation byte.
 const TAG_CONT_U8: u8 = 0b1000_0000;
 
 /*

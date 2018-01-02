@@ -27,7 +27,7 @@
 //! We can explicitly specify `hello_world`'s lifetime as well:
 //!
 //! ```
-//! let hello_world: &'static str = "Hello, world!";
+//! let hello_world: &str = "Hello, world!";
 //! ```
 //!
 //! *[See also the `str` primitive type](../../std/primitive.str.html).*
@@ -1999,7 +1999,7 @@ impl str {
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
         s.extend(self.chars().flat_map(|c| c.to_uppercase()));
-        return s;
+        s
     }
 
     /// Escapes each char in `s` with [`char::escape_debug`].

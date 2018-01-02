@@ -120,7 +120,7 @@ pub struct Box<T: ?Sized>(Unique<T>);
 /// compiler.  Easier just to make this parallel type for now.
 ///
 /// FIXME (pnkfelix): Currently the `box` protocol only supports
-/// creating instances of sized types. This IntermediateBox is
+/// creating instances of sized types. This `IntermediateBox` is
 /// designed to be forward-compatible with a future protocol that
 /// supports creating instances of unsized types; that is why the type
 /// parameter has the `?Sized` generalization marker, and is also why

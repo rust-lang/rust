@@ -2061,6 +2061,7 @@ macro_rules! __impl_slice_eq1 {
     };
     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[cfg_attr(feature = "cargo-clippy", allow(partialeq_ne_impl))]
         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
             #[inline]
             fn eq(&self, other: &$Rhs) -> bool { self[..] == other[..] }
@@ -2337,22 +2338,20 @@ impl<T> Iterator for IntoIter<T> {
         unsafe {
             if self.ptr as *const _ == self.end {
                 None
+            } else if mem::size_of::<T>() == 0 {
+                // purposefully don't use 'ptr.offset' because for
+                // vectors with 0-size elements this would return the
+                // same pointer.
+                self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
+
+                // Use a non-null pointer value
+                // (self.ptr might be null because of wrapping)
+                Some(ptr::read(1 as *mut T))
             } else {
-                if mem::size_of::<T>() == 0 {
-                    // purposefully don't use 'ptr.offset' because for
-                    // vectors with 0-size elements this would return the
-                    // same pointer.
-                    self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
+                let old = self.ptr;
+                self.ptr = self.ptr.offset(1);
 
-                    // Use a non-null pointer value
-                    // (self.ptr might be null because of wrapping)
-                    Some(ptr::read(1 as *mut T))
-                } else {
-                    let old = self.ptr;
-                    self.ptr = self.ptr.offset(1);
-
-                    Some(ptr::read(old))
-                }
+                Some(ptr::read(old))
             }
         }
     }
@@ -2379,19 +2378,17 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
         unsafe {
             if self.end == self.ptr {
                 None
+            } else if mem::size_of::<T>() == 0 {
+                // See above for why 'ptr.offset' isn't used
+                self.end = arith_offset(self.end as *const i8, -1) as *mut T;
+
+                // Use a non-null pointer value
+                // (self.end might be null because of wrapping)
+                Some(ptr::read(1 as *mut T))
             } else {
-                if mem::size_of::<T>() == 0 {
-                    // See above for why 'ptr.offset' isn't used
-                    self.end = arith_offset(self.end as *const i8, -1) as *mut T;
+                self.end = self.end.offset(-1);
 
-                    // Use a non-null pointer value
-                    // (self.end might be null because of wrapping)
-                    Some(ptr::read(1 as *mut T))
-                } else {
-                    self.end = self.end.offset(-1);
-
-                    Some(ptr::read(self.end))
-                }
+                Some(ptr::read(self.end))
             }
         }
     }
@@ -2485,7 +2482,7 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         // exhaust self first
-        while let Some(_) = self.next() {}
+        for _ in self.by_ref() {}
 
         if self.tail_len > 0 {
             unsafe {

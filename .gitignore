@@ -74,6 +74,7 @@ __pycache__/
 /obj/
 /rt/
 /rustllvm/
+/src/etc/UnicodeData.txt
 /src/libstd_unicode/DerivedCoreProperties.txt
 /src/libstd_unicode/DerivedNormalizationProps.txt
 /src/libstd_unicode/PropList.txt

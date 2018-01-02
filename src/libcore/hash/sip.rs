@@ -103,7 +103,7 @@ macro_rules! compress {
 /// `copy_nonoverlapping` to let the compiler generate the most efficient way
 /// to load it from a possibly unaligned address.
 ///
-/// Unsafe because: unchecked indexing at i..i+size_of(int_ty)
+/// Unsafe because: unchecked indexing at `i..i+size_of(int_ty)`
 macro_rules! load_int_le {
     ($buf:expr, $i:expr, $int_ty:ident) =>
     ({
@@ -228,10 +228,10 @@ impl<S: Sip> Hasher<S> {
     #[inline]
     fn reset(&mut self) {
         self.length = 0;
-        self.state.v0 = self.k0 ^ 0x736f6d6570736575;
-        self.state.v1 = self.k1 ^ 0x646f72616e646f6d;
-        self.state.v2 = self.k0 ^ 0x6c7967656e657261;
-        self.state.v3 = self.k1 ^ 0x7465646279746573;
+        self.state.v0 = self.k0 ^ 0x736f_6d65_7073_6575;
+        self.state.v1 = self.k1 ^ 0x646f_7261_6e64_6f6d;
+        self.state.v2 = self.k0 ^ 0x6c79_6765_6e65_7261;
+        self.state.v3 = self.k1 ^ 0x7465_6462_7974_6573;
         self.ntail = 0;
     }
 
@@ -331,7 +331,7 @@ impl<S: Sip> super::Hasher for Hasher<S> {
 
         if self.ntail != 0 {
             needed = 8 - self.ntail;
-            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << 8 * self.ntail;
+            self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << (8 * self.ntail);
             if length < needed {
                 self.ntail += length;
                 return

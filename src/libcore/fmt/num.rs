@@ -186,7 +186,7 @@ integer! { i32, u32 }
 integer! { i64, u64 }
 integer! { i128, u128 }
 
-const DEC_DIGITS_LUT: &'static[u8] =
+const DEC_DIGITS_LUT: &[u8] =
     b"0001020304050607080910111213141516171819\
       2021222324252627282930313233343536373839\
       4041424344454647484950515253545556575859\
@@ -215,9 +215,9 @@ macro_rules! impl_Display {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
                 if ::mem::size_of::<$t>() >= 2 {
                     // eagerly decode 4 characters at a time
-                    while n >= 10000 {
-                        let rem = (n % 10000) as isize;
-                        n /= 10000;
+                    while n >= 10_000 {
+                        let rem = (n % 10_000) as isize;
+                        n /= 10_000;
 
                         let d1 = (rem / 100) << 1;
                         let d2 = (rem % 100) << 1;
