@@ -2398,6 +2398,14 @@ pub unsafe fn _mm256_storeu2_m128i(
     _mm_storeu_si128(hiaddr, hi);
 }
 
+/// Returns the first element of the input vector of [8 x float].
+#[inline(always)]
+#[target_feature = "+avx"]
+//#[cfg_attr(test, assert_instr(movss))] FIXME
+pub unsafe fn _mm256_cvtss_f32(a: f32x8) -> f32 {
+    a.extract(0)
+}
+
 /// LLVM intrinsics used in the above functions
 #[allow(improper_ctypes)]
 extern "C" {
@@ -4289,5 +4297,12 @@ mod tests {
 
         assert_eq!(hi, e_hi);
         assert_eq!(lo, e_lo);
+    }
+
+    #[simd_test = "avx"]
+    unsafe fn _mm256_cvtss_f32() {
+        let a = f32x8::new(1., 2., 3., 4., 5., 6., 7., 8.);
+        let r = avx::_mm256_cvtss_f32(a);
+        assert_eq!(r, 1.);
     }
 }
