@@ -1098,15 +1098,20 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         };
 
         match cause {
-            mc::AliasableStatic |
+            mc::AliasableStatic => {
+                // This happens when we have an `&mut` or assignment to a
+                // static. We should have already reported a mutability
+                // violation first, but may have continued compiling.
+                self.tcx.sess.delay_span_bug(
+                    span,
+                    &format!("aliasability violation for static `{}`", prefix)
+                );
+                return;
+            }
             mc::AliasableStaticMut => {
-                // This path cannot occur. It happens when we have an
-                // `&mut` or assignment to a static. But in the case
-                // of `static X`, we get a mutability violation first,
-                // and never get here. In the case of `static mut X`,
-                // that is unsafe and hence the aliasability error is
-                // ignored.
-                span_bug!(span, "aliasability violation for static `{}`", prefix)
+                // This path cannot occur. `static mut X` is not checked
+                // for aliasability violations.
+                span_bug!(span, "aliasability violation for static mut `{}`", prefix)
             }
             mc::AliasableBorrowed => {}
         };
