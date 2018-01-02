@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-cloudabi no std::fs support
+
 // Test that we do some basic error correcton in the tokeniser (and don't spew
 // too many bogus errors).
 

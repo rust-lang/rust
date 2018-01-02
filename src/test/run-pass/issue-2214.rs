@@ -34,7 +34,7 @@ mod m {
 
     #[link_name = "m"]
     extern {
-        #[cfg(unix)]
+        #[cfg(any(unix, target_os = "cloudabi"))]
         #[link_name="lgamma_r"]
         pub fn lgamma(n: c_double, sign: &mut c_int) -> c_double;
         #[cfg(windows)]

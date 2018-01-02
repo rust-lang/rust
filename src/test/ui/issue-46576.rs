@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-cloudabi no std::fs support
+
 #![allow(dead_code)]
 #![deny(unused_imports)]
 
