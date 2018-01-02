@@ -486,6 +486,10 @@ impl<W: Write> BufWriter<W> {
     ///
     /// The buffer is written out before returning the writer.
     ///
+    /// # Errors
+    ///
+    /// An `Err` will be returned if an error occurs while flushing the buffer.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -650,6 +654,9 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// completed, rather than the entire buffer at once. Enter `LineWriter`. It
 /// does exactly that.
 ///
+/// Like [`BufWriter`], a `LineWriter`’s buffer will also be flushed when the
+/// `LineWriter` goes out of scope or when its internal buffer is full.
+///
 /// [bufwriter]: struct.BufWriter.html
 ///
 /// If there's still a partial line in the buffer when the `LineWriter` is
@@ -784,6 +791,10 @@ impl<W: Write> LineWriter<W> {
     /// Unwraps this `LineWriter`, returning the underlying writer.
     ///
     /// The internal buffer is written out before returning the writer.
+    ///
+    // # Errors
+    ///
+    /// An `Err` will be returned if an error occurs while flushing the buffer.
     ///
     /// # Examples
     ///
