@@ -11,14 +11,13 @@
 
 set -ex
 
-# We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
-export CFLAGS="-fPIC -Wa,-mrelax-relocations=no"
-export CXXFLAGS="-Wa,-mrelax-relocations=no"
+TAG=$1
+shift
 
 MUSL=musl-1.1.17
 curl https://www.musl-libc.org/releases/$MUSL.tar.gz | tar xzf -
 cd $MUSL
-./configure --prefix=/musl-x86_64 --disable-shared
+./configure --disable-shared --prefix=/musl-$TAG $@
 make -j10
 make install
 
@@ -33,6 +32,10 @@ curl -L https://github.com/llvm-mirror/libunwind/archive/release_37.tar.gz | tar
 mkdir libunwind-build
 cd libunwind-build
 cmake ../libunwind-release_37 -DLLVM_PATH=/build/llvm-release_37 \
-          -DLIBUNWIND_ENABLE_SHARED=0
+          -DLIBUNWIND_ENABLE_SHARED=0 \
+          -DCMAKE_C_COMPILER=$CC \
+          -DCMAKE_CXX_COMPILER=$CXX \
+          -DCMAKE_C_FLAGS="$CFLAGS" \
+          -DCMAKE_CXX_FLAGS="$CXXFLAGS"
 make -j10
-cp lib/libunwind.a /musl-x86_64/lib
+cp lib/libunwind.a /musl-$TAG/lib
