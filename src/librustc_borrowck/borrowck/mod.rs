@@ -705,12 +705,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }, " (into closure)"),
         };
 
-        let extra_move_label = if need_note {
-            format!(" because it has type `{}`, which does not implement the `Copy` trait",
-                    moved_lp.ty)
-        } else {
-            String::new()
-        };
         // Annotate the use and the move in the span. Watch out for
         // the case where the use and the move are the same. This
         // means the use is in a loop.
@@ -720,10 +714,22 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 format!("value moved{} here in previous iteration of loop{}",
                          move_note,
                          extra_move_label));
+
+            if need_note {
+                err.note(&format!("value moved because it has type `{}`, \
+                                   which does not implement the `Copy` trait",
+                                  moved_lp.ty)
+            }
             err
         } else {
-            err.span_label(use_span, format!("value {} here after move", verb_participle))
-               .span_label(move_span, format!("value moved{} here{}", move_note, extra_move_label));
+            err.span_label(use_span, format!("value {} here after move", verb_participle));
+            let extra_move_label = if need_note {
+               &format!(" because it has type `{}`, which does not implement the `Copy` trait",
+                        moved_lp.ty)
+            } else {
+                ""
+            };
+            err.span_label(move_span,format!("value moved{} here{}", move_note, extra_move_label));
             err
         };
 
