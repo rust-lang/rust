@@ -645,6 +645,8 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(exact_chunks)]
+    ///
     /// let slice = ['l', 'o', 'r', 'e', 'm'];
     /// let mut iter = slice.chunks(2);
     /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
@@ -699,6 +701,8 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(exact_chunks)]
+    ///
     /// let v = &mut [0, 0, 0, 0, 0];
     /// let mut count = 1;
     ///
