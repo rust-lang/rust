@@ -181,7 +181,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
         .filter_map(|a| match a {
             syn::Meta::List(i) => {
                 if i.ident == "cfg_attr" {
-                    i.nested.into_iter().next()
+                    i.nested.into_iter().nth(1)
                 } else {
                     None
                 }

@@ -78,7 +78,7 @@ struct Parameter {
     #[serde(rename = "type")] type_: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct Instruction {
     name: String,
 }
@@ -166,27 +166,23 @@ fn verify_all_signatures() {
             );
         }
 
-        // TODO: we should test this, but it generates too many failures right
-        // now
-        if false {
-            if rust.instrs.is_empty() {
-                assert_eq!(
-                    intel.instruction.len(),
-                    0,
-                    "instruction not listed for {}",
-                    rust.name
-                );
+        if rust.instrs.is_empty() {
+            if intel.instruction.len() > 0 {
+                println!("instruction not listed for `{}`, but intel lists {:?}",
+                         rust.name, intel.instruction);
+            }
 
-            // If intel doesn't list any instructions and we do then don't
-            // bother trying to look for instructions in intel, we've just got
-            // some extra assertions on our end.
-            } else if !intel.instruction.is_empty() {
-                for instr in rust.instrs {
-                    assert!(
-                        intel
-                            .instruction
-                            .iter()
-                            .any(|a| a.name.starts_with(instr)),
+        // If intel doesn't list any instructions and we do then don't
+        // bother trying to look for instructions in intel, we've just got
+        // some extra assertions on our end.
+        } else if !intel.instruction.is_empty() {
+            for instr in rust.instrs {
+                let asserting = intel
+                    .instruction
+                    .iter()
+                    .any(|a| a.name.starts_with(instr));
+                if !asserting {
+                    println!(
                         "intel failed to list `{}` as an instruction for `{}`",
                         instr,
                         rust.name

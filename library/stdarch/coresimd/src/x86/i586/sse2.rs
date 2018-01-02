@@ -2009,7 +2009,7 @@ pub unsafe fn _mm_storel_pd(mem_addr: *mut f64, a: __m128d) {
 /// into both elements of returned vector.
 #[inline(always)]
 #[target_feature(enable = "sse2")]
-//#[cfg_attr(test, assert_instr(movapd))] FIXME movapd expected
+// #[cfg_attr(test, assert_instr(movapd))] // FIXME LLVM uses different codegen
 pub unsafe fn _mm_load1_pd(mem_addr: *const f64) -> __m128d {
     let d = *mem_addr;
     _mm_setr_pd(d, d)
@@ -2019,10 +2019,9 @@ pub unsafe fn _mm_load1_pd(mem_addr: *const f64) -> __m128d {
 /// into both elements of returned vector.
 #[inline(always)]
 #[target_feature(enable = "sse2")]
-//#[cfg_attr(test, assert_instr(movapd))] FIXME movapd expected
+// #[cfg_attr(test, assert_instr(movapd))] // FIXME same as _mm_load1_pd
 pub unsafe fn _mm_load_pd1(mem_addr: *const f64) -> __m128d {
-    let d = *mem_addr;
-    _mm_setr_pd(d, d)
+    _mm_load1_pd(mem_addr)
 }
 
 /// Load 2 double-precision (64-bit) floating-point elements from memory into
