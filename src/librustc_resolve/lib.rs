@@ -898,7 +898,7 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum PathResult<'a> {
     Module(Module<'a>),
     NonModule(PathResolution),
@@ -2741,6 +2741,10 @@ impl<'a> Resolver<'a> {
                                                      path_str,
                                                      block));
                         return (err, candidates);
+                    }
+                    (Def::SelfTy(_, _), _) if ns == ValueNS && is_struct_like(def) => {
+                        err.note("can't instantiate `Self`, you must use the implemented struct \
+                                  directly");
                     }
                     _ => {}
                 }

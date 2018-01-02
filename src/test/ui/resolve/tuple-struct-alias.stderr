@@ -3,12 +3,16 @@ error[E0423]: expected function, found self type `Self`
    |
 16 |         let s = Self(0, 1); //~ ERROR expected function
    |                 ^^^^ not a function
+   |
+   = note: can't instantiate `Self`, you must use the implemented struct directly
 
 error[E0532]: expected tuple struct/variant, found self type `Self`
   --> $DIR/tuple-struct-alias.rs:18:13
    |
 18 |             Self(..) => {} //~ ERROR expected tuple struct/variant
    |             ^^^^ not a tuple struct/variant
+   |
+   = note: can't instantiate `Self`, you must use the implemented struct directly
 
 error[E0423]: expected function, found type alias `A`
   --> $DIR/tuple-struct-alias.rs:24:13
