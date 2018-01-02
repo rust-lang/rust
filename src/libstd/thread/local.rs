@@ -238,7 +238,7 @@ pub enum LocalKeyState {
            reason = "state querying was recently added",
            issue = "27716")]
 #[non_exhaustive]
-pub struct AccessError { }
+pub struct AccessError;
 
 #[unstable(feature = "thread_local_state",
            reason = "state querying was recently added",
@@ -370,7 +370,7 @@ impl<T: 'static> LocalKey<T> {
     pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
                       where F: FnOnce(&T) -> R {
         unsafe {
-            let slot = (self.inner)().ok_or(AccessError { })?;
+            let slot = (self.inner)().ok_or(AccessError)?;
             Ok(f(match *slot.get() {
                 Some(ref inner) => inner,
                 None => self.init(slot),

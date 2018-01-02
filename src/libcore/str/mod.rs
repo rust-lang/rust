@@ -132,7 +132,7 @@ impl FromStr for bool {
         match s {
             "true"  => Ok(true),
             "false" => Ok(false),
-            _       => Err(ParseBoolError { }),
+            _       => Err(ParseBoolError),
         }
     }
 }
@@ -143,7 +143,7 @@ impl FromStr for bool {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[non_exhaustive]
-pub struct ParseBoolError { }
+pub struct ParseBoolError;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseBoolError {

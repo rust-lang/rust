@@ -91,7 +91,7 @@ use str::from_boxed_utf8_unchecked;
 #[unstable(feature = "box_heap",
            reason = "may be renamed; uncertain about custom allocator design",
            issue = "27779")]
-pub const HEAP: ExchangeHeapSingleton = ExchangeHeapSingleton { };
+pub const HEAP: ExchangeHeapSingleton = ExchangeHeapSingleton;
 
 /// This the singleton type used solely for `boxed::HEAP`.
 #[unstable(feature = "box_heap",
@@ -100,7 +100,7 @@ pub const HEAP: ExchangeHeapSingleton = ExchangeHeapSingleton { };
 #[allow(missing_debug_implementations)]
 #[derive(Copy, Clone)]
 #[non_exhaustive]
-pub struct ExchangeHeapSingleton { }
+pub struct ExchangeHeapSingleton;
 
 /// A pointer type for heap allocation.
 ///

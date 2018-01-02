@@ -489,7 +489,7 @@ pub struct RefCell<T: ?Sized> {
 /// An error returned by [`RefCell::try_borrow`](struct.RefCell.html#method.try_borrow).
 #[stable(feature = "try_borrow", since = "1.13.0")]
 #[non_exhaustive]
-pub struct BorrowError { }
+pub struct BorrowError;
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Debug for BorrowError {
@@ -508,7 +508,7 @@ impl Display for BorrowError {
 /// An error returned by [`RefCell::try_borrow_mut`](struct.RefCell.html#method.try_borrow_mut).
 #[stable(feature = "try_borrow", since = "1.13.0")]
 #[non_exhaustive]
-pub struct BorrowMutError { }
+pub struct BorrowMutError;
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Debug for BorrowMutError {
@@ -723,7 +723,7 @@ impl<T: ?Sized> RefCell<T> {
                 value: unsafe { &*self.value.get() },
                 borrow: b,
             }),
-            None => Err(BorrowError { }),
+            None => Err(BorrowError),
         }
     }
 
@@ -799,7 +799,7 @@ impl<T: ?Sized> RefCell<T> {
                 value: unsafe { &mut *self.value.get() },
                 borrow: b,
             }),
-            None => Err(BorrowMutError { }),
+            None => Err(BorrowMutError),
         }
     }
 

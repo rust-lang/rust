@@ -76,7 +76,7 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
 /// [`empty`]: fn.empty.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[non_exhaustive]
-pub struct Empty { }
+pub struct Empty;
 
 /// Constructs a new handle to an empty reader.
 ///
@@ -96,7 +96,7 @@ pub struct Empty { }
 /// assert!(buffer.is_empty());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn empty() -> Empty { Empty { } }
+pub fn empty() -> Empty { Empty }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Empty {
@@ -180,7 +180,7 @@ impl fmt::Debug for Repeat {
 /// [sink]: fn.sink.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[non_exhaustive]
-pub struct Sink { }
+pub struct Sink;
 
 /// Creates an instance of a writer which will successfully consume all data.
 ///
@@ -197,7 +197,7 @@ pub struct Sink { }
 /// assert_eq!(num_bytes, 5);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn sink() -> Sink { Sink { } }
+pub fn sink() -> Sink { Sink }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Sink {

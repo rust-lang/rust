@@ -1591,7 +1591,7 @@ pub struct Path {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 #[non_exhaustive]
-pub struct StripPrefixError { }
+pub struct StripPrefixError;
 
 impl Path {
     // The following (private!) function allows construction of a path from a u8
@@ -1878,7 +1878,7 @@ impl Path {
                          -> Result<&'a Path, StripPrefixError> {
         iter_after(self.components(), base.components())
             .map(|c| c.as_path())
-            .ok_or(StripPrefixError { })
+            .ok_or(StripPrefixError)
     }
 
     /// Determines whether `base` is a prefix of `self`.

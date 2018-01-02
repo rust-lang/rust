@@ -272,7 +272,7 @@ impl TryFrom<u32> for char {
     #[inline]
     fn try_from(i: u32) -> Result<Self, Self::Error> {
         if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
-            Err(CharTryFromError { })
+            Err(CharTryFromError)
         } else {
             Ok(unsafe { from_u32_unchecked(i) })
         }
@@ -283,7 +283,7 @@ impl TryFrom<u32> for char {
 #[unstable(feature = "try_from", issue = "33417")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub struct CharTryFromError { }
+pub struct CharTryFromError;
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl fmt::Display for CharTryFromError {
@@ -820,7 +820,7 @@ pub fn decode_utf8<I: IntoIterator<Item = u8>>(i: I) -> DecodeUtf8<I::IntoIter> 
 #[unstable(feature = "decode_utf8", issue = "33906")]
 #[derive(PartialEq, Eq, Debug)]
 #[non_exhaustive]
-pub struct InvalidSequence { }
+pub struct InvalidSequence;
 
 #[unstable(feature = "decode_utf8", issue = "33906")]
 impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
@@ -851,7 +851,7 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
                             code_point = (code_point << 6) | u32::from(byte & 0b0011_1111);
                             self.0.next();
                         }
-                        _ => return Err(InvalidSequence { })
+                        _ => return Err(InvalidSequence)
                     }
                 }
             }
@@ -897,7 +897,7 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
                     continuation_byte!();
                     continuation_byte!();
                 }
-                _ => return Err(InvalidSequence { })  // Illegal first byte, overlong, or beyond MAX
+                _ => return Err(InvalidSequence)  // Illegal first byte, overlong, or beyond MAX
             }
             unsafe {
                 Ok(from_u32_unchecked(code_point))

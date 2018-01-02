@@ -2960,7 +2960,7 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 #[unstable(feature = "try_from", issue = "33417")]
 #[derive(Debug, Copy, Clone)]
 #[non_exhaustive]
-pub struct TryFromIntError { }
+pub struct TryFromIntError;
 
 impl TryFromIntError {
     #[unstable(feature = "int_error_internals",
@@ -3015,7 +3015,7 @@ macro_rules! try_from_lower_bounded {
                 if u >= 0 {
                     Ok(u as $target)
                 } else {
-                    Err(TryFromIntError { })
+                    Err(TryFromIntError)
                 }
             }
         }
@@ -3032,7 +3032,7 @@ macro_rules! try_from_upper_bounded {
             #[inline]
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 if u > (<$target>::max_value() as $source) {
-                    Err(TryFromIntError { })
+                    Err(TryFromIntError)
                 } else {
                     Ok(u as $target)
                 }
@@ -3053,7 +3053,7 @@ macro_rules! try_from_both_bounded {
                 let min = <$target>::min_value() as $source;
                 let max = <$target>::max_value() as $source;
                 if u < min || u > max {
-                    Err(TryFromIntError { })
+                    Err(TryFromIntError)
                 } else {
                     Ok(u as $target)
                 }
