@@ -651,7 +651,6 @@ impl<T> [T] {
     /// let mut iter = slice.chunks(2);
     /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
     /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
-    /// assert_eq!(iter.next().unwrap(), &['m']);
     /// assert!(iter.next().is_none());
     /// ```
     #[unstable(feature = "exact_chunks", issue = "47115")]
@@ -712,7 +711,7 @@ impl<T> [T] {
     ///     }
     ///     count += 1;
     /// }
-    /// assert_eq!(v, &[1, 1, 2, 2, 3]);
+    /// assert_eq!(v, &[1, 1, 2, 2]);
     /// ```
     #[unstable(feature = "exact_chunks", issue = "47115")]
     #[inline]
