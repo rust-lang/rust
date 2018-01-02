@@ -123,6 +123,8 @@ pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 pub use core::slice::{from_ref, from_ref_mut};
 #[unstable(feature = "slice_get_slice", issue = "35729")]
 pub use core::slice::SliceIndex;
+#[unstable(feature = "exact_chunks", issue = "47115")]
+pub use core::slice::{ExactChunks, ExactChunksMut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
@@ -631,6 +633,31 @@ impl<T> [T] {
         core_slice::SliceExt::chunks(self, chunk_size)
     }
 
+    /// Returns an iterator over `chunk_size` elements of the slice at a
+    /// time. The chunks are slices and do not overlap. If `chunk_size` does
+    /// not divide the length of the slice, then the last up to `chunk_size-1`
+    /// elements will be omitted.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `chunk_size` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.chunks(2);
+    /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
+    /// assert_eq!(iter.next().unwrap(), &['m']);
+    /// assert!(iter.next().is_none());
+    /// ```
+    #[unstable(feature = "exact_chunks", issue = "47115")]
+    #[inline]
+    pub fn exact_chunks(&self, chunk_size: usize) -> ExactChunks<T> {
+        core_slice::SliceExt::exact_chunks(self, chunk_size)
+    }
+
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
     /// The chunks are mutable slices, and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last chunk will not
@@ -658,6 +685,35 @@ impl<T> [T] {
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
         core_slice::SliceExt::chunks_mut(self, chunk_size)
+    }
+
+    /// Returns an iterator over `chunk_size` elements of the slice at a time.
+    /// The chunks are mutable slices, and do not overlap. If `chunk_size` does
+    /// not divide the length of the slice, then the last up to `chunk_size-1`
+    /// elements will be omitted.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `chunk_size` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = &mut [0, 0, 0, 0, 0];
+    /// let mut count = 1;
+    ///
+    /// for chunk in v.exact_chunks_mut(2) {
+    ///     for elem in chunk.iter_mut() {
+    ///         *elem += count;
+    ///     }
+    ///     count += 1;
+    /// }
+    /// assert_eq!(v, &[1, 1, 2, 2, 3]);
+    /// ```
+    #[unstable(feature = "exact_chunks", issue = "47115")]
+    #[inline]
+    pub fn exact_chunks_mut(&mut self, chunk_size: usize) -> ExactChunksMut<T> {
+        core_slice::SliceExt::exact_chunks_mut(self, chunk_size)
     }
 
     /// Divides one slice into two at an index.
