@@ -21,13 +21,6 @@ use syntax_pos::Span;
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
 
-use regex::Regex;
-
-lazy_static! {
-    static ref ALPHABETIC_UNDERSCORE: Regex =
-        Regex::new("([[:alpha:]])_+|_+([[:alpha:]])").unwrap();
-}
-
 #[derive(PartialEq)]
 pub enum MethodLateContext {
     TraitAutoImpl,
@@ -60,6 +53,10 @@ pub struct NonCamelCaseTypes;
 
 impl NonCamelCaseTypes {
     fn check_case(&self, cx: &LateContext, sort: &str, name: ast::Name, span: Span) {
+        fn char_has_case(c: char) -> bool {
+            c.is_lowercase() || c.is_uppercase()
+        }
+
         fn is_camel_case(name: ast::Name) -> bool {
             let name = name.as_str();
             if name.is_empty() {
@@ -70,25 +67,37 @@ impl NonCamelCaseTypes {
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
             !name.is_empty() && !name.chars().next().unwrap().is_lowercase() &&
-                !name.contains("__") && !ALPHABETIC_UNDERSCORE.is_match(name)
+                !name.contains("__") && !name.chars().collect::<Vec<_>>().windows(2).any(|pair| {
+                    // contains a capitalisable character followed by, or preceded by, an underscore
+                    char_has_case(pair[0]) && pair[1] == '_' ||
+                    char_has_case(pair[1]) && pair[0] == '_'
+                })
         }
 
         fn to_camel_case(s: &str) -> String {
-            let s = s.trim_matches('_')
-                     .split('_')
-                        .map(|word| {
-                            word.chars().enumerate().map(|(i, c)| if i == 0 {
-                                c.to_uppercase().collect::<String>()
-                            } else {
-                                c.to_lowercase().collect()
-                            })
-                            .collect::<Vec<_>>()
-                            .concat()
-                        })
-                        .filter(|x| !x.is_empty())
-                        .collect::<Vec<_>>()
-                        .join("_");
-            ALPHABETIC_UNDERSCORE.replace_all(s.as_str(), "$1$2").to_string()
+            s.trim_matches('_')
+                .split('_')
+                .map(|word| {
+                    word.chars().enumerate().map(|(i, c)| if i == 0 {
+                        c.to_uppercase().collect::<String>()
+                    } else {
+                        c.to_lowercase().collect()
+                    })
+                    .collect::<Vec<_>>()
+                    .concat()
+                })
+                .filter(|x| !x.is_empty())
+                .collect::<Vec<_>>()
+                .iter().fold((String::new(), None), |(acc, prev): (String, Option<&String>), next| {
+                    // separate two components with an underscore if their boundary cannot
+                    // be distinguished using a uppercase/lowercase case distinction
+                    let join = if let Some(prev) = prev {
+                                    let l = prev.chars().last().unwrap();
+                                    let f = next.chars().next().unwrap();
+                                    !char_has_case(l) && !char_has_case(f)
+                                } else { false };
+                    (acc + if join { "_" } else { "" } + next, Some(next))
+                }).0
         }
 
         if !is_camel_case(name) {

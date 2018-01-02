@@ -6,7 +6,7 @@ version = "0.0.0"
 [lib]
 name = "rustc_lint"
 path = "lib.rs"
-crate-types = ["rlib", "dylib"]
+crate-type = ["dylib"]
 test = false
 
 [dependencies]
@@ -15,5 +15,3 @@ rustc = { path = "../librustc" }
 rustc_const_eval = { path = "../librustc_const_eval" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-lazy_static = "1.0"
-regex = "0.2.3"
