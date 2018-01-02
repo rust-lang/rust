@@ -13,6 +13,8 @@ pub fn main(){
 
     loop {
         if let Some(thing) = maybe {
+        //~^ ERROR use of partially moved value
+        //~| ERROR use of moved value
         }
     }
 }

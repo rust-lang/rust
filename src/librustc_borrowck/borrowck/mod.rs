@@ -346,6 +346,16 @@ impl<'tcx> LoanPath<'tcx> {
     }
 
     fn to_type(&self) -> Ty<'tcx> { self.ty }
+
+    fn is_downcast(&self) -> bool {
+        match self.kind {
+            LpDowncast(_, _) => true,
+            LpExtend(ref lp, _, LpInterior(_, _)) => {
+                lp.is_downcast()
+            }
+            _ => false,
+        }
+    }
 }
 
 // FIXME (pnkfelix): See discussion here
@@ -711,27 +721,25 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         err = if use_span == move_span {
             err.span_label(
                 use_span,
-                format!("value moved{} here in previous iteration of loop{}",
-                         move_note,
-                         extra_move_label));
-
-            if need_note {
-                err.note(&format!("value moved because it has type `{}`, \
-                                   which does not implement the `Copy` trait",
-                                  moved_lp.ty)
-            }
+                format!("value moved{} here in previous iteration of loop",
+                         move_note));
             err
         } else {
             err.span_label(use_span, format!("value {} here after move", verb_participle));
-            let extra_move_label = if need_note {
-               &format!(" because it has type `{}`, which does not implement the `Copy` trait",
-                        moved_lp.ty)
-            } else {
-                ""
-            };
-            err.span_label(move_span,format!("value moved{} here{}", move_note, extra_move_label));
+            err.span_label(move_span, format!("value moved{} here", move_note));
             err
         };
+
+        if need_note {
+            err.note(&format!(
+                "move occurs because {} has type `{}`, which does not implement the `Copy` trait",
+                if moved_lp.is_downcast() {
+                    "the value".to_string()
+                } else {
+                    format!("`{}`", self.loan_path_to_string(moved_lp))
+                },
+                moved_lp.ty));
+        }
 
         // Note: we used to suggest adding a `ref binding` or calling
         // `clone` but those suggestions have been removed because

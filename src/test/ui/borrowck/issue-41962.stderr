@@ -4,14 +4,17 @@ error[E0382]: use of partially moved value: `maybe`
 15 |         if let Some(thing) = maybe {
    |                     -----    ^^^^^ value used here after move
    |                     |
-   |                     value moved here because it has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+   |                     value moved here
+   |
+   = note: move occurs because the value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `(maybe as std::prelude::v1::Some).0`
   --> $DIR/issue-41962.rs:15:21
    |
 15 |         if let Some(thing) = maybe {
    |                     ^^^^^ value moved here in previous iteration of loop
-   = note: value moved because it has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+   |
+   = note: move occurs because the value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
 error: aborting due to 2 previous errors
 
