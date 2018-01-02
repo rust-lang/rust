@@ -83,7 +83,12 @@ impl<'a> DiagnosticBuilder<'a> {
             return;
         }
 
-        let is_error = match self.level {
+        self.handler.emit_db(&self);
+        self.cancel();
+    }
+
+    pub fn is_error(&self) -> bool {
+        match self.level {
             Level::Bug |
             Level::Fatal |
             Level::PhaseFatal |
@@ -97,18 +102,7 @@ impl<'a> DiagnosticBuilder<'a> {
             Level::Cancelled => {
                 false
             }
-        };
-
-        self.handler.emit_db(&self);
-        self.cancel();
-
-        if is_error {
-            self.handler.bump_err_count();
         }
-
-        // if self.is_fatal() {
-        //     panic!(FatalError);
-        // }
     }
 
     /// Convenience function for internal use, clients should use one of the

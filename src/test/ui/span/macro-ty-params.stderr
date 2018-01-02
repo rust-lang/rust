@@ -22,5 +22,5 @@ error: generic arguments in macro path
 20 |     m!(MyTrait<>); //~ ERROR generic arguments in macro path
    |               ^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

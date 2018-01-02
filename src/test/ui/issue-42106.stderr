@@ -8,5 +8,5 @@ error[E0502]: cannot borrow `*collection` as mutable because `collection` is als
 14 | }
    | - immutable borrow ends here
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

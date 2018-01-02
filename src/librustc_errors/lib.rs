@@ -588,6 +588,9 @@ impl Handler {
         // one:
         if self.emitted_diagnostics.borrow_mut().insert(diagnostic_hash) {
             self.emitter.borrow_mut().emit(db);
+            if db.is_error() {
+                self.bump_err_count();
+            }
         }
     }
 }
