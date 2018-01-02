@@ -258,7 +258,7 @@
                 addClass(search, "hidden");
                 removeClass(document.getElementById("main"), "hidden");
             }
-			defocusSearchBar();
+            defocusSearchBar();
             break;
 
         case "s":
