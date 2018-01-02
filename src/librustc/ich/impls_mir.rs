@@ -585,3 +585,5 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::ClosureOutlivesSubjec
         }
     }
 }
+
+impl_stable_hash_for!(struct mir::interpret::GlobalId<'tcx> { instance, promoted });

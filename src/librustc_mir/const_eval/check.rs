@@ -12,7 +12,7 @@
 
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
-use rustc::mir::interpret::{Value, PrimVal};
+use rustc::mir::interpret::{Value, PrimVal, GlobalId};
 use rustc::middle::const_val::{ConstVal, ConstEvalErr, ErrKind};
 use rustc::traits;
 use interpret::{eval_body_as_integer, check_body};
@@ -41,7 +41,11 @@ pub fn check<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     let instance = Instance::mono(tcx, def_id);
     for i in 0.. mir.promoted.len() {
         use rustc_data_structures::indexed_vec::Idx;
-        check_body(tcx, instance, Some(Promoted::new(i)), param_env);
+        let cid = GlobalId {
+            instance,
+            promoted: Some(Promoted::new(i)),
+        };
+        check_body(tcx, cid, param_env);
     }
 }
 
@@ -65,7 +69,11 @@ impl<'a, 'tcx> ConstErrVisitor<'a, 'tcx> {
             },
             Literal::Promoted { index } => {
                 let instance = Instance::mono(self.tcx, self.def_id);
-                eval_body_as_integer(self.tcx, param_env, instance, Some(index)).unwrap()
+                let cid = GlobalId {
+                    instance,
+                    promoted: Some(index),
+                };
+                eval_body_as_integer(self.tcx, cid, param_env).unwrap()
             }
         };
         Some(val)

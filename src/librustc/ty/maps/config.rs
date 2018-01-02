@@ -10,9 +10,10 @@
 
 use dep_graph::SerializedDepNodeIndex;
 use hir::def_id::{CrateNum, DefId, DefIndex};
+use mir::interpret::{GlobalId};
 use ty::{self, Ty, TyCtxt};
-use ty::maps::queries;
 use ty::subst::Substs;
+use ty::maps::queries;
 
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
@@ -152,8 +153,8 @@ impl<'tcx> QueryDescription<'tcx> for queries::reachable_set<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::const_eval<'tcx> {
-    fn describe(tcx: TyCtxt, key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>) -> String {
-        format!("const-evaluating `{}`", tcx.item_path_str(key.value.0))
+    fn describe(tcx: TyCtxt, key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>) -> String {
+        format!("const-evaluating `{}`", tcx.item_path_str(key.value.instance.def.def_id()))
     }
 }
 

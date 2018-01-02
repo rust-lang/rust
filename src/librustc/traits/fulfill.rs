@@ -9,6 +9,9 @@
 // except according to those terms.
 
 use infer::{RegionObligation, InferCtxt};
+use middle::const_val::ConstEvalErr;
+use middle::const_val::ErrKind::TypeckError;
+use mir::interpret::GlobalId;
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
@@ -514,16 +517,33 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                 }
                 Some(param_env) => {
                     match selcx.tcx().lift_to_global(&substs) {
+                        Some(substs) => {
+                            let instance = ty::Instance::resolve(
+                                selcx.tcx().global_tcx(),
+                                param_env,
+                                def_id,
+                                substs,
+                            );
+                            if let Some(instance) = instance {
+                                let cid = GlobalId {
+                                    instance,
+                                    promoted: None,
+                                };
+                                match selcx.tcx().at(obligation.cause.span)
+                                                 .const_eval(param_env.and(cid)) {
+                                    Ok(_) => Ok(Some(vec![])),
+                                    Err(e) => Err(CodeSelectionError(ConstEvalFailure(e)))
+                                }
+                            } else {
+                                Err(CodeSelectionError(ConstEvalFailure(ConstEvalErr {
+                                    span: selcx.tcx().def_span(def_id),
+                                    kind: TypeckError,
+                                })))
+                            }
+                        },
                         None => {
                             pending_obligation.stalled_on = substs.types().collect();
                             Ok(None)
-                        }
-                        Some(substs) => {
-                            match selcx.tcx().at(obligation.cause.span)
-                                             .const_eval(param_env.and((def_id, substs))) {
-                                Ok(_) => Ok(Some(vec![])),
-                                Err(e) => Err(CodeSelectionError(ConstEvalFailure(e)))
-                            }
                         }
                     }
                 }

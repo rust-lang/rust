@@ -15,6 +15,7 @@ use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
+use rustc::mir::interpret::{GlobalId, Value, PrimVal};
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::mir::interpret::{Value, PrimVal};
@@ -511,7 +512,17 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let c = &cx.tcx.hir.body(count).value;
             let def_id = cx.tcx.hir.body_owner_def_id(count);
             let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
-            let count = match cx.tcx.at(c.span).const_eval(cx.param_env.and((def_id, substs))) {
+            let instance = ty::Instance::resolve(
+                cx.tcx.global_tcx(),
+                cx.param_env,
+                def_id,
+                substs,
+            ).unwrap();
+            let global_id = GlobalId {
+                instance,
+                promoted: None
+            };
+            let count = match cx.tcx.at(c.span).const_eval(cx.param_env.and(global_id)) {
                 Ok(cv) => cv.val.unwrap_usize(cx.tcx),
                 Err(s) => cx.fatal_const_eval_err(&s, c.span, "expression")
             };

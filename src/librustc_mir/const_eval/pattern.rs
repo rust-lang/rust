@@ -12,7 +12,7 @@ use interpret::{const_val_field, const_discr};
 
 use rustc::middle::const_val::{ConstEvalErr, ErrKind, ConstVal};
 use rustc::mir::{Field, BorrowKind, Mutability};
-use rustc::mir::interpret::{Value, PrimVal};
+use rustc::mir::interpret::{GlobalId, Value, PrimVal};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -673,14 +673,18 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
-                match self.tcx.at(span).const_eval(self.param_env.and((def_id, substs))) {
+                let instance = ty::Instance::resolve(
+                    self.tcx,
+                    self.param_env,
+                    def_id,
+                    substs,
+                ).unwrap();
+                let cid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                match self.tcx.at(span).const_eval(self.param_env.and(cid)) {
                     Ok(value) => {
-                        let instance = ty::Instance::resolve(
-                            self.tcx,
-                            self.param_env,
-                            def_id,
-                            substs,
-                        ).unwrap();
                         return self.const_to_pat(instance, value, id, span)
                     },
                     Err(e) => {

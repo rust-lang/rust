@@ -38,7 +38,7 @@ use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
-use rustc::mir::interpret::{Value, PrimVal};
+use rustc::mir::interpret::{GlobalId, Value, PrimVal};
 
 use rustc_const_math::ConstInt;
 
@@ -524,7 +524,12 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
             let substs = Substs::identity_for_item(tcx, expr_did);
-            let result = tcx.at(variant.span).const_eval(param_env.and((expr_did, substs)));
+            let instance = ty::Instance::new(expr_did, substs);
+            let global_id = GlobalId {
+                instance,
+                promoted: None
+            };
+            let result = tcx.at(variant.span).const_eval(param_env.and(global_id));
 
             // enum variant evaluation happens before the global constant check
             // so we need to report the real error

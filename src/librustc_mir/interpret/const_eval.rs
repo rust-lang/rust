@@ -1,11 +1,10 @@
-use rustc::ty::{self, TyCtxt, Ty, Instance};
-use rustc::ty::layout::{self, LayoutOf};
-use rustc::ty::subst::Substs;
-use rustc::hir::def_id::DefId;
-use rustc::mir;
+use rustc::hir;
 use rustc::middle::const_val::ErrKind::{CheckMatchError, TypeckError};
 use rustc::middle::const_val::{ConstEvalErr, ConstVal};
-use const_eval::lookup_const_by_id;
+use rustc::mir;
+use rustc::ty::{self, TyCtxt, Ty, Instance};
+use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::subst::Subst;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
@@ -38,20 +37,18 @@ pub fn mk_eval_cx<'a, 'tcx>(
 
 pub fn eval_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: Instance<'tcx>,
-    promoted: Option<mir::Promoted>,
+    cid: GlobalId<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)> {
-    eval_body_and_ecx(tcx, instance, promoted, param_env).0
+    eval_body_and_ecx(tcx, cid, param_env).0
 }
 
 pub fn check_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: Instance<'tcx>,
-    promoted: Option<mir::Promoted>,
+    cid: GlobalId<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) {
-    let (res, ecx) = eval_body_and_ecx(tcx, instance, promoted, param_env);
+    let (res, ecx) = eval_body_and_ecx(tcx, cid, param_env);
     if let Err(mut err) = res {
         ecx.report(&mut err);
     }
@@ -59,26 +56,22 @@ pub fn check_body<'a, 'tcx>(
 
 fn eval_body_and_ecx<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    instance: Instance<'tcx>,
-    promoted: Option<mir::Promoted>,
+    cid: GlobalId<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'tcx, CompileTimeEvaluator>) {
-    debug!("eval_body: {:?}, {:?}", instance, param_env);
+    debug!("eval_body: {:?}, {:?}", cid, param_env);
     let limits = super::ResourceLimits::default();
     let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
-    let cid = GlobalId {
-        instance,
-        promoted,
-    };
-
     let res = (|| {
-        if ecx.tcx.has_attr(instance.def_id(), "linkage") {
+        let mut mir = ecx.load_mir(cid.instance.def)?;
+        if let Some(index) = cid.promoted {
+            mir = &mir.promoted[index];
+        }
+        let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
+        if ecx.tcx.has_attr(cid.instance.def_id(), "linkage") {
             return Err(ConstEvalError::NotConst("extern global".to_string()).into());
         }
-        let instance_ty = instance.ty(tcx);
         if tcx.interpret_interner.borrow().get_cached(cid).is_none() {
-            let mir = ecx.load_mir(instance.def)?;
-            let layout = ecx.layout_of(instance_ty)?;
             assert!(!layout.is_unsized());
             let ptr = ecx.memory.allocate(
                 layout.size.bytes(),
@@ -87,10 +80,10 @@ fn eval_body_and_ecx<'a, 'tcx>(
             )?;
             tcx.interpret_interner.borrow_mut().cache(cid, ptr.alloc_id);
             let cleanup = StackPopCleanup::MarkStatic(Mutability::Immutable);
-            let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
+            let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
             trace!("const_eval: pushing stack frame for global: {}", name);
             ecx.push_stack_frame(
-                instance,
+                cid.instance,
                 mir.span,
                 mir,
                 Place::from_ptr(ptr, layout.align),
@@ -100,24 +93,22 @@ fn eval_body_and_ecx<'a, 'tcx>(
             while ecx.step()? {}
         }
         let alloc = tcx.interpret_interner.borrow().get_cached(cid).expect("global not cached");
-        let align = ecx.layout_of(instance_ty)?.align;
         let ptr = MemoryPointer::new(alloc, 0).into();
-        let value = match ecx.try_read_value(ptr, align, instance_ty)? {
+        let value = match ecx.try_read_value(ptr, layout.align, layout.ty)? {
             Some(val) => val,
-            _ => Value::ByRef(ptr, align),
+            _ => Value::ByRef(ptr, layout.align),
         };
-        Ok((value, ptr, instance_ty))
+        Ok((value, ptr, layout.ty))
     })();
     (res, ecx)
 }
 
 pub fn eval_body_as_integer<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    cid: GlobalId<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    instance: Instance<'tcx>,
-    promoted: Option<mir::Promoted>,
 ) -> EvalResult<'tcx, u128> {
-    let (value, _, ty) = eval_body(tcx, instance, promoted, param_env)?;
+    let (value, _, ty) = eval_body(tcx, cid, param_env)?;
     match value {
         Value::ByVal(prim) => prim.to_bytes(),
         _ => err!(TypeNotPrimitive(ty)),
@@ -325,7 +316,7 @@ fn const_val_field_inner<'a, 'tcx>(
     field: mir::Field,
     value: Value,
     ty: Ty<'tcx>,
-) -> ::rustc::mir::interpret::EvalResult<'tcx, (Value, Ty<'tcx>)> {
+) -> EvalResult<'tcx, (Value, Ty<'tcx>)> {
     trace!("const_val_field: {:?}, {:?}, {:?}, {:?}", instance, field, value, ty);
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let (mut field, ty) = match value {
@@ -376,51 +367,47 @@ pub fn const_discr<'a, 'tcx>(
 
 pub fn const_eval_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::middle::const_val::EvalResult<'tcx> {
     trace!("const eval: {:?}", key);
-    let (def_id, substs) = if let Some(resolved) = lookup_const_by_id(tcx, key) {
-        resolved
-    } else {
-        return Err(ConstEvalErr {
-            span: tcx.def_span(key.value.0),
-            kind: TypeckError
-        });
-    };
+    let cid = key.value;
+    let def_id = cid.instance.def.def_id();
+    let span = tcx.def_span(def_id);
 
-    let tables = tcx.typeck_tables_of(def_id);
-    let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        let body_id = tcx.hir.body_owned_by(id);
+    if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+        let tables = tcx.typeck_tables_of(def_id);
 
         // Do match-check before building MIR
         if tcx.check_match(def_id).is_err() {
             return Err(ConstEvalErr {
-                span: tcx.def_span(key.value.0),
+                span,
                 kind: CheckMatchError,
             });
         }
 
-        tcx.mir_const_qualif(def_id);
-        tcx.hir.body(body_id)
-    } else {
-        tcx.extern_const_body(def_id).body
+        if let hir::BodyOwnerKind::Const = tcx.hir.body_owner_kind(id) {
+            tcx.mir_const_qualif(def_id);
+        }
+
+        // Do not continue into miri if typeck errors occurred; it will fail horribly
+        if tables.tainted_by_errors {
+            return Err(ConstEvalErr {
+                span,
+                kind: TypeckError
+            });
+        }
     };
 
-    // do not continue into miri if typeck errors occurred
-    // it will fail horribly
-    if tables.tainted_by_errors {
-        return Err(ConstEvalErr { span: body.value.span, kind: TypeckError })
-    }
-
-
-    let instance = ty::Instance::new(def_id, substs);
-    match ::interpret::eval_body(tcx, instance, None, key.param_env) {
+    match ::interpret::eval_body(tcx, cid, key.param_env) {
         Ok((miri_value, _, miri_ty)) => Ok(tcx.mk_const(ty::Const {
             val: ConstVal::Value(miri_value),
             ty: miri_ty,
         })),
         Err(err) => {
-            Err(ConstEvalErr { span: body.value.span, kind: err.into() })
+            Err(ConstEvalErr {
+                span,
+                kind: err.into()
+            })
         }
     }
 }

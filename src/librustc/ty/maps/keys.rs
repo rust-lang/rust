@@ -53,6 +53,16 @@ impl<'tcx> Key for ty::Instance<'tcx> {
     }
 }
 
+impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
+    fn map_crate(&self) -> CrateNum {
+        self.instance.map_crate()
+    }
+
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.instance.default_span(tcx)
+    }
+}
+
 impl Key for CrateNum {
     fn map_crate(&self) -> CrateNum {
         *self

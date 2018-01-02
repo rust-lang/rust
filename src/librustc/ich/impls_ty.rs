@@ -926,13 +926,13 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::InstanceDef<'gcx> {
             ty::InstanceDef::ClosureOnceShim { call_once } => {
                 call_once.hash_stable(hcx, hasher);
             }
-            ty::InstanceDef::DropGlue(def_id, t) => {
+            ty::InstanceDef::DropGlue(def_id, ty) => {
                 def_id.hash_stable(hcx, hasher);
-                t.hash_stable(hcx, hasher);
+                ty.hash_stable(hcx, hasher);
             }
-            ty::InstanceDef::CloneShim(def_id, t) => {
+            ty::InstanceDef::CloneShim(def_id, ty) => {
                 def_id.hash_stable(hcx, hasher);
-                t.hash_stable(hcx, hasher);
+                ty.hash_stable(hcx, hasher);
             }
         }
     }

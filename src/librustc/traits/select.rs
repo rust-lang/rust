@@ -42,6 +42,7 @@ use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::fast_reject;
 use ty::relate::TypeRelation;
 use middle::lang_items;
+use mir::interpret::{GlobalId};
 
 use rustc_data_structures::bitvec::BitVector;
 use std::iter;
@@ -732,11 +733,26 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                match self.tcx().lift_to_global(&(obligation.param_env, substs)) {
+                let tcx = self.tcx();
+                match tcx.lift_to_global(&(obligation.param_env, substs)) {
                     Some((param_env, substs)) => {
-                        match self.tcx().const_eval(param_env.and((def_id, substs))) {
-                            Ok(_) => EvaluatedToOk,
-                            Err(_) => EvaluatedToErr
+                        let instance = ty::Instance::resolve(
+                            tcx.global_tcx(),
+                            param_env,
+                            def_id,
+                            substs,
+                        );
+                        if let Some(instance) = instance {
+                            let cid = GlobalId {
+                                instance,
+                                promoted: None
+                            };
+                            match self.tcx().const_eval(param_env.and(cid)) {
+                                Ok(_) => EvaluatedToOk,
+                                Err(_) => EvaluatedToErr
+                            }
+                        } else {
+                            EvaluatedToErr
                         }
                     }
                     None => {

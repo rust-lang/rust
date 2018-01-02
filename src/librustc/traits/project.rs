@@ -29,6 +29,7 @@ use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use infer::type_variable::TypeVariableOrigin;
 use middle::const_val::ConstVal;
+use mir::interpret::{GlobalId};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::symbol::Symbol;
 use ty::subst::{Subst, Substs};
@@ -400,12 +401,17 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         if let ConstVal::Unevaluated(def_id, substs) = constant.val {
-            if substs.needs_infer() {
-                let identity_substs = Substs::identity_for_item(self.tcx(), def_id);
-                let data = self.param_env.and((def_id, identity_substs));
-                match self.tcx().lift_to_global(&data) {
-                    Some(data) => {
-                        match self.tcx().const_eval(data) {
+            let tcx = self.selcx.tcx().global_tcx();
+            if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
+                if substs.needs_infer() {
+                    let identity_substs = Substs::identity_for_item(tcx, def_id);
+                    let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
+                    if let Some(instance) = instance {
+                        let cid = GlobalId {
+                            instance,
+                            promoted: None
+                        };
+                        match tcx.const_eval(param_env.and(cid)) {
                             Ok(evaluated) => {
                                 let evaluated = evaluated.subst(self.tcx(), substs);
                                 return self.fold_const(evaluated);
@@ -413,18 +419,20 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                             Err(_) => {}
                         }
                     }
-                    None => {}
-                }
-            } else {
-                let data = self.param_env.and((def_id, substs));
-                match self.tcx().lift_to_global(&data) {
-                    Some(data) => {
-                        match self.tcx().const_eval(data) {
-                            Ok(evaluated) => return self.fold_const(evaluated),
-                            Err(_) => {}
+                } else {
+                    if let Some(substs) = self.tcx().lift_to_global(&substs) {
+                        let instance = ty::Instance::resolve(tcx, param_env, def_id, substs);
+                        if let Some(instance) = instance {
+                            let cid = GlobalId {
+                                instance,
+                                promoted: None
+                            };
+                            match tcx.const_eval(param_env.and(cid)) {
+                                Ok(evaluated) => return self.fold_const(evaluated),
+                                Err(_) => {}
+                            }
                         }
                     }
-                    None => {}
                 }
             }
         }

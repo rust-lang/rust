@@ -93,6 +93,7 @@ use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
+use rustc::mir::interpret::{GlobalId};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
@@ -3999,7 +4000,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let count_def_id = tcx.hir.body_owner_def_id(count);
             let param_env = ty::ParamEnv::empty(traits::Reveal::UserFacing);
             let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
-            let count = tcx.const_eval(param_env.and((count_def_id, substs)));
+            let instance = ty::Instance::resolve(
+                tcx.global_tcx(),
+                param_env,
+                count_def_id,
+                substs,
+            ).unwrap();
+            let global_id = GlobalId {
+                instance,
+                promoted: None
+            };
+            let count = tcx.const_eval(param_env.and(global_id));
 
             if let Err(ref err) = count {
                err.report(tcx, tcx.def_span(count_def_id), "constant expression");

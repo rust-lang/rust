@@ -57,6 +57,7 @@ CopyImpls! {
     ::syntax::abi::Abi,
     ::hir::def_id::DefId,
     ::mir::Local,
+    ::mir::Promoted,
     ::traits::Reveal,
     ::syntax_pos::Span,
 }
@@ -589,7 +590,7 @@ impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
 impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
     type Lifted = interpret::EvalError<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        use mir::interpret::EvalErrorKind::*;
+        use ::mir::interpret::EvalErrorKind::*;
         let kind = match self.kind {
             MachineError(ref err) => MachineError(err.clone()),
             FunctionPointerTyMismatch(a, b) => FunctionPointerTyMismatch(
@@ -741,6 +742,42 @@ impl<'a, 'tcx> Lift<'tcx> for ty::layout::LayoutError<'a> {
                 tcx.lift(ty).map(ty::layout::LayoutError::SizeOverflow)
             }
         }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
+    type Lifted = ty::InstanceDef<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match *self {
+            ty::InstanceDef::Item(def_id) =>
+                Some(ty::InstanceDef::Item(def_id)),
+            ty::InstanceDef::Intrinsic(def_id) =>
+                Some(ty::InstanceDef::Intrinsic(def_id)),
+            ty::InstanceDef::FnPtrShim(def_id, ref ty) =>
+                Some(ty::InstanceDef::FnPtrShim(def_id, tcx.lift(ty)?)),
+            ty::InstanceDef::Virtual(def_id, n) =>
+                Some(ty::InstanceDef::Virtual(def_id, n)),
+            ty::InstanceDef::ClosureOnceShim { call_once } =>
+                Some(ty::InstanceDef::ClosureOnceShim { call_once }),
+            ty::InstanceDef::DropGlue(def_id, ref ty) =>
+                Some(ty::InstanceDef::DropGlue(def_id, tcx.lift(ty)?)),
+            ty::InstanceDef::CloneShim(def_id, ref ty) =>
+                Some(ty::InstanceDef::CloneShim(def_id, tcx.lift(ty)?)),
+        }
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for ty::Instance<'a> {
+        type Lifted = ty::Instance<'tcx>;
+        def, substs
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for interpret::GlobalId<'a> {
+        type Lifted = interpret::GlobalId<'tcx>;
+        instance, promoted
     }
 }
 
@@ -942,6 +979,19 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
                 ty.visit_with(visitor)
             },
         }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for interpret::GlobalId<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        Self {
+            instance: self.instance.fold_with(folder),
+            promoted: self.promoted
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.instance.visit_with(visitor)
     }
 }
 
