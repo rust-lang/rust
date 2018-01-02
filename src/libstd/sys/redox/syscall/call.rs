@@ -93,7 +93,19 @@ pub fn exit(status: usize) -> Result<usize> {
     unsafe { syscall1(SYS_EXIT, status) }
 }
 
-/// Register a file for event-based I/O
+/// Change file permissions
+pub fn fchmod(fd: usize, mode: u16) -> Result<usize> {
+    unsafe { syscall2(SYS_FCHMOD, fd, mode as usize) }
+
+}
+
+/// Change file ownership
+pub fn fchown(fd: usize, uid: u32, gid: u32) -> Result<usize> {
+    unsafe { syscall3(SYS_FCHOWN, fd, uid as usize, gid as usize) }
+
+}
+
+/// Change file descriptor flags
 pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> Result<usize> {
     unsafe { syscall3(SYS_FCNTL, fd, cmd, arg) }
 }
@@ -116,6 +128,11 @@ pub unsafe fn funmap(addr: usize) -> Result<usize> {
 /// Retrieve the canonical path of a file
 pub fn fpath(fd: usize, buf: &mut [u8]) -> Result<usize> {
     unsafe { syscall3(SYS_FPATH, fd, buf.as_mut_ptr() as usize, buf.len()) }
+}
+
+/// Rename a file
+pub fn frename<T: AsRef<[u8]>>(fd: usize, path: T) -> Result<usize> {
+    unsafe { syscall3(SYS_FRENAME, fd, path.as_ref().as_ptr() as usize, path.as_ref().len()) }
 }
 
 /// Get metadata about a file
