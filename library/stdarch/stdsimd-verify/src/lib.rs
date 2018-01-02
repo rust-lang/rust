@@ -61,7 +61,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
             let name = f.ident;
             // println!("{}", name);
             let mut arguments = Vec::new();
-            for input in f.decl.inputs.iter().map(|s| s.into_item()) {
+            for input in f.decl.inputs.iter() {
                 let ty = match *input {
                     syn::FnArg::Captured(ref c) => &c.ty,
                     _ => panic!("invalid argument on {}", name),
@@ -202,7 +202,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
             }
         })
         .filter_map(|nested| {
-            match nested.into_item() {
+            match nested {
                 syn::NestedMetaItem::MetaItem(syn::MetaItem::List(i)) => {
                     if i.ident == "assert_instr" {
                         i.nested.into_iter().next()
@@ -214,7 +214,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
             }
         })
         .filter_map(|nested| {
-            match nested.into_item() {
+            match nested {
                 syn::NestedMetaItem::MetaItem(syn::MetaItem::Term(i)) => Some(i),
                 _ => None,
             }

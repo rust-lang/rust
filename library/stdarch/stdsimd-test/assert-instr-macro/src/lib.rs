@@ -51,7 +51,7 @@ pub fn assert_instr(
         let mut input_vals = Vec::new();
         let ret = &func.decl.output;
         for arg in func.decl.inputs.iter() {
-            let capture = match **arg.item() {
+            let capture = match *arg {
                 syn::FnArg::Captured(ref c) => c,
                 _ => panic!("arguments must not have patterns"),
             };
@@ -137,7 +137,7 @@ impl syn::synom::Synom for Invoc {
             instr,
             args,
         })
-    )), |p| p.0));
+    )), |p| p.1));
 }
 
 struct Append<T>(T);
