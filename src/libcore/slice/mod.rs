@@ -2448,30 +2448,16 @@ impl<'a, T> Iterator for ExactChunks<'a, T> {
             self.v = &[];
             None
         } else {
-            let end = match start.checked_add(self.chunk_size) {
-                Some(sum) => cmp::min(self.v.len(), sum),
-                None => self.v.len(),
-            };
-
-            if end - start != self.chunk_size {
-                self.v = &[];
-                None
-            } else {
-                let nth = &self.v[start..end];
-                self.v = &self.v[end..];
-                Some(nth)
-            }
+            let (_, snd) = self.v.split_at(start);
+            self.v = snd;
+            assert!(self.v.len() == self.chunk_size);
+            self.next()
         }
     }
 
     #[inline]
-    fn last(self) -> Option<Self::Item> {
-        if self.v.len() < self.chunk_size {
-            None
-        } else {
-            let start = self.v.len() - self.chunk_size;
-            Some(&self.v[start..])
-        }
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
     }
 }
 
@@ -2490,7 +2476,11 @@ impl<'a, T> DoubleEndedIterator for ExactChunks<'a, T> {
 }
 
 #[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> ExactSizeIterator for ExactChunks<'a, T> {}
+impl<'a, T> ExactSizeIterator for ExactChunks<'a, T> {
+    fn is_empty(&self) -> bool {
+        self.v.is_empty()
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for ExactChunks<'a, T> {}
@@ -2544,32 +2534,17 @@ impl<'a, T> Iterator for ExactChunksMut<'a, T> {
             self.v = &mut [];
             None
         } else {
-            let end = match start.checked_add(self.chunk_size) {
-                Some(sum) => cmp::min(self.v.len(), sum),
-                None => self.v.len(),
-            };
-
-            if end - start != self.chunk_size {
-                self.v = &mut [];
-                None
-            } else {
-                let tmp = mem::replace(&mut self.v, &mut []);
-                let (head, tail) = tmp.split_at_mut(end);
-                let (_, nth) =  head.split_at_mut(start);
-                self.v = tail;
-                Some(nth)
-            }
+            let tmp = mem::replace(&mut self.v, &mut []);
+            let (_, snd) = tmp.split_at_mut(start);
+            self.v = snd;
+            assert!(self.v.len() == self.chunk_size);
+            self.next()
         }
     }
 
     #[inline]
-    fn last(self) -> Option<Self::Item> {
-        if self.v.len() < self.chunk_size {
-            None
-        } else {
-            let start = (self.v.len() - self.chunk_size) / self.chunk_size * self.chunk_size;
-            Some(&mut self.v[start..])
-        }
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
     }
 }
 
@@ -2590,7 +2565,11 @@ impl<'a, T> DoubleEndedIterator for ExactChunksMut<'a, T> {
 }
 
 #[unstable(feature = "exact_chunks", issue = "47115")]
-impl<'a, T> ExactSizeIterator for ExactChunksMut<'a, T> {}
+impl<'a, T> ExactSizeIterator for ExactChunksMut<'a, T> {
+    fn is_empty(&self) -> bool {
+        self.v.is_empty()
+    }
+}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for ExactChunksMut<'a, T> {}
