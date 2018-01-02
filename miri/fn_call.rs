@@ -1,5 +1,5 @@
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{Align, LayoutOf};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use syntax::attr;
@@ -111,7 +111,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 if size == 0 {
                     self.write_null(dest, dest_ty)?;
                 } else {
-                    let align = self.memory.pointer_size();
+                    let align = self.tcx.data_layout.pointer_align;
                     let ptr = self.memory.allocate(size, align, Some(MemoryKind::C.into()))?;
                     self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
                 }
@@ -307,7 +307,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                     // +1 for the null terminator
                     let value_copy = self.memory.allocate(
                         (value.len() + 1) as u64,
-                        1,
+                        Align::from_bytes(1, 1).unwrap(),
                         Some(MemoryKind::Env.into()),
                     )?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
@@ -369,6 +369,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
             "sysconf" => {
                 let name = self.value_to_primval(args[0])?.to_u64()?;
+                let name_align = self.layout_of(args[0].ty)?.align;
+
                 trace!("sysconf() called with name {}", name);
                 // cache the sysconf integers via miri's global cache
                 let paths = &[
@@ -387,7 +389,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                             Some(ptr) => ptr,
                             None => eval_body(self.tcx, instance, ty::ParamEnv::empty(traits::Reveal::All))?.0,
                         };
-                        let val = self.value_to_primval(ValTy { value: Value::ByRef(val), ty: args[0].ty })?.to_u64()?;
+                        let val = self.value_to_primval(ValTy { value: Value::ByRef(val, name_align),
+                                                                ty: args[0].ty })?.to_u64()?;
                         if val == name {
                             result = Some(path_value);
                             break;
@@ -406,6 +409,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             // Hook pthread calls that go to the thread-local storage memory subsystem
             "pthread_key_create" => {
                 let key_ptr = self.into_ptr(args[0].value)?;
+                let key_align = self.layout_of(args[0].ty)?.align;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
                 let dtor = match self.into_ptr(args[1].value)?.into_inner_primval() {
@@ -427,6 +431,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 }
                 self.memory.write_primval(
                     key_ptr.to_ptr()?,
+                    key_align,
                     PrimVal::Bytes(key),
                     key_size.bytes(),
                     false,
@@ -559,7 +564,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, Some(MemoryKind::Rust.into()))?;
+                let ptr = self.memory.allocate(size,
+                                               Align::from_bytes(align, align).unwrap(),
+                                               Some(MemoryKind::Rust.into()))?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
             "alloc::heap::::__rust_alloc_zeroed" => {
@@ -571,7 +578,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, Some(MemoryKind::Rust.into()))?;
+                let ptr = self.memory.allocate(size,
+                                               Align::from_bytes(align, align).unwrap(),
+                                               Some(MemoryKind::Rust.into()))?;
                 self.memory.write_repeat(ptr.into(), 0, size)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
@@ -587,7 +596,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 }
                 self.memory.deallocate(
                     ptr,
-                    Some((old_size, align)),
+                    Some((old_size, Align::from_bytes(align, align).unwrap())),
                     MemoryKind::Rust.into(),
                 )?;
             }
@@ -609,9 +618,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 let new_ptr = self.memory.reallocate(
                     ptr,
                     old_size,
-                    old_align,
+                    Align::from_bytes(old_align, old_align).unwrap(),
                     new_size,
-                    new_align,
+                    Align::from_bytes(new_align, new_align).unwrap(),
                     MemoryKind::Rust.into(),
                 )?;
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;

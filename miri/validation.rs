@@ -509,7 +509,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
         let ptr = self.into_ptr(val)?;
-        self.memory.check_align(ptr, align.abi(), None)?;
+        self.memory.check_align(ptr, align)?;
 
         // Recurse
         let pointee_place = self.val_to_place(val, pointee_ty)?;
@@ -567,7 +567,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             // Tracking the same state for locals not backed by memory would just duplicate too
             // much machinery.
             // FIXME: We ignore alignment.
-            let (ptr, extra) = self.force_allocation(query.place.1)?.to_ptr_extra_aligned();
+            let (ptr, _, extra) = self.force_allocation(query.place.1)?.to_ptr_align_extra();
             // Determine the size
             // FIXME: Can we reuse size_and_align_of_dst for Places?
             let layout = self.layout_of(query.ty)?;

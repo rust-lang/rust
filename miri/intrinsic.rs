@@ -3,7 +3,7 @@ use rustc::traits::Reveal;
 use rustc::ty::layout::{TyLayout, LayoutOf};
 use rustc::ty;
 
-use rustc::mir::interpret::{EvalResult, PrimVal, PrimValKind, Value, Pointer, AccessKind, PtrAndAlign};
+use rustc::mir::interpret::{EvalResult, PrimVal, PrimValKind, Value, Pointer};
 use rustc_mir::interpret::{Place, PlaceExtra, HasMemory, EvalContext, ValTy};
 
 use helpers::EvalContextExt as HelperEvalContextExt;
@@ -87,8 +87,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             "atomic_load_acq" |
             "volatile_load" => {
                 let ptr = self.into_ptr(args[0].value)?;
+                let align = self.layout_of(args[0].ty)?.align;
+
                 let valty = ValTy {
-                    value: Value::by_ref(ptr),
+                    value: Value::ByRef(ptr, align),
                     ty: substs.type_at(0),
                 };
                 self.write_value(valty, dest)?;
@@ -99,8 +101,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             "atomic_store_rel" |
             "volatile_store" => {
                 let ty = substs.type_at(0);
+                let align = self.layout_of(ty)?.align;
                 let dest = self.into_ptr(args[0].value)?;
-                self.write_value_to_ptr(args[1].value, dest, ty)?;
+                self.write_value_to_ptr(args[1].value, dest, align, ty)?;
             }
 
             "atomic_fence_acq" => {
@@ -109,9 +112,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
             _ if intrinsic_name.starts_with("atomic_xchg") => {
                 let ty = substs.type_at(0);
+                let align = self.layout_of(ty)?.align;
                 let ptr = self.into_ptr(args[0].value)?;
                 let change = self.value_to_primval(args[1])?;
-                let old = self.read_value(ptr, ty)?;
+                let old = self.read_value(ptr, align, ty)?;
                 let old = match old {
                     Value::ByVal(val) => val,
                     Value::ByRef { .. } => bug!("just read the value, can't be byref"),
@@ -119,7 +123,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 };
                 self.write_primval(dest, old, ty)?;
                 self.write_primval(
-                    Place::from_primval_ptr(ptr),
+                    Place::from_primval_ptr(ptr, align),
                     change,
                     ty,
                 )?;
@@ -127,10 +131,11 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
                 let ty = substs.type_at(0);
+                let align = self.layout_of(ty)?.align;
                 let ptr = self.into_ptr(args[0].value)?;
                 let expect_old = self.value_to_primval(args[1])?;
                 let change = self.value_to_primval(args[2])?;
-                let old = self.read_value(ptr, ty)?;
+                let old = self.read_value(ptr, align, ty)?;
                 let old = match old {
                     Value::ByVal(val) => val,
                     Value::ByRef { .. } => bug!("just read the value, can't be byref"),
@@ -143,7 +148,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 };
                 self.write_value(valty, dest)?;
                 self.write_primval(
-                    Place::from_primval_ptr(ptr),
+                    Place::from_primval_ptr(ptr, dest_layout.align),
                     change,
                     ty,
                 )?;
@@ -175,9 +180,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             "atomic_xsub_acqrel" |
             "atomic_xsub_relaxed" => {
                 let ty = substs.type_at(0);
+                let align = self.layout_of(ty)?.align;
                 let ptr = self.into_ptr(args[0].value)?;
                 let change = self.value_to_primval(args[1])?;
-                let old = self.read_value(ptr, ty)?;
+                let old = self.read_value(ptr, align, ty)?;
                 let old = match old {
                     Value::ByVal(val) => val,
                     Value::ByRef { .. } => bug!("just read the value, can't be byref"),
@@ -196,7 +202,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 };
                 // FIXME: what do atomics do on overflow?
                 let (val, _) = self.binary_op(op, old, ty, change, ty)?;
-                self.write_primval(Place::from_primval_ptr(ptr), val, ty)?;
+                self.write_primval(Place::from_primval_ptr(ptr, dest_layout.align), val, ty)?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -210,14 +216,16 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 if count * elem_size != 0 {
                     // TODO: We do not even validate alignment for the 0-bytes case.  libstd relies on this in vec::IntoIter::next.
                     // Also see the write_bytes intrinsic.
-                    let elem_align = elem_layout.align.abi();
+                    let elem_align = elem_layout.align;
                     let src = self.into_ptr(args[0].value)?;
+                    let src_align = self.layout_of(args[0].ty)?.align;
                     let dest = self.into_ptr(args[1].value)?;
                     self.memory.copy(
                         src,
+                        src_align,
                         dest,
-                        count * elem_size,
                         elem_align,
+                        count * elem_size,
                         intrinsic_name.ends_with("_nonoverlapping"),
                     )?;
                 }
@@ -241,7 +249,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             "discriminant_value" => {
                 let ty = substs.type_at(0);
                 let adt_ptr = self.into_ptr(args[0].value)?;
-                let place = Place::from_primval_ptr(adt_ptr);
+                let adt_align = self.layout_of(args[0].ty)?.align;
+                let place = Place::from_primval_ptr(adt_ptr, adt_align);
                 let discr_val = self.read_discriminant_value(place, ty)?;
                 self.write_primval(dest, PrimVal::Bytes(discr_val), dest_layout.ty)?;
             }
@@ -312,7 +321,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 let size = dest_layout.size.bytes();
                 let init = |this: &mut Self, val: Value| {
                     let zero_val = match val {
-                        Value::ByRef(PtrAndAlign { ptr, .. }) => {
+                        Value::ByRef(ptr, _) => {
                             // These writes have no alignment restriction anyway.
                             this.memory.write_repeat(ptr, 0, size)?;
                             val
@@ -326,7 +335,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                                     let ptr = this.alloc_ptr(dest_layout.ty)?;
                                     let ptr = Pointer::from(PrimVal::Ptr(ptr));
                                     this.memory.write_repeat(ptr, 0, size)?;
-                                    Value::by_ref(ptr)
+                                    Value::ByRef(ptr, dest_layout.align)
                                 }
                             }
                         }
@@ -340,12 +349,11 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 match dest {
                     Place::Local { frame, local } => self.modify_local(frame, local, init)?,
                     Place::Ptr {
-                        ptr: PtrAndAlign { ptr, aligned: true },
+                        ptr: ptr,
+                        align: _align,
                         extra: PlaceExtra::None,
                     } => self.memory.write_repeat(ptr, 0, size)?,
-                    Place::Ptr { .. } => {
-                        bug!("init intrinsic tried to write to fat or unaligned ptr target")
-                    }
+                    _ => bug!("TODO"),
                 }
             }
 
@@ -367,7 +375,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             "move_val_init" => {
                 let ty = substs.type_at(0);
                 let ptr = self.into_ptr(args[0].value)?;
-                self.write_value_to_ptr(args[1].value, ptr, ty)?;
+                let align = self.layout_of(args[0].ty)?.align;
+                self.write_value_to_ptr(args[1].value, ptr, align, ty)?;
             }
 
             "needs_drop" => {
@@ -533,14 +542,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
             "transmute" => {
                 let src_ty = substs.type_at(0);
+                let src_align = self.layout_of(src_ty)?.align;
                 let ptr = self.force_allocation(dest)?.to_ptr()?;
-                self.write_maybe_aligned_mut(
-                    /*aligned*/
-                    false,
-                    |ectx| {
-                        ectx.write_value_to_ptr(args[0].value, ptr.into(), src_ty)
-                    },
-                )?;
+                let dest_align = self.layout_of(substs.type_at(1))?.align;
+                self.write_value_to_ptr(args[0].value, ptr.into(), dest_align, src_ty);
             }
 
             "unchecked_shl" => {
@@ -612,7 +617,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             "uninit" => {
                 let size = dest_layout.size.bytes();
                 let uninit = |this: &mut Self, val: Value| match val {
-                    Value::ByRef(PtrAndAlign { ptr, .. }) => {
+                    Value::ByRef(ptr, _) => {
                         this.memory.mark_definedness(ptr, size, false)?;
                         Ok(val)
                     }
@@ -621,12 +626,11 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 match dest {
                     Place::Local { frame, local } => self.modify_local(frame, local, uninit)?,
                     Place::Ptr {
-                        ptr: PtrAndAlign { ptr, aligned: true },
+                        ptr: ptr,
+                        align: _align,
                         extra: PlaceExtra::None,
                     } => self.memory.mark_definedness(ptr, size, false)?,
-                    Place::Ptr { .. } => {
-                        bug!("uninit intrinsic tried to write to fat or unaligned ptr target")
-                    }
+                    _ => bug!("todo"),
                 }
             }
 
@@ -639,7 +643,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 if count > 0 {
                     // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
                     // TODO: Should we, at least, validate the alignment? (Also see the copy intrinsic)
-                    self.memory.check_align(ptr, ty_layout.align.abi(), Some(AccessKind::Write))?;
+                    self.memory.check_align(ptr, ty_layout.align)?;
                     self.memory.write_repeat(ptr, val_byte, ty_layout.size.bytes() * count)?;
                 }
             }
