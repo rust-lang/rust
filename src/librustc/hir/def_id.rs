@@ -71,27 +71,23 @@ impl serialize::UseSpecializedDecodable for CrateNum {}
 /// particular definition. It should really be considered an interned
 /// shorthand for a particular DefPath.
 ///
-/// At the moment we are allocating the numerical values of DefIndexes into two
-/// ranges: the "low" range (starting at zero) and the "high" range (starting at
-/// DEF_INDEX_HI_START). This allows us to allocate the DefIndexes of all
-/// item-likes (Items, TraitItems, and ImplItems) into one of these ranges and
+/// At the moment we are allocating the numerical values of DefIndexes from two
+/// address spaces: DefIndexAddressSpace::Low and DefIndexAddressSpace::High.
+/// This allows us to allocate the DefIndexes of all item-likes
+/// (Items, TraitItems, and ImplItems) into one of these spaces and
 /// consequently use a simple array for lookup tables keyed by DefIndex and
 /// known to be densely populated. This is especially important for the HIR map.
 ///
 /// Since the DefIndex is mostly treated as an opaque ID, you probably
-/// don't have to care about these ranges.
-newtype_index!(DefIndex
-    {
-        ENCODABLE = custom
-        DEBUG_FORMAT = custom,
+/// don't have to care about these address spaces.
 
-        /// The start of the "high" range of DefIndexes.
-        const DEF_INDEX_HI_START = 1 << 31,
+#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, Hash, Copy)]
+pub struct DefIndex(u32);
 
-        /// The crate root is always assigned index 0 by the AST Map code,
-        /// thanks to `NodeCollector::new`.
-        const CRATE_DEF_INDEX = 0,
-    });
+/// The crate root is always assigned index 0 by the AST Map code,
+/// thanks to `NodeCollector::new`.
+pub const CRATE_DEF_INDEX: DefIndex = DefIndex(0);
+
 
 impl fmt::Debug for DefIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -104,40 +100,50 @@ impl fmt::Debug for DefIndex {
 
 impl DefIndex {
     #[inline]
-    pub fn from_u32(x: u32) -> DefIndex {
-        DefIndex(x)
-    }
-
-    #[inline]
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-
-    #[inline]
-    pub fn as_u32(&self) -> u32 {
-        self.0
-    }
-
-    #[inline]
     pub fn address_space(&self) -> DefIndexAddressSpace {
-        if self.0 < DEF_INDEX_HI_START.0 {
-            DefIndexAddressSpace::Low
-        } else {
-            DefIndexAddressSpace::High
+        match self.0 & 1 {
+            0 => DefIndexAddressSpace::Low,
+            1 => DefIndexAddressSpace::High,
+            _ => unreachable!()
         }
     }
 
     /// Converts this DefIndex into a zero-based array index.
-    /// This index is the offset within the given "range" of the DefIndex,
-    /// that is, if the DefIndex is part of the "high" range, the resulting
-    /// index will be (DefIndex - DEF_INDEX_HI_START).
+    /// This index is the offset within the given DefIndexAddressSpace.
     #[inline]
     pub fn as_array_index(&self) -> usize {
-        (self.0 & !DEF_INDEX_HI_START.0) as usize
+        (self.0 >> 1) as usize
     }
 
+    #[inline]
     pub fn from_array_index(i: usize, address_space: DefIndexAddressSpace) -> DefIndex {
-        DefIndex::new(address_space.start() + i)
+        DefIndex::from_raw_u32(((i << 1) | (address_space as usize)) as u32)
+    }
+
+    // Proc macros from a proc-macro crate have a kind of virtual DefIndex. This
+    // function maps the index of the macro within the crate (which is also the
+    // index of the macro in the CrateMetadata::proc_macros array) to the
+    // corresponding DefIndex.
+    pub fn from_proc_macro_index(proc_macro_index: usize) -> DefIndex {
+        let def_index = DefIndex::from_array_index(proc_macro_index,
+                                                   DefIndexAddressSpace::High);
+        assert!(def_index != CRATE_DEF_INDEX);
+        def_index
+    }
+
+    // This function is the reverse of from_proc_macro_index() above.
+    pub fn to_proc_macro_index(self: DefIndex) -> usize {
+        self.as_array_index()
+    }
+
+    // Don't use this if you don't know about the DefIndex encoding.
+    pub fn from_raw_u32(x: u32) -> DefIndex {
+        DefIndex(x)
+    }
+
+    // Don't use this if you don't know about the DefIndex encoding.
+    pub fn as_raw_u32(&self) -> u32 {
+        self.0
     }
 }
 
@@ -154,11 +160,6 @@ impl DefIndexAddressSpace {
     #[inline]
     pub fn index(&self) -> usize {
         *self as usize
-    }
-
-    #[inline]
-    pub fn start(&self) -> usize {
-        self.index() * DEF_INDEX_HI_START.as_usize()
     }
 }
 

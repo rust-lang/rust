@@ -463,7 +463,7 @@ impl CrateStore for cstore::CStore {
     fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
-            return LoadedMacro::ProcMacro(proc_macros[id.index.as_usize() - 1].1.clone());
+            return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
         } else if data.name == "proc_macro" &&
                   self.get_crate_data(id.krate).item_name(id.index) == "quote" {
             let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter));
