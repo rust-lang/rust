@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn with_int<F>(f: F) where F: FnOnce(&isize) {
-    let x = 3;
-    f(&x);
+fn give_any<F: for<'r> FnOnce(&'r ())>(f: F) {
+    f(&());
 }
 
 fn main() {
-    let mut x = None;
-    with_int(|y| x = Some(y));
-         //~^ ERROR borrowed data cannot be moved outside of its closure
+    let x = None;
+    give_any(|y| x = Some(y));
+    //~^ ERROR borrowed data cannot be moved outside of its closure
 }

@@ -1,0 +1,12 @@
+error: borrowed data cannot be moved outside of its closure
+  --> $DIR/issue-45983.rs:17:27
+   |
+16 |     let x = None;
+   |         - binding declared outside of closure
+17 |     give_any(|y| x = Some(y));
+   |              ---          ^ cannot be assigned to binding outside of its closure
+   |              |
+   |              closure you can't escape
+
+error: aborting due to previous error
+

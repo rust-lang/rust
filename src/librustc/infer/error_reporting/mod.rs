@@ -66,7 +66,7 @@ use hir::map as hir_map;
 use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, Region, Ty, TyCtxt, TypeFoldable, TypeVariants};
+use ty::{self, Region, RegionKind, Ty, TyCtxt, TypeFoldable, TypeVariants};
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
@@ -1067,6 +1067,40 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                sub_region: Region<'tcx>,
                                sup_origin: SubregionOrigin<'tcx>,
                                sup_region: Region<'tcx>) {
+
+        // #45983: when trying to assign the contents of an argument to a binding outside of a
+        // closure, provide a specific message pointing this out.
+        if let (&SubregionOrigin::BindingTypeIsNotValidAtDecl(ref external_span),
+                &SubregionOrigin::Subtype(TypeTrace { ref cause, .. }),
+                &RegionKind::ReFree(ref free_region)) = (&sub_origin, &sup_origin, sup_region) {
+            let hir = &self.tcx.hir;
+            if let Some(node_id) = hir.as_local_node_id(free_region.scope) {
+                match hir.get(node_id) {
+                    hir_map::NodeExpr(hir::Expr {
+                        node: hir::ExprClosure(_, _, _, closure_span, false),
+                        ..
+                    }) => {
+                        let sp = var_origin.span();
+                        let mut err = self.tcx.sess.struct_span_err(
+                            sp,
+                            "borrowed data cannot be moved outside of its closure");
+                        let label = match cause.code {
+                            ObligationCauseCode::ExprAssignable => {
+                                "cannot be assigned to binding outside of its closure"
+                            }
+                            _ => "cannot be moved outside of its closure",
+                        };
+                        err.span_label(sp, label);
+                        err.span_label(*closure_span, "closure you can't escape");
+                        err.span_label(*external_span, "binding declared outside of closure");
+                        err.emit();
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         let mut err = self.report_inference_failure(var_origin);
 
         self.tcx.note_and_explain_region(region_scope_tree, &mut err,
