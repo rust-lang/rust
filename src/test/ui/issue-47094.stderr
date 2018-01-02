@@ -1,0 +1,14 @@
+warning[E0566]: conflicting representation hints
+  --> $DIR/issue-47094.rs:13:8
+   |
+13 | #[repr(C,u8)]
+   |        ^ ^^
+
+warning[E0566]: conflicting representation hints
+  --> $DIR/issue-47094.rs:19:8
+   |
+19 | #[repr(C)]
+   |        ^
+20 | #[repr(u8)]
+   |        ^^
+
