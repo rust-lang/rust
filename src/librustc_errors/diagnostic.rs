@@ -100,9 +100,6 @@ impl Diagnostic {
 
     /// Cancel the diagnostic (a structured diagnostic must either be emitted or
     /// canceled or it will panic when dropped).
-    /// BEWARE: if this DiagnosticBuilder is an error, then creating it will
-    /// bump the error count on the Handler and canceling it won't undo that.
-    /// If you want to decrement the error count you should use `Handler::cancel`.
     pub fn cancel(&mut self) {
         self.level = Level::Cancelled;
     }

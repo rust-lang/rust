@@ -42,5 +42,5 @@ error: stability attributes may not be used outside of the standard library
 35 |     #[stable = "1300"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
