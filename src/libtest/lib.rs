@@ -981,6 +981,7 @@ fn use_color(opts: &TestOpts) -> bool {
           target_os = "redox",
           all(target_arch = "wasm32", not(target_os = "emscripten"))))]
 fn stdout_isatty() -> bool {
+    // FIXME: Implement isatty on Redox
     false
 }
 #[cfg(unix)]
