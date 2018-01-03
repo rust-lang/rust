@@ -323,7 +323,12 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         break;
     }
 
-    let instruction_limit = 30;
+    let instruction_limit = match expected {
+        // cpuid returns a pretty big aggregate structure so excempt it from the
+        // slightly more restrictive 20 instructions below
+        "cpuid" => 30,
+        _ => 20,
+    };
     let probably_only_one_instruction =
         function.instrs.len() < instruction_limit;
 

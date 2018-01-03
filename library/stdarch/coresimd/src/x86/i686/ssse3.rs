@@ -3,7 +3,6 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-use core::mem;
 use v64::*;
 
 /// Compute the absolute value of packed 8-bit integers in `a` and
@@ -29,8 +28,8 @@ pub unsafe fn _mm_abs_pi16(a: __m64) -> __m64 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(pabsd))]
-pub unsafe fn _mm_abs_pi32(a: i32x2) -> u32x2 {
-    mem::transmute(pabsd(mem::transmute(a)))
+pub unsafe fn _mm_abs_pi32(a: __m64) -> __m64 {
+    pabsd(a)
 }
 
 /// Shuffle packed 8-bit integers in `a` according to shuffle control mask in
@@ -70,8 +69,8 @@ pub unsafe fn _mm_hadd_pi16(a: __m64, b: __m64) -> __m64 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(phaddd))]
-pub unsafe fn _mm_hadd_pi32(a: i32x2, b: i32x2) -> i32x2 {
-    mem::transmute(phaddd(mem::transmute(a), mem::transmute(b)))
+pub unsafe fn _mm_hadd_pi32(a: __m64, b: __m64) -> __m64 {
+    phaddd(a, b)
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
@@ -98,8 +97,8 @@ pub unsafe fn _mm_hsub_pi16(a: __m64, b: __m64) -> __m64 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(phsubd))]
-pub unsafe fn _mm_hsub_pi32(a: i32x2, b: i32x2) -> i32x2 {
-    mem::transmute(phsubd(mem::transmute(a), mem::transmute(b)))
+pub unsafe fn _mm_hsub_pi32(a: __m64, b: __m64) -> __m64 {
+    phsubd(a, b)
 }
 
 /// Horizontally subtracts the adjacent pairs of values contained in 2
@@ -164,8 +163,8 @@ pub unsafe fn _mm_sign_pi16(a: __m64, b: __m64) -> __m64 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(psignd))]
-pub unsafe fn _mm_sign_pi32(a: i32x2, b: i32x2) -> i32x2 {
-    mem::transmute(psignd(mem::transmute(a), mem::transmute(b)))
+pub unsafe fn _mm_sign_pi32(a: __m64, b: __m64) -> __m64 {
+    psignd(a, b)
 }
 
 #[allow(improper_ctypes)]
@@ -240,7 +239,7 @@ mod tests {
 
     #[simd_test = "ssse3"]
     unsafe fn _mm_abs_pi32() {
-        let r = ssse3::_mm_abs_pi32(i32x2::splat(-5));
+        let r = u32x2::from(ssse3::_mm_abs_pi32(i32x2::splat(-5).into()));
         assert_eq!(r, u32x2::splat(5));
     }
 
@@ -275,7 +274,7 @@ mod tests {
         let a = i32x2::new(1, 2);
         let b = i32x2::new(4, 128);
         let expected = i32x2::new(3, 132);
-        let r = ssse3::_mm_hadd_pi32(a, b);
+        let r = i32x2::from(ssse3::_mm_hadd_pi32(a.into(), b.into()));
         assert_eq!(r, expected);
     }
 
@@ -302,7 +301,7 @@ mod tests {
         let a = i32x2::new(1, 2);
         let b = i32x2::new(4, 128);
         let expected = i32x2::new(-1, -124);
-        let r = ssse3::_mm_hsub_pi32(a, b);
+        let r = i32x2::from(ssse3::_mm_hsub_pi32(a.into(), b.into()));
         assert_eq!(r, expected);
     }
 
@@ -356,7 +355,7 @@ mod tests {
         let a = i32x2::new(-1, 2);
         let b = i32x2::new(1, 0);
         let expected = i32x2::new(-1, 0);
-        let r = ssse3::_mm_sign_pi32(a, b);
+        let r = i32x2::from(ssse3::_mm_sign_pi32(a.into(), b.into()));
         assert_eq!(r, expected);
     }
 }
