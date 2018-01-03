@@ -4089,4 +4089,5 @@ pub enum MakeGlobMap {
     No,
 }
 
+#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }

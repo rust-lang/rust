@@ -1268,6 +1268,14 @@ fn exit_on_err() -> ! {
     panic!();
 }
 
+#[cfg(stage0)]
+pub fn diagnostics_registry() -> errors::registry::Registry {
+    use errors::registry::Registry;
+
+    Registry::new(&[])
+}
+
+#[cfg(not(stage0))]
 pub fn diagnostics_registry() -> errors::registry::Registry {
     use errors::registry::Registry;
 

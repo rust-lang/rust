@@ -151,4 +151,5 @@ pub mod ext {
 #[cfg(test)]
 mod test_snippet;
 
+#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { libsyntax, DIAGNOSTICS }
