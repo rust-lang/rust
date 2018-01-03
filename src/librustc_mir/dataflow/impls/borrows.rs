@@ -649,11 +649,25 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Reservations<'a, 'gcx, 'tcx> {
         // `_sets`.
     }
 
+    fn before_statement_effect(&self,
+                               sets: &mut BlockSets<ReserveOrActivateIndex>,
+                               location: Location) {
+        debug!("Reservations::before_statement_effect sets: {:?} location: {:?}", sets, location);
+        self.0.kill_loans_out_of_scope_at_location(sets, location, false);
+    }
+
     fn statement_effect(&self,
                         sets: &mut BlockSets<ReserveOrActivateIndex>,
                         location: Location) {
         debug!("Reservations::statement_effect sets: {:?} location: {:?}", sets, location);
         self.0.statement_effect_on_borrows(sets, location, false);
+    }
+
+    fn before_terminator_effect(&self,
+                                sets: &mut BlockSets<ReserveOrActivateIndex>,
+                                location: Location) {
+        debug!("Reservations::before_terminator_effect sets: {:?} location: {:?}", sets, location);
+        self.0.kill_loans_out_of_scope_at_location(sets, location, false);
     }
 
     fn terminator_effect(&self,
@@ -696,11 +710,25 @@ impl<'a, 'gcx, 'tcx> BitDenotation for ActiveBorrows<'a, 'gcx, 'tcx> {
         // `_sets`.
     }
 
+    fn before_statement_effect(&self,
+                               sets: &mut BlockSets<ReserveOrActivateIndex>,
+                               location: Location) {
+        debug!("ActiveBorrows::before_statement_effect sets: {:?} location: {:?}", sets, location);
+        self.0.kill_loans_out_of_scope_at_location(sets, location, true);
+    }
+
     fn statement_effect(&self,
                         sets: &mut BlockSets<ReserveOrActivateIndex>,
                         location: Location) {
         debug!("ActiveBorrows::statement_effect sets: {:?} location: {:?}", sets, location);
         self.0.statement_effect_on_borrows(sets, location, true);
+    }
+
+    fn before_terminator_effect(&self,
+                                sets: &mut BlockSets<ReserveOrActivateIndex>,
+                                location: Location) {
+        debug!("ActiveBorrows::before_terminator_effect sets: {:?} location: {:?}", sets, location);
+        self.0.kill_loans_out_of_scope_at_location(sets, location, true);
     }
 
     fn terminator_effect(&self,

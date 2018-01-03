@@ -203,10 +203,17 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // reset GEN and KILL sets before emulating their effect.
         for e in sets.gen_set.words_mut() { *e = 0; }
         for e in sets.kill_set.words_mut() { *e = 0; }
-        results.0.operator.statement_effect(&mut sets, Location { block: bb, statement_index: j });
+        results.0.operator.before_statement_effect(
+            &mut sets, Location { block: bb, statement_index: j });
+        results.0.operator.statement_effect(
+            &mut sets, Location { block: bb, statement_index: j });
         sets.on_entry.union(sets.gen_set);
         sets.on_entry.subtract(sets.kill_set);
     }
+
+    results.0.operator.before_terminator_effect(
+        &mut sets,
+        Location { block: bb, statement_index: statements.len() });
 
     tcx.sess.span_err(span, &format!("rustc_peek: MIR did not match \
                                       anticipated pattern; note that \

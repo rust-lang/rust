@@ -2012,6 +2012,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let borrowed = &data[i.borrow_index()];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {
+                debug!("each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
+                       i, borrowed, place, access);
                 let ctrl = op(self, i, borrowed);
                 if ctrl == Control::Break {
                     return;

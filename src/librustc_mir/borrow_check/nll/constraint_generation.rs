@@ -130,38 +130,91 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
             });
     }
 
+    // Add the reborrow constraint at `location` so that `borrowed_place`
+    // is valid for `borrow_region`.
     fn add_reborrow_constraint(
         &mut self,
         location: Location,
         borrow_region: ty::Region<'tcx>,
         borrowed_place: &Place<'tcx>,
     ) {
-        if let Projection(ref proj) = *borrowed_place {
-            let PlaceProjection { ref base, ref elem } = **proj;
+        let mut borrowed_place = borrowed_place;
 
-            if let ProjectionElem::Deref = *elem {
-                let tcx = self.infcx.tcx;
-                let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
-                let base_sty = &base_ty.sty;
+        debug!("add_reborrow_constraint({:?}, {:?}, {:?})",
+               location, borrow_region, borrowed_place);
+        while let Projection(box PlaceProjection { base, elem }) = borrowed_place {
+            debug!("add_reborrow_constraint - iteration {:?}", borrowed_place);
 
-                if let ty::TyRef(base_region, ty::TypeAndMut { ty: _, mutbl }) = *base_sty {
-                    match mutbl {
-                        hir::Mutability::MutImmutable => {}
+            match *elem {
+                ProjectionElem::Deref => {
+                    let tcx = self.infcx.tcx;
+                    let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
 
-                        hir::Mutability::MutMutable => {
-                            self.add_reborrow_constraint(location, borrow_region, base);
+                    debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
+                    match base_ty.sty {
+                        ty::TyRef(ref_region, ty::TypeAndMut { ty: _, mutbl }) => {
+                            let span = self.mir.source_info(location).span;
+                            self.regioncx.add_outlives(
+                                span,
+                                ref_region.to_region_vid(),
+                                borrow_region.to_region_vid(),
+                                location.successor_within_block(),
+                            );
+
+                            match mutbl {
+                                hir::Mutability::MutImmutable => {
+                                    // Immutable reference. We don't need the base
+                                    // to be valid for the entire lifetime of
+                                    // the borrow.
+                                    break
+                                }
+                                hir::Mutability::MutMutable => {
+                                    // Mutable reference. We *do* need the base
+                                    // to be valid, because after the base becomes
+                                    // invalid, someone else can use our mutable deref.
+
+                                    // This is in order to make the following function
+                                    // illegal:
+                                    // ```
+                                    // fn unsafe_deref<'a, 'b>(x: &'a &'b mut T) -> &'b mut T {
+                                    //     &mut *x
+                                    // }
+                                    // ```
+                                    //
+                                    // As otherwise you could clone `&mut T` using the
+                                    // following function:
+                                    // ```
+                                    // fn bad(x: &mut T) -> (&mut T, &mut T) {
+                                    //     let my_clone = unsafe_deref(&'a x);
+                                    //     ENDREGION 'a;
+                                    //     (my_clone, x)
+                                    // }
+                                    // ```
+                                }
+                            }
                         }
+                        ty::TyRawPtr(..) => {
+                            // deref of raw pointer, guaranteed to be valid
+                            break
+                        }
+                        ty::TyAdt(def, _) if def.is_box() => {
+                            // deref of `Box`, need the base to be valid - propagate
+                        }
+                        _ => bug!("unexpected deref ty {:?} in {:?}", base_ty, borrowed_place)
                     }
-
-                    let span = self.mir.source_info(location).span;
-                    self.regioncx.add_outlives(
-                        span,
-                        base_region.to_region_vid(),
-                        borrow_region.to_region_vid(),
-                        location.successor_within_block(),
-                    );
+                }
+                ProjectionElem::Field(..) |
+                ProjectionElem::Downcast(..) |
+                ProjectionElem::Index(..) |
+                ProjectionElem::ConstantIndex { .. } |
+                ProjectionElem::Subslice { .. } => {
+                    // other field access
                 }
             }
+
+            // The "propagate" case. We need to check that our base is valid
+            // for the borrow's lifetime.
+            borrowed_place = base;
         }
     }
 }

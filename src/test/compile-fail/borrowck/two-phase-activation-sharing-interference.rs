@@ -56,7 +56,6 @@ fn should_also_eventually_be_ok_with_nll() {
     let _z = &x;
     *y += 1;
     //[lxl]~^  ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
-    //[nll]~^^ ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
 }
 
 fn main() { }
