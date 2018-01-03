@@ -10,6 +10,8 @@
 
 // compile-flags: -Z no-landing-pads -C codegen-units=1
 // error-pattern:converging_fn called
+// ignore-cloudabi no std::process
+
 use std::io::{self, Write};
 
 struct Droppable;

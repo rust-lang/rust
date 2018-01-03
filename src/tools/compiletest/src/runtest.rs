@@ -1368,9 +1368,10 @@ impl<'test> TestCx<'test> {
 
             let crate_type = if aux_props.no_prefer_dynamic {
                 None
-            } else if (self.config.target.contains("musl") && !aux_props.force_host)
-                || self.config.target.contains("wasm32")
+            } else if self.config.target.contains("cloudabi")
                 || self.config.target.contains("emscripten")
+                || (self.config.target.contains("musl") && !aux_props.force_host)
+                || self.config.target.contains("wasm32")
             {
                 // We primarily compile all auxiliary libraries as dynamic libraries
                 // to avoid code size bloat and large binaries as much as possible

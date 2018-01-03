@@ -32,14 +32,15 @@ pub fn main() {
     }
 }
 
-#[cfg(any(target_os = "macos",
-          target_os = "linux",
-          target_os = "freebsd",
-          target_os = "dragonfly",
+#[cfg(any(target_os = "android",
           target_os = "bitrig",
+          target_os = "cloudabi",
+          target_os = "dragonfly",
+          target_os = "emscripten",
+          target_os = "freebsd",
+          target_os = "linux",
+          target_os = "macos",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "android",
-          target_os = "solaris",
-          target_os = "emscripten"))]
+          target_os = "solaris"))]
 pub fn main() { }

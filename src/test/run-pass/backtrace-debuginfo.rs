@@ -17,6 +17,7 @@
 
 // compile-flags:-g -Cllvm-args=-enable-tail-merge=0
 // ignore-pretty issue #37195
+// ignore-cloudabi spawning processes is not supported
 // ignore-emscripten spawning processes is not supported
 
 use std::env;

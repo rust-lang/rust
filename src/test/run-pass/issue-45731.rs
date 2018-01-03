@@ -10,11 +10,11 @@
 
 // compile-flags:--test -g
 
-use std::{env, panic, fs};
-
 #[cfg(target_os = "macos")]
 #[test]
 fn simple_test() {
+    use std::{env, panic, fs};
+
     // Find our dSYM and replace the DWARF binary with an empty file
     let mut dsym_path = env::current_exe().unwrap();
     let executable_name = dsym_path.file_name().unwrap().to_str().unwrap().to_string();

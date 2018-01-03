@@ -12,8 +12,9 @@
 // main thread exit while still being in use by signal handlers. This test
 // triggers this situation by sending signal from atexit handler.
 //
-// ignore-windows
+// ignore-cloudabi no signal handling support
 // ignore-wasm32-bare no libc
+// ignore-windows
 
 #![feature(libc)]
 extern crate libc;

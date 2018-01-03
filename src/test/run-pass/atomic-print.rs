@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-cloudabi no process support
 // ignore-emscripten no threads support
 
 use std::{env, fmt, process, sync, thread};
