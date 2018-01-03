@@ -17,7 +17,7 @@ use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
 use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::util::nodemap::DefIdSet;
@@ -168,14 +168,23 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr) {
         if let hir::ExprIndex(ref base, ref index) = e.node {
             let mut tables = self.fcx.tables.borrow_mut();
-            
-            let base_ty = tables.expr_ty_adjusted(&base);
-            let base_ty = self.fcx.resolve_type_vars_if_possible(&base_ty);
+
+            let base_ty = {
+                let base_ty = tables.expr_ty_adjusted(&base);
+                // When unsizing, the final type of the expression is taken
+                // from the first argument of the indexing operator, which
+                // is a &self, and has to be deconstructed
+                if let TypeVariants::TyRef(_, ref ref_to) = base_ty.sty {
+                    ref_to.ty
+                } else {
+                    base_ty
+                }
+            };
+
             let index_ty = tables.expr_ty_adjusted(&index);
             let index_ty = self.fcx.resolve_type_vars_if_possible(&index_ty);
 
             if base_ty.builtin_index().is_some() && index_ty.is_uint() {
-                
                 // Remove the method call record, which blocks use in
                 // constant or static cases
                 tables.type_dependent_defs_mut().remove(e.hir_id);
