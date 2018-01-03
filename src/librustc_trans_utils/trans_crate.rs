@@ -77,179 +77,28 @@ pub trait TransCrate {
 #[macro_export]
 macro_rules! hot_pluggable_trans_crate {
     (|$sess:ident| { $body:expr }) => {
-        use $crate::__rustc::ty::maps::Providers;
         #[no_mangle]
-        pub extern "C" fn __rustc_backend_new($sess: &Session) -> *mut Box<TransCrate> {
-            let trans_crate = { $body };
-            Box::into_raw(Box::new(trans_crate))
-        }
-
-        #[no_mangle]
-        pub extern "C" fn __rustc_backend_metadata_loader(
-            trans_crate: *const Box<TransCrate>
-        ) -> *mut Box<MetadataLoader> {
-            let trans_crate = unsafe { &*trans_crate };
-            let metadata_loader = trans_crate.metadata_loader();
-            Box::into_raw(Box::new(metadata_loader))
-        }
-
-        #[no_mangle]
-        pub extern "C" fn __rustc_backend_provide(
-            trans_crate: *const Box<TransCrate>,
-            providers: *mut Providers
-        ) {
-            let trans_crate = unsafe { &*trans_crate };
-            let providers = unsafe { &mut *providers };
-            trans_crate.provide(providers);
-        }
-
-        #[no_mangle]
-        pub extern "C" fn __rustc_backend_provide_extern(
-            trans_crate: *const Box<TransCrate>,
-            providers: *mut Providers
-        ) {
-            let trans_crate = unsafe { &*trans_crate };
-            let providers = unsafe { &mut *providers };
-            trans_crate.provide_extern(providers);
-        }
-
-        #[no_mangle]
-        pub extern "C" fn __rustc_backend_trans_crate<'a, 'tcx: 'a>(
-            trans_crate: *const Box<TransCrate>,
-            tcx: *mut TyCtxt<'a, 'tcx, 'tcx>,
-            rx: *mut mpsc::Receiver<Box<Any + Send>>
-        ) -> *mut Box<Any> {
-            let trans_crate = unsafe { &*trans_crate };
-            let tcx = unsafe { *tcx };
-            let rx = unsafe { *Box::from_raw(rx) };
-            let trans = trans_crate.trans_crate(tcx, rx);
-            Box::into_raw(Box::new(trans))
-        }
-
-        #[no_mangle]
-        pub extern "C" fn __rustc_backend_join_trans_and_link(
-            trans_crate: *const Box<TransCrate>,
-            trans: *mut Box<Any>,
-            sess: *const Session,
-            dep_graph: *const DepGraph,
-            outputs: *const OutputFilenames
-        ) -> *mut Result<(), CompileIncomplete> {
-            let trans_crate = unsafe { &*trans_crate };
-            let trans = unsafe { *Box::from_raw(trans) };
-            let sess = unsafe { &*sess };
-            let dep_graph = unsafe { &*dep_graph };
-            let outputs = unsafe { &*outputs };
-            let result = trans_crate.join_trans_and_link(trans, sess, dep_graph, outputs);
-            Box::into_raw(Box::new(result))
+        pub fn __rustc_backend_new($sess: &Session) -> Box<TransCrate> {
+            { $body }
         }
     }
 }
 
-pub struct ExternTransCrate {
-    lib: ::libloading::Library,
-    backend: Box<Box<TransCrate>>,
-}
-
-macro_rules! get_symbol {
-    (($lib:expr) . $name:ident : $type:ty) => {
-        let $name: ::libloading::Symbol<$type> = $lib.get(stringify!($name).as_bytes()).unwrap();
-    }
-}
-
-impl ExternTransCrate {
-    pub fn new<P: AsRef<OsStr>>(sess: &Session, filename: P) -> Box<TransCrate> {
-        use libloading::*;
-        let filename = filename.as_ref();
-        match Library::new(filename) {
-            Ok(lib) => {
-                let backend = unsafe {
-                    get_symbol!((lib).__rustc_backend_new:
-                        unsafe extern "C" fn(&Session) -> *mut Box<TransCrate>);
-                    Box::from_raw(__rustc_backend_new(sess))
-                };
-                Box::new(ExternTransCrate {
-                    lib,
-                    backend,
-                })
-            }
-            Err(err) => {
-                sess.fatal(&format!("Couldnt load codegen backend {:?}: {:?}", filename, err));
+pub fn link_extern_backend<P: AsRef<OsStr>>(sess: &Session, filename: P) -> Box<TransCrate> {
+    use libloading::*;
+    let filename = filename.as_ref();
+    match Library::new(filename) {
+        Ok(lib) => {
+            unsafe {
+                let __rustc_backend_new: Symbol<unsafe fn(&Session) -> Box<TransCrate>>;
+                __rustc_backend_new = lib.get(b"__rustc_backend_new")
+                    .expect("Couldnt load codegen backend as it\
+                    doesnt export the __rustc_backend_new symbol");
+                __rustc_backend_new(sess)
             }
         }
-    }
-}
-
-impl TransCrate for ExternTransCrate {
-    fn metadata_loader(&self) -> Box<MetadataLoader> {
-        unsafe {
-            get_symbol!((self.lib).__rustc_backend_metadata_loader:
-                unsafe extern "C" fn(*const Box<TransCrate>) -> *mut Box<MetadataLoader>);
-            *Box::from_raw(__rustc_backend_metadata_loader(self.backend.as_ref() as *const _))
-        }
-    }
-
-    fn provide(&self, providers: &mut Providers) {
-        unsafe {
-            get_symbol!((self.lib).__rustc_backend_provide:
-                unsafe extern "C" fn(*const Box<TransCrate>, *mut Providers));
-            __rustc_backend_provide(self.backend.as_ref() as *const _, providers as *mut _);
-        }
-    }
-
-    fn provide_extern(&self, providers: &mut Providers) {
-        unsafe {
-            get_symbol!((self.lib).__rustc_backend_provide_extern:
-                unsafe extern "C" fn(*const Box<TransCrate>, *mut Providers));
-            __rustc_backend_provide_extern(self.backend.as_ref() as *const _, providers as *mut _);
-        }
-    }
-
-    fn trans_crate<'a, 'tcx>(
-        &self,
-        mut tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        rx: mpsc::Receiver<Box<Any + Send>>
-    ) -> Box<Any> {
-        unsafe {
-            get_symbol!((self.lib).__rustc_backend_trans_crate:
-                unsafe extern "C" fn(
-                    *const Box<TransCrate>,
-                    *mut TyCtxt<'a, 'tcx, 'tcx>,
-                    *mut mpsc::Receiver<Box<Any + Send>>
-                ) -> *mut Box<Any>
-            );
-            let rx = Box::new(rx);
-            *Box::from_raw(__rustc_backend_trans_crate(
-                self.backend.as_ref() as *const _,
-                &mut tcx as *mut _,
-                Box::into_raw(rx) as *mut _
-            ))
-        }
-    }
-
-    fn join_trans_and_link(
-        &self,
-        trans: Box<Any>,
-        sess: &Session,
-        dep_graph: &DepGraph,
-        outputs: &OutputFilenames,
-    ) -> Result<(), CompileIncomplete> {
-        unsafe {
-            get_symbol!((self.lib).__rustc_backend_join_trans_and_link:
-                unsafe extern "C" fn(
-                    *const Box<TransCrate>,
-                    *mut Box<Any>,
-                    *const Session,
-                    *const DepGraph,
-                    *const OutputFilenames
-                ) -> *mut Result<(), CompileIncomplete>
-            );
-            *Box::from_raw(__rustc_backend_join_trans_and_link(
-                self.backend.as_ref() as *const _,
-                Box::into_raw(Box::new(trans)) as *mut _,
-                sess as *const _,
-                dep_graph as *const _,
-                outputs as *const _
-            ))
+        Err(err) => {
+            sess.fatal(&format!("Couldnt load codegen backend {:?}: {:?}", filename, err));
         }
     }
 }
