@@ -1394,7 +1394,7 @@ pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vmovups))] // FIXME vmovdqu expected
 pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
-    storeusi256(mem_addr as *mut i8x32, i8x32::from(a));
+    storeudq256(mem_addr as *mut i8, i8x32::from(a));
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory
@@ -2493,8 +2493,8 @@ extern "C" {
     fn storeupd256(mem_addr: *mut f64, a: f64x4);
     #[link_name = "llvm.x86.avx.storeu.ps.256"]
     fn storeups256(mem_addr: *mut f32, a: f32x8);
-    #[link_name = "llvm.x86.avx.storeu.si.256"]
-    fn storeusi256(mem_addr: *mut i8x32, a: i8x32);
+    #[link_name = "llvm.x86.avx.storeu.dq.256"]
+    fn storeudq256(mem_addr: *mut i8, a: i8x32);
     #[link_name = "llvm.x86.avx.maskload.pd.256"]
     fn maskloadpd256(mem_addr: *const i8, mask: i64x4) -> f64x4;
     #[link_name = "llvm.x86.avx.maskstore.pd.256"]

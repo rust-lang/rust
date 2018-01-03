@@ -667,17 +667,15 @@ pub unsafe fn _mm_cvtss_f32(a: f32x4) -> f32 {
 /// input).
 #[inline(always)]
 #[target_feature = "+sse"]
-#[cfg_attr(all(test, target_os = "macos"), assert_instr(cvtsi2ssl))]
-#[cfg_attr(all(test, not(target_os = "macos")), assert_instr(cvtsi2ss))]
+#[cfg_attr(test, assert_instr(cvtsi2ss))]
 pub unsafe fn _mm_cvtsi32_ss(a: f32x4, b: i32) -> f32x4 {
-    a.replace(0, b as f32)
+    cvtsi2ss(a, b)
 }
 
 /// Alias for [`_mm_cvtsi32_ss`](fn._mm_cvtsi32_ss.html).
 #[inline(always)]
 #[target_feature = "+sse"]
-#[cfg_attr(all(test, target_os = "macos"), assert_instr(cvtsi2ssl))]
-#[cfg_attr(all(test, not(target_os = "macos")), assert_instr(cvtsi2ss))]
+#[cfg_attr(test, assert_instr(cvtsi2ss))]
 pub unsafe fn _mm_cvt_si2ss(a: f32x4, b: i32) -> f32x4 {
     _mm_cvtsi32_ss(a, b)
 }
@@ -1661,6 +1659,8 @@ extern "C" {
     fn cvtss2si(a: f32x4) -> i32;
     #[link_name = "llvm.x86.sse.cvttss2si"]
     fn cvttss2si(a: f32x4) -> i32;
+    #[link_name = "llvm.x86.sse.cvtsi2ss"]
+    fn cvtsi2ss(a: f32x4, b: i32) -> f32x4;
     #[link_name = "llvm.x86.sse.sfence"]
     fn sfence();
     #[link_name = "llvm.x86.sse.stmxcsr"]

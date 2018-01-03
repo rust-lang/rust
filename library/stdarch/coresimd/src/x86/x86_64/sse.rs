@@ -11,6 +11,8 @@ extern "C" {
     fn cvtss2si64(a: f32x4) -> i64;
     #[link_name = "llvm.x86.sse.cvttss2si64"]
     fn cvttss2si64(a: f32x4) -> i64;
+    #[link_name = "llvm.x86.sse.cvtsi642ss"]
+    fn cvtsi642ss(a: f32x4, b: i64) -> f32x4;
 }
 
 /// Convert the lowest 32 bit float in the input vector to a 64 bit integer.
@@ -52,10 +54,9 @@ pub unsafe fn _mm_cvttss_si64(a: f32x4) -> i64 {
 /// input).
 #[inline(always)]
 #[target_feature = "+sse"]
-#[cfg_attr(all(test, target_os = "macos"), assert_instr(cvtsi2ssq))]
-#[cfg_attr(all(test, not(target_os = "macos")), assert_instr(cvtsi2ss))]
+#[cfg_attr(test, assert_instr(cvtsi2ss))]
 pub unsafe fn _mm_cvtsi64_ss(a: f32x4, b: i64) -> f32x4 {
-    a.replace(0, b as f32)
+    cvtsi642ss(a, b)
 }
 
 #[cfg(test)]

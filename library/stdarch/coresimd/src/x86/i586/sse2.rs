@@ -891,13 +891,9 @@ pub unsafe fn _mm_store_si128(mem_addr: *mut __m128i, a: __m128i) {
 /// `mem_addr` does not need to be aligned on any particular boundary.
 #[inline(always)]
 #[target_feature = "+sse2"]
-#[cfg_attr(test, assert_instr(movups))]
+#[cfg_attr(test, assert_instr(movups))] // FIXME movdqu expected
 pub unsafe fn _mm_storeu_si128(mem_addr: *mut __m128i, a: __m128i) {
-    ptr::copy_nonoverlapping(
-        &a as *const _ as *const u8,
-        mem_addr as *mut u8,
-        mem::size_of::<__m128i>(),
-    );
+    storeudq(mem_addr as *mut i8, a);
 }
 
 /// Store the lower 64-bit integer `a` to a memory location.
@@ -1942,11 +1938,7 @@ pub unsafe fn _mm_store_pd(mem_addr: *mut f64, a: f64x2) {
 #[target_feature = "+sse2"]
 #[cfg_attr(test, assert_instr(movups))] // FIXME movupd expected
 pub unsafe fn _mm_storeu_pd(mem_addr: *mut f64, a: f64x2) {
-    ptr::copy_nonoverlapping(
-        &a as *const f64x2 as *const u8,
-        mem_addr as *mut u8,
-        mem::size_of::<f64x2>(),
-    );
+    storeupd(mem_addr as *mut i8, a);
 }
 
 /// Store the lower double-precision (64-bit) floating-point element from `a`
@@ -2310,6 +2302,10 @@ extern "C" {
     fn cvttsd2si(a: f64x2) -> i32;
     #[link_name = "llvm.x86.sse2.cvttps2dq"]
     fn cvttps2dq(a: f32x4) -> i32x4;
+    #[link_name = "llvm.x86.sse2.storeu.dq"]
+    fn storeudq(mem_addr: *mut i8, a: __m128i);
+    #[link_name = "llvm.x86.sse2.storeu.pd"]
+    fn storeupd(mem_addr: *mut i8, a: f64x2);
 }
 
 #[cfg(test)]
