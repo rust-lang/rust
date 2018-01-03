@@ -56,8 +56,8 @@ pub unsafe fn _mm_packs_pi32(a: i32x2, b: i32x2) -> i16x4 {
 #[inline(always)]
 #[target_feature = "+mmx"]
 #[cfg_attr(test, assert_instr(pcmpgtb))]
-pub unsafe fn _mm_cmpgt_pi8(a: i8x8, b: i8x8) -> i8x8 {
-    mem::transmute(pcmpgtb(mem::transmute(a), mem::transmute(b)))
+pub unsafe fn _mm_cmpgt_pi8(a: __m64, b: __m64) -> __m64 {
+    pcmpgtb(a, b)
 }
 
 /// Compares the 16-bit integer elements of two 64-bit integer vectors of
@@ -86,8 +86,8 @@ pub unsafe fn _mm_unpackhi_pi16(a: i16x4, b: i16x4) -> i16x4 {
 #[inline(always)]
 #[target_feature = "+mmx"]
 #[cfg_attr(test, assert_instr(punpcklbw))]
-pub unsafe fn _mm_unpacklo_pi8(a: i8x8, b: i8x8) -> i8x8 {
-    mem::transmute(punpcklbw(mem::transmute(a), mem::transmute(b)))
+pub unsafe fn _mm_unpacklo_pi8(a: __m64, b: __m64) -> __m64 {
+    punpcklbw(a, b)
 }
 
 /// Unpacks the lower 32 bits from two 64-bit integer vectors of
@@ -150,7 +150,7 @@ mod tests {
         let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let b = i8x8::new(8, 7, 6, 5, 4, 3, 2, 1);
         let r = i8x8::new(0, 0, 0, 0, 0, -1, -1, -1);
-        assert_eq!(r, mmx::_mm_cmpgt_pi8(a, b));
+        assert_eq!(r, i8x8::from(mmx::_mm_cmpgt_pi8(a.into(), b.into())));
     }
 
     #[simd_test = "mmx"]
@@ -174,7 +174,7 @@ mod tests {
         let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let b = i8x8::new(8, 9, 10, 11, 12, 13, 14, 15);
         let r = i8x8::new(0, 8, 1, 9, 2, 10, 3, 11);
-        assert_eq!(r, mmx::_mm_unpacklo_pi8(a, b));
+        assert_eq!(r, i8x8::from(mmx::_mm_unpacklo_pi8(a.into(), b.into())));
     }
 
     #[simd_test = "mmx"]

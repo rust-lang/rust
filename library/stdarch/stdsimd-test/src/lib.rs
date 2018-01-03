@@ -293,9 +293,41 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         }
     }
 
-    let probably_only_one_instruction = function.instrs.len() < 30;
+    // Look for `call` instructions in the disassembly to detect whether
+    // inlining failed: all intrinsics are `#[inline(always)]`, so
+    // calling one intrinsic from another should not generate `call`
+    // instructions.
+    let mut inlining_failed = false;
+    for (i, instr) in function.instrs.iter().enumerate() {
+        let part = match instr.parts.get(0) {
+            Some(part) => part,
+            None => continue,
+        };
+        if !part.contains("call") {
+            continue
+        }
 
-    if found && probably_only_one_instruction {
+        // On 32-bit x86 position independent code will call itself and be
+        // immediately followed by a `pop` to learn about the current address.
+        // Let's not take that into account when considering whether a function
+        // failed inlining something.
+        let followed_by_pop = function.instrs.get(i + 1)
+            .and_then(|i| i.parts.get(0))
+            .map(|s| s.contains("pop"))
+            .unwrap_or(false);
+        if followed_by_pop && cfg!(target_arch = "x86") {
+            continue
+        }
+
+        inlining_failed = true;
+        break;
+    }
+
+    let instruction_limit = 30;
+    let probably_only_one_instruction =
+        function.instrs.len() < instruction_limit;
+
+    if found && probably_only_one_instruction && !inlining_failed {
         return;
     }
 
@@ -319,7 +351,12 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
             expected
         );
     } else if !probably_only_one_instruction {
-        panic!("too many instructions in the disassembly");
+        panic!("instruction found, but the disassembly contains too many \
+                instructions: #instructions = {} >= {} (limit)",
+               function.instrs.len(), instruction_limit);
+    } else if inlining_failed {
+        panic!("instruction found, but the disassembly contains `call` \
+                instructions, which hint that inlining failed");
     }
 }
 

@@ -32,7 +32,7 @@ extern "C" {
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
-    ptestz(a.into(), mask.into())
+    ptestz(i64x2::from(a), i64x2::from(mask))
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -52,7 +52,7 @@ pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
-    ptestc(a.into(), mask.into())
+    ptestc(i64x2::from(a), i64x2::from(mask))
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are
@@ -72,7 +72,7 @@ pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testnzc_si128(a: __m128i, mask: __m128i) -> i32 {
-    ptestnzc(a.into(), mask.into())
+    ptestnzc(i64x2::from(a), i64x2::from(mask))
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -111,7 +111,8 @@ pub unsafe fn _mm_test_all_zeros(a: __m128i, mask: __m128i) -> i32 {
 #[cfg_attr(test, assert_instr(pcmpeqd))]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_test_all_ones(a: __m128i) -> i32 {
-    _mm_testc_si128(a, ::x86::_mm_cmpeq_epi32(a.into(), a.into()).into())
+    let b = i32x4::from(a);
+    _mm_testc_si128(a, __m128i::from(::x86::_mm_cmpeq_epi32(b, b)))
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are

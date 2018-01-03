@@ -68,8 +68,8 @@ pub unsafe fn _m_pmaxsw(a: i16x4, b: i16x4) -> i16x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(pmaxub))]
-pub unsafe fn _mm_max_pu8(a: u8x8, b: u8x8) -> u8x8 {
-    mem::transmute(pmaxub(mem::transmute(a), mem::transmute(b)))
+pub unsafe fn _mm_max_pu8(a: __m64, b: __m64) -> __m64 {
+    pmaxub(a, b)
 }
 
 /// Compares the packed 8-bit signed integers of `a` and `b` writing the
@@ -77,7 +77,7 @@ pub unsafe fn _mm_max_pu8(a: u8x8, b: u8x8) -> u8x8 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(pmaxub))]
-pub unsafe fn _m_pmaxub(a: u8x8, b: u8x8) -> u8x8 {
+pub unsafe fn _m_pmaxub(a: __m64, b: __m64) -> __m64 {
     _mm_max_pu8(a, b)
 }
 
@@ -104,8 +104,8 @@ pub unsafe fn _m_pminsw(a: i16x4, b: i16x4) -> i16x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(pminub))]
-pub unsafe fn _mm_min_pu8(a: u8x8, b: u8x8) -> u8x8 {
-    mem::transmute(pminub(mem::transmute(a), mem::transmute(b)))
+pub unsafe fn _mm_min_pu8(a: __m64, b: __m64) -> __m64 {
+    pminub(a, b)
 }
 
 /// Compares the packed 8-bit signed integers of `a` and `b` writing the
@@ -113,7 +113,7 @@ pub unsafe fn _mm_min_pu8(a: u8x8, b: u8x8) -> u8x8 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(pminub))]
-pub unsafe fn _m_pminub(a: u8x8, b: u8x8) -> u8x8 {
+pub unsafe fn _m_pminub(a: __m64, b: __m64) -> __m64 {
     _mm_min_pu8(a, b)
 }
 
@@ -143,8 +143,8 @@ pub unsafe fn _m_pmulhuw(a: u16x4, b: u16x4) -> u16x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(pavgb))]
-pub unsafe fn _mm_avg_pu8(a: u8x8, b: u8x8) -> u8x8 {
-    mem::transmute(pavgb(mem::transmute(a), mem::transmute(b)))
+pub unsafe fn _mm_avg_pu8(a: __m64, b: __m64) -> __m64 {
+    pavgb(a, b)
 }
 
 /// Computes the rounded averages of the packed unsigned 8-bit integer
@@ -153,7 +153,7 @@ pub unsafe fn _mm_avg_pu8(a: u8x8, b: u8x8) -> u8x8 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(pavgb))]
-pub unsafe fn _m_pavgb(a: u8x8, b: u8x8) -> u8x8 {
+pub unsafe fn _m_pavgb(a: __m64, b: __m64) -> __m64 {
     _mm_avg_pu8(a, b)
 }
 
@@ -184,8 +184,8 @@ pub unsafe fn _m_pavgw(a: u16x4, b: u16x4) -> u16x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(psadbw))]
-pub unsafe fn _mm_sad_pu8(a: u8x8, b: u8x8) -> __m64 {
-    mem::transmute(psadbw(mem::transmute(a), mem::transmute(b)))
+pub unsafe fn _mm_sad_pu8(a: __m64, b: __m64) -> __m64 {
+    psadbw(a, b)
 }
 
 /// Subtracts the corresponding 8-bit unsigned integer values of the two
@@ -195,8 +195,8 @@ pub unsafe fn _mm_sad_pu8(a: u8x8, b: u8x8) -> __m64 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(psadbw))]
-pub unsafe fn _m_psadbw(a: u8x8, b: u8x8) -> __m64 {
-    mem::transmute(_mm_sad_pu8(a, b))
+pub unsafe fn _m_psadbw(a: __m64, b: __m64) -> __m64 {
+    _mm_sad_pu8(a, b)
 }
 
 /// Converts two elements of a 64-bit vector of [2 x i32] into two
@@ -254,7 +254,7 @@ pub unsafe fn _mm_cvtpu16_ps(a: u16x4) -> f32x4 {
 /// into a 128-bit vector of [4 x float].
 #[inline(always)]
 #[target_feature = "+sse"]
-pub unsafe fn _mm_cvtpi8_ps(a: i8x8) -> f32x4 {
+pub unsafe fn _mm_cvtpi8_ps(a: __m64) -> f32x4 {
     let b = mmx::_mm_setzero_si64();
     let b = mmx::_mm_cmpgt_pi8(mem::transmute(b), a);
     let b = mmx::_mm_unpacklo_pi8(a, b);
@@ -265,9 +265,9 @@ pub unsafe fn _mm_cvtpi8_ps(a: i8x8) -> f32x4 {
 /// vector of [8 x u8] into a 128-bit vector of [4 x float].
 #[inline(always)]
 #[target_feature = "+sse"]
-pub unsafe fn _mm_cvtpu8_ps(a: u8x8) -> f32x4 {
+pub unsafe fn _mm_cvtpu8_ps(a: __m64) -> f32x4 {
     let b = mmx::_mm_setzero_si64();
-    let b = mmx::_mm_unpacklo_pi8(a.as_i8x8(), mem::transmute(b));
+    let b = mmx::_mm_unpacklo_pi8(a, mem::transmute(b));
     _mm_cvtpi16_ps(mem::transmute(b))
 }
 
@@ -293,8 +293,8 @@ pub unsafe fn _mm_cvtpi32x2_ps(a: i32x2, b: i32x2) -> f32x4 {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(maskmovq))]
-pub unsafe fn _mm_maskmove_si64(a: i8x8, mask: i8x8, mem_addr: *mut i8) {
-    maskmovq(mem::transmute(a), mem::transmute(mask), mem_addr)
+pub unsafe fn _mm_maskmove_si64(a: __m64, mask: __m64, mem_addr: *mut i8) {
+    maskmovq(a, mask, mem_addr)
 }
 
 /// Conditionally copies the values from each 8-bit element in the first
@@ -307,7 +307,7 @@ pub unsafe fn _mm_maskmove_si64(a: i8x8, mask: i8x8, mem_addr: *mut i8) {
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(maskmovq))]
-pub unsafe fn _m_maskmovq(a: i8x8, mask: i8x8, mem_addr: *mut i8) {
+pub unsafe fn _m_maskmovq(a: __m64, mask: __m64, mem_addr: *mut i8) {
     _mm_maskmove_si64(a, mask, mem_addr)
 }
 
@@ -482,8 +482,8 @@ mod tests {
         let b = u8x8::new(5, 2, 7, 4, 5, 2, 7, 4);
         let r = u8x8::new(5, 6, 7, 8, 5, 6, 7, 8);
 
-        assert_eq!(r, sse::_mm_max_pu8(a, b));
-        assert_eq!(r, sse::_m_pmaxub(a, b));
+        assert_eq!(r, u8x8::from(sse::_mm_max_pu8(a.into(), b.into())));
+        assert_eq!(r, u8x8::from(sse::_m_pmaxub(a.into(), b.into())));
     }
 
     #[simd_test = "sse"]
@@ -502,8 +502,8 @@ mod tests {
         let b = u8x8::new(5, 2, 7, 4, 5, 2, 7, 4);
         let r = u8x8::new(2, 2, 3, 4, 2, 2, 3, 4);
 
-        assert_eq!(r, sse::_mm_min_pu8(a, b));
-        assert_eq!(r, sse::_m_pminub(a, b));
+        assert_eq!(r, u8x8::from(sse::_mm_min_pu8(a.into(), b.into())));
+        assert_eq!(r, u8x8::from(sse::_m_pminub(a.into(), b.into())));
     }
 
     #[simd_test = "sse"]
@@ -516,10 +516,10 @@ mod tests {
     #[simd_test = "sse"]
     unsafe fn _mm_avg_pu8() {
         let (a, b) = (u8x8::splat(3), u8x8::splat(9));
-        let r = sse::_mm_avg_pu8(a, b);
+        let r = u8x8::from(sse::_mm_avg_pu8(a.into(), b.into()));
         assert_eq!(r, u8x8::splat(6));
 
-        let r = sse::_m_pavgb(a, b);
+        let r = u8x8::from(sse::_m_pavgb(a.into(), b.into()));
         assert_eq!(r, u8x8::splat(6));
     }
 
@@ -538,10 +538,10 @@ mod tests {
     unsafe fn _mm_sad_pu8() {
         let a = u8x8::new(255, 254, 253, 252, 1, 2, 3, 4);
         let b = u8x8::new(0, 0, 0, 0, 2, 1, 2, 1);
-        let r = sse::_mm_sad_pu8(a, b);
+        let r = sse::_mm_sad_pu8(a.into(), b.into());
         assert_eq!(r, mem::transmute(u16x4::new(1020, 0, 0, 0)));
 
-        let r = sse::_m_psadbw(a, b);
+        let r = sse::_m_psadbw(a.into(), b.into());
         assert_eq!(r, mem::transmute(u16x4::new(1020, 0, 0, 0)));
     }
 
@@ -577,7 +577,7 @@ mod tests {
     unsafe fn _mm_cvtpi8_ps() {
         let a = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let expected = f32x4::new(1., 2., 3., 4.);
-        let r = sse::_mm_cvtpi8_ps(a);
+        let r = sse::_mm_cvtpi8_ps(a.into());
         assert_eq!(r, expected);
     }
 
@@ -585,7 +585,7 @@ mod tests {
     unsafe fn _mm_cvtpu8_ps() {
         let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let expected = f32x4::new(1., 2., 3., 4.);
-        let r = sse::_mm_cvtpu8_ps(a);
+        let r = sse::_mm_cvtpu8_ps(a.into());
         assert_eq!(r, expected);
     }
 
@@ -603,11 +603,11 @@ mod tests {
         let a = i8x8::splat(9);
         let mask = i8x8::splat(0).replace(2, 0x80u8 as i8);
         let mut r = i8x8::splat(0);
-        sse::_mm_maskmove_si64(a, mask, &mut r as *mut _ as *mut i8);
+        sse::_mm_maskmove_si64(a.into(), mask.into(), &mut r as *mut _ as *mut i8);
         assert_eq!(r, i8x8::splat(0).replace(2, 9));
 
         let mut r = i8x8::splat(0);
-        sse::_m_maskmovq(a, mask, &mut r as *mut _ as *mut i8);
+        sse::_m_maskmovq(a.into(), mask.into(), &mut r as *mut _ as *mut i8);
         assert_eq!(r, i8x8::splat(0).replace(2, 9));
     }
 
