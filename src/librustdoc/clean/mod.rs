@@ -834,8 +834,9 @@ impl Clean<Attributes> for [ast::Attribute] {
                 let path = {
                     let is_value;
                     let path_str = if let Some(prefix) =
-                        ["struct", "enum", "type", "trait", "union"].iter()
-                                                                    .find(|p| link.starts_with(**p)) {
+                        ["struct", "enum", "type",
+                         "trait", "union"].iter()
+                                          .find(|p| link.starts_with(**p)) {
                         is_value = Some(false);
                         link.trim_left_matches(prefix).trim()
                     } else if let Some(prefix) =
@@ -857,7 +858,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                     // avoid resolving things (i.e. regular links) which aren't like paths
                     // FIXME(Manishearth) given that most links have slashes in them might be worth
                     // doing a check for slashes first
-                    if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ch == ':' || ch == '_')) {
+                    if path_str.contains(|ch: char| !(ch.is_alphanumeric() ||
+                                                      ch == ':' || ch == '_')) {
                         continue;
                     }
 
@@ -867,7 +869,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                         if let Some(id) = cx.mod_ids.borrow().last() {
                             cx.resolver.borrow_mut()
                                        .with_scope(*id, |resolver| {
-                                            resolver.resolve_str_path_error(DUMMY_SP, &path_str, is_val)
+                                            resolver.resolve_str_path_error(DUMMY_SP,
+                                                                            &path_str, is_val)
                                         })
                         } else {
                             // FIXME(Manishearth) this branch doesn't seem to ever be hit, really

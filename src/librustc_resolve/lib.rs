@@ -1440,7 +1440,8 @@ impl<'a> Resolver<'a> {
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occured.
-    pub fn resolve_str_path_error(&mut self, span: Span, path_str: &str, is_value: bool) -> Result<hir::Path, ()> {
+    pub fn resolve_str_path_error(&mut self, span: Span, path_str: &str, is_value: bool)
+        -> Result<hir::Path, ()> {
         use std::iter;
         let mut errored = false;
 
