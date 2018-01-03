@@ -49,7 +49,6 @@ Misc
 ----
 - [Releases now ship with the Cargo book documentation.][45692]
 - [rustdoc now prints rendering warnings on every run.][45324]
-- [Release tarballs now come with rustfmt][45903]
 
 Compatibility Notes
 -------------------
@@ -83,7 +82,6 @@ Compatibility Notes
 [45852]: https://github.com/rust-lang/rust/issues/45852
 [45853]: https://github.com/rust-lang/rust/pull/45853
 [45887]: https://github.com/rust-lang/rust/pull/45887
-[45903]: https://github.com/rust-lang/rust/pull/45903
 [45920]: https://github.com/rust-lang/rust/pull/45920
 [cargo/4506]: https://github.com/rust-lang/cargo/pull/4506
 [cargo/4561]: https://github.com/rust-lang/cargo/pull/4561
