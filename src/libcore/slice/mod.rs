@@ -348,9 +348,9 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn chunks(&self, size: usize) -> Chunks<T> {
-        assert!(size != 0);
-        Chunks { v: self, size: size }
+    fn chunks(&self, chunk_size: usize) -> Chunks<T> {
+        assert!(chunk_size != 0);
+        Chunks { v: self, chunk_size: chunk_size }
     }
 
     #[inline]
@@ -532,7 +532,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
-        assert!(chunk_size > 0);
+        assert!(chunk_size != 0);
         ChunksMut { v: self, chunk_size: chunk_size }
     }
 
@@ -2117,7 +2117,7 @@ impl<'a, T> ExactSizeIterator for Windows<'a, T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Windows<'a, T> {}
 
-/// An iterator over a slice in (non-overlapping) chunks (`size` elements at a
+/// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
 /// time).
 ///
 /// When the slice len is not evenly divided by the chunk size, the last slice
@@ -2131,7 +2131,7 @@ impl<'a, T> FusedIterator for Windows<'a, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chunks<'a, T:'a> {
     v: &'a [T],
-    size: usize
+    chunk_size: usize
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
@@ -2140,7 +2140,7 @@ impl<'a, T> Clone for Chunks<'a, T> {
     fn clone(&self) -> Chunks<'a, T> {
         Chunks {
             v: self.v,
-            size: self.size,
+            chunk_size: self.chunk_size,
         }
     }
 }
@@ -2154,7 +2154,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
         if self.v.is_empty() {
             None
         } else {
-            let chunksz = cmp::min(self.v.len(), self.size);
+            let chunksz = cmp::min(self.v.len(), self.chunk_size);
             let (fst, snd) = self.v.split_at(chunksz);
             self.v = snd;
             Some(fst)
@@ -2166,8 +2166,8 @@ impl<'a, T> Iterator for Chunks<'a, T> {
         if self.v.is_empty() {
             (0, Some(0))
         } else {
-            let n = self.v.len() / self.size;
-            let rem = self.v.len() % self.size;
+            let n = self.v.len() / self.chunk_size;
+            let rem = self.v.len() % self.chunk_size;
             let n = if rem > 0 { n+1 } else { n };
             (n, Some(n))
         }
@@ -2180,12 +2180,12 @@ impl<'a, T> Iterator for Chunks<'a, T> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let (start, overflow) = n.overflowing_mul(self.size);
+        let (start, overflow) = n.overflowing_mul(self.chunk_size);
         if start >= self.v.len() || overflow {
             self.v = &[];
             None
         } else {
-            let end = match start.checked_add(self.size) {
+            let end = match start.checked_add(self.chunk_size) {
                 Some(sum) => cmp::min(self.v.len(), sum),
                 None => self.v.len(),
             };
@@ -2200,7 +2200,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
         if self.v.is_empty() {
             None
         } else {
-            let start = (self.v.len() - 1) / self.size * self.size;
+            let start = (self.v.len() - 1) / self.chunk_size * self.chunk_size;
             Some(&self.v[start..])
         }
     }
@@ -2213,8 +2213,8 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
         if self.v.is_empty() {
             None
         } else {
-            let remainder = self.v.len() % self.size;
-            let chunksz = if remainder != 0 { remainder } else { self.size };
+            let remainder = self.v.len() % self.chunk_size;
+            let chunksz = if remainder != 0 { remainder } else { self.chunk_size };
             let (fst, snd) = self.v.split_at(self.v.len() - chunksz);
             self.v = fst;
             Some(snd)
@@ -2228,7 +2228,7 @@ impl<'a, T> ExactSizeIterator for Chunks<'a, T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Chunks<'a, T> {}
 
-/// An iterator over a slice in (non-overlapping) mutable chunks (`size`
+/// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last slice of the iteration will be the remainder.
 ///
