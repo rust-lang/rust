@@ -22,22 +22,38 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
-WORKDIR /tmp
+WORKDIR /build
 
-COPY dist-various-1/build-rumprun.sh /tmp/
+COPY dist-various-1/build-rumprun.sh /build
 RUN ./build-rumprun.sh
 
-COPY dist-various-1/build-arm-musl.sh /tmp/
-RUN ./build-arm-musl.sh
+COPY dist-various-1/install-x86_64-redox.sh /build
+RUN ./install-x86_64-redox.sh
 
-COPY dist-various-1/install-mips-musl.sh /tmp/
+COPY scripts/musl.sh /build
+RUN env \
+    CC=arm-linux-gnueabi-gcc CFLAGS="-march=armv6 -marm" \
+    CXX=arm-linux-gnueabi-g++ CXXFLAGS="-march=armv6 -marm" \
+    bash musl.sh arm && \
+    env \
+    CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv6 -marm" \
+    CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv6 -marm" \
+    bash musl.sh armhf && \
+    env \
+    CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a" \
+    CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a" \
+    bash musl.sh armv7 && \
+    env \
+    CC=aarch64-linux-gnu-gcc \
+    CXX=aarch64-linux-gnu-g++ \
+    bash musl.sh aarch64 && \
+    rm -rf /build/*
+
+COPY dist-various-1/install-mips-musl.sh /build
 RUN ./install-mips-musl.sh
 
-COPY dist-various-1/install-mipsel-musl.sh /tmp/
+COPY dist-various-1/install-mipsel-musl.sh /build
 RUN ./install-mipsel-musl.sh
-
-COPY dist-various-1/install-x86_64-redox.sh /tmp/
-RUN ./install-x86_64-redox.sh
 
 ENV TARGETS=asmjs-unknown-emscripten
 ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
@@ -67,10 +83,10 @@ ENV STAGING_DIR=/tmp
 ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --target=$TARGETS \
-      --musl-root-arm=/usr/local/arm-linux-musleabi \
-      --musl-root-armhf=/usr/local/arm-linux-musleabihf \
-      --musl-root-armv7=/usr/local/armv7-linux-musleabihf \
-      --musl-root-aarch64=/usr/local/aarch64-linux-musl
+      --musl-root-arm=/musl-arm \
+      --musl-root-armhf=/musl-armhf \
+      --musl-root-armv7=/musl-armv7 \
+      --musl-root-aarch64=/musl-aarch64
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 
 # sccache
