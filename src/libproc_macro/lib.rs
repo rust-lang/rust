@@ -247,7 +247,7 @@ impl Span {
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn join(&self, other: Span) -> Option<Span> {
         let self_loc = __internal::lookup_char_pos(self.0.lo());
-        let other_loc = __internal::lookup_char_pos(self.0.lo());
+        let other_loc = __internal::lookup_char_pos(other.0.lo());
 
         if self_loc.file.name != other_loc.file.name { return None }
 
