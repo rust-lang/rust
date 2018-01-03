@@ -62,13 +62,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 Origin::Mir,
             );
 
-            err.span_label(
-                span,
-                format!(
-                    "value {} here after move",
-                    desired_action.as_verb_in_past_tense()
-                ),
-            );
+            let mut is_loop_move = false;
             for moi in mois {
                 let move_msg = ""; //FIXME: add " (into closure)"
                 let move_span = self.mir.source_info(self.move_data.moves[*moi].source).span;
@@ -77,9 +71,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         span,
                         format!("value moved{} here in previous iteration of loop", move_msg),
                     );
+                    is_loop_move = true;
                 } else {
                     err.span_label(move_span, format!("value moved{} here", move_msg));
                 };
+            }
+            if !is_loop_move {
+                err.span_label(
+                    span,
+                    format!(
+                        "value {} here after move",
+                        desired_action.as_verb_in_past_tense()
+                    ),
+                );
             }
 
             if let Some(ty) = self.retrieve_type_for_place(place) {

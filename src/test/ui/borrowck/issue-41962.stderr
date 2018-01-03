@@ -31,10 +31,7 @@ error[E0382]: use of moved value: `maybe.0` (Mir)
   --> $DIR/issue-41962.rs:17:21
    |
 17 |         if let Some(thing) = maybe {
-   |                     ^^^^^
-   |                     |
-   |                     value used here after move
-   |                     value moved here in previous iteration of loop
+   |                     ^^^^^ value moved here in previous iteration of loop
    |
    = note: move occurs because `maybe.0` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
