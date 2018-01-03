@@ -38,7 +38,6 @@ Stabilized APIs
 
 Cargo
 -----
-- [Cargo now supports alternative registries][cargo/4506]
 - [Cargo now supports uninstallation of multiple packages][cargo/4561]
   eg. `cargo uninstall foo bar` uninstalls `foo` and `bar`.
 - [Added unit test checking to `cargo check`][cargo/4592]
@@ -83,7 +82,6 @@ Compatibility Notes
 [45853]: https://github.com/rust-lang/rust/pull/45853
 [45887]: https://github.com/rust-lang/rust/pull/45887
 [45920]: https://github.com/rust-lang/rust/pull/45920
-[cargo/4506]: https://github.com/rust-lang/cargo/pull/4506
 [cargo/4561]: https://github.com/rust-lang/cargo/pull/4561
 [cargo/4592]: https://github.com/rust-lang/cargo/pull/4592
 [cargo/4637]: https://github.com/rust-lang/cargo/pull/4637
