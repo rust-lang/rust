@@ -606,14 +606,14 @@ impl<T> [T] {
         core_slice::SliceExt::windows(self, size)
     }
 
-    /// Returns an iterator over `size` elements of the slice at a
-    /// time. The chunks are slices and do not overlap. If `size` does
+    /// Returns an iterator over `chunk_size` elements of the slice at a
+    /// time. The chunks are slices and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last chunk will
-    /// not have length `size`.
+    /// not have length `chunk_size`.
     ///
     /// # Panics
     ///
-    /// Panics if `size` is 0.
+    /// Panics if `chunk_size` is 0.
     ///
     /// # Examples
     ///
@@ -627,8 +627,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn chunks(&self, size: usize) -> Chunks<T> {
-        core_slice::SliceExt::chunks(self, size)
+    pub fn chunks(&self, chunk_size: usize) -> Chunks<T> {
+        core_slice::SliceExt::chunks(self, chunk_size)
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
@@ -1725,6 +1725,14 @@ impl [u8] {
            reason = "trait should not have to exist",
            issue = "27747")]
 /// An extension trait for concatenating slices
+///
+/// While this trait is unstable, the methods are stable. `SliceConcatExt` is
+/// included in the [standard library prelude], so you can use [`join()`] and
+/// [`concat()`] as if they existed on `[T]` itself.
+///
+/// [standard library prelude]: ../../std/prelude/index.html
+/// [`join()`]: #tymethod.join
+/// [`concat()`]: #tymethod.concat
 pub trait SliceConcatExt<T: ?Sized> {
     #[unstable(feature = "slice_concat_ext",
                reason = "trait should not have to exist",

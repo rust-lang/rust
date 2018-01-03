@@ -56,7 +56,7 @@ fn repeat_byte(b: u8) -> usize {
     rep
 }
 
-/// Return the first index matching the byte `a` in `text`.
+/// Return the first index matching the byte `x` in `text`.
 pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     // Scan for a single byte value by reading two `usize` words at a time.
     //
@@ -101,7 +101,7 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     text[offset..].iter().position(|elt| *elt == x).map(|i| offset + i)
 }
 
-/// Return the last index matching the byte `a` in `text`.
+/// Return the last index matching the byte `x` in `text`.
 pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     // Scan for a single byte value by reading two `usize` words at a time.
     //
