@@ -1374,14 +1374,14 @@ mod tests {
     #[test]
     fn issue_17736() {
         let markdown = "# title";
-        format!("{}", Markdown(markdown, RenderType::Pulldown));
+        format!("{}", Markdown(markdown, &[], RenderType::Pulldown));
         reset_ids(true);
     }
 
     #[test]
     fn test_header() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input, RenderType::Pulldown));
+            let output = format!("{}", Markdown(input, &[], RenderType::Pulldown));
             assert_eq!(output, expect, "original: {}", input);
             reset_ids(true);
         }
@@ -1403,7 +1403,7 @@ mod tests {
     #[test]
     fn test_header_ids_multiple_blocks() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input, RenderType::Pulldown));
+            let output = format!("{}", Markdown(input, &[], RenderType::Pulldown));
             assert_eq!(output, expect, "original: {}", input);
         }
 
