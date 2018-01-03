@@ -416,7 +416,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct => {
-                        if !def.repr.c() {
+                        if !def.repr.c() && !def.repr.transparent() {
                             return FfiUnsafe("found struct without foreign-function-safe \
                                               representation annotation in foreign module, \
                                               consider adding a #[repr(C)] attribute to the type");
@@ -427,13 +427,24 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                               adding a member to this struct");
                         }
 
-                        // We can't completely trust repr(C) markings; make sure the
-                        // fields are actually safe.
+                        // We can't completely trust repr(C) and repr(transparent) markings;
+                        // make sure the fields are actually safe.
                         let mut all_phantom = true;
                         for field in &def.non_enum_variant().fields {
                             let field_ty = cx.fully_normalize_associated_types_in(
                                 &field.ty(cx, substs)
                             );
+                            // repr(transparent) types are allowed to have arbitrary ZSTs, not just
+                            // PhantomData -- skip checking all ZST fields
+                            if def.repr.transparent() {
+                                let is_zst = (cx, cx.param_env(field.did))
+                                    .layout_of(field_ty)
+                                    .map(|layout| layout.is_zst())
+                                    .unwrap_or(false);
+                                if is_zst {
+                                    continue;
+                                }
+                            }
                             let r = self.check_type_for_ffi(cache, field_ty);
                             match r {
                                 FfiSafe => {

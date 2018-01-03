@@ -92,6 +92,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         let mut int_reprs = 0;
         let mut is_c = false;
         let mut is_simd = false;
+        let mut is_transparent = false;
 
         for hint in &hints {
             let name = if let Some(name) = hint.name() {
@@ -137,6 +138,14 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                         continue
                     }
                 }
+                "transparent" => {
+                    is_transparent = true;
+                    if target != Target::Struct {
+                        ("a", "struct")
+                    } else {
+                        continue
+                    }
+                }
                 "i8" | "u8" | "i16" | "u16" |
                 "i32" | "u32" | "i64" | "u64" |
                 "isize" | "usize" => {
@@ -155,14 +164,22 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 .emit();
         }
 
+        // Just point at all repr hints if there are any incompatibilities.
+        // This is not ideal, but tracking precisely which ones are at fault is a huge hassle.
+        let hint_spans = hints.iter().map(|hint| hint.span);
+
+        // Error on repr(transparent, <anything else>).
+        if is_transparent && hints.len() > 1 {
+            let hint_spans: Vec<_> = hint_spans.clone().collect();
+            span_err!(self.tcx.sess, hint_spans, E0692,
+                      "transparent struct cannot have other repr hints");
+        }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
            || (is_simd && is_c)
            || (int_reprs == 1 && is_c && is_c_like_enum(item)) {
-            // Just point at all repr hints. This is not ideal, but tracking
-            // precisely which ones are at fault is a huge hassle.
-            let spans: Vec<_> = hints.iter().map(|hint| hint.span).collect();
-            span_warn!(self.tcx.sess, spans, E0566,
+            let hint_spans: Vec<_> = hint_spans.collect();
+            span_warn!(self.tcx.sess, hint_spans, E0566,
                        "conflicting representation hints");
         }
     }

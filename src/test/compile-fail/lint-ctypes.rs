@@ -9,9 +9,11 @@
 // except according to those terms.
 
 #![deny(improper_ctypes)]
-#![feature(libc, i128_type)]
+#![feature(libc, i128_type, repr_transparent)]
 
 extern crate libc;
+
+use std::marker::PhantomData;
 
 trait Mirror { type It: ?Sized; }
 impl<T: ?Sized> Mirror for T { type It = Self; }
@@ -28,6 +30,22 @@ pub type RustFn = fn();
 pub type RustBadRet = extern fn() -> Box<u32>;
 pub type CVoidRet = ();
 pub struct Foo;
+#[repr(transparent)]
+pub struct TransparentI128(i128);
+#[repr(transparent)]
+pub struct TransparentStr(&'static str);
+#[repr(transparent)]
+pub struct TransparentBadFn(RustBadRet);
+#[repr(transparent)]
+pub struct TransparentInt(u32);
+#[repr(transparent)]
+pub struct TransparentRef<'a>(&'a TransparentInt);
+#[repr(transparent)]
+pub struct TransparentLifetime<'a>(*const u8, PhantomData<&'a ()>);
+#[repr(transparent)]
+pub struct TransparentUnit<U>(f32, PhantomData<U>);
+#[repr(transparent)]
+pub struct TransparentCustomZst(i32, ZeroSize);
 
 #[repr(C)]
 pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
@@ -51,6 +69,9 @@ extern {
     pub fn fn_type(p: RustFn); //~ ERROR found function pointer with Rust
     pub fn fn_type2(p: fn()); //~ ERROR found function pointer with Rust
     pub fn fn_contained(p: RustBadRet); //~ ERROR: found struct without
+    pub fn transparent_i128(p: TransparentI128); //~ ERROR: found Rust type `i128`
+    pub fn transparent_str(p: TransparentStr); //~ ERROR: found Rust type `str`
+    pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: found struct without
 
     pub fn good3(fptr: Option<extern fn()>);
     pub fn good4(aptr: &[u8; 4 as usize]);
@@ -62,6 +83,11 @@ extern {
     pub fn good10() -> CVoidRet;
     pub fn good11(size: isize);
     pub fn good12(size: usize);
+    pub fn good13(n: TransparentInt);
+    pub fn good14(p: TransparentRef);
+    pub fn good15(p: TransparentLifetime);
+    pub fn good16(p: TransparentUnit<ZeroSize>);
+    pub fn good17(p: TransparentCustomZst);
 }
 
 #[cfg(not(target_arch = "wasm32"))]

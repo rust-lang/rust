@@ -101,6 +101,7 @@ use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
+use rustc::ty::layout::LayoutOf;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use require_c_abi_if_variadic;
 use session::{CompileIncomplete, config, Session};
@@ -1104,6 +1105,7 @@ fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         check_simd(tcx, span, def_id);
     }
 
+    check_transparent(tcx, span, def_id);
     check_packed(tcx, span, def_id);
 }
 
@@ -1515,6 +1517,42 @@ fn check_packed_inner<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _ => ()
     }
     false
+}
+
+fn check_transparent<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId) {
+    let adt = tcx.adt_def(def_id);
+    if !adt.repr.transparent() {
+        return;
+    }
+
+    // For each field, figure out if it's known to be a ZST and align(1)
+    let field_infos: Vec<_> = adt.non_enum_variant().fields.iter().map(|field| {
+        let ty = field.ty(tcx, Substs::identity_for_item(tcx, field.did));
+        let param_env = tcx.param_env(field.did);
+        let layout = (tcx, param_env).layout_of(ty);
+        // We are currently checking the type this field came from, so it must be local
+        let span = tcx.hir.span_if_local(field.did).unwrap();
+        let zst = layout.map(|layout| layout.is_zst()).unwrap_or(false);
+        let align1 = layout.map(|layout| layout.align.abi() == 1).unwrap_or(false);
+        (span, zst, align1)
+    }).collect();
+
+    let non_zst_fields = field_infos.iter().filter(|(_span, zst, _align1)| !*zst);
+    let non_zst_count = non_zst_fields.clone().count();
+    if non_zst_count != 1 {
+        let field_spans: Vec<_> = non_zst_fields.map(|(span, _zst, _align1)| *span).collect();
+        struct_span_err!(tcx.sess, sp, E0690,
+                         "transparent struct needs exactly one non-zero-sized field, but has {}",
+                          non_zst_count)
+        .span_note(field_spans, "non-zero-sized field")
+        .emit();
+    }
+    for &(span, zst, align1) in &field_infos {
+        if zst && !align1 {
+            span_err!(tcx.sess, span, E0691,
+                      "zero-sized field in transparent struct has alignment larger than 1");
+        }
+    }
 }
 
 #[allow(trivial_numeric_casts)]
