@@ -1053,6 +1053,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          2 = full debug info with variable and type information"),
     opt_level: Option<String> = (None, parse_opt_string, [TRACKED],
         "optimize with possible levels 0-3, s, or z"),
+    force_frame_pointers: bool = (false, parse_bool, [TRACKED],
+        "force frame pointers to be used"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the cfg(debug_assertions) directive"),
     inline_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
@@ -2963,6 +2965,10 @@ mod tests {
 
         opts = reference.clone();
         opts.cg.debuginfo = Some(0xba5eba11);
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.cg.force_frame_pointers = true;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

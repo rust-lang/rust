@@ -20,7 +20,7 @@ use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{DebugInfoLevel, OutputType};
+use session::config::{OutputType};
 use ty::tls;
 use util::nodemap::{FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
