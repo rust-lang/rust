@@ -458,7 +458,6 @@ pub unsafe fn _mm_cvtps_pi8(a: f32x4) -> __m64 {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(not(windows))]
     use std::mem;
 
     use v128::f32x4;
@@ -534,7 +533,6 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_sad_pu8() {
         let a = u8x8::new(255, 254, 253, 252, 1, 2, 3, 4);
         let b = u8x8::new(0, 0, 0, 0, 2, 1, 2, 1);

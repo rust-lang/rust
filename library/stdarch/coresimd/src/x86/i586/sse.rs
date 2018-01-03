@@ -2965,7 +2965,6 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_loadh_pi() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let x: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
@@ -2975,7 +2974,6 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_loadl_pi() {
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let x: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
@@ -3049,7 +3047,6 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_storeh_pi() {
         let mut vals = [0.0f32; 8];
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
@@ -3061,7 +3058,6 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_storel_pi() {
         let mut vals = [0.0f32; 8];
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
@@ -3298,7 +3294,6 @@ mod tests {
     }
 
     #[simd_test = "sse,mmx"]
-    #[cfg(not(windows))] // FIXME "unknown codeview register" in LLVM
     unsafe fn _mm_stream_pi() {
         use std::mem;
         use v64::*;

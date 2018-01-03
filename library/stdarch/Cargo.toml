@@ -29,7 +29,7 @@ debug = true
 opt-level = 3
 
 [profile.bench]
-debug = true
+debug = 1
 opt-level = 3
 
 [features]
