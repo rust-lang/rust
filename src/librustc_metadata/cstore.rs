@@ -91,7 +91,7 @@ pub struct CrateMetadata {
 }
 
 pub struct CStore {
-    metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
+    metas: RefCell<IndexVec<CrateNum, Option<Rc<CrateMetadata>>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
     pub metadata_loader: Box<MetadataLoader>,
@@ -100,7 +100,7 @@ pub struct CStore {
 impl CStore {
     pub fn new(metadata_loader: Box<MetadataLoader>) -> CStore {
         CStore {
-            metas: RefCell::new(FxHashMap()),
+            metas: RefCell::new(IndexVec::new()),
             extern_mod_crate_map: RefCell::new(FxHashMap()),
             metadata_loader,
         }
@@ -111,18 +111,25 @@ impl CStore {
     }
 
     pub fn get_crate_data(&self, cnum: CrateNum) -> Rc<CrateMetadata> {
-        self.metas.borrow().get(&cnum).unwrap().clone()
+        self.metas.borrow()[cnum].clone().unwrap()
     }
 
     pub fn set_crate_data(&self, cnum: CrateNum, data: Rc<CrateMetadata>) {
-        self.metas.borrow_mut().insert(cnum, data);
+        use rustc_data_structures::indexed_vec::Idx;
+        let mut met = self.metas.borrow_mut();
+        while met.len() <= cnum.index() {
+            met.push(None);
+        }
+        met[cnum] = Some(data);
     }
 
     pub fn iter_crate_data<I>(&self, mut i: I)
         where I: FnMut(CrateNum, &Rc<CrateMetadata>)
     {
-        for (&k, v) in self.metas.borrow().iter() {
-            i(k, v);
+        for (k, v) in self.metas.borrow().iter_enumerated() {
+            if let &Some(ref v) = v {
+                i(k, v);
+            }
         }
     }
 
@@ -150,8 +157,10 @@ impl CStore {
 
     pub fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
-        for (&num, _) in self.metas.borrow().iter() {
-            self.push_dependencies_in_postorder(&mut ordering, num);
+        for (num, v) in self.metas.borrow().iter_enumerated() {
+            if let &Some(_) = v {
+                self.push_dependencies_in_postorder(&mut ordering, num);
+            }
         }
         return ordering
     }
