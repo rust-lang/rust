@@ -1071,8 +1071,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // #45983: when trying to assign the contents of an argument to a binding outside of a
         // closure, provide a specific message pointing this out.
         if let (&SubregionOrigin::BindingTypeIsNotValidAtDecl(ref external_span),
-                &SubregionOrigin::Subtype(_),
-                &RegionKind::ReFree(ref free_region)) = (&sub_origin, &sup_origin, sup_region) {
+                &RegionKind::ReFree(ref free_region)) = (&sub_origin, sup_region) {
             let hir = &self.tcx.hir;
             if let Some(node_id) = hir.as_local_node_id(free_region.scope) {
                 match hir.get(node_id) {

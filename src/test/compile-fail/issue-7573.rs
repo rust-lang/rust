@@ -24,7 +24,8 @@ impl CrateId {
 }
 
 pub fn remove_package_from_database() {
-    let mut lines_to_use: Vec<&CrateId> = Vec::new(); //~ ERROR E0495
+    let mut lines_to_use: Vec<&CrateId> = Vec::new();
+    //~^ ERROR borrowed data cannot be moved outside of its closure
     let push_id = |installed_id: &CrateId| {
         lines_to_use.push(installed_id);
     };

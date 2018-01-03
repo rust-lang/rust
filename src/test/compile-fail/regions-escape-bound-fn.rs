@@ -15,5 +15,6 @@ fn with_int<F>(f: F) where F: FnOnce(&isize) {
 
 fn main() {
     let mut x: Option<&isize> = None;
-    with_int(|y| x = Some(y));   //~ ERROR cannot infer
+    with_int(|y| x = Some(y));
+    //~^ ERROR borrowed data cannot be moved outside of its closure
 }

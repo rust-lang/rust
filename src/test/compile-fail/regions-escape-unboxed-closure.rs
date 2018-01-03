@@ -13,5 +13,6 @@ fn with_int(f: &mut FnMut(&isize)) {
 
 fn main() {
     let mut x: Option<&isize> = None;
-    with_int(&mut |y| x = Some(y));   //~ ERROR cannot infer
+    with_int(&mut |y| x = Some(y));
+    //~^ ERROR borrowed data cannot be moved outside of its closure
 }
