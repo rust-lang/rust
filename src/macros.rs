@@ -316,19 +316,7 @@ pub fn rewrite_macro_def(
     // `$$`). We'll try and format like an AST node, but we'll substitute
     // variables for new names with the same length first.
 
-    let body_sp = match branch.body {
-        Some(sp) => sp,
-        None => {
-            // FIXME: should check the single-line empty function option
-            return Some(format!(
-                "{}macro {}({}) {{}}\n",
-                format_visibility(vis),
-                ident,
-                args_str,
-            ));
-        }
-    };
-    let old_body = context.snippet(body_sp);
+    let old_body = context.snippet(branch.body).trim();
     let (body_str, substs) = replace_names(old_body);
 
     // We'll hack the indent below, take this into account when formatting,
@@ -350,7 +338,13 @@ pub fn rewrite_macro_def(
     let indent_str = indent.block_indent(&config).to_string(&config);
     let mut new_body = new_body
         .lines()
-        .map(|l| format!("{}{}", indent_str, l))
+        .map(|l| {
+            if l.is_empty() {
+                l.to_owned()
+            } else {
+                format!("{}{}", indent_str, l)
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -726,7 +720,10 @@ impl MacroParser {
         }
         let body = match self.toks.next()? {
             TokenTree::Token(..) => return None,
-            TokenTree::Delimited(_, ref d) => inner_span(d.tts.clone().into()),
+            TokenTree::Delimited(sp, _) => {
+                let data = sp.data();
+                Span::new(data.lo + BytePos(1), data.hi - BytePos(1), data.ctxt)
+            }
         };
         Some(MacroBranch {
             args,
@@ -734,21 +731,6 @@ impl MacroParser {
             body,
         })
     }
-}
-
-fn inner_span(ts: TokenStream) -> Option<Span> {
-    let mut cursor = ts.trees();
-    let first = match cursor.next() {
-        Some(t) => t.span(),
-        None => return None,
-    };
-
-    let last = match cursor.last() {
-        Some(t) => t.span(),
-        None => return Some(first),
-    };
-
-    Some(first.to(last))
 }
 
 // A parsed macros 2.0 macro definition.
@@ -761,7 +743,7 @@ struct Macro {
 struct MacroBranch {
     args: ThinTokenStream,
     args_paren_kind: DelimToken,
-    body: Option<Span>,
+    body: Span,
 }
 
 #[cfg(test)]

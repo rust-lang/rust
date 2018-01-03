@@ -312,3 +312,11 @@ pub macro bar($x:ident+$y:expr; ) {
                   $x.bar($y));
     }
 }
+
+macro foo() {
+  // a comment
+  fn foo() {
+  // another comment
+  bar();
+  }
+}
