@@ -347,11 +347,11 @@ impl<'tcx> LoanPath<'tcx> {
 
     fn to_type(&self) -> Ty<'tcx> { self.ty }
 
-    fn is_downcast(&self) -> bool {
+    fn has_downcast(&self) -> bool {
         match self.kind {
             LpDowncast(_, _) => true,
             LpExtend(ref lp, _, LpInterior(_, _)) => {
-                lp.is_downcast()
+                lp.has_downcast()
             }
             _ => false,
         }
@@ -733,7 +733,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         if need_note {
             err.note(&format!(
                 "move occurs because {} has type `{}`, which does not implement the `Copy` trait",
-                if moved_lp.is_downcast() {
+                if moved_lp.has_downcast() {
                     "the value".to_string()
                 } else {
                     format!("`{}`", self.loan_path_to_string(moved_lp))
