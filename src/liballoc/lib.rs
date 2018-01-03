@@ -104,6 +104,7 @@
 #![feature(lang_items)]
 #![feature(needs_allocator)]
 #![feature(nonzero)]
+#![feature(non_exhaustive)]
 #![feature(offset_to)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]

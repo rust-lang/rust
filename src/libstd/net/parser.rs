@@ -306,7 +306,7 @@ impl FromStr for IpAddr {
     fn from_str(s: &str) -> Result<IpAddr, AddrParseError> {
         match Parser::new(s).read_till_eof(|p| p.read_ip_addr()) {
             Some(s) => Ok(s),
-            None => Err(AddrParseError(()))
+            None => Err(AddrParseError)
         }
     }
 }
@@ -317,7 +317,7 @@ impl FromStr for Ipv4Addr {
     fn from_str(s: &str) -> Result<Ipv4Addr, AddrParseError> {
         match Parser::new(s).read_till_eof(|p| p.read_ipv4_addr()) {
             Some(s) => Ok(s),
-            None => Err(AddrParseError(()))
+            None => Err(AddrParseError)
         }
     }
 }
@@ -328,7 +328,7 @@ impl FromStr for Ipv6Addr {
     fn from_str(s: &str) -> Result<Ipv6Addr, AddrParseError> {
         match Parser::new(s).read_till_eof(|p| p.read_ipv6_addr()) {
             Some(s) => Ok(s),
-            None => Err(AddrParseError(()))
+            None => Err(AddrParseError)
         }
     }
 }
@@ -339,7 +339,7 @@ impl FromStr for SocketAddrV4 {
     fn from_str(s: &str) -> Result<SocketAddrV4, AddrParseError> {
         match Parser::new(s).read_till_eof(|p| p.read_socket_addr_v4()) {
             Some(s) => Ok(s),
-            None => Err(AddrParseError(())),
+            None => Err(AddrParseError),
         }
     }
 }
@@ -350,7 +350,7 @@ impl FromStr for SocketAddrV6 {
     fn from_str(s: &str) -> Result<SocketAddrV6, AddrParseError> {
         match Parser::new(s).read_till_eof(|p| p.read_socket_addr_v6()) {
             Some(s) => Ok(s),
-            None => Err(AddrParseError(())),
+            None => Err(AddrParseError),
         }
     }
 }
@@ -361,7 +361,7 @@ impl FromStr for SocketAddr {
     fn from_str(s: &str) -> Result<SocketAddr, AddrParseError> {
         match Parser::new(s).read_till_eof(|p| p.read_socket_addr()) {
             Some(s) => Ok(s),
-            None => Err(AddrParseError(())),
+            None => Err(AddrParseError),
         }
     }
 }
@@ -381,7 +381,8 @@ impl FromStr for SocketAddr {
 /// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AddrParseError(());
+#[non_exhaustive]
+pub struct AddrParseError;
 
 #[stable(feature = "addr_parse_error_error", since = "1.4.0")]
 impl fmt::Display for AddrParseError {

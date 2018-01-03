@@ -561,6 +561,7 @@ if __name__ == "__main__":
 ///
 /// See also: <http://www.unicode.org/versions/>
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[non_exhaustive]
 pub struct UnicodeVersion {
     /// Major version.
     pub major: u32,
@@ -570,9 +571,6 @@ pub struct UnicodeVersion {
 
     /// Micro (or Update) version.
     pub micro: u32,
-
-    // Private field to keep struct expandable.
-    _priv: (),
 }
 
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
@@ -581,7 +579,6 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
     major: %s,
     minor: %s,
     micro: %s,
-    _priv: (),
 };
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,

@@ -35,6 +35,7 @@
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #![feature(i128_type)]
+#![feature(non_exhaustive)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(lang_items)]
@@ -78,9 +79,8 @@ pub struct TokenStream(tokenstream::TokenStream);
 /// Error returned from `TokenStream::from_str`.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 #[derive(Debug)]
-pub struct LexError {
-    _inner: (),
-}
+#[non_exhaustive]
+pub struct LexError;
 
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl FromStr for TokenStream {
@@ -827,5 +827,5 @@ pub mod __internal {
 
 fn parse_to_lex_err(mut err: DiagnosticBuilder) -> LexError {
     err.cancel();
-    LexError { _inner: () }
+    LexError
 }
