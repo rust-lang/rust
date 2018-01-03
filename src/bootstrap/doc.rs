@@ -671,7 +671,8 @@ impl Step for ErrorIndex {
         index.arg(out.join("error-index.html"));
 
         // FIXME: shouldn't have to pass this env var
-        index.env("CFG_BUILD", &build.build);
+        index.env("CFG_BUILD", &build.build)
+             .env("RUSTC_ERROR_METADATA_DST", build.extended_error_dir());
 
         build.run(&mut index);
     }
