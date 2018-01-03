@@ -1071,7 +1071,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // #45983: when trying to assign the contents of an argument to a binding outside of a
         // closure, provide a specific message pointing this out.
         if let (&SubregionOrigin::BindingTypeIsNotValidAtDecl(ref external_span),
-                &SubregionOrigin::Subtype(TypeTrace { ref cause, .. }),
+                &SubregionOrigin::Subtype(_),
                 &RegionKind::ReFree(ref free_region)) = (&sub_origin, &sup_origin, sup_region) {
             let hir = &self.tcx.hir;
             if let Some(node_id) = hir.as_local_node_id(free_region.scope) {
@@ -1084,15 +1084,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let mut err = self.tcx.sess.struct_span_err(
                             sp,
                             "borrowed data cannot be moved outside of its closure");
-                        let label = match cause.code {
-                            ObligationCauseCode::ExprAssignable => {
-                                "cannot be assigned to binding outside of its closure"
-                            }
-                            _ => "cannot be moved outside of its closure",
-                        };
-                        err.span_label(sp, label);
-                        err.span_label(*closure_span, "closure you can't escape");
-                        err.span_label(*external_span, "binding declared outside of closure");
+                        err.span_label(sp, "cannot be moved outside of its closure");
+                        err.span_label(*external_span,
+                                       "borrowed data cannot be moved into here...");
+                        err.span_label(*closure_span,
+                                       "...because it cannot outlive this closure");
                         err.emit();
                         return;
                     }
