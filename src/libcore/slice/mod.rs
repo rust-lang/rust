@@ -2117,6 +2117,14 @@ impl<'a, T> ExactSizeIterator for Windows<'a, T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Windows<'a, T> {}
 
+#[doc(hidden)]
+unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
+        from_raw_parts(self.v.as_ptr().offset(i as isize), self.size)
+    }
+    fn may_have_side_effect() -> bool { false }
+}
+
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
 /// time).
 ///
@@ -2228,6 +2236,19 @@ impl<'a, T> ExactSizeIterator for Chunks<'a, T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Chunks<'a, T> {}
 
+#[doc(hidden)]
+unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
+        let start = i * self.chunk_size;
+        let end = match start.checked_add(self.chunk_size) {
+            None => self.v.len(),
+            Some(end) => cmp::min(end, self.v.len()),
+        };
+        from_raw_parts(self.v.as_ptr().offset(start as isize), end - start)
+    }
+    fn may_have_side_effect() -> bool { false }
+}
+
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last slice of the iteration will be the remainder.
@@ -2330,6 +2351,19 @@ impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for ChunksMut<'a, T> {}
+
+#[doc(hidden)]
+unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
+    unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T] {
+        let start = i * self.chunk_size;
+        let end = match start.checked_add(self.chunk_size) {
+            None => self.v.len(),
+            Some(end) => cmp::min(end, self.v.len()),
+        };
+        from_raw_parts_mut(self.v.as_mut_ptr().offset(start as isize), end - start)
+    }
+    fn may_have_side_effect() -> bool { false }
+}
 
 //
 // Free functions
