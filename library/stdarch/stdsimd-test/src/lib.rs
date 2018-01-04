@@ -327,6 +327,13 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
         // cpuid returns a pretty big aggregate structure so excempt it from the
         // slightly more restrictive 20 instructions below
         "cpuid" => 30,
+
+        // Apparently on Windows LLVM generates a bunch of saves/restores of xmm
+        // registers around these intstructions which blows the 20 limit
+        // below. As it seems dictates by Windows's abi (I guess?) we probably
+        // can't do much about it...
+        "vzeroall" | "vzeroupper" if cfg!(windows) => 30,
+
         _ => 20,
     };
     let probably_only_one_instruction =
