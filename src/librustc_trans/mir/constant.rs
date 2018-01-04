@@ -811,7 +811,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                     consts::ptrcast(llval, ll_t_out)
                                 }
                                 (CastTy::Int(_), CastTy::Ptr(_)) => {
-                                    llvm::LLVMConstIntToPtr(llval, ll_t_out.to_ref())
+                                    let s = signed as llvm::Bool;
+                                    let usize_llval = llvm::LLVMConstIntCast(llval,
+                                        self.ccx.isize_ty().to_ref(), s);
+                                    llvm::LLVMConstIntToPtr(usize_llval, ll_t_out.to_ref())
                                 }
                                 (CastTy::Ptr(_), CastTy::Int(_)) |
                                 (CastTy::FnPtr, CastTy::Int(_)) => {
