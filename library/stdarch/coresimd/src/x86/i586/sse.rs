@@ -3299,7 +3299,8 @@ mod tests {
         use v64::*;
 
         let a = mem::transmute(i8x8::new(0, 0, 0, 0, 0, 0, 0, 7));
-        let mut mem = ::std::boxed::Box::<__m64>::new(mem::transmute(i8x8::splat(1)));
+        let mut mem =
+            ::std::boxed::Box::<__m64>::new(mem::transmute(i8x8::splat(1)));
         sse::_mm_stream_pi(&mut *mem as *mut _ as *mut _, a);
         assert_eq!(a, *mem);
     }

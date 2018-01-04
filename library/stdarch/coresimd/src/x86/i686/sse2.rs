@@ -76,7 +76,8 @@ pub unsafe fn _mm_setr_epi64(e1: __m64, e0: __m64) -> i64x2 {
 /// integer.
 #[inline(always)]
 #[target_feature = "+sse2"]
-// #[cfg_attr(test, assert_instr(movdq2q))] // FIXME: llvm codegens wrong instr?
+// #[cfg_attr(test, assert_instr(movdq2q))] // FIXME: llvm codegens wrong
+// instr?
 pub unsafe fn _mm_movepi64_pi64(a: i64x2) -> __m64 {
     mem::transmute(a.extract(0))
 }
@@ -85,7 +86,8 @@ pub unsafe fn _mm_movepi64_pi64(a: i64x2) -> __m64 {
 /// upper bits.
 #[inline(always)]
 #[target_feature = "+sse2"]
-// #[cfg_attr(test, assert_instr(movq2dq))] // FIXME: llvm codegens wrong instr?
+// #[cfg_attr(test, assert_instr(movq2dq))] // FIXME: llvm codegens wrong
+// instr?
 pub unsafe fn _mm_movpi64_epi64(a: __m64) -> i64x2 {
     i64x2::new(mem::transmute(a), 0)
 }
@@ -175,7 +177,8 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn _mm_set_epi64() {
-        let r = sse2::_mm_set_epi64(mem::transmute(1i64), mem::transmute(2i64));
+        let r =
+            sse2::_mm_set_epi64(mem::transmute(1i64), mem::transmute(2i64));
         assert_eq!(r, i64x2::new(2, 1));
     }
 
@@ -187,7 +190,8 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn _mm_setr_epi64() {
-        let r = sse2::_mm_setr_epi64(mem::transmute(1i64), mem::transmute(2i64));
+        let r =
+            sse2::_mm_setr_epi64(mem::transmute(1i64), mem::transmute(2i64));
         assert_eq!(r, i64x2::new(1, 2));
     }
 
@@ -199,7 +203,16 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn _mm_movpi64_epi64() {
-        let r = sse2::_mm_movpi64_epi64(mem::transmute(i8x8::new(5, 0, 0, 0, 0, 0, 0, 0)));
+        let r = sse2::_mm_movpi64_epi64(mem::transmute(i8x8::new(
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )));
         assert_eq!(r, i64x2::new(5, 0));
     }
 

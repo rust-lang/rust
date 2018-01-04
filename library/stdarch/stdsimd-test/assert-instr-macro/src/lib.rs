@@ -42,8 +42,7 @@ pub fn assert_instr(
     let assert_name = syn::Ident::from(
         &format!("assert_{}_{}", name.as_ref(), instr.as_ref())[..],
     );
-    let shim_name =
-        syn::Ident::from(format!("{}_shim", name.as_ref()));
+    let shim_name = syn::Ident::from(format!("{}_shim", name.as_ref()));
     let (to_test, test_name) = if invoc.args.len() == 0 {
         (TokenStream::empty(), &func.ident)
     } else {

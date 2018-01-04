@@ -1,4 +1,4 @@
-//! `i686`'s Streaming SIMD Extensions 4a (SSE4a)
+//! `i686`'s Streaming SIMD Extensions 4a (`SSE4a`)
 
 use core::mem;
 use v128::*;
@@ -52,7 +52,7 @@ pub unsafe fn _mm_extract_si64(x: i64x2, y: i64x2) -> i64x2 {
 #[target_feature = "+sse4a"]
 #[cfg_attr(test, assert_instr(insertq))]
 pub unsafe fn _mm_insert_si64(x: i64x2, y: i64x2) -> i64x2 {
-    insertq(x, mem::transmute(y))
+    insertq(x, y)
 }
 
 /// Non-temporal store of `a.0` into `p`.

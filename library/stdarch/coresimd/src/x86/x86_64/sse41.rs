@@ -1,3 +1,5 @@
+//! `i686`'s Streaming SIMD Extensions 4.1 (SSE4.1)
+
 use v128::*;
 
 #[cfg(test)]

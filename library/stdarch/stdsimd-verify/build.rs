@@ -12,11 +12,11 @@ fn walk(root: &Path) {
         let file = file.unwrap();
         if file.file_type().unwrap().is_dir() {
             walk(&file.path());
-            continue
+            continue;
         }
         let path = file.path();
         if path.extension().and_then(|s| s.to_str()) != Some("rs") {
-            continue
+            continue;
         }
 
         println!("cargo:rerun-if-changed={}", path.display());

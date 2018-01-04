@@ -256,7 +256,11 @@ mod tests {
     unsafe fn _mm_alignr_pi8() {
         let a = u32x2::new(0x89ABCDEF_u32, 0x01234567_u32);
         let b = u32x2::new(0xBBAA9988_u32, 0xFFDDEECC_u32);
-        let r = ssse3::_mm_alignr_pi8(u8x8::from(a).into(), u8x8::from(b).into(), 4);
+        let r = ssse3::_mm_alignr_pi8(
+            u8x8::from(a).into(),
+            u8x8::from(b).into(),
+            4,
+        );
         assert_eq!(r, ::std::mem::transmute(0x89abcdefffddeecc_u64));
     }
 

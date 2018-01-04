@@ -221,27 +221,34 @@ pub unsafe fn _mm_cvt_pi2ps(a: f32x4, b: i32x2) -> f32x4 {
     _mm_cvtpi32_ps(a, b)
 }
 
-/// Converts a 64-bit vector of [4 x i16] into a 128-bit vector of [4 x
-/// float].
+/// Converts the lower 4 8-bit values of `a` into a 128-bit vector of 4 `f32`s.
 #[inline(always)]
 #[target_feature = "+sse"]
-pub unsafe fn _mm_cvtpi16_ps(a: __m64) -> f32x4 {
+#[cfg_attr(test, assert_instr(cvtpi2ps))]
+pub unsafe fn _mm_cvtpi8_ps(a: __m64) -> f32x4 {
     let b = mmx::_mm_setzero_si64();
-    let b = mmx::_mm_cmpgt_pi16(mem::transmute(b), a);
-    let c = mmx::_mm_unpackhi_pi16(a, b);
-    let r = i586::_mm_setzero_ps();
-    let r = cvtpi2ps(r, mem::transmute(c));
-    let r = i586::_mm_movelh_ps(r, r);
-    let c = mmx::_mm_unpacklo_pi16(a, b);
-    cvtpi2ps(r, mem::transmute(c))
+    let b = mmx::_mm_cmpgt_pi8(b, a);
+    let b = mmx::_mm_unpacklo_pi8(a, b);
+    _mm_cvtpi16_ps(b)
 }
 
-/// Converts a 64-bit vector of 16-bit unsigned integer values into a
-/// 128-bit vector of [4 x float].
+/// Converts the lower 4 8-bit values of `a` into a 128-bit vector of 4 `f32`s.
 #[inline(always)]
 #[target_feature = "+sse"]
-pub unsafe fn _mm_cvtpu16_ps(a: __m64) -> f32x4 {
+#[cfg_attr(test, assert_instr(cvtpi2ps))]
+pub unsafe fn _mm_cvtpu8_ps(a: __m64) -> f32x4 {
     let b = mmx::_mm_setzero_si64();
+    let b = mmx::_mm_unpacklo_pi8(a, b);
+    _mm_cvtpi16_ps(b)
+}
+
+/// Converts a 64-bit vector of `i16`s into a 128-bit vector of 4 `f32`s.
+#[inline(always)]
+#[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(cvtpi2ps))]
+pub unsafe fn _mm_cvtpi16_ps(a: __m64) -> f32x4 {
+    let b = mmx::_mm_setzero_si64();
+    let b = mmx::_mm_cmpgt_pi16(b, a);
     let c = mmx::_mm_unpackhi_pi16(a, b);
     let r = i586::_mm_setzero_ps();
     let r = cvtpi2ps(r, c);
@@ -250,25 +257,18 @@ pub unsafe fn _mm_cvtpu16_ps(a: __m64) -> f32x4 {
     cvtpi2ps(r, c)
 }
 
-/// Converts the lower four 8-bit values from a 64-bit vector of [8 x i8]
-/// into a 128-bit vector of [4 x float].
+/// Converts a 64-bit vector of `i16`s into a 128-bit vector of 4 `f32`s.
 #[inline(always)]
 #[target_feature = "+sse"]
-pub unsafe fn _mm_cvtpi8_ps(a: __m64) -> f32x4 {
+#[cfg_attr(test, assert_instr(cvtpi2ps))]
+pub unsafe fn _mm_cvtpu16_ps(a: __m64) -> f32x4 {
     let b = mmx::_mm_setzero_si64();
-    let b = mmx::_mm_cmpgt_pi8(b, a);
-    let b = mmx::_mm_unpacklo_pi8(a, b);
-    _mm_cvtpi16_ps(b)
-}
-
-/// Converts the lower four unsigned 8-bit integer values from a 64-bit
-/// vector of [8 x u8] into a 128-bit vector of [4 x float].
-#[inline(always)]
-#[target_feature = "+sse"]
-pub unsafe fn _mm_cvtpu8_ps(a: __m64) -> f32x4 {
-    let b = mmx::_mm_setzero_si64();
-    let b = mmx::_mm_unpacklo_pi8(a, b);
-    _mm_cvtpi16_ps(b)
+    let c = mmx::_mm_unpackhi_pi16(a, b);
+    let r = i586::_mm_setzero_ps();
+    let r = cvtpi2ps(r, c);
+    let r = i586::_mm_movelh_ps(r, r);
+    let c = mmx::_mm_unpacklo_pi16(a, b);
+    cvtpi2ps(r, c)
 }
 
 /// Converts the two 32-bit signed integer values from each 64-bit vector
@@ -513,6 +513,13 @@ mod tests {
     }
 
     #[simd_test = "sse"]
+    unsafe fn _m_pmulhuw() {
+        let (a, b) = (u16x4::splat(1000), u16x4::splat(1001));
+        let r = sse::_m_pmulhuw(a.into(), b.into());
+        assert_eq!(r, u16x4::splat(15).into());
+    }
+
+    #[simd_test = "sse"]
     unsafe fn _mm_avg_pu8() {
         let (a, b) = (u8x8::splat(3), u8x8::splat(9));
         let r = u8x8::from(sse::_mm_avg_pu8(a.into(), b.into()));
@@ -601,7 +608,11 @@ mod tests {
         let a = i8x8::splat(9);
         let mask = i8x8::splat(0).replace(2, 0x80u8 as i8);
         let mut r = i8x8::splat(0);
-        sse::_mm_maskmove_si64(a.into(), mask.into(), &mut r as *mut _ as *mut i8);
+        sse::_mm_maskmove_si64(
+            a.into(),
+            mask.into(),
+            &mut r as *mut _ as *mut i8,
+        );
         assert_eq!(r, i8x8::splat(0).replace(2, 9));
 
         let mut r = i8x8::splat(0);

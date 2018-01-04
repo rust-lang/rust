@@ -16,7 +16,7 @@ use stdsimd_test::assert_instr;
 
 /// Constructs a 64-bit integer vector initialized to zero.
 #[inline(always)]
-#[target_feature = "+mmx,+sse"]
+#[target_feature = "+mmx"]
 // FIXME: this produces a movl instead of xorps on x86
 // FIXME: this produces a xor intrinsic instead of xorps on x86_64
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(xor))]
@@ -30,7 +30,7 @@ pub unsafe fn _mm_setzero_si64() -> __m64 {
 /// Positive values greater than 0x7F are saturated to 0x7F. Negative values
 /// less than 0x80 are saturated to 0x80.
 #[inline(always)]
-#[target_feature = "+mmx,+sse"]
+#[target_feature = "+mmx"]
 #[cfg_attr(test, assert_instr(packsswb))]
 pub unsafe fn _mm_packs_pi16(a: __m64, b: __m64) -> __m64 {
     packsswb(a, b)
@@ -42,17 +42,14 @@ pub unsafe fn _mm_packs_pi16(a: __m64, b: __m64) -> __m64 {
 /// Positive values greater than 0x7F are saturated to 0x7F. Negative values
 /// less than 0x80 are saturated to 0x80.
 #[inline(always)]
-#[target_feature = "+mmx,+sse"]
+#[target_feature = "+mmx"]
 #[cfg_attr(test, assert_instr(packssdw))]
 pub unsafe fn _mm_packs_pi32(a: __m64, b: __m64) -> __m64 {
     packssdw(a, b)
 }
 
-/// Compares the 8-bit integer elements of two 64-bit integer vectors of
-/// [8 x i8] to determine if the element of the first vector is greater than
-/// the corresponding element of the second vector.
-///
-/// The comparison yields 0 for false, 0xFF for true.
+/// Compares whether each element of `a` is greater than the corresponding
+/// element of `b` returning `0` for `false` and `-1` for `true`.
 #[inline(always)]
 #[target_feature = "+mmx"]
 #[cfg_attr(test, assert_instr(pcmpgtb))]
@@ -60,11 +57,8 @@ pub unsafe fn _mm_cmpgt_pi8(a: __m64, b: __m64) -> __m64 {
     pcmpgtb(a, b)
 }
 
-/// Compares the 16-bit integer elements of two 64-bit integer vectors of
-/// [4 x i16] to determine if the element of the first vector is greater than
-/// the corresponding element of the second vector.
-///
-/// The comparison yields 0 for false, 0xFFFF for true.
+/// Compares whether each element of `a` is greater than the corresponding
+/// element of `b` returning `0` for `false` and `-1` for `true`.
 #[inline(always)]
 #[target_feature = "+mmx"]
 #[cfg_attr(test, assert_instr(pcmpgtw))]
@@ -72,8 +66,17 @@ pub unsafe fn _mm_cmpgt_pi16(a: __m64, b: __m64) -> __m64 {
     pcmpgtw(a, b)
 }
 
-/// Unpacks the upper 32 bits from two 64-bit integer vectors of
-/// [4 x i16] and interleaves them into a 64-bit integer vector of [4 x i16].
+/// Compares whether each element of `a` is greater than the corresponding
+/// element of `b` returning `0` for `false` and `-1` for `true`.
+#[inline(always)]
+#[target_feature = "+mmx"]
+#[cfg_attr(test, assert_instr(pcmpgtd))]
+pub unsafe fn _mm_cmpgt_pi32(a: __m64, b: __m64) -> __m64 {
+    pcmpgtd(a, b)
+}
+
+/// Unpacks the upper two elements from two `i16x4` vectors and interleaves
+/// them into the result: `[a.2, b.2, a.3, b.3]`.
 #[inline(always)]
 #[target_feature = "+mmx"]
 #[cfg_attr(test, assert_instr(punpckhwd))] // FIXME punpcklbw expected
@@ -81,8 +84,17 @@ pub unsafe fn _mm_unpackhi_pi16(a: __m64, b: __m64) -> __m64 {
     punpckhwd(a, b)
 }
 
-/// Unpacks the lower 32 bits from two 64-bit integer vectors of [8 x i8]
-/// and interleaves them into a 64-bit integer vector of [8 x i8].
+/// Unpacks the upper four elements from two `i8x8` vectors and interleaves
+/// them into the result: `[a.4, b.4, a.5, b.5, a.6, b.6, a.7, b.7]`.
+#[inline(always)]
+#[target_feature = "+mmx"]
+#[cfg_attr(test, assert_instr(punpckhbw))]
+pub unsafe fn _mm_unpackhi_pi8(a: __m64, b: __m64) -> __m64 {
+    punpckhbw(a, b)
+}
+
+/// Unpacks the lower four elements from two `i8x8` vectors and interleaves
+/// them into the result: `[a.0, b.0, a.1, b.1, a.2, b.2, a.3, b.3]`.
 #[inline(always)]
 #[target_feature = "+mmx"]
 #[cfg_attr(test, assert_instr(punpcklbw))]
@@ -90,13 +102,31 @@ pub unsafe fn _mm_unpacklo_pi8(a: __m64, b: __m64) -> __m64 {
     punpcklbw(a, b)
 }
 
-/// Unpacks the lower 32 bits from two 64-bit integer vectors of
-/// [4 x i16] and interleaves them into a 64-bit integer vector of [4 x i16].
+/// Unpacks the lower two elements from two `i16x4` vectors and interleaves
+/// them into the result: `[a.0 b.0 a.1 b.1]`.
 #[inline(always)]
 #[target_feature = "+mmx"]
 #[cfg_attr(test, assert_instr(punpcklwd))]
 pub unsafe fn _mm_unpacklo_pi16(a: __m64, b: __m64) -> __m64 {
     punpcklwd(a, b)
+}
+
+/// Unpacks the upper element from two `i32x2` vectors and interleaves them
+/// into the result: `[a.1, b.1]`.
+#[inline(always)]
+#[target_feature = "+mmx"]
+#[cfg_attr(test, assert_instr(punpckhdq))]
+pub unsafe fn _mm_unpackhi_pi32(a: __m64, b: __m64) -> __m64 {
+    punpckhdq(a, b)
+}
+
+/// Unpacks the lower element from two `i32x2` vectors and interleaves them
+/// into the result: `[a.0, b.0]`.
+#[inline(always)]
+#[target_feature = "+mmx"]
+#[cfg_attr(test, assert_instr(punpckldq))]
+pub unsafe fn _mm_unpacklo_pi32(a: __m64, b: __m64) -> __m64 {
+    punpckldq(a, b)
 }
 
 #[allow(improper_ctypes)]
@@ -109,12 +139,20 @@ extern "C" {
     fn pcmpgtb(a: __m64, b: __m64) -> __m64;
     #[link_name = "llvm.x86.mmx.pcmpgt.w"]
     fn pcmpgtw(a: __m64, b: __m64) -> __m64;
+    #[link_name = "llvm.x86.mmx.pcmpgt.d"]
+    fn pcmpgtd(a: __m64, b: __m64) -> __m64;
     #[link_name = "llvm.x86.mmx.punpckhwd"]
     fn punpckhwd(a: __m64, b: __m64) -> __m64;
-    #[link_name = "llvm.x86.mmx.punpcklbw"]
-    fn punpcklbw(a: __m64, b: __m64) -> __m64;
     #[link_name = "llvm.x86.mmx.punpcklwd"]
     fn punpcklwd(a: __m64, b: __m64) -> __m64;
+    #[link_name = "llvm.x86.mmx.punpckhbw"]
+    fn punpckhbw(a: __m64, b: __m64) -> __m64;
+    #[link_name = "llvm.x86.mmx.punpcklbw"]
+    fn punpcklbw(a: __m64, b: __m64) -> __m64;
+    #[link_name = "llvm.x86.mmx.punpckhdq"]
+    fn punpckhdq(a: __m64, b: __m64) -> __m64;
+    #[link_name = "llvm.x86.mmx.punpckldq"]
+    fn punpckldq(a: __m64, b: __m64) -> __m64;
 }
 
 #[cfg(test)]
@@ -123,13 +161,13 @@ mod tests {
     use x86::i686::mmx;
     use stdsimd_test::simd_test;
 
-    #[simd_test = "sse"] // FIXME: should be mmx
+    #[simd_test = "mmx"]
     unsafe fn _mm_setzero_si64() {
         let r: __m64 = ::std::mem::transmute(0_i64);
         assert_eq!(r, mmx::_mm_setzero_si64());
     }
 
-    #[simd_test = "sse"] // FIXME: should be mmx
+    #[simd_test = "mmx"]
     unsafe fn _mm_packs_pi16() {
         let a = i16x4::new(-1, 2, -3, 4);
         let b = i16x4::new(-5, 6, -7, 8);
@@ -137,7 +175,7 @@ mod tests {
         assert_eq!(r, i8x8::from(mmx::_mm_packs_pi16(a.into(), b.into())));
     }
 
-    #[simd_test = "sse"] // FIXME: should be mmx
+    #[simd_test = "mmx"]
     unsafe fn _mm_packs_pi32() {
         let a = i32x2::new(-1, 2);
         let b = i32x2::new(-5, 6);
@@ -162,11 +200,23 @@ mod tests {
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_unpackhi_pi16() {
-        let a = i16x4::new(0, 1, 2, 3);
-        let b = i16x4::new(4, 5, 6, 7);
-        let r = i16x4::new(2, 6, 3, 7);
-        assert_eq!(r, i16x4::from(mmx::_mm_unpackhi_pi16(a.into(), b.into())));
+    unsafe fn _mm_cmpgt_pi32() {
+        let a = i32x2::new(0, 3);
+        let b = i32x2::new(1, 2);
+        let r0 = i32x2::new(0, -1);
+        let r1 = i32x2::new(-1, 0);
+
+        assert_eq!(r0, mmx::_mm_cmpgt_pi32(a.into(), b.into()).into());
+        assert_eq!(r1, mmx::_mm_cmpgt_pi32(b.into(), a.into()).into());
+    }
+
+    #[simd_test = "mmx"]
+    unsafe fn _mm_unpackhi_pi8() {
+        let a = i8x8::new(0, 3, 4, 7, 8, 11, 12, 15);
+        let b = i8x8::new(1, 2, 5, 6, 9, 10, 13, 14);
+        let r = i8x8::new(8, 9, 11, 10, 12, 13, 15, 14);
+
+        assert_eq!(r, mmx::_mm_unpackhi_pi8(a.into(), b.into()).into());
     }
 
     #[simd_test = "mmx"]
@@ -178,10 +228,36 @@ mod tests {
     }
 
     #[simd_test = "mmx"]
+    unsafe fn _mm_unpackhi_pi16() {
+        let a = i16x4::new(0, 1, 2, 3);
+        let b = i16x4::new(4, 5, 6, 7);
+        let r = i16x4::new(2, 6, 3, 7);
+        assert_eq!(r, i16x4::from(mmx::_mm_unpackhi_pi16(a.into(), b.into())));
+    }
+
+    #[simd_test = "mmx"]
     unsafe fn _mm_unpacklo_pi16() {
         let a = i16x4::new(0, 1, 2, 3);
         let b = i16x4::new(4, 5, 6, 7);
         let r = i16x4::new(0, 4, 1, 5);
         assert_eq!(r, i16x4::from(mmx::_mm_unpacklo_pi16(a.into(), b.into())));
+    }
+
+    #[simd_test = "mmx"]
+    unsafe fn _mm_unpackhi_pi32() {
+        let a = i32x2::new(0, 3);
+        let b = i32x2::new(1, 2);
+        let r = i32x2::new(3, 2);
+
+        assert_eq!(r, mmx::_mm_unpackhi_pi32(a.into(), b.into()).into());
+    }
+
+    #[simd_test = "mmx"]
+    unsafe fn _mm_unpacklo_pi32() {
+        let a = i32x2::new(0, 3);
+        let b = i32x2::new(1, 2);
+        let r = i32x2::new(0, 1);
+
+        assert_eq!(r, mmx::_mm_unpacklo_pi32(a.into(), b.into()).into());
     }
 }

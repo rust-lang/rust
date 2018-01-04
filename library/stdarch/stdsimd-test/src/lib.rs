@@ -304,19 +304,20 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
             None => continue,
         };
         if !part.contains("call") {
-            continue
+            continue;
         }
 
         // On 32-bit x86 position independent code will call itself and be
         // immediately followed by a `pop` to learn about the current address.
         // Let's not take that into account when considering whether a function
         // failed inlining something.
-        let followed_by_pop = function.instrs.get(i + 1)
+        let followed_by_pop = function
+            .instrs
+            .get(i + 1)
             .and_then(|i| i.parts.get(0))
-            .map(|s| s.contains("pop"))
-            .unwrap_or(false);
+            .map_or(false, |s| s.contains("pop"));
         if followed_by_pop && cfg!(target_arch = "x86") {
-            continue
+            continue;
         }
 
         inlining_failed = true;
@@ -324,15 +325,19 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     }
 
     let instruction_limit = match expected {
-        // cpuid returns a pretty big aggregate structure so excempt it from the
-        // slightly more restrictive 20 instructions below
+        // cpuid returns a pretty big aggregate structure so excempt it from
+        // the slightly more restrictive 20 instructions below
         "cpuid" => 30,
 
-        // Apparently on Windows LLVM generates a bunch of saves/restores of xmm
-        // registers around these intstructions which blows the 20 limit
-        // below. As it seems dictates by Windows's abi (I guess?) we probably
-        // can't do much about it...
+        // Apparently on Windows LLVM generates a bunch of saves/restores of
+        // xmm registers around these intstructions which blows the 20
+        // limit below. As it seems dictates by Windows's abi (I
+        // guess?) we probably can't do much about it...
         "vzeroall" | "vzeroupper" if cfg!(windows) => 30,
+
+        // Intrinsics using `cvtpi2ps` are typically "composites" and in some
+        // cases exceed the limit.
+        "cvtpi2ps" => 25,
 
         _ => 20,
     };
@@ -363,12 +368,17 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
             expected
         );
     } else if !probably_only_one_instruction {
-        panic!("instruction found, but the disassembly contains too many \
-                instructions: #instructions = {} >= {} (limit)",
-               function.instrs.len(), instruction_limit);
+        panic!(
+            "instruction found, but the disassembly contains too many \
+             instructions: #instructions = {} >= {} (limit)",
+            function.instrs.len(),
+            instruction_limit
+        );
     } else if inlining_failed {
-        panic!("instruction found, but the disassembly contains `call` \
-                instructions, which hint that inlining failed");
+        panic!(
+            "instruction found, but the disassembly contains `call` \
+             instructions, which hint that inlining failed"
+        );
     }
 }
 

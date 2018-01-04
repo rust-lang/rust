@@ -1,10 +1,10 @@
 #![feature(proc_macro)]
 
-extern crate proc_macro;
 extern crate proc_macro2;
-extern crate syn;
+extern crate proc_macro;
 #[macro_use]
 extern crate quote;
+extern crate syn;
 
 use std::path::Path;
 use std::fs::File;
@@ -42,21 +42,21 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
             _ => return false,
         }
         if f.unsafety.is_none() {
-            return false
+            return false;
         }
-        f.attrs.iter()
+        f.attrs
+            .iter()
             .filter_map(|a| a.meta_item())
-            .any(|a| {
-                match a {
-                    syn::MetaItem::NameValue(i) => i.ident == "target_feature",
-                    _ => false,
-                }
+            .any(|a| match a {
+                syn::MetaItem::NameValue(i) => i.ident == "target_feature",
+                _ => false,
             })
     });
 
     let input = proc_macro2::TokenStream::from(input);
 
-    let functions = functions.iter()
+    let functions = functions
+        .iter()
         .map(|f| {
             let name = f.ident;
             // println!("{}", name);
@@ -96,53 +96,51 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
 
 fn to_type(t: &syn::Type) -> Tokens {
     match *t {
-        syn::Type::Path(ref p) => {
-            match extract_path_ident(&p.path).as_ref() {
-                "__m128i" => my_quote! { &I8x16 },
-                "__m256i" => my_quote! { &I8x32 },
-                "__m64" => my_quote! { &I8x8 },
-                "bool" => my_quote! { &BOOL },
-                "f32" => my_quote! { &F32 },
-                "f32x4" => my_quote! { &F32x4 },
-                "f32x8" => my_quote! { &F32x8 },
-                "f64" => my_quote! { &F64 },
-                "f64x2" => my_quote! { &F64x2 },
-                "f64x4" => my_quote! { &F64x4 },
-                "i16" => my_quote! { &I16 },
-                "i16x16" => my_quote! { &I16x16 },
-                "i16x4" => my_quote! { &I16x4 },
-                "i16x8" => my_quote! { &I16x8 },
-                "i32" => my_quote! { &I32 },
-                "i32x2" => my_quote! { &I32x2 },
-                "i32x4" => my_quote! { &I32x4 },
-                "i32x8" => my_quote! { &I32x8 },
-                "i64" => my_quote! { &I64 },
-                "i64x2" => my_quote! { &I64x2 },
-                "i64x4" => my_quote! { &I64x4 },
-                "i8" => my_quote! { &I8 },
-                "i8x16" => my_quote! { &I8x16 },
-                "i8x32" => my_quote! { &I8x32 },
-                "i8x8" => my_quote! { &I8x8 },
-                "u16x4" => my_quote! { &U16x4 },
-                "u16x8" => my_quote! { &U16x8 },
-                "u32" => my_quote! { &U32 },
-                "u32x2" => my_quote! { &U32x2 },
-                "u32x4" => my_quote! { &U32x4 },
-                "u32x8" => my_quote! { &U32x8 },
-                "u64" => my_quote! { &U64 },
-                "u64x2" => my_quote! { &U64x2 },
-                "u64x4" => my_quote! { &U64x4 },
-                "u8" => my_quote! { &U8 },
-                "u16" => my_quote! { &U16 },
-                "u8x16" => my_quote! { &U8x16 },
-                "u8x32" => my_quote! { &U8x32 },
-                "u16x16" => my_quote! { &U16x16 },
-                "u8x8" => my_quote! { &U8x8 },
-                s => panic!("unspported type: {}", s),
-            }
-        }
-        syn::Type::Ptr(syn::TypePtr { ref elem, .. }) |
-        syn::Type::Reference(syn::TypeReference { ref elem, .. }) => {
+        syn::Type::Path(ref p) => match extract_path_ident(&p.path).as_ref() {
+            "__m128i" => my_quote! { &I8x16 },
+            "__m256i" => my_quote! { &I8x32 },
+            "__m64" => my_quote! { &I8x8 },
+            "bool" => my_quote! { &BOOL },
+            "f32" => my_quote! { &F32 },
+            "f32x4" => my_quote! { &F32x4 },
+            "f32x8" => my_quote! { &F32x8 },
+            "f64" => my_quote! { &F64 },
+            "f64x2" => my_quote! { &F64x2 },
+            "f64x4" => my_quote! { &F64x4 },
+            "i16" => my_quote! { &I16 },
+            "i16x16" => my_quote! { &I16x16 },
+            "i16x4" => my_quote! { &I16x4 },
+            "i16x8" => my_quote! { &I16x8 },
+            "i32" => my_quote! { &I32 },
+            "i32x2" => my_quote! { &I32x2 },
+            "i32x4" => my_quote! { &I32x4 },
+            "i32x8" => my_quote! { &I32x8 },
+            "i64" => my_quote! { &I64 },
+            "i64x2" => my_quote! { &I64x2 },
+            "i64x4" => my_quote! { &I64x4 },
+            "i8" => my_quote! { &I8 },
+            "i8x16" => my_quote! { &I8x16 },
+            "i8x32" => my_quote! { &I8x32 },
+            "i8x8" => my_quote! { &I8x8 },
+            "u16x4" => my_quote! { &U16x4 },
+            "u16x8" => my_quote! { &U16x8 },
+            "u32" => my_quote! { &U32 },
+            "u32x2" => my_quote! { &U32x2 },
+            "u32x4" => my_quote! { &U32x4 },
+            "u32x8" => my_quote! { &U32x8 },
+            "u64" => my_quote! { &U64 },
+            "u64x2" => my_quote! { &U64x2 },
+            "u64x4" => my_quote! { &U64x4 },
+            "u8" => my_quote! { &U8 },
+            "u16" => my_quote! { &U16 },
+            "u8x16" => my_quote! { &U8x16 },
+            "u8x32" => my_quote! { &U8x32 },
+            "u16x16" => my_quote! { &U16x16 },
+            "u8x8" => my_quote! { &U8x8 },
+            s => panic!("unspported type: {}", s),
+        },
+        syn::Type::Ptr(syn::TypePtr { ref elem, .. })
+        | syn::Type::Reference(syn::TypeReference { ref elem, .. }) => {
             let tokens = to_type(&elem);
             my_quote! { &Type::Ptr(#tokens) }
         }
@@ -162,7 +160,7 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
     }
     match path.segments.first().unwrap().item().arguments {
         syn::PathArguments::None => {}
-        _ => panic!("unsupported path that has path arguments")
+        _ => panic!("unsupported path that has path arguments"),
     }
     path.segments.first().unwrap().item().ident
 }
@@ -172,71 +170,72 @@ fn walk(root: &Path, files: &mut Vec<syn::File>) {
         let file = file.unwrap();
         if file.file_type().unwrap().is_dir() {
             walk(&file.path(), files);
-            continue
+            continue;
         }
         let path = file.path();
         if path.extension().and_then(|s| s.to_str()) != Some("rs") {
-            continue
+            continue;
         }
 
         let mut contents = String::new();
-        File::open(&path).unwrap().read_to_string(&mut contents).unwrap();
+        File::open(&path)
+            .unwrap()
+            .read_to_string(&mut contents)
+            .unwrap();
 
-        files.push(syn::parse_str::<syn::File>(&contents).expect("failed to parse"));
+        files.push(
+            syn::parse_str::<syn::File>(&contents).expect("failed to parse"),
+        );
     }
 }
 
 fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
-    attrs.iter()
+    attrs
+        .iter()
         .filter_map(|a| a.meta_item())
-        .filter_map(|a| {
-            match a {
-                syn::MetaItem::List(i) => {
-                    if i.ident == "cfg_attr" {
-                        i.nested.into_iter().next()
-                    } else {
-                        None
-                    }
+        .filter_map(|a| match a {
+            syn::MetaItem::List(i) => {
+                if i.ident == "cfg_attr" {
+                    i.nested.into_iter().next()
+                } else {
+                    None
                 }
-                _ => None,
             }
+            _ => None,
         })
-        .filter_map(|nested| {
-            match nested {
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::List(i)) => {
-                    if i.ident == "assert_instr" {
-                        i.nested.into_iter().next()
-                    } else {
-                        None
-                    }
+        .filter_map(|nested| match nested {
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::List(i)) => {
+                if i.ident == "assert_instr" {
+                    i.nested.into_iter().next()
+                } else {
+                    None
                 }
-                _ => None,
             }
+            _ => None,
         })
-        .filter_map(|nested| {
-            match nested {
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::Term(i)) => Some(i),
-                _ => None,
-            }
+        .filter_map(|nested| match nested {
+            syn::NestedMetaItem::MetaItem(syn::MetaItem::Term(i)) => Some(i),
+            _ => None,
         })
         .collect()
 }
 
-fn find_target_feature(name: syn::Ident, attrs: &[syn::Attribute]) -> syn::Lit {
-    attrs.iter()
+fn find_target_feature(
+    name: syn::Ident, attrs: &[syn::Attribute]
+) -> syn::Lit {
+    attrs
+        .iter()
         .filter_map(|a| a.meta_item())
-        .filter_map(|a| {
-            match a {
-                syn::MetaItem::NameValue(i) => {
-                    if i.ident == "target_feature" {
-                        Some(i.lit)
-                    } else {
-                        None
-                    }
+        .filter_map(|a| match a {
+            syn::MetaItem::NameValue(i) => {
+                if i.ident == "target_feature" {
+                    Some(i.lit)
+                } else {
+                    None
                 }
-                _ => None,
             }
+            _ => None,
         })
         .next()
-        .expect(&format!("failed to find target_feature for {}",name))
+        .expect(&format!("failed to find target_feature for {}", name))
 }
