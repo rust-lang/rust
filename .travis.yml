@@ -15,7 +15,11 @@ env:
    - RUST_BACKTRACE=1
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then rvm get stable; fi
+ - |
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+     command curl -sSL https://rvm.io/mpapis.asc | gpg --import -;
+     rvm get stable
+    fi
 
 install:
   - . $HOME/.nvm/nvm.sh
