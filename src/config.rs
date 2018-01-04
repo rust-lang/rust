@@ -518,6 +518,7 @@ macro_rules! create_config {
 
             pub fn print_docs() {
                 use std::cmp;
+                const HIDE_OPTIONS: [&str; 3] = ["verbose", "file_lines", "width_heuristics"];
                 let max = 0;
                 $( let max = cmp::max(max, stringify!($i).len()+1); )+
                 let mut space_str = String::with_capacity(max);
@@ -527,20 +528,23 @@ macro_rules! create_config {
                 println!("Configuration Options:");
                 $(
                     let name_raw = stringify!($i);
-                    let mut name_out = String::with_capacity(max);
-                    for _ in name_raw.len()..max-1 {
-                        name_out.push(' ')
+
+                    if !HIDE_OPTIONS.contains(&name_raw) {
+                        let mut name_out = String::with_capacity(max);
+                        for _ in name_raw.len()..max-1 {
+                            name_out.push(' ')
+                        }
+                        name_out.push_str(name_raw);
+                        name_out.push(' ');
+                        println!("{}{} Default: {:?}",
+                                name_out,
+                                <$ty>::doc_hint(),
+                                $def);
+                        $(
+                            println!("{}{}", space_str, $dstring);
+                        )+
+                        println!();
                     }
-                    name_out.push_str(name_raw);
-                    name_out.push(' ');
-                    println!("{}{} Default: {:?}",
-                             name_out,
-                             <$ty>::doc_hint(),
-                             $def);
-                    $(
-                        println!("{}{}", space_str, $dstring);
-                    )+
-                    println!();
                 )+
             }
 
