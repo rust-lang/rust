@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_private)]
+#![feature(type_ascription)]
 
 #[macro_use]
 extern crate derive_new;
@@ -597,8 +598,16 @@ pub fn format_input<T: Write>(
     }
     let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
 
-    let tty_handler =
-        Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
+    let tty_handler = if config.hide_parse_errors() {
+        let silent_emitter = Box::new(EmitterWriter::new(
+            Box::new(Vec::new()),
+            Some(codemap.clone()),
+            false,
+        ));
+        Handler::with_emitter(true, false, silent_emitter)
+    } else {
+        Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()))
+    };
     let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
 
     let main_file = match input {
