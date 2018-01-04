@@ -1021,7 +1021,13 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
                 MonoItemCollectionMode::Lazy
             }
         }
-        None => MonoItemCollectionMode::Lazy
+        None => {
+            if tcx.sess.opts.cg.link_dead_code {
+                MonoItemCollectionMode::Eager
+            } else {
+                MonoItemCollectionMode::Lazy
+            }
+        }
     };
 
     let (items, inlining_map) =

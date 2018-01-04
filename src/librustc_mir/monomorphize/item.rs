@@ -115,7 +115,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         let inline_in_all_cgus =
             tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or_else(|| {
                 tcx.sess.opts.optimize != OptLevel::No
-            });
+            }) && !tcx.sess.opts.cg.link_dead_code;
 
         match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => {
