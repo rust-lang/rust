@@ -13,7 +13,7 @@ use mem;
 use ops::{self, Add, Sub};
 use usize;
 
-use super::{FusedIterator, TrustedLen, Sum};
+use super::{FusedIterator, TrustedLen};
 
 /// Objects that can be stepped over in both directions.
 ///
@@ -177,20 +177,6 @@ step_impl_signed!([i64: u64]);
 step_impl_no_between!(u64 i64);
 step_impl_no_between!(u128 i128);
 
-macro_rules! range_inc_iter_impl {
-    ($($t:ty)*) => ($(
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl Iterator for ops::RangeInclusive<$t> {
-            #[inline]
-            fn sum<S>(self) -> S where S: Sum<$t> {
-                let a = self.start;
-                let b = self.end;
-                S::sum(super::once((a + b) * (1 + b - a) / 2))
-            }
-        }
-    )*)
-}
-
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -273,9 +259,6 @@ impl<A: Step> Iterator for ops::Range<A> {
         } else { None }
     }
 }
-
-// These macros generate specialisations for `Iterator` methods for efficiency purposes.
-range_inc_iter_impl!(usize u8 u16 u32 u64 isize i8 i16 i32 i64);
 
 // These macros generate `ExactSizeIterator` impls for various range types.
 // Range<{u,i}64> and RangeInclusive<{u,i}{32,64,size}> are excluded
