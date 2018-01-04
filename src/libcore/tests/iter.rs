@@ -1353,6 +1353,38 @@ fn test_range_step() {
 }
 
 #[test]
+fn test_range_max() {
+    assert_eq!((0..100).max(), Some(99));
+    assert_eq!((-20..-10).max(), Some(-11));
+    assert_eq!((1..1).max(), None);
+}
+
+#[test]
+fn test_range_from_min() {
+    assert_eq!((0..).min(), Some(0));
+    assert_eq!((-20..).min(), Some(-20));
+    assert_eq!((20..).min(), Some(20));
+}
+
+#[test]
+fn test_range_inc_last_max() {
+    assert_eq!((0..=20).last(), Some(20));
+    assert_eq!((-20..=0).last(), Some(0));
+    assert_eq!((5..=5).last(), Some(5));
+
+    assert_eq!((0..=20).max(), Some(20));
+    assert_eq!((-20..=0).max(), Some(0));
+    assert_eq!((5..=5).max(), Some(5));
+}
+
+#[test]
+fn test_range_inc_min() {
+    assert_eq!((0..=20).min(), Some(0));
+    assert_eq!((-20..=0).min(), Some(-20));
+    assert_eq!((5..=5).min(), Some(5));
+}
+
+#[test]
 fn test_repeat() {
     let mut it = repeat(42);
     assert_eq!(it.next(), Some(42));
