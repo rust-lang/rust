@@ -184,7 +184,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             let index_ty = tables.expr_ty_adjusted(&index);
             let index_ty = self.fcx.resolve_type_vars_if_possible(&index_ty);
 
-            if base_ty.builtin_index().is_some() 
+            if base_ty.builtin_index().is_some()
                 && index_ty == self.fcx.tcx.types.usize {
                 // Remove the method call record
                 tables.type_dependent_defs_mut().remove(e.hir_id);
