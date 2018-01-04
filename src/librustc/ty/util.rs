@@ -55,7 +55,7 @@ macro_rules! typed_literal {
             SignedInt(ast::IntTy::I32)   => ConstInt::I32($lit),
             SignedInt(ast::IntTy::I64)   => ConstInt::I64($lit),
             SignedInt(ast::IntTy::I128)   => ConstInt::I128($lit),
-            SignedInt(ast::IntTy::Is) => match $tcx.sess.target.isize_ty {
+            SignedInt(ast::IntTy::Isize) => match $tcx.sess.target.isize_ty {
                 ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16($lit)),
                 ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32($lit)),
                 ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64($lit)),
@@ -66,7 +66,7 @@ macro_rules! typed_literal {
             UnsignedInt(ast::UintTy::U32) => ConstInt::U32($lit),
             UnsignedInt(ast::UintTy::U64) => ConstInt::U64($lit),
             UnsignedInt(ast::UintTy::U128) => ConstInt::U128($lit),
-            UnsignedInt(ast::UintTy::Us) => match $tcx.sess.target.usize_ty {
+            UnsignedInt(ast::UintTy::Usize) => match $tcx.sess.target.usize_ty {
                 ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16($lit)),
                 ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32($lit)),
                 ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64($lit)),
@@ -84,13 +84,13 @@ impl IntTypeExt for attr::IntType {
             SignedInt(ast::IntTy::I32)     => tcx.types.i32,
             SignedInt(ast::IntTy::I64)     => tcx.types.i64,
             SignedInt(ast::IntTy::I128)     => tcx.types.i128,
-            SignedInt(ast::IntTy::Is)   => tcx.types.isize,
+            SignedInt(ast::IntTy::Isize)   => tcx.types.isize,
             UnsignedInt(ast::UintTy::U8)    => tcx.types.u8,
             UnsignedInt(ast::UintTy::U16)   => tcx.types.u16,
             UnsignedInt(ast::UintTy::U32)   => tcx.types.u32,
             UnsignedInt(ast::UintTy::U64)   => tcx.types.u64,
             UnsignedInt(ast::UintTy::U128)   => tcx.types.u128,
-            UnsignedInt(ast::UintTy::Us) => tcx.types.usize,
+            UnsignedInt(ast::UintTy::Usize) => tcx.types.usize,
         }
     }
 
@@ -105,13 +105,13 @@ impl IntTypeExt for attr::IntType {
             (SignedInt(ast::IntTy::I32), ConstInt::I32(_)) => {},
             (SignedInt(ast::IntTy::I64), ConstInt::I64(_)) => {},
             (SignedInt(ast::IntTy::I128), ConstInt::I128(_)) => {},
-            (SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) => {},
+            (SignedInt(ast::IntTy::Isize), ConstInt::Isize(_)) => {},
             (UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) => {},
             (UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) => {},
             (UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) => {},
             (UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) => {},
             (UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) => {},
-            (UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => {},
+            (UnsignedInt(ast::UintTy::Usize), ConstInt::Usize(_)) => {},
             _ => bug!("disr type mismatch: {:?} vs {:?}", self, val),
         }
     }

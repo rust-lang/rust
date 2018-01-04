@@ -2011,7 +2011,7 @@ impl PrimitiveType {
 impl From<ast::IntTy> for PrimitiveType {
     fn from(int_ty: ast::IntTy) -> PrimitiveType {
         match int_ty {
-            ast::IntTy::Is => PrimitiveType::Isize,
+            ast::IntTy::Isize => PrimitiveType::Isize,
             ast::IntTy::I8 => PrimitiveType::I8,
             ast::IntTy::I16 => PrimitiveType::I16,
             ast::IntTy::I32 => PrimitiveType::I32,
@@ -2024,7 +2024,7 @@ impl From<ast::IntTy> for PrimitiveType {
 impl From<ast::UintTy> for PrimitiveType {
     fn from(uint_ty: ast::UintTy) -> PrimitiveType {
         match uint_ty {
-            ast::UintTy::Us => PrimitiveType::Usize,
+            ast::UintTy::Usize => PrimitiveType::Usize,
             ast::UintTy::U8 => PrimitiveType::U8,
             ast::UintTy::U16 => PrimitiveType::U16,
             ast::UintTy::U32 => PrimitiveType::U32,

@@ -603,13 +603,13 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler
             err!(diag, |span, diag| diag.span_bug(span, "found empty literal suffix in Some"));
         }
         ty = match &*suf.as_str() {
-            "isize" => ast::LitIntType::Signed(ast::IntTy::Is),
+            "isize" => ast::LitIntType::Signed(ast::IntTy::Isize),
             "i8"  => ast::LitIntType::Signed(ast::IntTy::I8),
             "i16" => ast::LitIntType::Signed(ast::IntTy::I16),
             "i32" => ast::LitIntType::Signed(ast::IntTy::I32),
             "i64" => ast::LitIntType::Signed(ast::IntTy::I64),
             "i128" => ast::LitIntType::Signed(ast::IntTy::I128),
-            "usize" => ast::LitIntType::Unsigned(ast::UintTy::Us),
+            "usize" => ast::LitIntType::Unsigned(ast::UintTy::Usize),
             "u8"  => ast::LitIntType::Unsigned(ast::UintTy::U8),
             "u16" => ast::LitIntType::Unsigned(ast::UintTy::U16),
             "u32" => ast::LitIntType::Unsigned(ast::UintTy::U32),

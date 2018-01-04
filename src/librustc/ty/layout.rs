@@ -520,7 +520,7 @@ impl<'a, 'tcx> Integer {
             attr::SignedInt(IntTy::I32) | attr::UnsignedInt(UintTy::U32) => I32,
             attr::SignedInt(IntTy::I64) | attr::UnsignedInt(UintTy::U64) => I64,
             attr::SignedInt(IntTy::I128) | attr::UnsignedInt(UintTy::U128) => I128,
-            attr::SignedInt(IntTy::Is) | attr::UnsignedInt(UintTy::Us) => {
+            attr::SignedInt(IntTy::Isize) | attr::UnsignedInt(UintTy::Usize) => {
                 dl.ptr_sized_integer()
             }
         }

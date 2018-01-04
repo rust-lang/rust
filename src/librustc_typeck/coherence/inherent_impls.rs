@@ -200,7 +200,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "i128",
                                           item.span);
             }
-            ty::TyInt(ast::IntTy::Is) => {
+            ty::TyInt(ast::IntTy::Isize) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.isize_impl(),
                                           "isize",
@@ -242,7 +242,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
                                           "u128",
                                           item.span);
             }
-            ty::TyUint(ast::UintTy::Us) => {
+            ty::TyUint(ast::UintTy::Usize) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.usize_impl(),
                                           "usize",

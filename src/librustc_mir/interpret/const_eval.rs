@@ -106,7 +106,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
         TyInt(IntTy::I32) => ConstInt::I32(prim as i128 as i32),
         TyInt(IntTy::I64) => ConstInt::I64(prim as i128 as i64),
         TyInt(IntTy::I128) => ConstInt::I128(prim as i128),
-        TyInt(IntTy::Is) => ConstInt::Isize(
+        TyInt(IntTy::Isize) => ConstInt::Isize(
             ConstIsize::new(prim as i128 as i64, tcx.sess.target.isize_ty)
                 .expect("miri should already have errored"),
         ),
@@ -115,7 +115,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
         TyUint(UintTy::U32) => ConstInt::U32(prim as u32),
         TyUint(UintTy::U64) => ConstInt::U64(prim as u64),
         TyUint(UintTy::U128) => ConstInt::U128(prim),
-        TyUint(UintTy::Us) => ConstInt::Usize(
+        TyUint(UintTy::Usize) => ConstInt::Usize(
             ConstUsize::new(prim as u64, tcx.sess.target.usize_ty)
                 .expect("miri should already have errored"),
         ),

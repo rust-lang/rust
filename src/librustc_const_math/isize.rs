@@ -38,9 +38,9 @@ impl ConstIsize {
     pub fn new(i: i64, isize_ty: ast::IntTy) -> Result<Self, ConstMathErr> {
         match isize_ty {
             ast::IntTy::I16 if i as i16 as i64 == i => Ok(Is16(i as i16)),
-            ast::IntTy::I16 => Err(LitOutOfRange(ast::IntTy::Is)),
+            ast::IntTy::I16 => Err(LitOutOfRange(ast::IntTy::Isize)),
             ast::IntTy::I32 if i as i32 as i64 == i => Ok(Is32(i as i32)),
-            ast::IntTy::I32 => Err(LitOutOfRange(ast::IntTy::Is)),
+            ast::IntTy::I32 => Err(LitOutOfRange(ast::IntTy::Isize)),
             ast::IntTy::I64 => Ok(Is64(i)),
             _ => unreachable!(),
         }

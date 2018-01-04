@@ -155,8 +155,8 @@ impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Bool(value)
 });
 
-impl_stable_hash_for!(enum ::syntax::ast::IntTy { Is, I8, I16, I32, I64, I128 });
-impl_stable_hash_for!(enum ::syntax::ast::UintTy { Us, U8, U16, U32, U64, U128 });
+impl_stable_hash_for!(enum ::syntax::ast::IntTy { Isize, I8, I16, I32, I64, I128 });
+impl_stable_hash_for!(enum ::syntax::ast::UintTy { Usize, U8, U16, U32, U64, U128 });
 impl_stable_hash_for!(enum ::syntax::ast::FloatTy { F32, F64 });
 impl_stable_hash_for!(enum ::syntax::ast::Unsafety { Unsafe, Normal });
 impl_stable_hash_for!(enum ::syntax::ast::Constness { Const, NotConst });

@@ -392,7 +392,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::I32 => ConstInt::I32(-1),
                     ast::IntTy::I64 => ConstInt::I64(-1),
                     ast::IntTy::I128 => ConstInt::I128(-1),
-                    ast::IntTy::Is => {
+                    ast::IntTy::Isize => {
                         let int_ty = self.hir.tcx().sess.target.isize_ty;
                         let val = ConstIsize::new(-1, int_ty).unwrap();
                         ConstInt::Isize(val)
@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::I32 => ConstInt::I32(i32::min_value()),
                     ast::IntTy::I64 => ConstInt::I64(i64::min_value()),
                     ast::IntTy::I128 => ConstInt::I128(i128::min_value()),
-                    ast::IntTy::Is => {
+                    ast::IntTy::Isize => {
                         let int_ty = self.hir.tcx().sess.target.isize_ty;
                         let min = match int_ty {
                             ast::IntTy::I16 => std::i16::MIN as i64,

@@ -1246,7 +1246,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 fn int_type_width_signed(ty: Ty, ccx: &CrateContext) -> Option<(u64, bool)> {
     match ty.sty {
         ty::TyInt(t) => Some((match t {
-            ast::IntTy::Is => {
+            ast::IntTy::Isize => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "16" => 16,
                     "32" => 32,
@@ -1261,7 +1261,7 @@ fn int_type_width_signed(ty: Ty, ccx: &CrateContext) -> Option<(u64, bool)> {
             ast::IntTy::I128 => 128,
         }, true)),
         ty::TyUint(t) => Some((match t {
-            ast::UintTy::Us => {
+            ast::UintTy::Usize => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "16" => 16,
                     "32" => 32,

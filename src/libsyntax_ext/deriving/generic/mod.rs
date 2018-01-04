@@ -833,14 +833,14 @@ fn find_repr_type_name(diagnostic: &Handler, type_attrs: &[ast::Attribute]) -> &
                 attr::ReprPacked | attr::ReprSimd | attr::ReprAlign(_) => continue,
                 attr::ReprExtern => "i32",
 
-                attr::ReprInt(attr::SignedInt(ast::IntTy::Is)) => "isize",
+                attr::ReprInt(attr::SignedInt(ast::IntTy::Isize)) => "isize",
                 attr::ReprInt(attr::SignedInt(ast::IntTy::I8)) => "i8",
                 attr::ReprInt(attr::SignedInt(ast::IntTy::I16)) => "i16",
                 attr::ReprInt(attr::SignedInt(ast::IntTy::I32)) => "i32",
                 attr::ReprInt(attr::SignedInt(ast::IntTy::I64)) => "i64",
                 attr::ReprInt(attr::SignedInt(ast::IntTy::I128)) => "i128",
 
-                attr::ReprInt(attr::UnsignedInt(ast::UintTy::Us)) => "usize",
+                attr::ReprInt(attr::UnsignedInt(ast::UintTy::Usize)) => "usize",
                 attr::ReprInt(attr::UnsignedInt(ast::UintTy::U8)) => "u8",
                 attr::ReprInt(attr::UnsignedInt(ast::UintTy::U16)) => "u16",
                 attr::ReprInt(attr::UnsignedInt(ast::UintTy::U32)) => "u32",

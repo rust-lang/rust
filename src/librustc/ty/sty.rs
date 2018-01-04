@@ -1505,7 +1505,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_machine(&self) -> bool {
         match self.sty {
-            TyInt(ast::IntTy::Is) | TyUint(ast::UintTy::Us) => false,
+            TyInt(ast::IntTy::Isize) | TyUint(ast::UintTy::Usize) => false,
             TyInt(..) | TyUint(..) | TyFloat(..) => true,
             _ => false,
         }

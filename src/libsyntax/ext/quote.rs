@@ -326,13 +326,13 @@ pub mod rt {
         );
     }
 
-    impl_to_tokens_int! { signed, isize, ast::IntTy::Is }
+    impl_to_tokens_int! { signed, isize, ast::IntTy::Isize }
     impl_to_tokens_int! { signed, i8,  ast::IntTy::I8 }
     impl_to_tokens_int! { signed, i16, ast::IntTy::I16 }
     impl_to_tokens_int! { signed, i32, ast::IntTy::I32 }
     impl_to_tokens_int! { signed, i64, ast::IntTy::I64 }
 
-    impl_to_tokens_int! { unsigned, usize, ast::UintTy::Us }
+    impl_to_tokens_int! { unsigned, usize, ast::UintTy::Usize }
     impl_to_tokens_int! { unsigned, u8,   ast::UintTy::U8 }
     impl_to_tokens_int! { unsigned, u16,  ast::UintTy::U16 }
     impl_to_tokens_int! { unsigned, u32,  ast::UintTy::U32 }
