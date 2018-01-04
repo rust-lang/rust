@@ -1144,13 +1144,6 @@ extern "C" void LLVMRustWriteSMDiagnosticToString(LLVMSMDiagnosticRef D,
   unwrap(D)->print("", OS);
 }
 
-extern "C" LLVMValueRef
-LLVMRustBuildLandingPad(LLVMBuilderRef B, LLVMTypeRef Ty,
-                        LLVMValueRef PersFn, unsigned NumClauses,
-                        const char *Name, LLVMValueRef F) {
-  return LLVMBuildLandingPad(B, Ty, PersFn, NumClauses, Name);
-}
-
 extern "C" LLVMValueRef LLVMRustBuildCleanupPad(LLVMBuilderRef B,
                                                 LLVMValueRef ParentPad,
                                                 unsigned ArgCount,
@@ -1355,10 +1348,6 @@ extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *hig
     return true;
 }
 
-extern "C" LLVMContextRef LLVMRustGetValueContext(LLVMValueRef V) {
-  return wrap(&unwrap(V)->getContext());
-}
-
 enum class LLVMRustVisibility {
   Default = 0,
   Hidden = 1,
@@ -1439,11 +1428,6 @@ LLVMRustModuleBufferLen(const LLVMRustModuleBuffer *Buffer) {
 
 extern "C" uint64_t
 LLVMRustModuleCost(LLVMModuleRef M) {
-  Module &Mod = *unwrap(M);
-  uint64_t cost = 0;
-  for (auto &F : Mod.functions()) {
-    (void)F;
-    cost += 1;
-  }
-  return cost;
+  auto f = unwrap(M)->functions();
+  return std::distance(std::begin(f), std::end(f));
 }
