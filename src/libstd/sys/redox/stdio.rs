@@ -9,12 +9,22 @@
 // except according to those terms.
 
 use io;
+use mem::ManuallyDrop;
 use sys::{cvt, syscall};
 use sys::fd::FileDesc;
 
 pub struct Stdin(());
 pub struct Stdout(());
 pub struct Stderr(());
+
+// FIXME: This duplicates code from process.rs.
+fn open_null_device (readable: bool) -> io::Result<FileDesc> {
+    let mut opts = OpenOptions::new();
+    opts.read(readable);
+    opts.write(!readable);
+    let fd = File::open(Path::new("null:"), &opts)?;
+    Ok(fd.into_fd())
+}
 
 impl Stdin {
     pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
@@ -24,6 +34,20 @@ impl Stdin {
         let ret = fd.read(data);
         fd.into_raw();
         ret
+    }
+
+    pub fn close(&mut self) -> io::Result<()> {
+        // To close stdin, atomically replace the file underlying fd 0
+        // with the null device.  This protects against code (perhaps
+        // in third-party libraries) that assumes fd 0 is always open
+        // and always refers to the same thing as stdin.
+        //
+        // This function does not "drain" any not-yet-read input.
+
+        // fd 0 itself should never actually be closed.
+        let mut fd = ManuallyDrop::new(FileDesc::new(0));
+        fd.replace(open_null_device(true)?)?;
+        Ok(())
     }
 }
 
@@ -40,6 +64,14 @@ impl Stdout {
     pub fn flush(&self) -> io::Result<()> {
         cvt(syscall::fsync(1)).and(Ok(()))
     }
+
+    pub fn close(&mut self) -> io::Result<()> {
+        // See commentary for Stdin::close.
+
+        let mut fd = ManuallyDrop::new(FileDesc::new(2));
+        fd.replace(open_null_device(false)?)?;
+        Ok(())
+    }
 }
 
 impl Stderr {
@@ -54,6 +86,14 @@ impl Stderr {
 
     pub fn flush(&self) -> io::Result<()> {
         cvt(syscall::fsync(2)).and(Ok(()))
+    }
+
+    pub fn close(&mut self) -> io::Result<()> {
+        // See commentary for Stdin::close.
+
+        let mut fd = ManuallyDrop::new(FileDesc::new(2));
+        fd.replace(open_null_device(false)?)?;
+        Ok(())
     }
 }
 

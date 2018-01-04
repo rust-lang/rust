@@ -243,6 +243,30 @@ impl FileDesc {
         }
         cvt(unsafe { libc::fcntl(fd, libc::F_DUPFD, 0) }).and_then(make_filedesc)
     }
+
+    /// Atomically replace the open file referred to by `self` with
+    /// the open file referred to by `other`.  This does not change
+    /// the file descriptor _number_ within self; rather, it changes
+    /// what open file that number refers to.
+    ///
+    /// On success, the file formerly referred to by `self` may have
+    /// been closed (if there was no other descriptor referring to
+    /// it); if this is undesirable, call duplicate() first.
+    /// On failure, `self` is unchanged.
+    ///
+    /// Regardless of success or failure, `other` is consumed, which
+    /// means the file descriptor formerly held by `other` will be
+    /// closed.
+    ///
+    /// The file underlying `self` is replaced atomically, but the
+    /// _overall_ operation is not atomic; concurrent threads that snoop on
+    /// the set of valid file descriptors (which they shouldn't) can observe
+    /// intermediate states.
+    pub fn replace(&mut self, other: FileDesc) -> io::Result<()> {
+        let fd = cvt(unsafe { libc::dup2(other.fd, self.fd) })?;
+        assert!(fd == self.fd);
+        Ok(())
+    }
 }
 
 impl<'a> Read for &'a FileDesc {

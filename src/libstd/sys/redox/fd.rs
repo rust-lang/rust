@@ -71,6 +71,12 @@ impl FileDesc {
         }
         cvt(syscall::fcntl(self.fd, syscall::F_SETFL, flags)).and(Ok(()))
     }
+
+    pub fn replace(&mut self, other: FileDesc) -> io::Result<()> {
+        let fd = cvt(syscall::dup2(other.fd, self.fd, &[]))?;
+        assert!(fd == self.fd);
+        Ok(())
+    }
 }
 
 impl<'a> Read for &'a FileDesc {

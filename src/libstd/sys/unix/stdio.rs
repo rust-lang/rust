@@ -10,11 +10,26 @@
 
 use io;
 use libc;
+use mem::ManuallyDrop;
 use sys::fd::FileDesc;
+use sys::fs::{File, OpenOptions};
+use ffi::CStr;
 
 pub struct Stdin(());
 pub struct Stdout(());
 pub struct Stderr(());
+
+// FIXME: This duplicates code from process_common.rs.
+fn open_null_device (readable: bool) -> io::Result<FileDesc> {
+    let mut opts = OpenOptions::new();
+    opts.read(readable);
+    opts.write(!readable);
+    let path = unsafe {
+        CStr::from_ptr("/dev/null\0".as_ptr() as *const _)
+    };
+    let fd = File::open_c(&path, &opts)?;
+    Ok(fd.into_fd())
+}
 
 impl Stdin {
     pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
@@ -24,6 +39,21 @@ impl Stdin {
         let ret = fd.read(data);
         fd.into_raw();
         ret
+    }
+
+    pub fn close(&mut self) -> io::Result<()> {
+        // To close stdin, atomically replace the file underlying
+        // STDIN_FILENO with the null device.  This protects against
+        // code (perhaps in third-party libraries) that assumes
+        // STDIN_FILENO is always open and always refers to the same
+        // thing as stdin.
+        //
+        // This function does not "drain" any not-yet-read input.
+
+        // STDIN_FILENO itself should never actually be closed.
+        let mut fd = ManuallyDrop::new(FileDesc::new(libc::STDIN_FILENO));
+        fd.replace(open_null_device(true)?)?;
+        Ok(())
     }
 }
 
@@ -40,6 +70,14 @@ impl Stdout {
     pub fn flush(&self) -> io::Result<()> {
         Ok(())
     }
+
+    pub fn close(&mut self) -> io::Result<()> {
+        // See commentary for Stdin::close.
+
+        let mut fd = ManuallyDrop::new(FileDesc::new(libc::STDOUT_FILENO));
+        fd.replace(open_null_device(false)?)?;
+        Ok(())
+    }
 }
 
 impl Stderr {
@@ -53,6 +91,14 @@ impl Stderr {
     }
 
     pub fn flush(&self) -> io::Result<()> {
+        Ok(())
+    }
+
+    pub fn close(&mut self) -> io::Result<()> {
+        // See commentary for Stdin::close.
+
+        let mut fd = ManuallyDrop::new(FileDesc::new(libc::STDERR_FILENO));
+        fd.replace(open_null_device(false)?)?;
         Ok(())
     }
 }

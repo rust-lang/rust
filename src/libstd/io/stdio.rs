@@ -260,7 +260,7 @@ impl Stdin {
     ///         println!("{} bytes read", n);
     ///         println!("{}", input);
     ///     }
-    ///     Err(error) => println!("error: {}", error),
+    ///     Err(error) => eprintln!("error: {}", error),
     /// }
     /// ```
     ///
@@ -273,6 +273,51 @@ impl Stdin {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read_line(&self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_line(buf)
+    }
+
+    /// Lock this handle and then close it.
+    ///
+    /// "Closing" standard input actually replaces it with a file open
+    /// on the null device.  Thus, after `stdin().close()`, both stdin
+    /// and `libc::STDIN_FILENO` can still be used, but will read as empty.
+    /// However, the original file has indeed been closed; for instance,
+    /// if standard input is a pipe, anyone still writing to it will receive
+    /// a "broken pipe" notification.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(close_std_streams)]
+    /// use std::io;
+    ///
+    /// let mut input = String::new();
+    ///
+    /// match io::stdin().read_line(&mut input) {
+    ///     Ok(n) => {
+    ///         println!("{} bytes read", n);
+    ///         println!("{}", input);
+    ///     }
+    ///     Err(error) => eprintln!("read error: {}", error),
+    /// }
+    ///
+    /// if let Err(error) = io::stdin().close() {
+    ///     eprintln!("close error: {}", error);
+    /// }
+    ///
+    /// match io::stdin().read_line(&mut input) {
+    ///     Ok(n) => {
+    ///         println!("{} bytes read", n);
+    ///         println!("{}", input);
+    ///     }
+    ///     Err(error) => eprintln!("read error: {}", error),
+    /// }
+    /// ```
+    ///
+    /// If this program is run with two or more lines of input, it will
+    /// print only the first line.
+    #[unstable(feature = "close_std_streams", issue = "40032")]
+    pub fn close(&mut self) -> io::Result<()> {
+        self.lock().close()
     }
 }
 
@@ -300,6 +345,20 @@ impl Read for Stdin {
     }
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.lock().read_exact(buf)
+    }
+}
+
+impl<'a> StdinLock<'a> {
+    /// Close this file handle.
+    ///
+    /// For detailed semantics of this method, see the documentation on
+    /// [`Stdin::close`].
+    ///
+    /// [`Stdin::close`]: struct.Stdin.html#method.close
+    #[unstable(feature = "close_std_streams", issue = "40032")]
+    pub fn close(&mut self) -> io::Result<()> {
+        // Do this regardless of whether inner is real.
+        stdio::Stdin::new()?.close()
     }
 }
 
@@ -435,6 +494,33 @@ impl Stdout {
     pub fn lock(&self) -> StdoutLock {
         StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
+
+    /// Lock this handle and then close it.
+    ///
+    /// "Closing" standard output actually replaces it with a file open
+    /// on the null device.  Thus, after `stdout().close()`, both stdout
+    /// and `libc::STDOUT_FILENO` can still be used, but will discard
+    /// everything written to them.  However, the original file has
+    /// indeed been closed; for instance, if standard output is a pipe,
+    /// whoever is reading from it will receive an end-of-file notification.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(close_std_streams)]
+    /// use std::io;
+    ///
+    /// println!("this line is printed");
+    /// if let Err(error) = io::stdout().close() {
+    ///     eprintln!("close error: {}", error);
+    /// } else {
+    ///     println!("this line is discarded");
+    /// }
+    /// ```
+    #[unstable(feature = "close_std_streams", issue = "40032")]
+    pub fn close(&mut self) -> io::Result<()> {
+        self.lock().close()
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -459,6 +545,21 @@ impl Write for Stdout {
         self.lock().write_fmt(args)
     }
 }
+
+impl<'a> StdoutLock<'a> {
+    /// Close this file handle.
+    ///
+    /// For detailed semantics of this method, see the documentation on
+    /// [`Stdout::close`].
+    ///
+    /// [`Stdout::close`]: struct.Stdout.html#method.close
+    #[unstable(feature = "close_std_streams", issue = "40032")]
+    pub fn close(&mut self) -> io::Result<()> {
+        // Do this regardless of whether inner is real.
+        stdio::Stdout::new()?.close()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StdoutLock<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -570,6 +671,33 @@ impl Stderr {
     pub fn lock(&self) -> StderrLock {
         StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
+
+    /// Lock this handle and then close it.
+    ///
+    /// "Closing" standard error actually replaces it with a file open
+    /// on the null device.  Thus, after `stderr().close()`, both stderr
+    /// and `libc::STDERR_FILENO` can still be used, but will discard
+    /// everything written to them.  However, the original file has
+    /// indeed been closed; for instance, if standard error is a pipe,
+    /// whoever is reading from it will receive an end-of-file notification.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(close_std_streams)]
+    /// use std::io;
+    ///
+    /// eprintln!("this line is printed");
+    /// if let Err(error) = io::stdout().close() {
+    ///     eprintln!("close error: {}", error);
+    /// } else {
+    ///     eprintln!("this line is discarded");
+    /// }
+    /// ```
+    #[unstable(feature = "close_std_streams", issue = "40032")]
+    pub fn close(&mut self) -> io::Result<()> {
+        self.lock().close()
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -594,6 +722,21 @@ impl Write for Stderr {
         self.lock().write_fmt(args)
     }
 }
+
+impl<'a> StderrLock<'a> {
+    /// Close this file handle.
+    ///
+    /// For detailed semantics of this method, see the documentation on
+    /// [`Stderr::close`].
+    ///
+    /// [`Stderr::close`]: struct.Stderr.html#method.close
+    #[unstable(feature = "close_std_streams", issue = "40032")]
+    pub fn close(&mut self) -> io::Result<()> {
+        // Do this regardless of whether inner is real.
+        stdio::Stderr::new()?.close()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StderrLock<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
