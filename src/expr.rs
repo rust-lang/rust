@@ -1811,24 +1811,39 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
     )
 }
 
-const FORMAT_LIKE_WHITELIST: &[&str] = &[
+/// A list of `format!`-like macros, that take a long format string and a list of arguments to
+/// format.
+///
+/// Organized as a list of `(&str, usize)` tuples, giving the name of the macro and the number of
+/// arguments before the format string (none for `format!("format", ...)`, one for `assert!(result,
+/// "format", ...)`, two for `assert_eq!(left, right, "format", ...)`).
+const SPECIAL_MACRO_WHITELIST: &[(&str, usize)] = &[
+    // format! like macros
     // From the Rust Standard Library.
-    "eprint!",
-    "eprintln!",
-    "format!",
-    "format_args!",
-    "print!",
-    "println!",
-    "panic!",
-    "unreachable!",
+    ("eprint!", 0),
+    ("eprintln!", 0),
+    ("format!", 0),
+    ("format_args!", 0),
+    ("print!", 0),
+    ("println!", 0),
+    ("panic!", 0),
+    ("unreachable!", 0),
     // From the `log` crate.
-    "debug!",
-    "error!",
-    "info!",
-    "warn!",
+    ("debug!", 0),
+    ("error!", 0),
+    ("info!", 0),
+    ("warn!", 0),
+    // write! like macros
+    ("assert!", 1),
+    ("debug_assert!", 1),
+    ("write!", 1),
+    ("writeln!", 1),
+    // assert_eq! like macros
+    ("assert_eq!", 2),
+    ("assert_ne!", 2),
+    ("debug_assert_eq!", 2),
+    ("debug_assert_ne!", 2),
 ];
-
-const WRITE_LIKE_WHITELIST: &[&str] = &["assert!", "write!", "writeln!"];
 
 pub fn rewrite_call(
     context: &RewriteContext,
@@ -2066,24 +2081,26 @@ where
             } else {
                 tactic = default_tactic();
 
-                // For special-case macros, we may want to use different tactics.
-                let maybe_args_offset = maybe_get_args_offset(callee_str, args);
+                if tactic == DefinitiveListTactic::Vertical {
+                    if let Some((all_simple, num_args_before)) =
+                        maybe_get_args_offset(callee_str, args)
+                    {
+                        let one_line = all_simple
+                            && definitive_tactic(
+                                &item_vec[..num_args_before],
+                                ListTactic::HorizontalVertical,
+                                Separator::Comma,
+                                nested_shape.width,
+                            ) == DefinitiveListTactic::Horizontal
+                            && definitive_tactic(
+                                &item_vec[num_args_before + 1..],
+                                ListTactic::HorizontalVertical,
+                                Separator::Comma,
+                                nested_shape.width,
+                            ) == DefinitiveListTactic::Horizontal;
 
-                if tactic == DefinitiveListTactic::Vertical && maybe_args_offset.is_some() {
-                    let args_offset = maybe_args_offset.unwrap();
-                    let args_tactic = definitive_tactic(
-                        &item_vec[args_offset..],
-                        ListTactic::HorizontalVertical,
-                        Separator::Comma,
-                        nested_shape.width,
-                    );
-
-                    // Every argument is simple and fits on a single line.
-                    if args_tactic == DefinitiveListTactic::Horizontal {
-                        tactic = if args_offset == 1 {
-                            DefinitiveListTactic::FormatCall
-                        } else {
-                            DefinitiveListTactic::WriteCall
+                        if one_line {
+                            tactic = DefinitiveListTactic::SpecialMacro(num_args_before);
                         };
                     }
                 }
@@ -2120,15 +2137,14 @@ fn is_every_args_simple<T: ToExpr>(lists: &[&T]) -> bool {
 }
 
 /// In case special-case style is required, returns an offset from which we start horizontal layout.
-fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<usize> {
-    if FORMAT_LIKE_WHITELIST.iter().any(|s| *s == callee_str) && args.len() >= 1
-        && is_every_args_simple(args)
+fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<(bool, usize)> {
+    if let Some(&(_, num_args_before)) = SPECIAL_MACRO_WHITELIST
+        .iter()
+        .find(|&&(s, _)| s == callee_str)
     {
-        Some(1)
-    } else if WRITE_LIKE_WHITELIST.iter().any(|s| *s == callee_str) && args.len() >= 2
-        && is_every_args_simple(args)
-    {
-        Some(2)
+        let all_simple = args.len() >= num_args_before && is_every_args_simple(args);
+
+        Some((all_simple, num_args_before))
     } else {
         None
     }

@@ -691,14 +691,70 @@ fn special_case_macros() {
         26
     );
 
-    assert!(result, "Ahoy there, {}!", target);
+    assert!(result == 42, "Ahoy there, {}!", target);
     assert!(
+        result == 42,
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
         result,
+        input,
+        expected
+    );
+    assert!(
+        result == 42,
+        "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+    );
+
+    assert_eq!(left, right, "Ahoy there, {}!", target);
+    assert_eq!(
+        left, right,
         "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
         result, input, expected
     );
-    assert!(
+    assert_eq!(
+        first_realllllllllllly_long_variable_that_doesnt_fit_one_one_line,
+        second_reallllllllllly_long_variable_that_doesnt_fit_one_one_line,
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
         result,
+        input,
+        expected
+    );
+    assert_eq!(
+        left + 42,
+        right,
+        "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')",
+        result,
+        input,
+        expected
+    );
+    assert_eq!(
+        left,
+        right,
         "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
         1,
         2,
