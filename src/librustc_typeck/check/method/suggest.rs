@@ -215,20 +215,43 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             item_name,
                             ty_string
                         );
-                        let snippet = tcx.sess.codemap().span_to_snippet(expr.span)
-                            .unwrap_or("4".to_string());
                         let concrete_type = if actual.is_integral() {
-                            "u32"
+                            "i32"
                         } else {
                             "f32"
                         };
-                        err.span_suggestion(expr.span,
-                                            &format!("you must specify a concrete type for \
-                                                      this numeric value, like `{}`",
-                                                     concrete_type),
-                                            format!("({} as {})",
-                                                    snippet,
-                                                    concrete_type));
+                        match expr.node {
+                            hir::ExprLit(_) => {  // numeric literal
+                                let snippet = tcx.sess.codemap().span_to_snippet(expr.span)
+                                    .unwrap_or("<numeric literal>".to_string());
+                                // FIXME: use the literal for missing snippet
+
+                                err.span_suggestion(expr.span,
+                                                    &format!("you must specify a concrete type for \
+                                                              this numeric value, like `{}`",
+                                                             concrete_type),
+                                                    format!("{}_{}",
+                                                            snippet,
+                                                            concrete_type));
+                            }
+                            hir::ExprPath(ref qpath) => {  // local binding
+                                if let &hir::QPath::Resolved(_, ref path) = &qpath {
+                                    if let hir::def::Def::Local(node_id) = path.def {
+                                        let span = tcx.hir.span(node_id);
+                                        let snippet = tcx.sess.codemap().span_to_snippet(span)
+                                            .unwrap();
+                                        err.span_suggestion(span,
+                                                            &format!("you must specify a type for \
+                                                                      this binding, like `{}`",
+                                                                     concrete_type),
+                                                            format!("{}: {}",
+                                                                    snippet,
+                                                                    concrete_type));
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
                         err.emit();
                         return;
                     } else {

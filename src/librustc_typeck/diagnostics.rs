@@ -4661,9 +4661,10 @@ x.powi(2);  // same error as above
 Because of this, you must give the numeric literal or binding a type:
 
 ```
-let _ = (2.0 as f32).powi(2);
+let _ = 2.0_f32.powi(2);
 let x: f32 = 2.0;
 let _ = x.powi(2);
+let _ = (2.0 as f32).powi(2);
 ```
 "##,
 }

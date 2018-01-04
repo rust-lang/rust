@@ -11,5 +11,8 @@
 fn main() {
     let x = 2.0.powi(2);
     //~^ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+    let y = 2.0;
+    let x = y.powi(2);
+    //~^ ERROR can't call method `powi` on ambiguous numeric type `{float}`
     println!("{:?}", x);
 }
