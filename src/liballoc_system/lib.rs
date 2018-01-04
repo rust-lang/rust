@@ -21,7 +21,7 @@
 #![feature(core_intrinsics)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
-#![cfg_attr(any(unix, target_os = "redox"), feature(libc))]
+#![cfg_attr(any(unix, target_os = "cloudabi", target_os = "redox"), feature(libc))]
 #![rustc_alloc_kind = "lib"]
 
 // The minimum alignment guaranteed by the architecture. This value is used to
@@ -116,7 +116,7 @@ unsafe impl Alloc for System {
     }
 }
 
-#[cfg(any(unix, target_os = "redox"))]
+#[cfg(any(unix, target_os = "cloudabi", target_os = "redox"))]
 mod platform {
     extern crate libc;
 
@@ -213,6 +213,16 @@ mod platform {
             struct Stderr;
 
             impl Write for Stderr {
+                #[cfg(target_os = "cloudabi")]
+                fn write_str(&mut self, _: &str) -> fmt::Result {
+                    // CloudABI does not have any reserved file descriptor
+                    // numbers. We should not attempt to write to file
+                    // descriptor #2, as it may be associated with any kind of
+                    // resource.
+                    Ok(())
+                }
+
+                #[cfg(not(target_os = "cloudabi"))]
                 fn write_str(&mut self, s: &str) -> fmt::Result {
                     unsafe {
                         libc::write(libc::STDERR_FILENO,
