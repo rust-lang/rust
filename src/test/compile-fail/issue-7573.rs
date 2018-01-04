@@ -25,9 +25,12 @@ impl CrateId {
 
 pub fn remove_package_from_database() {
     let mut lines_to_use: Vec<&CrateId> = Vec::new();
-    //~^ ERROR borrowed data cannot be moved outside of its closure
+        //~^ NOTE cannot infer an appropriate lifetime
     let push_id = |installed_id: &CrateId| {
+        //~^ NOTE borrowed data cannot outlive this closure
         lines_to_use.push(installed_id);
+        //~^ ERROR borrowed data cannot be moved outside of its closure
+        //~| NOTE cannot be moved outside of its closure
     };
     list_database(push_id);
 

@@ -1079,15 +1079,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         node: hir::ExprClosure(_, _, _, closure_span, false),
                         ..
                     }) => {
-                        let sp = var_origin.span();
+                        let sup_sp = sup_origin.span();
+                        let origin_sp = var_origin.span();
                         let mut err = self.tcx.sess.struct_span_err(
-                            sp,
+                            sup_sp,
                             "borrowed data cannot be moved outside of its closure");
-                        err.span_label(sp, "cannot be moved outside of its closure");
-                        err.span_label(*external_span,
-                                       "borrowed data cannot be moved into here...");
-                        err.span_label(*closure_span,
-                                       "...because it cannot outlive this closure");
+                        err.span_label(sup_sp, "cannot be moved outside of its closure");
+                        if sup_sp == origin_sp {
+                            err.span_label(*external_span,
+                                           "borrowed data cannot be moved into here...");
+                            err.span_label(*closure_span,
+                                           "...because it cannot outlive this closure");
+                        } else {
+                            err.span_label(*closure_span,
+                                           "borrowed data cannot outlive this closure");
+                            err.span_label(origin_sp,
+                                           "cannot infer an appropriate lifetime");
+                        }
                         err.emit();
                         return;
                     }
