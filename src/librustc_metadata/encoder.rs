@@ -151,9 +151,8 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
 
         let span = span.data();
 
-        if span.lo > span.hi {
-            return TAG_INVALID_SPAN.encode(self)
-        }
+        // The Span infrastructure should make sure that this invariant holds:
+        debug_assert!(span.lo <= span.hi);
 
         if !self.filemap_cache.contains(span.lo) {
             let codemap = self.tcx.sess.codemap();
@@ -162,6 +161,8 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         }
 
         if !self.filemap_cache.contains(span.hi) {
+            // Unfortunately, macro expansion still sometimes generates Spans
+            // that malformed in this way.
             return TAG_INVALID_SPAN.encode(self)
         }
 
