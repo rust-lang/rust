@@ -204,6 +204,14 @@ fn load_backend_from_dylib(sess: &Session, backend_name: &str) -> Box<TransCrate
         _lib: DynamicLibrary,
         trans: Box<TransCrate>,
     }
+
+    impl Drop for ExternTransCrate {
+        fn drop(&mut self) {
+            // Make sure trans gets dropped before _lib as bad things happen otherwise
+            self.trans = Box::new(::rustc_trans_utils::trans_crate::DummyTransCrate)
+        }
+    }
+
     impl TransCrate for ExternTransCrate {
         fn print(&self, req: PrintRequest, sess: &Session) {
             self.trans.print(req, sess);
