@@ -233,7 +233,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             CastError::NeedViaPtr => {
                 let mut err = make_invalid_casting_error(fcx.tcx.sess, self.span, self.expr_ty,
                                                          self.cast_ty, fcx);
-                if self.cast_ty.is_uint() {
+                if self.cast_ty.is_integral() {
                     err.help(&format!("cast through {} first",
                                       match e {
                                           CastError::NeedViaPtr => "a raw pointer",

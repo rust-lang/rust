@@ -1478,13 +1478,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_uint(&self) -> bool {
-        match self.sty {
-            TyInfer(IntVar(_)) | TyUint(ast::UintTy::Us) => true,
-            _ => false
-        }
-    }
-
     pub fn is_char(&self) -> bool {
         match self.sty {
             TyChar => true,

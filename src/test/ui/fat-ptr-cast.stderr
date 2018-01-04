@@ -11,18 +11,24 @@ error[E0606]: casting `&[i32]` as `isize` is invalid
    |
 21 |     a as isize; //~ ERROR casting
    |     ^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
 
 error[E0606]: casting `&[i32]` as `i16` is invalid
   --> $DIR/fat-ptr-cast.rs:22:5
    |
 22 |     a as i16; //~ ERROR casting `&[i32]` as `i16` is invalid
    |     ^^^^^^^^
+   |
+   = help: cast through a raw pointer first
 
 error[E0606]: casting `&[i32]` as `u32` is invalid
   --> $DIR/fat-ptr-cast.rs:23:5
    |
 23 |     a as u32; //~ ERROR casting `&[i32]` as `u32` is invalid
    |     ^^^^^^^^
+   |
+   = help: cast through a raw pointer first
 
 error[E0605]: non-primitive cast: `std::boxed::Box<[i32]>` as `usize`
   --> $DIR/fat-ptr-cast.rs:24:5
