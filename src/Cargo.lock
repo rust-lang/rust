@@ -287,14 +287,14 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.174"
+version = "0.0.177"
 dependencies = [
  "cargo_metadata 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy-mini-macro-test 0.1.0",
- "clippy_lints 0.0.174",
- "compiletest_rs 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "clippy-mini-macro-test 0.2.0",
+ "clippy_lints 0.0.177",
+ "compiletest_rs 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "duct 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -302,15 +302,15 @@ dependencies = [
 
 [[package]]
 name = "clippy-mini-macro-test"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "clippy_lints"
-version = "0.0.174"
+version = "0.0.177"
 dependencies = [
  "if_chain 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "matches 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "quine-mc_cluskey 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -382,7 +382,7 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.3.3"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "diff 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1183,7 +1183,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiletest_rs 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiletest_rs 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2810,7 +2810,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum coco 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c06169f5beb7e31c7c67ebf5540b8b472d23e3eade3b2ec7d1f5b504a85f91bd"
 "checksum commoncrypto 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d056a8586ba25a1e4d61cb090900e495952c7886786fc55f909ab2f819b69007"
 "checksum commoncrypto-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1fed34f46747aa73dfaa578069fd8279d2818ade2b55f38f22a9401c7f4083e2"
-"checksum compiletest_rs 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "562bafeec9aef1e3e08f1c5b0c542220bb80ff2894e5373a1f9d17c346412c66"
+"checksum compiletest_rs 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "9d58e648d0fb482578b63212d0cedce5c8b21ae45f6f49736a92b70e9adec05c"
 "checksum core-foundation 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "8047f547cd6856d45b1cdd75ef8d2f21f3d0e4bf1dab0a0041b0ae9a5dda9c0e"
 "checksum core-foundation-sys 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "152195421a2e6497a8179195672e9d4ee8e45ed8c465b626f1606d27a08ebcd5"
 "checksum crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)" = "0c5ea215664ca264da8a9d9c3be80d2eaf30923c259d03e870388eb927508f97"
