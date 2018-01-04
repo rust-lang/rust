@@ -287,14 +287,14 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.174"
+version = "0.0.177"
 dependencies = [
  "cargo_metadata 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy-mini-macro-test 0.1.0",
- "clippy_lints 0.0.174",
+ "clippy-mini-macro-test 0.2.0",
+ "clippy_lints 0.0.177",
  "compiletest_rs 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "duct 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -302,15 +302,15 @@ dependencies = [
 
 [[package]]
 name = "clippy-mini-macro-test"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "clippy_lints"
-version = "0.0.174"
+version = "0.0.177"
 dependencies = [
  "if_chain 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "matches 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "quine-mc_cluskey 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
