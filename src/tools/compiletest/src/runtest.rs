@@ -2708,15 +2708,16 @@ impl<'test> TestCx<'test> {
             return 0;
         }
 
-        println!("normalized {}:\n{}\n", kind, actual);
-        println!("expected {}:\n{}\n", kind, expected);
-        println!("diff of {}:\n", kind);
-
-        for diff in diff::lines(expected, actual) {
-            match diff {
-                diff::Result::Left(l) => println!("-{}", l),
-                diff::Result::Both(l, _) => println!(" {}", l),
-                diff::Result::Right(r) => println!("+{}", r),
+        if expected.is_empty() {
+            println!("normalized {}:\n{}\n", kind, actual);
+        } else {
+            println!("diff of {}:\n", kind);
+            for diff in diff::lines(expected, actual) {
+                match diff {
+                    diff::Result::Left(l) => println!("-{}", l),
+                    diff::Result::Right(r) => println!("+{}", r),
+                    _ => {},
+                }
             }
         }
 
