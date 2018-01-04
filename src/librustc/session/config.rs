@@ -1082,6 +1082,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "gather borrowck statistics"),
     no_landing_pads: bool = (false, parse_bool, [TRACKED],
         "omit landing pads for unwinding"),
+    fewer_names: bool = (false, parse_bool, [TRACKED],
+        "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR)"),
     debug_llvm: bool = (false, parse_bool, [UNTRACKED],
         "enable debug output from LLVM"),
     meta_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -2809,6 +2811,10 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.no_landing_pads = true;
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.fewer_names = true;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

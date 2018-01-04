@@ -18,7 +18,7 @@ use lint;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{BorrowckMode, DebugInfoLevel};
+use session::config::{BorrowckMode, DebugInfoLevel, OutputType};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -504,6 +504,13 @@ impl Session {
     pub fn linker_flavor(&self) -> LinkerFlavor {
         self.opts.debugging_opts.linker_flavor.unwrap_or(self.target.target.linker_flavor)
     }
+
+    pub fn fewer_names(&self) -> bool {
+        let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly) ||
+                         self.opts.output_types.contains_key(&OutputType::Bitcode);
+        self.opts.debugging_opts.fewer_names || !more_names
+    }
+
     pub fn no_landing_pads(&self) -> bool {
         self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort
     }
