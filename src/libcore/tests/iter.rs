@@ -1360,13 +1360,6 @@ fn test_range_max() {
 }
 
 #[test]
-fn test_range_from_min() {
-    assert_eq!((0..).min(), Some(0));
-    assert_eq!((-20..).min(), Some(-20));
-    assert_eq!((20..).min(), Some(20));
-}
-
-#[test]
 fn test_range_inc_last_max() {
     assert_eq!((0..=20).last(), Some(20));
     assert_eq!((-20..=0).last(), Some(0));
