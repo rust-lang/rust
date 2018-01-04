@@ -1056,27 +1056,16 @@ fn format_derive(context: &RewriteContext, derive_args: &[&str], shape: Shape) -
 }
 
 fn is_derive(attr: &ast::Attribute) -> bool {
-    match attr.meta() {
-        Some(meta_item) => match meta_item.node {
-            ast::MetaItemKind::List(..) => meta_item.name.as_str() == "derive",
-            _ => false,
-        },
-        _ => false,
-    }
+    attr.check_name("derive")
 }
 
 /// Returns the arguments of `#[derive(...)]`.
 fn get_derive_args<'a>(context: &'a RewriteContext, attr: &ast::Attribute) -> Option<Vec<&'a str>> {
-    attr.meta().and_then(|meta_item| match meta_item.node {
-        ast::MetaItemKind::List(ref args) if meta_item.name.as_str() == "derive" => {
-            // Every argument of `derive` should be `NestedMetaItemKind::Literal`.
-            Some(
-                args.iter()
-                    .map(|a| context.snippet(a.span))
-                    .collect::<Vec<_>>(),
-            )
-        }
-        _ => None,
+    attr.meta_item_list().map(|meta_item_list| {
+        meta_item_list
+            .iter()
+            .map(|nested_meta_item| context.snippet(nested_meta_item.span))
+            .collect()
     })
 }
 

@@ -105,13 +105,32 @@ fn compare_use_trees(a: &ast::UseTree, b: &ast::UseTree, nested: bool) -> Orderi
     }
 }
 
-fn compare_use_items(context: &RewriteContext, a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
+fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
     match (&a.node, &b.node) {
         (&ast::ItemKind::Use(ref a_tree), &ast::ItemKind::Use(ref b_tree)) => {
             Some(compare_use_trees(a_tree, b_tree, false))
         }
-        (&ast::ItemKind::ExternCrate(..), &ast::ItemKind::ExternCrate(..)) => {
-            Some(context.snippet(a.span).cmp(context.snippet(b.span)))
+        (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
+            // `extern crate foo as bar;`
+            //               ^^^ Comparing this.
+            let a_orig_name =
+                a_name.map_or_else(|| a.ident.name.as_str(), |symbol| symbol.as_str());
+            let b_orig_name =
+                b_name.map_or_else(|| b.ident.name.as_str(), |symbol| symbol.as_str());
+            let result = a_orig_name.cmp(&b_orig_name);
+            if result != Ordering::Equal {
+                return Some(result);
+            }
+
+            // `extern crate foo as bar;`
+            //                      ^^^ Comparing this.
+            let result = match (a_name, b_name) {
+                (Some(..), None) => Ordering::Greater,
+                (None, Some(..)) => Ordering::Less,
+                (None, None) => Ordering::Equal,
+                (Some(..), Some(..)) => a.ident.name.cmp(&b.ident.name),
+            };
+            Some(result)
         }
         _ => None,
     }
@@ -257,7 +276,7 @@ fn rewrite_imports(
         false,
     );
     let mut item_pair_vec: Vec<_> = items.zip(use_items.iter()).collect();
-    item_pair_vec.sort_by(|a, b| compare_use_items(context, a.1, b.1).unwrap());
+    item_pair_vec.sort_by(|a, b| compare_use_items(a.1, b.1).unwrap());
     let item_vec: Vec<_> = item_pair_vec.into_iter().map(|pair| pair.0).collect();
 
     let fmt = ListFormatting {

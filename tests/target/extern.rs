@@ -1,7 +1,7 @@
 // rustfmt-normalize_comments: true
 
-extern crate foo as bar;
 extern crate foo;
+extern crate foo as bar;
 
 extern crate chrono;
 extern crate dotenv;
@@ -9,6 +9,10 @@ extern crate futures;
 
 extern crate bar;
 extern crate foo;
+
+// #2315
+extern crate proc_macro;
+extern crate proc_macro2;
 
 extern "C" {
     fn c_func(x: *mut *mut libc::c_void);

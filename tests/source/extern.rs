@@ -10,6 +10,10 @@ extern crate chrono;
 extern crate foo;
 extern crate bar;
 
+// #2315
+extern crate proc_macro2;
+extern crate proc_macro;
+
  extern  "C" {
   fn c_func(x: *mut *mut libc::c_void);
 
