@@ -33,8 +33,8 @@ use types::join_bounds;
 use utils::{colon_spaces, contains_skip, first_line_width, format_abi, format_constness,
             format_defaultness, format_mutability, format_unsafety, format_visibility,
             is_attributes_extendable, last_line_contains_single_line_comment,
-            last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, starts_with_newline,
-            stmt_expr, trimmed_last_line_width};
+            last_line_extendable, last_line_used_width, last_line_width, mk_sp,
+            semicolon_for_expr, starts_with_newline, stmt_expr, trimmed_last_line_width};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -639,8 +639,10 @@ pub fn format_impl(
         }
         result.push_str(&where_clause_str);
 
+        let need_newline = !last_line_extendable(&result)
+            && (last_line_contains_single_line_comment(&result) || result.contains('\n'));
         match context.config.brace_style() {
-            _ if last_line_contains_single_line_comment(&result) => result.push_str(&sep),
+            _ if need_newline => result.push_str(&sep),
             BraceStyle::AlwaysNextLine => result.push_str(&sep),
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
@@ -938,7 +940,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         let body_lo = context.codemap.span_after(item.span, "{");
 
-        let shape = Shape::indented(offset, context.config);
+        let shape = Shape::indented(offset, context.config).offset_left(result.len())?;
         let generics_str =
             rewrite_generics(context, generics, shape, mk_sp(item.span.lo(), body_lo))?;
         result.push_str(&generics_str);

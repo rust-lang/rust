@@ -141,11 +141,13 @@ mod m {
 }
 
 impl<BorrowType, K, V, NodeType, HandleType>
-    Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType> {
+    Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
+{
 }
 
 impl<BorrowType, K, V, NodeType, HandleType> PartialEq
-    for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType> {
+    for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
+{
 }
 
 mod x {
@@ -160,7 +162,8 @@ mod x {
 }
 
 impl<ConcreteThreadSafeLayoutNode: ThreadSafeLayoutNodeFoo>
-    Issue1249<ConcreteThreadSafeLayoutNode> {
+    Issue1249<ConcreteThreadSafeLayoutNode>
+{
     // Creates a new flow constructor.
     fn foo() {}
 }

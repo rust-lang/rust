@@ -72,6 +72,11 @@ trait Foo {
     type IteRev = <MergingUntypedTimeSeries<SliceSeries<SliceWindow>> as UntypedTimeSeries>::IterRev;
 }
 
+// #2331
+trait MyTrait<AAAAAAAAAAAAAAAAAAAA, BBBBBBBBBBBBBBBBBBBB, CCCCCCCCCCCCCCCCCCCC, DDDDDDDDDDDDDDDDDDDD> {
+    fn foo() {}
+}
+
 // Trait aliases
 trait FooBar =
     Foo 

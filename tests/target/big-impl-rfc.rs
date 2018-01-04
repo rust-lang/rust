@@ -29,11 +29,13 @@ where
 
 // #1369
 impl<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName> Foo
-    for Bar {
+    for Bar
+{
     fn foo() {}
 }
 impl Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
-    for Bar {
+    for Bar
+{
     fn foo() {}
 }
 impl<
@@ -41,7 +43,8 @@ impl<
     ExcessivelyLongGenericName,
     AnotherExcessivelyLongGenericName,
 > Foo<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName>
-    for Bar {
+    for Bar
+{
     fn foo() {}
 }
 impl<ExcessivelyLongGenericName, ExcessivelyLongGenericName, AnotherExcessivelyLongGenericName> Foo
