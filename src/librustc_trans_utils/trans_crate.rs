@@ -24,7 +24,6 @@
 use std::any::Any;
 use std::io::prelude::*;
 use std::io::{self, Cursor};
-use std::ffi::OsStr;
 use std::fs::File;
 use std::path::Path;
 use std::sync::mpsc;
@@ -41,7 +40,7 @@ use rustc::session::config::{CrateType, OutputFilenames, PrintRequest};
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::middle::cstore::EncodedMetadata;
-use rustc::middle::cstore::MetadataLoader as MetadataLoader;
+use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_back::target::Target;
 use rustc_mir::monomorphize::collector;
@@ -72,35 +71,6 @@ pub trait TransCrate {
         dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), CompileIncomplete>;
-}
-
-#[macro_export]
-macro_rules! hot_pluggable_trans_crate {
-    (|$sess:ident| { $body:expr }) => {
-        #[no_mangle]
-        pub fn __rustc_backend_new($sess: &Session) -> Box<TransCrate> {
-            { $body }
-        }
-    }
-}
-
-pub fn link_extern_backend<P: AsRef<OsStr>>(sess: &Session, filename: P) -> Box<TransCrate> {
-    use libloading::*;
-    let filename = filename.as_ref();
-    match Library::new(filename) {
-        Ok(lib) => {
-            unsafe {
-                let __rustc_backend_new: Symbol<unsafe fn(&Session) -> Box<TransCrate>>;
-                __rustc_backend_new = lib.get(b"__rustc_backend_new")
-                    .expect("Couldnt load codegen backend as it\
-                    doesnt export the __rustc_backend_new symbol");
-                __rustc_backend_new(sess)
-            }
-        }
-        Err(err) => {
-            sess.fatal(&format!("Couldnt load codegen backend {:?}: {:?}", filename, err));
-        }
-    }
 }
 
 pub struct DummyTransCrate;

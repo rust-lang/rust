@@ -189,6 +189,81 @@ pub mod rustc_trans {
     pub fn print_passes() {}
 }
 
+fn load_backend_from_dylib(sess: &Session, backend_name: &str) -> Box<TransCrate> {
+    use std::sync::mpsc;
+    use std::path::Path;
+    use syntax::symbol::Symbol;
+    use rustc::session::config::OutputFilenames;
+    use rustc::ty::TyCtxt;
+    use rustc::ty::maps::Providers;
+    use rustc::middle::cstore::MetadataLoader;
+    use rustc::dep_graph::DepGraph;
+    use rustc_metadata::dynamic_lib::DynamicLibrary;
+    /// This prevents the dylib from being unloaded when there is still a TransCrate open
+    struct ExternTransCrate {
+        _lib: DynamicLibrary,
+        trans: Box<TransCrate>,
+    }
+    impl TransCrate for ExternTransCrate {
+        fn print(&self, req: PrintRequest, sess: &Session) {
+            self.trans.print(req, sess);
+        }
+        fn target_features(&self, sess: &Session) -> Vec<Symbol> {
+            self.trans.target_features((sess))
+        }
+
+        fn metadata_loader(&self) -> Box<MetadataLoader> {
+            self.trans.metadata_loader()
+        }
+        fn provide(&self, providers: &mut Providers) {
+            self.trans.provide(providers)
+        }
+        fn provide_extern(&self, providers: &mut Providers) {
+            self.trans.provide_extern(providers)
+        }
+        fn trans_crate<'a, 'tcx>(
+            &self,
+            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+            rx: mpsc::Receiver<Box<Any + Send>>
+        ) -> Box<Any> {
+            self.trans.trans_crate(tcx, rx)
+        }
+
+        fn join_trans_and_link(
+            &self,
+            trans: Box<Any>,
+            sess: &Session,
+            dep_graph: &DepGraph,
+            outputs: &OutputFilenames,
+        ) -> Result<(), CompileIncomplete> {
+            self.trans.join_trans_and_link(trans, sess, dep_graph, outputs)
+        }
+    }
+
+    match DynamicLibrary::open(Some(Path::new(backend_name))) {
+        Ok(lib) => {
+            unsafe {
+                let trans = {
+                    let __rustc_codegen_backend: unsafe fn(&Session) -> Box<TransCrate>;
+                    __rustc_codegen_backend = match lib.symbol("__rustc_codegen_backend") {
+                        Ok(f) => ::std::mem::transmute::<*mut u8, _>(f),
+                        Err(e) => sess.fatal(&format!("Couldnt load codegen backend as it\
+                        doesn't export the __rustc_backend_new symbol: {:?}", e)),
+                    };
+                    __rustc_codegen_backend(sess)
+                };
+                Box::new(ExternTransCrate {
+                    _lib: lib,
+                    trans
+                })
+            }
+        }
+        Err(err) => {
+            sess.fatal(&format!("Couldnt load codegen backend {:?}: {:?}", backend_name, err));
+        }
+    }
+}
+
 pub fn get_trans(sess: &Session) -> Box<TransCrate> {
     let trans_name = sess.opts.debugging_opts.codegen_backend.clone();
     match trans_name.as_ref().map(|s|&**s) {
@@ -197,10 +272,10 @@ pub fn get_trans(sess: &Session) -> Box<TransCrate> {
         Some("metadata_only") => {
             rustc_trans_utils::trans_crate::MetadataOnlyTransCrate::new(&sess)
         }
-        Some(filename) if filename.starts_with("/") => {
-            rustc_trans_utils::trans_crate::link_extern_backend(&sess, filename)
+        Some(filename) if filename.contains(".") => {
+            load_backend_from_dylib(&sess, &filename)
         }
-        Some(trans_name) => sess.fatal(&format!("Invalid trans {}", trans_name)),
+        Some(trans_name) => sess.fatal(&format!("Unknown codegen backend {}", trans_name)),
     }
 }
 

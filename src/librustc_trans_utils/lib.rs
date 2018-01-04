@@ -31,7 +31,6 @@ extern crate ar;
 extern crate flate2;
 #[macro_use]
 extern crate log;
-extern crate libloading;
 
 #[macro_use]
 extern crate rustc;
@@ -53,7 +52,6 @@ use rustc::util::nodemap::NodeSet;
 
 pub mod diagnostics;
 pub mod link;
-#[macro_export]
 pub mod trans_crate;
 pub mod symbol_names;
 pub mod symbol_names_test;
