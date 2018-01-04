@@ -2240,7 +2240,10 @@ impl<'a, T> FusedIterator for Chunks<'a, T> {}
 unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T] {
         let start = i * self.chunk_size;
-        let end = cmp::min(start + self.chunk_size, self.v.len());
+        let end = match start.checked_add(self.chunk_size) {
+            None => self.v.len(),
+            Some(end) => cmp::min(end, self.v.len()),
+        };
         from_raw_parts(self.v.as_ptr().offset(start as isize), end - start)
     }
     fn may_have_side_effect() -> bool { false }
@@ -2353,7 +2356,10 @@ impl<'a, T> FusedIterator for ChunksMut<'a, T> {}
 unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a mut [T] {
         let start = i * self.chunk_size;
-        let end = cmp::min(start + self.chunk_size, self.v.len());
+        let end = match start.checked_add(self.chunk_size) {
+            None => self.v.len(),
+            Some(end) => cmp::min(end, self.v.len()),
+        };
         from_raw_parts_mut(self.v.as_mut_ptr().offset(start as isize), end - start)
     }
     fn may_have_side_effect() -> bool { false }
