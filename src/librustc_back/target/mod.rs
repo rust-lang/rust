@@ -147,6 +147,7 @@ supported_targets! {
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
+    ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
     ("arm-unknown-linux-musleabi", arm_unknown_linux_musleabi),
@@ -156,15 +157,16 @@ supported_targets! {
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
+
     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
+    ("i586-unknown-linux-musl", i586_unknown_linux_musl),
     ("mips-unknown-linux-musl", mips_unknown_linux_musl),
     ("mipsel-unknown-linux-musl", mipsel_unknown_linux_musl),
+
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
-
-    ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
 
     ("i686-linux-android", i686_linux_android),
     ("x86_64-linux-android", x86_64_linux_android),

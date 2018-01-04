@@ -67,6 +67,7 @@ static TARGETS: &'static [&'static str] = &[
     "i386-apple-ios",
     "i586-pc-windows-msvc",
     "i586-unknown-linux-gnu",
+    "i586-unknown-linux-musl",
     "i686-apple-darwin",
     "i686-linux-android",
     "i686-pc-windows-gnu",
