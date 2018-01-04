@@ -128,7 +128,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
 
     fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
         if let hir::GenericParam::Type(ref gen) = *param {
-            self.check_case(cx, "type parameter", gen.name, gen.span);
+            if gen.synthetic.is_none() {
+                self.check_case(cx, "type parameter", gen.name, gen.span);
+            }
         }
     }
 }
