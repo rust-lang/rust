@@ -367,6 +367,16 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         self.end.replace_zero();
         None
     }
+
+    #[inline]
+    fn min(self) -> Option<A> {
+        Some(self.start)
+    }
+
+    #[inline]
+    fn max(self) -> Option<A> {
+        Some(self.end)
+    }
 }
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
