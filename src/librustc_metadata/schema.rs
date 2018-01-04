@@ -521,3 +521,7 @@ pub struct GeneratorData<'tcx> {
     pub layout: mir::GeneratorLayout<'tcx>,
 }
 impl_stable_hash_for!(struct GeneratorData<'tcx> { layout });
+
+// Tags used for encoding Spans:
+pub const TAG_VALID_SPAN: u8 = 0;
+pub const TAG_INVALID_SPAN: u8 = 1;
