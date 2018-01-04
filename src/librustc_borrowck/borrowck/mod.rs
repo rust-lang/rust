@@ -346,6 +346,16 @@ impl<'tcx> LoanPath<'tcx> {
     }
 
     fn to_type(&self) -> Ty<'tcx> { self.ty }
+
+    fn has_downcast(&self) -> bool {
+        match self.kind {
+            LpDowncast(_, _) => true,
+            LpExtend(ref lp, _, LpInterior(_, _)) => {
+                lp.has_downcast()
+            }
+            _ => false,
+        }
+    }
 }
 
 // FIXME (pnkfelix): See discussion here
@@ -721,16 +731,20 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                          move_note));
             err
         } else {
-            err.span_label(use_span, format!("value {} here after move", verb_participle))
-               .span_label(move_span, format!("value moved{} here", move_note));
+            err.span_label(use_span, format!("value {} here after move", verb_participle));
+            err.span_label(move_span, format!("value moved{} here", move_note));
             err
         };
 
         if need_note {
-            err.note(&format!("move occurs because `{}` has type `{}`, \
-                               which does not implement the `Copy` trait",
-                              self.loan_path_to_string(moved_lp),
-                              moved_lp.ty));
+            err.note(&format!(
+                "move occurs because {} has type `{}`, which does not implement the `Copy` trait",
+                if moved_lp.has_downcast() {
+                    "the value".to_string()
+                } else {
+                    format!("`{}`", self.loan_path_to_string(moved_lp))
+                },
+                moved_lp.ty));
         }
 
         // Note: we used to suggest adding a `ref binding` or calling
@@ -1414,7 +1428,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             LpDowncast(ref lp_base, variant_def_id) => {
                 out.push('(');
                 self.append_autoderefd_loan_path_to_string(&lp_base, out);
-                out.push(':');
+                out.push_str(DOWNCAST_PRINTED_OPERATOR);
                 out.push_str(&self.tcx.item_path_str(variant_def_id));
                 out.push(')');
             }

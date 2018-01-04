@@ -17,17 +17,19 @@ fn touch<A>(_a: &A) {}
 fn f00() {
     let x = "hi".to_string();
     let _y = Foo { f:x };
-    //~^ value moved here
+    //~^ NOTE value moved here
     touch(&x); //~ ERROR use of moved value: `x`
-    //~^ value used here after move
-    //~| move occurs because `x` has type `std::string::String`
+    //~^ NOTE value used here after move
+    //~| NOTE move occurs because `x` has type `std::string::String`
 }
 
 fn f05() {
     let x = "hi".to_string();
     let _y = Foo { f:(((x))) };
-    //~^ value moved here
+    //~^ NOTE value moved here
     touch(&x); //~ ERROR use of moved value: `x`
+    //~^ NOTE value used here after move
+    //~| NOTE move occurs because `x` has type `std::string::String`
 }
 
 fn f10() {
