@@ -925,7 +925,7 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         // rust_try ignores the selector.
         let lpad_ty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)],
                                     false);
-        let vals = catch.landing_pad(lpad_ty, bcx.ccx.eh_personality(), 1, catch.llfn());
+        let vals = catch.landing_pad(lpad_ty, bcx.ccx.eh_personality(), 1);
         catch.add_clause(vals, C_null(Type::i8p(ccx)));
         let ptr = catch.extract_value(vals, 0);
         let ptr_align = bcx.tcx().data_layout.pointer_align;
