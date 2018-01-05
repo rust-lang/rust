@@ -136,7 +136,7 @@ pub fn compile_input(trans: Box<TransCrate>,
                     if let Some(dir_path) = outputs.conflicts_with_dir() {
                         sess.err(&format!(
                             "the generated executable for the input file \"{}\" conflicts with the \
-                            existing directory \"{}\'",
+                            existing directory \"{}\"",
                             input_path.display(), dir_path.display()));
                         return Err(CompileIncomplete::Stopped);
                     }
