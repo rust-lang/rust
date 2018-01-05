@@ -706,7 +706,7 @@ impl From<CString> for Box<CStr> {
     }
 }
 
-#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Arc<CStr> {
     #[inline]
     fn from(s: CString) -> Arc<CStr> {
@@ -715,7 +715,7 @@ impl From<CString> for Arc<CStr> {
     }
 }
 
-#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl<'a> From<&'a CStr> for Arc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Arc<CStr> {
@@ -724,7 +724,7 @@ impl<'a> From<&'a CStr> for Arc<CStr> {
     }
 }
 
-#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Rc<CStr> {
     #[inline]
     fn from(s: CString) -> Rc<CStr> {
@@ -733,7 +733,7 @@ impl From<CString> for Rc<CStr> {
     }
 }
 
-#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl<'a> From<&'a CStr> for Rc<CStr> {
     #[inline]
     fn from(s: &CStr) -> Rc<CStr> {
