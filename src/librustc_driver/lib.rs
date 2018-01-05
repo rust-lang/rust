@@ -167,7 +167,6 @@ mod rustc_trans {
     pub use rustc_trans_utils::trans_crate::TranslatedCrate as CrateTranslation;
 
     pub fn init(_sess: &Session) {}
-    pub fn enable_llvm_debug() {}
     pub fn print_version() {}
     pub fn print_passes() {}
     pub fn print(_req: PrintRequest, _sess: &Session) {}
@@ -204,10 +203,6 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
-
-    if sopts.debugging_opts.debug_llvm {
-        rustc_trans::enable_llvm_debug();
-    }
 
     let descriptions = diagnostics_registry();
 

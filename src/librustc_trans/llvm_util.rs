@@ -140,7 +140,3 @@ pub fn print(req: PrintRequest, sess: &Session) {
         }
     }
 }
-
-pub fn enable_llvm_debug() {
-    unsafe { llvm::LLVMRustSetDebug(1); }
-}

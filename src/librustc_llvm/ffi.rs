@@ -1315,9 +1315,6 @@ extern "C" {
                              ElementCount: c_uint,
                              Packed: Bool);
 
-    /// Enables LLVM debug output.
-    pub fn LLVMRustSetDebug(Enabled: c_int);
-
     /// Prepares inline assembly.
     pub fn LLVMRustInlineAsm(Ty: TypeRef,
                              AsmString: *const c_char,

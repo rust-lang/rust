@@ -384,12 +384,6 @@ LLVMRustBuildAtomicFence(LLVMBuilderRef B, LLVMAtomicOrdering Order,
   return wrap(unwrap(B)->CreateFence(fromRust(Order), fromRust(Scope)));
 }
 
-extern "C" void LLVMRustSetDebug(int Enabled) {
-#ifndef NDEBUG
-  DebugFlag = Enabled;
-#endif
-}
-
 enum class LLVMRustAsmDialect {
   Other,
   Att,
