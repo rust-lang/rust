@@ -10,11 +10,18 @@
 //! Set and unset common attributes on LLVM values.
 
 use std::ffi::{CStr, CString};
+use std::rc::Rc;
 
+use rustc::hir::Unsafety;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::Sanitizer;
+use rustc::ty::TyCtxt;
+use rustc::ty::maps::Providers;
+use rustc_data_structures::fx::FxHashSet;
 
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
+use llvm_util;
 pub use syntax::attr::{self, InlineAttr};
 use syntax::ast;
 use context::CrateContext;
@@ -94,23 +101,16 @@ pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
-pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
+pub fn from_fn_attrs(ccx: &CrateContext, llfn: ValueRef, id: DefId) {
     use syntax::attr::*;
-    inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), attrs));
+    let attrs = ccx.tcx().get_attrs(id);
+    inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), &attrs));
 
     set_frame_pointer_elimination(ccx, llfn);
     set_probestack(ccx, llfn);
-    let mut target_features = vec![];
-    for attr in attrs {
-        if attr.check_name("target_feature") {
-            if let Some(val) = attr.value_str() {
-                for feat in val.as_str().split(",").map(|f| f.trim()) {
-                    if !feat.is_empty() && !feat.contains('\0') {
-                        target_features.push(feat.to_string());
-                    }
-                }
-            }
-        } else if attr.check_name("cold") {
+
+    for attr in attrs.iter() {
+        if attr.check_name("cold") {
             Attribute::Cold.apply_llfn(Function, llfn);
         } else if attr.check_name("naked") {
             naked(llfn, true);
@@ -123,6 +123,8 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
             unwind(llfn, false);
         }
     }
+
+    let target_features = ccx.tcx().target_features_enabled(id);
     if !target_features.is_empty() {
         let val = CString::new(target_features.join(",")).unwrap();
         llvm::AddFunctionAttrStringValue(
@@ -133,4 +135,98 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
 
 fn cstr(s: &'static str) -> &CStr {
     CStr::from_bytes_with_nul(s.as_bytes()).expect("null-terminated string")
+}
+
+pub fn provide(providers: &mut Providers) {
+    providers.target_features_whitelist = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Rc::new(llvm_util::target_feature_whitelist(tcx.sess)
+            .iter()
+            .map(|c| c.to_str().unwrap().to_string())
+            .collect())
+    };
+
+    providers.target_features_enabled = |tcx, id| {
+        let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
+        let mut target_features = Vec::new();
+        for attr in tcx.get_attrs(id).iter() {
+            if !attr.check_name("target_feature") {
+                continue
+            }
+            if let Some(val) = attr.value_str() {
+                for feat in val.as_str().split(",").map(|f| f.trim()) {
+                    if !feat.is_empty() && !feat.contains('\0') {
+                        target_features.push(feat.to_string());
+                    }
+                }
+                let msg = "#[target_feature = \"..\"] is deprecated and will \
+                           eventually be removed, use \
+                           #[target_feature(enable = \"..\")] instead";
+                tcx.sess.span_warn(attr.span, &msg);
+                continue
+            }
+
+            if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
+                let msg = "#[target_feature(..)] can only be applied to \
+                           `unsafe` function";
+                tcx.sess.span_err(attr.span, msg);
+            }
+            from_target_feature(tcx, attr, &whitelist, &mut target_features);
+        }
+        Rc::new(target_features)
+    };
+}
+
+fn from_target_feature(
+    tcx: TyCtxt,
+    attr: &ast::Attribute,
+    whitelist: &FxHashSet<String>,
+    target_features: &mut Vec<String>,
+) {
+    let list = match attr.meta_item_list() {
+        Some(list) => list,
+        None => {
+            let msg = "#[target_feature] attribute must be of the form \
+                       #[target_feature(..)]";
+            tcx.sess.span_err(attr.span, &msg);
+            return
+        }
+    };
+
+    for item in list {
+        if !item.check_name("enable") {
+            let msg = "#[target_feature(..)] only accepts sub-keys of `enable` \
+                       currently";
+            tcx.sess.span_err(item.span, &msg);
+            continue
+        }
+        let value = match item.value_str() {
+            Some(list) => list,
+            None => {
+                let msg = "#[target_feature] attribute must be of the form \
+                           #[target_feature(enable = \"..\")]";
+                tcx.sess.span_err(item.span, &msg);
+                continue
+            }
+        };
+        let value = value.as_str();
+        for feature in value.split(',') {
+            if whitelist.contains(feature) {
+                target_features.push(format!("+{}", feature));
+                continue
+            }
+
+            let msg = format!("the feature named `{}` is not valid for \
+                               this target", feature);
+            let mut err = tcx.sess.struct_span_err(item.span, &msg);
+
+            if feature.starts_with("+") {
+                let valid = whitelist.contains(&feature[1..]);
+                if valid {
+                    err.help("consider removing the leading `+` in the feature name");
+                }
+            }
+            err.emit();
+        }
+    }
 }

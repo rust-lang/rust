@@ -167,6 +167,7 @@ impl rustc_trans_utils::trans_crate::TransCrate for LlvmTransCrate {
         back::symbol_names::provide(providers);
         back::symbol_export::provide(providers);
         base::provide(providers);
+        attributes::provide(providers);
     }
 
     fn provide_extern(providers: &mut ty::maps::Providers) {

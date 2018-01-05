@@ -199,7 +199,7 @@ fn predefine_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if instance.def.is_inline(ccx.tcx()) {
         attributes::inline(lldecl, attributes::InlineAttr::Hint);
     }
-    attributes::from_fn_attrs(ccx, &attrs, lldecl);
+    attributes::from_fn_attrs(ccx, lldecl, instance.def.def_id());
 
     ccx.instances().borrow_mut().insert(instance, lldecl);
 }

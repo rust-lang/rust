@@ -99,8 +99,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         if instance.def.is_inline(tcx) {
             attributes::inline(llfn, attributes::InlineAttr::Hint);
         }
-        let attrs = instance.def.attrs(ccx.tcx());
-        attributes::from_fn_attrs(ccx, &attrs, llfn);
+        attributes::from_fn_attrs(ccx, llfn, instance.def.def_id());
 
         let instance_def_id = instance.def_id();
 

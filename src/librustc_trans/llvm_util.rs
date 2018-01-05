@@ -13,8 +13,8 @@ use back::write::create_target_machine;
 use llvm;
 use rustc::session::Session;
 use rustc::session::config::PrintRequest;
-use libc::{c_int, c_char};
-use std::ffi::CString;
+use libc::c_int;
+use std::ffi::{CStr, CString};
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
@@ -97,8 +97,18 @@ const POWERPC_WHITELIST: &'static [&'static str] = &["altivec\0",
 const MIPS_WHITELIST: &'static [&'static str] = &["msa\0"];
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
+    let whitelist = target_feature_whitelist(sess);
     let target_machine = create_target_machine(sess);
+    let mut features = Vec::new();
+    for feat in whitelist {
+        if unsafe { llvm::LLVMRustHasFeature(target_machine, feat.as_ptr()) } {
+            features.push(Symbol::intern(feat.to_str().unwrap()));
+        }
+    }
+    features
+}
 
+pub fn target_feature_whitelist(sess: &Session) -> Vec<&CStr> {
     let whitelist = match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "aarch64" => AARCH64_WHITELIST,
@@ -108,15 +118,9 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         "powerpc" | "powerpc64" => POWERPC_WHITELIST,
         _ => &[],
     };
-
-    let mut features = Vec::new();
-    for feat in whitelist {
-        assert_eq!(feat.chars().last(), Some('\0'));
-        if unsafe { llvm::LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
-            features.push(Symbol::intern(&feat[..feat.len() - 1]));
-        }
-    }
-    features
+    whitelist.iter().map(|m| {
+        CStr::from_bytes_with_nul(m.as_bytes()).unwrap()
+    }).collect()
 }
 
 pub fn print_version() {
