@@ -17,7 +17,7 @@ use rustc::middle::const_val::ConstEvalErr;
 use debuginfo;
 use base;
 use monomorphize::{MonoItem, MonoItemExt};
-use common::{CrateContext, val_ty};
+use common::{CodegenCx, val_ty};
 use declare;
 use monomorphize::Instance;
 use type_::Type;
@@ -43,7 +43,7 @@ pub fn bitcast(val: ValueRef, ty: Type) -> ValueRef {
     }
 }
 
-fn set_global_alignment(ccx: &CrateContext,
+fn set_global_alignment(ccx: &CodegenCx,
                         gv: ValueRef,
                         mut align: Align) {
     // The target may require greater alignment for globals than the type does.
@@ -62,7 +62,7 @@ fn set_global_alignment(ccx: &CrateContext,
     }
 }
 
-pub fn addr_of_mut(ccx: &CrateContext,
+pub fn addr_of_mut(ccx: &CodegenCx,
                    cv: ValueRef,
                    align: Align,
                    kind: &str)
@@ -80,7 +80,7 @@ pub fn addr_of_mut(ccx: &CrateContext,
     }
 }
 
-pub fn addr_of(ccx: &CrateContext,
+pub fn addr_of(ccx: &CodegenCx,
                cv: ValueRef,
                align: Align,
                kind: &str)
@@ -104,7 +104,7 @@ pub fn addr_of(ccx: &CrateContext,
     gv
 }
 
-pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
+pub fn get_static(ccx: &CodegenCx, def_id: DefId) -> ValueRef {
     let instance = Instance::mono(ccx.tcx, def_id);
     if let Some(&g) = ccx.instances.borrow().get(&instance) {
         return g;
@@ -244,7 +244,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
     g
 }
 
-pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn trans_static<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                               m: hir::Mutability,
                               id: ast::NodeId,
                               attrs: &[ast::Attribute])

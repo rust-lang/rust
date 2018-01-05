@@ -44,7 +44,7 @@
 //! that exact file path.
 //!
 //! All private state used by the module is stored within either the
-//! CrateDebugContext struct (owned by the CrateContext) or the
+//! CrateDebugContext struct (owned by the CodegenCx) or the
 //! FunctionDebugContext (owned by the MirContext).
 //!
 //! This file consists of three conceptual sections:

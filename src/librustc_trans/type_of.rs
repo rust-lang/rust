@@ -19,7 +19,7 @@ use type_::Type;
 
 use std::fmt::Write;
 
-fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn uncached_llvm_type<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                                 layout: TyLayout<'tcx>,
                                 defer: &mut Option<(Type, TyLayout<'tcx>)>)
                                 -> Type {
@@ -110,7 +110,7 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn struct_llfields<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                              layout: TyLayout<'tcx>)
                              -> (Vec<Type>, bool) {
     debug!("struct_llfields: {:#?}", layout);
@@ -158,7 +158,7 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     (result, packed)
 }
 
-impl<'a, 'tcx> CrateContext<'a, 'tcx> {
+impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
         self.layout_of(ty).align
     }
@@ -197,14 +197,14 @@ pub struct PointeeInfo {
 pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_immediate(&self) -> bool;
     fn is_llvm_scalar_pair<'a>(&self) -> bool;
-    fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
-    fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
-    fn scalar_llvm_type_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+    fn llvm_type<'a>(&self, ccx: &CodegenCx<'a, 'tcx>) -> Type;
+    fn immediate_llvm_type<'a>(&self, ccx: &CodegenCx<'a, 'tcx>) -> Type;
+    fn scalar_llvm_type_at<'a>(&self, ccx: &CodegenCx<'a, 'tcx>,
                                scalar: &layout::Scalar, offset: Size) -> Type;
-    fn scalar_pair_element_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+    fn scalar_pair_element_llvm_type<'a>(&self, ccx: &CodegenCx<'a, 'tcx>,
                                          index: usize) -> Type;
     fn llvm_field_index(&self, index: usize) -> u64;
-    fn pointee_info_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>, offset: Size)
+    fn pointee_info_at<'a>(&self, ccx: &CodegenCx<'a, 'tcx>, offset: Size)
                            -> Option<PointeeInfo>;
 }
 
@@ -240,7 +240,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     /// with the inner-most trailing unsized field using the "minimal unit"
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
-    fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+    fn llvm_type<'a>(&self, ccx: &CodegenCx<'a, 'tcx>) -> Type {
         if let layout::Abi::Scalar(ref scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
@@ -305,7 +305,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         llty
     }
 
-    fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+    fn immediate_llvm_type<'a>(&self, ccx: &CodegenCx<'a, 'tcx>) -> Type {
         if let layout::Abi::Scalar(ref scalar) = self.abi {
             if scalar.is_bool() {
                 return Type::i1(ccx);
@@ -314,7 +314,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         self.llvm_type(ccx)
     }
 
-    fn scalar_llvm_type_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+    fn scalar_llvm_type_at<'a>(&self, ccx: &CodegenCx<'a, 'tcx>,
                                scalar: &layout::Scalar, offset: Size) -> Type {
         match scalar.value {
             layout::Int(i, _) => Type::from_integer(ccx, i),
@@ -332,7 +332,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         }
     }
 
-    fn scalar_pair_element_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+    fn scalar_pair_element_llvm_type<'a>(&self, ccx: &CodegenCx<'a, 'tcx>,
                                          index: usize) -> Type {
         // HACK(eddyb) special-case fat pointers until LLVM removes
         // pointee types, to avoid bitcasting every `OperandRef::deref`.
@@ -396,7 +396,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         }
     }
 
-    fn pointee_info_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>, offset: Size)
+    fn pointee_info_at<'a>(&self, ccx: &CodegenCx<'a, 'tcx>, offset: Size)
                            -> Option<PointeeInfo> {
         if let Some(&pointee) = ccx.pointee_infos.borrow().get(&(self.ty, offset)) {
             return pointee;

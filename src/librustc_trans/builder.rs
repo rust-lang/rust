@@ -32,7 +32,7 @@ use syntax_pos::Span;
 #[must_use]
 pub struct Builder<'a, 'tcx: 'a> {
     pub llbuilder: BuilderRef,
-    pub ccx: &'a CrateContext<'a, 'tcx>,
+    pub ccx: &'a CodegenCx<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> Drop for Builder<'a, 'tcx> {
@@ -51,7 +51,7 @@ fn noname() -> *const c_char {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn new_block<'b>(ccx: &'a CrateContext<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
+    pub fn new_block<'b>(ccx: &'a CodegenCx<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
         let builder = Builder::with_ccx(ccx);
         let llbb = unsafe {
             let name = CString::new(name).unwrap();
@@ -65,7 +65,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         builder
     }
 
-    pub fn with_ccx(ccx: &'a CrateContext<'a, 'tcx>) -> Self {
+    pub fn with_ccx(ccx: &'a CodegenCx<'a, 'tcx>) -> Self {
         // Create a fresh builder from the crate context.
         let llbuilder = unsafe {
             llvm::LLVMCreateBuilderInContext(ccx.llcx)

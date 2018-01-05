@@ -19,7 +19,7 @@ use rustc::infer::TransNormalize;
 use rustc::session::config::FullDebugInfo;
 use base;
 use builder::Builder;
-use common::{CrateContext, Funclet};
+use common::{CodegenCx, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
 use abi::{ArgAttribute, FnType, PassMode};
@@ -48,7 +48,7 @@ pub struct MirContext<'a, 'tcx:'a> {
 
     llfn: ValueRef,
 
-    ccx: &'a CrateContext<'a, 'tcx>,
+    ccx: &'a CodegenCx<'a, 'tcx>,
 
     fn_ty: FnType<'tcx>,
 
@@ -176,7 +176,7 @@ enum LocalRef<'tcx> {
 }
 
 impl<'a, 'tcx> LocalRef<'tcx> {
-    fn new_operand(ccx: &CrateContext<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
+    fn new_operand(ccx: &CodegenCx<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -191,7 +191,7 @@ impl<'a, 'tcx> LocalRef<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn trans_mir<'a, 'tcx: 'a>(
-    ccx: &'a CrateContext<'a, 'tcx>,
+    ccx: &'a CodegenCx<'a, 'tcx>,
     llfn: ValueRef,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,

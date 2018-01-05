@@ -69,7 +69,7 @@ impl<'a, 'tcx> VirtualIndex {
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
-pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn get_vtable<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                             ty: Ty<'tcx>,
                             trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
                             -> ValueRef

@@ -20,13 +20,13 @@ use llvm;
 use llvm::debuginfo::DIScope;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
-use common::CrateContext;
+use common::CodegenCx;
 
 use std::ffi::CString;
 use std::ptr;
 
 pub fn mangled_name_of_instance<'a, 'tcx>(
-    ccx: &CrateContext<'a, 'tcx>,
+    ccx: &CodegenCx<'a, 'tcx>,
     instance: Instance<'tcx>,
 ) -> ty::SymbolName {
      let tcx = ccx.tcx;
@@ -34,7 +34,7 @@ pub fn mangled_name_of_instance<'a, 'tcx>(
 }
 
 pub fn mangled_name_of_item<'a, 'tcx>(
-    ccx: &CrateContext<'a, 'tcx>,
+    ccx: &CodegenCx<'a, 'tcx>,
     node_id: ast::NodeId,
 ) -> ty::SymbolName {
     let tcx = ccx.tcx;
@@ -43,7 +43,7 @@ pub fn mangled_name_of_item<'a, 'tcx>(
     tcx.symbol_name(instance)
 }
 
-pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
+pub fn item_namespace(ccx: &CodegenCx, def_id: DefId) -> DIScope {
     if let Some(&scope) = debug_context(ccx).namespace_map.borrow().get(&def_id) {
         return scope;
     }

@@ -35,7 +35,7 @@ use syntax_pos::Span;
 use std::cmp::Ordering;
 use std::iter;
 
-fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+fn get_simple_intrinsic(ccx: &CodegenCx, name: &str) -> Option<ValueRef> {
     let llvm_name = match name {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
@@ -565,7 +565,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 assert_eq!(x.len(), 1);
                 x.into_iter().next().unwrap()
             }
-            fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type) -> Vec<Type> {
+            fn ty_to_type(ccx: &CodegenCx, t: &intrinsics::Type) -> Vec<Type> {
                 use intrinsics::Type::*;
                 match *t {
                     Void => vec![Type::void(ccx)],
@@ -750,7 +750,7 @@ fn memset_intrinsic<'a, 'tcx>(
 
 fn try_intrinsic<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
-    ccx: &CrateContext,
+    ccx: &CodegenCx,
     func: ValueRef,
     data: ValueRef,
     local_ptr: ValueRef,
@@ -775,7 +775,7 @@ fn try_intrinsic<'a, 'tcx>(
 // writing, however, LLVM does not recommend the usage of these new instructions
 // as the old ones are still more optimized.
 fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                            ccx: &CrateContext,
+                            ccx: &CodegenCx,
                             func: ValueRef,
                             data: ValueRef,
                             local_ptr: ValueRef,
@@ -883,7 +883,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
 fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                           ccx: &CrateContext,
+                           ccx: &CodegenCx,
                            func: ValueRef,
                            data: ValueRef,
                            local_ptr: ValueRef,
@@ -942,7 +942,7 @@ fn trans_gnu_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
 // Helper function to give a Block to a closure to translate a shim function.
 // This is currently primarily used for the `try` intrinsic functions above.
-fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn gen_fn<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                     name: &str,
                     inputs: Vec<Ty<'tcx>>,
                     output: Ty<'tcx>,
@@ -965,7 +965,7 @@ fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // catch exceptions.
 //
 // This function is only generated once and is then cached.
-fn get_rust_try_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn get_rust_try_fn<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                              trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                              -> ValueRef {
     if let Some(llfn) = ccx.rust_try_fn.get() {
@@ -1243,7 +1243,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 // Returns None if the type is not an integer
 // FIXME: there’s multiple of this functions, investigate using some of the already existing
 // stuffs.
-fn int_type_width_signed(ty: Ty, ccx: &CrateContext) -> Option<(u64, bool)> {
+fn int_type_width_signed(ty: Ty, ccx: &CodegenCx) -> Option<(u64, bool)> {
     match ty.sty {
         ty::TyInt(t) => Some((match t {
             ast::IntTy::Isize => {

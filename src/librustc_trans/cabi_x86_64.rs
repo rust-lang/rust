@@ -12,7 +12,7 @@
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
 use abi::{ArgType, CastTarget, FnType, LayoutExt, Reg, RegKind};
-use context::CrateContext;
+use context::CodegenCx;
 
 use rustc::ty::layout::{self, TyLayout, Size};
 
@@ -31,7 +31,7 @@ struct Memory;
 const LARGEST_VECTOR_SIZE: usize = 512;
 const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
-fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
+fn classify_arg<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, arg: &ArgType<'tcx>)
                           -> Result<[Class; MAX_EIGHTBYTES], Memory> {
     fn unify(cls: &mut [Class],
              off: Size,
@@ -52,7 +52,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
         cls[i] = to_write;
     }
 
-    fn classify<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+    fn classify<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                           layout: TyLayout<'tcx>,
                           cls: &mut [Class],
                           off: Size)
@@ -189,7 +189,7 @@ fn cast_target(cls: &[Class], size: Size) -> CastTarget {
     target
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     let mut int_regs = 6; // RDI, RSI, RDX, RCX, R8, R9
     let mut sse_regs = 8; // XMM0-7
 

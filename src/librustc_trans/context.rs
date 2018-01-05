@@ -42,10 +42,10 @@ use std::sync::Arc;
 use syntax::symbol::InternedString;
 use abi::Abi;
 
-/// There is one `CrateContext` per compilation unit. Each one has its own LLVM
+/// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `ContextRef` so that several compilation units may be optimized in parallel.
-/// All other LLVM data structures in the `CrateContext` are tied to that `ContextRef`.
-pub struct CrateContext<'a, 'tcx: 'a> {
+/// All other LLVM data structures in the `CodegenCx` are tied to that `ContextRef`.
+pub struct CodegenCx<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,
@@ -107,7 +107,7 @@ pub struct CrateContext<'a, 'tcx: 'a> {
     local_gen_sym_counter: Cell<usize>,
 }
 
-impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
+impl<'a, 'tcx> DepGraphSafe for CodegenCx<'a, 'tcx> {
 }
 
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
@@ -212,11 +212,11 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
     (llcx, llmod)
 }
 
-impl<'a, 'tcx> CrateContext<'a, 'tcx> {
+impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                codegen_unit: Arc<CodegenUnit<'tcx>>,
                llmod_id: &str)
-               -> CrateContext<'a, 'tcx> {
+               -> CodegenCx<'a, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -280,7 +280,7 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
                 None
             };
 
-            let mut ccx = CrateContext {
+            let mut ccx = CodegenCx {
                 tcx,
                 check_overflow,
                 use_dll_storage_attrs,
@@ -318,7 +318,7 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     }
 }
 
-impl<'b, 'tcx> CrateContext<'b, 'tcx> {
+impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     pub fn sess<'a>(&'a self) -> &'a Session {
         &self.tcx.sess
     }
@@ -448,19 +448,19 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CrateContext<'a, 'tcx> {
+impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CodegenCx<'a, 'tcx> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CrateContext<'a, 'tcx> {
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CrateContext<'a, 'tcx> {
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CodegenCx<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
@@ -474,7 +474,7 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CrateContext<'a, 'tcx> {
 }
 
 /// Declare any llvm intrinsics that you might need
-fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
+fn declare_intrinsic(ccx: &CodegenCx, key: &str) -> Option<ValueRef> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {

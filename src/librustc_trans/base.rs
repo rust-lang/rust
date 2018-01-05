@@ -59,7 +59,7 @@ use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use common::{self, C_struct_in_context, C_array, val_ty};
 use consts;
-use context::{self, CrateContext};
+use context::{self, CodegenCx};
 use debuginfo;
 use declare;
 use meth;
@@ -94,13 +94,13 @@ pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
 pub use rustc_mir::monomorphize::item::linkage_by_name;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
-    ccx: &'a CrateContext<'a, 'tcx>,
+    ccx: &'a CodegenCx<'a, 'tcx>,
     name: Option<String>,
     istart: usize,
 }
 
 impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
-    pub fn new(ccx: &'a CrateContext<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
+    pub fn new(ccx: &'a CodegenCx<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
         let istart = ccx.stats.borrow().n_llvm_insns;
         StatRecorder {
             ccx,
@@ -189,7 +189,7 @@ pub fn compare_simd_types<'a, 'tcx>(
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
-pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
+pub fn unsized_info<'ccx, 'tcx>(ccx: &CodegenCx<'ccx, 'tcx>,
                                 source: Ty<'tcx>,
                                 target: Ty<'tcx>,
                                 old_info: Option<ValueRef>)
@@ -455,7 +455,7 @@ pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 
-pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
+pub fn trans_instance<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, instance: Instance<'tcx>) {
     let _s = if ccx.sess().trans_stats() {
         let mut instance_name = String::new();
         DefPathBasedNames::new(ccx.tcx, true, true)
@@ -506,7 +506,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     mir::trans_mir(ccx, lldecl, &mir, instance, sig);
 }
 
-pub fn set_link_section(ccx: &CrateContext,
+pub fn set_link_section(ccx: &CodegenCx,
                         llval: ValueRef,
                         attrs: &[ast::Attribute]) {
     if let Some(sect) = attr::first_attr_value_str_by_name(attrs, "link_section") {
@@ -522,7 +522,7 @@ pub fn set_link_section(ccx: &CrateContext,
 
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
-fn maybe_create_entry_wrapper(ccx: &CrateContext) {
+fn maybe_create_entry_wrapper(ccx: &CodegenCx) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
         Some((id, span)) => {
             (ccx.tcx.hir.local_def_id(id), span)
@@ -547,7 +547,7 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         config::EntryNone => {}    // Do nothing.
     }
 
-    fn create_entry_fn<'ccx>(ccx: &'ccx CrateContext,
+    fn create_entry_fn<'ccx>(ccx: &'ccx CodegenCx,
                        sp: Span,
                        rust_main: ValueRef,
                        rust_main_def_id: DefId,
@@ -1203,7 +1203,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    .to_fingerprint().to_hex());
 
         // Instantiate translation items without filling out definitions yet...
-        let ccx = CrateContext::new(tcx, cgu, &llmod_id);
+        let ccx = CodegenCx::new(tcx, cgu, &llmod_id);
         let module = {
             let trans_items = ccx.codegen_unit
                                  .items_in_deterministic_order(ccx.tcx);

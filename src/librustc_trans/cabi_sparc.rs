@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use abi::{ArgType, FnType, LayoutExt, Reg, Uniform};
-use context::CrateContext;
+use context::CodegenCx;
 
 use rustc::ty::layout::Size;
 
-fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn classify_ret_ty<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                              ret: &mut ArgType<'tcx>,
                              offset: &mut Size) {
     if !ret.layout.is_aggregate() {
@@ -24,7 +24,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut Size) {
+fn classify_arg_ty(ccx: &CodegenCx, arg: &mut ArgType, offset: &mut Size) {
     let dl = &ccx.tcx.data_layout;
     let size = arg.layout.size;
     let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align);
@@ -44,7 +44,7 @@ fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut Size) {
     *offset = offset.abi_align(align) + size.abi_align(align);
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     let mut offset = Size::from_bytes(0);
     if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret, &mut offset);

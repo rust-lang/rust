@@ -38,7 +38,7 @@ use syntax::abi::Abi;
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 
-pub use context::CrateContext;
+pub use context::CodegenCx;
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All))
@@ -152,23 +152,23 @@ pub fn C_uint_big(t: Type, u: u128) -> ValueRef {
     }
 }
 
-pub fn C_bool(ccx: &CrateContext, val: bool) -> ValueRef {
+pub fn C_bool(ccx: &CodegenCx, val: bool) -> ValueRef {
     C_uint(Type::i1(ccx), val as u64)
 }
 
-pub fn C_i32(ccx: &CrateContext, i: i32) -> ValueRef {
+pub fn C_i32(ccx: &CodegenCx, i: i32) -> ValueRef {
     C_int(Type::i32(ccx), i as i64)
 }
 
-pub fn C_u32(ccx: &CrateContext, i: u32) -> ValueRef {
+pub fn C_u32(ccx: &CodegenCx, i: u32) -> ValueRef {
     C_uint(Type::i32(ccx), i as u64)
 }
 
-pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
+pub fn C_u64(ccx: &CodegenCx, i: u64) -> ValueRef {
     C_uint(Type::i64(ccx), i)
 }
 
-pub fn C_usize(ccx: &CrateContext, i: u64) -> ValueRef {
+pub fn C_usize(ccx: &CodegenCx, i: u64) -> ValueRef {
     let bit_size = ccx.data_layout().pointer_size.bits();
     if bit_size < 64 {
         // make sure it doesn't overflow
@@ -178,14 +178,14 @@ pub fn C_usize(ccx: &CrateContext, i: u64) -> ValueRef {
     C_uint(ccx.isize_ty, i)
 }
 
-pub fn C_u8(ccx: &CrateContext, i: u8) -> ValueRef {
+pub fn C_u8(ccx: &CodegenCx, i: u8) -> ValueRef {
     C_uint(Type::i8(ccx), i as u64)
 }
 
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> ValueRef {
+pub fn C_cstr(cx: &CodegenCx, s: InternedString, null_terminated: bool) -> ValueRef {
     unsafe {
         if let Some(&llval) = cx.const_cstr_cache.borrow().get(&s) {
             return llval;
@@ -210,20 +210,20 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
+pub fn C_str_slice(cx: &CodegenCx, s: InternedString) -> ValueRef {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false),
         cx.layout_of(cx.tcx.mk_str()).llvm_type(cx).ptr_to());
     C_fat_ptr(cx, cs, C_usize(cx, len as u64))
 }
 
-pub fn C_fat_ptr(cx: &CrateContext, ptr: ValueRef, meta: ValueRef) -> ValueRef {
+pub fn C_fat_ptr(cx: &CodegenCx, ptr: ValueRef, meta: ValueRef) -> ValueRef {
     assert_eq!(abi::FAT_PTR_ADDR, 0);
     assert_eq!(abi::FAT_PTR_EXTRA, 1);
     C_struct(cx, &[ptr, meta], false)
 }
 
-pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
+pub fn C_struct(cx: &CodegenCx, elts: &[ValueRef], packed: bool) -> ValueRef {
     C_struct_in_context(cx.llcx, elts, packed)
 }
 
@@ -247,7 +247,7 @@ pub fn C_vector(elts: &[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn C_bytes(cx: &CrateContext, bytes: &[u8]) -> ValueRef {
+pub fn C_bytes(cx: &CodegenCx, bytes: &[u8]) -> ValueRef {
     C_bytes_in_context(cx.llcx, bytes)
 }
 
@@ -382,7 +382,7 @@ pub fn shift_mask_val<'a, 'tcx>(
     }
 }
 
-pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn ty_fn_sig<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                            ty: Ty<'tcx>)
                            -> ty::PolyFnSig<'tcx>
 {

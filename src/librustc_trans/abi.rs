@@ -12,7 +12,7 @@ use llvm::{self, ValueRef, AttributePlace};
 use base;
 use builder::Builder;
 use common::{ty_fn_sig, C_usize};
-use context::CrateContext;
+use context::CodegenCx;
 use cabi_x86;
 use cabi_x86_64;
 use cabi_x86_win64;
@@ -209,7 +209,7 @@ impl Reg {
 }
 
 impl Reg {
-    pub fn align(&self, ccx: &CrateContext) -> Align {
+    pub fn align(&self, ccx: &CodegenCx) -> Align {
         let dl = ccx.data_layout();
         match self.kind {
             RegKind::Integer => {
@@ -234,7 +234,7 @@ impl Reg {
         }
     }
 
-    pub fn llvm_type(&self, ccx: &CrateContext) -> Type {
+    pub fn llvm_type(&self, ccx: &CodegenCx) -> Type {
         match self.kind {
             RegKind::Integer => Type::ix(ccx, self.size.bits()),
             RegKind::Float => {
@@ -276,11 +276,11 @@ impl From<Reg> for Uniform {
 }
 
 impl Uniform {
-    pub fn align(&self, ccx: &CrateContext) -> Align {
+    pub fn align(&self, ccx: &CodegenCx) -> Align {
         self.unit.align(ccx)
     }
 
-    pub fn llvm_type(&self, ccx: &CrateContext) -> Type {
+    pub fn llvm_type(&self, ccx: &CodegenCx) -> Type {
         let llunit = self.unit.llvm_type(ccx);
 
         if self.total <= self.unit.size {
@@ -307,7 +307,7 @@ impl Uniform {
 
 pub trait LayoutExt<'tcx> {
     fn is_aggregate(&self) -> bool;
-    fn homogeneous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg>;
+    fn homogeneous_aggregate<'a>(&self, ccx: &CodegenCx<'a, 'tcx>) -> Option<Reg>;
 }
 
 impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
@@ -321,7 +321,7 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
         }
     }
 
-    fn homogeneous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg> {
+    fn homogeneous_aggregate<'a>(&self, ccx: &CodegenCx<'a, 'tcx>) -> Option<Reg> {
         match self.abi {
             layout::Abi::Uninhabited => None,
 
@@ -423,7 +423,7 @@ impl From<Uniform> for CastTarget {
 }
 
 impl CastTarget {
-    pub fn size(&self, ccx: &CrateContext) -> Size {
+    pub fn size(&self, ccx: &CodegenCx) -> Size {
         match *self {
             CastTarget::Uniform(u) => u.total,
             CastTarget::Pair(a, b) => {
@@ -433,7 +433,7 @@ impl CastTarget {
         }
     }
 
-    pub fn align(&self, ccx: &CrateContext) -> Align {
+    pub fn align(&self, ccx: &CodegenCx) -> Align {
         match *self {
             CastTarget::Uniform(u) => u.align(ccx),
             CastTarget::Pair(a, b) => {
@@ -444,7 +444,7 @@ impl CastTarget {
         }
     }
 
-    pub fn llvm_type(&self, ccx: &CrateContext) -> Type {
+    pub fn llvm_type(&self, ccx: &CodegenCx) -> Type {
         match *self {
             CastTarget::Uniform(u) => u.llvm_type(ccx),
             CastTarget::Pair(a, b) => {
@@ -547,7 +547,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
 
     /// Get the LLVM type for an place of the original Rust type of
     /// this argument/return, i.e. the result of `type_of::type_of`.
-    pub fn memory_ty(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+    pub fn memory_ty(&self, ccx: &CodegenCx<'a, 'tcx>) -> Type {
         self.layout.llvm_type(ccx)
     }
 
@@ -647,7 +647,7 @@ pub struct FnType<'tcx> {
 }
 
 impl<'a, 'tcx> FnType<'tcx> {
-    pub fn of_instance(ccx: &CrateContext<'a, 'tcx>, instance: &ty::Instance<'tcx>)
+    pub fn of_instance(ccx: &CodegenCx<'a, 'tcx>, instance: &ty::Instance<'tcx>)
                        -> Self {
         let fn_ty = instance.ty(ccx.tcx);
         let sig = ty_fn_sig(ccx, fn_ty);
@@ -655,7 +655,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         FnType::new(ccx, sig, &[])
     }
 
-    pub fn new(ccx: &CrateContext<'a, 'tcx>,
+    pub fn new(ccx: &CodegenCx<'a, 'tcx>,
                sig: ty::FnSig<'tcx>,
                extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
@@ -663,7 +663,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         fn_ty
     }
 
-    pub fn new_vtable(ccx: &CrateContext<'a, 'tcx>,
+    pub fn new_vtable(ccx: &CodegenCx<'a, 'tcx>,
                       sig: ty::FnSig<'tcx>,
                       extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
@@ -688,7 +688,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         fn_ty
     }
 
-    pub fn unadjusted(ccx: &CrateContext<'a, 'tcx>,
+    pub fn unadjusted(ccx: &CodegenCx<'a, 'tcx>,
                       sig: ty::FnSig<'tcx>,
                       extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         debug!("FnType::unadjusted({:?}, {:?})", sig, extra_args);
@@ -863,7 +863,7 @@ impl<'a, 'tcx> FnType<'tcx> {
     }
 
     fn adjust_for_abi(&mut self,
-                      ccx: &CrateContext<'a, 'tcx>,
+                      ccx: &CodegenCx<'a, 'tcx>,
                       abi: Abi) {
         if abi == Abi::Unadjusted { return }
 
@@ -939,7 +939,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         }
     }
 
-    pub fn llvm_type(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+    pub fn llvm_type(&self, ccx: &CodegenCx<'a, 'tcx>) -> Type {
         let mut llargument_tys = Vec::new();
 
         let llreturn_ty = match self.ret.mode {

@@ -15,7 +15,7 @@
 //! closure.
 
 use attributes;
-use common::{self, CrateContext};
+use common::{self, CodegenCx};
 use consts;
 use declare;
 use llvm::{self, ValueRef};
@@ -36,7 +36,7 @@ use rustc_back::PanicStrategy;
 ///
 /// - `ccx`: the crate context
 /// - `instance`: the instance to be instantiated
-pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn get_fn<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                         instance: Instance<'tcx>)
                         -> ValueRef
 {
@@ -176,7 +176,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     llfn
 }
 
-pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                                     def_id: DefId,
                                     substs: &'tcx Substs<'tcx>)
                                     -> ValueRef

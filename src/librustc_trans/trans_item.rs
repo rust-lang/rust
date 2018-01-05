@@ -18,7 +18,7 @@ use asm;
 use attributes;
 use base;
 use consts;
-use context::CrateContext;
+use context::CodegenCx;
 use declare;
 use llvm;
 use monomorphize::Instance;
@@ -38,7 +38,7 @@ pub use rustc_mir::monomorphize::item::*;
 pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
 
 pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
-    fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
+    fn define(&self, ccx: &CodegenCx<'a, 'tcx>) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx),
                self.to_raw_string(),
@@ -79,7 +79,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
     }
 
     fn predefine(&self,
-                 ccx: &CrateContext<'a, 'tcx>,
+                 ccx: &CodegenCx<'a, 'tcx>,
                  linkage: Linkage,
                  visibility: Visibility) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
@@ -138,7 +138,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
 
 impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {}
 
-fn predefine_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn predefine_static<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                               node_id: ast::NodeId,
                               linkage: Linkage,
                               visibility: Visibility,
@@ -162,7 +162,7 @@ fn predefine_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     ccx.statics.borrow_mut().insert(g, def_id);
 }
 
-fn predefine_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn predefine_fn<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                           instance: Instance<'tcx>,
                           linkage: Linkage,
                           visibility: Visibility,

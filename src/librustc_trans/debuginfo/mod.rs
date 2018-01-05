@@ -27,7 +27,7 @@ use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::ty::subst::Substs;
 
 use abi::Abi;
-use common::CrateContext;
+use common::CodegenCx;
 use builder::Builder;
 use monomorphize::Instance;
 use rustc::ty::{self, Ty};
@@ -150,7 +150,7 @@ pub enum VariableKind {
 }
 
 /// Create any deferred debug metadata nodes
-pub fn finalize(cx: &CrateContext) {
+pub fn finalize(cx: &CodegenCx) {
     if cx.dbg_cx.is_none() {
         return;
     }
@@ -201,7 +201,7 @@ pub fn finalize(cx: &CrateContext) {
 /// for debug info creation. The function may also return another variant of the
 /// FunctionDebugContext enum which indicates why no debuginfo should be created
 /// for the function.
-pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                                instance: Instance<'tcx>,
                                                sig: ty::FnSig<'tcx>,
                                                llfn: ValueRef,
@@ -299,7 +299,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     return FunctionDebugContext::RegularContext(fn_debug_context);
 
-    fn get_function_signature<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+    fn get_function_signature<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                         sig: ty::FnSig<'tcx>) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), &[]);
@@ -358,7 +358,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return create_DIArray(DIB(cx), &signature[..]);
     }
 
-    fn get_template_parameters<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+    fn get_template_parameters<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                          generics: &ty::Generics,
                                          substs: &Substs<'tcx>,
                                          file_metadata: DIFile,
@@ -409,7 +409,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return create_DIArray(DIB(cx), &template_params[..]);
     }
 
-    fn get_type_parameter_names(cx: &CrateContext, generics: &ty::Generics) -> Vec<ast::Name> {
+    fn get_type_parameter_names(cx: &CodegenCx, generics: &ty::Generics) -> Vec<ast::Name> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
             get_type_parameter_names(cx, cx.tcx.generics_of(def_id))
         });
@@ -417,7 +417,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         names
     }
 
-    fn get_containing_scope<'ccx, 'tcx>(cx: &CrateContext<'ccx, 'tcx>,
+    fn get_containing_scope<'ccx, 'tcx>(cx: &CodegenCx<'ccx, 'tcx>,
                                         instance: Instance<'tcx>)
                                         -> DIScope {
         // First, let's see if this is a method within an inherent impl. Because

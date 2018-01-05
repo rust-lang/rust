@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use abi::{ArgAttribute, FnType, LayoutExt, PassMode, Reg, RegKind};
-use common::CrateContext;
+use common::CodegenCx;
 
 use rustc::ty::layout::{self, TyLayout};
 
@@ -19,7 +19,7 @@ pub enum Flavor {
     Fastcall
 }
 
-fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn is_single_fp_element<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                                   layout: TyLayout<'tcx>) -> bool {
     match layout.abi {
         layout::Abi::Scalar(ref scalar) => {
@@ -39,7 +39,7 @@ fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                                   fty: &mut FnType<'tcx>,
                                   flavor: Flavor) {
     if !fty.ret.is_ignore() {

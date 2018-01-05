@@ -12,7 +12,7 @@
 
 use llvm;
 
-use common::{C_bytes, CrateContext, C_i32};
+use common::{C_bytes, CodegenCx, C_i32};
 use builder::Builder;
 use declare;
 use type_::Type;
@@ -24,7 +24,7 @@ use syntax::attr;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext, builder: &Builder) {
+pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CodegenCx, builder: &Builder) {
     if needs_gdb_debug_scripts_section(ccx) {
         let gdb_debug_scripts_section_global = get_or_insert_gdb_debug_scripts_section_global(ccx);
         // Load just the first byte as that's all that's necessary to force
@@ -40,7 +40,7 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext, 
 
 /// Allocates the global variable responsible for the .debug_gdb_scripts binary
 /// section.
-pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
+pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CodegenCx)
                                                   -> llvm::ValueRef {
     let c_section_var_name = "__rustc_debug_gdb_scripts_section__\0";
     let section_var_name = &c_section_var_name[..c_section_var_name.len()-1];
@@ -77,7 +77,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
     }
 }
 
-pub fn needs_gdb_debug_scripts_section(ccx: &CrateContext) -> bool {
+pub fn needs_gdb_debug_scripts_section(ccx: &CodegenCx) -> bool {
     let omit_gdb_pretty_printer_section =
         attr::contains_name(&ccx.tcx.hir.krate_attrs(),
                             "omit_gdb_pretty_printer_section");

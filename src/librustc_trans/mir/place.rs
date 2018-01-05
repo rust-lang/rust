@@ -16,7 +16,7 @@ use rustc::mir::tcx::PlaceTy;
 use rustc_data_structures::indexed_vec::Idx;
 use base;
 use builder::Builder;
-use common::{CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null, C_uint_big};
+use common::{CodegenCx, C_usize, C_u8, C_u32, C_uint, C_int, C_null, C_uint_big};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -63,7 +63,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         Self::new_sized(tmp, layout, layout.align)
     }
 
-    pub fn len(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
+    pub fn len(&self, ccx: &CodegenCx<'a, 'tcx>) -> ValueRef {
         if let layout::FieldPlacement::Array { count, .. } = self.layout.fields {
             if self.layout.is_unsized() {
                 assert!(self.has_extra());

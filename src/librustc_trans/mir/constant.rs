@@ -27,7 +27,7 @@ use base;
 use abi::{self, Abi};
 use callee;
 use builder::Builder;
-use common::{self, CrateContext, const_get_elt, val_ty};
+use common::{self, CodegenCx, const_get_elt, val_ty};
 use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_uint_big, C_u32, C_u64};
 use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector, C_fat_ptr};
 use common::const_to_opt_u128;
@@ -62,7 +62,7 @@ impl<'a, 'tcx> Const<'tcx> {
         }
     }
 
-    pub fn from_constint(ccx: &CrateContext<'a, 'tcx>, ci: &ConstInt) -> Const<'tcx> {
+    pub fn from_constint(ccx: &CodegenCx<'a, 'tcx>, ci: &ConstInt) -> Const<'tcx> {
         let tcx = ccx.tcx;
         let (llval, ty) = match *ci {
             I8(v) => (C_int(Type::i8(ccx), v as i64), tcx.types.i8),
@@ -82,7 +82,7 @@ impl<'a, 'tcx> Const<'tcx> {
     }
 
     /// Translate ConstVal into a LLVM constant value.
-    pub fn from_constval(ccx: &CrateContext<'a, 'tcx>,
+    pub fn from_constval(ccx: &CodegenCx<'a, 'tcx>,
                          cv: &ConstVal,
                          ty: Ty<'tcx>)
                          -> Const<'tcx> {
@@ -115,7 +115,7 @@ impl<'a, 'tcx> Const<'tcx> {
         Const::new(val, ty)
     }
 
-    fn get_field(&self, ccx: &CrateContext<'a, 'tcx>, i: usize) -> ValueRef {
+    fn get_field(&self, ccx: &CodegenCx<'a, 'tcx>, i: usize) -> ValueRef {
         let layout = ccx.layout_of(self.ty);
         let field = layout.field(ccx, i);
         if field.is_zst() {
@@ -145,11 +145,11 @@ impl<'a, 'tcx> Const<'tcx> {
         }
     }
 
-    fn get_pair(&self, ccx: &CrateContext<'a, 'tcx>) -> (ValueRef, ValueRef) {
+    fn get_pair(&self, ccx: &CodegenCx<'a, 'tcx>) -> (ValueRef, ValueRef) {
         (self.get_field(ccx, 0), self.get_field(ccx, 1))
     }
 
-    fn get_fat_ptr(&self, ccx: &CrateContext<'a, 'tcx>) -> (ValueRef, ValueRef) {
+    fn get_fat_ptr(&self, ccx: &CodegenCx<'a, 'tcx>) -> (ValueRef, ValueRef) {
         assert_eq!(abi::FAT_PTR_ADDR, 0);
         assert_eq!(abi::FAT_PTR_EXTRA, 1);
         self.get_pair(ccx)
@@ -163,7 +163,7 @@ impl<'a, 'tcx> Const<'tcx> {
         }
     }
 
-    pub fn to_operand(&self, ccx: &CrateContext<'a, 'tcx>) -> OperandRef<'tcx> {
+    pub fn to_operand(&self, ccx: &CodegenCx<'a, 'tcx>) -> OperandRef<'tcx> {
         let layout = ccx.layout_of(self.ty);
         let llty = layout.immediate_llvm_type(ccx);
         let llvalty = val_ty(self.llval);
@@ -232,7 +232,7 @@ impl<'tcx> ConstPlace<'tcx> {
         }
     }
 
-    pub fn len<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
+    pub fn len<'a>(&self, ccx: &CodegenCx<'a, 'tcx>) -> ValueRef {
         match self.ty.sty {
             ty::TyArray(_, n) => {
                 C_usize(ccx, n.val.to_const_int().unwrap().to_u64().unwrap())
@@ -249,7 +249,7 @@ impl<'tcx> ConstPlace<'tcx> {
 /// Machinery for translating a constant's MIR to LLVM values.
 /// FIXME(eddyb) use miri and lower its allocations to LLVM.
 struct MirConstContext<'a, 'tcx: 'a> {
-    ccx: &'a CrateContext<'a, 'tcx>,
+    ccx: &'a CodegenCx<'a, 'tcx>,
     mir: &'a mir::Mir<'tcx>,
 
     /// Type parameters for const fn and associated constants.
@@ -270,7 +270,7 @@ fn add_err<'tcx, U, V>(failure: &mut Result<U, ConstEvalErr<'tcx>>,
 }
 
 impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
-    fn new(ccx: &'a CrateContext<'a, 'tcx>,
+    fn new(ccx: &'a CodegenCx<'a, 'tcx>,
            mir: &'a mir::Mir<'tcx>,
            substs: &'tcx Substs<'tcx>,
            args: IndexVec<mir::Local, Result<Const<'tcx>, ConstEvalErr<'tcx>>>)
@@ -289,7 +289,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
         context
     }
 
-    fn trans_def(ccx: &'a CrateContext<'a, 'tcx>,
+    fn trans_def(ccx: &'a CodegenCx<'a, 'tcx>,
                  def_id: DefId,
                  substs: &'tcx Substs<'tcx>,
                  args: IndexVec<mir::Local, Result<Const<'tcx>, ConstEvalErr<'tcx>>>)
@@ -1060,7 +1060,7 @@ pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-unsafe fn cast_const_float_to_int(ccx: &CrateContext,
+unsafe fn cast_const_float_to_int(ccx: &CodegenCx,
                                   operand: &Const,
                                   signed: bool,
                                   int_ty: Type,
@@ -1095,7 +1095,7 @@ unsafe fn cast_const_float_to_int(ccx: &CrateContext,
     C_uint_big(int_ty, cast_result.value)
 }
 
-unsafe fn cast_const_int_to_float(ccx: &CrateContext,
+unsafe fn cast_const_int_to_float(ccx: &CodegenCx,
                                   llval: ValueRef,
                                   signed: bool,
                                   float_ty: Type) -> ValueRef {
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
 
 pub fn trans_static_initializer<'a, 'tcx>(
-    ccx: &CrateContext<'a, 'tcx>,
+    ccx: &CodegenCx<'a, 'tcx>,
     def_id: DefId)
     -> Result<ValueRef, ConstEvalErr<'tcx>>
 {
@@ -1182,7 +1182,7 @@ pub fn trans_static_initializer<'a, 'tcx>(
 /// this could be changed in the future to avoid allocating unnecessary
 /// space after values of shorter-than-maximum cases.
 fn trans_const_adt<'a, 'tcx>(
-    ccx: &CrateContext<'a, 'tcx>,
+    ccx: &CodegenCx<'a, 'tcx>,
     t: Ty<'tcx>,
     kind: &mir::AggregateKind,
     vals: &[Const<'tcx>]
@@ -1272,7 +1272,7 @@ fn trans_const_adt<'a, 'tcx>(
 /// initializer is 4-byte aligned then simply translating the tuple as
 /// a two-element struct will locate it at offset 4, and accesses to it
 /// will read the wrong memory.
-fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn build_const_struct<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                                 layout: layout::TyLayout<'tcx>,
                                 vals: &[Const<'tcx>],
                                 discr: Option<Const<'tcx>>)
@@ -1332,6 +1332,6 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     Const::new(C_struct(ccx, &cfields, packed), layout.ty)
 }
 
-fn padding(ccx: &CrateContext, size: Size) -> ValueRef {
+fn padding(ccx: &CodegenCx, size: Size) -> ValueRef {
     C_undef(Type::array(&Type::i8(ccx), size.bytes()))
 }

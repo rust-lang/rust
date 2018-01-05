@@ -24,7 +24,7 @@ use llvm::AttributePlace::Function;
 use llvm_util;
 pub use syntax::attr::{self, InlineAttr};
 use syntax::ast;
-use context::CrateContext;
+use context::CodegenCx;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
@@ -67,7 +67,7 @@ pub fn naked(val: ValueRef, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
 }
 
-pub fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
+pub fn set_frame_pointer_elimination(ccx: &CodegenCx, llfn: ValueRef) {
     // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
     // parameter.
     if ccx.sess().must_not_eliminate_frame_pointers() {
@@ -77,7 +77,7 @@ pub fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
     }
 }
 
-pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
+pub fn set_probestack(ccx: &CodegenCx, llfn: ValueRef) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
     if !ccx.sess().target.target.options.stack_probes {
@@ -101,7 +101,7 @@ pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
-pub fn from_fn_attrs(ccx: &CrateContext, llfn: ValueRef, id: DefId) {
+pub fn from_fn_attrs(ccx: &CodegenCx, llfn: ValueRef, id: DefId) {
     use syntax::attr::*;
     let attrs = ccx.tcx.get_attrs(id);
     inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), &attrs));

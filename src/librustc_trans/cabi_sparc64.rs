@@ -11,9 +11,9 @@
 // FIXME: This needs an audit for correctness and completeness.
 
 use abi::{FnType, ArgType, LayoutExt, Reg, RegKind, Uniform};
-use context::CrateContext;
+use context::CodegenCx;
 
-fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>)
+fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>)
                                      -> Option<Uniform> {
     arg.layout.homogeneous_aggregate(ccx).and_then(|unit| {
         // Ensure we have at most eight uniquely addressable members.
@@ -38,7 +38,7 @@ fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut Ar
     })
 }
 
-fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+fn classify_ret_ty<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(64);
         return;
@@ -72,7 +72,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
     ret.make_indirect();
 }
 
-fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+fn classify_arg_ty<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
         return;
@@ -90,7 +90,7 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
     });
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }

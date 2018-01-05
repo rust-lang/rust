@@ -29,7 +29,7 @@ use rustc::ty::fold::TypeVisitor;
 use rustc::ty::util::TypeIdHasher;
 use rustc::ich::Fingerprint;
 use rustc::ty::Instance;
-use common::CrateContext;
+use common::CodegenCx;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc::session::config;
@@ -133,7 +133,7 @@ impl<'tcx> TypeMap<'tcx> {
     // Get the UniqueTypeId for the given type. If the UniqueTypeId for the given
     // type has been requested before, this is just a table lookup. Otherwise an
     // ID will be generated and stored for later lookup.
-    fn get_unique_type_id_of_type<'a>(&mut self, cx: &CrateContext<'a, 'tcx>,
+    fn get_unique_type_id_of_type<'a>(&mut self, cx: &CodegenCx<'a, 'tcx>,
                                       type_: Ty<'tcx>) -> UniqueTypeId {
         // Let's see if we already have something in the cache
         match self.type_to_unique_id.get(&type_).cloned() {
@@ -157,7 +157,7 @@ impl<'tcx> TypeMap<'tcx> {
     // types of their own, so they need special handling. We still need a
     // UniqueTypeId for them, since to debuginfo they *are* real types.
     fn get_unique_type_id_of_enum_variant<'a>(&mut self,
-                                              cx: &CrateContext<'a, 'tcx>,
+                                              cx: &CodegenCx<'a, 'tcx>,
                                               enum_type: Ty<'tcx>,
                                               variant_name: &str)
                                               -> UniqueTypeId {
@@ -186,7 +186,7 @@ enum RecursiveTypeDescription<'tcx> {
 }
 
 fn create_and_register_recursive_type_forward_declaration<'a, 'tcx>(
-    cx: &CrateContext<'a, 'tcx>,
+    cx: &CodegenCx<'a, 'tcx>,
     unfinished_type: Ty<'tcx>,
     unique_type_id: UniqueTypeId,
     metadata_stub: DICompositeType,
@@ -210,7 +210,7 @@ impl<'tcx> RecursiveTypeDescription<'tcx> {
     // Finishes up the description of the type in question (mostly by providing
     // descriptions of the fields of the given type) and returns the final type
     // metadata.
-    fn finalize<'a>(&self, cx: &CrateContext<'a, 'tcx>) -> MetadataCreationResult {
+    fn finalize<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> MetadataCreationResult {
         match *self {
             FinalMetadata(metadata) => MetadataCreationResult::new(metadata, false),
             UnfinishedMetadata {
@@ -262,7 +262,7 @@ macro_rules! return_if_metadata_created_in_meantime {
     )
 }
 
-fn fixed_vec_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn fixed_vec_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                 unique_type_id: UniqueTypeId,
                                 array_or_slice_type: Ty<'tcx>,
                                 element_type: Ty<'tcx>,
@@ -298,7 +298,7 @@ fn fixed_vec_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     return MetadataCreationResult::new(metadata, false);
 }
 
-fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn vec_slice_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                 slice_ptr_type: Ty<'tcx>,
                                 element_type: Ty<'tcx>,
                                 unique_type_id: UniqueTypeId,
@@ -347,7 +347,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     MetadataCreationResult::new(metadata, false)
 }
 
-fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn subroutine_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                       unique_type_id: UniqueTypeId,
                                       signature: ty::PolyFnSig<'tcx>,
                                       span: Span)
@@ -386,7 +386,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 // trait_type should be the actual trait (e.g., Trait). Where the trait is part
 // of a DST struct, there is no trait_object_type and the results of this
 // function will be a little bit weird.
-fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn trait_pointer_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                     trait_type: Ty<'tcx>,
                                     trait_object_type: Option<Ty<'tcx>>,
                                     unique_type_id: UniqueTypeId)
@@ -453,7 +453,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             syntax_pos::DUMMY_SP)
 }
 
-pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+pub fn type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                t: Ty<'tcx>,
                                usage_site_span: Span)
                                -> DIType {
@@ -673,7 +673,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     metadata
 }
 
-pub fn file_metadata(cx: &CrateContext,
+pub fn file_metadata(cx: &CodegenCx,
                      file_name: &FileName,
                      defining_crate: CrateNum) -> DIFile {
     debug!("file_metadata: file_name: {}, defining_crate: {}",
@@ -691,11 +691,11 @@ pub fn file_metadata(cx: &CrateContext,
     file_metadata_raw(cx, &file_name.to_string(), &directory.to_string_lossy())
 }
 
-pub fn unknown_file_metadata(cx: &CrateContext) -> DIFile {
+pub fn unknown_file_metadata(cx: &CodegenCx) -> DIFile {
     file_metadata_raw(cx, "<unknown>", "")
 }
 
-fn file_metadata_raw(cx: &CrateContext,
+fn file_metadata_raw(cx: &CodegenCx,
                      file_name: &str,
                      directory: &str)
                      -> DIFile {
@@ -721,7 +721,7 @@ fn file_metadata_raw(cx: &CrateContext,
     file_metadata
 }
 
-fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn basic_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                  t: Ty<'tcx>) -> DIType {
 
     debug!("basic_type_metadata: {:?}", t);
@@ -758,7 +758,7 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     return ty_metadata;
 }
 
-fn foreign_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn foreign_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                    t: Ty<'tcx>,
                                    unique_type_id: UniqueTypeId) -> DIType {
     debug!("foreign_type_metadata: {:?}", t);
@@ -767,7 +767,7 @@ fn foreign_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     create_struct_stub(cx, t, &name, unique_type_id, NO_SCOPE_METADATA)
 }
 
-fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn pointer_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                    pointer_type: Ty<'tcx>,
                                    pointee_type_metadata: DIType)
                                    -> DIType {
@@ -901,7 +901,7 @@ enum MemberDescriptionFactory<'tcx> {
 }
 
 impl<'tcx> MemberDescriptionFactory<'tcx> {
-    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+    fn create_member_descriptions<'a>(&self, cx: &CodegenCx<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         match *self {
             StructMDF(ref this) => {
@@ -935,7 +935,7 @@ struct StructMemberDescriptionFactory<'tcx> {
 }
 
 impl<'tcx> StructMemberDescriptionFactory<'tcx> {
-    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+    fn create_member_descriptions<'a>(&self, cx: &CodegenCx<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let layout = cx.layout_of(self.ty);
         self.variant.fields.iter().enumerate().map(|(i, f)| {
@@ -959,7 +959,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
 }
 
 
-fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn prepare_struct_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                      struct_type: Ty<'tcx>,
                                      unique_type_id: UniqueTypeId,
                                      span: Span)
@@ -1004,7 +1004,7 @@ struct TupleMemberDescriptionFactory<'tcx> {
 }
 
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
-    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+    fn create_member_descriptions<'a>(&self, cx: &CodegenCx<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let layout = cx.layout_of(self.ty);
         self.component_types.iter().enumerate().map(|(i, &component_type)| {
@@ -1021,7 +1021,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     }
 }
 
-fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn prepare_tuple_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                     tuple_type: Ty<'tcx>,
                                     component_types: &[Ty<'tcx>],
                                     unique_type_id: UniqueTypeId,
@@ -1057,7 +1057,7 @@ struct UnionMemberDescriptionFactory<'tcx> {
 }
 
 impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
-    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+    fn create_member_descriptions<'a>(&self, cx: &CodegenCx<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         self.variant.fields.iter().enumerate().map(|(i, f)| {
             let field = self.layout.field(cx, i);
@@ -1074,7 +1074,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
     }
 }
 
-fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn prepare_union_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                     union_type: Ty<'tcx>,
                                     unique_type_id: UniqueTypeId,
                                     span: Span)
@@ -1125,7 +1125,7 @@ struct EnumMemberDescriptionFactory<'tcx> {
 }
 
 impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
-    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+    fn create_member_descriptions<'a>(&self, cx: &CodegenCx<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let adt = &self.enum_type.ty_adt_def().unwrap();
         match self.layout.variants {
@@ -1210,7 +1210,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // of discriminant instead of us having to recover its path.
                 // Right now it's not even going to work for `niche_start > 0`,
                 // and for multiple niche variants it only supports the first.
-                fn compute_field_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                fn compute_field_path<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                                                 name: &mut String,
                                                 layout: TyLayout<'tcx>,
                                                 offset: Size,
@@ -1260,7 +1260,7 @@ struct VariantMemberDescriptionFactory<'tcx> {
 }
 
 impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
-    fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
+    fn create_member_descriptions<'a>(&self, cx: &CodegenCx<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
             let (size, align) = cx.size_and_align_of(ty);
@@ -1290,7 +1290,7 @@ enum EnumDiscriminantInfo {
 // of the variant, and (3) a MemberDescriptionFactory for producing the
 // descriptions of the fields of the variant. This is a rudimentary version of a
 // full RecursiveTypeDescription.
-fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn describe_enum_variant<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                    layout: layout::TyLayout<'tcx>,
                                    variant: &'tcx ty::VariantDef,
                                    discriminant_info: EnumDiscriminantInfo,
@@ -1350,7 +1350,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     (metadata_stub, member_description_factory)
 }
 
-fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn prepare_enum_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                    enum_type: Ty<'tcx>,
                                    enum_def_id: DefId,
                                    unique_type_id: UniqueTypeId,
@@ -1470,7 +1470,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }),
     );
 
-    fn get_enum_discriminant_name(cx: &CrateContext,
+    fn get_enum_discriminant_name(cx: &CodegenCx,
                                   def_id: DefId)
                                   -> InternedString {
         cx.tcx.item_name(def_id)
@@ -1481,7 +1481,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 /// results in a LLVM struct.
 ///
 /// Examples of Rust types to use this are: structs, tuples, boxes, vecs, and enums.
-fn composite_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn composite_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                      composite_type: Ty<'tcx>,
                                      composite_type_name: &str,
                                      composite_type_unique_id: UniqueTypeId,
@@ -1507,7 +1507,7 @@ fn composite_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     return composite_type_metadata;
 }
 
-fn set_members_of_composite_type(cx: &CrateContext,
+fn set_members_of_composite_type(cx: &CodegenCx,
                                  composite_type_metadata: DICompositeType,
                                  member_descriptions: &[MemberDescription]) {
     // In some rare cases LLVM metadata uniquing would lead to an existing type
@@ -1558,7 +1558,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
 // A convenience wrapper around LLVMRustDIBuilderCreateStructType(). Does not do
 // any caching, does not add any fields to the struct. This can be done later
 // with set_members_of_composite_type().
-fn create_struct_stub<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn create_struct_stub<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                 struct_type: Ty<'tcx>,
                                 struct_type_name: &str,
                                 unique_type_id: UniqueTypeId,
@@ -1595,7 +1595,7 @@ fn create_struct_stub<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     return metadata_stub;
 }
 
-fn create_union_stub<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+fn create_union_stub<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                union_type: Ty<'tcx>,
                                union_type_name: &str,
                                unique_type_id: UniqueTypeId,
@@ -1633,7 +1633,7 @@ fn create_union_stub<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 /// Creates debug information for the given global variable.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_global_var_metadata(cx: &CrateContext,
+pub fn create_global_var_metadata(cx: &CodegenCx,
                                   node_id: ast::NodeId,
                                   global: ValueRef) {
     if cx.dbg_cx.is_none() {
@@ -1689,7 +1689,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 }
 
 // Creates an "extension" of an existing DIScope into another file.
-pub fn extend_scope_to_file(ccx: &CrateContext,
+pub fn extend_scope_to_file(ccx: &CodegenCx,
                             scope_metadata: DIScope,
                             file: &syntax_pos::FileMap,
                             defining_crate: CrateNum)
@@ -1707,7 +1707,7 @@ pub fn extend_scope_to_file(ccx: &CrateContext,
 /// given type.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_vtable_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+pub fn create_vtable_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                         ty: ty::Ty<'tcx>,
                                         vtable: ValueRef) {
     if cx.dbg_cx.is_none() {

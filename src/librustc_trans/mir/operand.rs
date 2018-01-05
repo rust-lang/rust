@@ -15,7 +15,7 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common::{self, CrateContext, C_undef, C_usize};
+use common::{self, CodegenCx, C_undef, C_usize};
 use builder::Builder;
 use value::Value;
 use type_of::LayoutLlvmExt;
@@ -81,7 +81,7 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
 }
 
 impl<'a, 'tcx> OperandRef<'tcx> {
-    pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
+    pub fn new_zst(ccx: &CodegenCx<'a, 'tcx>,
                    layout: TyLayout<'tcx>) -> OperandRef<'tcx> {
         assert!(layout.is_zst());
         OperandRef {
@@ -99,7 +99,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         }
     }
 
-    pub fn deref(self, ccx: &CrateContext<'a, 'tcx>) -> PlaceRef<'tcx> {
+    pub fn deref(self, ccx: &CodegenCx<'a, 'tcx>) -> PlaceRef<'tcx> {
         let projected_ty = self.layout.ty.builtin_deref(true, ty::NoPreference)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {

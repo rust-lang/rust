@@ -27,7 +27,7 @@ use rustc::session::config::Sanitizer;
 use rustc_back::PanicStrategy;
 use abi::{Abi, FnType};
 use attributes;
-use context::CrateContext;
+use context::CodegenCx;
 use common;
 use type_::Type;
 use value::Value;
@@ -39,7 +39,7 @@ use std::ffi::CString;
 ///
 /// If there’s a value with the same name already declared, the function will
 /// return its ValueRef instead.
-pub fn declare_global(ccx: &CrateContext, name: &str, ty: Type) -> llvm::ValueRef {
+pub fn declare_global(ccx: &CodegenCx, name: &str, ty: Type) -> llvm::ValueRef {
     debug!("declare_global(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         bug!("name {:?} contains an interior null byte", name)
@@ -54,7 +54,7 @@ pub fn declare_global(ccx: &CrateContext, name: &str, ty: Type) -> llvm::ValueRe
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing ValueRef instead.
-fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: Type) -> ValueRef {
+fn declare_raw_fn(ccx: &CodegenCx, name: &str, callconv: llvm::CallConv, ty: Type) -> ValueRef {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         bug!("name {:?} contains an interior null byte", name)
@@ -114,7 +114,7 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing ValueRef instead.
-pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> ValueRef {
+pub fn declare_cfn(ccx: &CodegenCx, name: &str, fn_type: Type) -> ValueRef {
     declare_raw_fn(ccx, name, llvm::CCallConv, fn_type)
 }
 
@@ -123,7 +123,7 @@ pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> ValueRef {
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing ValueRef instead.
-pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
+pub fn declare_fn<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, name: &str,
                             fn_type: Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
     let sig = common::ty_fn_sig(ccx, fn_type);
@@ -154,7 +154,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
 /// return None if the name already has a definition associated with it. In that
 /// case an error should be reported to the user, because it usually happens due
 /// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
-pub fn define_global(ccx: &CrateContext, name: &str, ty: Type) -> Option<ValueRef> {
+pub fn define_global(ccx: &CodegenCx, name: &str, ty: Type) -> Option<ValueRef> {
     if get_defined_value(ccx, name).is_some() {
         None
     } else {
@@ -167,7 +167,7 @@ pub fn define_global(ccx: &CrateContext, name: &str, ty: Type) -> Option<ValueRe
 /// Use this function when you intend to define a function. This function will
 /// return panic if the name already has a definition associated with it. This
 /// can happen with #[no_mangle] or #[export_name], for example.
-pub fn define_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn define_fn<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                            name: &str,
                            fn_type: Ty<'tcx>) -> ValueRef {
     if get_defined_value(ccx, name).is_some() {
@@ -182,7 +182,7 @@ pub fn define_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 /// Use this function when you intend to define a function. This function will
 /// return panic if the name already has a definition associated with it. This
 /// can happen with #[no_mangle] or #[export_name], for example.
-pub fn define_internal_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn define_internal_fn<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                                     name: &str,
                                     fn_type: Ty<'tcx>) -> ValueRef {
     let llfn = define_fn(ccx, name, fn_type);
@@ -192,7 +192,7 @@ pub fn define_internal_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 
 /// Get declared value by name.
-pub fn get_declared_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+pub fn get_declared_value(ccx: &CodegenCx, name: &str) -> Option<ValueRef> {
     debug!("get_declared_value(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         bug!("name {:?} contains an interior null byte", name)
@@ -209,7 +209,7 @@ pub fn get_declared_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
 
 /// Get defined or externally defined (AvailableExternally linkage) value by
 /// name.
-pub fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+pub fn get_defined_value(ccx: &CodegenCx, name: &str) -> Option<ValueRef> {
     get_declared_value(ccx, name).and_then(|val|{
         let declaration = unsafe {
             llvm::LLVMIsDeclaration(val) != 0

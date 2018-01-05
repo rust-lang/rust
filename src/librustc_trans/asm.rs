@@ -119,7 +119,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
     }
 }
 
-pub fn trans_global_asm<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn trans_global_asm<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
                                   ga: &hir::GlobalAsm) {
     let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
     unsafe {
