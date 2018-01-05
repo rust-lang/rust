@@ -204,7 +204,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
 
                 // Only need the place if we're actually dropping it.
-                if self.cx.ccx.shared().type_needs_drop(ty) {
+                if self.cx.ccx.type_needs_drop(ty) {
                     self.mark_as_memory(index);
                 }
             }

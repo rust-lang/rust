@@ -57,9 +57,9 @@ use builder::Builder;
 use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
-use common::{self, C_struct_in_context, C_array, CrateContext, val_ty};
+use common::{self, C_struct_in_context, C_array, val_ty};
 use consts;
-use context::{self, LocalCrateContext, SharedCrateContext};
+use context::{self, CrateContext};
 use debuginfo;
 use declare;
 use meth;
@@ -232,13 +232,13 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            assert!(bcx.ccx.shared().type_is_sized(a));
+            assert!(bcx.ccx.type_is_sized(a));
             let ptr_ty = bcx.ccx.layout_of(b).llvm_type(bcx.ccx).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
         }
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
-            assert!(bcx.ccx.shared().type_is_sized(a));
+            assert!(bcx.ccx.type_is_sized(a));
             let ptr_ty = bcx.ccx.layout_of(b).llvm_type(bcx.ccx).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
         }
@@ -721,7 +721,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let link_meta = link::build_link_meta(crate_hash);
     let exported_symbol_node_ids = find_exported_symbols(tcx);
 
-    let shared_ccx = SharedCrateContext::new(tcx);
     // Translate the metadata.
     let llmod_id = "metadata";
     let (metadata_llcx, metadata_llmod, metadata) =
@@ -770,7 +769,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Run the translation item collector and partition the collected items into
     // codegen units.
     let codegen_units =
-        shared_ccx.tcx().collect_and_partition_translation_items(LOCAL_CRATE).1;
+        tcx.collect_and_partition_translation_items(LOCAL_CRATE).1;
     let codegen_units = (*codegen_units).clone();
 
     // Force all codegen_unit queries so they are already either red or green
@@ -910,7 +909,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     symbol_names_test::report_symbol_names(tcx);
 
-    if shared_ccx.sess().trans_stats() {
+    if tcx.sess.trans_stats() {
         println!("--- trans stats ---");
         println!("n_glues_created: {}", all_stats.n_glues_created);
         println!("n_null_glues: {}", all_stats.n_null_glues);
@@ -926,7 +925,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    if shared_ccx.sess().count_llvm_insns() {
+    if tcx.sess.count_llvm_insns() {
         for (k, v) in all_stats.llvm_insns.iter() {
             println!("{:7} {}", *v, *k);
         }
@@ -1204,10 +1203,8 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    .to_fingerprint().to_hex());
 
         // Instantiate translation items without filling out definitions yet...
-        let scx = SharedCrateContext::new(tcx);
-        let lcx = LocalCrateContext::new(&scx, cgu, &llmod_id);
+        let ccx = CrateContext::new(tcx, cgu, &llmod_id);
         let module = {
-            let ccx = CrateContext::new(&scx, &lcx);
             let trans_items = ccx.codegen_unit()
                                  .items_in_deterministic_order(ccx.tcx());
             for &(trans_item, (linkage, visibility)) in &trans_items {
@@ -1268,7 +1265,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         };
 
-        (lcx.into_stats(), module)
+        (ccx.into_stats(), module)
     }
 }
 

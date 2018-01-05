@@ -18,7 +18,6 @@ use super::namespace::mangled_name_of_item;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
 use abi;
-use context::SharedCrateContext;
 
 use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
@@ -31,9 +30,9 @@ use rustc::ty::util::TypeIdHasher;
 use rustc::ich::Fingerprint;
 use rustc::ty::Instance;
 use common::CrateContext;
-use rustc::ty::{self, AdtKind, Ty};
+use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
-use rustc::session::{Session, config};
+use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
 use rustc::util::common::path2cstr;
 
@@ -785,21 +784,20 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn compile_unit_metadata(scc: &SharedCrateContext,
+pub fn compile_unit_metadata(tcx: TyCtxt,
                              codegen_unit_name: &str,
-                             debug_context: &CrateDebugContext,
-                             sess: &Session)
+                             debug_context: &CrateDebugContext)
                              -> DIDescriptor {
-    let mut name_in_debuginfo = match sess.local_crate_source_file {
+    let mut name_in_debuginfo = match tcx.sess.local_crate_source_file {
         Some(ref path) => path.clone(),
-        None => PathBuf::from(&*scc.tcx().crate_name(LOCAL_CRATE).as_str()),
+        None => PathBuf::from(&*tcx.crate_name(LOCAL_CRATE).as_str()),
     };
 
     // The OSX linker has an idiosyncrasy where it will ignore some debuginfo
     // if multiple object files with the same DW_AT_name are linked together.
     // As a workaround we generate unique names for each object file. Those do
     // not correspond to an actual source file but that should be harmless.
-    if scc.sess().target.target.options.is_like_osx {
+    if tcx.sess.target.target.options.is_like_osx {
         name_in_debuginfo.push("@");
         name_in_debuginfo.push(codegen_unit_name);
     }
@@ -811,7 +809,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy().into_owned();
     let name_in_debuginfo = CString::new(name_in_debuginfo).unwrap();
-    let work_dir = CString::new(&sess.working_dir.0.to_string_lossy()[..]).unwrap();
+    let work_dir = CString::new(&tcx.sess.working_dir.0.to_string_lossy()[..]).unwrap();
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
@@ -825,20 +823,20 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
             DW_LANG_RUST,
             file_metadata,
             producer.as_ptr(),
-            sess.opts.optimize != config::OptLevel::No,
+            tcx.sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr() as *const _,
             0,
             split_name.as_ptr() as *const _);
 
-        if sess.opts.debugging_opts.profile {
+        if tcx.sess.opts.debugging_opts.profile {
             let cu_desc_metadata = llvm::LLVMRustMetadataAsValue(debug_context.llcontext,
                                                                  unit_metadata);
 
             let gcov_cu_info = [
                 path_to_mdstring(debug_context.llcontext,
-                                 &scc.tcx().output_filenames(LOCAL_CRATE).with_extension("gcno")),
+                                 &tcx.output_filenames(LOCAL_CRATE).with_extension("gcno")),
                 path_to_mdstring(debug_context.llcontext,
-                                 &scc.tcx().output_filenames(LOCAL_CRATE).with_extension("gcda")),
+                                 &tcx.output_filenames(LOCAL_CRATE).with_extension("gcda")),
                 cu_desc_metadata,
             ];
             let gcov_metadata = llvm::LLVMMDNodeInContext(debug_context.llcontext,

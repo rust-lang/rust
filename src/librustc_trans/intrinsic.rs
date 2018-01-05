@@ -196,7 +196,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         "needs_drop" => {
             let tp_ty = substs.type_at(0);
 
-            C_bool(ccx, bcx.ccx.shared().type_needs_drop(tp_ty))
+            C_bool(ccx, bcx.ccx.type_needs_drop(tp_ty))
         }
         "offset" => {
             let ptr = args[0].immediate();
@@ -620,7 +620,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         // This assumes the type is "simple", i.e. no
                         // destructors, and the contents are SIMD
                         // etc.
-                        assert!(!bcx.ccx.shared().type_needs_drop(arg.layout.ty));
+                        assert!(!bcx.ccx.type_needs_drop(arg.layout.ty));
                         let (ptr, align) = match arg.val {
                             OperandValue::Ref(ptr, align) => (ptr, align),
                             _ => bug!()

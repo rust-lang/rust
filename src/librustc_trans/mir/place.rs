@@ -178,7 +178,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
             PlaceRef {
                 // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
                 llval: bcx.pointercast(llval, field.llvm_type(ccx).ptr_to()),
-                llextra: if ccx.shared().type_has_metadata(field.ty) {
+                llextra: if ccx.type_has_metadata(field.ty) {
                     self.llextra
                 } else {
                     ptr::null_mut()

@@ -38,7 +38,7 @@ use syntax::abi::Abi;
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 
-pub use context::{CrateContext, SharedCrateContext};
+pub use context::CrateContext;
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All))

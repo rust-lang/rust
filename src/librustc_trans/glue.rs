@@ -27,7 +27,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
                                        -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));
-    if bcx.ccx.shared().type_is_sized(t) {
+    if bcx.ccx.type_is_sized(t) {
         let (size, align) = bcx.ccx.size_and_align_of(t);
         debug!("size_and_align_of_dst t={} info={:?} size: {:?} align: {:?}",
                t, Value(info), size, align);

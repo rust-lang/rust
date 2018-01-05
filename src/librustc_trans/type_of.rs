@@ -417,14 +417,14 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 let (size, align) = ccx.size_and_align_of(mt.ty);
 
                 let kind = match mt.mutbl {
-                    hir::MutImmutable => if ccx.shared().type_is_freeze(mt.ty) {
+                    hir::MutImmutable => if ccx.type_is_freeze(mt.ty) {
                         PointerKind::Frozen
                     } else {
                         PointerKind::Shared
                     },
                     hir::MutMutable => {
-                        if ccx.shared().tcx().sess.opts.debugging_opts.mutable_noalias ||
-                           ccx.shared().tcx().sess.panic_strategy() == PanicStrategy::Abort {
+                        if ccx.tcx().sess.opts.debugging_opts.mutable_noalias ||
+                           ccx.tcx().sess.panic_strategy() == PanicStrategy::Abort {
                             PointerKind::UniqueBorrowed
                         } else {
                             PointerKind::Shared

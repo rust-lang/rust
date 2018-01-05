@@ -341,7 +341,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 // Note: places are indirect, so storing the `llval` into the
                 // destination effectively creates a reference.
-                let val = if !bcx.ccx.shared().type_has_metadata(ty) {
+                let val = if !bcx.ccx.type_has_metadata(ty) {
                     OperandValue::Immediate(tr_place.llval)
                 } else {
                     OperandValue::Pair(tr_place.llval, tr_place.llextra)
@@ -435,7 +435,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
-                assert!(bcx.ccx.shared().type_is_sized(ty));
+                assert!(bcx.ccx.type_is_sized(ty));
                 let val = C_usize(bcx.ccx, bcx.ccx.size_of(ty).bytes());
                 let tcx = bcx.tcx();
                 (bcx, OperandRef {

@@ -528,7 +528,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     .projection_ty(tcx, &projection.elem);
                 let base = tr_base.to_const(span);
                 let projected_ty = self.monomorphize(&projected_ty).to_ty(tcx);
-                let has_metadata = self.ccx.shared().type_has_metadata(projected_ty);
+                let has_metadata = self.ccx.type_has_metadata(projected_ty);
 
                 let (projected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => {
@@ -742,7 +742,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::CastKind::Unsize => {
                         let pointee_ty = operand.ty.builtin_deref(true, ty::NoPreference)
                             .expect("consts: unsizing got non-pointer type").ty;
-                        let (base, old_info) = if !self.ccx.shared().type_is_sized(pointee_ty) {
+                        let (base, old_info) = if !self.ccx.type_is_sized(pointee_ty) {
                             // Normally, the source is a thin pointer and we are
                             // adding extra info to make a fat pointer. The exception
                             // is when we are upcasting an existing object fat pointer
@@ -857,7 +857,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let base = match tr_place.base {
                     Base::Value(llval) => {
                         // FIXME: may be wrong for &*(&simd_vec as &fmt::Debug)
-                        let align = if self.ccx.shared().type_is_sized(ty) {
+                        let align = if self.ccx.type_is_sized(ty) {
                             self.ccx.align_of(ty)
                         } else {
                             self.ccx.tcx().data_layout.pointer_align
@@ -872,7 +872,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     Base::Static(llval) => llval
                 };
 
-                let ptr = if self.ccx.shared().type_is_sized(ty) {
+                let ptr = if self.ccx.type_is_sized(ty) {
                     base
                 } else {
                     C_fat_ptr(self.ccx, base, tr_place.llextra)
@@ -941,7 +941,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             }
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
-                assert!(self.ccx.shared().type_is_sized(ty));
+                assert!(self.ccx.type_is_sized(ty));
                 let llval = C_usize(self.ccx, self.ccx.size_of(ty).bytes());
                 Const::new(llval, tcx.types.usize)
             }
