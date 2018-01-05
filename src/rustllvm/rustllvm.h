@@ -103,7 +103,6 @@ enum LLVMRustAttribute {
 
 typedef struct OpaqueRustString *RustStringRef;
 typedef struct LLVMOpaqueTwine *LLVMTwineRef;
-typedef struct LLVMOpaqueDebugLoc *LLVMDebugLocRef;
 typedef struct LLVMOpaqueSMDiagnostic *LLVMSMDiagnosticRef;
 typedef struct LLVMOpaqueRustJITMemoryManager *LLVMRustJITMemoryManagerRef;
 
