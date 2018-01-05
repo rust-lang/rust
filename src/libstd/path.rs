@@ -1454,7 +1454,7 @@ impl<'a> From<PathBuf> for Cow<'a, Path> {
     }
 }
 
-#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Arc<Path> {
     #[inline]
     fn from(s: PathBuf) -> Arc<Path> {
@@ -1463,7 +1463,7 @@ impl From<PathBuf> for Arc<Path> {
     }
 }
 
-#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl<'a> From<&'a Path> for Arc<Path> {
     #[inline]
     fn from(s: &Path) -> Arc<Path> {
@@ -1472,7 +1472,7 @@ impl<'a> From<&'a Path> for Arc<Path> {
     }
 }
 
-#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Rc<Path> {
     #[inline]
     fn from(s: PathBuf) -> Rc<Path> {
@@ -1481,7 +1481,7 @@ impl From<PathBuf> for Rc<Path> {
     }
 }
 
-#[stable(feature = "shared_from_slice2", since = "1.23.0")]
+#[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl<'a> From<&'a Path> for Rc<Path> {
     #[inline]
     fn from(s: &Path) -> Rc<Path> {

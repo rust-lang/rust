@@ -457,7 +457,7 @@ impl<T: Default> Default for RwLock<T> {
     }
 }
 
-#[stable(feature = "rw_lock_from", since = "1.22.0")]
+#[stable(feature = "rw_lock_from", since = "1.24.0")]
 impl<T> From<T> for RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
     /// This is equivalent to [`RwLock::new`].

@@ -944,6 +944,7 @@ macro_rules! atomic_int {
      $stable_cxchg:meta,
      $stable_debug:meta,
      $stable_access:meta,
+     $stable_from:meta,
      $s_int_type:expr, $int_ref:expr,
      $int_type:ident $atomic_type:ident $atomic_init:ident) => {
         /// An integer type which can be safely shared between threads.
@@ -978,7 +979,7 @@ macro_rules! atomic_int {
             }
         }
 
-        #[stable(feature = "atomic_from", since = "1.23.0")]
+        #[$stable_from]
         impl From<$int_type> for $atomic_type {
             #[inline]
             fn from(v: $int_type) -> Self { Self::new(v) }
@@ -1375,11 +1376,13 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "i8", "../../../std/primitive.i8.html",
     i8 AtomicI8 ATOMIC_I8_INIT
 }
 #[cfg(target_has_atomic = "8")]
 atomic_int! {
+    unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1393,11 +1396,13 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "i16", "../../../std/primitive.i16.html",
     i16 AtomicI16 ATOMIC_I16_INIT
 }
 #[cfg(target_has_atomic = "16")]
 atomic_int! {
+    unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1411,11 +1416,13 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "i32", "../../../std/primitive.i32.html",
     i32 AtomicI32 ATOMIC_I32_INIT
 }
 #[cfg(target_has_atomic = "32")]
 atomic_int! {
+    unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1429,11 +1436,13 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "i64", "../../../std/primitive.i64.html",
     i64 AtomicI64 ATOMIC_I64_INIT
 }
 #[cfg(target_has_atomic = "64")]
 atomic_int! {
+    unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1447,6 +1456,7 @@ atomic_int!{
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
+    stable(feature = "atomic_from", since = "1.23.0"),
     "isize", "../../../std/primitive.isize.html",
     isize AtomicIsize ATOMIC_ISIZE_INIT
 }
@@ -1456,6 +1466,7 @@ atomic_int!{
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
+    stable(feature = "atomic_from", since = "1.23.0"),
     "usize", "../../../std/primitive.usize.html",
     usize AtomicUsize ATOMIC_USIZE_INIT
 }

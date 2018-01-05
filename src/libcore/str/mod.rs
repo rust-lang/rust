@@ -1997,7 +1997,9 @@ mod traits {
         }
     }
 
-    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
     impl SliceIndex<str> for ops::RangeInclusive<usize> {
         type Output = str;
         #[inline]
@@ -2040,7 +2042,9 @@ mod traits {
 
 
 
-    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
     impl SliceIndex<str> for ops::RangeToInclusive<usize> {
         type Output = str;
         #[inline]
