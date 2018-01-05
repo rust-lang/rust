@@ -927,23 +927,6 @@ extern "C" bool LLVMRustLinkInExternalBitcode(LLVMModuleRef DstRef, char *BC,
   return true;
 }
 
-extern "C" bool LLVMRustLinkInParsedExternalBitcode(
-    LLVMModuleRef DstRef, LLVMModuleRef SrcRef) {
-#if LLVM_VERSION_GE(4, 0)
-  Module *Dst = unwrap(DstRef);
-  std::unique_ptr<Module> Src(unwrap(SrcRef));
-
-  if (Linker::linkModules(*Dst, std::move(Src))) {
-    LLVMRustSetLastError("failed to link modules");
-    return false;
-  }
-  return true;
-#else
-  LLVMRustSetLastError("can't link parsed modules on this LLVM");
-  return false;
-#endif
-}
-
 // Note that the two following functions look quite similar to the
 // LLVMGetSectionName function. Sadly, it appears that this function only
 // returns a char* pointer, which isn't guaranteed to be null-terminated. The
