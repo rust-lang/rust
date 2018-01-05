@@ -68,8 +68,8 @@
 //! assert_eq!(b"Oh no, a typo!\n", output.stdout.as_slice());
 //! ```
 //!
-//! Note that [`ChildStderr`] and [`ChildStdout`] implement [`Write`] and
-//! [`ChildStdin`] implements [`Read`]:
+//! Note that [`ChildStderr`] and [`ChildStdout`] implement [`Read`] and
+//! [`ChildStdin`] implements [`Write`]:
 //!
 //! ```no_run
 //! use std::process::{Command, Stdio};
