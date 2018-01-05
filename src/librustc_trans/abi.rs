@@ -649,9 +649,9 @@ pub struct FnType<'tcx> {
 impl<'a, 'tcx> FnType<'tcx> {
     pub fn of_instance(ccx: &CrateContext<'a, 'tcx>, instance: &ty::Instance<'tcx>)
                        -> Self {
-        let fn_ty = instance.ty(ccx.tcx());
+        let fn_ty = instance.ty(ccx.tcx);
         let sig = ty_fn_sig(ccx, fn_ty);
-        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
+        let sig = ccx.tcx.erase_late_bound_regions_and_normalize(&sig);
         FnType::new(ccx, sig, &[])
     }
 
@@ -681,7 +681,7 @@ impl<'a, 'tcx> FnType<'tcx> {
                 .unwrap_or_else(|| {
                     bug!("FnType::new_vtable: non-pointer self {:?}", self_arg)
                 }).ty;
-            let fat_ptr_ty = ccx.tcx().mk_mut_ptr(pointee);
+            let fat_ptr_ty = ccx.tcx.mk_mut_ptr(pointee);
             self_arg.layout = ccx.layout_of(fat_ptr_ty).field(ccx, 0);
         }
         fn_ty.adjust_for_abi(ccx, sig.abi);

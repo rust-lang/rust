@@ -33,8 +33,8 @@ pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
     // visible). It might better to use the `exported_items` set from
     // `driver::CrateAnalysis` in the future, but (atm) this set is not
     // available in the translation pass.
-    let def_id = cx.tcx().hir.local_def_id(node_id);
-    !cx.tcx().is_exported_symbol(def_id)
+    let def_id = cx.tcx.hir.local_def_id(node_id);
+    !cx.tcx.is_exported_symbol(def_id)
 }
 
 #[allow(non_snake_case)]
@@ -52,16 +52,16 @@ pub fn span_start(cx: &CrateContext, span: Span) -> syntax_pos::Loc {
 #[inline]
 pub fn debug_context<'a, 'tcx>(cx: &'a CrateContext<'a, 'tcx>)
                            -> &'a CrateDebugContext<'tcx> {
-    cx.dbg_cx().as_ref().unwrap()
+    cx.dbg_cx.as_ref().unwrap()
 }
 
 #[inline]
 #[allow(non_snake_case)]
 pub fn DIB(cx: &CrateContext) -> DIBuilderRef {
-    cx.dbg_cx().as_ref().unwrap().builder
+    cx.dbg_cx.as_ref().unwrap().builder
 }
 
 pub fn get_namespace_for_item(cx: &CrateContext, def_id: DefId) -> DIScope {
-    item_namespace(cx, cx.tcx().parent(def_id)
+    item_namespace(cx, cx.tcx.parent(def_id)
         .expect("get_namespace_for_item: missing parent?"))
 }

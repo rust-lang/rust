@@ -143,7 +143,7 @@ impl<'tcx> TypeMap<'tcx> {
 
         // The hasher we are using to generate the UniqueTypeId. We want
         // something that provides more than the 64 bits of the DefaultHasher.
-        let mut type_id_hasher = TypeIdHasher::<Fingerprint>::new(cx.tcx());
+        let mut type_id_hasher = TypeIdHasher::<Fingerprint>::new(cx.tcx);
         type_id_hasher.visit_ty(type_);
         let unique_type_id = type_id_hasher.finish().to_hex();
 
@@ -304,7 +304,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 unique_type_id: UniqueTypeId,
                                 span: Span)
                                 -> MetadataCreationResult {
-    let data_ptr_type = cx.tcx().mk_imm_ptr(element_type);
+    let data_ptr_type = cx.tcx.mk_imm_ptr(element_type);
 
     let data_ptr_metadata = type_metadata(cx, data_ptr_type, span);
 
@@ -313,7 +313,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let slice_type_name = compute_debuginfo_type_name(cx, slice_ptr_type, true);
 
     let (pointer_size, pointer_align) = cx.size_and_align_of(data_ptr_type);
-    let (usize_size, usize_align) = cx.size_and_align_of(cx.tcx().types.usize);
+    let (usize_size, usize_align) = cx.size_and_align_of(cx.tcx.types.usize);
 
     let member_descriptions = [
         MemberDescription {
@@ -326,7 +326,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         MemberDescription {
             name: "length".to_string(),
-            type_metadata: type_metadata(cx, cx.tcx().types.usize, span),
+            type_metadata: type_metadata(cx, cx.tcx.types.usize, span),
             offset: pointer_size,
             size: usize_size,
             align: usize_align,
@@ -353,7 +353,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                       span: Span)
                                       -> MetadataCreationResult
 {
-    let signature = cx.tcx().erase_late_bound_regions_and_normalize(&signature);
+    let signature = cx.tcx.erase_late_bound_regions_and_normalize(&signature);
 
     let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs().len() + 1);
 
@@ -415,7 +415,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let file_metadata = unknown_file_metadata(cx);
 
-    let layout = cx.layout_of(cx.tcx().mk_mut_ptr(trait_type));
+    let layout = cx.layout_of(cx.tcx.mk_mut_ptr(trait_type));
 
     assert_eq!(abi::FAT_PTR_ADDR, 0);
     assert_eq!(abi::FAT_PTR_EXTRA, 1);
@@ -426,7 +426,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         MemberDescription {
             name: "pointer".to_string(),
             type_metadata: type_metadata(cx,
-                cx.tcx().mk_mut_ptr(cx.tcx().types.u8),
+                cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
                 syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(0),
             size: data_ptr_field.size,
@@ -498,7 +498,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 Ok(vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span))
             }
             ty::TyStr => {
-                Ok(vec_slice_metadata(cx, t, cx.tcx().types.u8, unique_type_id, usage_site_span))
+                Ok(vec_slice_metadata(cx, t, cx.tcx.types.u8, unique_type_id, usage_site_span))
             }
             ty::TyDynamic(..) => {
                 Ok(MetadataCreationResult::new(
@@ -538,7 +538,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             fixed_vec_metadata(cx, unique_type_id, t, typ, usage_site_span)
         }
         ty::TyStr => {
-            fixed_vec_metadata(cx, unique_type_id, t, cx.tcx().types.i8, usage_site_span)
+            fixed_vec_metadata(cx, unique_type_id, t, cx.tcx.types.i8, usage_site_span)
         }
         ty::TyDynamic(..) => {
             MetadataCreationResult::new(
@@ -566,7 +566,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyFnDef(..) | ty::TyFnPtr(_) => {
             let fn_metadata = subroutine_type_metadata(cx,
                                                        unique_type_id,
-                                                       t.fn_sig(cx.tcx()),
+                                                       t.fn_sig(cx.tcx),
                                                        usage_site_span).metadata;
             match debug_context(cx).type_map
                                    .borrow()
@@ -580,7 +580,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         }
         ty::TyClosure(def_id, substs) => {
-            let upvar_tys : Vec<_> = substs.upvar_tys(def_id, cx.tcx()).collect();
+            let upvar_tys : Vec<_> = substs.upvar_tys(def_id, cx.tcx).collect();
             prepare_tuple_metadata(cx,
                                    t,
                                    &upvar_tys,
@@ -588,8 +588,8 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    usage_site_span).finalize(cx)
         }
         ty::TyGenerator(def_id, substs, _) => {
-            let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx()).map(|t| {
-                cx.tcx().fully_normalize_associated_types_in(&t)
+            let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx).map(|t| {
+                cx.tcx.fully_normalize_associated_types_in(&t)
             }).collect();
             prepare_tuple_metadata(cx,
                                    t,
@@ -1368,7 +1368,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let file_metadata = unknown_file_metadata(cx);
 
     let def = enum_type.ty_adt_def().unwrap();
-    let enumerators_metadata: Vec<DIDescriptor> = def.discriminants(cx.tcx())
+    let enumerators_metadata: Vec<DIDescriptor> = def.discriminants(cx.tcx)
         .zip(&def.variants)
         .map(|(discr, v)| {
             let token = v.name.as_str();
@@ -1394,7 +1394,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let (discriminant_size, discriminant_align) =
                     (discr.size(cx), discr.align(cx));
                 let discriminant_base_type_metadata =
-                    type_metadata(cx, discr.to_ty(cx.tcx()), syntax_pos::DUMMY_SP);
+                    type_metadata(cx, discr.to_ty(cx.tcx), syntax_pos::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
                 let name = CString::new(discriminant_name.as_bytes()).unwrap();
@@ -1473,7 +1473,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     fn get_enum_discriminant_name(cx: &CrateContext,
                                   def_id: DefId)
                                   -> InternedString {
-        cx.tcx().item_name(def_id)
+        cx.tcx.item_name(def_id)
     }
 }
 
@@ -1636,17 +1636,17 @@ fn create_union_stub<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 pub fn create_global_var_metadata(cx: &CrateContext,
                                   node_id: ast::NodeId,
                                   global: ValueRef) {
-    if cx.dbg_cx().is_none() {
+    if cx.dbg_cx.is_none() {
         return;
     }
 
-    let tcx = cx.tcx();
+    let tcx = cx.tcx;
     let node_def_id = tcx.hir.local_def_id(node_id);
     let no_mangle = attr::contains_name(&tcx.get_attrs(node_def_id), "no_mangle");
     // We may want to remove the namespace scope if we're in an extern block, see:
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952
     let var_scope = get_namespace_for_item(cx, node_def_id);
-    let span = cx.tcx().def_span(node_def_id);
+    let span = cx.tcx.def_span(node_def_id);
 
     let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
         let loc = span_start(cx, span);
@@ -1656,7 +1656,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = Instance::mono(cx.tcx(), node_def_id).ty(cx.tcx());
+    let variable_type = Instance::mono(cx.tcx, node_def_id).ty(cx.tcx);
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(node_def_id).to_string();
     let var_name = CString::new(var_name).unwrap();
@@ -1710,7 +1710,7 @@ pub fn extend_scope_to_file(ccx: &CrateContext,
 pub fn create_vtable_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                         ty: ty::Ty<'tcx>,
                                         vtable: ValueRef) {
-    if cx.dbg_cx().is_none() {
+    if cx.dbg_cx.is_none() {
         return;
     }
 
@@ -1734,7 +1734,7 @@ pub fn create_vtable_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             Size::from_bytes(0).bits(),
-            cx.tcx().data_layout.pointer_align.abi_bits() as u32,
+            cx.tcx.data_layout.pointer_align.abi_bits() as u32,
             DIFlags::FlagArtificial,
             ptr::null_mut(),
             empty_array,

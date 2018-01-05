@@ -63,19 +63,19 @@ impl Type {
     }
 
     pub fn void(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMVoidTypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMVoidTypeInContext(ccx.llcx))
     }
 
     pub fn metadata(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMRustMetadataTypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMRustMetadataTypeInContext(ccx.llcx))
     }
 
     pub fn i1(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt1TypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMInt1TypeInContext(ccx.llcx))
     }
 
     pub fn i8(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt8TypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMInt8TypeInContext(ccx.llcx))
     }
 
     pub fn i8_llcx(llcx: ContextRef) -> Type {
@@ -83,32 +83,32 @@ impl Type {
     }
 
     pub fn i16(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt16TypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMInt16TypeInContext(ccx.llcx))
     }
 
     pub fn i32(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt32TypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMInt32TypeInContext(ccx.llcx))
     }
 
     pub fn i64(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt64TypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMInt64TypeInContext(ccx.llcx))
     }
 
     pub fn i128(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMIntTypeInContext(ccx.llcx(), 128))
+        ty!(llvm::LLVMIntTypeInContext(ccx.llcx, 128))
     }
 
     // Creates an integer type with the given number of bits, e.g. i24
     pub fn ix(ccx: &CrateContext, num_bits: u64) -> Type {
-        ty!(llvm::LLVMIntTypeInContext(ccx.llcx(), num_bits as c_uint))
+        ty!(llvm::LLVMIntTypeInContext(ccx.llcx, num_bits as c_uint))
     }
 
     pub fn f32(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMFloatTypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMFloatTypeInContext(ccx.llcx))
     }
 
     pub fn f64(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMDoubleTypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMDoubleTypeInContext(ccx.llcx))
     }
 
     pub fn bool(ccx: &CrateContext) -> Type {
@@ -128,7 +128,7 @@ impl Type {
     }
 
     pub fn isize(ccx: &CrateContext) -> Type {
-        match &ccx.tcx().sess.target.target.target_pointer_width[..] {
+        match &ccx.tcx.sess.target.target.target_pointer_width[..] {
             "16" => Type::i16(ccx),
             "32" => Type::i32(ccx),
             "64" => Type::i64(ccx),
@@ -137,7 +137,7 @@ impl Type {
     }
 
     pub fn c_int(ccx: &CrateContext) -> Type {
-        match &ccx.tcx().sess.target.target.target_c_int_width[..] {
+        match &ccx.tcx.sess.target.target.target_c_int_width[..] {
             "16" => Type::i16(ccx),
             "32" => Type::i32(ccx),
             "64" => Type::i64(ccx),
@@ -147,7 +147,7 @@ impl Type {
 
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::IntTy::Isize => ccx.isize_ty(),
+            ast::IntTy::Isize => ccx.isize_ty,
             ast::IntTy::I8 => Type::i8(ccx),
             ast::IntTy::I16 => Type::i16(ccx),
             ast::IntTy::I32 => Type::i32(ccx),
@@ -158,7 +158,7 @@ impl Type {
 
     pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::UintTy::Usize => ccx.isize_ty(),
+            ast::UintTy::Usize => ccx.isize_ty,
             ast::UintTy::U8 => Type::i8(ccx),
             ast::UintTy::U16 => Type::i16(ccx),
             ast::UintTy::U32 => Type::i32(ccx),
@@ -188,14 +188,14 @@ impl Type {
 
     pub fn struct_(ccx: &CrateContext, els: &[Type], packed: bool) -> Type {
         let els: &[TypeRef] = Type::to_ref_slice(els);
-        ty!(llvm::LLVMStructTypeInContext(ccx.llcx(), els.as_ptr(),
+        ty!(llvm::LLVMStructTypeInContext(ccx.llcx, els.as_ptr(),
                                           els.len() as c_uint,
                                           packed as Bool))
     }
 
     pub fn named_struct(ccx: &CrateContext, name: &str) -> Type {
         let name = CString::new(name).unwrap();
-        ty!(llvm::LLVMStructCreateNamed(ccx.llcx(), name.as_ptr()))
+        ty!(llvm::LLVMStructCreateNamed(ccx.llcx, name.as_ptr()))
     }
 
 
@@ -295,6 +295,6 @@ impl Type {
     }
 
     pub fn x86_mmx(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMX86MMXTypeInContext(ccx.llcx()))
+        ty!(llvm::LLVMX86MMXTypeInContext(ccx.llcx))
     }
 }

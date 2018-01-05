@@ -29,7 +29,7 @@ pub fn mangled_name_of_instance<'a, 'tcx>(
     ccx: &CrateContext<'a, 'tcx>,
     instance: Instance<'tcx>,
 ) -> ty::SymbolName {
-     let tcx = ccx.tcx();
+     let tcx = ccx.tcx;
      tcx.symbol_name(instance)
 }
 
@@ -37,7 +37,7 @@ pub fn mangled_name_of_item<'a, 'tcx>(
     ccx: &CrateContext<'a, 'tcx>,
     node_id: ast::NodeId,
 ) -> ty::SymbolName {
-    let tcx = ccx.tcx();
+    let tcx = ccx.tcx;
     let node_def_id = tcx.hir.local_def_id(node_id);
     let instance = Instance::mono(tcx, node_def_id);
     tcx.symbol_name(instance)
@@ -48,7 +48,7 @@ pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
         return scope;
     }
 
-    let def_key = ccx.tcx().def_key(def_id);
+    let def_key = ccx.tcx.def_key(def_id);
     let parent_scope = def_key.parent.map_or(ptr::null_mut(), |parent| {
         item_namespace(ccx, DefId {
             krate: def_id.krate,
@@ -57,7 +57,7 @@ pub fn item_namespace(ccx: &CrateContext, def_id: DefId) -> DIScope {
     });
 
     let namespace_name = match def_key.disambiguated_data.data {
-        DefPathData::CrateRoot => ccx.tcx().crate_name(def_id.krate).as_str(),
+        DefPathData::CrateRoot => ccx.tcx.crate_name(def_id.krate).as_str(),
         data => data.as_interned_str()
     };
 

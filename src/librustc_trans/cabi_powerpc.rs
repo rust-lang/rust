@@ -20,12 +20,12 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ret.extend_integer_width_to(32);
     } else {
         ret.make_indirect();
-        *offset += ccx.tcx().data_layout.pointer_size;
+        *offset += ccx.tcx.data_layout.pointer_size;
     }
 }
 
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut Size) {
-    let dl = &ccx.tcx().data_layout;
+    let dl = &ccx.tcx.data_layout;
     let size = arg.layout.size;
     let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align);
 

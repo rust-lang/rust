@@ -46,7 +46,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
     let section_var_name = &c_section_var_name[..c_section_var_name.len()-1];
 
     let section_var = unsafe {
-        llvm::LLVMGetNamedGlobal(ccx.llmod(),
+        llvm::LLVMGetNamedGlobal(ccx.llmod,
                                  c_section_var_name.as_ptr() as *const _)
     };
 
@@ -79,7 +79,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
 
 pub fn needs_gdb_debug_scripts_section(ccx: &CrateContext) -> bool {
     let omit_gdb_pretty_printer_section =
-        attr::contains_name(&ccx.tcx().hir.krate_attrs(),
+        attr::contains_name(&ccx.tcx.hir.krate_attrs(),
                             "omit_gdb_pretty_printer_section");
 
     !omit_gdb_pretty_printer_section &&

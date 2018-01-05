@@ -74,12 +74,12 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
                             -> ValueRef
 {
-    let tcx = ccx.tcx();
+    let tcx = ccx.tcx;
 
     debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 
     // Check the cache.
-    if let Some(&val) = ccx.vtables().borrow().get(&(ty, trait_ref)) {
+    if let Some(&val) = ccx.vtables.borrow().get(&(ty, trait_ref)) {
         return val;
     }
 
@@ -88,7 +88,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let (size, align) = ccx.size_and_align_of(ty);
     let mut components: Vec<_> = [
-        callee::get_fn(ccx, monomorphize::resolve_drop_in_place(ccx.tcx(), ty)),
+        callee::get_fn(ccx, monomorphize::resolve_drop_in_place(ccx.tcx, ty)),
         C_usize(ccx, size.bytes()),
         C_usize(ccx, align.abi())
     ].iter().cloned().collect();
@@ -110,6 +110,6 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     debuginfo::create_vtable_metadata(ccx, ty, vtable);
 
-    ccx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
+    ccx.vtables.borrow_mut().insert((ty, trait_ref), vtable);
     vtable
 }

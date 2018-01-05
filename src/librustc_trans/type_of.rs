@@ -61,7 +61,7 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::TyForeign(..) |
         ty::TyStr => {
             let mut name = String::with_capacity(32);
-            let printer = DefPathBasedNames::new(ccx.tcx(), true, true);
+            let printer = DefPathBasedNames::new(ccx.tcx, true, true);
             printer.push_type_name(layout.ty, &mut name);
             match (&layout.ty.sty, &layout.variants) {
                 (&ty::TyAdt(def, _), &layout::Variants::Single { index }) => {
@@ -244,7 +244,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         if let layout::Abi::Scalar(ref scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
-            if let Some(&llty) = ccx.scalar_lltypes().borrow().get(&self.ty) {
+            if let Some(&llty) = ccx.scalar_lltypes.borrow().get(&self.ty) {
                 return llty;
             }
             let llty = match self.ty.sty {
@@ -256,12 +256,12 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                     ccx.layout_of(self.ty.boxed_ty()).llvm_type(ccx).ptr_to()
                 }
                 ty::TyFnPtr(sig) => {
-                    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                    let sig = ccx.tcx.erase_late_bound_regions_and_normalize(&sig);
                     FnType::new(ccx, sig, &[]).llvm_type(ccx).ptr_to()
                 }
                 _ => self.scalar_llvm_type_at(ccx, scalar, Size::from_bytes(0))
             };
-            ccx.scalar_lltypes().borrow_mut().insert(self.ty, llty);
+            ccx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
             return llty;
         }
 
@@ -271,7 +271,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             layout::Variants::Single { index } => Some(index),
             _ => None
         };
-        if let Some(&llty) = ccx.lltypes().borrow().get(&(self.ty, variant_index)) {
+        if let Some(&llty) = ccx.lltypes.borrow().get(&(self.ty, variant_index)) {
             return llty;
         }
 
@@ -281,7 +281,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
         // Make sure lifetimes are erased, to avoid generating distinct LLVM
         // types for Rust types that only differ in the choice of lifetimes.
-        let normal_ty = ccx.tcx().erase_regions(&self.ty);
+        let normal_ty = ccx.tcx.erase_regions(&self.ty);
 
         let mut defer = None;
         let llty = if self.ty != normal_ty {
@@ -295,7 +295,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        ccx.lltypes().borrow_mut().insert((self.ty, variant_index), llty);
+        ccx.lltypes.borrow_mut().insert((self.ty, variant_index), llty);
 
         if let Some((mut llty, layout)) = defer {
             let (llfields, packed) = struct_llfields(ccx, layout);
@@ -342,7 +342,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 return self.field(ccx, index).llvm_type(ccx);
             }
             ty::TyAdt(def, _) if def.is_box() => {
-                let ptr_ty = ccx.tcx().mk_mut_ptr(self.ty.boxed_ty());
+                let ptr_ty = ccx.tcx.mk_mut_ptr(self.ty.boxed_ty());
                 return ccx.layout_of(ptr_ty).scalar_pair_element_llvm_type(ccx, index);
             }
             _ => {}
@@ -398,7 +398,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
     fn pointee_info_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>, offset: Size)
                            -> Option<PointeeInfo> {
-        if let Some(&pointee) = ccx.pointee_infos().borrow().get(&(self.ty, offset)) {
+        if let Some(&pointee) = ccx.pointee_infos.borrow().get(&(self.ty, offset)) {
             return pointee;
         }
 
@@ -423,8 +423,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         PointerKind::Shared
                     },
                     hir::MutMutable => {
-                        if ccx.tcx().sess.opts.debugging_opts.mutable_noalias ||
-                           ccx.tcx().sess.panic_strategy() == PanicStrategy::Abort {
+                        if ccx.tcx.sess.opts.debugging_opts.mutable_noalias ||
+                           ccx.tcx.sess.panic_strategy() == PanicStrategy::Abort {
                             PointerKind::UniqueBorrowed
                         } else {
                             PointerKind::Shared
@@ -495,7 +495,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             }
         }
 
-        ccx.pointee_infos().borrow_mut().insert((self.ty, offset), result);
+        ccx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
         result
     }
 }

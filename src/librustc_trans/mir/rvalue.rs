@@ -207,7 +207,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         match operand.layout.ty.sty {
                             ty::TyClosure(def_id, substs) => {
                                 let instance = monomorphize::resolve_closure(
-                                    bcx.ccx.tcx(), def_id, substs, ty::ClosureKind::FnOnce);
+                                    bcx.ccx.tcx, def_id, substs, ty::ClosureKind::FnOnce);
                                 OperandValue::Immediate(callee::get_fn(bcx.ccx, instance))
                             }
                             _ => {
@@ -314,7 +314,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             (CastTy::FnPtr, CastTy::Int(_)) =>
                                 bcx.ptrtoint(llval, ll_t_out),
                             (CastTy::Int(_), CastTy::Ptr(_)) => {
-                                let usize_llval = bcx.intcast(llval, bcx.ccx.isize_ty(), signed);
+                                let usize_llval = bcx.intcast(llval, bcx.ccx.isize_ty, signed);
                                 bcx.inttoptr(usize_llval, ll_t_out)
                             }
                             (CastTy::Int(_), CastTy::Float) =>
@@ -348,8 +348,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 };
                 (bcx, OperandRef {
                     val,
-                    layout: self.ccx.layout_of(self.ccx.tcx().mk_ref(
-                        self.ccx.tcx().types.re_erased,
+                    layout: self.ccx.layout_of(self.ccx.tcx.mk_ref(
+                        self.ccx.tcx.types.re_erased,
                         ty::TypeAndMut { ty, mutbl: bk.to_mutbl_lossy() }
                     )),
                 })
@@ -477,7 +477,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
-                let ty = rvalue.ty(self.mir, self.ccx.tcx());
+                let ty = rvalue.ty(self.mir, self.ccx.tcx);
                 (bcx, OperandRef::new_zst(self.ccx,
                     self.ccx.layout_of(self.monomorphize(&ty))))
             }
@@ -636,7 +636,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
-        if !bcx.ccx.check_overflow() {
+        if !bcx.ccx.check_overflow {
             let val = self.trans_scalar_binop(bcx, op, lhs, rhs, input_ty);
             return OperandValue::Pair(val, C_bool(bcx.ccx, false));
         }
@@ -697,7 +697,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                let ty = rvalue.ty(self.mir, self.ccx.tcx());
+                let ty = rvalue.ty(self.mir, self.ccx.tcx);
                 let ty = self.monomorphize(&ty);
                 self.ccx.layout_of(ty).is_zst()
             }

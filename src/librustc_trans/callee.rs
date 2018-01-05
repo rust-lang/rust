@@ -40,7 +40,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                         instance: Instance<'tcx>)
                         -> ValueRef
 {
-    let tcx = ccx.tcx();
+    let tcx = ccx.tcx;
 
     debug!("get_fn(instance={:?})", instance);
 
@@ -48,8 +48,8 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     assert!(!instance.substs.has_escaping_regions());
     assert!(!instance.substs.has_param_types());
 
-    let fn_ty = instance.ty(ccx.tcx());
-    if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
+    let fn_ty = instance.ty(ccx.tcx);
+    if let Some(&llfn) = ccx.instances.borrow().get(&instance) {
         return llfn;
     }
 
@@ -149,9 +149,9 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            if ccx.tcx().is_translated_function(instance_def_id) {
+            if ccx.tcx.is_translated_function(instance_def_id) {
                 if instance_def_id.is_local() {
-                    if !ccx.tcx().is_exported_symbol(instance_def_id) {
+                    if !ccx.tcx.is_exported_symbol(instance_def_id) {
                         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                     }
                 } else {
@@ -160,7 +160,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
         }
 
-        if ccx.use_dll_storage_attrs() &&
+        if ccx.use_dll_storage_attrs &&
             tcx.is_dllimport_foreign_item(instance_def_id)
         {
             unsafe {
@@ -171,7 +171,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         llfn
     };
 
-    ccx.instances().borrow_mut().insert(instance, llfn);
+    ccx.instances.borrow_mut().insert(instance, llfn);
 
     llfn
 }
@@ -184,7 +184,7 @@ pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     get_fn(
         ccx,
         ty::Instance::resolve(
-            ccx.tcx(),
+            ccx.tcx,
             ty::ParamEnv::empty(traits::Reveal::All),
             def_id,
             substs

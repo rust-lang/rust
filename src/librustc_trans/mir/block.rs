@@ -267,7 +267,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
                 let ty = location.ty(self.mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = self.monomorphize(&ty);
-                let drop_fn = monomorphize::resolve_drop_in_place(bcx.ccx.tcx(), ty);
+                let drop_fn = monomorphize::resolve_drop_in_place(bcx.ccx.tcx, ty);
 
                 if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
                     // we don't actually need to drop anything.
@@ -280,7 +280,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 args = &args[..1 + place.has_extra() as usize];
                 let (drop_fn, fn_ty) = match ty.sty {
                     ty::TyDynamic(..) => {
-                        let fn_ty = drop_fn.ty(bcx.ccx.tcx());
+                        let fn_ty = drop_fn.ty(bcx.ccx.tcx);
                         let sig = common::ty_fn_sig(bcx.ccx, fn_ty);
                         let sig = bcx.tcx().erase_late_bound_regions_and_normalize(&sig);
                         let fn_ty = FnType::new_vtable(bcx.ccx, sig, &[]);
@@ -308,7 +308,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // NOTE: Unlike binops, negation doesn't have its own
                 // checked operation, just a comparison with the minimum
                 // value, so we have to check for the assert message.
-                if !bcx.ccx.check_overflow() {
+                if !bcx.ccx.check_overflow {
                     use rustc_const_math::ConstMathErr::Overflow;
                     use rustc_const_math::Op::Neg;
 
@@ -440,7 +440,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let (instance, mut llfn) = match callee.layout.ty.sty {
                     ty::TyFnDef(def_id, substs) => {
-                        (Some(ty::Instance::resolve(bcx.ccx.tcx(),
+                        (Some(ty::Instance::resolve(bcx.ccx.tcx,
                                                     ty::ParamEnv::empty(traits::Reveal::All),
                                                     def_id,
                                                     substs).unwrap()),
@@ -542,7 +542,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }).collect();
 
 
-                    let callee_ty = instance.as_ref().unwrap().ty(bcx.ccx.tcx());
+                    let callee_ty = instance.as_ref().unwrap().ty(bcx.ccx.tcx);
                     trans_intrinsic_call(&bcx, callee_ty, &fn_ty, &args, dest,
                                          terminator.source_info.span);
 
@@ -720,9 +720,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         if let Some(slot) = self.personality_slot {
             slot
         } else {
-            let layout = ccx.layout_of(ccx.tcx().intern_tup(&[
-                ccx.tcx().mk_mut_ptr(ccx.tcx().types.u8),
-                ccx.tcx().types.i32
+            let layout = ccx.layout_of(ccx.tcx.intern_tup(&[
+                ccx.tcx.mk_mut_ptr(ccx.tcx.types.u8),
+                ccx.tcx.types.i32
             ], false));
             let slot = PlaceRef::alloca(bcx, layout, "personalityslot");
             self.personality_slot = Some(slot);

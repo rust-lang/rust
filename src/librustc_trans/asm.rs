@@ -109,13 +109,13 @@ pub fn trans_inline_asm<'a, 'tcx>(
     // back to source locations.  See #17552.
     unsafe {
         let key = "srcloc";
-        let kind = llvm::LLVMGetMDKindIDInContext(bcx.ccx.llcx(),
+        let kind = llvm::LLVMGetMDKindIDInContext(bcx.ccx.llcx,
             key.as_ptr() as *const c_char, key.len() as c_uint);
 
         let val: llvm::ValueRef = C_i32(bcx.ccx, ia.ctxt.outer().as_u32() as i32);
 
         llvm::LLVMSetMetadata(r, kind,
-            llvm::LLVMMDNodeInContext(bcx.ccx.llcx(), &val, 1));
+            llvm::LLVMMDNodeInContext(bcx.ccx.llcx, &val, 1));
     }
 }
 
@@ -123,6 +123,6 @@ pub fn trans_global_asm<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   ga: &hir::GlobalAsm) {
     let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
     unsafe {
-        llvm::LLVMRustAppendModuleInlineAsm(ccx.llmod(), asm.as_ptr());
+        llvm::LLVMRustAppendModuleInlineAsm(ccx.llmod, asm.as_ptr());
     }
 }

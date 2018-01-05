@@ -101,7 +101,7 @@ pub struct StatRecorder<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
     pub fn new(ccx: &'a CrateContext<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
-        let istart = ccx.stats().borrow().n_llvm_insns;
+        let istart = ccx.stats.borrow().n_llvm_insns;
         StatRecorder {
             ccx,
             name: Some(name),
@@ -113,7 +113,7 @@ impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
 impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     fn drop(&mut self) {
         if self.ccx.sess().trans_stats() {
-            let mut stats = self.ccx.stats().borrow_mut();
+            let mut stats = self.ccx.stats.borrow_mut();
             let iend = stats.n_llvm_insns;
             stats.fn_stats.push((self.name.take().unwrap(), iend - self.istart));
             stats.n_fns += 1;
@@ -194,7 +194,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 target: Ty<'tcx>,
                                 old_info: Option<ValueRef>)
                                 -> ValueRef {
-    let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
+    let (source, target) = ccx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => {
             C_usize(ccx, len.val.to_const_int().unwrap().to_u64().unwrap())
@@ -206,7 +206,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
         (_, &ty::TyDynamic(ref data, ..)) => {
-            let vtable_ptr = ccx.layout_of(ccx.tcx().mk_mut_ptr(target))
+            let vtable_ptr = ccx.layout_of(ccx.tcx.mk_mut_ptr(target))
                 .field(ccx, abi::FAT_PTR_EXTRA);
             consts::ptrcast(meth::get_vtable(ccx, source, data.principal()),
                             vtable_ptr.llvm_type(ccx))
@@ -421,7 +421,7 @@ pub fn call_memcpy(b: &Builder,
     let memcpy = ccx.get_intrinsic(&key);
     let src_ptr = b.pointercast(src, Type::i8p(ccx));
     let dst_ptr = b.pointercast(dst, Type::i8p(ccx));
-    let size = b.intcast(n_bytes, ccx.isize_ty(), false);
+    let size = b.intcast(n_bytes, ccx.isize_ty, false);
     let align = C_i32(ccx, align.abi() as i32);
     let volatile = C_bool(ccx, false);
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
@@ -458,7 +458,7 @@ pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
 pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance<'tcx>) {
     let _s = if ccx.sess().trans_stats() {
         let mut instance_name = String::new();
-        DefPathBasedNames::new(ccx.tcx(), true, true)
+        DefPathBasedNames::new(ccx.tcx, true, true)
             .push_def_path(instance.def_id(), &mut instance_name);
         Some(StatRecorder::new(ccx, instance_name))
     } else {
@@ -470,16 +470,16 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     // release builds.
     info!("trans_instance({})", instance);
 
-    let fn_ty = instance.ty(ccx.tcx());
+    let fn_ty = instance.ty(ccx.tcx);
     let sig = common::ty_fn_sig(ccx, fn_ty);
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
+    let sig = ccx.tcx.erase_late_bound_regions_and_normalize(&sig);
 
-    let lldecl = match ccx.instances().borrow().get(&instance) {
+    let lldecl = match ccx.instances.borrow().get(&instance) {
         Some(&val) => val,
         None => bug!("Instance `{:?}` not already declared", instance)
     };
 
-    ccx.stats().borrow_mut().n_closures += 1;
+    ccx.stats.borrow_mut().n_closures += 1;
 
     // The `uwtable` attribute according to LLVM is:
     //
@@ -502,7 +502,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
         attributes::emit_uwtable(lldecl, true);
     }
 
-    let mir = ccx.tcx().instance_mir(instance.def);
+    let mir = ccx.tcx.instance_mir(instance.def);
     mir::trans_mir(ccx, lldecl, &mir, instance, sig);
 }
 
@@ -525,14 +525,14 @@ pub fn set_link_section(ccx: &CrateContext,
 fn maybe_create_entry_wrapper(ccx: &CrateContext) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
         Some((id, span)) => {
-            (ccx.tcx().hir.local_def_id(id), span)
+            (ccx.tcx.hir.local_def_id(id), span)
         }
         None => return,
     };
 
-    let instance = Instance::mono(ccx.tcx(), main_def_id);
+    let instance = Instance::mono(ccx.tcx, main_def_id);
 
-    if !ccx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
+    if !ccx.codegen_unit.contains_item(&MonoItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main
         // function.
         return;
@@ -554,7 +554,7 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
                        use_start_lang_item: bool) {
         let llfty = Type::func(&[Type::c_int(ccx), Type::i8p(ccx).ptr_to()], &Type::c_int(ccx));
 
-        let main_ret_ty = ccx.tcx().fn_sig(rust_main_def_id).output();
+        let main_ret_ty = ccx.tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
         // then its return type cannot have
         // late-bound regions, since late-bound
@@ -582,12 +582,12 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         // Params from native main() used as args for rust start function
         let param_argc = get_param(llfn, 0);
         let param_argv = get_param(llfn, 1);
-        let arg_argc = bld.intcast(param_argc, ccx.isize_ty(), true);
+        let arg_argc = bld.intcast(param_argc, ccx.isize_ty, true);
         let arg_argv = param_argv;
 
         let (start_fn, args) = if use_start_lang_item {
-            let start_def_id = ccx.tcx().require_lang_item(StartFnLangItem);
-            let start_fn = callee::resolve_and_get_fn(ccx, start_def_id, ccx.tcx().mk_substs(
+            let start_def_id = ccx.tcx.require_lang_item(StartFnLangItem);
+            let start_fn = callee::resolve_and_get_fn(ccx, start_def_id, ccx.tcx.mk_substs(
                 iter::once(Kind::from(main_ret_ty))));
             (start_fn, vec![bld.pointercast(rust_main, Type::i8p(ccx).ptr_to()),
                             arg_argc, arg_argv])
@@ -1205,8 +1205,8 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Instantiate translation items without filling out definitions yet...
         let ccx = CrateContext::new(tcx, cgu, &llmod_id);
         let module = {
-            let trans_items = ccx.codegen_unit()
-                                 .items_in_deterministic_order(ccx.tcx());
+            let trans_items = ccx.codegen_unit
+                                 .items_in_deterministic_order(ccx.tcx);
             for &(trans_item, (linkage, visibility)) in &trans_items {
                 trans_item.predefine(&ccx, linkage, visibility);
             }
@@ -1221,7 +1221,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             maybe_create_entry_wrapper(&ccx);
 
             // Run replace-all-uses-with for statics that need it
-            for &(old_g, new_g) in ccx.statics_to_rauw().borrow().iter() {
+            for &(old_g, new_g) in ccx.statics_to_rauw.borrow().iter() {
                 unsafe {
                     let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
                     llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
@@ -1231,13 +1231,13 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             // Create the llvm.used variable
             // This variable has type [N x i8*] and is stored in the llvm.metadata section
-            if !ccx.used_statics().borrow().is_empty() {
+            if !ccx.used_statics.borrow().is_empty() {
                 let name = CString::new("llvm.used").unwrap();
                 let section = CString::new("llvm.metadata").unwrap();
-                let array = C_array(Type::i8(&ccx).ptr_to(), &*ccx.used_statics().borrow());
+                let array = C_array(Type::i8(&ccx).ptr_to(), &*ccx.used_statics.borrow());
 
                 unsafe {
-                    let g = llvm::LLVMAddGlobal(ccx.llmod(),
+                    let g = llvm::LLVMAddGlobal(ccx.llmod,
                                                 val_ty(array).to_ref(),
                                                 name.as_ptr());
                     llvm::LLVMSetInitializer(g, array);
@@ -1252,8 +1252,8 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             let llvm_module = ModuleLlvm {
-                llcx: ccx.llcx(),
-                llmod: ccx.llmod(),
+                llcx: ccx.llcx,
+                llmod: ccx.llmod,
                 tm: create_target_machine(ccx.sess()),
             };
 

@@ -175,7 +175,7 @@ pub fn C_usize(ccx: &CrateContext, i: u64) -> ValueRef {
         assert!(i < (1<<bit_size));
     }
 
-    C_uint(ccx.isize_ty(), i)
+    C_uint(ccx.isize_ty, i)
 }
 
 pub fn C_u8(ccx: &CrateContext, i: u8) -> ValueRef {
@@ -187,11 +187,11 @@ pub fn C_u8(ccx: &CrateContext, i: u8) -> ValueRef {
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> ValueRef {
     unsafe {
-        if let Some(&llval) = cx.const_cstr_cache().borrow().get(&s) {
+        if let Some(&llval) = cx.const_cstr_cache.borrow().get(&s) {
             return llval;
         }
 
-        let sc = llvm::LLVMConstStringInContext(cx.llcx(),
+        let sc = llvm::LLVMConstStringInContext(cx.llcx,
                                                 s.as_ptr() as *const c_char,
                                                 s.len() as c_uint,
                                                 !null_terminated as Bool);
@@ -203,7 +203,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         llvm::LLVMSetGlobalConstant(g, True);
         llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
 
-        cx.const_cstr_cache().borrow_mut().insert(s, g);
+        cx.const_cstr_cache.borrow_mut().insert(s, g);
         g
     }
 }
@@ -213,7 +213,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false),
-        cx.layout_of(cx.tcx().mk_str()).llvm_type(cx).ptr_to());
+        cx.layout_of(cx.tcx.mk_str()).llvm_type(cx).ptr_to());
     C_fat_ptr(cx, cs, C_usize(cx, len as u64))
 }
 
@@ -224,7 +224,7 @@ pub fn C_fat_ptr(cx: &CrateContext, ptr: ValueRef, meta: ValueRef) -> ValueRef {
 }
 
 pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
-    C_struct_in_context(cx.llcx(), elts, packed)
+    C_struct_in_context(cx.llcx, elts, packed)
 }
 
 pub fn C_struct_in_context(llcx: ContextRef, elts: &[ValueRef], packed: bool) -> ValueRef {
@@ -248,7 +248,7 @@ pub fn C_vector(elts: &[ValueRef]) -> ValueRef {
 }
 
 pub fn C_bytes(cx: &CrateContext, bytes: &[u8]) -> ValueRef {
-    C_bytes_in_context(cx.llcx(), bytes)
+    C_bytes_in_context(cx.llcx, bytes)
 }
 
 pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
@@ -389,9 +389,9 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match ty.sty {
         ty::TyFnDef(..) |
         // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::TyFnPtr(_) => ty.fn_sig(ccx.tcx()),
+        ty::TyFnPtr(_) => ty.fn_sig(ccx.tcx),
         ty::TyClosure(def_id, substs) => {
-            let tcx = ccx.tcx();
+            let tcx = ccx.tcx;
             let sig = substs.closure_sig(def_id, tcx);
 
             let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
@@ -404,8 +404,8 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ))
         }
         ty::TyGenerator(def_id, substs, _) => {
-            let tcx = ccx.tcx();
-            let sig = substs.generator_poly_sig(def_id, ccx.tcx());
+            let tcx = ccx.tcx;
+            let sig = substs.generator_poly_sig(def_id, ccx.tcx);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);

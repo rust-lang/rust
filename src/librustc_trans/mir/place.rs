@@ -407,7 +407,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         debug!("trans_place(place={:?})", place);
 
         let ccx = bcx.ccx;
-        let tcx = ccx.tcx();
+        let tcx = ccx.tcx;
 
         if let mir::Place::Local(index) = *place {
             match self.locals[index] {
@@ -492,7 +492,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn monomorphized_place_ty(&self, place: &mir::Place<'tcx>) -> Ty<'tcx> {
-        let tcx = self.ccx.tcx();
+        let tcx = self.ccx.tcx;
         let place_ty = place.ty(self.mir, tcx);
         self.monomorphize(&place_ty.to_ty(tcx))
     }

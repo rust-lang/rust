@@ -45,7 +45,7 @@ pub fn declare_global(ccx: &CrateContext, name: &str, ty: Type) -> llvm::ValueRe
         bug!("name {:?} contains an interior null byte", name)
     });
     unsafe {
-        llvm::LLVMRustGetOrInsertGlobal(ccx.llmod(), namebuf.as_ptr(), ty.to_ref())
+        llvm::LLVMRustGetOrInsertGlobal(ccx.llmod, namebuf.as_ptr(), ty.to_ref())
     }
 }
 
@@ -60,7 +60,7 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
         bug!("name {:?} contains an interior null byte", name)
     });
     let llfn = unsafe {
-        llvm::LLVMRustGetOrInsertFunction(ccx.llmod(), namebuf.as_ptr(), ty.to_ref())
+        llvm::LLVMRustGetOrInsertFunction(ccx.llmod, namebuf.as_ptr(), ty.to_ref())
     };
 
     llvm::SetFunctionCallConv(llfn, callconv);
@@ -68,12 +68,12 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
     // be merged.
     llvm::SetUnnamedAddr(llfn, true);
 
-    if ccx.tcx().sess.opts.cg.no_redzone
-        .unwrap_or(ccx.tcx().sess.target.target.options.disable_redzone) {
+    if ccx.tcx.sess.opts.cg.no_redzone
+        .unwrap_or(ccx.tcx.sess.target.target.options.disable_redzone) {
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
     }
 
-    if let Some(ref sanitizer) = ccx.tcx().sess.opts.debugging_opts.sanitizer {
+    if let Some(ref sanitizer) = ccx.tcx.sess.opts.debugging_opts.sanitizer {
         match *sanitizer {
             Sanitizer::Address => {
                 llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
@@ -88,7 +88,7 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
         }
     }
 
-    match ccx.tcx().sess.opts.cg.opt_level.as_ref().map(String::as_ref) {
+    match ccx.tcx.sess.opts.cg.opt_level.as_ref().map(String::as_ref) {
         Some("s") => {
             llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
         },
@@ -99,7 +99,7 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
         _ => {},
     }
 
-    if ccx.tcx().sess.panic_strategy() != PanicStrategy::Unwind {
+    if ccx.tcx.sess.panic_strategy() != PanicStrategy::Unwind {
         attributes::unwind(llfn, false);
     }
 
@@ -127,7 +127,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                             fn_type: Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
     let sig = common::ty_fn_sig(ccx, fn_type);
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
+    let sig = ccx.tcx.erase_late_bound_regions_and_normalize(&sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
     let fty = FnType::new(ccx, sig, &[]);
@@ -197,7 +197,7 @@ pub fn get_declared_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         bug!("name {:?} contains an interior null byte", name)
     });
-    let val = unsafe { llvm::LLVMRustGetNamedValue(ccx.llmod(), namebuf.as_ptr()) };
+    let val = unsafe { llvm::LLVMRustGetNamedValue(ccx.llmod, namebuf.as_ptr()) };
     if val.is_null() {
         debug!("get_declared_value: {:?} value is null", name);
         None

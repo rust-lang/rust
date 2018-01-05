@@ -117,7 +117,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     }, ..
                 }),
                 ref args, ..
-            } if Some(def_id) == self.cx.ccx.tcx().lang_items().box_free_fn() => {
+            } if Some(def_id) == self.cx.ccx.tcx.lang_items().box_free_fn() => {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
@@ -145,18 +145,18 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 _ => false
             };
             if is_consume {
-                let base_ty = proj.base.ty(self.cx.mir, ccx.tcx());
+                let base_ty = proj.base.ty(self.cx.mir, ccx.tcx);
                 let base_ty = self.cx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(ccx.tcx(), &proj.elem).to_ty(ccx.tcx());
+                let elem_ty = base_ty.projection_ty(ccx.tcx, &proj.elem).to_ty(ccx.tcx);
                 let elem_ty = self.cx.monomorphize(&elem_ty);
                 if ccx.layout_of(elem_ty).is_zst() {
                     return;
                 }
 
                 if let mir::ProjectionElem::Field(..) = proj.elem {
-                    let layout = ccx.layout_of(base_ty.to_ty(ccx.tcx()));
+                    let layout = ccx.layout_of(base_ty.to_ty(ccx.tcx));
                     if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
@@ -200,8 +200,8 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
             }
 
             PlaceContext::Drop => {
-                let ty = mir::Place::Local(index).ty(self.cx.mir, self.cx.ccx.tcx());
-                let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
+                let ty = mir::Place::Local(index).ty(self.cx.mir, self.cx.ccx.tcx);
+                let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx));
 
                 // Only need the place if we're actually dropping it.
                 if self.cx.ccx.type_needs_drop(ty) {

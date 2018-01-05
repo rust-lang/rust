@@ -117,14 +117,14 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         ty::TyDynamic(ref trait_data, ..) => {
             if let Some(principal) = trait_data.principal() {
-                let principal = cx.tcx().erase_late_bound_regions_and_normalize(
+                let principal = cx.tcx.erase_late_bound_regions_and_normalize(
                     &principal);
                 push_item_name(cx, principal.def_id, false, output);
                 push_type_params(cx, principal.substs, output);
             }
         },
         ty::TyFnDef(..) | ty::TyFnPtr(_) => {
-            let sig = t.fn_sig(cx.tcx());
+            let sig = t.fn_sig(cx.tcx);
             if sig.unsafety() == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }
@@ -138,7 +138,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             output.push_str("fn(");
 
-            let sig = cx.tcx().erase_late_bound_regions_and_normalize(&sig);
+            let sig = cx.tcx.erase_late_bound_regions_and_normalize(&sig);
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
                     push_debuginfo_type_name(cx, parameter_type, true, output);
@@ -184,13 +184,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       qualified: bool,
                       output: &mut String) {
         if qualified {
-            output.push_str(&cx.tcx().crate_name(def_id.krate).as_str());
-            for path_element in cx.tcx().def_path(def_id).data {
+            output.push_str(&cx.tcx.crate_name(def_id.krate).as_str());
+            for path_element in cx.tcx.def_path(def_id).data {
                 output.push_str("::");
                 output.push_str(&path_element.data.as_interned_str());
             }
         } else {
-            output.push_str(&cx.tcx().item_name(def_id));
+            output.push_str(&cx.tcx.item_name(def_id));
         }
     }
 

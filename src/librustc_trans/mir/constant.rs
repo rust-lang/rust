@@ -63,7 +63,7 @@ impl<'a, 'tcx> Const<'tcx> {
     }
 
     pub fn from_constint(ccx: &CrateContext<'a, 'tcx>, ci: &ConstInt) -> Const<'tcx> {
-        let tcx = ccx.tcx();
+        let tcx = ccx.tcx;
         let (llval, ty) = match *ci {
             I8(v) => (C_int(Type::i8(ccx), v as i64), tcx.types.i8),
             I16(v) => (C_int(Type::i16(ccx), v as i64), tcx.types.i16),
@@ -294,22 +294,22 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                  substs: &'tcx Substs<'tcx>,
                  args: IndexVec<mir::Local, Result<Const<'tcx>, ConstEvalErr<'tcx>>>)
                  -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
-        let instance = ty::Instance::resolve(ccx.tcx(),
+        let instance = ty::Instance::resolve(ccx.tcx,
                                              ty::ParamEnv::empty(traits::Reveal::All),
                                              def_id,
                                              substs).unwrap();
-        let mir = ccx.tcx().instance_mir(instance.def);
+        let mir = ccx.tcx.instance_mir(instance.def);
         MirConstContext::new(ccx, &mir, instance.substs, args).trans()
     }
 
     fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        self.ccx.tcx().trans_apply_param_substs(self.substs, value)
+        self.ccx.tcx.trans_apply_param_substs(self.substs, value)
     }
 
     fn trans(&mut self) -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
-        let tcx = self.ccx.tcx();
+        let tcx = self.ccx.tcx;
         let mut bb = mir::START_BLOCK;
 
         // Make sure to evaluate all statemenets to
@@ -462,7 +462,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     }
 
     fn is_binop_lang_item(&mut self, def_id: DefId) -> Option<(mir::BinOp, bool)> {
-        let tcx = self.ccx.tcx();
+        let tcx = self.ccx.tcx;
         let items = tcx.lang_items();
         let def_id = Some(def_id);
         if items.i128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
@@ -505,7 +505,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
     fn const_place(&self, place: &mir::Place<'tcx>, span: Span)
                     -> Result<ConstPlace<'tcx>, ConstEvalErr<'tcx>> {
-        let tcx = self.ccx.tcx();
+        let tcx = self.ccx.tcx;
 
         if let mir::Place::Local(index) = *place {
             return self.locals[index].clone().unwrap_or_else(|| {
@@ -537,13 +537,13 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         } else {
                             base.get_fat_ptr(self.ccx)
                         };
-                        if self.ccx.statics().borrow().contains_key(&base) {
+                        if self.ccx.statics.borrow().contains_key(&base) {
                             (Base::Static(base), extra)
                         } else if let ty::TyStr = projected_ty.sty {
                             (Base::Str(base), extra)
                         } else {
                             let v = base;
-                            let v = self.ccx.const_unsized().borrow().get(&v).map_or(v, |&v| v);
+                            let v = self.ccx.const_unsized.borrow().get(&v).map_or(v, |&v| v);
                             let mut val = unsafe { llvm::LLVMGetInitializer(v) };
                             if val.is_null() {
                                 span_bug!(span, "dereference of non-constant pointer `{:?}`",
@@ -653,7 +653,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     fn const_rvalue(&self, rvalue: &mir::Rvalue<'tcx>,
                     dest_ty: Ty<'tcx>, span: Span)
                     -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
-        let tcx = self.ccx.tcx();
+        let tcx = self.ccx.tcx;
         debug!("const_rvalue({:?}: {:?} @ {:?})", rvalue, dest_ty, span);
         let val = match *rvalue {
             mir::Rvalue::Use(ref operand) => self.const_operand(operand, span)?,
@@ -763,7 +763,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                                       unsized_ty, old_info);
 
                         if old_info.is_none() {
-                            let prev_const = self.ccx.const_unsized().borrow_mut()
+                            let prev_const = self.ccx.const_unsized.borrow_mut()
                                                      .insert(base, operand.llval);
                             assert!(prev_const.is_none() || prev_const == Some(operand.llval));
                         }
@@ -813,7 +813,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 (CastTy::Int(_), CastTy::Ptr(_)) => {
                                     let s = signed as llvm::Bool;
                                     let usize_llval = llvm::LLVMConstIntCast(llval,
-                                        self.ccx.isize_ty().to_ref(), s);
+                                        self.ccx.isize_ty.to_ref(), s);
                                     llvm::LLVMConstIntToPtr(usize_llval, ll_t_out.to_ref())
                                 }
                                 (CastTy::Ptr(_), CastTy::Int(_)) |
@@ -860,7 +860,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         let align = if self.ccx.type_is_sized(ty) {
                             self.ccx.align_of(ty)
                         } else {
-                            self.ccx.tcx().data_layout.pointer_align
+                            self.ccx.tcx.data_layout.pointer_align
                         };
                         if bk == mir::BorrowKind::Mut {
                             consts::addr_of_mut(self.ccx, llval, align, "ref_mut")
@@ -1090,7 +1090,7 @@ unsafe fn cast_const_float_to_int(ccx: &CrateContext,
     };
     if cast_result.status.contains(Status::INVALID_OP) {
         let err = ConstEvalErr { span: span, kind: ErrKind::CannotCast };
-        err.report(ccx.tcx(), span, "expression");
+        err.report(ccx.tcx, span, "expression");
     }
     C_uint_big(int_ty, cast_result.value)
 }
@@ -1224,7 +1224,7 @@ fn trans_const_adt<'a, 'tcx>(
         layout::Variants::Tagged { .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
-                    adt_def.discriminant_for_variant(ccx.tcx(), variant_index)
+                    adt_def.discriminant_for_variant(ccx.tcx, variant_index)
                            .to_u128_unchecked() as u64
                 },
                 _ => 0,

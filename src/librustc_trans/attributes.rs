@@ -103,7 +103,7 @@ pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
 /// attributes.
 pub fn from_fn_attrs(ccx: &CrateContext, llfn: ValueRef, id: DefId) {
     use syntax::attr::*;
-    let attrs = ccx.tcx().get_attrs(id);
+    let attrs = ccx.tcx.get_attrs(id);
     inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), &attrs));
 
     set_frame_pointer_elimination(ccx, llfn);
@@ -124,7 +124,7 @@ pub fn from_fn_attrs(ccx: &CrateContext, llfn: ValueRef, id: DefId) {
         }
     }
 
-    let target_features = ccx.tcx().target_features_enabled(id);
+    let target_features = ccx.tcx.target_features_enabled(id);
     if !target_features.is_empty() {
         let val = CString::new(target_features.join(",")).unwrap();
         llvm::AddFunctionAttrStringValue(

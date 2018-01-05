@@ -92,7 +92,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                       llresult: ValueRef,
                                       span: Span) {
     let ccx = bcx.ccx;
-    let tcx = ccx.tcx();
+    let tcx = ccx.tcx;
 
     let (def_id, substs) = match callee_ty.sty {
         ty::TyFnDef(def_id, substs) => (def_id, substs),
@@ -176,7 +176,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             C_str_slice(ccx, ty_name)
         }
         "type_id" => {
-            C_u64(ccx, ccx.tcx().type_id_hash(substs.type_at(0)))
+            C_u64(ccx, ccx.tcx.type_id_hash(substs.type_at(0)))
         }
         "init" => {
             let ty = substs.type_at(0);
@@ -399,11 +399,11 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
         "align_offset" => {
             // `ptr as usize`
-            let ptr_val = bcx.ptrtoint(args[0].immediate(), bcx.ccx.isize_ty());
+            let ptr_val = bcx.ptrtoint(args[0].immediate(), bcx.ccx.isize_ty);
             // `ptr_val % align`
             let align = args[1].immediate();
             let offset = bcx.urem(ptr_val, align);
-            let zero = C_null(bcx.ccx.isize_ty());
+            let zero = C_null(bcx.ccx.isize_ty);
             // `offset == 0`
             let is_zero = bcx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
             // `if offset == 0 { 0 } else { align - offset }`
@@ -844,7 +844,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         let cs = catchswitch.catch_switch(None, None, 1);
         catchswitch.add_handler(cs, catchpad.llbb());
 
-        let tcx = ccx.tcx();
+        let tcx = ccx.tcx;
         let tydesc = match tcx.lang_items().msvc_try_filter() {
             Some(did) => ::consts::get_static(ccx, did),
             None => bug!("msvc_try_filter not defined"),
@@ -948,7 +948,7 @@ fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     output: Ty<'tcx>,
                     trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                     -> ValueRef {
-    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ty::Binder(ccx.tcx().mk_fn_sig(
+    let rust_fn_ty = ccx.tcx.mk_fn_ptr(ty::Binder(ccx.tcx.mk_fn_sig(
         inputs.into_iter(),
         output,
         false,
@@ -968,12 +968,12 @@ fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn get_rust_try_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                              trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                              -> ValueRef {
-    if let Some(llfn) = ccx.rust_try_fn().get() {
+    if let Some(llfn) = ccx.rust_try_fn.get() {
         return llfn;
     }
 
     // Define the type up front for the signature of the rust_try function.
-    let tcx = ccx.tcx();
+    let tcx = ccx.tcx;
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     let fn_ty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
         iter::once(i8p),
@@ -984,7 +984,7 @@ fn get_rust_try_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     )));
     let output = tcx.types.i32;
     let rust_try = gen_fn(ccx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
-    ccx.rust_try_fn().set(Some(rust_try));
+    ccx.rust_try_fn.set(Some(rust_try));
     return rust_try
 }
 
@@ -1247,7 +1247,7 @@ fn int_type_width_signed(ty: Ty, ccx: &CrateContext) -> Option<(u64, bool)> {
     match ty.sty {
         ty::TyInt(t) => Some((match t {
             ast::IntTy::Isize => {
-                match &ccx.tcx().sess.target.target.target_pointer_width[..] {
+                match &ccx.tcx.sess.target.target.target_pointer_width[..] {
                     "16" => 16,
                     "32" => 32,
                     "64" => 64,
@@ -1262,7 +1262,7 @@ fn int_type_width_signed(ty: Ty, ccx: &CrateContext) -> Option<(u64, bool)> {
         }, true)),
         ty::TyUint(t) => Some((match t {
             ast::UintTy::Usize => {
-                match &ccx.tcx().sess.target.target.target_pointer_width[..] {
+                match &ccx.tcx.sess.target.target.target_pointer_width[..] {
                     "16" => 16,
                     "32" => 32,
                     "64" => 64,

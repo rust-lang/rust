@@ -106,7 +106,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        self.ccx.tcx().trans_apply_param_substs(self.param_substs, value)
+        self.ccx.tcx.trans_apply_param_substs(self.param_substs, value)
     }
 
     pub fn set_debug_loc(&mut self, bcx: &Builder, source_info: mir::SourceInfo) {

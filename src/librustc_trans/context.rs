@@ -46,23 +46,23 @@ use abi::Abi;
 /// `ContextRef` so that several compilation units may be optimized in parallel.
 /// All other LLVM data structures in the `CrateContext` are tied to that `ContextRef`.
 pub struct CrateContext<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    check_overflow: bool,
-    use_dll_storage_attrs: bool,
-    tls_model: llvm::ThreadLocalMode,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub check_overflow: bool,
+    pub use_dll_storage_attrs: bool,
+    pub tls_model: llvm::ThreadLocalMode,
 
-    llmod: ModuleRef,
-    llcx: ContextRef,
-    stats: RefCell<Stats>,
-    codegen_unit: Arc<CodegenUnit<'tcx>>,
+    pub llmod: ModuleRef,
+    pub llcx: ContextRef,
+    pub stats: RefCell<Stats>,
+    pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
-    instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
+    pub instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
     /// Cache generated vtables
-    vtables: RefCell<FxHashMap<(Ty<'tcx>,
+    pub vtables: RefCell<FxHashMap<(Ty<'tcx>,
                                 Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>>,
     /// Cache of constant strings,
-    const_cstr_cache: RefCell<FxHashMap<InternedString, ValueRef>>,
+    pub const_cstr_cache: RefCell<FxHashMap<InternedString, ValueRef>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     /// Key is a ValueRef holding a *T,
@@ -72,34 +72,34 @@ pub struct CrateContext<'a, 'tcx: 'a> {
     /// when we ptrcast, and we have to ptrcast during translation
     /// of a [T] const because we form a slice, a (*T,usize) pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
-    const_unsized: RefCell<FxHashMap<ValueRef, ValueRef>>,
+    pub const_unsized: RefCell<FxHashMap<ValueRef, ValueRef>>,
 
     /// Cache of emitted const globals (value -> global)
-    const_globals: RefCell<FxHashMap<ValueRef, ValueRef>>,
+    pub const_globals: RefCell<FxHashMap<ValueRef, ValueRef>>,
 
     /// Mapping from static definitions to their DefId's.
-    statics: RefCell<FxHashMap<ValueRef, DefId>>,
+    pub statics: RefCell<FxHashMap<ValueRef, DefId>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when translation is complete.
     /// (We have to make sure we don't invalidate any ValueRefs referring
     /// to constants.)
-    statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
+    pub statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
 
     /// Statics that will be placed in the llvm.used variable
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
-    used_statics: RefCell<Vec<ValueRef>>,
+    pub used_statics: RefCell<Vec<ValueRef>>,
 
-    lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>>,
-    scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
-    pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
-    isize_ty: Type,
+    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>>,
+    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
+    pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
+    pub isize_ty: Type,
 
-    dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
+    pub dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
 
     eh_personality: Cell<Option<ValueRef>>,
     eh_unwind_resume: Cell<Option<ValueRef>>,
-    rust_try_fn: Cell<Option<ValueRef>>,
+    pub rust_try_fn: Cell<Option<ValueRef>>,
 
     intrinsics: RefCell<FxHashMap<&'static str, ValueRef>>,
 
@@ -319,113 +319,18 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
 }
 
 impl<'b, 'tcx> CrateContext<'b, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.tcx
-    }
-
     pub fn sess<'a>(&'a self) -> &'a Session {
         &self.tcx.sess
     }
 
     pub fn get_intrinsic(&self, key: &str) -> ValueRef {
-        if let Some(v) = self.intrinsics().borrow().get(key).cloned() {
+        if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }
         match declare_intrinsic(self, key) {
             Some(v) => return v,
             None => bug!("unknown intrinsic '{}'", key)
         }
-    }
-
-    pub fn llmod(&self) -> ModuleRef {
-        self.llmod
-    }
-
-    pub fn llcx(&self) -> ContextRef {
-        self.llcx
-    }
-
-    pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
-        &self.codegen_unit
-    }
-
-    pub fn instances<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {
-        &self.instances
-    }
-
-    pub fn vtables<'a>(&'a self)
-        -> &'a RefCell<FxHashMap<(Ty<'tcx>,
-                                  Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>> {
-        &self.vtables
-    }
-
-    pub fn const_cstr_cache<'a>(&'a self) -> &'a RefCell<FxHashMap<InternedString, ValueRef>> {
-        &self.const_cstr_cache
-    }
-
-    pub fn const_unsized<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, ValueRef>> {
-        &self.const_unsized
-    }
-
-    pub fn const_globals<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, ValueRef>> {
-        &self.const_globals
-    }
-
-    pub fn statics<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, DefId>> {
-        &self.statics
-    }
-
-    pub fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
-        &self.statics_to_rauw
-    }
-
-    pub fn used_statics<'a>(&'a self) -> &'a RefCell<Vec<ValueRef>> {
-        &self.used_statics
-    }
-
-    pub fn lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>> {
-        &self.lltypes
-    }
-
-    pub fn scalar_lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {
-        &self.scalar_lltypes
-    }
-
-    pub fn pointee_infos<'a>(&'a self)
-                             -> &'a RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>> {
-        &self.pointee_infos
-    }
-
-    pub fn stats<'a>(&'a self) -> &'a RefCell<Stats> {
-        &self.stats
-    }
-
-    pub fn isize_ty(&self) -> Type {
-        self.isize_ty
-    }
-
-    pub fn dbg_cx<'a>(&'a self) -> &'a Option<debuginfo::CrateDebugContext<'tcx>> {
-        &self.dbg_cx
-    }
-
-    pub fn rust_try_fn<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
-        &self.rust_try_fn
-    }
-
-    fn intrinsics<'a>(&'a self) -> &'a RefCell<FxHashMap<&'static str, ValueRef>> {
-        &self.intrinsics
-    }
-
-    pub fn check_overflow(&self) -> bool {
-        self.check_overflow
-    }
-
-    pub fn use_dll_storage_attrs(&self) -> bool {
-        self.use_dll_storage_attrs
-    }
-
-    pub fn tls_model(&self) -> llvm::ThreadLocalMode {
-        self.tls_model
     }
 
     /// Generate a new symbol name with the given prefix. This symbol name must
@@ -466,7 +371,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         if let Some(llpersonality) = self.eh_personality.get() {
             return llpersonality
         }
-        let tcx = self.tcx();
+        let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
                 callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
@@ -494,7 +399,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
             return llfn;
         }
 
-        let tcx = self.tcx();
+        let tcx = self.tcx;
         assert!(self.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
             let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
@@ -575,7 +480,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
             if key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret));
                 llvm::SetUnnamedAddr(f, false);
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                ccx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
@@ -583,7 +488,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
             if key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::variadic_func(&[], &$ret));
                 llvm::SetUnnamedAddr(f, false);
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                ccx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
@@ -591,7 +496,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
             if key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret));
                 llvm::SetUnnamedAddr(f, false);
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                ccx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
