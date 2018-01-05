@@ -29,13 +29,13 @@ use type_::Type;
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;
 
-use super::{MirContext, LocalRef};
+use super::{FunctionCx, LocalRef};
 use super::constant::Const;
 use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
-impl<'a, 'tcx> MirContext<'a, 'tcx> {
+impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
         let mut bx = self.build_block(bb);
         let data = &self.mir[bb];

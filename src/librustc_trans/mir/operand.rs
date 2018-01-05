@@ -24,7 +24,7 @@ use type_::Type;
 use std::fmt;
 use std::ptr;
 
-use super::{MirContext, LocalRef};
+use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -241,7 +241,7 @@ impl<'a, 'tcx> OperandValue {
     }
 }
 
-impl<'a, 'tcx> MirContext<'a, 'tcx> {
+impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     fn maybe_trans_consume_direct(&mut self,
                                   bx: &Builder<'a, 'tcx>,
                                   place: &mir::Place<'tcx>)

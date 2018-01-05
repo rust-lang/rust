@@ -13,10 +13,10 @@ use rustc::mir;
 use asm;
 use builder::Builder;
 
-use super::MirContext;
+use super::FunctionCx;
 use super::LocalRef;
 
-impl<'a, 'tcx> MirContext<'a, 'tcx> {
+impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn trans_statement(&mut self,
                            bx: Builder<'a, 'tcx>,
                            statement: &mir::Statement<'tcx>)

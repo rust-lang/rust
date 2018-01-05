@@ -43,7 +43,7 @@ use std::fmt;
 use std::ptr;
 
 use super::operand::{OperandRef, OperandValue};
-use super::MirContext;
+use super::FunctionCx;
 
 /// A sized constant rvalue.
 /// The LLVM type might not be the same for a single Rust type,
@@ -1118,7 +1118,7 @@ unsafe fn cast_const_int_to_float(cx: &CodegenCx,
     }
 }
 
-impl<'a, 'tcx> MirContext<'a, 'tcx> {
+impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn trans_constant(&mut self,
                           bx: &Builder<'a, 'tcx>,
                           constant: &mir::Constant<'tcx>)

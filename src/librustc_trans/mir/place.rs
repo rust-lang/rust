@@ -25,7 +25,7 @@ use glue;
 
 use std::ptr;
 
-use super::{MirContext, LocalRef};
+use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 
 #[derive(Copy, Clone, Debug)]
@@ -399,7 +399,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
     }
 }
 
-impl<'a, 'tcx> MirContext<'a, 'tcx> {
+impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn trans_place(&mut self,
                         bx: &Builder<'a, 'tcx>,
                         place: &mir::Place<'tcx>)

@@ -29,12 +29,12 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 
-use super::{MirContext, LocalRef};
+use super::{FunctionCx, LocalRef};
 use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
-impl<'a, 'tcx> MirContext<'a, 'tcx> {
+impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn trans_rvalue(&mut self,
                         bx: Builder<'a, 'tcx>,
                         dest: PlaceRef<'tcx>,
