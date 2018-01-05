@@ -24,14 +24,14 @@ use syntax::attr;
 
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub fn insert_reference_to_gdb_debug_scripts_section_global(cx: &CodegenCx, builder: &Builder) {
-    if needs_gdb_debug_scripts_section(cx) {
-        let gdb_debug_scripts_section_global = get_or_insert_gdb_debug_scripts_section_global(cx);
+pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &Builder) {
+    if needs_gdb_debug_scripts_section(bx.cx) {
+        let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx.cx);
         // Load just the first byte as that's all that's necessary to force
         // LLVM to keep around the reference to the global.
-        let indices = [C_i32(cx, 0), C_i32(cx, 0)];
-        let element = builder.inbounds_gep(gdb_debug_scripts_section_global, &indices);
-        let volative_load_instruction = builder.volatile_load(element);
+        let indices = [C_i32(bx.cx, 0), C_i32(bx.cx, 0)];
+        let element = bx.inbounds_gep(gdb_debug_scripts_section, &indices);
+        let volative_load_instruction = bx.volatile_load(element);
         unsafe {
             llvm::LLVMSetAlignment(volative_load_instruction, 1);
         }

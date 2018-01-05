@@ -1120,7 +1120,7 @@ unsafe fn cast_const_int_to_float(cx: &CodegenCx,
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_constant(&mut self,
-                          bcx: &Builder<'a, 'tcx>,
+                          bx: &Builder<'a, 'tcx>,
                           constant: &mir::Constant<'tcx>)
                           -> Const<'tcx>
     {
@@ -1129,21 +1129,21 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let result = match constant.literal.clone() {
             mir::Literal::Promoted { index } => {
                 let mir = &self.mir.promoted[index];
-                MirConstContext::new(bcx.cx, mir, self.param_substs, IndexVec::new()).trans()
+                MirConstContext::new(bx.cx, mir, self.param_substs, IndexVec::new()).trans()
             }
             mir::Literal::Value { value } => {
                 if let ConstVal::Unevaluated(def_id, substs) = value.val {
                     let substs = self.monomorphize(&substs);
-                    MirConstContext::trans_def(bcx.cx, def_id, substs, IndexVec::new())
+                    MirConstContext::trans_def(bx.cx, def_id, substs, IndexVec::new())
                 } else {
-                    Ok(Const::from_constval(bcx.cx, &value.val, ty))
+                    Ok(Const::from_constval(bx.cx, &value.val, ty))
                 }
             }
         };
 
         let result = result.unwrap_or_else(|_| {
             // We've errored, so we don't have to produce working code.
-            let llty = bcx.cx.layout_of(ty).llvm_type(bcx.cx);
+            let llty = bx.cx.layout_of(ty).llvm_type(bx.cx);
             Const::new(C_undef(llty), ty)
         });
 

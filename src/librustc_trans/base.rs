@@ -158,7 +158,7 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
 }
 
 pub fn compare_simd_types<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     lhs: ValueRef,
     rhs: ValueRef,
     t: Ty<'tcx>,
@@ -168,7 +168,7 @@ pub fn compare_simd_types<'a, 'tcx>(
     let signed = match t.sty {
         ty::TyFloat(_) => {
             let cmp = bin_op_to_fcmp_predicate(op);
-            return bcx.sext(bcx.fcmp(cmp, lhs, rhs), ret_ty);
+            return bx.sext(bx.fcmp(cmp, lhs, rhs), ret_ty);
         },
         ty::TyUint(_) => false,
         ty::TyInt(_) => true,
@@ -180,7 +180,7 @@ pub fn compare_simd_types<'a, 'tcx>(
     // to get the correctly sized type. This will compile to a single instruction
     // once the IR is converted to assembly if the SIMD instruction is supported
     // by the target architecture.
-    bcx.sext(bcx.icmp(cmp, lhs, rhs), ret_ty)
+    bx.sext(bx.icmp(cmp, lhs, rhs), ret_ty)
 }
 
 /// Retrieve the information we are losing (making dynamic) in an unsizing
@@ -219,7 +219,7 @@ pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
 pub fn unsize_thin_ptr<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     src: ValueRef,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>
@@ -232,24 +232,24 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            assert!(bcx.cx.type_is_sized(a));
-            let ptr_ty = bcx.cx.layout_of(b).llvm_type(bcx.cx).ptr_to();
-            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.cx, a, b, None))
+            assert!(bx.cx.type_is_sized(a));
+            let ptr_ty = bx.cx.layout_of(b).llvm_type(bx.cx).ptr_to();
+            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx, a, b, None))
         }
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
-            assert!(bcx.cx.type_is_sized(a));
-            let ptr_ty = bcx.cx.layout_of(b).llvm_type(bcx.cx).ptr_to();
-            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.cx, a, b, None))
+            assert!(bx.cx.type_is_sized(a));
+            let ptr_ty = bx.cx.layout_of(b).llvm_type(bx.cx).ptr_to();
+            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx, a, b, None))
         }
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            let src_layout = bcx.cx.layout_of(src_ty);
-            let dst_layout = bcx.cx.layout_of(dst_ty);
+            let src_layout = bx.cx.layout_of(src_ty);
+            let dst_layout = bx.cx.layout_of(dst_ty);
             let mut result = None;
             for i in 0..src_layout.fields.count() {
-                let src_f = src_layout.field(bcx.cx, i);
+                let src_f = src_layout.field(bx.cx, i);
                 assert_eq!(src_layout.fields.offset(i).bytes(), 0);
                 assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
                 if src_f.is_zst() {
@@ -257,15 +257,15 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
                 }
                 assert_eq!(src_layout.size, src_f.size);
 
-                let dst_f = dst_layout.field(bcx.cx, i);
+                let dst_f = dst_layout.field(bx.cx, i);
                 assert_ne!(src_f.ty, dst_f.ty);
                 assert_eq!(result, None);
-                result = Some(unsize_thin_ptr(bcx, src, src_f.ty, dst_f.ty));
+                result = Some(unsize_thin_ptr(bx, src, src_f.ty, dst_f.ty));
             }
             let (lldata, llextra) = result.unwrap();
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bcx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bcx.cx, 0)),
-             bcx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bcx.cx, 1)))
+            (bx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bx.cx, 0)),
+             bx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bx.cx, 1)))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
@@ -273,27 +273,27 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+pub fn coerce_unsized_into<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                                      src: PlaceRef<'tcx>,
                                      dst: PlaceRef<'tcx>) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     let coerce_ptr = || {
-        let (base, info) = match src.load(bcx).val {
+        let (base, info) = match src.load(bx).val {
             OperandValue::Pair(base, info) => {
                 // fat-ptr to fat-ptr unsize preserves the vtable
                 // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
                 // So we need to pointercast the base to ensure
                 // the types match up.
-                let thin_ptr = dst.layout.field(bcx.cx, abi::FAT_PTR_ADDR);
-                (bcx.pointercast(base, thin_ptr.llvm_type(bcx.cx)), info)
+                let thin_ptr = dst.layout.field(bx.cx, abi::FAT_PTR_ADDR);
+                (bx.pointercast(base, thin_ptr.llvm_type(bx.cx)), info)
             }
             OperandValue::Immediate(base) => {
-                unsize_thin_ptr(bcx, base, src_ty, dst_ty)
+                unsize_thin_ptr(bx, base, src_ty, dst_ty)
             }
             OperandValue::Ref(..) => bug!()
         };
-        OperandValue::Pair(base, info).store(bcx, dst);
+        OperandValue::Pair(base, info).store(bx, dst);
     };
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::TyRef(..), &ty::TyRef(..)) |
@@ -309,18 +309,18 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             assert_eq!(def_a, def_b);
 
             for i in 0..def_a.variants[0].fields.len() {
-                let src_f = src.project_field(bcx, i);
-                let dst_f = dst.project_field(bcx, i);
+                let src_f = src.project_field(bx, i);
+                let dst_f = dst.project_field(bx, i);
 
                 if dst_f.layout.is_zst() {
                     continue;
                 }
 
                 if src_f.layout.ty == dst_f.layout.ty {
-                    memcpy_ty(bcx, dst_f.llval, src_f.llval, src_f.layout,
+                    memcpy_ty(bx, dst_f.llval, src_f.llval, src_f.layout,
                         src_f.align.min(dst_f.align));
                 } else {
-                    coerce_unsized_into(bcx, src_f, dst_f);
+                    coerce_unsized_into(bx, src_f, dst_f);
                 }
             }
         }
@@ -388,47 +388,47 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
-    let assume_intrinsic = b.cx.get_intrinsic("llvm.assume");
-    b.call(assume_intrinsic, &[val], None);
+pub fn call_assume<'a, 'tcx>(bx: &Builder<'a, 'tcx>, val: ValueRef) {
+    let assume_intrinsic = bx.cx.get_intrinsic("llvm.assume");
+    bx.call(assume_intrinsic, &[val], None);
 }
 
-pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
-    if val_ty(val) == Type::i1(bcx.cx) {
-        bcx.zext(val, Type::i8(bcx.cx))
+pub fn from_immediate(bx: &Builder, val: ValueRef) -> ValueRef {
+    if val_ty(val) == Type::i1(bx.cx) {
+        bx.zext(val, Type::i8(bx.cx))
     } else {
         val
     }
 }
 
-pub fn to_immediate(bcx: &Builder, val: ValueRef, layout: layout::TyLayout) -> ValueRef {
+pub fn to_immediate(bx: &Builder, val: ValueRef, layout: layout::TyLayout) -> ValueRef {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         if scalar.is_bool() {
-            return bcx.trunc(val, Type::i1(bcx.cx));
+            return bx.trunc(val, Type::i1(bx.cx));
         }
     }
     val
 }
 
-pub fn call_memcpy(b: &Builder,
+pub fn call_memcpy(bx: &Builder,
                    dst: ValueRef,
                    src: ValueRef,
                    n_bytes: ValueRef,
                    align: Align) {
-    let cx = b.cx;
+    let cx = bx.cx;
     let ptr_width = &cx.sess().target.target.target_pointer_width;
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
     let memcpy = cx.get_intrinsic(&key);
-    let src_ptr = b.pointercast(src, Type::i8p(cx));
-    let dst_ptr = b.pointercast(dst, Type::i8p(cx));
-    let size = b.intcast(n_bytes, cx.isize_ty, false);
+    let src_ptr = bx.pointercast(src, Type::i8p(cx));
+    let dst_ptr = bx.pointercast(dst, Type::i8p(cx));
+    let size = bx.intcast(n_bytes, cx.isize_ty, false);
     let align = C_i32(cx, align.abi() as i32);
     let volatile = C_bool(cx, false);
-    b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
+    bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
 pub fn memcpy_ty<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     dst: ValueRef,
     src: ValueRef,
     layout: TyLayout<'tcx>,
@@ -439,20 +439,20 @@ pub fn memcpy_ty<'a, 'tcx>(
         return;
     }
 
-    call_memcpy(bcx, dst, src, C_usize(bcx.cx, size), align);
+    call_memcpy(bx, dst, src, C_usize(bx.cx, size), align);
 }
 
-pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
+pub fn call_memset<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                              ptr: ValueRef,
                              fill_byte: ValueRef,
                              size: ValueRef,
                              align: ValueRef,
                              volatile: bool) -> ValueRef {
-    let ptr_width = &b.cx.sess().target.target.target_pointer_width;
+    let ptr_width = &bx.cx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-    let llintrinsicfn = b.cx.get_intrinsic(&intrinsic_key);
-    let volatile = C_bool(b.cx, volatile);
-    b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
+    let llintrinsicfn = bx.cx.get_intrinsic(&intrinsic_key);
+    let volatile = C_bool(bx.cx, volatile);
+    bx.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 
 pub fn trans_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'tcx>) {
@@ -575,29 +575,29 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         // `main` should respect same config for frame pointer elimination as rest of code
         attributes::set_frame_pointer_elimination(cx, llfn);
 
-        let bld = Builder::new_block(cx, llfn, "top");
+        let bx = Builder::new_block(cx, llfn, "top");
 
-        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(cx, &bld);
+        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(&bx);
 
         // Params from native main() used as args for rust start function
         let param_argc = get_param(llfn, 0);
         let param_argv = get_param(llfn, 1);
-        let arg_argc = bld.intcast(param_argc, cx.isize_ty, true);
+        let arg_argc = bx.intcast(param_argc, cx.isize_ty, true);
         let arg_argv = param_argv;
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = cx.tcx.require_lang_item(StartFnLangItem);
             let start_fn = callee::resolve_and_get_fn(cx, start_def_id, cx.tcx.mk_substs(
                 iter::once(Kind::from(main_ret_ty))));
-            (start_fn, vec![bld.pointercast(rust_main, Type::i8p(cx).ptr_to()),
+            (start_fn, vec![bx.pointercast(rust_main, Type::i8p(cx).ptr_to()),
                             arg_argc, arg_argv])
         } else {
             debug!("using user-defined start fn");
             (rust_main, vec![arg_argc, arg_argv])
         };
 
-        let result = bld.call(start_fn, &args, None);
-        bld.ret(bld.intcast(result, Type::c_int(cx), true));
+        let result = bx.call(start_fn, &args, None);
+        bx.ret(bx.intcast(result, Type::c_int(cx), true));
     }
 }
 

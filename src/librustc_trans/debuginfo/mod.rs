@@ -455,7 +455,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     }
 }
 
-pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
+pub fn declare_local<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                                dbg_context: &FunctionDebugContext,
                                variable_name: ast::Name,
                                variable_type: Ty<'tcx>,
@@ -463,7 +463,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                variable_access: VariableAccess,
                                variable_kind: VariableKind,
                                span: Span) {
-    let cx = bcx.cx;
+    let cx = bx.cx;
 
     let file = span_start(cx, span).file;
     let file_metadata = file_metadata(cx,
@@ -499,10 +499,10 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     align.abi() as u32,
                 )
             };
-            source_loc::set_debug_location(bcx,
+            source_loc::set_debug_location(bx,
                 InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));
             unsafe {
-                let debug_loc = llvm::LLVMGetCurrentDebugLocation(bcx.llbuilder);
+                let debug_loc = llvm::LLVMGetCurrentDebugLocation(bx.llbuilder);
                 let instr = llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
                     DIB(cx),
                     alloca,
@@ -510,9 +510,9 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     address_operations.as_ptr(),
                     address_operations.len() as c_uint,
                     debug_loc,
-                    bcx.llbb());
+                    bx.llbb());
 
-                llvm::LLVMSetInstDebugLocation(bcx.llbuilder, instr);
+                llvm::LLVMSetInstDebugLocation(bx.llbuilder, instr);
             }
         }
     }
@@ -520,7 +520,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     match variable_kind {
         ArgumentVariable(_) | CapturedVariable => {
             assert!(!dbg_context.get_ref(span).source_locations_enabled.get());
-            source_loc::set_debug_location(bcx, UnknownLocation);
+            source_loc::set_debug_location(bx, UnknownLocation);
         }
         _ => { /* nothing to do */ }
     }

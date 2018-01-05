@@ -33,30 +33,30 @@ impl<'a, 'tcx> VirtualIndex {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn(self, bcx: &Builder<'a, 'tcx>,
+    pub fn get_fn(self, bx: &Builder<'a, 'tcx>,
                   llvtable: ValueRef,
                   fn_ty: &FnType<'tcx>) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", Value(llvtable), self);
 
-        let llvtable = bcx.pointercast(llvtable, fn_ty.llvm_type(bcx.cx).ptr_to().ptr_to());
-        let ptr_align = bcx.tcx().data_layout.pointer_align;
-        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.cx, self.0)]), ptr_align);
-        bcx.nonnull_metadata(ptr);
+        let llvtable = bx.pointercast(llvtable, fn_ty.llvm_type(bx.cx).ptr_to().ptr_to());
+        let ptr_align = bx.tcx().data_layout.pointer_align;
+        let ptr = bx.load(bx.inbounds_gep(llvtable, &[C_usize(bx.cx, self.0)]), ptr_align);
+        bx.nonnull_metadata(ptr);
         // Vtable loads are invariant
-        bcx.set_invariant_load(ptr);
+        bx.set_invariant_load(ptr);
         ptr
     }
 
-    pub fn get_usize(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
+    pub fn get_usize(self, bx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", Value(llvtable), self);
 
-        let llvtable = bcx.pointercast(llvtable, Type::isize(bcx.cx).ptr_to());
-        let usize_align = bcx.tcx().data_layout.pointer_align;
-        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.cx, self.0)]), usize_align);
+        let llvtable = bx.pointercast(llvtable, Type::isize(bx.cx).ptr_to());
+        let usize_align = bx.tcx().data_layout.pointer_align;
+        let ptr = bx.load(bx.inbounds_gep(llvtable, &[C_usize(bx.cx, self.0)]), usize_align);
         // Vtable loads are invariant
-        bcx.set_invariant_load(ptr);
+        bx.set_invariant_load(ptr);
         ptr
     }
 }

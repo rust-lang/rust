@@ -328,37 +328,37 @@ pub fn langcall(tcx: TyCtxt,
 // of Java. (See related discussion on #1877 and #10183.)
 
 pub fn build_unchecked_lshift<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     lhs: ValueRef,
     rhs: ValueRef
 ) -> ValueRef {
-    let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShl, lhs, rhs);
+    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOp_::BiShl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bcx, rhs);
-    bcx.shl(lhs, rhs)
+    let rhs = shift_mask_rhs(bx, rhs);
+    bx.shl(lhs, rhs)
 }
 
 pub fn build_unchecked_rshift<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
+    bx: &Builder<'a, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
-    let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShr, lhs, rhs);
+    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOp_::BiShr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bcx, rhs);
+    let rhs = shift_mask_rhs(bx, rhs);
     let is_signed = lhs_t.is_signed();
     if is_signed {
-        bcx.ashr(lhs, rhs)
+        bx.ashr(lhs, rhs)
     } else {
-        bcx.lshr(lhs, rhs)
+        bx.lshr(lhs, rhs)
     }
 }
 
-fn shift_mask_rhs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, rhs: ValueRef) -> ValueRef {
+fn shift_mask_rhs<'a, 'tcx>(bx: &Builder<'a, 'tcx>, rhs: ValueRef) -> ValueRef {
     let rhs_llty = val_ty(rhs);
-    bcx.and(rhs, shift_mask_val(bcx, rhs_llty, rhs_llty, false))
+    bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
 }
 
 pub fn shift_mask_val<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     llty: Type,
     mask_llty: Type,
     invert: bool
@@ -375,8 +375,8 @@ pub fn shift_mask_val<'a, 'tcx>(
             }
         },
         TypeKind::Vector => {
-            let mask = shift_mask_val(bcx, llty.element_type(), mask_llty.element_type(), invert);
-            bcx.vector_splat(mask_llty.vector_length(), mask)
+            let mask = shift_mask_val(bx, llty.element_type(), mask_llty.element_type(), invert);
+            bx.vector_splat(mask_llty.vector_length(), mask)
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }

@@ -52,7 +52,7 @@ fn noname() -> *const c_char {
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn new_block<'b>(cx: &'a CodegenCx<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
-        let builder = Builder::with_cx(cx);
+        let bx = Builder::with_cx(cx);
         let llbb = unsafe {
             let name = CString::new(name).unwrap();
             llvm::LLVMAppendBasicBlockInContext(
@@ -61,8 +61,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 name.as_ptr()
             )
         };
-        builder.position_at_end(llbb);
-        builder
+        bx.position_at_end(llbb);
+        bx
     }
 
     pub fn with_cx(cx: &'a CodegenCx<'a, 'tcx>) -> Self {
@@ -489,11 +489,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn alloca(&self, ty: Type, name: &str, align: Align) -> ValueRef {
-        let builder = Builder::with_cx(self.cx);
-        builder.position_at_start(unsafe {
+        let bx = Builder::with_cx(self.cx);
+        bx.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
         });
-        builder.dynamic_alloca(ty, name, align)
+        bx.dynamic_alloca(ty, name, align)
     }
 
     pub fn dynamic_alloca(&self, ty: Type, name: &str, align: Align) -> ValueRef {

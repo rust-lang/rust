@@ -555,20 +555,20 @@ impl<'a, 'tcx> ArgType<'tcx> {
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    pub fn store(&self, bcx: &Builder<'a, 'tcx>, val: ValueRef, dst: PlaceRef<'tcx>) {
+    pub fn store(&self, bx: &Builder<'a, 'tcx>, val: ValueRef, dst: PlaceRef<'tcx>) {
         if self.is_ignore() {
             return;
         }
-        let cx = bcx.cx;
+        let cx = bx.cx;
         if self.is_indirect() {
-            OperandValue::Ref(val, self.layout.align).store(bcx, dst)
+            OperandValue::Ref(val, self.layout.align).store(bx, dst)
         } else if let PassMode::Cast(cast) = self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
-                let cast_dst = bcx.pointercast(dst.llval, cast.llvm_type(cx).ptr_to());
-                bcx.store(val, cast_dst, self.layout.align);
+                let cast_dst = bx.pointercast(dst.llval, cast.llvm_type(cx).ptr_to());
+                bx.store(val, cast_dst, self.layout.align);
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -587,42 +587,42 @@ impl<'a, 'tcx> ArgType<'tcx> {
                 // We instead thus allocate some scratch space...
                 let scratch_size = cast.size(cx);
                 let scratch_align = cast.align(cx);
-                let llscratch = bcx.alloca(cast.llvm_type(cx), "abi_cast", scratch_align);
-                bcx.lifetime_start(llscratch, scratch_size);
+                let llscratch = bx.alloca(cast.llvm_type(cx), "abi_cast", scratch_align);
+                bx.lifetime_start(llscratch, scratch_size);
 
                 // ...where we first store the value...
-                bcx.store(val, llscratch, scratch_align);
+                bx.store(val, llscratch, scratch_align);
 
                 // ...and then memcpy it to the intended destination.
-                base::call_memcpy(bcx,
-                                  bcx.pointercast(dst.llval, Type::i8p(cx)),
-                                  bcx.pointercast(llscratch, Type::i8p(cx)),
+                base::call_memcpy(bx,
+                                  bx.pointercast(dst.llval, Type::i8p(cx)),
+                                  bx.pointercast(llscratch, Type::i8p(cx)),
                                   C_usize(cx, self.layout.size.bytes()),
                                   self.layout.align.min(scratch_align));
 
-                bcx.lifetime_end(llscratch, scratch_size);
+                bx.lifetime_end(llscratch, scratch_size);
             }
         } else {
-            OperandValue::Immediate(val).store(bcx, dst);
+            OperandValue::Immediate(val).store(bx, dst);
         }
     }
 
-    pub fn store_fn_arg(&self, bcx: &Builder<'a, 'tcx>, idx: &mut usize, dst: PlaceRef<'tcx>) {
+    pub fn store_fn_arg(&self, bx: &Builder<'a, 'tcx>, idx: &mut usize, dst: PlaceRef<'tcx>) {
         if self.pad.is_some() {
             *idx += 1;
         }
         let mut next = || {
-            let val = llvm::get_param(bcx.llfn(), *idx as c_uint);
+            let val = llvm::get_param(bx.llfn(), *idx as c_uint);
             *idx += 1;
             val
         };
         match self.mode {
             PassMode::Ignore => {},
             PassMode::Pair(..) => {
-                OperandValue::Pair(next(), next()).store(bcx, dst);
+                OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Direct(_) | PassMode::Indirect(_) | PassMode::Cast(_) => {
-                self.store(bcx, next(), dst);
+                self.store(bx, next(), dst);
             }
         }
     }

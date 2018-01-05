@@ -32,7 +32,7 @@
 //! The public API of the module is a set of functions that will insert the
 //! correct metadata into the LLVM IR when called with the right parameters.
 //! The module is thus driven from an outside client with functions like
-//! `debuginfo::create_local_var_metadata(bcx: block, local: &ast::local)`.
+//! `debuginfo::create_local_var_metadata(bx: block, local: &ast::local)`.
 //!
 //! Internally the module will try to reuse already created metadata by
 //! utilizing a cache. The way to get a shared metadata node when needed is
