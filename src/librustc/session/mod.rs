@@ -642,6 +642,7 @@ impl Session {
             IncrCompSession::Active { ref session_directory, .. } => {
                 session_directory.clone()
             }
+            IncrCompSession::InvalidBecauseOfErrors { .. } => return,
             _ => bug!("Trying to invalidate IncrCompSession `{:?}`",
                       *incr_comp_session),
         };
