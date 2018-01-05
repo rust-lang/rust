@@ -417,7 +417,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         names
     }
 
-    fn get_containing_scope<'ccx, 'tcx>(cx: &CodegenCx<'ccx, 'tcx>,
+    fn get_containing_scope<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
                                         instance: Instance<'tcx>)
                                         -> DIScope {
         // First, let's see if this is a method within an inherent impl. Because
@@ -463,7 +463,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                variable_access: VariableAccess,
                                variable_kind: VariableKind,
                                span: Span) {
-    let cx = bcx.ccx;
+    let cx = bcx.cx;
 
     let file = span_start(cx, span).file;
     let file_metadata = file_metadata(cx,

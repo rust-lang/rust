@@ -174,7 +174,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         lp = bcx.insert_value(lp, lp1, 1);
                         bcx.resume(lp);
                     } else {
-                        bcx.call(bcx.ccx.eh_unwind_resume(), &[lp0], cleanup_bundle);
+                        bcx.call(bcx.cx.eh_unwind_resume(), &[lp0], cleanup_bundle);
                         bcx.unreachable();
                     }
                 }
@@ -182,7 +182,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::TerminatorKind::Abort => {
                 // Call core::intrinsics::abort()
-                let fnname = bcx.ccx.get_intrinsic(&("llvm.trap"));
+                let fnname = bcx.cx.get_intrinsic(&("llvm.trap"));
                 bcx.call(fnname, &[], None);
                 bcx.unreachable();
             }
@@ -206,7 +206,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     let switch = bcx.switch(discr.immediate(),
                                             llblock(self, *otherwise), values.len());
                     for (value, target) in values.iter().zip(targets) {
-                        let val = Const::from_constint(bcx.ccx, value);
+                        let val = Const::from_constint(bcx.cx, value);
                         let llbb = llblock(self, *target);
                         bcx.add_case(switch, val.llval, llbb)
                     }
@@ -253,7 +253,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             }
                         };
                         bcx.load(
-                            bcx.pointercast(llslot, cast_ty.llvm_type(bcx.ccx).ptr_to()),
+                            bcx.pointercast(llslot, cast_ty.llvm_type(bcx.cx).ptr_to()),
                             self.fn_ty.ret.layout.align)
                     }
                 };
@@ -267,7 +267,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
                 let ty = location.ty(self.mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = self.monomorphize(&ty);
-                let drop_fn = monomorphize::resolve_drop_in_place(bcx.ccx.tcx, ty);
+                let drop_fn = monomorphize::resolve_drop_in_place(bcx.cx.tcx, ty);
 
                 if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
                     // we don't actually need to drop anything.
@@ -280,16 +280,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 args = &args[..1 + place.has_extra() as usize];
                 let (drop_fn, fn_ty) = match ty.sty {
                     ty::TyDynamic(..) => {
-                        let fn_ty = drop_fn.ty(bcx.ccx.tcx);
-                        let sig = common::ty_fn_sig(bcx.ccx, fn_ty);
+                        let fn_ty = drop_fn.ty(bcx.cx.tcx);
+                        let sig = common::ty_fn_sig(bcx.cx, fn_ty);
                         let sig = bcx.tcx().erase_late_bound_regions_and_normalize(&sig);
-                        let fn_ty = FnType::new_vtable(bcx.ccx, sig, &[]);
+                        let fn_ty = FnType::new_vtable(bcx.cx, sig, &[]);
                         args = &args[..1];
                         (meth::DESTRUCTOR.get_fn(&bcx, place.llextra, &fn_ty), fn_ty)
                     }
                     _ => {
-                        (callee::get_fn(bcx.ccx, drop_fn),
-                         FnType::of_instance(bcx.ccx, &drop_fn))
+                        (callee::get_fn(bcx.cx, drop_fn),
+                         FnType::of_instance(bcx.cx, &drop_fn))
                     }
                 };
                 do_call(self, bcx, fn_ty, drop_fn, args,
@@ -308,7 +308,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // NOTE: Unlike binops, negation doesn't have its own
                 // checked operation, just a comparison with the minimum
                 // value, so we have to check for the assert message.
-                if !bcx.ccx.check_overflow {
+                if !bcx.cx.check_overflow {
                     use rustc_const_math::ConstMathErr::Overflow;
                     use rustc_const_math::Op::Neg;
 
@@ -324,8 +324,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
 
                 // Pass the condition through llvm.expect for branch hinting.
-                let expect = bcx.ccx.get_intrinsic(&"llvm.expect.i1");
-                let cond = bcx.call(expect, &[cond, C_bool(bcx.ccx, expected)], None);
+                let expect = bcx.cx.get_intrinsic(&"llvm.expect.i1");
+                let cond = bcx.call(expect, &[cond, C_bool(bcx.cx, expected)], None);
 
                 // Create the failure block and the conditional branch to it.
                 let lltarget = llblock(self, target);
@@ -343,9 +343,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Get the location information.
                 let loc = bcx.sess().codemap().lookup_char_pos(span.lo());
                 let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                let filename = C_str_slice(bcx.ccx, filename);
-                let line = C_u32(bcx.ccx, loc.line as u32);
-                let col = C_u32(bcx.ccx, loc.col.to_usize() as u32 + 1);
+                let filename = C_str_slice(bcx.cx, filename);
+                let line = C_u32(bcx.cx, loc.line as u32);
+                let col = C_u32(bcx.cx, loc.col.to_usize() as u32 + 1);
                 let align = tcx.data_layout.aggregate_align
                     .max(tcx.data_layout.i32_align)
                     .max(tcx.data_layout.pointer_align);
@@ -363,8 +363,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     index: index as u64
                                 }));
 
-                        let file_line_col = C_struct(bcx.ccx, &[filename, line, col], false);
-                        let file_line_col = consts::addr_of(bcx.ccx,
+                        let file_line_col = C_struct(bcx.cx, &[filename, line, col], false);
+                        let file_line_col = consts::addr_of(bcx.cx,
                                                             file_line_col,
                                                             align,
                                                             "panic_bounds_check_loc");
@@ -374,11 +374,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }
                     mir::AssertMessage::Math(ref err) => {
                         let msg_str = Symbol::intern(err.description()).as_str();
-                        let msg_str = C_str_slice(bcx.ccx, msg_str);
-                        let msg_file_line_col = C_struct(bcx.ccx,
+                        let msg_str = C_str_slice(bcx.cx, msg_str);
+                        let msg_file_line_col = C_struct(bcx.cx,
                                                      &[msg_str, filename, line, col],
                                                      false);
-                        let msg_file_line_col = consts::addr_of(bcx.ccx,
+                        let msg_file_line_col = consts::addr_of(bcx.cx,
                                                                 msg_file_line_col,
                                                                 align,
                                                                 "panic_loc");
@@ -394,11 +394,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             "generator resumed after panicking"
                         };
                         let msg_str = Symbol::intern(str).as_str();
-                        let msg_str = C_str_slice(bcx.ccx, msg_str);
-                        let msg_file_line_col = C_struct(bcx.ccx,
+                        let msg_str = C_str_slice(bcx.cx, msg_str);
+                        let msg_file_line_col = C_struct(bcx.cx,
                                                      &[msg_str, filename, line, col],
                                                      false);
-                        let msg_file_line_col = consts::addr_of(bcx.ccx,
+                        let msg_file_line_col = consts::addr_of(bcx.cx,
                                                                 msg_file_line_col,
                                                                 align,
                                                                 "panic_loc");
@@ -423,8 +423,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Obtain the panic entry point.
                 let def_id = common::langcall(bcx.tcx(), Some(span), "", lang_item);
                 let instance = ty::Instance::mono(bcx.tcx(), def_id);
-                let fn_ty = FnType::of_instance(bcx.ccx, &instance);
-                let llfn = callee::get_fn(bcx.ccx, instance);
+                let fn_ty = FnType::of_instance(bcx.cx, &instance);
+                let llfn = callee::get_fn(bcx.cx, instance);
 
                 // Translate the actual panic invoke/call.
                 do_call(self, bcx, fn_ty, llfn, &args, None, cleanup);
@@ -440,7 +440,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let (instance, mut llfn) = match callee.layout.ty.sty {
                     ty::TyFnDef(def_id, substs) => {
-                        (Some(ty::Instance::resolve(bcx.ccx.tcx,
+                        (Some(ty::Instance::resolve(bcx.cx.tcx,
                                                     ty::ParamEnv::empty(traits::Reveal::All),
                                                     def_id,
                                                     substs).unwrap()),
@@ -479,7 +479,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let fn_ty = match def {
                     Some(ty::InstanceDef::Virtual(..)) => {
-                        FnType::new_vtable(bcx.ccx, sig, &extra_args)
+                        FnType::new_vtable(bcx.cx, sig, &extra_args)
                     }
                     Some(ty::InstanceDef::DropGlue(_, None)) => {
                         // empty drop glue - a nop.
@@ -487,7 +487,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         funclet_br(self, bcx, target);
                         return;
                     }
-                    _ => FnType::new(bcx.ccx, sig, &extra_args)
+                    _ => FnType::new(bcx.cx, sig, &extra_args)
                 };
 
                 // The arguments we'll be passing. Plus one to account for outptr, if used.
@@ -509,7 +509,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     let dest = match ret_dest {
                         _ if fn_ty.ret.is_indirect() => llargs[0],
                         ReturnDest::Nothing => {
-                            C_undef(fn_ty.ret.memory_ty(bcx.ccx).ptr_to())
+                            C_undef(fn_ty.ret.memory_ty(bcx.cx).ptr_to())
                         }
                         ReturnDest::IndirectOperand(dst, _) |
                         ReturnDest::Store(dst) => dst.llval,
@@ -532,7 +532,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     let val = self.trans_constant(&bcx, constant);
                                     return OperandRef {
                                         val: Immediate(val.llval),
-                                        layout: bcx.ccx.layout_of(val.ty)
+                                        layout: bcx.cx.layout_of(val.ty)
                                     };
                                 }
                             }
@@ -542,7 +542,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }).collect();
 
 
-                    let callee_ty = instance.as_ref().unwrap().ty(bcx.ccx.tcx);
+                    let callee_ty = instance.as_ref().unwrap().ty(bcx.cx.tcx);
                     trans_intrinsic_call(&bcx, callee_ty, &fn_ty, &args, dest,
                                          terminator.source_info.span);
 
@@ -599,7 +599,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let fn_ptr = match (llfn, instance) {
                     (Some(llfn), _) => llfn,
-                    (None, Some(instance)) => callee::get_fn(bcx.ccx, instance),
+                    (None, Some(instance)) => callee::get_fn(bcx.cx, instance),
                     _ => span_bug!(span, "no llfn for call"),
                 };
 
@@ -620,7 +620,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                       arg: &ArgType<'tcx>) {
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
-            llargs.push(C_undef(ty.llvm_type(bcx.ccx)));
+            llargs.push(C_undef(ty.llvm_type(bcx.cx)));
         }
 
         if arg.is_ignore() {
@@ -670,7 +670,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast(ty) = arg.mode {
-                llval = bcx.load(bcx.pointercast(llval, ty.llvm_type(bcx.ccx).ptr_to()),
+                llval = bcx.load(bcx.pointercast(llval, ty.llvm_type(bcx.cx).ptr_to()),
                                  align.min(arg.layout.align));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
@@ -716,13 +716,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     fn get_personality_slot(&mut self, bcx: &Builder<'a, 'tcx>) -> PlaceRef<'tcx> {
-        let ccx = bcx.ccx;
+        let cx = bcx.cx;
         if let Some(slot) = self.personality_slot {
             slot
         } else {
-            let layout = ccx.layout_of(ccx.tcx.intern_tup(&[
-                ccx.tcx.mk_mut_ptr(ccx.tcx.types.u8),
-                ccx.tcx.types.i32
+            let layout = cx.layout_of(cx.tcx.intern_tup(&[
+                cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
+                cx.tcx.types.i32
             ], false));
             let slot = PlaceRef::alloca(bcx, layout, "personalityslot");
             self.personality_slot = Some(slot);
@@ -745,13 +745,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     fn landing_pad_uncached(&mut self, target_bb: BasicBlockRef) -> BasicBlockRef {
-        if base::wants_msvc_seh(self.ccx.sess()) {
+        if base::wants_msvc_seh(self.cx.sess()) {
             span_bug!(self.mir.span, "landing pad was not inserted?")
         }
 
         let bcx = self.new_block("cleanup");
 
-        let llpersonality = self.ccx.eh_personality();
+        let llpersonality = self.cx.eh_personality();
         let llretty = self.landing_pad_type();
         let lp = bcx.landing_pad(llretty, llpersonality, 1);
         bcx.set_cleanup(lp);
@@ -765,8 +765,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     fn landing_pad_type(&self) -> Type {
-        let ccx = self.ccx;
-        Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false)
+        let cx = self.cx;
+        Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)], false)
     }
 
     fn unreachable_block(&mut self) -> BasicBlockRef {
@@ -779,11 +779,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     pub fn new_block(&self, name: &str) -> Builder<'a, 'tcx> {
-        Builder::new_block(self.ccx, self.llfn, name)
+        Builder::new_block(self.cx, self.llfn, name)
     }
 
     pub fn get_builder(&self, bb: mir::BasicBlock) -> Builder<'a, 'tcx> {
-        let builder = Builder::with_ccx(self.ccx);
+        let builder = Builder::with_cx(self.cx);
         builder.position_at_end(self.blocks[bb]);
         builder
     }
@@ -851,7 +851,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             match self.locals[index] {
                 LocalRef::Place(place) => self.trans_transmute_into(bcx, src, place),
                 LocalRef::Operand(None) => {
-                    let dst_layout = bcx.ccx.layout_of(self.monomorphized_place_ty(dst));
+                    let dst_layout = bcx.cx.layout_of(self.monomorphized_place_ty(dst));
                     assert!(!dst_layout.ty.has_erasable_regions());
                     let place = PlaceRef::alloca(bcx, dst_layout, "transmute_temp");
                     place.storage_live(bcx);
@@ -875,7 +875,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             src: &mir::Operand<'tcx>,
                             dst: PlaceRef<'tcx>) {
         let src = self.trans_operand(bcx, src);
-        let llty = src.layout.llvm_type(bcx.ccx);
+        let llty = src.layout.llvm_type(bcx.cx);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
         let align = src.layout.align.min(dst.layout.align);
         src.val.store(bcx, PlaceRef::new_sized(cast_ptr, src.layout, align));

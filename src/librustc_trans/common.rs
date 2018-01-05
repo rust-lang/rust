@@ -152,34 +152,34 @@ pub fn C_uint_big(t: Type, u: u128) -> ValueRef {
     }
 }
 
-pub fn C_bool(ccx: &CodegenCx, val: bool) -> ValueRef {
-    C_uint(Type::i1(ccx), val as u64)
+pub fn C_bool(cx: &CodegenCx, val: bool) -> ValueRef {
+    C_uint(Type::i1(cx), val as u64)
 }
 
-pub fn C_i32(ccx: &CodegenCx, i: i32) -> ValueRef {
-    C_int(Type::i32(ccx), i as i64)
+pub fn C_i32(cx: &CodegenCx, i: i32) -> ValueRef {
+    C_int(Type::i32(cx), i as i64)
 }
 
-pub fn C_u32(ccx: &CodegenCx, i: u32) -> ValueRef {
-    C_uint(Type::i32(ccx), i as u64)
+pub fn C_u32(cx: &CodegenCx, i: u32) -> ValueRef {
+    C_uint(Type::i32(cx), i as u64)
 }
 
-pub fn C_u64(ccx: &CodegenCx, i: u64) -> ValueRef {
-    C_uint(Type::i64(ccx), i)
+pub fn C_u64(cx: &CodegenCx, i: u64) -> ValueRef {
+    C_uint(Type::i64(cx), i)
 }
 
-pub fn C_usize(ccx: &CodegenCx, i: u64) -> ValueRef {
-    let bit_size = ccx.data_layout().pointer_size.bits();
+pub fn C_usize(cx: &CodegenCx, i: u64) -> ValueRef {
+    let bit_size = cx.data_layout().pointer_size.bits();
     if bit_size < 64 {
         // make sure it doesn't overflow
         assert!(i < (1<<bit_size));
     }
 
-    C_uint(ccx.isize_ty, i)
+    C_uint(cx.isize_ty, i)
 }
 
-pub fn C_u8(ccx: &CodegenCx, i: u8) -> ValueRef {
-    C_uint(Type::i8(ccx), i as u64)
+pub fn C_u8(cx: &CodegenCx, i: u8) -> ValueRef {
+    C_uint(Type::i8(cx), i as u64)
 }
 
 
@@ -382,16 +382,16 @@ pub fn shift_mask_val<'a, 'tcx>(
     }
 }
 
-pub fn ty_fn_sig<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
+pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                            ty: Ty<'tcx>)
                            -> ty::PolyFnSig<'tcx>
 {
     match ty.sty {
         ty::TyFnDef(..) |
         // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::TyFnPtr(_) => ty.fn_sig(ccx.tcx),
+        ty::TyFnPtr(_) => ty.fn_sig(cx.tcx),
         ty::TyClosure(def_id, substs) => {
-            let tcx = ccx.tcx;
+            let tcx = cx.tcx;
             let sig = substs.closure_sig(def_id, tcx);
 
             let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
@@ -404,8 +404,8 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
             ))
         }
         ty::TyGenerator(def_id, substs, _) => {
-            let tcx = ccx.tcx;
-            let sig = substs.generator_poly_sig(def_id, ccx.tcx);
+            let tcx = cx.tcx;
+            let sig = substs.generator_poly_sig(def_id, cx.tcx);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);

@@ -39,7 +39,7 @@ pub fn set_source_location(
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
         debug!("set_source_location: {}", builder.sess().codemap().span_to_string(span));
-        let loc = span_start(builder.ccx, span);
+        let loc = span_start(builder.cx, span);
         InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
     } else {
         UnknownLocation
@@ -88,7 +88,7 @@ pub fn set_debug_location(builder: &Builder, debug_location: InternalDebugLocati
 
             unsafe {
                 llvm::LLVMRustDIBuilderCreateDebugLocation(
-                    debug_context(builder.ccx).llcontext,
+                    debug_context(builder.cx).llcontext,
                     line as c_uint,
                     col as c_uint,
                     scope,

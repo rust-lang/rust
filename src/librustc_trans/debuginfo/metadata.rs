@@ -1210,7 +1210,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // of discriminant instead of us having to recover its path.
                 // Right now it's not even going to work for `niche_start > 0`,
                 // and for multiple niche variants it only supports the first.
-                fn compute_field_path<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
+                fn compute_field_path<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                                 name: &mut String,
                                                 layout: TyLayout<'tcx>,
                                                 offset: Size,
@@ -1221,10 +1221,10 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             continue;
                         }
                         let inner_offset = offset - field_offset;
-                        let field = layout.field(ccx, i);
+                        let field = layout.field(cx, i);
                         if inner_offset + size <= field.size {
                             write!(name, "{}$", i).unwrap();
-                            compute_field_path(ccx, name, field, inner_offset, size);
+                            compute_field_path(cx, name, field, inner_offset, size);
                         }
                     }
                 }
@@ -1689,15 +1689,15 @@ pub fn create_global_var_metadata(cx: &CodegenCx,
 }
 
 // Creates an "extension" of an existing DIScope into another file.
-pub fn extend_scope_to_file(ccx: &CodegenCx,
+pub fn extend_scope_to_file(cx: &CodegenCx,
                             scope_metadata: DIScope,
                             file: &syntax_pos::FileMap,
                             defining_crate: CrateNum)
                             -> DILexicalBlock {
-    let file_metadata = file_metadata(ccx, &file.name, defining_crate);
+    let file_metadata = file_metadata(cx, &file.name, defining_crate);
     unsafe {
         llvm::LLVMRustDIBuilderCreateLexicalBlockFile(
-            DIB(ccx),
+            DIB(cx),
             scope_metadata,
             file_metadata)
     }

@@ -280,7 +280,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
                 None
             };
 
-            let mut ccx = CodegenCx {
+            let mut cx = CodegenCx {
                 tcx,
                 check_overflow,
                 use_dll_storage_attrs,
@@ -308,8 +308,8 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
                 intrinsics: RefCell::new(FxHashMap()),
                 local_gen_sym_counter: Cell::new(0),
             };
-            ccx.isize_ty = Type::isize(&ccx);
-            ccx
+            cx.isize_ty = Type::isize(&cx);
+            cx
         }
     }
 
@@ -474,47 +474,47 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CodegenCx<'a, 'tcx> {
 }
 
 /// Declare any llvm intrinsics that you might need
-fn declare_intrinsic(ccx: &CodegenCx, key: &str) -> Option<ValueRef> {
+fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::func(&[], &$ret));
                 llvm::SetUnnamedAddr(f, false);
-                ccx.intrinsics.borrow_mut().insert($name, f.clone());
+                cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
         ($name:expr, fn(...) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::variadic_func(&[], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::variadic_func(&[], &$ret));
                 llvm::SetUnnamedAddr(f, false);
-                ccx.intrinsics.borrow_mut().insert($name, f.clone());
+                cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::func(&[$($arg),*], &$ret));
                 llvm::SetUnnamedAddr(f, false);
-                ccx.intrinsics.borrow_mut().insert($name, f.clone());
+                cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
     }
     macro_rules! mk_struct {
-        ($($field_ty:expr),*) => (Type::struct_(ccx, &[$($field_ty),*], false))
+        ($($field_ty:expr),*) => (Type::struct_(cx, &[$($field_ty),*], false))
     }
 
-    let i8p = Type::i8p(ccx);
-    let void = Type::void(ccx);
-    let i1 = Type::i1(ccx);
-    let t_i8 = Type::i8(ccx);
-    let t_i16 = Type::i16(ccx);
-    let t_i32 = Type::i32(ccx);
-    let t_i64 = Type::i64(ccx);
-    let t_i128 = Type::i128(ccx);
-    let t_f32 = Type::f32(ccx);
-    let t_f64 = Type::f64(ccx);
+    let i8p = Type::i8p(cx);
+    let void = Type::void(cx);
+    let i1 = Type::i1(cx);
+    let t_i8 = Type::i8(cx);
+    let t_i16 = Type::i16(cx);
+    let t_i32 = Type::i32(cx);
+    let t_i64 = Type::i64(cx);
+    let t_i128 = Type::i128(cx);
+    let t_f32 = Type::f32(cx);
+    let t_f64 = Type::f64(cx);
 
     ifn!("llvm.memcpy.p0i8.p0i8.i16", fn(i8p, i8p, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memcpy.p0i8.p0i8.i32", fn(i8p, i8p, t_i32, t_i32, i1) -> void);
@@ -646,9 +646,9 @@ fn declare_intrinsic(ccx: &CodegenCx, key: &str) -> Option<ValueRef> {
     ifn!("llvm.assume", fn(i1) -> void);
     ifn!("llvm.prefetch", fn(i8p, t_i32, t_i32, t_i32) -> void);
 
-    if ccx.sess().opts.debuginfo != NoDebugInfo {
-        ifn!("llvm.dbg.declare", fn(Type::metadata(ccx), Type::metadata(ccx)) -> void);
-        ifn!("llvm.dbg.value", fn(Type::metadata(ccx), t_i64, Type::metadata(ccx)) -> void);
+    if cx.sess().opts.debuginfo != NoDebugInfo {
+        ifn!("llvm.dbg.declare", fn(Type::metadata(cx), Type::metadata(cx)) -> void);
+        ifn!("llvm.dbg.value", fn(Type::metadata(cx), t_i64, Type::metadata(cx)) -> void);
     }
     return None;
 }

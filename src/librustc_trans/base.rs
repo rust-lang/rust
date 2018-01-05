@@ -94,16 +94,16 @@ pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
 pub use rustc_mir::monomorphize::item::linkage_by_name;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
-    ccx: &'a CodegenCx<'a, 'tcx>,
+    cx: &'a CodegenCx<'a, 'tcx>,
     name: Option<String>,
     istart: usize,
 }
 
 impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
-    pub fn new(ccx: &'a CodegenCx<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
-        let istart = ccx.stats.borrow().n_llvm_insns;
+    pub fn new(cx: &'a CodegenCx<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
+        let istart = cx.stats.borrow().n_llvm_insns;
         StatRecorder {
-            ccx,
+            cx,
             name: Some(name),
             istart,
         }
@@ -112,8 +112,8 @@ impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
 
 impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     fn drop(&mut self) {
-        if self.ccx.sess().trans_stats() {
-            let mut stats = self.ccx.stats.borrow_mut();
+        if self.cx.sess().trans_stats() {
+            let mut stats = self.cx.stats.borrow_mut();
             let iend = stats.n_llvm_insns;
             stats.fn_stats.push((self.name.take().unwrap(), iend - self.istart));
             stats.n_fns += 1;
@@ -189,15 +189,15 @@ pub fn compare_simd_types<'a, 'tcx>(
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
-pub fn unsized_info<'ccx, 'tcx>(ccx: &CodegenCx<'ccx, 'tcx>,
+pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
                                 source: Ty<'tcx>,
                                 target: Ty<'tcx>,
                                 old_info: Option<ValueRef>)
                                 -> ValueRef {
-    let (source, target) = ccx.tcx.struct_lockstep_tails(source, target);
+    let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => {
-            C_usize(ccx, len.val.to_const_int().unwrap().to_u64().unwrap())
+            C_usize(cx, len.val.to_const_int().unwrap().to_u64().unwrap())
         }
         (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -206,10 +206,10 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CodegenCx<'ccx, 'tcx>,
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
         (_, &ty::TyDynamic(ref data, ..)) => {
-            let vtable_ptr = ccx.layout_of(ccx.tcx.mk_mut_ptr(target))
-                .field(ccx, abi::FAT_PTR_EXTRA);
-            consts::ptrcast(meth::get_vtable(ccx, source, data.principal()),
-                            vtable_ptr.llvm_type(ccx))
+            let vtable_ptr = cx.layout_of(cx.tcx.mk_mut_ptr(target))
+                .field(cx, abi::FAT_PTR_EXTRA);
+            consts::ptrcast(meth::get_vtable(cx, source, data.principal()),
+                            vtable_ptr.llvm_type(cx))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
                                      source,
@@ -232,24 +232,24 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            assert!(bcx.ccx.type_is_sized(a));
-            let ptr_ty = bcx.ccx.layout_of(b).llvm_type(bcx.ccx).ptr_to();
-            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
+            assert!(bcx.cx.type_is_sized(a));
+            let ptr_ty = bcx.cx.layout_of(b).llvm_type(bcx.cx).ptr_to();
+            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.cx, a, b, None))
         }
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
-            assert!(bcx.ccx.type_is_sized(a));
-            let ptr_ty = bcx.ccx.layout_of(b).llvm_type(bcx.ccx).ptr_to();
-            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
+            assert!(bcx.cx.type_is_sized(a));
+            let ptr_ty = bcx.cx.layout_of(b).llvm_type(bcx.cx).ptr_to();
+            (bcx.pointercast(src, ptr_ty), unsized_info(bcx.cx, a, b, None))
         }
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            let src_layout = bcx.ccx.layout_of(src_ty);
-            let dst_layout = bcx.ccx.layout_of(dst_ty);
+            let src_layout = bcx.cx.layout_of(src_ty);
+            let dst_layout = bcx.cx.layout_of(dst_ty);
             let mut result = None;
             for i in 0..src_layout.fields.count() {
-                let src_f = src_layout.field(bcx.ccx, i);
+                let src_f = src_layout.field(bcx.cx, i);
                 assert_eq!(src_layout.fields.offset(i).bytes(), 0);
                 assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
                 if src_f.is_zst() {
@@ -257,15 +257,15 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
                 }
                 assert_eq!(src_layout.size, src_f.size);
 
-                let dst_f = dst_layout.field(bcx.ccx, i);
+                let dst_f = dst_layout.field(bcx.cx, i);
                 assert_ne!(src_f.ty, dst_f.ty);
                 assert_eq!(result, None);
                 result = Some(unsize_thin_ptr(bcx, src, src_f.ty, dst_f.ty));
             }
             let (lldata, llextra) = result.unwrap();
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bcx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bcx.ccx, 0)),
-             bcx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bcx.ccx, 1)))
+            (bcx.bitcast(lldata, dst_layout.scalar_pair_element_llvm_type(bcx.cx, 0)),
+             bcx.bitcast(llextra, dst_layout.scalar_pair_element_llvm_type(bcx.cx, 1)))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
@@ -285,8 +285,8 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
                 // So we need to pointercast the base to ensure
                 // the types match up.
-                let thin_ptr = dst.layout.field(bcx.ccx, abi::FAT_PTR_ADDR);
-                (bcx.pointercast(base, thin_ptr.llvm_type(bcx.ccx)), info)
+                let thin_ptr = dst.layout.field(bcx.cx, abi::FAT_PTR_ADDR);
+                (bcx.pointercast(base, thin_ptr.llvm_type(bcx.cx)), info)
             }
             OperandValue::Immediate(base) => {
                 unsize_thin_ptr(bcx, base, src_ty, dst_ty)
@@ -389,13 +389,13 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 }
 
 pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
-    let assume_intrinsic = b.ccx.get_intrinsic("llvm.assume");
+    let assume_intrinsic = b.cx.get_intrinsic("llvm.assume");
     b.call(assume_intrinsic, &[val], None);
 }
 
 pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
-    if val_ty(val) == Type::i1(bcx.ccx) {
-        bcx.zext(val, Type::i8(bcx.ccx))
+    if val_ty(val) == Type::i1(bcx.cx) {
+        bcx.zext(val, Type::i8(bcx.cx))
     } else {
         val
     }
@@ -404,7 +404,7 @@ pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
 pub fn to_immediate(bcx: &Builder, val: ValueRef, layout: layout::TyLayout) -> ValueRef {
     if let layout::Abi::Scalar(ref scalar) = layout.abi {
         if scalar.is_bool() {
-            return bcx.trunc(val, Type::i1(bcx.ccx));
+            return bcx.trunc(val, Type::i1(bcx.cx));
         }
     }
     val
@@ -415,15 +415,15 @@ pub fn call_memcpy(b: &Builder,
                    src: ValueRef,
                    n_bytes: ValueRef,
                    align: Align) {
-    let ccx = b.ccx;
-    let ptr_width = &ccx.sess().target.target.target_pointer_width;
+    let cx = b.cx;
+    let ptr_width = &cx.sess().target.target.target_pointer_width;
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
-    let memcpy = ccx.get_intrinsic(&key);
-    let src_ptr = b.pointercast(src, Type::i8p(ccx));
-    let dst_ptr = b.pointercast(dst, Type::i8p(ccx));
-    let size = b.intcast(n_bytes, ccx.isize_ty, false);
-    let align = C_i32(ccx, align.abi() as i32);
-    let volatile = C_bool(ccx, false);
+    let memcpy = cx.get_intrinsic(&key);
+    let src_ptr = b.pointercast(src, Type::i8p(cx));
+    let dst_ptr = b.pointercast(dst, Type::i8p(cx));
+    let size = b.intcast(n_bytes, cx.isize_ty, false);
+    let align = C_i32(cx, align.abi() as i32);
+    let volatile = C_bool(cx, false);
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
@@ -439,7 +439,7 @@ pub fn memcpy_ty<'a, 'tcx>(
         return;
     }
 
-    call_memcpy(bcx, dst, src, C_usize(bcx.ccx, size), align);
+    call_memcpy(bcx, dst, src, C_usize(bcx.cx, size), align);
 }
 
 pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
@@ -448,19 +448,19 @@ pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
                              size: ValueRef,
                              align: ValueRef,
                              volatile: bool) -> ValueRef {
-    let ptr_width = &b.ccx.sess().target.target.target_pointer_width;
+    let ptr_width = &b.cx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-    let llintrinsicfn = b.ccx.get_intrinsic(&intrinsic_key);
-    let volatile = C_bool(b.ccx, volatile);
+    let llintrinsicfn = b.cx.get_intrinsic(&intrinsic_key);
+    let volatile = C_bool(b.cx, volatile);
     b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None)
 }
 
-pub fn trans_instance<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, instance: Instance<'tcx>) {
-    let _s = if ccx.sess().trans_stats() {
+pub fn trans_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'tcx>) {
+    let _s = if cx.sess().trans_stats() {
         let mut instance_name = String::new();
-        DefPathBasedNames::new(ccx.tcx, true, true)
+        DefPathBasedNames::new(cx.tcx, true, true)
             .push_def_path(instance.def_id(), &mut instance_name);
-        Some(StatRecorder::new(ccx, instance_name))
+        Some(StatRecorder::new(cx, instance_name))
     } else {
         None
     };
@@ -470,16 +470,16 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, instance: Instance<'t
     // release builds.
     info!("trans_instance({})", instance);
 
-    let fn_ty = instance.ty(ccx.tcx);
-    let sig = common::ty_fn_sig(ccx, fn_ty);
-    let sig = ccx.tcx.erase_late_bound_regions_and_normalize(&sig);
+    let fn_ty = instance.ty(cx.tcx);
+    let sig = common::ty_fn_sig(cx, fn_ty);
+    let sig = cx.tcx.erase_late_bound_regions_and_normalize(&sig);
 
-    let lldecl = match ccx.instances.borrow().get(&instance) {
+    let lldecl = match cx.instances.borrow().get(&instance) {
         Some(&val) => val,
         None => bug!("Instance `{:?}` not already declared", instance)
     };
 
-    ccx.stats.borrow_mut().n_closures += 1;
+    cx.stats.borrow_mut().n_closures += 1;
 
     // The `uwtable` attribute according to LLVM is:
     //
@@ -497,21 +497,21 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>, instance: Instance<'t
     //
     // You can also find more info on why Windows is whitelisted here in:
     //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
-    if !ccx.sess().no_landing_pads() ||
-       ccx.sess().target.target.options.is_like_windows {
+    if !cx.sess().no_landing_pads() ||
+       cx.sess().target.target.options.is_like_windows {
         attributes::emit_uwtable(lldecl, true);
     }
 
-    let mir = ccx.tcx.instance_mir(instance.def);
-    mir::trans_mir(ccx, lldecl, &mir, instance, sig);
+    let mir = cx.tcx.instance_mir(instance.def);
+    mir::trans_mir(cx, lldecl, &mir, instance, sig);
 }
 
-pub fn set_link_section(ccx: &CodegenCx,
+pub fn set_link_section(cx: &CodegenCx,
                         llval: ValueRef,
                         attrs: &[ast::Attribute]) {
     if let Some(sect) = attr::first_attr_value_str_by_name(attrs, "link_section") {
         if contains_null(&sect.as_str()) {
-            ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));
+            cx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`", &sect));
         }
         unsafe {
             let buf = CString::new(sect.as_str().as_bytes()).unwrap();
@@ -522,39 +522,39 @@ pub fn set_link_section(ccx: &CodegenCx,
 
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
-fn maybe_create_entry_wrapper(ccx: &CodegenCx) {
-    let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
+fn maybe_create_entry_wrapper(cx: &CodegenCx) {
+    let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {
         Some((id, span)) => {
-            (ccx.tcx.hir.local_def_id(id), span)
+            (cx.tcx.hir.local_def_id(id), span)
         }
         None => return,
     };
 
-    let instance = Instance::mono(ccx.tcx, main_def_id);
+    let instance = Instance::mono(cx.tcx, main_def_id);
 
-    if !ccx.codegen_unit.contains_item(&MonoItem::Fn(instance)) {
+    if !cx.codegen_unit.contains_item(&MonoItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main
         // function.
         return;
     }
 
-    let main_llfn = callee::get_fn(ccx, instance);
+    let main_llfn = callee::get_fn(cx, instance);
 
-    let et = ccx.sess().entry_type.get().unwrap();
+    let et = cx.sess().entry_type.get().unwrap();
     match et {
-        config::EntryMain => create_entry_fn(ccx, span, main_llfn, main_def_id, true),
-        config::EntryStart => create_entry_fn(ccx, span, main_llfn, main_def_id, false),
+        config::EntryMain => create_entry_fn(cx, span, main_llfn, main_def_id, true),
+        config::EntryStart => create_entry_fn(cx, span, main_llfn, main_def_id, false),
         config::EntryNone => {}    // Do nothing.
     }
 
-    fn create_entry_fn<'ccx>(ccx: &'ccx CodegenCx,
+    fn create_entry_fn<'cx>(cx: &'cx CodegenCx,
                        sp: Span,
                        rust_main: ValueRef,
                        rust_main_def_id: DefId,
                        use_start_lang_item: bool) {
-        let llfty = Type::func(&[Type::c_int(ccx), Type::i8p(ccx).ptr_to()], &Type::c_int(ccx));
+        let llfty = Type::func(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], &Type::c_int(cx));
 
-        let main_ret_ty = ccx.tcx.fn_sig(rust_main_def_id).output();
+        let main_ret_ty = cx.tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
         // then its return type cannot have
         // late-bound regions, since late-bound
@@ -562,34 +562,34 @@ fn maybe_create_entry_wrapper(ccx: &CodegenCx) {
         // listing.
         let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
 
-        if declare::get_defined_value(ccx, "main").is_some() {
+        if declare::get_defined_value(cx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
-            ccx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
+            cx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
                       .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
                       .emit();
-            ccx.sess().abort_if_errors();
+            cx.sess().abort_if_errors();
             bug!();
         }
-        let llfn = declare::declare_cfn(ccx, "main", llfty);
+        let llfn = declare::declare_cfn(cx, "main", llfty);
 
         // `main` should respect same config for frame pointer elimination as rest of code
-        attributes::set_frame_pointer_elimination(ccx, llfn);
+        attributes::set_frame_pointer_elimination(cx, llfn);
 
-        let bld = Builder::new_block(ccx, llfn, "top");
+        let bld = Builder::new_block(cx, llfn, "top");
 
-        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx, &bld);
+        debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(cx, &bld);
 
         // Params from native main() used as args for rust start function
         let param_argc = get_param(llfn, 0);
         let param_argv = get_param(llfn, 1);
-        let arg_argc = bld.intcast(param_argc, ccx.isize_ty, true);
+        let arg_argc = bld.intcast(param_argc, cx.isize_ty, true);
         let arg_argv = param_argv;
 
         let (start_fn, args) = if use_start_lang_item {
-            let start_def_id = ccx.tcx.require_lang_item(StartFnLangItem);
-            let start_fn = callee::resolve_and_get_fn(ccx, start_def_id, ccx.tcx.mk_substs(
+            let start_def_id = cx.tcx.require_lang_item(StartFnLangItem);
+            let start_fn = callee::resolve_and_get_fn(cx, start_def_id, cx.tcx.mk_substs(
                 iter::once(Kind::from(main_ret_ty))));
-            (start_fn, vec![bld.pointercast(rust_main, Type::i8p(ccx).ptr_to()),
+            (start_fn, vec![bld.pointercast(rust_main, Type::i8p(cx).ptr_to()),
                             arg_argc, arg_argv])
         } else {
             debug!("using user-defined start fn");
@@ -597,7 +597,7 @@ fn maybe_create_entry_wrapper(ccx: &CodegenCx) {
         };
 
         let result = bld.call(start_fn, &args, None);
-        bld.ret(bld.intcast(result, Type::c_int(ccx), true));
+        bld.ret(bld.intcast(result, Type::c_int(cx), true));
     }
 }
 
@@ -1203,25 +1203,25 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    .to_fingerprint().to_hex());
 
         // Instantiate translation items without filling out definitions yet...
-        let ccx = CodegenCx::new(tcx, cgu, &llmod_id);
+        let cx = CodegenCx::new(tcx, cgu, &llmod_id);
         let module = {
-            let trans_items = ccx.codegen_unit
-                                 .items_in_deterministic_order(ccx.tcx);
+            let trans_items = cx.codegen_unit
+                                 .items_in_deterministic_order(cx.tcx);
             for &(trans_item, (linkage, visibility)) in &trans_items {
-                trans_item.predefine(&ccx, linkage, visibility);
+                trans_item.predefine(&cx, linkage, visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
             for &(trans_item, _) in &trans_items {
-                trans_item.define(&ccx);
+                trans_item.define(&cx);
             }
 
             // If this codegen unit contains the main function, also create the
             // wrapper here
-            maybe_create_entry_wrapper(&ccx);
+            maybe_create_entry_wrapper(&cx);
 
             // Run replace-all-uses-with for statics that need it
-            for &(old_g, new_g) in ccx.statics_to_rauw.borrow().iter() {
+            for &(old_g, new_g) in cx.statics_to_rauw.borrow().iter() {
                 unsafe {
                     let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
                     llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
@@ -1231,13 +1231,13 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             // Create the llvm.used variable
             // This variable has type [N x i8*] and is stored in the llvm.metadata section
-            if !ccx.used_statics.borrow().is_empty() {
+            if !cx.used_statics.borrow().is_empty() {
                 let name = CString::new("llvm.used").unwrap();
                 let section = CString::new("llvm.metadata").unwrap();
-                let array = C_array(Type::i8(&ccx).ptr_to(), &*ccx.used_statics.borrow());
+                let array = C_array(Type::i8(&cx).ptr_to(), &*cx.used_statics.borrow());
 
                 unsafe {
-                    let g = llvm::LLVMAddGlobal(ccx.llmod,
+                    let g = llvm::LLVMAddGlobal(cx.llmod,
                                                 val_ty(array).to_ref(),
                                                 name.as_ptr());
                     llvm::LLVMSetInitializer(g, array);
@@ -1247,14 +1247,14 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             // Finalize debuginfo
-            if ccx.sess().opts.debuginfo != NoDebugInfo {
-                debuginfo::finalize(&ccx);
+            if cx.sess().opts.debuginfo != NoDebugInfo {
+                debuginfo::finalize(&cx);
             }
 
             let llvm_module = ModuleLlvm {
-                llcx: ccx.llcx,
-                llmod: ccx.llmod,
-                tm: create_target_machine(ccx.sess()),
+                llcx: cx.llcx,
+                llmod: cx.llmod,
+                tm: create_target_machine(cx.sess()),
             };
 
             ModuleTranslation {
@@ -1265,7 +1265,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         };
 
-        (ccx.into_stats(), module)
+        (cx.into_stats(), module)
     }
 }
 

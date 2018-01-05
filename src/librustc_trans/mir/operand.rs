@@ -81,11 +81,11 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
 }
 
 impl<'a, 'tcx> OperandRef<'tcx> {
-    pub fn new_zst(ccx: &CodegenCx<'a, 'tcx>,
+    pub fn new_zst(cx: &CodegenCx<'a, 'tcx>,
                    layout: TyLayout<'tcx>) -> OperandRef<'tcx> {
         assert!(layout.is_zst());
         OperandRef {
-            val: OperandValue::Immediate(C_undef(layout.immediate_llvm_type(ccx))),
+            val: OperandValue::Immediate(C_undef(layout.immediate_llvm_type(cx))),
             layout
         }
     }
@@ -99,7 +99,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         }
     }
 
-    pub fn deref(self, ccx: &CodegenCx<'a, 'tcx>) -> PlaceRef<'tcx> {
+    pub fn deref(self, cx: &CodegenCx<'a, 'tcx>) -> PlaceRef<'tcx> {
         let projected_ty = self.layout.ty.builtin_deref(true, ty::NoPreference)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {
@@ -107,7 +107,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             OperandValue::Pair(llptr, llextra) => (llptr, llextra),
             OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self)
         };
-        let layout = ccx.layout_of(projected_ty);
+        let layout = cx.layout_of(projected_ty);
         PlaceRef {
             llval: llptr,
             llextra,
@@ -120,7 +120,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     /// For other cases, see `immediate`.
     pub fn immediate_or_packed_pair(self, bcx: &Builder<'a, 'tcx>) -> ValueRef {
         if let OperandValue::Pair(a, b) = self.val {
-            let llty = self.layout.llvm_type(bcx.ccx);
+            let llty = self.layout.llvm_type(bcx.cx);
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}",
                    self, llty);
             // Reconstruct the immediate aggregate.
@@ -152,14 +152,14 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     }
 
     pub fn extract_field(&self, bcx: &Builder<'a, 'tcx>, i: usize) -> OperandRef<'tcx> {
-        let field = self.layout.field(bcx.ccx, i);
+        let field = self.layout.field(bcx.cx, i);
         let offset = self.layout.fields.offset(i);
 
         let mut val = match (self.val, &self.layout.abi) {
             // If we're uninhabited, or the field is ZST, it has no data.
             _ if self.layout.abi == layout::Abi::Uninhabited || field.is_zst() => {
                 return OperandRef {
-                    val: OperandValue::Immediate(C_undef(field.immediate_llvm_type(bcx.ccx))),
+                    val: OperandValue::Immediate(C_undef(field.immediate_llvm_type(bcx.cx))),
                     layout: field
                 };
             }
@@ -174,12 +174,12 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             // Extract a scalar component from a pair.
             (OperandValue::Pair(a_llval, b_llval), &layout::Abi::ScalarPair(ref a, ref b)) => {
                 if offset.bytes() == 0 {
-                    assert_eq!(field.size, a.value.size(bcx.ccx));
+                    assert_eq!(field.size, a.value.size(bcx.cx));
                     OperandValue::Immediate(a_llval)
                 } else {
-                    assert_eq!(offset, a.value.size(bcx.ccx)
-                        .abi_align(b.value.align(bcx.ccx)));
-                    assert_eq!(field.size, b.value.size(bcx.ccx));
+                    assert_eq!(offset, a.value.size(bcx.cx)
+                        .abi_align(b.value.align(bcx.cx)));
+                    assert_eq!(field.size, b.value.size(bcx.cx));
                     OperandValue::Immediate(b_llval)
                 }
             }
@@ -187,7 +187,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             // `#[repr(simd)]` types are also immediate.
             (OperandValue::Immediate(llval), &layout::Abi::Vector { .. }) => {
                 OperandValue::Immediate(
-                    bcx.extract_element(llval, C_usize(bcx.ccx, i as u64)))
+                    bcx.extract_element(llval, C_usize(bcx.cx, i as u64)))
             }
 
             _ => bug!("OperandRef::extract_field({:?}): not applicable", self)
@@ -196,11 +196,11 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
         match val {
             OperandValue::Immediate(ref mut llval) => {
-                *llval = bcx.bitcast(*llval, field.immediate_llvm_type(bcx.ccx));
+                *llval = bcx.bitcast(*llval, field.immediate_llvm_type(bcx.cx));
             }
             OperandValue::Pair(ref mut a, ref mut b) => {
-                *a = bcx.bitcast(*a, field.scalar_pair_element_llvm_type(bcx.ccx, 0));
-                *b = bcx.bitcast(*b, field.scalar_pair_element_llvm_type(bcx.ccx, 1));
+                *a = bcx.bitcast(*a, field.scalar_pair_element_llvm_type(bcx.cx, 0));
+                *b = bcx.bitcast(*b, field.scalar_pair_element_llvm_type(bcx.cx, 1));
             }
             OperandValue::Ref(..) => bug!()
         }
@@ -231,8 +231,8 @@ impl<'a, 'tcx> OperandValue {
                 for (i, &x) in [a, b].iter().enumerate() {
                     let mut llptr = bcx.struct_gep(dest.llval, i as u64);
                     // Make sure to always store i1 as i8.
-                    if common::val_ty(x) == Type::i1(bcx.ccx) {
-                        llptr = bcx.pointercast(llptr, Type::i8p(bcx.ccx));
+                    if common::val_ty(x) == Type::i1(bcx.cx) {
+                        llptr = bcx.pointercast(llptr, Type::i8p(bcx.cx));
                     }
                     bcx.store(base::from_immediate(bcx, x), llptr, dest.align);
                 }
@@ -277,9 +277,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // ZSTs don't require any actual memory access.
                         // FIXME(eddyb) deduplicate this with the identical
                         // checks in `trans_consume` and `extract_field`.
-                        let elem = o.layout.field(bcx.ccx, 0);
+                        let elem = o.layout.field(bcx.cx, 0);
                         if elem.is_zst() {
-                            return Some(OperandRef::new_zst(bcx.ccx, elem));
+                            return Some(OperandRef::new_zst(bcx.cx, elem));
                         }
                     }
                     _ => {}
@@ -298,11 +298,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         debug!("trans_consume(place={:?})", place);
 
         let ty = self.monomorphized_place_ty(place);
-        let layout = bcx.ccx.layout_of(ty);
+        let layout = bcx.cx.layout_of(ty);
 
         // ZSTs don't require any actual memory access.
         if layout.is_zst() {
-            return OperandRef::new_zst(bcx.ccx, layout);
+            return OperandRef::new_zst(bcx.cx, layout);
         }
 
         if let Some(o) = self.maybe_trans_consume_direct(bcx, place) {
@@ -329,7 +329,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::Operand::Constant(ref constant) => {
                 let val = self.trans_constant(&bcx, constant);
-                let operand = val.to_operand(bcx.ccx);
+                let operand = val.to_operand(bcx.cx);
                 if let OperandValue::Ref(ptr, align) = operand.val {
                     // If this is a OperandValue::Ref to an immediate constant, load it.
                     PlaceRef::new_sized(ptr, operand.layout, align).load(bcx)

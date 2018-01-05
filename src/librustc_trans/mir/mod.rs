@@ -48,7 +48,7 @@ pub struct MirContext<'a, 'tcx:'a> {
 
     llfn: ValueRef,
 
-    ccx: &'a CodegenCx<'a, 'tcx>,
+    cx: &'a CodegenCx<'a, 'tcx>,
 
     fn_ty: FnType<'tcx>,
 
@@ -106,7 +106,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        self.ccx.tcx.trans_apply_param_substs(self.param_substs, value)
+        self.cx.tcx.trans_apply_param_substs(self.param_substs, value)
     }
 
     pub fn set_debug_loc(&mut self, bcx: &Builder, source_info: mir::SourceInfo) {
@@ -128,7 +128,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
         if source_info.span.ctxt() == NO_EXPANSION ||
-           self.ccx.sess().opts.debugging_opts.debug_macros {
+           self.cx.sess().opts.debugging_opts.debug_macros {
             let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo());
             (scope, source_info.span)
         } else {
@@ -158,9 +158,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let scope_metadata = self.scopes[scope_id].scope_metadata;
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
-            let cm = self.ccx.sess().codemap();
+            let cm = self.cx.sess().codemap();
             let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
-            debuginfo::extend_scope_to_file(self.ccx,
+            debuginfo::extend_scope_to_file(self.cx,
                                             scope_metadata,
                                             &cm.lookup_char_pos(pos).file,
                                             defining_crate)
@@ -176,12 +176,12 @@ enum LocalRef<'tcx> {
 }
 
 impl<'a, 'tcx> LocalRef<'tcx> {
-    fn new_operand(ccx: &CodegenCx<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
+    fn new_operand(cx: &CodegenCx<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            LocalRef::Operand(Some(OperandRef::new_zst(ccx, layout)))
+            LocalRef::Operand(Some(OperandRef::new_zst(cx, layout)))
         } else {
             LocalRef::Operand(None)
         }
@@ -191,20 +191,20 @@ impl<'a, 'tcx> LocalRef<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn trans_mir<'a, 'tcx: 'a>(
-    ccx: &'a CodegenCx<'a, 'tcx>,
+    cx: &'a CodegenCx<'a, 'tcx>,
     llfn: ValueRef,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
 ) {
-    let fn_ty = FnType::new(ccx, sig, &[]);
+    let fn_ty = FnType::new(cx, sig, &[]);
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
-        debuginfo::create_function_debug_context(ccx, instance, sig, llfn, mir);
-    let bcx = Builder::new_block(ccx, llfn, "start");
+        debuginfo::create_function_debug_context(cx, instance, sig, llfn, mir);
+    let bcx = Builder::new_block(cx, llfn, "start");
 
     if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
-        bcx.set_personality_fn(ccx.eh_personality());
+        bcx.set_personality_fn(cx.eh_personality());
     }
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
@@ -221,14 +221,14 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         }).collect();
 
     // Compute debuginfo scopes from MIR scopes.
-    let scopes = debuginfo::create_mir_scopes(ccx, mir, &debug_context);
+    let scopes = debuginfo::create_mir_scopes(cx, mir, &debug_context);
     let (landing_pads, funclets) = create_funclets(&bcx, &cleanup_kinds, &block_bcxs);
 
     let mut mircx = MirContext {
         mir,
         llfn,
         fn_ty,
-        ccx,
+        cx,
         personality_slot: None,
         blocks: block_bcxs,
         unreachable_block: None,
@@ -252,7 +252,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
-            let layout = bcx.ccx.layout_of(mircx.monomorphize(&decl.ty));
+            let layout = bcx.cx.layout_of(mircx.monomorphize(&decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
             if let Some(name) = decl.name {
@@ -262,7 +262,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
                 if !memory_locals.contains(local.index()) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
-                    return LocalRef::new_operand(bcx.ccx, layout);
+                    return LocalRef::new_operand(bcx.cx, layout);
                 }
 
                 debug!("alloc: {:?} ({}) -> place", local, name);
@@ -288,7 +288,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                     // alloca in advance. Instead we wait until we see the
                     // definition and update the operand there.
                     debug!("alloc: {:?} -> operand", local);
-                    LocalRef::new_operand(bcx.ccx, layout)
+                    LocalRef::new_operand(bcx.cx, layout)
                 }
             }
         };
@@ -398,7 +398,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let place = PlaceRef::alloca(bcx, bcx.ccx.layout_of(arg_ty), &name);
+            let place = PlaceRef::alloca(bcx, bcx.cx.layout_of(arg_ty), &name);
             for i in 0..tupled_arg_tys.len() {
                 let arg = &mircx.fn_ty.args[idx];
                 idx += 1;
@@ -438,7 +438,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let local = |op| LocalRef::Operand(Some(op));
             match arg.mode {
                 PassMode::Ignore => {
-                    return local(OperandRef::new_zst(bcx.ccx, arg.layout));
+                    return local(OperandRef::new_zst(bcx.cx, arg.layout));
                 }
                 PassMode::Direct(_) => {
                     let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
@@ -512,7 +512,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
             // Or is it the closure environment?
             let (closure_layout, env_ref) = match arg.layout.ty.sty {
-                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (bcx.ccx.layout_of(mt.ty), true),
+                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (bcx.cx.layout_of(mt.ty), true),
                 _ => (arg.layout, false)
             };
 
@@ -531,7 +531,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // environment into its components so it ends up out of bounds.
             let env_ptr = if !env_ref {
                 let scratch = PlaceRef::alloca(bcx,
-                    bcx.ccx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
+                    bcx.cx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
                     "__debuginfo_env_ptr");
                 bcx.store(place.llval, scratch.llval, scratch.align);
                 scratch.llval

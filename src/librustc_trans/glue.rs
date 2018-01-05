@@ -27,12 +27,12 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
                                        -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));
-    if bcx.ccx.type_is_sized(t) {
-        let (size, align) = bcx.ccx.size_and_align_of(t);
+    if bcx.cx.type_is_sized(t) {
+        let (size, align) = bcx.cx.size_and_align_of(t);
         debug!("size_and_align_of_dst t={} info={:?} size: {:?} align: {:?}",
                t, Value(info), size, align);
-        let size = C_usize(bcx.ccx, size.bytes());
-        let align = C_usize(bcx.ccx, align.abi());
+        let size = C_usize(bcx.cx, size.bytes());
+        let align = C_usize(bcx.cx, align.abi());
         return (size, align);
     }
     assert!(!info.is_null());
@@ -45,17 +45,17 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             let unit = t.sequence_element_type(bcx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            let (size, align) = bcx.ccx.size_and_align_of(unit);
-            (bcx.mul(info, C_usize(bcx.ccx, size.bytes())),
-             C_usize(bcx.ccx, align.abi()))
+            let (size, align) = bcx.cx.size_and_align_of(unit);
+            (bcx.mul(info, C_usize(bcx.cx, size.bytes())),
+             C_usize(bcx.cx, align.abi()))
         }
         _ => {
-            let ccx = bcx.ccx;
+            let cx = bcx.cx;
             // First get the size of all statically known fields.
             // Don't use size_of because it also rounds up to alignment, which we
             // want to avoid, as the unsized field's alignment could be smaller.
             assert!(!t.is_simd());
-            let layout = ccx.layout_of(t);
+            let layout = cx.layout_of(t);
             debug!("DST {} layout: {:?}", t, layout);
 
             let i = layout.fields.count() - 1;
@@ -63,12 +63,12 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             let sized_align = layout.align.abi();
             debug!("DST {} statically sized prefix size: {} align: {}",
                    t, sized_size, sized_align);
-            let sized_size = C_usize(ccx, sized_size);
-            let sized_align = C_usize(ccx, sized_align);
+            let sized_size = C_usize(cx, sized_size);
+            let sized_align = C_usize(cx, sized_align);
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let field_ty = layout.field(ccx, i).ty;
+            let field_ty = layout.field(cx, i).ty;
             let (unsized_size, mut unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // FIXME (#26403, #27023): We should be adding padding
@@ -95,7 +95,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
                 (Some(sized_align), Some(unsized_align)) => {
                     // If both alignments are constant, (the sized_align should always be), then
                     // pick the correct alignment statically.
-                    C_usize(ccx, std::cmp::max(sized_align, unsized_align) as u64)
+                    C_usize(cx, std::cmp::max(sized_align, unsized_align) as u64)
                 }
                 _ => bcx.select(bcx.icmp(llvm::IntUGT, sized_align, unsized_align),
                                 sized_align,
@@ -113,7 +113,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             //
             //   `(size + (align-1)) & -align`
 
-            let addend = bcx.sub(align, C_usize(bcx.ccx, 1));
+            let addend = bcx.sub(align, C_usize(bcx.cx, 1));
             let size = bcx.and(bcx.add(size, addend), bcx.neg(align));
 
             (size, align)

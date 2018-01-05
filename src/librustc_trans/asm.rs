@@ -45,7 +45,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
         if out.is_indirect {
             indirect_outputs.push(place.load(bcx).immediate());
         } else {
-            output_types.push(place.layout.llvm_type(bcx.ccx));
+            output_types.push(place.layout.llvm_type(bcx.cx));
         }
     }
     if !indirect_outputs.is_empty() {
@@ -76,9 +76,9 @@ pub fn trans_inline_asm<'a, 'tcx>(
     // Depending on how many outputs we have, the return type is different
     let num_outputs = output_types.len();
     let output_type = match num_outputs {
-        0 => Type::void(bcx.ccx),
+        0 => Type::void(bcx.cx),
         1 => output_types[0],
-        _ => Type::struct_(bcx.ccx, &output_types, false)
+        _ => Type::struct_(bcx.cx, &output_types, false)
     };
 
     let dialect = match ia.dialect {
@@ -109,20 +109,20 @@ pub fn trans_inline_asm<'a, 'tcx>(
     // back to source locations.  See #17552.
     unsafe {
         let key = "srcloc";
-        let kind = llvm::LLVMGetMDKindIDInContext(bcx.ccx.llcx,
+        let kind = llvm::LLVMGetMDKindIDInContext(bcx.cx.llcx,
             key.as_ptr() as *const c_char, key.len() as c_uint);
 
-        let val: llvm::ValueRef = C_i32(bcx.ccx, ia.ctxt.outer().as_u32() as i32);
+        let val: llvm::ValueRef = C_i32(bcx.cx, ia.ctxt.outer().as_u32() as i32);
 
         llvm::LLVMSetMetadata(r, kind,
-            llvm::LLVMMDNodeInContext(bcx.ccx.llcx, &val, 1));
+            llvm::LLVMMDNodeInContext(bcx.cx.llcx, &val, 1));
     }
 }
 
-pub fn trans_global_asm<'a, 'tcx>(ccx: &CodegenCx<'a, 'tcx>,
+pub fn trans_global_asm<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                   ga: &hir::GlobalAsm) {
     let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
     unsafe {
-        llvm::LLVMRustAppendModuleInlineAsm(ccx.llmod, asm.as_ptr());
+        llvm::LLVMRustAppendModuleInlineAsm(cx.llmod, asm.as_ptr());
     }
 }
