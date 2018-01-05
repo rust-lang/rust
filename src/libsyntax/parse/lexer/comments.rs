@@ -101,7 +101,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
                     break;
                 }
             }
-            if i > line.len() {
+            if i >= line.len() {
                 can_trim = false;
             }
             if !can_trim {
