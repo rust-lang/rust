@@ -128,7 +128,8 @@ pub fn compile_input(trans: Box<TransCrate>,
                 if sess.opts.will_create_output_file() {
                     if outputs.contains_path(input_path) {
                         sess.err(&format!(
-                            "the input file \"{}\" would be overwritten by the generated executable",
+                            "the input file \"{}\" would be overwritten by the generated \
+                            executable",
                             input_path.display()));
                         return Err(CompileIncomplete::Stopped);
                     }
