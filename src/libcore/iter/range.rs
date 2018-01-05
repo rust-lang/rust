@@ -377,17 +377,23 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
     #[inline]
     fn last(self) -> Option<A> {
-        Some(self.end)
+        if self.start <= self.end {
+            Some(self.end)
+        } else { None }
     }
 
     #[inline]
     fn min(self) -> Option<A> {
-        Some(self.start)
+        if self.start <= self.end {
+            Some(self.start)
+        } else { None }
     }
 
     #[inline]
     fn max(self) -> Option<A> {
-        Some(self.end)
+        if self.start <= self.end {
+            Some(self.end)
+        } else { None }
     }
 }
 
