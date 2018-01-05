@@ -349,10 +349,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.codegen_unit
     }
 
-    pub fn td(&self) -> llvm::TargetDataRef {
-        unsafe { llvm::LLVMRustGetModuleDataLayout(self.llmod()) }
-    }
-
     pub fn instances<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {
         &self.instances
     }
