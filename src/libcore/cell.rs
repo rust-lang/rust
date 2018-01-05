@@ -450,7 +450,7 @@ impl<T> Cell<T> {
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn into_inner(self) -> T {
-        unsafe { self.value.into_inner() }
+        self.value.into_inner()
     }
 }
 
@@ -569,7 +569,7 @@ impl<T> RefCell<T> {
         // compiler statically verifies that it is not currently borrowed.
         // Therefore the following assertion is just a `debug_assert!`.
         debug_assert!(self.borrow.get() == UNUSED);
-        unsafe { self.value.into_inner() }
+        self.value.into_inner()
     }
 
     /// Replaces the wrapped value with a new one, returning the old value,
@@ -1220,11 +1220,6 @@ impl<T> UnsafeCell<T> {
 
     /// Unwraps the value.
     ///
-    /// # Safety
-    ///
-    /// This function is unsafe because this thread or another thread may currently be
-    /// inspecting the inner value.
-    ///
     /// # Examples
     ///
     /// ```
@@ -1232,11 +1227,11 @@ impl<T> UnsafeCell<T> {
     ///
     /// let uc = UnsafeCell::new(5);
     ///
-    /// let five = unsafe { uc.into_inner() };
+    /// let five = uc.into_inner();
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn into_inner(self) -> T {
+    pub fn into_inner(self) -> T {
         self.value
     }
 }
