@@ -549,23 +549,43 @@ impl OutputFilenames {
         format!("{}{}", self.out_filestem, self.extra)
     }
 
+    fn check_output<F, T>(&self, f: F) -> Option<T> where F: Fn(PathBuf) -> Option<T> {
+        match self.single_output_file {
+            Some(ref output_path) => {
+                f(output_path.clone())
+            },
+            None => {
+                for k in self.outputs.keys() {
+                    let output_path = self.path(k.to_owned());
+                    if let Some(result) = f(output_path) {
+                        return Some(result);
+                    }
+                }
+                None
+            }
+        }
+    }
+
     pub fn contains_path(&self, input_path: &PathBuf) -> bool {
         let input_path = input_path.canonicalize().ok();
         if input_path.is_none() {
             return false
         }
-        match self.single_output_file {
-            Some(ref output_path) => output_path.canonicalize().ok() == input_path,
-            None => {
-                for k in self.outputs.keys() {
-                    let output_path = self.path(k.to_owned());
-                    if output_path.canonicalize().ok() == input_path {
-                        return true;
-                    }
-                }
-                false
-            }
-        }
+        let check = |output_path: PathBuf| {
+            if output_path.canonicalize().ok() == input_path {
+                Some(())
+            } else { None }
+        };
+        self.check_output(check).is_some()
+    }
+
+    pub fn conflicts_with_dir(&self) -> Option<PathBuf> {
+        let check = |output_path: PathBuf| {
+            if output_path.is_dir() {
+                Some(output_path)
+            } else { None }
+        };
+        self.check_output(check)
     }
 }
 

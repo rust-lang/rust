@@ -125,11 +125,20 @@ pub fn compile_input(trans: Box<TransCrate>,
         // Ensure the source file isn't accidentally overwritten during compilation.
         match *input_path {
             Some(ref input_path) => {
-                if outputs.contains_path(input_path) && sess.opts.will_create_output_file() {
-                    sess.err(&format!(
-                        "the input file \"{}\" would be overwritten by the generated executable",
-                        input_path.display()));
-                    return Err(CompileIncomplete::Stopped);
+                if sess.opts.will_create_output_file() {
+                    if outputs.contains_path(input_path) {
+                        sess.err(&format!(
+                            "the input file \"{}\" would be overwritten by the generated executable",
+                            input_path.display()));
+                        return Err(CompileIncomplete::Stopped);
+                    }
+                    if let Some(dir_path) = outputs.conflicts_with_dir() {
+                        sess.err(&format!(
+                            "the generated executable for the input file \"{}\" conflicts with the \
+                            existing directory \"{}\'",
+                            input_path.display(), dir_path.display()));
+                        return Err(CompileIncomplete::Stopped);
+                    }
                 }
             },
             None => {}
