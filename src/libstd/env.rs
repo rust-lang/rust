@@ -571,8 +571,11 @@ pub fn temp_dir() -> PathBuf {
 
 /// Returns the full filesystem path of the current running executable.
 ///
-/// The path returned is not necessarily a "real path" of the executable as
-/// there may be intermediate symlinks.
+/// # Platform-specific behavior
+///
+/// If the executable was invoked through a symbolic link, some platforms will
+/// return the path of the symbolic link and other platforms will return the
+/// path of the symbolic link’s target.
 ///
 /// # Errors
 ///
@@ -599,14 +602,14 @@ pub fn temp_dir() -> PathBuf {
 /// Ok("/home/alex/foo")
 /// ```
 ///
-/// And you make a symbolic link of the program:
+/// And you make a hard link of the program:
 ///
 /// ```bash
 /// $ ln foo bar
 /// ```
 ///
-/// When you run it, you won't get the original executable, you'll get the
-/// symlink:
+/// When you run it, you won’t get the path of the original executable, you’ll
+/// get the path of the hard link:
 ///
 /// ```bash
 /// $ ./bar
@@ -614,9 +617,9 @@ pub fn temp_dir() -> PathBuf {
 /// ```
 ///
 /// This sort of behavior has been known to [lead to privilege escalation] when
-/// used incorrectly, for example.
+/// used incorrectly.
 ///
-/// [lead to privilege escalation]: http://securityvulns.com/Wdocument183.html
+/// [lead to privilege escalation]: https://securityvulns.com/Wdocument183.html
 ///
 /// # Examples
 ///
@@ -625,7 +628,7 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// match env::current_exe() {
 ///     Ok(exe_path) => println!("Path of this executable is: {}",
-///                               exe_path.display()),
+///                              exe_path.display()),
 ///     Err(e) => println!("failed to get current exe path: {}", e),
 /// };
 /// ```

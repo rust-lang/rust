@@ -753,7 +753,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let llpersonality = self.ccx.eh_personality();
         let llretty = self.landing_pad_type();
-        let lp = bcx.landing_pad(llretty, llpersonality, 1, self.llfn);
+        let lp = bcx.landing_pad(llretty, llpersonality, 1);
         bcx.set_cleanup(lp);
 
         let slot = self.get_personality_slot(&bcx);
