@@ -3431,15 +3431,17 @@ impl<'a> Parser<'a> {
         let mut pats = Vec::new();
         loop {
             pats.push(self.parse_pat()?);
-            if self.check(&token::BinOp(token::Or)) { self.bump();}
-            else {
-                // Accidental use of || instead of | inbetween patterns
-                if self.token == token::OrOr {
-                    return Err(self.span_fatal_help(
-                           self.span, "unexpected token `||` after pattern",
-                           "did you mean to use `|` to specify multiple patterns instead?"));
-                }
 
+            if self.token == token::OrOr {
+                self.span_err_help(self.span,
+                                   "unexpected token `||` after pattern",
+                                   "did you mean to use `|` to specify multiple patterns?");
+                self.bump();
+            }
+            else if self.check(&token::BinOp(token::Or)) {
+                self.bump();
+            }
+            else {
                 return Ok(pats);
             }
         };
