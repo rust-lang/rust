@@ -50,6 +50,12 @@ use core::slice;
 use boxed::Box;
 use heap::{Heap, Alloc, Layout};
 
+use borrow::Borrow;
+use Bound::{Excluded, Included, Unbounded};
+use range::RangeArgument;
+
+use super::node::ForceResult::*;
+
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
 pub const CAPACITY: usize = 2 * B - 1;
@@ -736,6 +742,164 @@ impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
                 _marker: PhantomData
             })
         }
+    }
+
+    pub fn first_leaf_edge(mut self)
+            -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+        loop {
+            match self.force() {
+                ForceResult::Leaf(leaf) => return leaf.first_edge(),
+                ForceResult::Internal(internal) => {
+                    self = internal.first_edge().descend();
+                }
+            }
+        }
+    }
+
+    pub fn last_leaf_edge(mut self)
+            -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+        loop {
+            match self.force() {
+                ForceResult::Leaf(leaf) => return leaf.last_edge(),
+                ForceResult::Internal(internal) => {
+                    self = internal.last_edge().descend();
+                }
+            }
+        }
+    }
+
+    pub fn first_and_last_leaf_edge(self)
+        -> (Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+            Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>)
+    {
+        let mut node1 = self;
+        let mut node2 = NodeRef {
+            height: node1.height,
+            node: node1.node,
+            root: node1.root,
+            _marker: PhantomData
+        };
+
+        loop {
+            match (node1.force(), node2.force()) {
+                (Leaf(leaf1), Leaf(leaf2)) => return (leaf1.first_edge(),leaf2.last_edge()),
+                (Internal(internal1), Internal(internal2)) => {
+                    node1 = internal1.first_edge().descend();
+                    node2 = internal2.last_edge().descend();
+                },
+                (_, _) => unreachable!("BTreeMap has different depths"),
+            }
+        }
+    }
+
+    pub fn range_search<Q: ?Sized, R: RangeArgument<Q>>(
+        self,
+        range: R,
+    ) -> (
+        Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+        Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+    )
+    where
+        Q: Ord,
+        K: Borrow<Q>,
+    {
+        use super::search;
+
+        match (range.start(), range.end()) {
+            (Excluded(s), Excluded(e)) if s==e =>
+                panic!("range start and end are equal and excluded in BTreeMap"),
+            (Included(s), Included(e)) |
+            (Included(s), Excluded(e)) |
+            (Excluded(s), Included(e)) |
+            (Excluded(s), Excluded(e)) if s>e =>
+                panic!("range start is greater than range end in BTreeMap"),
+            _ => {},
+        };
+
+        let mut min_node = self;
+        let mut max_node = NodeRef {
+            height: min_node.height,
+            node: min_node.node,
+            root: min_node.root,
+            _marker: PhantomData
+        };
+
+        let mut min_found = false;
+        let mut max_found = false;
+        let mut diverged = false;
+
+        loop {
+            let min_edge = match (min_found, range.start()) {
+                (false, Included(key)) => match search::search_linear(&min_node, key) {
+                    (i, true) => { min_found = true; i },
+                    (i, false) => i,
+                },
+                (false, Excluded(key)) => match search::search_linear(&min_node, key) {
+                    (i, true) => { min_found = true; i+1 },
+                    (i, false) => i,
+                },
+                (_, Unbounded) => 0,
+                (true, Included(_)) => min_node.keys().len(),
+                (true, Excluded(_)) => 0,
+            };
+
+            let max_edge = match (max_found, range.end()) {
+                (false, Included(key)) => match search::search_linear(&max_node, key) {
+                    (i, true) => { max_found = true; i+1 },
+                    (i, false) => i,
+                },
+                (false, Excluded(key)) => match search::search_linear(&max_node, key) {
+                    (i, true) => { max_found = true; i },
+                    (i, false) => i,
+                },
+                (_, Unbounded) => max_node.keys().len(),
+                (true, Included(_)) => 0,
+                (true, Excluded(_)) => max_node.keys().len(),
+            };
+
+            if !diverged {
+                if max_edge < min_edge { panic!("Ord is ill-defined in BTreeMap range") }
+                if min_edge != max_edge { diverged = true; }
+            }
+
+            let front = Handle::new_edge(min_node, min_edge);
+            let back = Handle::new_edge(max_node, max_edge);
+            match (front.force(), back.force()) {
+                (Leaf(f), Leaf(b)) => {
+                    return (f, b);
+                },
+                (Internal(min_int), Internal(max_int)) => {
+                    min_node = min_int.descend();
+                    max_node = max_int.descend();
+                },
+                _ => unreachable!("BTreeMap has different depths"),
+            };
+        }
+    }
+
+    pub fn env_search<Q: ?Sized>(
+        self,
+        key: &Q,
+    ) -> (
+        Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+        Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+    )
+    where
+        Q: Ord,
+        K: Borrow<Q>,
+    {
+        let root1 = self;
+        let root2 = NodeRef {
+            height: root1.height,
+            node: root1.node,
+            root: root1.root,
+            _marker: PhantomData
+        };
+
+        let x = root1.range_search((Unbounded, Excluded(key)));
+        let y = root2.range_search((Excluded(key), Unbounded));
+
+        (x.1, y.0)
     }
 }
 
