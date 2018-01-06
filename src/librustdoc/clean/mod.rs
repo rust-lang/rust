@@ -824,6 +824,16 @@ impl AttributesExt for Attributes {
     }
 }
 
+enum PathKind {
+    /// can be either value or type, not a macro
+    Unknown,
+    /// macro
+    Macro,
+    /// values, functions, consts, statics, everything in the value namespace
+    Value,
+    /// types, traits, everything in the type namespace
+    Type
+}
 impl Clean<Attributes> for [ast::Attribute] {
     fn clean(&self, cx: &DocContext) -> Attributes {
         let mut attrs = Attributes::from_ast(cx.sess().diagnostic(), self);
@@ -831,27 +841,26 @@ impl Clean<Attributes> for [ast::Attribute] {
         if UnstableFeatures::from_environment().is_nightly_build() {
             let dox = attrs.collapsed_doc_value().unwrap_or_else(String::new);
             for link in markdown_links(&dox, cx.render_type) {
-                let path = {
-                    let is_value;
+                let def = {
+                    let mut kind = PathKind::Unknown;
                     let path_str = if let Some(prefix) =
                         ["struct", "enum", "type",
                          "trait", "union"].iter()
                                           .find(|p| link.starts_with(**p)) {
-                        is_value = Some(false);
+                        kind = PathKind::Type;
                         link.trim_left_matches(prefix).trim()
                     } else if let Some(prefix) =
                         ["const", "static"].iter()
                                            .find(|p| link.starts_with(**p)) {
-                        is_value = Some(true);
+                        kind = PathKind::Value;
                         link.trim_left_matches(prefix).trim()
                     } else if link.ends_with("()") {
-                        is_value = Some(true);
+                        kind = PathKind::Value;
                         link.trim_right_matches("()").trim()
-                    } else if link.ends_with("!") {
-                        // FIXME (misdreavus): macros are resolved with different machinery
-                        continue;
+                    } else if link.ends_with('!') {
+                        kind = PathKind::Macro;
+                        link.trim_right_matches('!').trim()
                     } else {
-                        is_value = None;
                         link.trim()
                     };
 
@@ -879,34 +888,68 @@ impl Clean<Attributes> for [ast::Attribute] {
                         }
                     };
 
-                    if let Some(is_value) = is_value {
-                        if let Ok(path) = resolve(is_value) {
-                            path
-                        } else {
-                            // this could just be a normal link or a broken link
-                            // we could potentially check if something is
-                            // "intra-doc-link-like" and warn in that case
-                            continue;
+                    match kind {
+                        PathKind::Value => {
+                            if let Ok(path) = resolve(true) {
+                                path.def
+                            } else {
+                                // this could just be a normal link or a broken link
+                                // we could potentially check if something is
+                                // "intra-doc-link-like" and warn in that case
+                                continue;
+                            }
                         }
-                    } else {
-                        // try both!
-                        // It is imperative we search for not-a-value first
-                        // Otherwise we will find struct ctors for when we are looking
-                        // for structs, etc, and the link won't work.
-                        if let Ok(path) = resolve(false) {
-                            path
-                        } else if let Ok(path) = resolve(true) {
-                            path
-                        } else {
-                            // this could just be a normal link
-                            continue;
+                        PathKind::Type => {
+                            if let Ok(path) = resolve(false) {
+                                path.def
+                            } else {
+                                // this could just be a normal link
+                                continue;
+                            }
+                        }
+                        PathKind::Unknown => {
+                            // try both!
+                            // It is imperative we search for not-a-value first
+                            // Otherwise we will find struct ctors for when we are looking
+                            // for structs, etc, and the link won't work.
+                            if let Ok(path) = resolve(false) {
+                                path.def
+                            } else if let Ok(path) = resolve(true) {
+                                path.def
+                            } else {
+                                // this could just be a normal link
+                                continue;
+                            }
+                        }
+                        PathKind::Macro => {
+                            use syntax::ext::base::MacroKind;
+                            use syntax::ext::hygiene::Mark;
+                            let segment = ast::PathSegment {
+                                identifier: ast::Ident::from_str(path_str),
+                                span: DUMMY_SP,
+                                parameters: None,
+                            };
+                            let path = ast::Path {
+                                span: DUMMY_SP,
+                                segments: vec![segment],
+                            };
+
+                            let mut resolver = cx.resolver.borrow_mut();
+                            let mark = Mark::root();
+                            let res = resolver
+                                .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
+                            if let Ok(def) = res {
+                                def
+                            } else {
+                                continue;
+                            }
                         }
                     }
                 };
 
-                register_def(cx, def);
 
-                attrs.links.push((link, path.def.def_id()));
+                register_def(cx, def);
+                attrs.links.push((link, def.def_id()));
             }
 
             cx.sess().abort_if_errors();
@@ -1970,6 +2013,7 @@ pub enum TypeKind {
     Variant,
     Typedef,
     Foreign,
+    Macro,
 }
 
 pub trait GetDefId {
@@ -3271,6 +3315,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::TyForeign(i) => (i, TypeKind::Foreign),
         Def::Static(i, _) => (i, TypeKind::Static),
         Def::Variant(i) => (cx.tcx.parent_def_id(i).unwrap(), TypeKind::Enum),
+        Def::Macro(i, _) => (i, TypeKind::Macro),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
         Def::SelfTy(_, Some(impl_def_id)) => {
             return impl_def_id

@@ -135,7 +135,11 @@ pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
             None
         }
     });
-    let fqn = once(crate_name).chain(relative).collect();
+    let fqn = if let clean::TypeKind::Macro = kind {
+        vec![crate_name, relative.last().unwrap()]
+    } else {
+        once(crate_name).chain(relative).collect()
+    };
     cx.renderinfo.borrow_mut().external_paths.insert(did, (fqn, kind));
 }
 
