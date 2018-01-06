@@ -242,7 +242,7 @@ declare_lint! {
 
 declare_lint! {
     pub TYVAR_BEHIND_RAW_POINTER,
-    Deny,
+    Forbid,
     "raw pointer to an inference variable"
 }
 
