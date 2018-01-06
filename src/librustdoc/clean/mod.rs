@@ -940,6 +940,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                                 .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
                             if let Ok(def) = res {
                                 def
+                            } else if let Some(def) = resolver.all_macros.get(&path_str.into()) {
+                                *def
                             } else {
                                 continue;
                             }
