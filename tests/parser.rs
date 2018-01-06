@@ -61,7 +61,8 @@ fn dump_tree(file: &File) -> String {
 
     fn go(node: Node, buff: &mut String, level: usize) {
         buff.push_str(&String::from("  ").repeat(level));
-        write!(buff, "{:?}\n", node);
+        write!(buff, "{:?}\n", node)
+            .unwrap();
         for child in node.children() {
             go(child, buff, level + 1)
         }

@@ -1,7 +1,7 @@
 use {Token, SyntaxKind, TextUnit};
 use super::{Event};
 use super::super::is_insignificant;
-use syntax_kinds::{WHITESPACE, COMMENT};
+use syntax_kinds::{L_CURLY, R_CURLY, ERROR};
 
 pub struct Parser<'t> {
     text: &'t str,
@@ -10,6 +10,7 @@ pub struct Parser<'t> {
 
     pos: usize,
     events: Vec<Event>,
+    curly_level: i32,
 }
 
 impl<'t> Parser<'t> {
@@ -30,6 +31,7 @@ impl<'t> Parser<'t> {
 
             pos: 0,
             events: Vec::new(),
+            curly_level: 0,
         }
     }
 
@@ -64,6 +66,11 @@ impl<'t> Parser<'t> {
 
     pub(crate) fn bump(&mut self) -> Option<SyntaxKind> {
         let kind = self.current()?;
+        match kind {
+            L_CURLY => self.curly_level += 1,
+            R_CURLY => self.curly_level -= 1,
+            _ => (),
+        }
         self.pos += 1;
         self.event(Event::Token { kind, n_raw_tokens: 1 });
         Some(kind)
@@ -76,6 +83,24 @@ impl<'t> Parser<'t> {
         } else {
             Err(())
         }
+    }
+
+    pub(crate) fn curly_block<F: FnOnce(&mut Parser)>(&mut self, f: F) -> Result<(), ()> {
+        let level = self.curly_level;
+        self.expect(L_CURLY)?;
+        f(self);
+        assert!(self.curly_level > level);
+        if self.expect(R_CURLY).is_ok() {
+            return Ok(());
+        }
+        self.start(ERROR);
+        while self.curly_level > level {
+            if self.bump().is_none() {
+                break;
+            }
+        }
+        self.finish();
+        Ok(()) //???
     }
 
     fn event(&mut self, event: Event) {

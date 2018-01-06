@@ -6,7 +6,6 @@ extern crate ron;
 extern crate file;
 
 use std::path::PathBuf;
-use std::ascii::AsciiExt;
 use std::fmt::Write;
 
 fn main() {

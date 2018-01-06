@@ -60,8 +60,9 @@ pub const DOC_COMMENT: SyntaxKind = SyntaxKind(55);
 pub const SHEBANG: SyntaxKind = SyntaxKind(56);
 pub const FILE: SyntaxKind = SyntaxKind(57);
 pub const STRUCT_ITEM: SyntaxKind = SyntaxKind(58);
+pub const STRUCT_FIELD: SyntaxKind = SyntaxKind(59);
 
-static INFOS: [SyntaxInfo; 59] = [
+static INFOS: [SyntaxInfo; 60] = [
     SyntaxInfo { name: "USE_KW" },
     SyntaxInfo { name: "FN_KW" },
     SyntaxInfo { name: "STRUCT_KW" },
@@ -121,6 +122,7 @@ static INFOS: [SyntaxInfo; 59] = [
     SyntaxInfo { name: "SHEBANG" },
     SyntaxInfo { name: "FILE" },
     SyntaxInfo { name: "STRUCT_ITEM" },
+    SyntaxInfo { name: "STRUCT_FIELD" },
 ];
 
 pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {

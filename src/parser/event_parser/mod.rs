@@ -1,6 +1,5 @@
-use {Token, TextUnit, SyntaxKind};
+use {Token, SyntaxKind};
 
-use syntax_kinds::*;
 mod grammar;
 mod parser;
 

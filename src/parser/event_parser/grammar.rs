@@ -1,4 +1,3 @@
-use super::Event;
 use super::parser::Parser;
 
 use syntax_kinds::*;
@@ -50,10 +49,26 @@ fn item(p: &mut Parser) -> Result {
     ERR
 }
 
-fn struct_item(p: &mut Parser) -> Result{
+fn struct_item(p: &mut Parser) -> Result {
     p.expect(IDENT)?;
-    p.expect(L_CURLY)?;
-    p.expect(R_CURLY)
+    p.curly_block(|p| {
+        comma_list(p, struct_field)
+    })
+}
+
+fn struct_field(p: &mut Parser) -> Result {
+    if !p.current_is(IDENT) {
+        return ERR;
+    }
+    p.start(STRUCT_FIELD);
+    p.bump();
+    ignore_errors(|| {
+        p.expect(COLON)?;
+        p.expect(IDENT)?;
+        OK
+    });
+    p.finish();
+    OK
 }
 
 // Paths, types, attributes, and stuff //
@@ -78,4 +93,19 @@ fn skip_one_token(p: &mut Parser) {
     p.start(ERROR);
     p.bump().unwrap();
     p.finish();
+}
+
+fn ignore_errors<F: FnOnce() -> Result>(f: F) {
+    drop(f());
+}
+
+fn comma_list<F: Fn(&mut Parser) -> Result>(p: &mut Parser, element: F) {
+    loop {
+        if element(p).is_err() {
+            return
+        }
+        if p.expect(COMMA).is_err() {
+            return
+        }
+    }
 }
