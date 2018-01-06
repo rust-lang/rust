@@ -995,9 +995,10 @@ impl<'a> LoweringContext<'a> {
                         );
 
                         let hir_bounds = self.lower_bounds(bounds, itctx);
+                        // Set the name to `impl Bound1 + Bound2`
+                        let name = Symbol::intern(&pprust::ty_to_string(t));
                         self.in_band_ty_params.push(hir::TyParam {
-                            // Set the name to `impl Bound1 + Bound2`
-                            name: Symbol::intern(&pprust::ty_to_string(t)),
+                            name,
                             id: def_node_id,
                             bounds: hir_bounds,
                             default: None,
@@ -1009,7 +1010,7 @@ impl<'a> LoweringContext<'a> {
                         hir::TyPath(hir::QPath::Resolved(None, P(hir::Path {
                             span,
                             def: Def::TyParam(DefId::local(def_index)),
-                            segments: vec![].into(),
+                            segments: hir_vec![hir::PathSegment::from_name(name)],
                         })))
                     },
                     ImplTraitContext::Disallowed => {
