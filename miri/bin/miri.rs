@@ -191,38 +191,41 @@ fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits
 }
 
 fn init_logger() {
-    let format = |record: &log::LogRecord| {
-        if record.level() == log::LogLevel::Trace {
+    let format = |formatter: &mut env_logger::fmt::Formatter, record: &log::Record| {
+        use std::io::Write;
+        if record.level() == log::Level::Trace {
             // prepend frame number
             let indentation = log_settings::settings().indentation;
-            format!(
+            writeln!(
+                formatter,
                 "{indentation}:{lvl}:{module}: {text}",
                 lvl = record.level(),
-                module = record.location().module_path(),
+                module = record.module_path().unwrap_or("<unknown module>"),
                 indentation = indentation,
                 text = record.args(),
             )
         } else {
-            format!(
+            writeln!(
+                formatter,
                 "{lvl}:{module}: {text}",
                 lvl = record.level(),
-                module = record.location().module_path(),
+                module = record.module_path().unwrap_or("<unknown_module>"),
                 text = record.args(),
             )
         }
     };
 
-    let mut builder = env_logger::LogBuilder::new();
+    let mut builder = env_logger::Builder::new();
     builder.format(format).filter(
         None,
-        log::LogLevelFilter::Info,
+        log::LevelFilter::Info,
     );
 
     if std::env::var("MIRI_LOG").is_ok() {
         builder.parse(&std::env::var("MIRI_LOG").unwrap());
     }
 
-    builder.init().unwrap();
+    builder.init();
 }
 
 fn find_sysroot() -> String {

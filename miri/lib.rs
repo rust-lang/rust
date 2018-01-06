@@ -5,9 +5,10 @@
     catch_expr,
 )]
 
-// From rustc.
 #[macro_use]
 extern crate log;
+
+// From rustc.
 #[macro_use]
 extern crate rustc;
 extern crate rustc_mir;
