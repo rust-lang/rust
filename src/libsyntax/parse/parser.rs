@@ -3432,7 +3432,16 @@ impl<'a> Parser<'a> {
         loop {
             pats.push(self.parse_pat()?);
             if self.check(&token::BinOp(token::Or)) { self.bump();}
-            else { return Ok(pats); }
+            else {
+                // Accidental use of || instead of | inbetween patterns
+                if self.token == token::OrOr {
+                    return Err(self.span_fatal_help(
+                           self.span, "Unexpected token `||` after pattern",
+                           "Did you mean to use `|` to specify multiple patterns instead?"));
+                }
+
+                return Ok(pats);
+            }
         };
     }
 
