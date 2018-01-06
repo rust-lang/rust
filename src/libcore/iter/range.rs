@@ -253,10 +253,8 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 
     #[inline]
-    fn max(self) -> Option<A> {
-        if self.start != self.end {
-            Some(self.end.sub_one())
-        } else { None }
+    fn max(mut self) -> Option<A> {
+        self.next_back()
     }
 }
 
@@ -376,24 +374,18 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     }
 
     #[inline]
-    fn last(self) -> Option<A> {
-        if self.start <= self.end {
-            Some(self.end)
-        } else { None }
+    fn last(mut self) -> Option<A> {
+        self.next_back()
     }
 
     #[inline]
-    fn min(self) -> Option<A> {
-        if self.start <= self.end {
-            Some(self.start)
-        } else { None }
+    fn min(mut self) -> Option<A> {
+        self.next()
     }
 
     #[inline]
-    fn max(self) -> Option<A> {
-        if self.start <= self.end {
-            Some(self.end)
-        } else { None }
+    fn max(mut self) -> Option<A> {
+        self.next_back()
     }
 }
 
