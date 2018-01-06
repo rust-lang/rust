@@ -3433,9 +3433,9 @@ impl<'a> Parser<'a> {
             pats.push(self.parse_pat()?);
 
             if self.token == token::OrOr {
-                self.span_err_help(self.span,
-                                   "unexpected token `||` after pattern",
-                                   "did you mean to use `|` to specify multiple patterns?");
+                let mut err = self.struct_span_err(self.span, "unexpected token `||` after pattern");
+                err.span_suggestion(self.span, "use a single `|` to specify multiple patterns", "|".to_owned());
+                err.emit();
                 self.bump();
             } else if self.check(&token::BinOp(token::Or)) {
                 self.bump();
