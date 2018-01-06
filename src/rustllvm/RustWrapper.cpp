@@ -76,9 +76,15 @@ extern "C" char *LLVMRustGetLastError(void) {
   return Ret;
 }
 
-void LLVMRustSetLastError(const char *Err) {
+extern "C" void LLVMRustSetLastError(const char *Err) {
   free((void *)LastError);
   LastError = strdup(Err);
+}
+
+extern "C" LLVMContextRef LLVMRustContextCreate(bool shouldDiscardNames) {
+  auto ctx = new LLVMContext();
+  ctx->setDiscardValueNames(shouldDiscardNames);
+  return wrap(ctx);
 }
 
 extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,

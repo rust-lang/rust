@@ -514,7 +514,7 @@ pub enum ModuleBuffer {}
 #[link(name = "rustllvm", kind = "static")]
 extern "C" {
     // Create and destroy contexts.
-    pub fn LLVMContextCreate() -> ContextRef;
+    pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> ContextRef;
     pub fn LLVMContextDispose(C: ContextRef);
     pub fn LLVMGetMDKindIDInContext(C: ContextRef, Name: *const c_char, SLen: c_uint) -> c_uint;
 
