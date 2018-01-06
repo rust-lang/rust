@@ -169,41 +169,37 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         if let hir::ExprIndex(ref base, ref index) = e.node {
             let mut tables = self.fcx.tables.borrow_mut();
 
-            let base_ty = {
-                let base_ty = tables.expr_ty_adjusted(&base);
-                // When unsizing, the final type of the expression is taken
-                // from the first argument of the indexing operator, which
-                // is a &self, and has to be deconstructed
-                if let ty::TyRef(_, ref ref_to) = base_ty.sty {
-                    ref_to.ty
-                } else {
-                    base_ty
-                }
-            };
+            match tables.expr_ty_adjusted(&base).sty {
+                // All valid indexing looks like this
+                ty::TyRef(_, ty::TypeAndMut { ty: ref base_ty, .. }) => {
+                    let index_ty = tables.expr_ty_adjusted(&index);
+                    let index_ty = self.fcx.resolve_type_vars_if_possible(&index_ty);
 
-            let index_ty = tables.expr_ty_adjusted(&index);
-            let index_ty = self.fcx.resolve_type_vars_if_possible(&index_ty);
+                    if base_ty.builtin_index().is_some()
+                        && index_ty == self.fcx.tcx.types.usize {
+                        // Remove the method call record
+                        tables.type_dependent_defs_mut().remove(e.hir_id);
+                        tables.node_substs_mut().remove(e.hir_id);
 
-            if base_ty.builtin_index().is_some()
-                && index_ty == self.fcx.tcx.types.usize {
-                // Remove the method call record
-                tables.type_dependent_defs_mut().remove(e.hir_id);
-                tables.node_substs_mut().remove(e.hir_id);
-
-                tables.adjustments_mut().get_mut(base.hir_id).map(|a| {
-                    // Discard the need for a mutable borrow
-                    match a.pop() {
-                        // Extra adjustment made when indexing causes a drop
-                        // of size information - we need to get rid of it
-                        // Since this is "after" the other adjustment to be
-                        // discarded, we do an extra `pop()`
-                        Some(Adjustment { kind: Adjust::Unsize, .. }) => {
-                            // So the borrow discard actually happens here
-                            a.pop();
-                        },
-                        _ => {}
+                        tables.adjustments_mut().get_mut(base.hir_id).map(|a| {
+                            // Discard the need for a mutable borrow
+                            match a.pop() {
+                                // Extra adjustment made when indexing causes a drop
+                                // of size information - we need to get rid of it
+                                // Since this is "after" the other adjustment to be
+                                // discarded, we do an extra `pop()`
+                                Some(Adjustment { kind: Adjust::Unsize, .. }) => {
+                                    // So the borrow discard actually happens here
+                                    a.pop();
+                                },
+                                _ => {}
+                            }
+                        });
                     }
-                });
+                },
+                // Might encounter non-valid indexes at this point, so there
+                // has to be a fall-through
+                _ => {},
             }
         }
     }
