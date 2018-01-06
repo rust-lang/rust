@@ -601,7 +601,7 @@ pub trait Read {
         read_to_end(self, buf)
     }
 
-    /// Read all bytes until EOF in this source, placing them into `buf`.
+    /// Read all bytes until EOF in this source, appending them to `buf`.
     ///
     /// If successful, this function returns the number of bytes which were read
     /// and appended to `buf`.
