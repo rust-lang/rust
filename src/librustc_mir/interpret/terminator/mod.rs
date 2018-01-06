@@ -351,12 +351,16 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                     other => {
                                         trace!("{:#?}, {:#?}", other, layout);
                                         let mut layout = layout;
+                                        let mut skip_arg_locals = true;
                                         'outer: loop {
                                             for i in 0..layout.fields.count() {
                                                 let field = layout.field(&self, i)?;
                                                 if layout.fields.offset(i).bytes() == 0 && layout.size == field.size {
                                                     layout = field;
+                                                    skip_arg_locals = false;
                                                     continue 'outer;
+                                                } else if skip_arg_locals {
+                                                    arg_locals.next().unwrap();
                                                 }
                                             }
                                             break;
