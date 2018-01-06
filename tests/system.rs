@@ -106,10 +106,8 @@ fn verify_config_test_names() {
 // using only one or the other will cause the output order to differ when
 // `print_diff` selects the approach not used.
 fn write_message(msg: String) {
-    match PrintType::get(Color::Auto) {
-        PrintType::Fancy => writeln!(term::stdout().unwrap(), "{}", msg).unwrap(),
-        PrintType::Basic => println!("{}", msg),
-    }
+    let mut writer = OutputWriter::new(Color::Auto);
+    writer.writeln(&format!("{}", msg), None);
 }
 
 // Integration tests. The files in the tests/source are formatted and compared
