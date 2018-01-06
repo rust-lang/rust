@@ -496,7 +496,6 @@ define_dep_nodes!( <'tcx>
     [] SuperPredicatesOfItem(DefId),
     [] TraitDefOfItem(DefId),
     [] AdtDefOfItem(DefId),
-    [] IsAutoImpl(DefId),
     [] ImplTraitRef(DefId),
     [] ImplPolarity(DefId),
     [] FnSignature(DefId),

@@ -56,31 +56,6 @@ use bad_style::{MethodLateContext, method_context};
 pub use lint::builtin::*;
 
 declare_lint! {
-    pub AUTO_IMPL,
-    Deny,
-    "The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`"
-}
-
-#[derive(Copy, Clone)]
-pub struct AutoImpl;
-
-impl LintPass for AutoImpl {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(AUTO_IMPL)
-    }
-}
-
-impl EarlyLintPass for AutoImpl {
-    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
-        let msg = "The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`";
-        match item.node {
-            ast::ItemKind::AutoImpl(..) => cx.span_lint(AUTO_IMPL, item.span, msg),
-            _ => ()
-        }
-     }
-}
-
-declare_lint! {
     WHILE_TRUE,
     Warn,
     "suggest using `loop { }` instead of `while true { }`"

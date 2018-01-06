@@ -259,9 +259,6 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_generics(type_parameters);
             visitor.visit_enum_def(enum_definition, type_parameters, item.id, item.span)
         }
-        ItemKind::AutoImpl(_, ref trait_ref) => {
-            visitor.visit_trait_ref(trait_ref)
-        }
         ItemKind::Impl(_, _, _,
                  ref type_parameters,
                  ref opt_trait_reference,
