@@ -1575,7 +1575,7 @@ impl ReprOptions {
     pub fn linear(&self) -> bool { self.flags.contains(ReprFlags::IS_LINEAR) }
 
     pub fn discr_type(&self) -> attr::IntType {
-        self.int.unwrap_or(attr::SignedInt(ast::IntTy::Is))
+        self.int.unwrap_or(attr::SignedInt(ast::IntTy::Isize))
     }
 
     /// Returns true if this `#[repr()]` should inhabit "smart enum

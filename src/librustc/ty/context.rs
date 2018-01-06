@@ -754,13 +754,13 @@ impl<'tcx> CommonTypes<'tcx> {
             char: mk(TyChar),
             never: mk(TyNever),
             err: mk(TyError),
-            isize: mk(TyInt(ast::IntTy::Is)),
+            isize: mk(TyInt(ast::IntTy::Isize)),
             i8: mk(TyInt(ast::IntTy::I8)),
             i16: mk(TyInt(ast::IntTy::I16)),
             i32: mk(TyInt(ast::IntTy::I32)),
             i64: mk(TyInt(ast::IntTy::I64)),
             i128: mk(TyInt(ast::IntTy::I128)),
-            usize: mk(TyUint(ast::UintTy::Us)),
+            usize: mk(TyUint(ast::UintTy::Usize)),
             u8: mk(TyUint(ast::UintTy::U8)),
             u16: mk(TyUint(ast::UintTy::U16)),
             u32: mk(TyUint(ast::UintTy::U32)),
@@ -895,31 +895,29 @@ pub struct InterpretInterner<'tcx> {
     allocs: FxHashSet<&'tcx interpret::Allocation>,
 
     /// Allows obtaining function instance handles via a unique identifier
-    functions: FxHashMap<u64, Instance<'tcx>>,
+    functions: FxHashMap<interpret::AllocId, Instance<'tcx>>,
 
     /// Inverse map of `interpret_functions`.
     /// Used so we don't allocate a new pointer every time we need one
-    function_cache: FxHashMap<Instance<'tcx>, u64>,
+    function_cache: FxHashMap<Instance<'tcx>, interpret::AllocId>,
 
     /// Allows obtaining const allocs via a unique identifier
-    alloc_by_id: FxHashMap<u64, &'tcx interpret::Allocation>,
+    alloc_by_id: FxHashMap<interpret::AllocId, &'tcx interpret::Allocation>,
 
     /// The AllocId to assign to the next new regular allocation.
     /// Always incremented, never gets smaller.
-    next_id: u64,
+    next_id: interpret::AllocId,
 
     /// Allows checking whether a constant already has an allocation
-    ///
-    /// The pointers are to the beginning of an `alloc_by_id` allocation
-    alloc_cache: FxHashMap<interpret::GlobalId<'tcx>, interpret::Pointer>,
+    alloc_cache: FxHashMap<interpret::GlobalId<'tcx>, interpret::AllocId>,
 
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
     /// allocations for string and bytestring literals.
-    literal_alloc_cache: FxHashMap<Vec<u8>, u64>,
+    literal_alloc_cache: FxHashMap<Vec<u8>, interpret::AllocId>,
 }
 
 impl<'tcx> InterpretInterner<'tcx> {
-    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> u64 {
+    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> interpret::AllocId {
         if let Some(&alloc_id) = self.function_cache.get(&instance) {
             return alloc_id;
         }
@@ -932,14 +930,14 @@ impl<'tcx> InterpretInterner<'tcx> {
 
     pub fn get_fn(
         &self,
-        id: u64,
+        id: interpret::AllocId,
     ) -> Option<Instance<'tcx>> {
         self.functions.get(&id).cloned()
     }
 
     pub fn get_alloc(
         &self,
-        id: u64,
+        id: interpret::AllocId,
     ) -> Option<&'tcx interpret::Allocation> {
         self.alloc_by_id.get(&id).cloned()
     }
@@ -947,14 +945,14 @@ impl<'tcx> InterpretInterner<'tcx> {
     pub fn get_cached(
         &self,
         global_id: interpret::GlobalId<'tcx>,
-    ) -> Option<interpret::Pointer> {
+    ) -> Option<interpret::AllocId> {
         self.alloc_cache.get(&global_id).cloned()
     }
 
     pub fn cache(
         &mut self,
         global_id: interpret::GlobalId<'tcx>,
-        ptr: interpret::Pointer,
+        ptr: interpret::AllocId,
     ) {
         if let Some(old) = self.alloc_cache.insert(global_id, ptr) {
             bug!("tried to cache {:?}, but was already existing as {:#?}", global_id, old);
@@ -963,7 +961,7 @@ impl<'tcx> InterpretInterner<'tcx> {
 
     pub fn intern_at_reserved(
         &mut self,
-        id: u64,
+        id: interpret::AllocId,
         alloc: &'tcx interpret::Allocation,
     ) {
         if let Some(old) = self.alloc_by_id.insert(id, alloc) {
@@ -975,9 +973,9 @@ impl<'tcx> InterpretInterner<'tcx> {
     /// yet have an allocation backing it.
     pub fn reserve(
         &mut self,
-    ) -> u64 {
+    ) -> interpret::AllocId {
         let next = self.next_id;
-        self.next_id = self.next_id
+        self.next_id.0 = self.next_id.0
             .checked_add(1)
             .expect("You overflowed a u64 by incrementing by 1... \
                      You've just earned yourself a free drink if we ever meet. \
@@ -1069,7 +1067,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Allocates a byte or string literal for `mir::interpret`
-    pub fn allocate_cached(self, bytes: &[u8]) -> u64 {
+    pub fn allocate_cached(self, bytes: &[u8]) -> interpret::AllocId {
         // check whether we already allocated this literal or a constant with the same memory
         if let Some(&alloc_id) = self.interpret_interner.borrow().literal_alloc_cache.get(bytes) {
             return alloc_id;
@@ -1912,7 +1910,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {
         match tm {
-            ast::IntTy::Is   => self.types.isize,
+            ast::IntTy::Isize   => self.types.isize,
             ast::IntTy::I8   => self.types.i8,
             ast::IntTy::I16  => self.types.i16,
             ast::IntTy::I32  => self.types.i32,
@@ -1923,7 +1921,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_mach_uint(self, tm: ast::UintTy) -> Ty<'tcx> {
         match tm {
-            ast::UintTy::Us   => self.types.usize,
+            ast::UintTy::Usize   => self.types.usize,
             ast::UintTy::U8   => self.types.u8,
             ast::UintTy::U16  => self.types.u16,
             ast::UintTy::U32  => self.types.u32,

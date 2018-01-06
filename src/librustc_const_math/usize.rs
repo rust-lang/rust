@@ -38,9 +38,9 @@ impl ConstUsize {
     pub fn new(i: u64, usize_ty: ast::UintTy) -> Result<Self, ConstMathErr> {
         match usize_ty {
             ast::UintTy::U16 if i as u16 as u64 == i => Ok(Us16(i as u16)),
-            ast::UintTy::U16 => Err(ULitOutOfRange(ast::UintTy::Us)),
+            ast::UintTy::U16 => Err(ULitOutOfRange(ast::UintTy::Usize)),
             ast::UintTy::U32 if i as u32 as u64 == i => Ok(Us32(i as u32)),
-            ast::UintTy::U32 => Err(ULitOutOfRange(ast::UintTy::Us)),
+            ast::UintTy::U32 => Err(ULitOutOfRange(ast::UintTy::Usize)),
             ast::UintTy::U64 => Ok(Us64(i)),
             _ => unreachable!(),
         }

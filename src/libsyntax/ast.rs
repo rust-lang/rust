@@ -1324,7 +1324,7 @@ pub enum ImplItemKind {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
          PartialOrd, Ord)]
 pub enum IntTy {
-    Is,
+    Isize,
     I8,
     I16,
     I32,
@@ -1347,7 +1347,7 @@ impl fmt::Display for IntTy {
 impl IntTy {
     pub fn ty_to_string(&self) -> &'static str {
         match *self {
-            IntTy::Is => "isize",
+            IntTy::Isize => "isize",
             IntTy::I8 => "i8",
             IntTy::I16 => "i16",
             IntTy::I32 => "i32",
@@ -1365,7 +1365,7 @@ impl IntTy {
 
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
-            IntTy::Is => return None,
+            IntTy::Isize => return None,
             IntTy::I8 => 8,
             IntTy::I16 => 16,
             IntTy::I32 => 32,
@@ -1378,7 +1378,7 @@ impl IntTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
          PartialOrd, Ord)]
 pub enum UintTy {
-    Us,
+    Usize,
     U8,
     U16,
     U32,
@@ -1389,7 +1389,7 @@ pub enum UintTy {
 impl UintTy {
     pub fn ty_to_string(&self) -> &'static str {
         match *self {
-            UintTy::Us => "usize",
+            UintTy::Usize => "usize",
             UintTy::U8 => "u8",
             UintTy::U16 => "u16",
             UintTy::U32 => "u32",
@@ -1404,7 +1404,7 @@ impl UintTy {
 
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
-            UintTy::Us => return None,
+            UintTy::Usize => return None,
             UintTy::U8 => 8,
             UintTy::U16 => 16,
             UintTy::U32 => 32,

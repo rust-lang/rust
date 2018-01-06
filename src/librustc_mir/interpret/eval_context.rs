@@ -950,8 +950,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn read_global_as_value(&self, gid: GlobalId, layout: TyLayout) -> Value {
-        Value::ByRef(self.tcx.interpret_interner.borrow().get_cached(gid).expect("global not cached"),
-                     layout.align)
+        let alloc = self.tcx.interpret_interner.borrow().get_cached(gid).expect("global not cached");
+        Value::ByRef(MemoryPointer::new(alloc, 0).into(), layout.align)
     }
 
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {
@@ -1165,7 +1165,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     I32 => 4,
                     I64 => 8,
                     I128 => 16,
-                    Is => self.memory.pointer_size(),
+                    Isize => self.memory.pointer_size(),
                 };
                 PrimValKind::from_int_size(size)
             }
@@ -1178,7 +1178,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     U32 => 4,
                     U64 => 8,
                     U128 => 16,
-                    Us => self.memory.pointer_size(),
+                    Usize => self.memory.pointer_size(),
                 };
                 PrimValKind::from_uint_size(size)
             }
@@ -1292,7 +1292,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     I32 => 4,
                     I64 => 8,
                     I128 => 16,
-                    Is => self.memory.pointer_size(),
+                    Isize => self.memory.pointer_size(),
                 };
                 self.memory.read_primval(ptr, ptr_align, size, true)?
             }
@@ -1305,7 +1305,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     U32 => 4,
                     U64 => 8,
                     U128 => 16,
-                    Us => self.memory.pointer_size(),
+                    Usize => self.memory.pointer_size(),
                 };
                 self.memory.read_primval(ptr, ptr_align, size, false)?
             }

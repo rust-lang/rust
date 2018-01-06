@@ -133,8 +133,8 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 (&LitKind::Int(I128_OVERFLOW, Signed(IntTy::I128)), _) => {
                     Some(I128(i128::min_value()))
                 },
-                (&LitKind::Int(n, _), &ty::TyInt(IntTy::Is)) |
-                (&LitKind::Int(n, Signed(IntTy::Is)), _) => {
+                (&LitKind::Int(n, _), &ty::TyInt(IntTy::Isize)) |
+                (&LitKind::Int(n, Signed(IntTy::Isize)), _) => {
                     match tcx.sess.target.isize_ty {
                         IntTy::I16 => if n == I16_OVERFLOW {
                             Some(Isize(Is16(i16::min_value())))
@@ -478,7 +478,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyInt(ast::IntTy::I32) => Ok(Integral(I32(v as i128 as i32))),
         ty::TyInt(ast::IntTy::I64) => Ok(Integral(I64(v as i128 as i64))),
         ty::TyInt(ast::IntTy::I128) => Ok(Integral(I128(v as i128))),
-        ty::TyInt(ast::IntTy::Is) => {
+        ty::TyInt(ast::IntTy::Isize) => {
             Ok(Integral(Isize(ConstIsize::new_truncating(v as i128, tcx.sess.target.isize_ty))))
         },
         ty::TyUint(ast::UintTy::U8) => Ok(Integral(U8(v as u8))),
@@ -486,7 +486,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyUint(ast::UintTy::U32) => Ok(Integral(U32(v as u32))),
         ty::TyUint(ast::UintTy::U64) => Ok(Integral(U64(v as u64))),
         ty::TyUint(ast::UintTy::U128) => Ok(Integral(U128(v as u128))),
-        ty::TyUint(ast::UintTy::Us) => {
+        ty::TyUint(ast::UintTy::Usize) => {
             Ok(Integral(Usize(ConstUsize::new_truncating(v, tcx.sess.target.usize_ty))))
         },
         ty::TyFloat(fty) => {

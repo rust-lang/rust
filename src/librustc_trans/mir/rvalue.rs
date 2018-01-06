@@ -720,13 +720,13 @@ fn get_overflow_intrinsic(oop: OverflowOp, bcx: &Builder, ty: Ty) -> ValueRef {
     let tcx = bcx.tcx();
 
     let new_sty = match ty.sty {
-        TyInt(Is) => match &tcx.sess.target.target.target_pointer_width[..] {
+        TyInt(Isize) => match &tcx.sess.target.target.target_pointer_width[..] {
             "16" => TyInt(I16),
             "32" => TyInt(I32),
             "64" => TyInt(I64),
             _ => panic!("unsupported target word size")
         },
-        TyUint(Us) => match &tcx.sess.target.target.target_pointer_width[..] {
+        TyUint(Usize) => match &tcx.sess.target.target.target_pointer_width[..] {
             "16" => TyUint(U16),
             "32" => TyUint(U32),
             "64" => TyUint(U64),

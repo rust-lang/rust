@@ -694,17 +694,17 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr> {
         self.expr_lit(span, ast::LitKind::Int(i as u128,
-                                              ast::LitIntType::Unsigned(ast::UintTy::Us)))
+                                              ast::LitIntType::Unsigned(ast::UintTy::Usize)))
     }
     fn expr_isize(&self, sp: Span, i: isize) -> P<ast::Expr> {
         if i < 0 {
             let i = (-i) as u128;
-            let lit_ty = ast::LitIntType::Signed(ast::IntTy::Is);
+            let lit_ty = ast::LitIntType::Signed(ast::IntTy::Isize);
             let lit = self.expr_lit(sp, ast::LitKind::Int(i, lit_ty));
             self.expr_unary(sp, ast::UnOp::Neg, lit)
         } else {
             self.expr_lit(sp, ast::LitKind::Int(i as u128,
-                                                ast::LitIntType::Signed(ast::IntTy::Is)))
+                                                ast::LitIntType::Signed(ast::IntTy::Isize)))
         }
     }
     fn expr_u32(&self, sp: Span, u: u32) -> P<ast::Expr> {

@@ -49,7 +49,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             IntTy::I32 => v as i32 as u128,
             IntTy::I64 => v as i64 as u128,
             IntTy::I128 => v as u128,
-            IntTy::Is => {
+            IntTy::Isize => {
                 let ty = self.tcx.sess.target.isize_ty;
                 self.int_to_int(v, ty)
             }
@@ -62,7 +62,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             UintTy::U32 => v as u32 as u128,
             UintTy::U64 => v as u64 as u128,
             UintTy::U128 => v,
-            UintTy::Us => {
+            UintTy::Usize => {
                 let ty = self.tcx.sess.target.usize_ty;
                 self.int_to_uint(v, ty)
             }
@@ -124,8 +124,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
             TyRawPtr(_) |
-            TyInt(IntTy::Is) |
-            TyUint(UintTy::Us) => Ok(PrimVal::Ptr(ptr)),
+            TyInt(IntTy::Isize) |
+            TyUint(UintTy::Usize) => Ok(PrimVal::Ptr(ptr)),
             TyInt(_) | TyUint(_) => err!(ReadPointerAsBytes),
             _ => err!(Unimplemented(format!("ptr to {:?} cast", ty))),
         }

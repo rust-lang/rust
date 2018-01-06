@@ -71,7 +71,7 @@
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/Linker/Linker.h"
 
-void LLVMRustSetLastError(const char *);
+extern "C" void LLVMRustSetLastError(const char *);
 
 enum class LLVMRustResult { Success, Failure };
 
