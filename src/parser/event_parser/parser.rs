@@ -60,10 +60,6 @@ impl<'t> Parser<'t> {
         Some(self.raw_tokens[idx].kind)
     }
 
-    pub(crate) fn current_is(&self, kind: SyntaxKind) -> bool {
-        self.current() == Some(kind)
-    }
-
     pub(crate) fn bump(&mut self) -> Option<SyntaxKind> {
         let kind = self.current()?;
         match kind {
@@ -76,31 +72,23 @@ impl<'t> Parser<'t> {
         Some(kind)
     }
 
-    pub(crate) fn expect(&mut self, kind: SyntaxKind) -> Result<(), ()> {
-        if kind == self.current().ok_or(())? {
-            self.bump();
-            Ok(())
-        } else {
-            Err(())
-        }
-    }
-
-    pub(crate) fn curly_block<F: FnOnce(&mut Parser)>(&mut self, f: F) -> Result<(), ()> {
+    pub(crate) fn curly_block<F: FnOnce(&mut Parser)>(&mut self, f: F) -> bool {
         let level = self.curly_level;
-        self.expect(L_CURLY)?;
+        if !self.expect(L_CURLY) {
+            return false
+        }
         f(self);
         assert!(self.curly_level > level);
-        if self.expect(R_CURLY).is_ok() {
-            return Ok(());
-        }
-        self.start(ERROR);
-        while self.curly_level > level {
-            if self.bump().is_none() {
-                break;
+        if !self.expect(R_CURLY) {
+            self.start(ERROR);
+            while self.curly_level > level {
+                if self.bump().is_none() {
+                    break;
+                }
             }
+            self.finish();
         }
-        self.finish();
-        Ok(()) //???
+        true
     }
 
     fn event(&mut self, event: Event) {

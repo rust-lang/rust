@@ -49,7 +49,7 @@ fn parser_test_case(path: &Path) {
         return
     }
     if expected.trim() == actual.trim() {
-        panic!("Whitespace difference!")
+        panic!("Whitespace difference! {}", path.display())
     }
     assert_diff!(expected, actual, "\n", 0)
 }

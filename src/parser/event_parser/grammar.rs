@@ -1,20 +1,17 @@
 use super::parser::Parser;
-
+use {SyntaxKind};
 use syntax_kinds::*;
 
 // Items //
 
 pub fn file(p: &mut Parser) {
-    p.start(FILE);
-    shebang(p);
-    inner_attributes(p);
-    mod_items(p);
-    p.finish();
+    node(p, FILE, |p| {
+        shebang(p);
+        inner_attributes(p);
+        many(p, |p| skip_to_first(p, item_first, item));
+    })
 }
 
-type Result = ::std::result::Result<(), ()>;
-const OK: Result = Ok(());
-const ERR: Result = Err(());
 
 fn shebang(_: &mut Parser) {
     //TODO
@@ -24,88 +21,86 @@ fn inner_attributes(_: &mut Parser) {
     //TODO
 }
 
-fn mod_items(p: &mut Parser) {
-    loop {
-        skip_until_item(p);
-        if p.is_eof() {
-            return;
-        }
-        if item(p).is_err() {
-            skip_one_token(p);
-        }
+fn item_first(p: &Parser) -> bool {
+    match p.current() {
+        Some(STRUCT_KW) => true,
+        _ => false,
     }
 }
 
-fn item(p: &mut Parser) -> Result {
-    outer_attributes(p)?;
-    visibility(p)?;
-    if p.current_is(STRUCT_KW) {
-        p.start(STRUCT_ITEM);
-        p.bump();
-        let _ = struct_item(p);
-        p.finish();
-        return OK;
-    }
-    ERR
+fn item(p: &mut Parser) {
+    outer_attributes(p);
+    visibility(p);
+    node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item);
 }
 
-fn struct_item(p: &mut Parser) -> Result {
-    p.expect(IDENT)?;
-    p.curly_block(|p| {
-        comma_list(p, struct_field)
+fn struct_item(p: &mut Parser) {
+    p.expect(IDENT)
+        && p.curly_block(|p| comma_list(p, struct_field));
+}
+
+fn struct_field(p: &mut Parser) -> bool {
+    node_if(p, IDENT, STRUCT_FIELD, |p| {
+        p.expect(COLON) && p.expect(IDENT);
     })
-}
-
-fn struct_field(p: &mut Parser) -> Result {
-    if !p.current_is(IDENT) {
-        return ERR;
-    }
-    p.start(STRUCT_FIELD);
-    p.bump();
-    ignore_errors(|| {
-        p.expect(COLON)?;
-        p.expect(IDENT)?;
-        OK
-    });
-    p.finish();
-    OK
 }
 
 // Paths, types, attributes, and stuff //
 
-fn outer_attributes(_: &mut Parser) -> Result {
-    OK
+fn outer_attributes(_: &mut Parser) {
 }
 
-fn visibility(_: &mut Parser) -> Result {
-    OK
+fn visibility(_: &mut Parser) {
 }
 
 // Expressions //
 
 // Error recovery and high-order utils //
 
-fn skip_until_item(_: &mut Parser) {
-    //TODO
+fn node_if<F: FnOnce(&mut Parser)>(p: &mut Parser, first: SyntaxKind, node_kind: SyntaxKind, rest: F) -> bool {
+    p.current_is(first) && { node(p, node_kind, |p| { p.bump(); rest(p); }); true }
 }
 
-fn skip_one_token(p: &mut Parser) {
-    p.start(ERROR);
-    p.bump().unwrap();
+fn node<F: FnOnce(&mut Parser)>(p: &mut Parser, node_kind: SyntaxKind, rest: F) {
+    p.start(node_kind);
+    rest(p);
     p.finish();
 }
 
-fn ignore_errors<F: FnOnce() -> Result>(f: F) {
-    drop(f());
+fn many<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
+    while f(p) { }
 }
 
-fn comma_list<F: Fn(&mut Parser) -> Result>(p: &mut Parser, element: F) {
+fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
+    many(p, |p| {
+        f(p);
+        p.expect(COMMA)
+    })
+}
+
+
+fn skip_to_first<C, F>(p: &mut Parser, cond: C, f: F) -> bool
+where
+    C: Fn(&Parser) -> bool,
+    F: FnOnce(&mut Parser),
+{
     loop {
-        if element(p).is_err() {
-            return
+        if cond(p) {
+            f(p);
+            return true;
         }
-        if p.expect(COMMA).is_err() {
-            return
+        if p.bump().is_none() {
+            return false;
         }
+    }
+}
+
+impl<'p> Parser<'p> {
+    fn current_is(&self, kind: SyntaxKind) -> bool {
+        self.current() == Some(kind)
+    }
+
+    pub(crate) fn expect(&mut self, kind: SyntaxKind) -> bool {
+        self.current_is(kind) && { self.bump(); true }
     }
 }
