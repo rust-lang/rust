@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // min-lldb-version: 310
-// ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 // compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -35,15 +34,15 @@
 // gdb-command:continue
 
 // gdb-command:print x
-// gdb-check:$5 = 10.5
+// gdb-check:$7 = 10.5
 // gdb-command:print y
-// gdb-check:$6 = 20
+// gdb-check:$8 = 20
 // gdb-command:continue
 
 // gdb-command:print x
-// gdb-check:$5 = 11.5
+// gdb-check:$9 = 11.5
 // gdb-command:print y
-// gdb-check:$6 = 20
+// gdb-check:$10 = 20
 // gdb-command:continue
 
 // === LLDB TESTS ==================================================================================
@@ -69,15 +68,15 @@
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$4 = 10.5
+// lldb-check:[...]$6 = 10.5
 // lldb-command:print y
-// lldb-check:[...]$5 = 20
+// lldb-check:[...]$7 = 20
 // lldb-command:continue
 
 // lldb-command:print x
-// lldb-check:[...]$4 = 11.5
+// lldb-check:[...]$8 = 11.5
 // lldb-command:print y
-// lldb-check:[...]$5 = 20
+// lldb-check:[...]$9 = 20
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]
