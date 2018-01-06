@@ -1478,13 +1478,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_uint(&self) -> bool {
-        match self.sty {
-            TyInfer(IntVar(_)) | TyUint(ast::UintTy::Us) => true,
-            _ => false
-        }
-    }
-
     pub fn is_char(&self) -> bool {
         match self.sty {
             TyChar => true,
@@ -1512,7 +1505,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_machine(&self) -> bool {
         match self.sty {
-            TyInt(ast::IntTy::Is) | TyUint(ast::UintTy::Us) => false,
+            TyInt(ast::IntTy::Isize) | TyUint(ast::UintTy::Usize) => false,
             TyInt(..) | TyUint(..) | TyFloat(..) => true,
             _ => false,
         }

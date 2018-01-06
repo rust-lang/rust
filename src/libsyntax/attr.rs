@@ -1071,8 +1071,8 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
         "u64" => Some(UnsignedInt(ast::UintTy::U64)),
         "i128" => Some(SignedInt(ast::IntTy::I128)),
         "u128" => Some(UnsignedInt(ast::UintTy::U128)),
-        "isize" => Some(SignedInt(ast::IntTy::Is)),
-        "usize" => Some(UnsignedInt(ast::UintTy::Us)),
+        "isize" => Some(SignedInt(ast::IntTy::Isize)),
+        "usize" => Some(UnsignedInt(ast::UintTy::Usize)),
         _ => None
     }
 }

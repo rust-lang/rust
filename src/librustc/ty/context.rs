@@ -754,13 +754,13 @@ impl<'tcx> CommonTypes<'tcx> {
             char: mk(TyChar),
             never: mk(TyNever),
             err: mk(TyError),
-            isize: mk(TyInt(ast::IntTy::Is)),
+            isize: mk(TyInt(ast::IntTy::Isize)),
             i8: mk(TyInt(ast::IntTy::I8)),
             i16: mk(TyInt(ast::IntTy::I16)),
             i32: mk(TyInt(ast::IntTy::I32)),
             i64: mk(TyInt(ast::IntTy::I64)),
             i128: mk(TyInt(ast::IntTy::I128)),
-            usize: mk(TyUint(ast::UintTy::Us)),
+            usize: mk(TyUint(ast::UintTy::Usize)),
             u8: mk(TyUint(ast::UintTy::U8)),
             u16: mk(TyUint(ast::UintTy::U16)),
             u32: mk(TyUint(ast::UintTy::U32)),
@@ -1912,7 +1912,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {
         match tm {
-            ast::IntTy::Is   => self.types.isize,
+            ast::IntTy::Isize   => self.types.isize,
             ast::IntTy::I8   => self.types.i8,
             ast::IntTy::I16  => self.types.i16,
             ast::IntTy::I32  => self.types.i32,
@@ -1923,7 +1923,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_mach_uint(self, tm: ast::UintTy) -> Ty<'tcx> {
         match tm {
-            ast::UintTy::Us   => self.types.usize,
+            ast::UintTy::Usize   => self.types.usize,
             ast::UintTy::U8   => self.types.u8,
             ast::UintTy::U16  => self.types.u16,
             ast::UintTy::U32  => self.types.u32,

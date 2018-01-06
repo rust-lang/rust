@@ -147,7 +147,7 @@ impl Type {
 
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::IntTy::Is => ccx.isize_ty(),
+            ast::IntTy::Isize => ccx.isize_ty(),
             ast::IntTy::I8 => Type::i8(ccx),
             ast::IntTy::I16 => Type::i16(ccx),
             ast::IntTy::I32 => Type::i32(ccx),
@@ -158,7 +158,7 @@ impl Type {
 
     pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::UintTy::Us => ccx.isize_ty(),
+            ast::UintTy::Usize => ccx.isize_ty(),
             ast::UintTy::U8 => Type::i8(ccx),
             ast::UintTy::U16 => Type::i16(ccx),
             ast::UintTy::U32 => Type::i32(ccx),

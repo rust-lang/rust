@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::UintTy::U32 => ConstInt::U32(0),
                     ast::UintTy::U64 => ConstInt::U64(0),
                     ast::UintTy::U128 => ConstInt::U128(0),
-                    ast::UintTy::Us => {
+                    ast::UintTy::Usize => {
                         let uint_ty = self.hir.tcx().sess.target.usize_ty;
                         let val = ConstUsize::new(0, uint_ty).unwrap();
                         ConstInt::Usize(val)
@@ -95,7 +95,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::I32 => ConstInt::I32(0),
                     ast::IntTy::I64 => ConstInt::I64(0),
                     ast::IntTy::I128 => ConstInt::I128(0),
-                    ast::IntTy::Is => {
+                    ast::IntTy::Isize => {
                         let int_ty = self.hir.tcx().sess.target.isize_ty;
                         let val = ConstIsize::new(0, int_ty).unwrap();
                         ConstInt::Isize(val)

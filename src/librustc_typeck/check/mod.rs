@@ -2219,7 +2219,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // First, try built-in indexing.
         match (adjusted_ty.builtin_index(), &index_ty.sty) {
-            (Some(ty), &ty::TyUint(ast::UintTy::Us)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
+            (Some(ty), &ty::TyUint(ast::UintTy::Usize)) |
+            (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
                 debug!("try_index_step: success, using built-in indexing");
                 let adjustments = autoderef.adjust_steps(lvalue_pref);
                 self.apply_adjustments(base_expr, adjustments);
