@@ -904,6 +904,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                     }
                 };
 
+                register_def(cx, def);
+
                 attrs.links.push((link, path.def.def_id()));
             }
 
