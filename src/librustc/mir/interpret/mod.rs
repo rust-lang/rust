@@ -145,7 +145,7 @@ impl<'tcx> MemoryPointer {
 }
 
 
-#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);
 
 impl fmt::Display for AllocId {

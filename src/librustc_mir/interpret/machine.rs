@@ -2,7 +2,7 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use rustc::mir::interpret::{EvalResult, PrimVal, MemoryPointer, AccessKind};
+use rustc::mir::interpret::{AllocId, EvalResult, PrimVal, MemoryPointer, AccessKind};
 use super::{EvalContext, Place, ValTy, Memory};
 
 use rustc::mir;
@@ -89,12 +89,12 @@ pub trait Machine<'tcx>: Sized {
 
     fn add_lock<'a>(
         _mem: &mut Memory<'a, 'tcx, Self>,
-        _id: u64,
+        _id: AllocId,
     ) {}
 
     fn free_lock<'a>(
         _mem: &mut Memory<'a, 'tcx, Self>,
-        _id: u64,
+        _id: AllocId,
         _len: u64,
     ) -> EvalResult<'tcx> {
         Ok(())

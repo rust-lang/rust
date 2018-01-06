@@ -194,8 +194,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     promoted: None,
                 };
                 let layout = self.layout_of(self.place_ty(mir_place))?;
+                let alloc = self.tcx.interpret_interner.borrow().get_cached(gid).expect("uncached global");
                 Place::Ptr {
-                    ptr: self.tcx.interpret_interner.borrow().get_cached(gid).expect("uncached global"),
+                    ptr: MemoryPointer::new(alloc, 0).into(),
                     align: layout.align,
                     extra: PlaceExtra::None,
                 }
