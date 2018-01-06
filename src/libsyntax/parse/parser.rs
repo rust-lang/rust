@@ -3436,8 +3436,8 @@ impl<'a> Parser<'a> {
                 // Accidental use of || instead of | inbetween patterns
                 if self.token == token::OrOr {
                     return Err(self.span_fatal_help(
-                           self.span, "Unexpected token `||` after pattern",
-                           "Did you mean to use `|` to specify multiple patterns instead?"));
+                           self.span, "unexpected token `||` after pattern",
+                           "did you mean to use `|` to specify multiple patterns instead?"));
                 }
 
                 return Ok(pats);
