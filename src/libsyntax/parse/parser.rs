@@ -3437,11 +3437,9 @@ impl<'a> Parser<'a> {
                                    "unexpected token `||` after pattern",
                                    "did you mean to use `|` to specify multiple patterns?");
                 self.bump();
-            }
-            else if self.check(&token::BinOp(token::Or)) {
+            } else if self.check(&token::BinOp(token::Or)) {
                 self.bump();
-            }
-            else {
+            } else {
                 return Ok(pats);
             }
         };
