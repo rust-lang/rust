@@ -415,6 +415,16 @@ impl<T: Ord> BTreeSet<T> {
     /// The value may be any borrowed form of the set's value type,
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert_eq!(set.get(&2), Some(&2));
+    /// assert_eq!(set.get(&4), None);
+    /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
         where T: Borrow<Q>,
@@ -540,6 +550,19 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set = BTreeSet::new();
+    /// set.insert(Vec::<i32>::new());
+    ///
+    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 0);
+    /// set.replace(Vec::with_capacity(10));
+    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
+    /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         Recover::replace(&mut self.map, value)
@@ -576,6 +599,16 @@ impl<T: Ord> BTreeSet<T> {
     /// The value may be any borrowed form of the set's value type,
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert_eq!(set.take(&2), Some(2));
+    /// assert_eq!(set.take(&2), None);
+    /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
         where T: Borrow<Q>,
