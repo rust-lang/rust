@@ -901,6 +901,13 @@ impl<'test> TestCx<'test> {
         for line in reader.lines() {
             match line {
                 Ok(line) => {
+                    let line =
+                        if line.starts_with("//") {
+                            line[2..].trim_left()
+                        } else {
+                            line.as_str()
+                        };
+
                     if line.contains("#break") {
                         breakpoint_lines.push(counter);
                     }

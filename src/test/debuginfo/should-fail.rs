@@ -9,43 +9,30 @@
 // except according to those terms.
 
 // min-lldb-version: 310
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
+// == Test [gdb|lldb]-[command|check] are parsed correctly ===
+// should-fail
 // compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
-// gdb-command:print a
-// gdbg-check:$1 = {1, 2, 3}
-// gdbr-check:$1 = [1, 2, 3]
-// gdb-command:print vec::VECT
-// gdbg-check:$2 = {4, 5, 6}
-// gdbr-check:$2 = [4, 5, 6]
+// gdb-command: run
 
+// gdb-command: print x
+// gdb-check:$1 = 5
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
-// lldb-command:print a
-// lldb-check:[...]$0 = [1, 2, 3]
 
-#![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
-
-static mut VECT: [i32; 3] = [1, 2, 3];
+// lldb-command:print x
+// lldb-check:[...]$0 = 5
 
 fn main() {
-    let a = [1, 2, 3];
-
-    unsafe {
-        VECT[0] = 4;
-        VECT[1] = 5;
-        VECT[2] = 6;
-    }
+    let x = 1;
 
     zzz(); // #break
 }
 
 fn zzz() {()}
+

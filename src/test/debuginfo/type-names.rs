@@ -10,6 +10,7 @@
 
 // ignore-tidy-linelength
 // ignore-lldb
+// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#24958)
 // ignore-arm: FIXME(#24958)
 // ignore-aarch64: FIXME(#24958)
