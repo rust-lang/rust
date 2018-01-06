@@ -51,7 +51,6 @@ use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
 use std::fmt;
 
-use rustc_const_math::ConstInt;
 use std::default::Default;
 use std::{mem, slice, vec};
 use std::iter::{FromIterator, once};
@@ -2507,9 +2506,7 @@ impl Clean<Type> for hir::Ty {
                         ty: cx.tcx.types.usize
                     })
                 });
-                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
-                    n.to_string()
-                } else if let ConstVal::Unevaluated(def_id, _) = n.val {
+                let n = if let ConstVal::Unevaluated(def_id, _) = n.val {
                     if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
                         print_const_expr(cx, cx.tcx.hir.body_owned_by(node_id))
                     } else {
@@ -2640,9 +2637,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                         n = new_n;
                     }
                 };
-                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
-                    n.to_string()
-                } else if let ConstVal::Unevaluated(def_id, _) = n.val {
+                let n = if let ConstVal::Unevaluated(def_id, _) = n.val {
                     if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
                         print_const_expr(cx, cx.tcx.hir.body_owned_by(node_id))
                     } else {

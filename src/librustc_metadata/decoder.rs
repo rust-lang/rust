@@ -21,7 +21,7 @@ use rustc::middle::cstore::{LinkagePreference, ExternConstBody,
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex,
-                         CRATE_DEF_INDEX, LOCAL_CRATE};
+                         CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId};
 use rustc::ich::Fingerprint;
 use rustc::middle::lang_items;
 use rustc::mir::{self, interpret};
@@ -270,6 +270,13 @@ impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<DefIndex, Self::Error> {
         Ok(DefIndex::from_raw_u32(self.read_u32()?))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for DecodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
+        self.specialized_decode().map(|i| LocalDefId::from_def_id(i))
     }
 }
 
