@@ -16,8 +16,8 @@ env:
 
 before_install:
  - |
-    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-     command curl -sSL https://rvm.io/mpapis.asc | gpg --import -;
+    if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+     command curl -sSL https://rvm.io/mpapis.asc | gpg --import -
      rvm get stable
     fi
 
