@@ -29,7 +29,7 @@ mod exit {
 ///
 /// The default implementations are returning `libc::EXIT_SUCCESS` to indicate
 /// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
-#[cfg_attr(not(any(stage0, test)), lang = "termination")]
+#[cfg_attr(not(test), lang = "termination")]
 #[unstable(feature = "termination_trait", issue = "43301")]
 #[rustc_on_unimplemented =
   "`main` can only return types that implement {Termination}, not `{Self}`"]

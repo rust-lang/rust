@@ -1725,4 +1725,5 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     Rc::new(visitor.access_levels)
 }
 
+#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

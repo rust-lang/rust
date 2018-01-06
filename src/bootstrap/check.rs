@@ -975,7 +975,8 @@ impl Step for ErrorIndex {
         build.run(builder.tool_cmd(Tool::ErrorIndex)
                     .arg("markdown")
                     .arg(&output)
-                    .env("CFG_BUILD", &build.build));
+                    .env("CFG_BUILD", &build.build)
+                    .env("RUSTC_ERROR_METADATA_DST", build.extended_error_dir()));
 
         markdown_test(builder, compiler, &output);
     }

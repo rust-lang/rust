@@ -79,4 +79,5 @@ pub fn provide(providers: &mut Providers) {
     providers.const_eval = interpret::const_eval_provider;
 }
 
+#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_mir, DIAGNOSTICS }

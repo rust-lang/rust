@@ -175,4 +175,5 @@ fn noop() {
 
 
 // Build the diagnostics array at the end so that the metadata includes error use sites.
+#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc, DIAGNOSTICS }
