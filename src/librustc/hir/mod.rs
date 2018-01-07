@@ -1173,6 +1173,37 @@ impl fmt::Debug for Expr {
     }
 }
 
+impl Expr {
+
+    /// If casting this expression to a given numeric type would be appropriate in case of a type
+    /// mismatch.
+    ///
+    /// We want to minimize the amount of casting operations that are suggested, as it can be a
+    /// lossy operation with potentially bad side effects, so we only suggest when encountering an
+    /// expression that indicates that the original type couldn't be directly changed.
+    pub fn could_cast_in_type_mismatch(&self) -> bool {
+        match self.node {
+            ExprCall(..) |
+            ExprMethodCall(..) |
+            ExprBinary(..) |
+            ExprField(..) |
+            ExprTupField(..) |
+            ExprIndex(..) |
+            ExprPath(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn needs_parens_around_cast(&self) -> bool {
+        match self.node {
+            ExprBinary(..) |
+            ExprCast(..) |
+            ExprType(..) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Expr_ {
     /// A `box x` expression.

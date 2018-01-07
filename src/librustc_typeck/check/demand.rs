@@ -137,7 +137,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((msg, suggestion)) = self.check_ref(expr, checked_ty, expected) {
             err.span_suggestion(expr.span, msg, suggestion);
-        } else {
+        } else if !self.check_for_cast(&mut err, expr, expr_ty, expected) {
             let methods = self.get_conversion_methods(expected, checked_ty);
             if let Ok(expr_text) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                 let suggestions = iter::repeat(expr_text).zip(methods.iter())
@@ -287,8 +287,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // Maybe remove `&`?
                         hir::ExprAddrOf(_, ref expr) => {
                             if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
-                                return Some(("consider removing the borrow",
-                                             code));
+                                return Some(("consider removing the borrow", code));
                             }
                         }
 
@@ -303,12 +302,181 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                  format!("*{}", code)));
                                 }
                             }
-                        },
+                        }
                     }
                 }
                 None
             }
             _ => None,
+        }
+    }
+
+    fn check_for_cast(&self,
+                      err: &mut DiagnosticBuilder<'tcx>,
+                      expr: &hir::Expr,
+                      checked_ty: Ty<'tcx>,
+                      expected_ty: Ty<'tcx>)
+                      -> bool {
+        let will_truncate = "will truncate the source value";
+        let depending_on_isize = "will truncate or zero-extend depending on the bit width of \
+                                  `isize`";
+        let depending_on_usize = "will truncate or zero-extend depending on the bit width of \
+                                  `usize`";
+        let will_sign_extend = "will sign-extend the source value";
+        let will_zero_extend = "will zero-extend the source value";
+
+        let needs_paren = expr.needs_parens_around_cast();
+
+        if let (Ok(src), true) = (self.tcx.sess.codemap().span_to_snippet(expr.span),
+                                  expr.could_cast_in_type_mismatch()) {
+            let msg = format!("you can cast an `{}` to `{}`", checked_ty, expected_ty);
+            let suggestion = format!("{}{} as {}{}",
+                                     if needs_paren { "(" } else { "" },
+                                     src,
+                                     if needs_paren { ")" } else { "" },
+                                     expected_ty);
+
+            match (&expected_ty.sty, &checked_ty.sty) {
+                (&ty::TyInt(ref exp), &ty::TyInt(ref found)) => {
+                    match (found.bit_width(), exp.bit_width()) {
+                        (Some(found), Some(exp)) if found > exp => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_truncate),
+                                                suggestion);
+                        }
+                        (None, _) | (_, None) => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, depending_on_isize),
+                                                suggestion);
+                        }
+                        _ => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_sign_extend),
+                                                suggestion);
+                        }
+                    }
+                    true
+                }
+                (&ty::TyUint(ref exp), &ty::TyUint(ref found)) => {
+                    match (found.bit_width(), exp.bit_width()) {
+                        (Some(found), Some(exp)) if found > exp => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_truncate),
+                                                suggestion);
+                        }
+                        (None, _) | (_, None) => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, depending_on_usize),
+                                                suggestion);
+                        }
+                        _ => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_zero_extend),
+                                                suggestion);
+                        }
+                    }
+                    true
+                }
+                (&ty::TyInt(ref exp), &ty::TyUint(ref found)) => {
+                    match (found.bit_width(), exp.bit_width()) {
+                        (Some(found), Some(exp)) if found > exp - 1 => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_truncate),
+                                                suggestion);
+                        }
+                        (None, None) => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_truncate),
+                                                suggestion);
+                        }
+                        (None, _) => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, depending_on_isize),
+                                                suggestion);
+                        }
+                        (_, None) => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, depending_on_usize),
+                                                suggestion);
+                        }
+                        _ => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_zero_extend),
+                                                suggestion);
+                        }
+                    }
+                    true
+                }
+                (&ty::TyUint(ref exp), &ty::TyInt(ref found)) => {
+                    match (found.bit_width(), exp.bit_width()) {
+                        (Some(found), Some(exp)) if found - 1 > exp => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_truncate),
+                                                suggestion);
+                        }
+                        (None, None) => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_sign_extend),
+                                                suggestion);
+                        }
+                        (None, _) => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, depending_on_usize),
+                                                suggestion);
+                        }
+                        (_, None) => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, depending_on_isize),
+                                                suggestion);
+                        }
+                        _ => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_sign_extend),
+                                                suggestion);
+                        }
+                    }
+                    true
+                }
+                (&ty::TyFloat(ref exp), &ty::TyFloat(ref found)) => {
+                    if found.bit_width() > exp.bit_width() {
+                        err.span_suggestion(expr.span,
+                                            &format!("{}, producing the closest possible value",
+                                                     msg),
+                                            suggestion);
+                        err.warn("casting here will cause Undefined Behavior if the value is \
+                                  finite but larger or smaller than the largest or smallest \
+                                  finite value representable by `f32` (this is a bug and will be \
+                                  fixed)");
+                    } else {
+                        err.span_suggestion(expr.span,
+                                            &format!("{} in a lossless way",
+                                                     msg),
+                                            suggestion);
+                    }
+                    true
+                }
+                (&ty::TyUint(_), &ty::TyFloat(_)) | (&ty::TyInt(_), &ty::TyFloat(_)) => {
+                    err.span_suggestion(expr.span,
+                                        &format!("{}, rounding the float towards zero",
+                                                 msg),
+                                        suggestion);
+                    err.warn("casting here will cause Undefined Behavior if the rounded value \
+                              cannot be represented by the target integer type, including `Inf` \
+                              and `NaN` (this is a bug and will be fixed)");
+                    true
+                }
+                (&ty::TyFloat(_), &ty::TyUint(_)) | (&ty::TyFloat(_), &ty::TyInt(_)) => {
+                    err.span_suggestion(expr.span,
+                                        &format!("{}, producing the floating point representation \
+                                                  of the integer, rounded if necessary",
+                                                  msg),
+                                        suggestion);
+                    true
+                }
+                _ => false,
+            }
+        } else {
+            false
         }
     }
 }

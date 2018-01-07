@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-2.rs:15:18
+   |
+15 |     let x: u32 = foo();
+   |                  ^^^^^ expected u32, found i32
+help: you can cast an `i32` to `u32`, which will sign-extend the source value
+   |
+15 |     let x: u32 = foo() as u32;
+   |                  ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-2.rs:16:18
+   |
+16 |     let z: i32 = x + x;
+   |                  ^^^^^ expected i32, found u32
+help: you can cast an `u32` to `i32`, which will truncate the source value
+   |
+16 |     let z: i32 = (x + x as )i32;
+   |                  ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
