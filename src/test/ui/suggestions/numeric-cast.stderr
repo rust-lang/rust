@@ -94,7 +94,7 @@ error[E0308]: mismatched types
 47 |     foo::<usize>(x_f64);
    |                  ^^^^^ expected usize, found f64
    |
-   = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `usize`, rounding the float towards zero
    |
 47 |     foo::<usize>(x_f64 as usize);
@@ -106,7 +106,7 @@ error[E0308]: mismatched types
 50 |     foo::<usize>(x_f32);
    |                  ^^^^^ expected usize, found f32
    |
-   = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `usize`, rounding the float towards zero
    |
 50 |     foo::<usize>(x_f32 as usize);
@@ -208,7 +208,7 @@ error[E0308]: mismatched types
 73 |     foo::<isize>(x_f64);
    |                  ^^^^^ expected isize, found f64
    |
-   = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `isize`, rounding the float towards zero
    |
 73 |     foo::<isize>(x_f64 as isize);
@@ -220,7 +220,7 @@ error[E0308]: mismatched types
 76 |     foo::<isize>(x_f32);
    |                  ^^^^^ expected isize, found f32
    |
-   = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `isize`, rounding the float towards zero
    |
 76 |     foo::<isize>(x_f32 as isize);
@@ -243,7 +243,7 @@ error[E0308]: mismatched types
    |                ^^^^^ expected u64, found u32
 help: you can cast an `u32` to `u64`, which will zero-extend the source value
    |
-83 |     foo::<u64>(x_u32 as u64);
+83 |     foo::<u64>(x_u32.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -253,7 +253,7 @@ error[E0308]: mismatched types
    |                ^^^^^ expected u64, found u16
 help: you can cast an `u16` to `u64`, which will zero-extend the source value
    |
-85 |     foo::<u64>(x_u16 as u64);
+85 |     foo::<u64>(x_u16.into());
    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -263,7 +263,7 @@ error[E0308]: mismatched types
    |                ^^^^ expected u64, found u8
 help: you can cast an `u8` to `u64`, which will zero-extend the source value
    |
-87 |     foo::<u64>(x_u8 as u64);
+87 |     foo::<u64>(x_u8.into());
    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -322,7 +322,7 @@ error[E0308]: mismatched types
 99 |     foo::<u64>(x_f64);
    |                ^^^^^ expected u64, found f64
    |
-   = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `u64`, rounding the float towards zero
    |
 99 |     foo::<u64>(x_f64 as u64);
@@ -334,7 +334,7 @@ error[E0308]: mismatched types
 102 |     foo::<u64>(x_f32);
     |                ^^^^^ expected u64, found f32
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `u64`, rounding the float towards zero
     |
 102 |     foo::<u64>(x_f32 as u64);
@@ -407,7 +407,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected i64, found i32
 help: you can cast an `i32` to `i64`, which will sign-extend the source value
     |
-119 |     foo::<i64>(x_i32 as i64);
+119 |     foo::<i64>(x_i32.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -417,7 +417,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected i64, found i16
 help: you can cast an `i16` to `i64`, which will sign-extend the source value
     |
-121 |     foo::<i64>(x_i16 as i64);
+121 |     foo::<i64>(x_i16.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -427,7 +427,7 @@ error[E0308]: mismatched types
     |                ^^^^ expected i64, found i8
 help: you can cast an `i8` to `i64`, which will sign-extend the source value
     |
-123 |     foo::<i64>(x_i8 as i64);
+123 |     foo::<i64>(x_i8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -436,7 +436,7 @@ error[E0308]: mismatched types
 125 |     foo::<i64>(x_f64);
     |                ^^^^^ expected i64, found f64
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `i64`, rounding the float towards zero
     |
 125 |     foo::<i64>(x_f64 as i64);
@@ -448,7 +448,7 @@ error[E0308]: mismatched types
 128 |     foo::<i64>(x_f32);
     |                ^^^^^ expected i64, found f32
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `i64`, rounding the float towards zero
     |
 128 |     foo::<i64>(x_f32 as i64);
@@ -481,7 +481,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected u32, found u16
 help: you can cast an `u16` to `u32`, which will zero-extend the source value
     |
-137 |     foo::<u32>(x_u16 as u32);
+137 |     foo::<u32>(x_u16.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -491,7 +491,7 @@ error[E0308]: mismatched types
     |                ^^^^ expected u32, found u8
 help: you can cast an `u8` to `u32`, which will zero-extend the source value
     |
-139 |     foo::<u32>(x_u8 as u32);
+139 |     foo::<u32>(x_u8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -550,7 +550,7 @@ error[E0308]: mismatched types
 151 |     foo::<u32>(x_f64);
     |                ^^^^^ expected u32, found f64
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `u32`, rounding the float towards zero
     |
 151 |     foo::<u32>(x_f64 as u32);
@@ -562,7 +562,7 @@ error[E0308]: mismatched types
 154 |     foo::<u32>(x_f32);
     |                ^^^^^ expected u32, found f32
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `u32`, rounding the float towards zero
     |
 154 |     foo::<u32>(x_f32 as u32);
@@ -645,7 +645,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected i32, found i16
 help: you can cast an `i16` to `i32`, which will sign-extend the source value
     |
-173 |     foo::<i32>(x_i16 as i32);
+173 |     foo::<i32>(x_i16.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -655,7 +655,7 @@ error[E0308]: mismatched types
     |                ^^^^ expected i32, found i8
 help: you can cast an `i8` to `i32`, which will sign-extend the source value
     |
-175 |     foo::<i32>(x_i8 as i32);
+175 |     foo::<i32>(x_i8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -664,7 +664,7 @@ error[E0308]: mismatched types
 177 |     foo::<i32>(x_f64);
     |                ^^^^^ expected i32, found f64
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `i32`, rounding the float towards zero
     |
 177 |     foo::<i32>(x_f64 as i32);
@@ -676,7 +676,7 @@ error[E0308]: mismatched types
 180 |     foo::<i32>(x_f32);
     |                ^^^^^ expected i32, found f32
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `i32`, rounding the float towards zero
     |
 180 |     foo::<i32>(x_f32 as i32);
@@ -719,7 +719,7 @@ error[E0308]: mismatched types
     |                ^^^^ expected u16, found u8
 help: you can cast an `u8` to `u16`, which will zero-extend the source value
     |
-191 |     foo::<u16>(x_u8 as u16);
+191 |     foo::<u16>(x_u8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -778,7 +778,7 @@ error[E0308]: mismatched types
 203 |     foo::<u16>(x_f64);
     |                ^^^^^ expected u16, found f64
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `u16`, rounding the float towards zero
     |
 203 |     foo::<u16>(x_f64 as u16);
@@ -790,7 +790,7 @@ error[E0308]: mismatched types
 206 |     foo::<u16>(x_f32);
     |                ^^^^^ expected u16, found f32
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `u16`, rounding the float towards zero
     |
 206 |     foo::<u16>(x_f32 as u16);
@@ -883,7 +883,7 @@ error[E0308]: mismatched types
     |                ^^^^ expected i16, found i8
 help: you can cast an `i8` to `i16`, which will sign-extend the source value
     |
-227 |     foo::<i16>(x_i8 as i16);
+227 |     foo::<i16>(x_i8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -892,7 +892,7 @@ error[E0308]: mismatched types
 229 |     foo::<i16>(x_f64);
     |                ^^^^^ expected i16, found f64
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `i16`, rounding the float towards zero
     |
 229 |     foo::<i16>(x_f64 as i16);
@@ -904,7 +904,7 @@ error[E0308]: mismatched types
 232 |     foo::<i16>(x_f32);
     |                ^^^^^ expected i16, found f32
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `i16`, rounding the float towards zero
     |
 232 |     foo::<i16>(x_f32 as i16);
@@ -1006,7 +1006,7 @@ error[E0308]: mismatched types
 255 |     foo::<u8>(x_f64);
     |               ^^^^^ expected u8, found f64
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `u8`, rounding the float towards zero
     |
 255 |     foo::<u8>(x_f64 as u8);
@@ -1018,7 +1018,7 @@ error[E0308]: mismatched types
 258 |     foo::<u8>(x_f32);
     |               ^^^^^ expected u8, found f32
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `u8`, rounding the float towards zero
     |
 258 |     foo::<u8>(x_f32 as u8);
@@ -1120,7 +1120,7 @@ error[E0308]: mismatched types
 281 |     foo::<i8>(x_f64);
     |               ^^^^^ expected i8, found f64
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f64` to `i8`, rounding the float towards zero
     |
 281 |     foo::<i8>(x_f64 as i8);
@@ -1132,7 +1132,7 @@ error[E0308]: mismatched types
 284 |     foo::<i8>(x_f32);
     |               ^^^^^ expected i8, found f32
     |
-    = warning: Currently this will cause Undefined Behavior if the rounded value cannot be represented by the target integer type. This includes `Inf` and `NaN`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
 help: you can cast an `f32` to `i8`, rounding the float towards zero
     |
 284 |     foo::<i8>(x_f32 as i8);
@@ -1165,7 +1165,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected f64, found u32
 help: you can cast an `u32` to `f64`, producing the floating point representation of the integer, rounded if necessary
     |
-292 |     foo::<f64>(x_u32 as f64);
+292 |     foo::<f64>(x_u32.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1175,7 +1175,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected f64, found u16
 help: you can cast an `u16` to `f64`, producing the floating point representation of the integer, rounded if necessary
     |
-294 |     foo::<f64>(x_u16 as f64);
+294 |     foo::<f64>(x_u16.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1185,7 +1185,7 @@ error[E0308]: mismatched types
     |                ^^^^ expected f64, found u8
 help: you can cast an `u8` to `f64`, producing the floating point representation of the integer, rounded if necessary
     |
-296 |     foo::<f64>(x_u8 as f64);
+296 |     foo::<f64>(x_u8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1215,7 +1215,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected f64, found i32
 help: you can cast an `i32` to `f64`, producing the floating point representation of the integer, rounded if necessary
     |
-302 |     foo::<f64>(x_i32 as f64);
+302 |     foo::<f64>(x_i32.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1225,7 +1225,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected f64, found i16
 help: you can cast an `i16` to `f64`, producing the floating point representation of the integer, rounded if necessary
     |
-304 |     foo::<f64>(x_i16 as f64);
+304 |     foo::<f64>(x_i16.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1235,7 +1235,7 @@ error[E0308]: mismatched types
     |                ^^^^ expected f64, found i8
 help: you can cast an `i8` to `f64`, producing the floating point representation of the integer, rounded if necessary
     |
-306 |     foo::<f64>(x_i8 as f64);
+306 |     foo::<f64>(x_i8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1245,7 +1245,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected f64, found f32
 help: you can cast an `f32` to `f64` in a lossless way
     |
-309 |     foo::<f64>(x_f32 as f64);
+309 |     foo::<f64>(x_f32.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1285,7 +1285,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected f32, found u16
 help: you can cast an `u16` to `f32`, producing the floating point representation of the integer, rounded if necessary
     |
-318 |     foo::<f32>(x_u16 as f32);
+318 |     foo::<f32>(x_u16.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1295,7 +1295,7 @@ error[E0308]: mismatched types
     |                ^^^^ expected f32, found u8
 help: you can cast an `u8` to `f32`, producing the floating point representation of the integer, rounded if necessary
     |
-320 |     foo::<f32>(x_u8 as f32);
+320 |     foo::<f32>(x_u8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1335,7 +1335,7 @@ error[E0308]: mismatched types
     |                ^^^^^ expected f32, found i16
 help: you can cast an `i16` to `f32`, producing the floating point representation of the integer, rounded if necessary
     |
-328 |     foo::<f32>(x_i16 as f32);
+328 |     foo::<f32>(x_i16.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1345,7 +1345,7 @@ error[E0308]: mismatched types
     |                ^^^^ expected f32, found i8
 help: you can cast an `i8` to `f32`, producing the floating point representation of the integer, rounded if necessary
     |
-330 |     foo::<f32>(x_i8 as f32);
+330 |     foo::<f32>(x_i8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
@@ -1354,7 +1354,7 @@ error[E0308]: mismatched types
 332 |     foo::<f32>(x_f64);
     |                ^^^^^ expected f32, found f64
     |
-    = warning: Currently this will cause Undefined Behavior if the value is finite but larger or smaller than the largest or smallest finite value representable by `f32`. This is a bug and will be fixed.
+    = warning: casting here will cause undefined behavior if the value is finite but larger or smaller than the largest or smallest finite value representable by `f32` (this is a bug and will be fixed)
 help: you can cast an `f64` to `f32`, producing the closest possible value
     |
 332 |     foo::<f32>(x_f64 as f32);

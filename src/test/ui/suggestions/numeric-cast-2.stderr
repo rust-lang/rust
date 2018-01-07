@@ -9,13 +9,13 @@ help: you can cast an `i32` to `u32`, which will sign-extend the source value
    |                  ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-cast-2.rs:16:18
+  --> $DIR/numeric-cast-2.rs:17:18
    |
-16 |     let z: i32 = x + x;
+17 |     let z: i32 = x + x;
    |                  ^^^^^ expected i32, found u32
 help: you can cast an `u32` to `i32`, which will truncate the source value
    |
-16 |     let z: i32 = (x + x as )i32;
+17 |     let z: i32 = (x + x) as i32;
    |                  ^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

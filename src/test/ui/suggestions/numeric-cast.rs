@@ -331,6 +331,6 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<f32>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
+    //~| WARN casting here will cause undefined behavior
     foo::<f32>(x_f32);
 }

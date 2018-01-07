@@ -8,7 +8,7 @@ error[E0308]: mismatched types
    |     -------------- in this macro invocation
 help: you can cast an `usize` to `u64`, which will truncate or zero-extend depending on the bit width of `usize`
    |
-26 |                   ($arr.len() * size_of($arr[0]) as )u64); //~ ERROR mismatched types
+26 |                   ($arr.len() * size_of($arr[0])) as u64); //~ ERROR mismatched types
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0605]: non-primitive cast: `{integer}` as `()`

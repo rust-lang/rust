@@ -13,5 +13,7 @@ fn foo() -> i32 {
 }
 fn main() {
     let x: u32 = foo();
+    //~^ ERROR mismatched types
     let z: i32 = x + x;
+    //~^ ERROR mismatched types
 }
