@@ -296,7 +296,6 @@
 #![feature(rand)]
 #![feature(raw)]
 #![feature(repr_align)]
-#![feature(repr_simd)]
 #![feature(rustc_attrs)]
 #![feature(shared)]
 #![feature(sip_hash_13)]
