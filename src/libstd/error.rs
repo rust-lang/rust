@@ -54,6 +54,7 @@
 use alloc::allocator;
 use any::TypeId;
 use borrow::Cow;
+use boxed;
 use cell;
 use char;
 use convert;
