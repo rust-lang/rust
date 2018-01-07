@@ -2,8 +2,7 @@ use {Token, SyntaxKind, TextUnit};
 use super::{Event};
 use super::super::is_insignificant;
 use syntax_kinds::{L_CURLY, R_CURLY, ERROR};
-
-pub(crate) const EOF: SyntaxKind = SyntaxKind(10000);
+use tree::EOF;
 
 
 pub(crate) struct Parser<'t> {
@@ -46,19 +45,22 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn into_events(self) -> Vec<Event> {
-        assert!(self.is_eof());
+        assert!(self.curly_limit.is_none());
+        assert!(self.current() == EOF);
         self.events
     }
 
-    pub(crate) fn is_eof(&self) -> bool {
+    pub(crate) fn current(&self) -> SyntaxKind {
         if self.pos == self.tokens.len() {
-            return true
+            return EOF;
         }
+        let token = self.tokens[self.pos];
         if let Some(limit) = self.curly_limit {
-            let token = self.tokens[self.pos];
-            return limit == self.curly_level && token.kind == R_CURLY;
+            if limit == self.curly_level && token.kind == R_CURLY {
+                return EOF
+            }
         }
-        false
+        token.kind
     }
 
     pub(crate) fn start(&mut self, kind: SyntaxKind) {
@@ -73,24 +75,17 @@ impl<'t> Parser<'t> {
         ErrorBuilder::new(self)
     }
 
-    pub(crate) fn current(&self) -> Option<SyntaxKind> {
-        if self.is_eof() {
-            return None;
-        }
-        let token = self.tokens[self.pos];
-        Some(token.kind)
-    }
-
-    pub(crate) fn bump(&mut self) -> Option<SyntaxKind> {
-        let kind = self.current()?;
+    pub(crate) fn bump(&mut self) -> SyntaxKind {
+        let kind = self.current();
         match kind {
             L_CURLY => self.curly_level += 1,
             R_CURLY => self.curly_level -= 1,
+            EOF => return EOF,
             _ => (),
         }
         self.pos += 1;
         self.event(Event::Token { kind, n_raw_tokens: 1 });
-        Some(kind)
+        kind
     }
 
     pub(crate) fn lookahead(&self, kinds: &[SyntaxKind]) -> bool {
@@ -114,7 +109,7 @@ impl<'t> Parser<'t> {
         if !self.expect(R_CURLY) {
             self.start(ERROR);
             while self.curly_level > old_level {
-                if self.bump().is_none() {
+                if self.bump() == EOF {
                     break;
                 }
             }

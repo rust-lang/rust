@@ -1,5 +1,6 @@
 use super::parser::Parser;
 use {SyntaxKind};
+use tree::EOF;
 use syntax_kinds::*;
 
 // Items //
@@ -18,11 +19,7 @@ pub(crate) fn file(p: &mut Parser) {
 }
 
 fn item_first(p: &Parser) -> bool {
-    let current = match p.current() {
-        Some(c) => c,
-        None => return false,
-    };
-    match current {
+    match p.current() {
         STRUCT_KW | FN_KW => true,
         _ => false,
     }
@@ -79,7 +76,7 @@ fn visibility(_: &mut Parser) {
 // Error recovery and high-order utils //
 
 fn node_if<F: FnOnce(&mut Parser)>(p: &mut Parser, first: SyntaxKind, node_kind: SyntaxKind, rest: F) -> bool {
-    p.current_is(first) && { node(p, node_kind, |p| { p.bump(); rest(p); }); true }
+    p.current() == first && { node(p, node_kind, |p| { p.bump(); rest(p); }); true }
 }
 
 fn node<F: FnOnce(&mut Parser)>(p: &mut Parser, node_kind: SyntaxKind, rest: F) {
@@ -95,7 +92,7 @@ fn many<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
 fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
     many(p, |p| {
         f(p);
-        if p.is_eof() {
+        if p.current() == EOF {
             false
         } else {
             p.expect(COMMA);
@@ -119,7 +116,7 @@ where
             f(p);
             return true;
         }
-        if p.is_eof() {
+        if p.current() == EOF {
             if skipped {
                 p.finish();
             }
@@ -131,18 +128,14 @@ where
                 .message(message)
                 .emit();
         }
-        p.bump().unwrap();
+        p.bump();
         skipped = true;
     }
 }
 
 impl<'p> Parser<'p> {
-    fn current_is(&self, kind: SyntaxKind) -> bool {
-        self.current() == Some(kind)
-    }
-
     pub(crate) fn expect(&mut self, kind: SyntaxKind) -> bool {
-        if self.current_is(kind) {
+        if self.current() == kind {
             self.bump();
             true
         } else {
@@ -154,7 +147,7 @@ impl<'p> Parser<'p> {
     }
 
     fn optional(&mut self, kind: SyntaxKind) {
-        if self.current_is(kind) {
+        if self.current() == kind {
             self.bump();
         }
     }
