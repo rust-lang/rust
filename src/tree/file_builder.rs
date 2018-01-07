@@ -156,7 +156,7 @@ impl<'f> ErrorBuilder<'f> {
 
     pub fn emit(self) {
         let message = self.message.expect("Error message not set");
-        let node = self.builder.current_id();
-        self.builder.errors.push(SyntaxErrorData { node, message })
+        let &(node, after_child) = self.builder.in_progress.last().unwrap();
+        self.builder.errors.push(SyntaxErrorData { node, message, after_child })
     }
 }

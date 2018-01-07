@@ -2,6 +2,7 @@ use text::{TextUnit, TextRange};
 use syntax_kinds::syntax_info;
 
 use std::fmt;
+use std::cmp;
 
 mod file_builder;
 pub use self::file_builder::{FileBuilder, Sink};
@@ -96,6 +97,15 @@ impl<'f> fmt::Debug for Node<'f> {
 	}
 }
 
+impl<'f> cmp::PartialEq<Node<'f>> for Node<'f> {
+	fn eq(&self, other: &Node<'f>) -> bool {
+		self.idx == other.idx && ::std::ptr::eq(self.file, other.file)
+	}
+}
+
+impl<'f> cmp::Eq for Node<'f> {
+}
+
 #[derive(Clone, Copy)]
 pub struct SyntaxError<'f> {
 	file: &'f File,
@@ -105,6 +115,11 @@ pub struct SyntaxError<'f> {
 impl<'f> SyntaxError<'f> {
 	pub fn message(&self) -> &'f str {
 		self.data().message.as_str()
+	}
+
+	pub fn after_child(&self) -> Option<Node<'f>> {
+		let idx = self.data().after_child?;
+		Some(Node { file: self.file, idx })
 	}
 
 	fn data(&self) -> &'f SyntaxErrorData {
@@ -187,6 +202,7 @@ struct ErrorIdx(u32);
 struct SyntaxErrorData {
 	node: NodeIdx,
 	message: String,
+	after_child: Option<NodeIdx>,
 }
 
 impl ::std::ops::Index<ErrorIdx> for Vec<SyntaxErrorData> {

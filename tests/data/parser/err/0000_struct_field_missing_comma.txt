@@ -1,5 +1,5 @@
 FILE@[0; 34)
-  STRUCT_ITEM@[0; 34) err: `expected COMMA`
+  STRUCT_ITEM@[0; 34)
     STRUCT_KW@[0; 6)
     WHITESPACE@[6; 7)
     IDENT@[7; 8)
@@ -12,9 +12,11 @@ FILE@[0; 34)
       WHITESPACE@[17; 18)
       IDENT@[18; 21)
       WHITESPACE@[21; 26)
+    err: `expected COMMA`
     STRUCT_FIELD@[26; 33)
       IDENT@[26; 27)
       COLON@[27; 28)
       WHITESPACE@[28; 29)
       IDENT@[29; 32)
-      WHITESPACE@[32;
+      WHITESPACE@[32; 33)
+    R_CURLY@[33; 34)
