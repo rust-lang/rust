@@ -59,7 +59,6 @@ use char;
 use convert;
 use core::array;
 use fmt::{self, Debug, Display};
-use mem::transmute;
 use num;
 use str;
 use string;
@@ -491,11 +490,11 @@ impl Error + Send {
     #[stable(feature = "error_downcast", since = "1.3.0")]
     /// Attempt to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>)
-                                        -> Result<Box<T>, Box<Error + Send>> {
+                                        -> Result<Box<T>, Box<Self>> {
         let err: Box<Error> = self;
         <Error>::downcast(err).map_err(|s| unsafe {
             // reapply the Send marker
-            transmute::<Box<Error>, Box<Error + Send>>(s)
+            Box::from_raw(Box::into_raw(s) as *mut Self)
         })
     }
 }
@@ -509,7 +508,7 @@ impl Error + Send + Sync {
         let err: Box<Error> = self;
         <Error>::downcast(err).map_err(|s| unsafe {
             // reapply the Send+Sync marker
-            transmute::<Box<Error>, Box<Error + Send + Sync>>(s)
+            Box::from_raw(Box::into_raw(s) as *mut Self)
         })
     }
 }

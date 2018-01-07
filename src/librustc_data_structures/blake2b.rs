@@ -128,8 +128,7 @@ fn blake2b_compress(ctx: &mut Blake2bCtx, last: bool) {
         // before it's overwritten.
 
         let m: &mut [u64; 16] = unsafe {
-            let b: &mut [u8; 128] = &mut ctx.b;
-            ::std::mem::transmute(b)
+            &*(&mut ctx.b as *mut [u8; 128] as *mut [u64; 16])
         };
 
         if cfg!(target_endian = "big") {

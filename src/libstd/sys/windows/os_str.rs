@@ -14,7 +14,6 @@
 use borrow::Cow;
 use fmt;
 use sys_common::wtf8::{Wtf8, Wtf8Buf};
-use mem;
 use rc::Rc;
 use sync::Arc;
 use sys_common::{AsInner, IntoInner, FromInner};
@@ -90,7 +89,7 @@ impl Buf {
     }
 
     pub fn as_slice(&self) -> &Slice {
-        unsafe { mem::transmute(self.inner.as_slice()) }
+        &*(self.inner.as_slice() as *const Wtf8 as *const Slice)
     }
 
     pub fn into_string(self) -> Result<String, Buf> {
@@ -115,12 +114,13 @@ impl Buf {
 
     #[inline]
     pub fn into_box(self) -> Box<Slice> {
-        unsafe { mem::transmute(self.inner.into_box()) }
+        let boxed = self.inner.into_box();
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Slice) }
     }
 
     #[inline]
     pub fn from_box(boxed: Box<Slice>) -> Buf {
-        let inner: Box<Wtf8> = unsafe { mem::transmute(boxed) };
+        let inner = unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Wtf8) };
         Buf { inner: Wtf8Buf::from_box(inner) }
     }
 
@@ -137,7 +137,7 @@ impl Buf {
 
 impl Slice {
     pub fn from_str(s: &str) -> &Slice {
-        unsafe { mem::transmute(Wtf8::from_str(s)) }
+        unsafe { &*(Wtf8::from_str(s) as *const Wtf8 as *const Slice) }
     }
 
     pub fn to_str(&self) -> Option<&str> {
@@ -156,11 +156,13 @@ impl Slice {
 
     #[inline]
     pub fn into_box(&self) -> Box<Slice> {
-        unsafe { mem::transmute(self.inner.into_box()) }
+        let boxed = self.inner.into_box();
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Slice) }
     }
 
     pub fn empty_box() -> Box<Slice> {
-        unsafe { mem::transmute(Wtf8::empty_box()) }
+        let boxed = Wtf8::empty_box();
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Slice) }
     }
 
     #[inline]

@@ -17,7 +17,6 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
-use std::mem;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -114,7 +113,8 @@ impl Deref for Interned<String> {
     type Target = str;
     fn deref(&self) -> &'static str {
         let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&str, &'static str>(l.get(*self)) }
+        let s: &str = l.get(*self).as_ref();
+        unsafe { &*(s *const _) }
     }
 }
 
@@ -122,35 +122,38 @@ impl Deref for Interned<PathBuf> {
     type Target = Path;
     fn deref(&self) -> &'static Path {
         let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self)) }
+        let p: &Path = l.get(*self).as_ref();
+        unsafe { &*(p *const _) }
     }
 }
 
 impl AsRef<Path> for Interned<PathBuf> {
     fn as_ref(&self) -> &'static Path {
-        let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self)) }
+        &*self
     }
 }
 
 impl AsRef<Path> for Interned<String> {
     fn as_ref(&self) -> &'static Path {
         let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&Path, &'static Path>(l.get(*self).as_ref()) }
+        let p: &Path = l.get(*self).as_ref();
+        unsafe { &*(p *const _) }
     }
 }
 
 impl AsRef<OsStr> for Interned<PathBuf> {
     fn as_ref(&self) -> &'static OsStr {
         let l = INTERNER.paths.lock().unwrap();
-        unsafe { mem::transmute::<&OsStr, &'static OsStr>(l.get(*self).as_ref()) }
+        let s: &OsStr = l.get(*self).as_ref();
+        unsafe { &*(s *const _) }
     }
 }
 
 impl AsRef<OsStr> for Interned<String> {
     fn as_ref(&self) -> &'static OsStr {
         let l = INTERNER.strs.lock().unwrap();
-        unsafe { mem::transmute::<&OsStr, &'static OsStr>(l.get(*self).as_ref()) }
+        let s: &OsStr = l.get(*self).as_ref();
+        unsafe { &*(s *const _) }
     }
 }
 

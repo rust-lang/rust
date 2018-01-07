@@ -57,7 +57,6 @@ impl DoubleEndedIterator for Args {
 
 mod imp {
     use os::unix::prelude::*;
-    use mem;
     use ffi::{CStr, OsString};
     use marker::PhantomData;
     use libc;
@@ -105,7 +104,7 @@ mod imp {
     }
 
     fn get_global_ptr() -> *mut Option<Box<Vec<Vec<u8>>>> {
-        unsafe { mem::transmute(&GLOBAL_ARGS_PTR) }
+        unsafe { &mut GLOBAL_ARGS_PTR as *mut _ as *mut _ }
     }
 
 }
