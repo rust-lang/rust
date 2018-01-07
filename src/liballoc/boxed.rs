@@ -666,6 +666,7 @@ macro_rules! array_impls {
             impl<T> TryFrom<Box<[T]>> for Box<[T; $N]> {
                 type Error = TryFromSliceError<T>;
 
+                #[inline]
                 fn try_from(slice: Box<[T]>) -> Result<Box<[T; $N]>, TryFromSliceError<T>> {
                     if slice.len() == $N {
                         let ptr = Box::into_raw(slice) as *mut [T; $N];
