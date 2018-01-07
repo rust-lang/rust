@@ -1,5 +1,5 @@
 use {SyntaxKind, TextUnit, TextRange};
-use super::{NodeData, NodeIdx, File};
+use super::{NodeData, SyntaxErrorData, NodeIdx, File};
 
 pub trait Sink {
     fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
@@ -11,6 +11,7 @@ pub trait Sink {
 pub struct FileBuilder {
     text: String,
     nodes: Vec<NodeData>,
+    errors: Vec<SyntaxErrorData>,
     in_progress: Vec<(NodeIdx, Option<NodeIdx>)>, // (parent, last_child)
     pos: TextUnit,
 }
@@ -58,6 +59,7 @@ impl FileBuilder {
         FileBuilder {
             text,
             nodes: Vec::new(),
+            errors: Vec::new(),
             in_progress: Vec::new(),
             pos: TextUnit::new(0),
         }
@@ -75,6 +77,7 @@ impl FileBuilder {
         File {
             text: self.text,
             nodes: self.nodes,
+            errors: self.errors,
         }
     }
 

@@ -36,6 +36,7 @@ pub struct Token {
 pub struct File {
 	text: String,
 	nodes: Vec<NodeData>,
+	errors: Vec<SyntaxErrorData>,
 }
 
 impl File {
@@ -72,6 +73,14 @@ impl<'f> Node<'f> {
 		Children { next: self.as_node(self.data().first_child) }
 	}
 
+	pub fn SyntaxErrors(&self) -> SyntaxErrors<'f> {
+		let pos = self.file.errors.iter().position(|e| e.node == self.idx);
+		let next = pos
+			.map(|i| ErrorIdx(i as u32))
+			.map(|idx| SyntaxError { file: self.file, idx });
+		SyntaxErrors { next }
+	}
+
 	fn data(&self) -> &'f NodeData {
 		&self.file.nodes[self.idx]
 	}
@@ -81,7 +90,41 @@ impl<'f> Node<'f> {
 	}
 }
 
+impl<'f> fmt::Debug for Node<'f> {
+	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+		write!(fmt, "{:?}@{:?}", self.kind(), self.range())
+	}
+}
 
+#[derive(Clone, Copy)]
+pub struct SyntaxError<'f> {
+	file: &'f File,
+	idx: ErrorIdx,
+}
+
+impl<'f> SyntaxError<'f> {
+	pub fn message(&self) -> &'f str {
+		self.data().message.as_str()
+	}
+
+	fn data(&self) -> &'f SyntaxErrorData {
+		&self.file.errors[self.idx]
+	}
+
+	fn next(&self) -> Option<SyntaxError<'f>> {
+		if self.file.errors.len() == self.idx.0 as usize {
+			return None;
+		}
+		let result = SyntaxError {
+			file: self.file,
+			idx: ErrorIdx(self.idx.0 + 1)
+		};
+		if result.data().node != self.data().node {
+			return None;
+		}
+		Some(result)
+	}
+}
 
 pub struct Children<'f> {
 	next: Option<Node<'f>>,
@@ -97,7 +140,22 @@ impl<'f> Iterator for Children<'f> {
 	}
 }
 
-#[derive(Clone, Copy)]
+pub struct SyntaxErrors<'f> {
+	next: Option<SyntaxError<'f>>,
+}
+
+impl<'f> Iterator for SyntaxErrors<'f> {
+	type Item = SyntaxError<'f>;
+
+	fn next(&mut self) -> Option<SyntaxError<'f>> {
+		let next = self.next;
+		self.next = next.as_ref().and_then(SyntaxError::next);
+		next
+	}
+}
+
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct NodeIdx(u32);
 
 struct NodeData {
@@ -122,8 +180,18 @@ impl ::std::ops::IndexMut<NodeIdx> for Vec<NodeData> {
 	}
 }
 
-impl<'f> fmt::Debug for Node<'f> {
-	fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-		write!(fmt, "{:?}@{:?}", self.kind(), self.range())
+#[derive(Clone, Copy)]
+struct ErrorIdx(u32);
+
+struct SyntaxErrorData {
+	node: NodeIdx,
+	message: String,
+}
+
+impl ::std::ops::Index<ErrorIdx> for Vec<SyntaxErrorData> {
+	type Output = SyntaxErrorData;
+
+	fn index(&self, ErrorIdx(idx): ErrorIdx) -> &SyntaxErrorData {
+		&self[idx as usize]
 	}
 }
