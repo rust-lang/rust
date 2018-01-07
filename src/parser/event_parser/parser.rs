@@ -5,8 +5,7 @@ use syntax_kinds::{L_CURLY, R_CURLY, ERROR};
 
 pub struct Parser<'t> {
     text: &'t str,
-    raw_tokens: &'t [Token],
-    non_ws_tokens: Vec<(usize, TextUnit)>,
+    non_ws_tokens: Vec<(Token, TextUnit)>,
 
     pos: usize,
     events: Vec<Event>,
@@ -19,16 +18,15 @@ impl<'t> Parser<'t> {
     pub(crate) fn new(text: &'t str, raw_tokens: &'t [Token]) -> Parser<'t> {
         let mut non_ws_tokens = Vec::new();
         let mut len = TextUnit::new(0);
-        for (idx, &token) in raw_tokens.iter().enumerate() {
+        for &token in raw_tokens.iter() {
             if !is_insignificant(token.kind) {
-                non_ws_tokens.push((idx, len))
+                non_ws_tokens.push((token, len))
             }
             len += token.len;
         }
 
         Parser {
             text,
-            raw_tokens,
             non_ws_tokens,
 
             pos: 0,
@@ -48,8 +46,8 @@ impl<'t> Parser<'t> {
             return true
         }
         if let Some(limit) = self.curly_limit {
-            let idx = self.non_ws_tokens[self.pos].0;
-            return limit == self.curly_level && self.raw_tokens[idx].kind == R_CURLY;
+            let token = self.non_ws_tokens[self.pos].0;
+            return limit == self.curly_level && token.kind == R_CURLY;
         }
         false
     }
@@ -70,8 +68,8 @@ impl<'t> Parser<'t> {
         if self.is_eof() {
             return None;
         }
-        let idx = self.non_ws_tokens[self.pos].0;
-        Some(self.raw_tokens[idx].kind)
+        let token = self.non_ws_tokens[self.pos].0;
+        Some(token.kind)
     }
 
     pub(crate) fn bump(&mut self) -> Option<SyntaxKind> {
@@ -90,8 +88,8 @@ impl<'t> Parser<'t> {
         if self.non_ws_tokens[self.pos..].len() < kinds.len() {
             return false
         }
-        kinds.iter().zip(self.non_ws_tokens[self.pos..].iter())
-            .all(|(&k1, &(idx, _))| k1 == self.raw_tokens[idx].kind)
+        kinds.iter().zip(self.non_ws_tokens[self.pos..].iter().map(|&(t, _)| t.kind))
+            .all(|(&k1, k2)| k1 == k2)
     }
 
     pub(crate) fn curly_block<F: FnOnce(&mut Parser)>(&mut self, f: F) -> bool {
