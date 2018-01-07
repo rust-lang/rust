@@ -41,7 +41,7 @@ use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::attr;
 use syntax::symbol::Symbol;
-use syntax_pos::{self, FileName};
+use syntax_pos::{self, FileName, FileMap, Span, DUMMY_SP};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -57,6 +57,9 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
+
+    // This is used to speed up Span encoding.
+    filemap_cache: Rc<FileMap>,
 }
 
 macro_rules! encoder_methods {
@@ -137,6 +140,41 @@ impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_index: &DefIndex) -> Result<(), Self::Error> {
         self.emit_u32(def_index.as_u32())
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
+        if *span == DUMMY_SP {
+            return TAG_INVALID_SPAN.encode(self)
+        }
+
+        let span = span.data();
+
+        // The Span infrastructure should make sure that this invariant holds:
+        debug_assert!(span.lo <= span.hi);
+
+        if !self.filemap_cache.contains(span.lo) {
+            let codemap = self.tcx.sess.codemap();
+            let filemap_index = codemap.lookup_filemap_idx(span.lo);
+            self.filemap_cache = codemap.files()[filemap_index].clone();
+        }
+
+        if !self.filemap_cache.contains(span.hi) {
+            // Unfortunately, macro expansion still sometimes generates Spans
+            // that malformed in this way.
+            return TAG_INVALID_SPAN.encode(self)
+        }
+
+        TAG_VALID_SPAN.encode(self)?;
+        span.lo.encode(self)?;
+
+        // Encode length which is usually less than span.hi and profits more
+        // from the variable-length integer encoding that we use.
+        let len = span.hi - span.lo;
+        len.encode(self)
+
+        // Don't encode the expansion context.
     }
 }
 
@@ -1648,6 +1686,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
+            filemap_cache: tcx.sess.codemap().files()[0].clone(),
         };
 
         // Encode the rustc version string in a predictable location.

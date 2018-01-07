@@ -270,19 +270,17 @@ impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
+        let tag = u8::decode(self)?;
+
+        if tag == TAG_INVALID_SPAN {
+            return Ok(DUMMY_SP)
+        }
+
+        debug_assert_eq!(tag, TAG_VALID_SPAN);
+
         let lo = BytePos::decode(self)?;
-        let hi = BytePos::decode(self)?;
-
-        if lo == BytePos(0) && hi == BytePos(0) {
-            // Don't try to rebase DUMMY_SP. Otherwise it will look like a valid
-            // Span again.
-            return Ok(DUMMY_SP)
-        }
-
-        if hi < lo {
-            // Consistently map invalid spans to DUMMY_SP.
-            return Ok(DUMMY_SP)
-        }
+        let len = BytePos::decode(self)?;
+        let hi = lo + len;
 
         let sess = if let Some(sess) = self.sess {
             sess
@@ -297,9 +295,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
             let last_filemap = &imported_filemaps[self.last_filemap_index];
 
             if lo >= last_filemap.original_start_pos &&
-               lo <= last_filemap.original_end_pos &&
-               hi >= last_filemap.original_start_pos &&
-               hi <= last_filemap.original_end_pos {
+               lo <= last_filemap.original_end_pos {
                 last_filemap
             } else {
                 let mut a = 0;
@@ -323,11 +319,9 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         debug_assert!(lo >= filemap.original_start_pos &&
                       lo <= filemap.original_end_pos);
 
-        if hi < filemap.original_start_pos || hi > filemap.original_end_pos {
-            // `hi` points to a different FileMap than `lo` which is invalid.
-            // Again, map invalid Spans to DUMMY_SP.
-            return Ok(DUMMY_SP)
-        }
+        // Make sure we correctly filtered out invalid spans during encoding
+        debug_assert!(hi >= filemap.original_start_pos &&
+                      hi <= filemap.original_end_pos);
 
         let lo = (lo + filemap.translated_filemap.start_pos) - filemap.original_start_pos;
         let hi = (hi + filemap.translated_filemap.start_pos) - filemap.original_start_pos;
