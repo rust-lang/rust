@@ -66,5 +66,6 @@ Grammar(
         "STRUCT_FIELD",
         "FN_ITEM",
         "ATTR",
+        "META_ITEM",
     ]
 )

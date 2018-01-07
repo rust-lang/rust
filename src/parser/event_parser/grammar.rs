@@ -34,7 +34,7 @@ fn item(p: &mut Parser) {
 
 fn struct_item(p: &mut Parser) {
     p.expect(IDENT)
-        && p.curly_block(|p| comma_list(p, struct_field));
+        && p.curly_block(|p| comma_list(p, EOF, struct_field));
 }
 
 fn struct_field(p: &mut Parser) -> bool {
@@ -52,17 +52,43 @@ fn fn_item(p: &mut Parser) {
 // Paths, types, attributes, and stuff //
 
 fn inner_attributes(p: &mut Parser) {
-    many(p, inner_attribute)
+    many(p, |p| attribute(p, true))
 }
 
-fn inner_attribute(p: &mut Parser) -> bool {
-    if !(p.lookahead(&[EXCL, POUND])) {
+fn attribute(p: &mut Parser, inner: bool) -> bool {
+    let attr_start = inner && p.lookahead(&[POUND, EXCL, L_BRACK])
+        || !inner && p.lookahead(&[POUND, L_BRACK]);
+    if !attr_start {
         return false;
     }
     node(p, ATTR, |p| {
-        p.bump_n(2);
+        p.bump_n(if inner { 3 } else { 2 });
+        meta_item(p) && p.expect(R_BRACK);
     });
     true
+}
+
+fn meta_item(p: &mut Parser) -> bool {
+    node_if(p, IDENT, META_ITEM, |p| {
+        if p.eat(EQ) {
+            if !literal(p) {
+                p.error()
+                    .message("expected literal")
+                    .emit();
+            }
+        } else if p.eat(L_PAREN) {
+            comma_list(p, R_PAREN, meta_item_inner);
+            p.expect(R_PAREN);
+        }
+    })
+}
+
+fn meta_item_inner(p: &mut Parser) -> bool {
+    meta_item(p) || literal(p)
+}
+
+fn literal(p: &mut Parser) -> bool {
+    p.eat(INT_NUMBER) || p.eat(FLOAT_NUMBER)
 }
 
 fn outer_attributes(_: &mut Parser) {
@@ -75,7 +101,12 @@ fn visibility(_: &mut Parser) {
 
 // Error recovery and high-order utils //
 
-fn node_if<F: FnOnce(&mut Parser)>(p: &mut Parser, first: SyntaxKind, node_kind: SyntaxKind, rest: F) -> bool {
+fn node_if<F: FnOnce(&mut Parser)>(
+    p: &mut Parser,
+    first: SyntaxKind,
+    node_kind: SyntaxKind,
+    rest: F
+) -> bool {
     p.current() == first && { node(p, node_kind, |p| { p.bump(); rest(p); }); true }
 }
 
@@ -89,10 +120,9 @@ fn many<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
     while f(p) { }
 }
 
-fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
+fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, end: SyntaxKind, f: F) {
     many(p, |p| {
-        f(p);
-        if p.current() == EOF {
+        if !f(p) || p.current() == end {
             false
         } else {
             p.expect(COMMA);
@@ -156,5 +186,9 @@ impl<'p> Parser<'p> {
         for _ in 0..n {
             self.bump();
         }
+    }
+
+    fn eat(&mut self, kind: SyntaxKind) -> bool {
+        self.current() == kind && { self.bump(); true }
     }
 }
