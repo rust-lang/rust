@@ -153,7 +153,7 @@ blacklisted-names = ["toto", "tata", "titi"]
 cyclomatic-complexity-threshold = 30
 ```
 
-See the wiki for more information about which lints can be configured and the
+See the [list of lints](https://rust-lang-nursery.github.io/rust-clippy/master/index.html) for more information about which lints can be configured and the
 meaning of the variables.
 
 You can also specify the path to the configuration file with:
@@ -162,7 +162,7 @@ You can also specify the path to the configuration file with:
 #![plugin(clippy(conf_file="path/to/clippy's/configuration"))]
 ```
 
-To deactivate the “for further information visit *wiki-link*” message you can
+To deactivate the “for further information visit *lint-link*” message you can
 define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
 
 ### Allowing/denying lints
