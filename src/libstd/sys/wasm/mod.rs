@@ -39,6 +39,7 @@ use os::raw::c_char;
 const DEBUG: bool = false;
 
 pub mod args;
+#[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod cmath;
 pub mod condvar;
