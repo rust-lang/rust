@@ -17,8 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config
 
 WORKDIR /build/
-COPY dist-i586-gnu-i686-musl/musl-libunwind-patch.patch dist-i586-gnu-i686-musl/build-musl.sh /build/
-RUN sh /build/build-musl.sh && rm -rf /build
+COPY scripts/musl.sh /build/
+RUN CC=gcc CFLAGS="-m32 -fPIC -Wa,-mrelax-relocations=no" \
+    CXX=g++ CXXFLAGS="-m32 -Wa,-mrelax-relocations=no" \
+    bash musl.sh i686 --target=i686 && \
+    rm -rf /build
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
