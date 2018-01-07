@@ -173,14 +173,7 @@ pub enum ExternalLocation {
     Unknown,
 }
 
-/// Metadata about an implementor of a trait.
-pub struct Implementor {
-    pub def_id: DefId,
-    pub stability: Option<clean::Stability>,
-    pub impl_: clean::Impl,
-}
-
-/// Metadata about implementations for a type.
+/// Metadata about implementations for a type or trait.
 #[derive(Clone)]
 pub struct Impl {
     pub impl_item: clean::Item,
@@ -279,7 +272,7 @@ pub struct Cache {
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
     /// of trait ids to the list of known implementors of the trait
-    pub implementors: FxHashMap<DefId, Vec<Implementor>>,
+    pub implementors: FxHashMap<DefId, Vec<Impl>>,
 
     /// Cache of where external crate documentation can be found.
     pub extern_locations: FxHashMap<CrateNum, (String, PathBuf, ExternalLocation)>,
@@ -971,12 +964,12 @@ fn write_shared(cx: &Context,
             // there's no need to emit information about it (there's inlining
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
-            if imp.def_id.krate == did.krate { continue }
+            if imp.impl_item.def_id.krate == did.krate { continue }
             // If the implementation is from another crate then that crate
             // should add it.
-            if !imp.def_id.is_local() { continue }
+            if !imp.impl_item.def_id.is_local() { continue }
             have_impls = true;
-            write!(implementors, "{},", as_json(&imp.impl_.to_string())).unwrap();
+            write!(implementors, "{},", as_json(&imp.inner_impl().to_string())).unwrap();
         }
         implementors.push_str("];");
 
@@ -1208,10 +1201,8 @@ impl DocFolder for Cache {
             if !self.masked_crates.contains(&item.def_id.krate) {
                 if let Some(did) = i.trait_.def_id() {
                     if i.for_.def_id().map_or(true, |d| !self.masked_crates.contains(&d.krate)) {
-                        self.implementors.entry(did).or_insert(vec![]).push(Implementor {
-                            def_id: item.def_id,
-                            stability: item.stability.clone(),
-                            impl_: i.clone(),
+                        self.implementors.entry(did).or_insert(vec![]).push(Impl {
+                            impl_item: item.clone(),
                         });
                     }
                 }
@@ -2338,18 +2329,6 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     document(w, cx, it)
 }
 
-fn implementor2item<'a>(cache: &'a Cache, imp : &Implementor) -> Option<&'a clean::Item> {
-    if let Some(t_did) = imp.impl_.for_.def_id() {
-        if let Some(impl_item) = cache.impls.get(&t_did).and_then(|i| i.iter()
-            .find(|i| i.impl_item.def_id == imp.def_id))
-        {
-            let i = &impl_item.impl_item;
-            return Some(i);
-        }
-    }
-    None
-}
-
 fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
     let mut bounds = String::new();
@@ -2533,7 +2512,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<&str, (DefId, bool)> = FxHashMap();
         for implementor in implementors {
-            match implementor.impl_.for_ {
+            match implementor.inner_impl().for_ {
                 clean::ResolvedPath { ref path, did, is_generic: false, .. } |
                 clean::BorrowedRef {
                     type_: box clean::ResolvedPath { ref path, did, is_generic: false, .. },
@@ -2550,7 +2529,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
 
         let (local, foreign) = implementors.iter()
-            .partition::<Vec<_>, _>(|i| i.impl_.for_.def_id()
+            .partition::<Vec<_>, _>(|i| i.inner_impl().for_.def_id()
                                          .map_or(true, |d| cache.paths.contains_key(&d)));
 
         if !foreign.is_empty() {
@@ -2561,14 +2540,11 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             ")?;
 
             for implementor in foreign {
-                if let Some(i) = implementor2item(&cache, implementor) {
-                    let impl_ = Impl { impl_item: i.clone() };
-                    let assoc_link = AssocItemLink::GotoSource(
-                        i.def_id, &implementor.impl_.provided_trait_methods
-                    );
-                    render_impl(w, cx, &impl_, assoc_link,
-                                RenderMode::Normal, i.stable_since(), false)?;
-                }
+                let assoc_link = AssocItemLink::GotoSource(
+                    implementor.impl_item.def_id, &implementor.inner_impl().provided_trait_methods
+                );
+                render_impl(w, cx, &implementor, assoc_link,
+                            RenderMode::Normal, implementor.impl_item.stable_since(), false)?;
             }
         }
 
@@ -2576,18 +2552,16 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
         for implementor in local {
             write!(w, "<li>")?;
-            if let Some(item) = implementor2item(&cache, implementor) {
-                if let Some(l) = (Item { cx, item }).src_href() {
-                    write!(w, "<div class='out-of-band'>")?;
-                    write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
-                                l, "goto source code")?;
-                    write!(w, "</div>")?;
-                }
+            if let Some(l) = (Item { cx, item: &implementor.impl_item }).src_href() {
+                write!(w, "<div class='out-of-band'>")?;
+                write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                            l, "goto source code")?;
+                write!(w, "</div>")?;
             }
             write!(w, "<code>")?;
             // If there's already another implementor that has the same abbridged name, use the
             // full path, for example in `std::iter::ExactSizeIterator`
-            let use_absolute = match implementor.impl_.for_ {
+            let use_absolute = match implementor.inner_impl().for_ {
                 clean::ResolvedPath { ref path, is_generic: false, .. } |
                 clean::BorrowedRef {
                     type_: box clean::ResolvedPath { ref path, is_generic: false, .. },
@@ -2595,8 +2569,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 } => implementor_dups[path.last_name()].1,
                 _ => false,
             };
-            fmt_impl_for_trait_page(&implementor.impl_, w, use_absolute)?;
-            for it in &implementor.impl_.items {
+            fmt_impl_for_trait_page(&implementor.inner_impl(), w, use_absolute)?;
+            for it in &implementor.inner_impl().items {
                 if let clean::TypedefItem(ref tydef, _) = it.inner {
                     write!(w, "<span class=\"where fmt-newline\">  ")?;
                     assoc_type(w, it, &vec![], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
@@ -3886,20 +3860,16 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
 
     if let Some(implementors) = c.implementors.get(&it.def_id) {
         let res = implementors.iter()
-                              .filter(|i| i.impl_.for_.def_id()
-                                                      .map_or(false, |d| !c.paths.contains_key(&d)))
+                              .filter(|i| i.inner_impl().for_.def_id()
+                                           .map_or(false, |d| !c.paths.contains_key(&d)))
                               .filter_map(|i| {
-                                  if let Some(item) = implementor2item(&c, i) {
-                                      match extract_for_impl_name(&item) {
-                                          Some((ref name, ref url)) => {
-                                              Some(format!("<a href=\"#impl-{}\">{}</a>",
-                                                           small_url_encode(url),
-                                                           Escape(name)))
-                                          }
-                                          _ => None,
+                                  match extract_for_impl_name(&i.impl_item) {
+                                      Some((ref name, ref url)) => {
+                                          Some(format!("<a href=\"#impl-{}\">{}</a>",
+                                                      small_url_encode(url),
+                                                      Escape(name)))
                                       }
-                                  } else {
-                                      None
+                                      _ => None,
                                   }
                               })
                               .collect::<String>();
