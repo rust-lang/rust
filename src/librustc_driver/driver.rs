@@ -121,33 +121,8 @@ pub fn compile_input(trans: Box<TransCrate>,
         };
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
-
-        // Ensure the source file isn't accidentally overwritten during compilation.
-        match *input_path {
-            Some(ref input_path) => {
-                if sess.opts.will_create_output_file() {
-                    if outputs.contains_path(input_path) {
-                        sess.err(&format!(
-                            "the input file \"{}\" would be overwritten by the generated \
-                            executable",
-                            input_path.display()));
-                        return Err(CompileIncomplete::Stopped);
-                    }
-                    if let Some(dir_path) = outputs.conflicts_with_dir() {
-                        sess.err(&format!(
-                            "the generated executable for the input file \"{}\" conflicts with the \
-                            existing directory \"{}\"",
-                            input_path.display(), dir_path.display()));
-                        return Err(CompileIncomplete::Stopped);
-                    }
-                }
-            },
-            None => {}
-        }
-
         let crate_name =
             ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
-
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
                 sess,
@@ -166,8 +141,33 @@ pub fn compile_input(trans: Box<TransCrate>,
                 }
             )?
         };
+        
+        let output_paths = generated_output_paths(sess, &outputs, &crate_name);
 
-        write_out_deps(sess, &outputs, &crate_name);
+        // Ensure the source file isn't accidentally overwritten during compilation.
+        match *input_path {
+            Some(ref input_path) => {
+                if sess.opts.will_create_output_file() {
+                    if output_contains_path(&output_paths, input_path) {
+                        sess.err(&format!(
+                            "the input file \"{}\" would be overwritten by the generated \
+                            executable",
+                            input_path.display()));
+                        return Err(CompileIncomplete::Stopped);
+                    }
+                    if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
+                        sess.err(&format!(
+                            "the generated executable for the input file \"{}\" conflicts with the \
+                            existing directory \"{}\"",
+                            input_path.display(), dir_path.display()));
+                        return Err(CompileIncomplete::Stopped);
+                    }
+                }
+            },
+            None => {}
+        }
+
+        write_out_deps(sess, &outputs, &output_paths);
         if sess.opts.output_types.contains_key(&OutputType::DepInfo) &&
             sess.opts.output_types.keys().count() == 1 {
             return Ok(())
@@ -1111,7 +1111,10 @@ fn escape_dep_filename(filename: &FileName) -> String {
     filename.to_string().replace(" ", "\\ ")
 }
 
-fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
+// Returns all the paths that correspond to generated files.
+fn generated_output_paths(sess: &Session,
+                          outputs: &OutputFilenames,
+                          crate_name: &str) -> Vec<PathBuf> {
     let mut out_filenames = Vec::new();
     for output_type in sess.opts.output_types.keys() {
         let file = outputs.path(*output_type);
@@ -1135,7 +1138,46 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
             }
         }
     }
+    out_filenames
+}
 
+// Runs `f` on every output file path and returns the first non-None result, or None if `f`
+// returns None for every file path.
+fn check_output<F, T>(output_paths: &Vec<PathBuf>, f: F) -> Option<T>
+        where F: Fn(&PathBuf) -> Option<T> {
+            for output_path in output_paths {
+                if let Some(result) = f(output_path) {
+                    return Some(result);
+                }
+            }
+            None
+}
+
+pub fn output_contains_path(output_paths: &Vec<PathBuf>, input_path: &PathBuf) -> bool {
+    let input_path = input_path.canonicalize().ok();
+    if input_path.is_none() {
+        return false
+    }
+    let check = |output_path: &PathBuf| {
+        if output_path.canonicalize().ok() == input_path {
+            Some(())
+        } else { None }
+    };
+    check_output(output_paths, check).is_some()
+}
+
+pub fn output_conflicts_with_dir(output_paths: &Vec<PathBuf>) -> Option<PathBuf> {
+    let check = |output_path: &PathBuf| {
+        if output_path.is_dir() {
+            Some(output_path.clone())
+        } else { None }
+    };
+    check_output(output_paths, check)
+}
+
+fn write_out_deps(sess: &Session,
+                  outputs: &OutputFilenames,
+                  out_filenames: &Vec<PathBuf>) {
     // Write out dependency rules to the dep-info file if requested
     if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;
@@ -1154,7 +1196,7 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
                                          .map(|fmap| escape_dep_filename(&fmap.name))
                                          .collect();
             let mut file = fs::File::create(&deps_filename)?;
-            for path in &out_filenames {
+            for path in out_filenames {
                 write!(file, "{}: {}\n\n", path.display(), files.join(" "))?;
             }
 
