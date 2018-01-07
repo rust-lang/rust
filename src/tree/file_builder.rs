@@ -5,6 +5,7 @@ pub trait Sink {
     fn leaf(&mut self, kind: SyntaxKind, len: TextUnit);
     fn start_internal(&mut self, kind: SyntaxKind);
     fn finish_internal(&mut self);
+    fn error(&mut self) -> ErrorBuilder;
 }
 
 
@@ -51,6 +52,10 @@ impl Sink for FileBuilder {
         if !self.in_progress.is_empty() {
             self.add_len(id);
         }
+    }
+
+    fn error(&mut self) -> ErrorBuilder {
+        ErrorBuilder::new(self)
     }
 }
 
@@ -132,4 +137,26 @@ fn fill<T>(slot: &mut Option<T>, value: T) {
 fn grow(left: &mut TextRange, right: TextRange) {
     assert_eq!(left.end(), right.start());
     *left = TextRange::from_to(left.start(), right.end())
+}
+
+pub struct ErrorBuilder<'f> {
+    message: Option<String>,
+    builder: &'f mut FileBuilder
+}
+
+impl<'f> ErrorBuilder<'f> {
+    fn new(builder: &'f mut FileBuilder) -> Self {
+        ErrorBuilder { message: None, builder }
+    }
+
+    pub fn message<M: Into<String>>(mut self, m: M) -> Self {
+        self.message = Some(m.into());
+        self
+    }
+
+    pub fn build(self) {
+        let message = self.message.expect("Error message not set");
+        let node = self.builder.current_id();
+        self.builder.errors.push(SyntaxErrorData { node, message })
+    }
 }
