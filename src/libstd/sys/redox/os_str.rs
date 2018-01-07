@@ -104,7 +104,7 @@ impl Buf {
     }
 
     pub fn as_slice(&self) -> &Slice {
-        &*(&*self.inner as *const [u8] as *const Slice)
+        unsafe { &*(&*self.inner as *const [u8] as *const Slice) }
     }
 
     pub fn into_string(self) -> Result<String, Buf> {

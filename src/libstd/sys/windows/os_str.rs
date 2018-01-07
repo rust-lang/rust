@@ -89,7 +89,7 @@ impl Buf {
     }
 
     pub fn as_slice(&self) -> &Slice {
-        &*(self.inner.as_slice() as *const Wtf8 as *const Slice)
+        unsafe { &*(self.inner.as_slice() as *const Wtf8 as *const Slice) }
     }
 
     pub fn into_string(self) -> Result<String, Buf> {
