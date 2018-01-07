@@ -60,7 +60,6 @@
 #![start                     = "x4300"] //~ WARN unused attribute
 // see issue-43106-gating-of-test.rs for crate-level; but non crate-level is below at "4200"
 // see issue-43106-gating-of-bench.rs for crate-level; but non crate-level is below at "4100"
-#![simd                       = "4000"] //~ WARN unused attribute
 #![repr                       = "3900"] //~ WARN unused attribute
 #![path                       = "3800"] //~ WARN unused attribute
 #![abi                        = "3700"] //~ WARN unused attribute
@@ -326,24 +325,6 @@ mod bench {
 
     #[bench = "4100"]
     impl S { }
-}
-
-#[simd = "4000"]
-//~^ WARN unused attribute
-mod simd {
-    mod inner { #![simd="4000"] }
-    //~^ WARN unused attribute
-
-    #[simd = "4000"] fn f() { }
-    //~^ WARN unused attribute
-
-    struct S; // for `struct S` case, see feature-gate-repr-simd.rs
-
-    #[simd = "4000"] type T = S;
-    //~^ WARN unused attribute
-
-    #[simd = "4000"] impl S { }
-    //~^ WARN unused attribute
 }
 
 #[repr = "3900"]
