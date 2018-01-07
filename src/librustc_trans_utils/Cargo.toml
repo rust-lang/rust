@@ -12,7 +12,7 @@ test = false
 [dependencies]
 ar = "0.3.0"
 flate2 = "1.0"
-log = "0.3"
+log = "0.4"
 
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }

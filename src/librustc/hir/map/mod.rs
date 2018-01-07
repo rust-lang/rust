@@ -1068,7 +1068,7 @@ pub fn map_crate<'hir>(sess: &::session::Session,
                                                   cmdline_args)
     };
 
-    if log_enabled!(::log::LogLevel::Debug) {
+    if log_enabled!(::log::Level::Debug) {
         // This only makes sense for ordered stores; note the
         // enumerate to count the number of entries.
         let (entries_less_1, _) = map.iter().filter(|&x| {
