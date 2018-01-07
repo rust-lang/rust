@@ -3,103 +3,25 @@ use {SyntaxKind};
 use tree::EOF;
 use syntax_kinds::*;
 
-// Items //
+mod items;
+mod attributes;
+mod expressions;
 
 pub(crate) fn file(p: &mut Parser) {
     node(p, FILE, |p| {
         p.optional(SHEBANG);
-        inner_attributes(p);
+        attributes::inner_attributes(p);
         many(p, |p| {
             skip_to_first(
-                p, item_first, item,
+                p, items::item_first, items::item,
                 "expected item",
             )
         });
     })
 }
 
-fn item_first(p: &Parser) -> bool {
-    match p.current() {
-        STRUCT_KW | FN_KW => true,
-        _ => false,
-    }
-}
-
-fn item(p: &mut Parser) {
-    outer_attributes(p);
-    visibility(p);
-    node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item)
-        || node_if(p, FN_KW, FN_ITEM, fn_item);
-}
-
-fn struct_item(p: &mut Parser) {
-    p.expect(IDENT)
-        && p.curly_block(|p| comma_list(p, EOF, struct_field));
-}
-
-fn struct_field(p: &mut Parser) -> bool {
-    node_if(p, IDENT, STRUCT_FIELD, |p| {
-        p.expect(COLON) && p.expect(IDENT);
-    })
-}
-
-fn fn_item(p: &mut Parser) {
-    p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN)
-        && p.curly_block(|p| ());
-}
-
-
-// Paths, types, attributes, and stuff //
-
-fn inner_attributes(p: &mut Parser) {
-    many(p, |p| attribute(p, true))
-}
-
-fn attribute(p: &mut Parser, inner: bool) -> bool {
-    let attr_start = inner && p.lookahead(&[POUND, EXCL, L_BRACK])
-        || !inner && p.lookahead(&[POUND, L_BRACK]);
-    if !attr_start {
-        return false;
-    }
-    node(p, ATTR, |p| {
-        p.bump_n(if inner { 3 } else { 2 });
-        meta_item(p) && p.expect(R_BRACK);
-    });
-    true
-}
-
-fn meta_item(p: &mut Parser) -> bool {
-    node_if(p, IDENT, META_ITEM, |p| {
-        if p.eat(EQ) {
-            if !literal(p) {
-                p.error()
-                    .message("expected literal")
-                    .emit();
-            }
-        } else if p.eat(L_PAREN) {
-            comma_list(p, R_PAREN, meta_item_inner);
-            p.expect(R_PAREN);
-        }
-    })
-}
-
-fn meta_item_inner(p: &mut Parser) -> bool {
-    meta_item(p) || literal(p)
-}
-
-fn literal(p: &mut Parser) -> bool {
-    p.eat(INT_NUMBER) || p.eat(FLOAT_NUMBER)
-}
-
-fn outer_attributes(_: &mut Parser) {
-}
-
 fn visibility(_: &mut Parser) {
 }
-
-// Expressions //
-
-// Error recovery and high-order utils //
 
 fn node_if<F: FnOnce(&mut Parser)>(
     p: &mut Parser,
