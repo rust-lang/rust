@@ -422,7 +422,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                               consider adding a #[repr(C)] attribute to the type");
                         }
 
-                        if def.struct_variant().fields.is_empty() {
+                        if def.non_enum_variant().fields.is_empty() {
                             return FfiUnsafe("found zero-size struct in foreign module, consider \
                                               adding a member to this struct");
                         }
@@ -430,7 +430,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         // We can't completely trust repr(C) markings; make sure the
                         // fields are actually safe.
                         let mut all_phantom = true;
-                        for field in &def.struct_variant().fields {
+                        for field in &def.non_enum_variant().fields {
                             let field_ty = cx.fully_normalize_associated_types_in(
                                 &field.ty(cx, substs)
                             );
@@ -458,13 +458,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                               consider adding a #[repr(C)] attribute to the type");
                         }
 
-                        if def.struct_variant().fields.is_empty() {
+                        if def.non_enum_variant().fields.is_empty() {
                             return FfiUnsafe("found zero-size union in foreign module, consider \
                                               adding a member to this union");
                         }
 
                         let mut all_phantom = true;
-                        for field in &def.struct_variant().fields {
+                        for field in &def.non_enum_variant().fields {
                             let field_ty = cx.fully_normalize_associated_types_in(
                                 &field.ty(cx, substs)
                             );

@@ -528,7 +528,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 };
                 match self.tables.expr_ty_adjusted(&hir_node).sty {
                     ty::TyAdt(def, _) if !def.is_enum() => {
-                        let f = def.struct_variant().field_named(ident.node.name);
+                        let f = def.non_enum_variant().field_named(ident.node.name);
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
                         filter!(self.span_utils, sub_span, expr.span, None);
                         let span = self.span_from_span(sub_span.unwrap());

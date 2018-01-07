@@ -719,7 +719,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ty::TyAdt(def, _) => if def.is_enum() {
                     format!("{}", field.index())
                 } else {
-                    format!("{}", def.struct_variant().fields[field.index()].name)
+                    format!("{}", def.non_enum_variant().fields[field.index()].name)
                 },
                 ty::TyTuple(_, _) => format!("{}", field.index()),
                 ty::TyRef(_, tnm) | ty::TyRawPtr(tnm) => {

@@ -107,7 +107,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty::TyDynamic(ref tty, ..) =>
                 Some(PointerKind::Vtable(tty.principal().map(|p| p.def_id()))),
             ty::TyAdt(def, substs) if def.is_struct() => {
-                match def.struct_variant().fields.last() {
+                match def.non_enum_variant().fields.last() {
                     None => Some(PointerKind::Thin),
                     Some(f) => {
                         let field_ty = self.field_ty(span, f, substs);

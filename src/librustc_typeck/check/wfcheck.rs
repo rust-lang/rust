@@ -130,14 +130,14 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             }
             hir::ItemStruct(ref struct_def, ref ast_generics) => {
                 self.check_type_defn(item, false, |fcx| {
-                    vec![fcx.struct_variant(struct_def)]
+                    vec![fcx.non_enum_variant(struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
             hir::ItemUnion(ref struct_def, ref ast_generics) => {
                 self.check_type_defn(item, true, |fcx| {
-                    vec![fcx.struct_variant(struct_def)]
+                    vec![fcx.non_enum_variant(struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
@@ -689,7 +689,7 @@ struct AdtField<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    fn struct_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
+    fn non_enum_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
         let fields =
             struct_def.fields().iter()
             .map(|field| {
@@ -704,7 +704,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn enum_variants(&self, enum_def: &hir::EnumDef) -> Vec<AdtVariant<'tcx>> {
         enum_def.variants.iter()
-            .map(|variant| self.struct_variant(&variant.node.data))
+            .map(|variant| self.non_enum_variant(&variant.node.data))
             .collect()
     }
 

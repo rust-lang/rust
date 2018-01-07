@@ -288,7 +288,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // conversion). This will work out because `U:
                 // Unsize<V>`, and we have a builtin rule that `*mut
                 // U` can be coerced to `*mut V` if `U: Unsize<V>`.
-                let fields = &def_a.struct_variant().fields;
+                let fields = &def_a.non_enum_variant().fields;
                 let diff_fields = fields.iter()
                     .enumerate()
                     .filter_map(|(i, f)| {

@@ -258,7 +258,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 adt.variant_with_id(vid).fields.get(i).map(|f| f.ty(self, substs))
             }
             (&TyAdt(adt, substs), None) => {
-                // Don't use `struct_variant`, this may be a univariant enum.
+                // Don't use `non_enum_variant`, this may be a univariant enum.
                 adt.variants[0].fields.get(i).map(|f| f.ty(self, substs))
             }
             (&TyTuple(ref v, _), None) => v.get(i).cloned(),
@@ -277,7 +277,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 adt.variant_with_id(vid).find_field_named(n).map(|f| f.ty(self, substs))
             }
             (&TyAdt(adt, substs), None) => {
-                adt.struct_variant().find_field_named(n).map(|f| f.ty(self, substs))
+                adt.non_enum_variant().find_field_named(n).map(|f| f.ty(self, substs))
             }
             _ => return None
         }
@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     if !def.is_struct() {
                         break;
                     }
-                    match def.struct_variant().fields.last() {
+                    match def.non_enum_variant().fields.last() {
                         Some(f) => ty = f.ty(self, substs),
                         None => break,
                     }
@@ -329,7 +329,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             match (&a.sty, &b.sty) {
                 (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs))
                         if a_def == b_def && a_def.is_struct() => {
-                    if let Some(f) = a_def.struct_variant().fields.last() {
+                    if let Some(f) = a_def.non_enum_variant().fields.last() {
                         a = f.ty(self, a_substs);
                         b = f.ty(self, b_substs);
                     } else {

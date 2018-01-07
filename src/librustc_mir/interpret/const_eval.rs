@@ -488,7 +488,7 @@ fn check_ctfe_against_miri<'a, 'tcx>(
                 miri_place = ecx.place_downcast(miri_place, variant).unwrap();
                 &def.variants[variant]
             } else {
-                def.struct_variant()
+                def.non_enum_variant()
             };
             let vec = match ctfe {
                 ConstVal::Aggregate(Struct(v)) => v,
