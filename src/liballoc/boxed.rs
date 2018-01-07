@@ -661,19 +661,21 @@ impl<T> TryFromSliceError<T> {
 
 macro_rules! array_impls {
     ($($N:expr)+) => {
-        #[unstable(feature = "try_from", issue = "33417")]
-        impl<T> TryFrom<Box<[T]>> for Box<[T; $N]> {
-            type Error = TryFromSliceError<T>;
+        $(
+            #[unstable(feature = "try_from", issue = "33417")]
+            impl<T> TryFrom<Box<[T]>> for Box<[T; $N]> {
+                type Error = TryFromSliceError<T>;
 
-            fn try_from(slice: Box<[T]>) -> Result<Box<[T; $N]>, TryFromSliceError<T>> {
-                if slice.len() == $N {
-                    let ptr = Box::into_raw(slice) as *mut [T; $N];
-                    unsafe { Ok(Box::from_raw(ptr)) }
-                } else {
-                    Err(TryFromSliceError(slice))
+                fn try_from(slice: Box<[T]>) -> Result<Box<[T; $N]>, TryFromSliceError<T>> {
+                    if slice.len() == $N {
+                        let ptr = Box::into_raw(slice) as *mut [T; $N];
+                        unsafe { Ok(Box::from_raw(ptr)) }
+                    } else {
+                        Err(TryFromSliceError(slice))
+                    }
                 }
             }
-        }
+        )+
     }
 }
 
