@@ -290,6 +290,13 @@ impl Error for array::TryFromSliceError {
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
+impl<T> Error for boxed::TryFromSliceError<T> {
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseFloatError {
     fn description(&self) -> &str {
