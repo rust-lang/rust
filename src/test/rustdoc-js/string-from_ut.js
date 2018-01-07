@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const QUERY = 'String';
+const QUERY = 'String::from_ut';
 
 const EXPECTED = {
     'others': [
-        { 'path': 'std::string', 'name': 'String' },
-        { 'path': 'std::ffi', 'name': 'OsString' },
-        { 'path': 'std::ffi', 'name': 'CString' },
-    ],
-    'in_args': [
-        { 'path': 'std::str', 'name': 'eq' },
-    ],
-    'returned': [
-        { 'path': 'std::string::String', 'name': 'add' },
+        { 'path': 'std::string::String', 'name': 'from_utf8' },
+        { 'path': 'std::string::String', 'name': 'from_utf8' },
+        { 'path': 'std::string::String', 'name': 'from_utf8_lossy' },
+        { 'path': 'std::string::String', 'name': 'from_utf16_lossy' },
+        { 'path': 'std::string::String', 'name': 'from_utf8_unchecked' },
     ],
 };

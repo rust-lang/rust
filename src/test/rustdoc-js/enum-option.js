@@ -8,18 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const QUERY = 'String';
+const QUERY = 'enum:Option';
 
 const EXPECTED = {
     'others': [
-        { 'path': 'std::string', 'name': 'String' },
-        { 'path': 'std::ffi', 'name': 'OsString' },
-        { 'path': 'std::ffi', 'name': 'CString' },
-    ],
-    'in_args': [
-        { 'path': 'std::str', 'name': 'eq' },
-    ],
-    'returned': [
-        { 'path': 'std::string::String', 'name': 'add' },
+        { 'path': 'std::option', 'name': 'Option' },
     ],
 };

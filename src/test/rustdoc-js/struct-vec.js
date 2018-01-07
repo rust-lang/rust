@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const QUERY = 'String';
+const QUERY = 'struct:Vec';
 
 const EXPECTED = {
     'others': [
-        { 'path': 'std::string', 'name': 'String' },
-        { 'path': 'std::ffi', 'name': 'OsString' },
-        { 'path': 'std::ffi', 'name': 'CString' },
-    ],
-    'in_args': [
-        { 'path': 'std::str', 'name': 'eq' },
-    ],
-    'returned': [
-        { 'path': 'std::string::String', 'name': 'add' },
+        { 'path': 'std::vec', 'name': 'Vec' },
+        { 'path': 'std::collections', 'name': 'VecDeque' },
+        { 'path': 'alloc::raw_vec', 'name': 'RawVec' },
     ],
 };
