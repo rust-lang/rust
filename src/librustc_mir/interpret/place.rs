@@ -209,7 +209,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
         };
 
-        if log_enabled!(::log::LogLevel::Trace) {
+        if log_enabled!(::log::Level::Trace) {
             self.dump_local(place);
         }
 

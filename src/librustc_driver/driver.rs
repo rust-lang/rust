@@ -253,14 +253,14 @@ pub fn compile_input(sess: &Session,
 
             result?;
 
-            if log_enabled!(::log::LogLevel::Info) {
+            if log_enabled!(::log::Level::Info) {
                 println!("Pre-trans");
                 tcx.print_debug_stats();
             }
 
             let trans = phase_4_translate_to_llvm::<DefaultTransCrate>(tcx, rx);
 
-            if log_enabled!(::log::LogLevel::Info) {
+            if log_enabled!(::log::Level::Info) {
                 println!("Post-trans");
                 tcx.print_debug_stats();
             }
