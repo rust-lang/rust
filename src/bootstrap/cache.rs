@@ -114,7 +114,7 @@ impl Deref for Interned<String> {
     fn deref(&self) -> &'static str {
         let l = INTERNER.strs.lock().unwrap();
         let s: &str = l.get(*self).as_ref();
-        unsafe { &*(s *const _) }
+        unsafe { &*(s as *const _) }
     }
 }
 
@@ -123,7 +123,7 @@ impl Deref for Interned<PathBuf> {
     fn deref(&self) -> &'static Path {
         let l = INTERNER.paths.lock().unwrap();
         let p: &Path = l.get(*self).as_ref();
-        unsafe { &*(p *const _) }
+        unsafe { &*(p as *const _) }
     }
 }
 
@@ -137,7 +137,7 @@ impl AsRef<Path> for Interned<String> {
     fn as_ref(&self) -> &'static Path {
         let l = INTERNER.strs.lock().unwrap();
         let p: &Path = l.get(*self).as_ref();
-        unsafe { &*(p *const _) }
+        unsafe { &*(p as *const _) }
     }
 }
 
@@ -145,7 +145,7 @@ impl AsRef<OsStr> for Interned<PathBuf> {
     fn as_ref(&self) -> &'static OsStr {
         let l = INTERNER.paths.lock().unwrap();
         let s: &OsStr = l.get(*self).as_ref();
-        unsafe { &*(s *const _) }
+        unsafe { &*(s as *const _) }
     }
 }
 
@@ -153,7 +153,7 @@ impl AsRef<OsStr> for Interned<String> {
     fn as_ref(&self) -> &'static OsStr {
         let l = INTERNER.strs.lock().unwrap();
         let s: &OsStr = l.get(*self).as_ref();
-        unsafe { &*(s *const _) }
+        unsafe { &*(s as *const _) }
     }
 }
 
