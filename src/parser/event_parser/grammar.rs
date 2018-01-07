@@ -4,7 +4,7 @@ use syntax_kinds::*;
 
 // Items //
 
-pub fn file(p: &mut Parser) {
+pub(crate) fn file(p: &mut Parser) {
     node(p, FILE, |p| {
         p.optional(SHEBANG);
         inner_attributes(p);

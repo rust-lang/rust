@@ -3,9 +3,15 @@ use super::{Event};
 use super::super::is_insignificant;
 use syntax_kinds::{L_CURLY, R_CURLY, ERROR};
 
-pub struct Parser<'t> {
+pub(crate) const EOF: SyntaxKind = SyntaxKind(10000);
+
+
+pub(crate) struct Parser<'t> {
+    #[allow(unused)]
     text: &'t str,
-    non_ws_tokens: Vec<(Token, TextUnit)>,
+    #[allow(unused)]
+    start_offsets: Vec<TextUnit>,
+    tokens: Vec<Token>, // non-whitespace tokens
 
     pos: usize,
     events: Vec<Event>,
@@ -16,18 +22,21 @@ pub struct Parser<'t> {
 
 impl<'t> Parser<'t> {
     pub(crate) fn new(text: &'t str, raw_tokens: &'t [Token]) -> Parser<'t> {
-        let mut non_ws_tokens = Vec::new();
+        let mut tokens = Vec::new();
+        let mut start_offsets = Vec::new();
         let mut len = TextUnit::new(0);
         for &token in raw_tokens.iter() {
             if !is_insignificant(token.kind) {
-                non_ws_tokens.push((token, len))
+                tokens.push(token);
+                start_offsets.push(len);
             }
             len += token.len;
         }
 
         Parser {
             text,
-            non_ws_tokens,
+            start_offsets,
+            tokens,
 
             pos: 0,
             events: Vec::new(),
@@ -42,11 +51,11 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn is_eof(&self) -> bool {
-        if self.pos == self.non_ws_tokens.len() {
+        if self.pos == self.tokens.len() {
             return true
         }
         if let Some(limit) = self.curly_limit {
-            let token = self.non_ws_tokens[self.pos].0;
+            let token = self.tokens[self.pos];
             return limit == self.curly_level && token.kind == R_CURLY;
         }
         false
@@ -68,7 +77,7 @@ impl<'t> Parser<'t> {
         if self.is_eof() {
             return None;
         }
-        let token = self.non_ws_tokens[self.pos].0;
+        let token = self.tokens[self.pos];
         Some(token.kind)
     }
 
@@ -85,10 +94,10 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn lookahead(&self, kinds: &[SyntaxKind]) -> bool {
-        if self.non_ws_tokens[self.pos..].len() < kinds.len() {
+        if self.tokens[self.pos..].len() < kinds.len() {
             return false
         }
-        kinds.iter().zip(self.non_ws_tokens[self.pos..].iter().map(|&(t, _)| t.kind))
+        kinds.iter().zip(self.tokens[self.pos..].iter().map(|t| t.kind))
             .all(|(&k1, k2)| k1 == k2)
     }
 
