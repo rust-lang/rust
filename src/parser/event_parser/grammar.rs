@@ -74,7 +74,12 @@ fn many<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
 fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
     many(p, |p| {
         f(p);
-        p.is_eof() || p.expect(COMMA)
+        if p.is_eof() {
+            false
+        } else {
+            p.expect(COMMA);
+            true
+        }
     })
 }
 

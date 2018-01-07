@@ -21,9 +21,8 @@ fn parser_test_dir() -> PathBuf {
     PathBuf::from(dir).join("tests/data/parser")
 }
 
-fn parser_test_cases() -> Vec<PathBuf> {
+fn test_from_dir(dir: &Path) -> Vec<PathBuf> {
     let mut acc = Vec::new();
-    let dir = parser_test_dir();
     for file in read_dir(&dir).unwrap() {
         let file = file.unwrap();
         let path = file.path();
@@ -35,6 +34,13 @@ fn parser_test_cases() -> Vec<PathBuf> {
     acc
 }
 
+fn parser_test_cases() -> Vec<PathBuf> {
+    let mut acc = Vec::new();
+    acc.extend(test_from_dir(&parser_test_dir().join("ok")));
+    acc.extend(test_from_dir(&parser_test_dir().join("err")));
+    acc
+}
+
 fn parser_test_case(path: &Path) {
     let actual = {
         let text = file::get_text(path).unwrap();
@@ -42,7 +48,10 @@ fn parser_test_case(path: &Path) {
         let file = parse(text, &tokens);
         dump_tree(&file)
     };
-    let expected = file::get_text(&path.with_extension("txt")).unwrap();
+    let expected = path.with_extension("txt");
+    let expected = file::get_text(&expected).expect(
+        &format!("Can't read {}", expected.display())
+    );
     let expected = expected.as_str();
     let actual = actual.as_str();
     if expected == actual {
