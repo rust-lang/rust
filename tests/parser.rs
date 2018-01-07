@@ -1,44 +1,18 @@
 extern crate file;
-#[macro_use(assert_diff)]
-extern crate difference;
 extern crate libsyntax2;
+extern crate testutils;
 
-use std::path::{PathBuf, Path};
-use std::fs::read_dir;
+use std::path::{Path};
 use std::fmt::Write;
 
 use libsyntax2::{tokenize, parse, Node, File};
+use testutils::{collect_tests, assert_equal_text};
 
 #[test]
 fn parser_tests() {
-    for test_case in parser_test_cases() {
+    for test_case in collect_tests(&["parser/ok", "parser/err"]) {
         parser_test_case(&test_case);
     }
-}
-
-fn parser_test_dir() -> PathBuf {
-    let dir = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(dir).join("tests/data/parser")
-}
-
-fn test_from_dir(dir: &Path) -> Vec<PathBuf> {
-    let mut acc = Vec::new();
-    for file in read_dir(&dir).unwrap() {
-        let file = file.unwrap();
-        let path = file.path();
-        if path.extension().unwrap_or_default() == "rs" {
-            acc.push(path);
-        }
-    }
-    acc.sort();
-    acc
-}
-
-fn parser_test_cases() -> Vec<PathBuf> {
-    let mut acc = Vec::new();
-    acc.extend(test_from_dir(&parser_test_dir().join("ok")));
-    acc.extend(test_from_dir(&parser_test_dir().join("err")));
-    acc
 }
 
 fn parser_test_case(path: &Path) {
@@ -48,19 +22,13 @@ fn parser_test_case(path: &Path) {
         let file = parse(text, &tokens);
         dump_tree(&file)
     };
-    let expected = path.with_extension("txt");
-    let expected = file::get_text(&expected).expect(
-        &format!("Can't read {}", expected.display())
+    let expected_path = path.with_extension("txt");
+    let expected = file::get_text(&expected_path).expect(
+        &format!("Can't read {}", expected_path.display())
     );
     let expected = expected.as_str();
     let actual = actual.as_str();
-    if expected == actual {
-        return
-    }
-    if expected.trim() == actual.trim() {
-        panic!("Whitespace difference! {}", path.display())
-    }
-    assert_diff!(expected, actual, "\n", 0)
+    assert_equal_text(expected, actual, &expected_path);
 }
 
 fn dump_tree(file: &File) -> String {

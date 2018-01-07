@@ -73,7 +73,9 @@ impl FileBuilder {
     pub fn finish(self) -> File {
         assert!(
             self.in_progress.is_empty(),
-            "some nodes in FileBuilder are unfinished"
+            "some nodes in FileBuilder are unfinished: {:?}",
+            self.in_progress.iter().map(|&(idx, _)| self.nodes[idx].kind)
+                .collect::<Vec<_>>()
         );
         assert!(
             self.pos == (self.text.len() as u32).into(),
@@ -121,11 +123,6 @@ impl FileBuilder {
     fn current_parent(&mut self) -> &mut NodeData {
         let idx = self.current_id();
         &mut self.nodes[idx]
-    }
-
-    fn current_sibling(&mut self) -> Option<&mut NodeData> {
-        let idx = self.in_progress.last().unwrap().1?;
-        Some(&mut self.nodes[idx])
     }
 }
 

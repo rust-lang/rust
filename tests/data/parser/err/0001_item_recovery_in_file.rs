@@ -1,0 +1,3 @@
+if match
+
+struct S {}

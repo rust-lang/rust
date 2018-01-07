@@ -12,4 +12,4 @@ file = "1.1.1"
 ron = "0.1.5"
 
 [dev-dependencies]
-difference = "1.0.0"
+testutils = { path = "./tests/testutils" }

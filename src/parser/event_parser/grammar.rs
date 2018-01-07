@@ -8,7 +8,12 @@ pub fn file(p: &mut Parser) {
     node(p, FILE, |p| {
         shebang(p);
         inner_attributes(p);
-        many(p, |p| skip_to_first(p, item_first, item));
+        many(p, |p| {
+            skip_to_first(
+                p, item_first, item,
+                "expected item",
+            )
+        });
     })
 }
 
@@ -84,19 +89,34 @@ fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
 }
 
 
-fn skip_to_first<C, F>(p: &mut Parser, cond: C, f: F) -> bool
+fn skip_to_first<C, F>(p: &mut Parser, cond: C, f: F, message: &str) -> bool
 where
     C: Fn(&Parser) -> bool,
     F: FnOnce(&mut Parser),
 {
+    let mut skipped = false;
     loop {
         if cond(p) {
+            if skipped {
+                p.finish();
+            }
             f(p);
             return true;
         }
-        if p.bump().is_none() {
+        if p.is_eof() {
+            if skipped {
+                p.finish();
+            }
             return false;
         }
+        if !skipped {
+            p.start(ERROR);
+            p.error()
+                .message(message)
+                .emit();
+        }
+        p.bump().unwrap();
+        skipped = true;
     }
 }
 
