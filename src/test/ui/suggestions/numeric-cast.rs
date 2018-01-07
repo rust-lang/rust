@@ -46,10 +46,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<usize>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<usize>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<isize>(x_usize);
     //~^ ERROR mismatched types
@@ -72,10 +70,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<isize>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<isize>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<u64>(x_usize);
     //~^ ERROR mismatched types
@@ -98,10 +94,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<u64>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<u64>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<i64>(x_usize);
     //~^ ERROR mismatched types
@@ -124,10 +118,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<i64>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<i64>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<u32>(x_usize);
     //~^ ERROR mismatched types
@@ -150,10 +142,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<u32>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<u32>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<i32>(x_usize);
     //~^ ERROR mismatched types
@@ -176,10 +166,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<i32>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<i32>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<u16>(x_usize);
     //~^ ERROR mismatched types
@@ -202,10 +190,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<u16>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<u16>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<i16>(x_usize);
     //~^ ERROR mismatched types
@@ -228,10 +214,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<i16>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<i16>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<u8>(x_usize);
     //~^ ERROR mismatched types
@@ -254,10 +238,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<u8>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<u8>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<i8>(x_usize);
     //~^ ERROR mismatched types
@@ -280,10 +262,8 @@ fn main() {
     foo::<i8>(x_i8);
     foo::<i8>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
     foo::<i8>(x_f32);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause Undefined Behavior
 
     foo::<f64>(x_usize);
     //~^ ERROR mismatched types
@@ -331,6 +311,5 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<f32>(x_f64);
     //~^ ERROR mismatched types
-    //~| WARN casting here will cause undefined behavior
     foo::<f32>(x_f32);
 }

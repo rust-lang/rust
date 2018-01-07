@@ -3,1362 +3,884 @@ error[E0308]: mismatched types
    |
 29 |     foo::<usize>(x_u64);
    |                  ^^^^^ expected usize, found u64
-help: you can cast an `u64` to `usize`, which will truncate or zero-extend depending on the bit width of `usize`
-   |
-29 |     foo::<usize>(x_u64 as usize);
-   |                  ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:31:18
    |
 31 |     foo::<usize>(x_u32);
    |                  ^^^^^ expected usize, found u32
-help: you can cast an `u32` to `usize`, which will truncate or zero-extend depending on the bit width of `usize`
-   |
-31 |     foo::<usize>(x_u32 as usize);
-   |                  ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:33:18
    |
 33 |     foo::<usize>(x_u16);
    |                  ^^^^^ expected usize, found u16
-help: you can cast an `u16` to `usize`, which will truncate or zero-extend depending on the bit width of `usize`
-   |
-33 |     foo::<usize>(x_u16 as usize);
-   |                  ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:35:18
    |
 35 |     foo::<usize>(x_u8);
    |                  ^^^^ expected usize, found u8
-help: you can cast an `u8` to `usize`, which will truncate or zero-extend depending on the bit width of `usize`
-   |
-35 |     foo::<usize>(x_u8 as usize);
-   |                  ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:37:18
    |
 37 |     foo::<usize>(x_isize);
    |                  ^^^^^^^ expected usize, found isize
-help: you can cast an `isize` to `usize`, which will sign-extend the source value
-   |
-37 |     foo::<usize>(x_isize as usize);
-   |                  ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:39:18
    |
 39 |     foo::<usize>(x_i64);
    |                  ^^^^^ expected usize, found i64
-help: you can cast an `i64` to `usize`, which will truncate or zero-extend depending on the bit width of `isize`
-   |
-39 |     foo::<usize>(x_i64 as usize);
-   |                  ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:41:18
    |
 41 |     foo::<usize>(x_i32);
    |                  ^^^^^ expected usize, found i32
-help: you can cast an `i32` to `usize`, which will truncate or zero-extend depending on the bit width of `isize`
-   |
-41 |     foo::<usize>(x_i32 as usize);
-   |                  ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:43:18
    |
 43 |     foo::<usize>(x_i16);
    |                  ^^^^^ expected usize, found i16
-help: you can cast an `i16` to `usize`, which will truncate or zero-extend depending on the bit width of `isize`
-   |
-43 |     foo::<usize>(x_i16 as usize);
-   |                  ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:45:18
    |
 45 |     foo::<usize>(x_i8);
    |                  ^^^^ expected usize, found i8
-help: you can cast an `i8` to `usize`, which will truncate or zero-extend depending on the bit width of `isize`
-   |
-45 |     foo::<usize>(x_i8 as usize);
-   |                  ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:47:18
    |
 47 |     foo::<usize>(x_f64);
    |                  ^^^^^ expected usize, found f64
-   |
-   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `usize`, rounding the float towards zero
-   |
-47 |     foo::<usize>(x_f64 as usize);
-   |                  ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-cast.rs:50:18
+  --> $DIR/numeric-cast.rs:49:18
    |
-50 |     foo::<usize>(x_f32);
+49 |     foo::<usize>(x_f32);
    |                  ^^^^^ expected usize, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast.rs:52:18
    |
-   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `usize`, rounding the float towards zero
-   |
-50 |     foo::<usize>(x_f32 as usize);
-   |                  ^^^^^^^^^^^^^^
+52 |     foo::<isize>(x_usize);
+   |                  ^^^^^^^ expected isize, found usize
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:54:18
    |
-54 |     foo::<isize>(x_usize);
-   |                  ^^^^^^^ expected isize, found usize
-help: you can cast an `usize` to `isize`, which will truncate the source value
-   |
-54 |     foo::<isize>(x_usize as isize);
-   |                  ^^^^^^^^^^^^^^^^
+54 |     foo::<isize>(x_u64);
+   |                  ^^^^^ expected isize, found u64
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:56:18
    |
-56 |     foo::<isize>(x_u64);
-   |                  ^^^^^ expected isize, found u64
-help: you can cast an `u64` to `isize`, which will truncate or zero-extend depending on the bit width of `usize`
-   |
-56 |     foo::<isize>(x_u64 as isize);
-   |                  ^^^^^^^^^^^^^^
+56 |     foo::<isize>(x_u32);
+   |                  ^^^^^ expected isize, found u32
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:58:18
    |
-58 |     foo::<isize>(x_u32);
-   |                  ^^^^^ expected isize, found u32
-help: you can cast an `u32` to `isize`, which will truncate or zero-extend depending on the bit width of `usize`
-   |
-58 |     foo::<isize>(x_u32 as isize);
-   |                  ^^^^^^^^^^^^^^
+58 |     foo::<isize>(x_u16);
+   |                  ^^^^^ expected isize, found u16
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:60:18
    |
-60 |     foo::<isize>(x_u16);
-   |                  ^^^^^ expected isize, found u16
-help: you can cast an `u16` to `isize`, which will truncate or zero-extend depending on the bit width of `usize`
-   |
-60 |     foo::<isize>(x_u16 as isize);
-   |                  ^^^^^^^^^^^^^^
+60 |     foo::<isize>(x_u8);
+   |                  ^^^^ expected isize, found u8
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-cast.rs:62:18
+  --> $DIR/numeric-cast.rs:63:18
    |
-62 |     foo::<isize>(x_u8);
-   |                  ^^^^ expected isize, found u8
-help: you can cast an `u8` to `isize`, which will truncate or zero-extend depending on the bit width of `usize`
-   |
-62 |     foo::<isize>(x_u8 as isize);
-   |                  ^^^^^^^^^^^^^
+63 |     foo::<isize>(x_i64);
+   |                  ^^^^^ expected isize, found i64
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:65:18
    |
-65 |     foo::<isize>(x_i64);
-   |                  ^^^^^ expected isize, found i64
-help: you can cast an `i64` to `isize`, which will truncate or zero-extend depending on the bit width of `isize`
-   |
-65 |     foo::<isize>(x_i64 as isize);
-   |                  ^^^^^^^^^^^^^^
+65 |     foo::<isize>(x_i32);
+   |                  ^^^^^ expected isize, found i32
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:67:18
    |
-67 |     foo::<isize>(x_i32);
-   |                  ^^^^^ expected isize, found i32
-help: you can cast an `i32` to `isize`, which will truncate or zero-extend depending on the bit width of `isize`
-   |
-67 |     foo::<isize>(x_i32 as isize);
-   |                  ^^^^^^^^^^^^^^
+67 |     foo::<isize>(x_i16);
+   |                  ^^^^^ expected isize, found i16
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:69:18
    |
-69 |     foo::<isize>(x_i16);
-   |                  ^^^^^ expected isize, found i16
-help: you can cast an `i16` to `isize`, which will truncate or zero-extend depending on the bit width of `isize`
-   |
-69 |     foo::<isize>(x_i16 as isize);
-   |                  ^^^^^^^^^^^^^^
+69 |     foo::<isize>(x_i8);
+   |                  ^^^^ expected isize, found i8
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:71:18
    |
-71 |     foo::<isize>(x_i8);
-   |                  ^^^^ expected isize, found i8
-help: you can cast an `i8` to `isize`, which will truncate or zero-extend depending on the bit width of `isize`
-   |
-71 |     foo::<isize>(x_i8 as isize);
-   |                  ^^^^^^^^^^^^^
+71 |     foo::<isize>(x_f64);
+   |                  ^^^^^ expected isize, found f64
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:73:18
    |
-73 |     foo::<isize>(x_f64);
-   |                  ^^^^^ expected isize, found f64
-   |
-   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `isize`, rounding the float towards zero
-   |
-73 |     foo::<isize>(x_f64 as isize);
-   |                  ^^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-  --> $DIR/numeric-cast.rs:76:18
-   |
-76 |     foo::<isize>(x_f32);
+73 |     foo::<isize>(x_f32);
    |                  ^^^^^ expected isize, found f32
-   |
-   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `isize`, rounding the float towards zero
-   |
-76 |     foo::<isize>(x_f32 as isize);
-   |                  ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-cast.rs:80:16
+  --> $DIR/numeric-cast.rs:76:16
    |
-80 |     foo::<u64>(x_usize);
+76 |     foo::<u64>(x_usize);
    |                ^^^^^^^ expected u64, found usize
-help: you can cast an `usize` to `u64`, which will truncate or zero-extend depending on the bit width of `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast.rs:79:16
    |
-80 |     foo::<u64>(x_usize as u64);
-   |                ^^^^^^^^^^^^^^
+79 |     foo::<u64>(x_u32);
+   |                ^^^^^ expected u64, found u32
+help: you can cast an `u32` to `u64`, which will zero-extend the source value
+   |
+79 |     foo::<u64>(x_u32.into());
+   |                ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast.rs:81:16
+   |
+81 |     foo::<u64>(x_u16);
+   |                ^^^^^ expected u64, found u16
+help: you can cast an `u16` to `u64`, which will zero-extend the source value
+   |
+81 |     foo::<u64>(x_u16.into());
+   |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:83:16
    |
-83 |     foo::<u64>(x_u32);
-   |                ^^^^^ expected u64, found u32
-help: you can cast an `u32` to `u64`, which will zero-extend the source value
+83 |     foo::<u64>(x_u8);
+   |                ^^^^ expected u64, found u8
+help: you can cast an `u8` to `u64`, which will zero-extend the source value
    |
-83 |     foo::<u64>(x_u32.into());
-   |                ^^^^^^^^^^^^
+83 |     foo::<u64>(x_u8.into());
+   |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:85:16
    |
-85 |     foo::<u64>(x_u16);
-   |                ^^^^^ expected u64, found u16
-help: you can cast an `u16` to `u64`, which will zero-extend the source value
-   |
-85 |     foo::<u64>(x_u16.into());
-   |                ^^^^^^^^^^^^
+85 |     foo::<u64>(x_isize);
+   |                ^^^^^^^ expected u64, found isize
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:87:16
    |
-87 |     foo::<u64>(x_u8);
-   |                ^^^^ expected u64, found u8
-help: you can cast an `u8` to `u64`, which will zero-extend the source value
-   |
-87 |     foo::<u64>(x_u8.into());
-   |                ^^^^^^^^^^^
+87 |     foo::<u64>(x_i64);
+   |                ^^^^^ expected u64, found i64
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:89:16
    |
-89 |     foo::<u64>(x_isize);
-   |                ^^^^^^^ expected u64, found isize
-help: you can cast an `isize` to `u64`, which will truncate or zero-extend depending on the bit width of `usize`
-   |
-89 |     foo::<u64>(x_isize as u64);
-   |                ^^^^^^^^^^^^^^
+89 |     foo::<u64>(x_i32);
+   |                ^^^^^ expected u64, found i32
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:91:16
    |
-91 |     foo::<u64>(x_i64);
-   |                ^^^^^ expected u64, found i64
-help: you can cast an `i64` to `u64`, which will sign-extend the source value
-   |
-91 |     foo::<u64>(x_i64 as u64);
-   |                ^^^^^^^^^^^^
+91 |     foo::<u64>(x_i16);
+   |                ^^^^^ expected u64, found i16
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:93:16
    |
-93 |     foo::<u64>(x_i32);
-   |                ^^^^^ expected u64, found i32
-help: you can cast an `i32` to `u64`, which will sign-extend the source value
-   |
-93 |     foo::<u64>(x_i32 as u64);
-   |                ^^^^^^^^^^^^
+93 |     foo::<u64>(x_i8);
+   |                ^^^^ expected u64, found i8
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:95:16
    |
-95 |     foo::<u64>(x_i16);
-   |                ^^^^^ expected u64, found i16
-help: you can cast an `i16` to `u64`, which will sign-extend the source value
-   |
-95 |     foo::<u64>(x_i16 as u64);
-   |                ^^^^^^^^^^^^
+95 |     foo::<u64>(x_f64);
+   |                ^^^^^ expected u64, found f64
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:97:16
    |
-97 |     foo::<u64>(x_i8);
-   |                ^^^^ expected u64, found i8
-help: you can cast an `i8` to `u64`, which will sign-extend the source value
-   |
-97 |     foo::<u64>(x_i8 as u64);
-   |                ^^^^^^^^^^^
+97 |     foo::<u64>(x_f32);
+   |                ^^^^^ expected u64, found f32
 
 error[E0308]: mismatched types
-  --> $DIR/numeric-cast.rs:99:16
-   |
-99 |     foo::<u64>(x_f64);
-   |                ^^^^^ expected u64, found f64
-   |
-   = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `u64`, rounding the float towards zero
-   |
-99 |     foo::<u64>(x_f64 as u64);
-   |                ^^^^^^^^^^^^
+   --> $DIR/numeric-cast.rs:100:16
+    |
+100 |     foo::<i64>(x_usize);
+    |                ^^^^^^^ expected i64, found usize
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:102:16
     |
-102 |     foo::<u64>(x_f32);
-    |                ^^^^^ expected u64, found f32
+102 |     foo::<i64>(x_u64);
+    |                ^^^^^ expected i64, found u64
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:104:16
     |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `u64`, rounding the float towards zero
-    |
-102 |     foo::<u64>(x_f32 as u64);
-    |                ^^^^^^^^^^^^
+104 |     foo::<i64>(x_u32);
+    |                ^^^^^ expected i64, found u32
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:106:16
     |
-106 |     foo::<i64>(x_usize);
-    |                ^^^^^^^ expected i64, found usize
-help: you can cast an `usize` to `i64`, which will truncate or zero-extend depending on the bit width of `isize`
-    |
-106 |     foo::<i64>(x_usize as i64);
-    |                ^^^^^^^^^^^^^^
+106 |     foo::<i64>(x_u16);
+    |                ^^^^^ expected i64, found u16
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:108:16
     |
-108 |     foo::<i64>(x_u64);
-    |                ^^^^^ expected i64, found u64
-help: you can cast an `u64` to `i64`, which will truncate the source value
-    |
-108 |     foo::<i64>(x_u64 as i64);
-    |                ^^^^^^^^^^^^
+108 |     foo::<i64>(x_u8);
+    |                ^^^^ expected i64, found u8
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:110:16
     |
-110 |     foo::<i64>(x_u32);
-    |                ^^^^^ expected i64, found u32
-help: you can cast an `u32` to `i64`, which will zero-extend the source value
-    |
-110 |     foo::<i64>(x_u32 as i64);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:112:16
-    |
-112 |     foo::<i64>(x_u16);
-    |                ^^^^^ expected i64, found u16
-help: you can cast an `u16` to `i64`, which will zero-extend the source value
-    |
-112 |     foo::<i64>(x_u16 as i64);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:114:16
-    |
-114 |     foo::<i64>(x_u8);
-    |                ^^^^ expected i64, found u8
-help: you can cast an `u8` to `i64`, which will zero-extend the source value
-    |
-114 |     foo::<i64>(x_u8 as i64);
-    |                ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:116:16
-    |
-116 |     foo::<i64>(x_isize);
+110 |     foo::<i64>(x_isize);
     |                ^^^^^^^ expected i64, found isize
-help: you can cast an `isize` to `i64`, which will truncate or zero-extend depending on the bit width of `isize`
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:113:16
     |
-116 |     foo::<i64>(x_isize as i64);
-    |                ^^^^^^^^^^^^^^
+113 |     foo::<i64>(x_i32);
+    |                ^^^^^ expected i64, found i32
+help: you can cast an `i32` to `i64`, which will sign-extend the source value
+    |
+113 |     foo::<i64>(x_i32.into());
+    |                ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:115:16
+    |
+115 |     foo::<i64>(x_i16);
+    |                ^^^^^ expected i64, found i16
+help: you can cast an `i16` to `i64`, which will sign-extend the source value
+    |
+115 |     foo::<i64>(x_i16.into());
+    |                ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:117:16
+    |
+117 |     foo::<i64>(x_i8);
+    |                ^^^^ expected i64, found i8
+help: you can cast an `i8` to `i64`, which will sign-extend the source value
+    |
+117 |     foo::<i64>(x_i8.into());
+    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:119:16
     |
-119 |     foo::<i64>(x_i32);
-    |                ^^^^^ expected i64, found i32
-help: you can cast an `i32` to `i64`, which will sign-extend the source value
-    |
-119 |     foo::<i64>(x_i32.into());
-    |                ^^^^^^^^^^^^
+119 |     foo::<i64>(x_f64);
+    |                ^^^^^ expected i64, found f64
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:121:16
     |
-121 |     foo::<i64>(x_i16);
-    |                ^^^^^ expected i64, found i16
-help: you can cast an `i16` to `i64`, which will sign-extend the source value
+121 |     foo::<i64>(x_f32);
+    |                ^^^^^ expected i64, found f32
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:124:16
     |
-121 |     foo::<i64>(x_i16.into());
+124 |     foo::<u32>(x_usize);
+    |                ^^^^^^^ expected u32, found usize
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:126:16
+    |
+126 |     foo::<u32>(x_u64);
+    |                ^^^^^ expected u32, found u64
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:129:16
+    |
+129 |     foo::<u32>(x_u16);
+    |                ^^^^^ expected u32, found u16
+help: you can cast an `u16` to `u32`, which will zero-extend the source value
+    |
+129 |     foo::<u32>(x_u16.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:123:16
+   --> $DIR/numeric-cast.rs:131:16
     |
-123 |     foo::<i64>(x_i8);
-    |                ^^^^ expected i64, found i8
-help: you can cast an `i8` to `i64`, which will sign-extend the source value
+131 |     foo::<u32>(x_u8);
+    |                ^^^^ expected u32, found u8
+help: you can cast an `u8` to `u32`, which will zero-extend the source value
     |
-123 |     foo::<i64>(x_i8.into());
+131 |     foo::<u32>(x_u8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:125:16
+   --> $DIR/numeric-cast.rs:133:16
     |
-125 |     foo::<i64>(x_f64);
-    |                ^^^^^ expected i64, found f64
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `i64`, rounding the float towards zero
-    |
-125 |     foo::<i64>(x_f64 as i64);
-    |                ^^^^^^^^^^^^
+133 |     foo::<u32>(x_isize);
+    |                ^^^^^^^ expected u32, found isize
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:128:16
+   --> $DIR/numeric-cast.rs:135:16
     |
-128 |     foo::<i64>(x_f32);
-    |                ^^^^^ expected i64, found f32
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `i64`, rounding the float towards zero
-    |
-128 |     foo::<i64>(x_f32 as i64);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:132:16
-    |
-132 |     foo::<u32>(x_usize);
-    |                ^^^^^^^ expected u32, found usize
-help: you can cast an `usize` to `u32`, which will truncate or zero-extend depending on the bit width of `usize`
-    |
-132 |     foo::<u32>(x_usize as u32);
-    |                ^^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:134:16
-    |
-134 |     foo::<u32>(x_u64);
-    |                ^^^^^ expected u32, found u64
-help: you can cast an `u64` to `u32`, which will truncate the source value
-    |
-134 |     foo::<u32>(x_u64 as u32);
-    |                ^^^^^^^^^^^^
+135 |     foo::<u32>(x_i64);
+    |                ^^^^^ expected u32, found i64
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:137:16
     |
-137 |     foo::<u32>(x_u16);
-    |                ^^^^^ expected u32, found u16
-help: you can cast an `u16` to `u32`, which will zero-extend the source value
-    |
-137 |     foo::<u32>(x_u16.into());
-    |                ^^^^^^^^^^^^
+137 |     foo::<u32>(x_i32);
+    |                ^^^^^ expected u32, found i32
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:139:16
     |
-139 |     foo::<u32>(x_u8);
-    |                ^^^^ expected u32, found u8
-help: you can cast an `u8` to `u32`, which will zero-extend the source value
-    |
-139 |     foo::<u32>(x_u8.into());
-    |                ^^^^^^^^^^^
+139 |     foo::<u32>(x_i16);
+    |                ^^^^^ expected u32, found i16
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:141:16
     |
-141 |     foo::<u32>(x_isize);
-    |                ^^^^^^^ expected u32, found isize
-help: you can cast an `isize` to `u32`, which will truncate or zero-extend depending on the bit width of `usize`
-    |
-141 |     foo::<u32>(x_isize as u32);
-    |                ^^^^^^^^^^^^^^
+141 |     foo::<u32>(x_i8);
+    |                ^^^^ expected u32, found i8
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:143:16
     |
-143 |     foo::<u32>(x_i64);
-    |                ^^^^^ expected u32, found i64
-help: you can cast an `i64` to `u32`, which will truncate the source value
-    |
-143 |     foo::<u32>(x_i64 as u32);
-    |                ^^^^^^^^^^^^
+143 |     foo::<u32>(x_f64);
+    |                ^^^^^ expected u32, found f64
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:145:16
     |
-145 |     foo::<u32>(x_i32);
-    |                ^^^^^ expected u32, found i32
-help: you can cast an `i32` to `u32`, which will sign-extend the source value
-    |
-145 |     foo::<u32>(x_i32 as u32);
-    |                ^^^^^^^^^^^^
+145 |     foo::<u32>(x_f32);
+    |                ^^^^^ expected u32, found f32
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:147:16
+   --> $DIR/numeric-cast.rs:148:16
     |
-147 |     foo::<u32>(x_i16);
-    |                ^^^^^ expected u32, found i16
-help: you can cast an `i16` to `u32`, which will sign-extend the source value
-    |
-147 |     foo::<u32>(x_i16 as u32);
-    |                ^^^^^^^^^^^^
+148 |     foo::<i32>(x_usize);
+    |                ^^^^^^^ expected i32, found usize
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:149:16
+   --> $DIR/numeric-cast.rs:150:16
     |
-149 |     foo::<u32>(x_i8);
-    |                ^^^^ expected u32, found i8
-help: you can cast an `i8` to `u32`, which will sign-extend the source value
-    |
-149 |     foo::<u32>(x_i8 as u32);
-    |                ^^^^^^^^^^^
+150 |     foo::<i32>(x_u64);
+    |                ^^^^^ expected i32, found u64
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:151:16
+   --> $DIR/numeric-cast.rs:152:16
     |
-151 |     foo::<u32>(x_f64);
-    |                ^^^^^ expected u32, found f64
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `u32`, rounding the float towards zero
-    |
-151 |     foo::<u32>(x_f64 as u32);
-    |                ^^^^^^^^^^^^
+152 |     foo::<i32>(x_u32);
+    |                ^^^^^ expected i32, found u32
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:154:16
     |
-154 |     foo::<u32>(x_f32);
-    |                ^^^^^ expected u32, found f32
+154 |     foo::<i32>(x_u16);
+    |                ^^^^^ expected i32, found u16
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:156:16
     |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `u32`, rounding the float towards zero
-    |
-154 |     foo::<u32>(x_f32 as u32);
-    |                ^^^^^^^^^^^^
+156 |     foo::<i32>(x_u8);
+    |                ^^^^ expected i32, found u8
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:158:16
     |
-158 |     foo::<i32>(x_usize);
-    |                ^^^^^^^ expected i32, found usize
-help: you can cast an `usize` to `i32`, which will truncate or zero-extend depending on the bit width of `isize`
-    |
-158 |     foo::<i32>(x_usize as i32);
-    |                ^^^^^^^^^^^^^^
+158 |     foo::<i32>(x_isize);
+    |                ^^^^^^^ expected i32, found isize
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:160:16
     |
-160 |     foo::<i32>(x_u64);
-    |                ^^^^^ expected i32, found u64
-help: you can cast an `u64` to `i32`, which will truncate the source value
-    |
-160 |     foo::<i32>(x_u64 as i32);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:162:16
-    |
-162 |     foo::<i32>(x_u32);
-    |                ^^^^^ expected i32, found u32
-help: you can cast an `u32` to `i32`, which will truncate the source value
-    |
-162 |     foo::<i32>(x_u32 as i32);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:164:16
-    |
-164 |     foo::<i32>(x_u16);
-    |                ^^^^^ expected i32, found u16
-help: you can cast an `u16` to `i32`, which will zero-extend the source value
-    |
-164 |     foo::<i32>(x_u16 as i32);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:166:16
-    |
-166 |     foo::<i32>(x_u8);
-    |                ^^^^ expected i32, found u8
-help: you can cast an `u8` to `i32`, which will zero-extend the source value
-    |
-166 |     foo::<i32>(x_u8 as i32);
-    |                ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:168:16
-    |
-168 |     foo::<i32>(x_isize);
-    |                ^^^^^^^ expected i32, found isize
-help: you can cast an `isize` to `i32`, which will truncate or zero-extend depending on the bit width of `isize`
-    |
-168 |     foo::<i32>(x_isize as i32);
-    |                ^^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:170:16
-    |
-170 |     foo::<i32>(x_i64);
+160 |     foo::<i32>(x_i64);
     |                ^^^^^ expected i32, found i64
-help: you can cast an `i64` to `i32`, which will truncate the source value
-    |
-170 |     foo::<i32>(x_i64 as i32);
-    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:173:16
+   --> $DIR/numeric-cast.rs:163:16
     |
-173 |     foo::<i32>(x_i16);
+163 |     foo::<i32>(x_i16);
     |                ^^^^^ expected i32, found i16
 help: you can cast an `i16` to `i32`, which will sign-extend the source value
     |
-173 |     foo::<i32>(x_i16.into());
+163 |     foo::<i32>(x_i16.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:175:16
+   --> $DIR/numeric-cast.rs:165:16
     |
-175 |     foo::<i32>(x_i8);
+165 |     foo::<i32>(x_i8);
     |                ^^^^ expected i32, found i8
 help: you can cast an `i8` to `i32`, which will sign-extend the source value
     |
-175 |     foo::<i32>(x_i8.into());
+165 |     foo::<i32>(x_i8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:177:16
+   --> $DIR/numeric-cast.rs:167:16
     |
-177 |     foo::<i32>(x_f64);
+167 |     foo::<i32>(x_f64);
     |                ^^^^^ expected i32, found f64
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `i32`, rounding the float towards zero
-    |
-177 |     foo::<i32>(x_f64 as i32);
-    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:180:16
+   --> $DIR/numeric-cast.rs:169:16
     |
-180 |     foo::<i32>(x_f32);
+169 |     foo::<i32>(x_f32);
     |                ^^^^^ expected i32, found f32
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `i32`, rounding the float towards zero
-    |
-180 |     foo::<i32>(x_f32 as i32);
-    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:184:16
+   --> $DIR/numeric-cast.rs:172:16
     |
-184 |     foo::<u16>(x_usize);
+172 |     foo::<u16>(x_usize);
     |                ^^^^^^^ expected u16, found usize
-help: you can cast an `usize` to `u16`, which will truncate or zero-extend depending on the bit width of `usize`
-    |
-184 |     foo::<u16>(x_usize as u16);
-    |                ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:186:16
+   --> $DIR/numeric-cast.rs:174:16
     |
-186 |     foo::<u16>(x_u64);
+174 |     foo::<u16>(x_u64);
     |                ^^^^^ expected u16, found u64
-help: you can cast an `u64` to `u16`, which will truncate the source value
-    |
-186 |     foo::<u16>(x_u64 as u16);
-    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:188:16
+   --> $DIR/numeric-cast.rs:176:16
     |
-188 |     foo::<u16>(x_u32);
+176 |     foo::<u16>(x_u32);
     |                ^^^^^ expected u16, found u32
-help: you can cast an `u32` to `u16`, which will truncate the source value
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:179:16
     |
-188 |     foo::<u16>(x_u32 as u16);
-    |                ^^^^^^^^^^^^
+179 |     foo::<u16>(x_u8);
+    |                ^^^^ expected u16, found u8
+help: you can cast an `u8` to `u16`, which will zero-extend the source value
+    |
+179 |     foo::<u16>(x_u8.into());
+    |                ^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:181:16
+    |
+181 |     foo::<u16>(x_isize);
+    |                ^^^^^^^ expected u16, found isize
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:183:16
+    |
+183 |     foo::<u16>(x_i64);
+    |                ^^^^^ expected u16, found i64
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:185:16
+    |
+185 |     foo::<u16>(x_i32);
+    |                ^^^^^ expected u16, found i32
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:187:16
+    |
+187 |     foo::<u16>(x_i16);
+    |                ^^^^^ expected u16, found i16
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:189:16
+    |
+189 |     foo::<u16>(x_i8);
+    |                ^^^^ expected u16, found i8
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:191:16
     |
-191 |     foo::<u16>(x_u8);
-    |                ^^^^ expected u16, found u8
-help: you can cast an `u8` to `u16`, which will zero-extend the source value
-    |
-191 |     foo::<u16>(x_u8.into());
-    |                ^^^^^^^^^^^
+191 |     foo::<u16>(x_f64);
+    |                ^^^^^ expected u16, found f64
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:193:16
     |
-193 |     foo::<u16>(x_isize);
-    |                ^^^^^^^ expected u16, found isize
-help: you can cast an `isize` to `u16`, which will truncate or zero-extend depending on the bit width of `usize`
-    |
-193 |     foo::<u16>(x_isize as u16);
-    |                ^^^^^^^^^^^^^^
+193 |     foo::<u16>(x_f32);
+    |                ^^^^^ expected u16, found f32
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:195:16
+   --> $DIR/numeric-cast.rs:196:16
     |
-195 |     foo::<u16>(x_i64);
-    |                ^^^^^ expected u16, found i64
-help: you can cast an `i64` to `u16`, which will truncate the source value
-    |
-195 |     foo::<u16>(x_i64 as u16);
-    |                ^^^^^^^^^^^^
+196 |     foo::<i16>(x_usize);
+    |                ^^^^^^^ expected i16, found usize
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:197:16
+   --> $DIR/numeric-cast.rs:198:16
     |
-197 |     foo::<u16>(x_i32);
-    |                ^^^^^ expected u16, found i32
-help: you can cast an `i32` to `u16`, which will truncate the source value
-    |
-197 |     foo::<u16>(x_i32 as u16);
-    |                ^^^^^^^^^^^^
+198 |     foo::<i16>(x_u64);
+    |                ^^^^^ expected i16, found u64
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:199:16
+   --> $DIR/numeric-cast.rs:200:16
     |
-199 |     foo::<u16>(x_i16);
-    |                ^^^^^ expected u16, found i16
-help: you can cast an `i16` to `u16`, which will sign-extend the source value
-    |
-199 |     foo::<u16>(x_i16 as u16);
-    |                ^^^^^^^^^^^^
+200 |     foo::<i16>(x_u32);
+    |                ^^^^^ expected i16, found u32
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:201:16
+   --> $DIR/numeric-cast.rs:202:16
     |
-201 |     foo::<u16>(x_i8);
-    |                ^^^^ expected u16, found i8
-help: you can cast an `i8` to `u16`, which will sign-extend the source value
-    |
-201 |     foo::<u16>(x_i8 as u16);
-    |                ^^^^^^^^^^^
+202 |     foo::<i16>(x_u16);
+    |                ^^^^^ expected i16, found u16
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:203:16
+   --> $DIR/numeric-cast.rs:204:16
     |
-203 |     foo::<u16>(x_f64);
-    |                ^^^^^ expected u16, found f64
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `u16`, rounding the float towards zero
-    |
-203 |     foo::<u16>(x_f64 as u16);
-    |                ^^^^^^^^^^^^
+204 |     foo::<i16>(x_u8);
+    |                ^^^^ expected i16, found u8
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:206:16
     |
-206 |     foo::<u16>(x_f32);
-    |                ^^^^^ expected u16, found f32
+206 |     foo::<i16>(x_isize);
+    |                ^^^^^^^ expected i16, found isize
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:208:16
     |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `u16`, rounding the float towards zero
-    |
-206 |     foo::<u16>(x_f32 as u16);
-    |                ^^^^^^^^^^^^
+208 |     foo::<i16>(x_i64);
+    |                ^^^^^ expected i16, found i64
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:210:16
     |
-210 |     foo::<i16>(x_usize);
-    |                ^^^^^^^ expected i16, found usize
-help: you can cast an `usize` to `i16`, which will truncate or zero-extend depending on the bit width of `isize`
-    |
-210 |     foo::<i16>(x_usize as i16);
-    |                ^^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:212:16
-    |
-212 |     foo::<i16>(x_u64);
-    |                ^^^^^ expected i16, found u64
-help: you can cast an `u64` to `i16`, which will truncate the source value
-    |
-212 |     foo::<i16>(x_u64 as i16);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:214:16
-    |
-214 |     foo::<i16>(x_u32);
-    |                ^^^^^ expected i16, found u32
-help: you can cast an `u32` to `i16`, which will truncate the source value
-    |
-214 |     foo::<i16>(x_u32 as i16);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:216:16
-    |
-216 |     foo::<i16>(x_u16);
-    |                ^^^^^ expected i16, found u16
-help: you can cast an `u16` to `i16`, which will truncate the source value
-    |
-216 |     foo::<i16>(x_u16 as i16);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:218:16
-    |
-218 |     foo::<i16>(x_u8);
-    |                ^^^^ expected i16, found u8
-help: you can cast an `u8` to `i16`, which will zero-extend the source value
-    |
-218 |     foo::<i16>(x_u8 as i16);
-    |                ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:220:16
-    |
-220 |     foo::<i16>(x_isize);
-    |                ^^^^^^^ expected i16, found isize
-help: you can cast an `isize` to `i16`, which will truncate or zero-extend depending on the bit width of `isize`
-    |
-220 |     foo::<i16>(x_isize as i16);
-    |                ^^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:222:16
-    |
-222 |     foo::<i16>(x_i64);
-    |                ^^^^^ expected i16, found i64
-help: you can cast an `i64` to `i16`, which will truncate the source value
-    |
-222 |     foo::<i16>(x_i64 as i16);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:224:16
-    |
-224 |     foo::<i16>(x_i32);
+210 |     foo::<i16>(x_i32);
     |                ^^^^^ expected i16, found i32
-help: you can cast an `i32` to `i16`, which will truncate the source value
-    |
-224 |     foo::<i16>(x_i32 as i16);
-    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:227:16
+   --> $DIR/numeric-cast.rs:213:16
     |
-227 |     foo::<i16>(x_i8);
+213 |     foo::<i16>(x_i8);
     |                ^^^^ expected i16, found i8
 help: you can cast an `i8` to `i16`, which will sign-extend the source value
     |
-227 |     foo::<i16>(x_i8.into());
+213 |     foo::<i16>(x_i8.into());
     |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:229:16
+   --> $DIR/numeric-cast.rs:215:16
     |
-229 |     foo::<i16>(x_f64);
+215 |     foo::<i16>(x_f64);
     |                ^^^^^ expected i16, found f64
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `i16`, rounding the float towards zero
-    |
-229 |     foo::<i16>(x_f64 as i16);
-    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:232:16
+   --> $DIR/numeric-cast.rs:217:16
     |
-232 |     foo::<i16>(x_f32);
+217 |     foo::<i16>(x_f32);
     |                ^^^^^ expected i16, found f32
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `i16`, rounding the float towards zero
-    |
-232 |     foo::<i16>(x_f32 as i16);
-    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:236:15
+   --> $DIR/numeric-cast.rs:220:15
     |
-236 |     foo::<u8>(x_usize);
+220 |     foo::<u8>(x_usize);
     |               ^^^^^^^ expected u8, found usize
-help: you can cast an `usize` to `u8`, which will truncate or zero-extend depending on the bit width of `usize`
-    |
-236 |     foo::<u8>(x_usize as u8);
-    |               ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:238:15
+   --> $DIR/numeric-cast.rs:222:15
     |
-238 |     foo::<u8>(x_u64);
+222 |     foo::<u8>(x_u64);
     |               ^^^^^ expected u8, found u64
-help: you can cast an `u64` to `u8`, which will truncate the source value
-    |
-238 |     foo::<u8>(x_u64 as u8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:240:15
+   --> $DIR/numeric-cast.rs:224:15
     |
-240 |     foo::<u8>(x_u32);
+224 |     foo::<u8>(x_u32);
     |               ^^^^^ expected u8, found u32
-help: you can cast an `u32` to `u8`, which will truncate the source value
-    |
-240 |     foo::<u8>(x_u32 as u8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:242:15
+   --> $DIR/numeric-cast.rs:226:15
     |
-242 |     foo::<u8>(x_u16);
+226 |     foo::<u8>(x_u16);
     |               ^^^^^ expected u8, found u16
-help: you can cast an `u16` to `u8`, which will truncate the source value
-    |
-242 |     foo::<u8>(x_u16 as u8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:245:15
+   --> $DIR/numeric-cast.rs:229:15
     |
-245 |     foo::<u8>(x_isize);
+229 |     foo::<u8>(x_isize);
     |               ^^^^^^^ expected u8, found isize
-help: you can cast an `isize` to `u8`, which will truncate or zero-extend depending on the bit width of `usize`
-    |
-245 |     foo::<u8>(x_isize as u8);
-    |               ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:247:15
+   --> $DIR/numeric-cast.rs:231:15
     |
-247 |     foo::<u8>(x_i64);
+231 |     foo::<u8>(x_i64);
     |               ^^^^^ expected u8, found i64
-help: you can cast an `i64` to `u8`, which will truncate the source value
-    |
-247 |     foo::<u8>(x_i64 as u8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:249:15
+   --> $DIR/numeric-cast.rs:233:15
     |
-249 |     foo::<u8>(x_i32);
+233 |     foo::<u8>(x_i32);
     |               ^^^^^ expected u8, found i32
-help: you can cast an `i32` to `u8`, which will truncate the source value
-    |
-249 |     foo::<u8>(x_i32 as u8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:251:15
+   --> $DIR/numeric-cast.rs:235:15
     |
-251 |     foo::<u8>(x_i16);
+235 |     foo::<u8>(x_i16);
     |               ^^^^^ expected u8, found i16
-help: you can cast an `i16` to `u8`, which will truncate the source value
-    |
-251 |     foo::<u8>(x_i16 as u8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:253:15
+   --> $DIR/numeric-cast.rs:237:15
     |
-253 |     foo::<u8>(x_i8);
+237 |     foo::<u8>(x_i8);
     |               ^^^^ expected u8, found i8
-help: you can cast an `i8` to `u8`, which will sign-extend the source value
-    |
-253 |     foo::<u8>(x_i8 as u8);
-    |               ^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:255:15
+   --> $DIR/numeric-cast.rs:239:15
     |
-255 |     foo::<u8>(x_f64);
+239 |     foo::<u8>(x_f64);
     |               ^^^^^ expected u8, found f64
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:241:15
     |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `u8`, rounding the float towards zero
+241 |     foo::<u8>(x_f32);
+    |               ^^^^^ expected u8, found f32
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:244:15
     |
-255 |     foo::<u8>(x_f64 as u8);
-    |               ^^^^^^^^^^^
+244 |     foo::<i8>(x_usize);
+    |               ^^^^^^^ expected i8, found usize
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:246:15
+    |
+246 |     foo::<i8>(x_u64);
+    |               ^^^^^ expected i8, found u64
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:248:15
+    |
+248 |     foo::<i8>(x_u32);
+    |               ^^^^^ expected i8, found u32
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:250:15
+    |
+250 |     foo::<i8>(x_u16);
+    |               ^^^^^ expected i8, found u16
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:252:15
+    |
+252 |     foo::<i8>(x_u8);
+    |               ^^^^ expected i8, found u8
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:254:15
+    |
+254 |     foo::<i8>(x_isize);
+    |               ^^^^^^^ expected i8, found isize
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:256:15
+    |
+256 |     foo::<i8>(x_i64);
+    |               ^^^^^ expected i8, found i64
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:258:15
     |
-258 |     foo::<u8>(x_f32);
-    |               ^^^^^ expected u8, found f32
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `u8`, rounding the float towards zero
-    |
-258 |     foo::<u8>(x_f32 as u8);
-    |               ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:262:15
-    |
-262 |     foo::<i8>(x_usize);
-    |               ^^^^^^^ expected i8, found usize
-help: you can cast an `usize` to `i8`, which will truncate or zero-extend depending on the bit width of `isize`
-    |
-262 |     foo::<i8>(x_usize as i8);
-    |               ^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:264:15
-    |
-264 |     foo::<i8>(x_u64);
-    |               ^^^^^ expected i8, found u64
-help: you can cast an `u64` to `i8`, which will truncate the source value
-    |
-264 |     foo::<i8>(x_u64 as i8);
-    |               ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:266:15
-    |
-266 |     foo::<i8>(x_u32);
-    |               ^^^^^ expected i8, found u32
-help: you can cast an `u32` to `i8`, which will truncate the source value
-    |
-266 |     foo::<i8>(x_u32 as i8);
-    |               ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:268:15
-    |
-268 |     foo::<i8>(x_u16);
-    |               ^^^^^ expected i8, found u16
-help: you can cast an `u16` to `i8`, which will truncate the source value
-    |
-268 |     foo::<i8>(x_u16 as i8);
-    |               ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:270:15
-    |
-270 |     foo::<i8>(x_u8);
-    |               ^^^^ expected i8, found u8
-help: you can cast an `u8` to `i8`, which will truncate the source value
-    |
-270 |     foo::<i8>(x_u8 as i8);
-    |               ^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:272:15
-    |
-272 |     foo::<i8>(x_isize);
-    |               ^^^^^^^ expected i8, found isize
-help: you can cast an `isize` to `i8`, which will truncate or zero-extend depending on the bit width of `isize`
-    |
-272 |     foo::<i8>(x_isize as i8);
-    |               ^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:274:15
-    |
-274 |     foo::<i8>(x_i64);
-    |               ^^^^^ expected i8, found i64
-help: you can cast an `i64` to `i8`, which will truncate the source value
-    |
-274 |     foo::<i8>(x_i64 as i8);
-    |               ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:276:15
-    |
-276 |     foo::<i8>(x_i32);
+258 |     foo::<i8>(x_i32);
     |               ^^^^^ expected i8, found i32
-help: you can cast an `i32` to `i8`, which will truncate the source value
-    |
-276 |     foo::<i8>(x_i32 as i8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:278:15
+   --> $DIR/numeric-cast.rs:260:15
     |
-278 |     foo::<i8>(x_i16);
+260 |     foo::<i8>(x_i16);
     |               ^^^^^ expected i8, found i16
-help: you can cast an `i16` to `i8`, which will truncate the source value
-    |
-278 |     foo::<i8>(x_i16 as i8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:281:15
+   --> $DIR/numeric-cast.rs:263:15
     |
-281 |     foo::<i8>(x_f64);
+263 |     foo::<i8>(x_f64);
     |               ^^^^^ expected i8, found f64
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f64` to `i8`, rounding the float towards zero
-    |
-281 |     foo::<i8>(x_f64 as i8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:284:15
+   --> $DIR/numeric-cast.rs:265:15
     |
-284 |     foo::<i8>(x_f32);
+265 |     foo::<i8>(x_f32);
     |               ^^^^^ expected i8, found f32
-    |
-    = warning: casting here will cause undefined behavior if the rounded value cannot be represented by the target integer type, including `Inf` and `NaN` (this is a bug and will be fixed)
-help: you can cast an `f32` to `i8`, rounding the float towards zero
-    |
-284 |     foo::<i8>(x_f32 as i8);
-    |               ^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:288:16
+   --> $DIR/numeric-cast.rs:268:16
     |
-288 |     foo::<f64>(x_usize);
+268 |     foo::<f64>(x_usize);
     |                ^^^^^^^ expected f64, found usize
-help: you can cast an `usize` to `f64`, producing the floating point representation of the integer, rounded if necessary
-    |
-288 |     foo::<f64>(x_usize as f64);
-    |                ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:290:16
+   --> $DIR/numeric-cast.rs:270:16
     |
-290 |     foo::<f64>(x_u64);
+270 |     foo::<f64>(x_u64);
     |                ^^^^^ expected f64, found u64
-help: you can cast an `u64` to `f64`, producing the floating point representation of the integer, rounded if necessary
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:272:16
     |
-290 |     foo::<f64>(x_u64 as f64);
+272 |     foo::<f64>(x_u32);
+    |                ^^^^^ expected f64, found u32
+help: you can cast an `u32` to `f64`, producing the floating point representation of the integer, rounded if necessary
+    |
+272 |     foo::<f64>(x_u32.into());
+    |                ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:274:16
+    |
+274 |     foo::<f64>(x_u16);
+    |                ^^^^^ expected f64, found u16
+help: you can cast an `u16` to `f64`, producing the floating point representation of the integer, rounded if necessary
+    |
+274 |     foo::<f64>(x_u16.into());
+    |                ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:276:16
+    |
+276 |     foo::<f64>(x_u8);
+    |                ^^^^ expected f64, found u8
+help: you can cast an `u8` to `f64`, producing the floating point representation of the integer, rounded if necessary
+    |
+276 |     foo::<f64>(x_u8.into());
+    |                ^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:278:16
+    |
+278 |     foo::<f64>(x_isize);
+    |                ^^^^^^^ expected f64, found isize
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:280:16
+    |
+280 |     foo::<f64>(x_i64);
+    |                ^^^^^ expected f64, found i64
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:282:16
+    |
+282 |     foo::<f64>(x_i32);
+    |                ^^^^^ expected f64, found i32
+help: you can cast an `i32` to `f64`, producing the floating point representation of the integer, rounded if necessary
+    |
+282 |     foo::<f64>(x_i32.into());
+    |                ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:284:16
+    |
+284 |     foo::<f64>(x_i16);
+    |                ^^^^^ expected f64, found i16
+help: you can cast an `i16` to `f64`, producing the floating point representation of the integer, rounded if necessary
+    |
+284 |     foo::<f64>(x_i16.into());
+    |                ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:286:16
+    |
+286 |     foo::<f64>(x_i8);
+    |                ^^^^ expected f64, found i8
+help: you can cast an `i8` to `f64`, producing the floating point representation of the integer, rounded if necessary
+    |
+286 |     foo::<f64>(x_i8.into());
+    |                ^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:289:16
+    |
+289 |     foo::<f64>(x_f32);
+    |                ^^^^^ expected f64, found f32
+help: you can cast an `f32` to `f64` in a lossless way
+    |
+289 |     foo::<f64>(x_f32.into());
     |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:292:16
     |
-292 |     foo::<f64>(x_u32);
-    |                ^^^^^ expected f64, found u32
-help: you can cast an `u32` to `f64`, producing the floating point representation of the integer, rounded if necessary
-    |
-292 |     foo::<f64>(x_u32.into());
-    |                ^^^^^^^^^^^^
+292 |     foo::<f32>(x_usize);
+    |                ^^^^^^^ expected f32, found usize
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:294:16
     |
-294 |     foo::<f64>(x_u16);
-    |                ^^^^^ expected f64, found u16
-help: you can cast an `u16` to `f64`, producing the floating point representation of the integer, rounded if necessary
-    |
-294 |     foo::<f64>(x_u16.into());
-    |                ^^^^^^^^^^^^
+294 |     foo::<f32>(x_u64);
+    |                ^^^^^ expected f32, found u64
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:296:16
     |
-296 |     foo::<f64>(x_u8);
-    |                ^^^^ expected f64, found u8
-help: you can cast an `u8` to `f64`, producing the floating point representation of the integer, rounded if necessary
-    |
-296 |     foo::<f64>(x_u8.into());
-    |                ^^^^^^^^^^^
+296 |     foo::<f32>(x_u32);
+    |                ^^^^^ expected f32, found u32
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:298:16
     |
-298 |     foo::<f64>(x_isize);
-    |                ^^^^^^^ expected f64, found isize
-help: you can cast an `isize` to `f64`, producing the floating point representation of the integer, rounded if necessary
+298 |     foo::<f32>(x_u16);
+    |                ^^^^^ expected f32, found u16
+help: you can cast an `u16` to `f32`, producing the floating point representation of the integer, rounded if necessary
     |
-298 |     foo::<f64>(x_isize as f64);
-    |                ^^^^^^^^^^^^^^
+298 |     foo::<f32>(x_u16.into());
+    |                ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:300:16
     |
-300 |     foo::<f64>(x_i64);
-    |                ^^^^^ expected f64, found i64
-help: you can cast an `i64` to `f64`, producing the floating point representation of the integer, rounded if necessary
+300 |     foo::<f32>(x_u8);
+    |                ^^^^ expected f32, found u8
+help: you can cast an `u8` to `f32`, producing the floating point representation of the integer, rounded if necessary
     |
-300 |     foo::<f64>(x_i64 as f64);
-    |                ^^^^^^^^^^^^
+300 |     foo::<f32>(x_u8.into());
+    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:302:16
     |
-302 |     foo::<f64>(x_i32);
-    |                ^^^^^ expected f64, found i32
-help: you can cast an `i32` to `f64`, producing the floating point representation of the integer, rounded if necessary
-    |
-302 |     foo::<f64>(x_i32.into());
-    |                ^^^^^^^^^^^^
+302 |     foo::<f32>(x_isize);
+    |                ^^^^^^^ expected f32, found isize
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:304:16
     |
-304 |     foo::<f64>(x_i16);
-    |                ^^^^^ expected f64, found i16
-help: you can cast an `i16` to `f64`, producing the floating point representation of the integer, rounded if necessary
-    |
-304 |     foo::<f64>(x_i16.into());
-    |                ^^^^^^^^^^^^
+304 |     foo::<f32>(x_i64);
+    |                ^^^^^ expected f32, found i64
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:306:16
     |
-306 |     foo::<f64>(x_i8);
-    |                ^^^^ expected f64, found i8
-help: you can cast an `i8` to `f64`, producing the floating point representation of the integer, rounded if necessary
-    |
-306 |     foo::<f64>(x_i8.into());
-    |                ^^^^^^^^^^^
+306 |     foo::<f32>(x_i32);
+    |                ^^^^^ expected f32, found i32
 
 error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:309:16
+   --> $DIR/numeric-cast.rs:308:16
     |
-309 |     foo::<f64>(x_f32);
-    |                ^^^^^ expected f64, found f32
-help: you can cast an `f32` to `f64` in a lossless way
+308 |     foo::<f32>(x_i16);
+    |                ^^^^^ expected f32, found i16
+help: you can cast an `i16` to `f32`, producing the floating point representation of the integer, rounded if necessary
     |
-309 |     foo::<f64>(x_f32.into());
+308 |     foo::<f32>(x_i16.into());
     |                ^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> $DIR/numeric-cast.rs:310:16
+    |
+310 |     foo::<f32>(x_i8);
+    |                ^^^^ expected f32, found i8
+help: you can cast an `i8` to `f32`, producing the floating point representation of the integer, rounded if necessary
+    |
+310 |     foo::<f32>(x_i8.into());
+    |                ^^^^^^^^^^^
 
 error[E0308]: mismatched types
    --> $DIR/numeric-cast.rs:312:16
     |
-312 |     foo::<f32>(x_usize);
-    |                ^^^^^^^ expected f32, found usize
-help: you can cast an `usize` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-312 |     foo::<f32>(x_usize as f32);
-    |                ^^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:314:16
-    |
-314 |     foo::<f32>(x_u64);
-    |                ^^^^^ expected f32, found u64
-help: you can cast an `u64` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-314 |     foo::<f32>(x_u64 as f32);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:316:16
-    |
-316 |     foo::<f32>(x_u32);
-    |                ^^^^^ expected f32, found u32
-help: you can cast an `u32` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-316 |     foo::<f32>(x_u32 as f32);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:318:16
-    |
-318 |     foo::<f32>(x_u16);
-    |                ^^^^^ expected f32, found u16
-help: you can cast an `u16` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-318 |     foo::<f32>(x_u16.into());
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:320:16
-    |
-320 |     foo::<f32>(x_u8);
-    |                ^^^^ expected f32, found u8
-help: you can cast an `u8` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-320 |     foo::<f32>(x_u8.into());
-    |                ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:322:16
-    |
-322 |     foo::<f32>(x_isize);
-    |                ^^^^^^^ expected f32, found isize
-help: you can cast an `isize` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-322 |     foo::<f32>(x_isize as f32);
-    |                ^^^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:324:16
-    |
-324 |     foo::<f32>(x_i64);
-    |                ^^^^^ expected f32, found i64
-help: you can cast an `i64` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-324 |     foo::<f32>(x_i64 as f32);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:326:16
-    |
-326 |     foo::<f32>(x_i32);
-    |                ^^^^^ expected f32, found i32
-help: you can cast an `i32` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-326 |     foo::<f32>(x_i32 as f32);
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:328:16
-    |
-328 |     foo::<f32>(x_i16);
-    |                ^^^^^ expected f32, found i16
-help: you can cast an `i16` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-328 |     foo::<f32>(x_i16.into());
-    |                ^^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:330:16
-    |
-330 |     foo::<f32>(x_i8);
-    |                ^^^^ expected f32, found i8
-help: you can cast an `i8` to `f32`, producing the floating point representation of the integer, rounded if necessary
-    |
-330 |     foo::<f32>(x_i8.into());
-    |                ^^^^^^^^^^^
-
-error[E0308]: mismatched types
-   --> $DIR/numeric-cast.rs:332:16
-    |
-332 |     foo::<f32>(x_f64);
+312 |     foo::<f32>(x_f64);
     |                ^^^^^ expected f32, found f64
-    |
-    = warning: casting here will cause undefined behavior if the value is finite but larger or smaller than the largest or smallest finite value representable by `f32` (this is a bug and will be fixed)
-help: you can cast an `f64` to `f32`, producing the closest possible value
-    |
-332 |     foo::<f32>(x_f64 as f32);
-    |                ^^^^^^^^^^^^
 
 error: aborting due to 132 previous errors
 

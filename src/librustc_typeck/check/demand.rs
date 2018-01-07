@@ -331,13 +331,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // We want to minimize the amount of casting operations that are suggested, as it can be a
         // lossy operation with potentially bad side effects, so we only suggest when encountering
         // an expression that indicates that the original type couldn't be directly changed.
-        let can_cast = match expr.node {
-            hir::ExprPath(..) |
-            hir::ExprCall(..) |
-            hir::ExprMethodCall(..) |
-            hir::ExprBinary(..) => true,
-            _ => false,
-        };
+        //
+        // For now, don't suggest casting with `as`.
+        let can_cast = false;
 
         let needs_paren = match expr.node {
             hir::ExprBinary(..) => true,
@@ -369,7 +365,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         (None, _) | (_, None) => {
                             if can_cast {
                                 err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, depending_on_isize),
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_isize),
                                                     cast_suggestion);
                             }
                         }
@@ -393,7 +391,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         (None, _) | (_, None) => {
                             if can_cast {
                                 err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, depending_on_usize),
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_usize),
                                                     cast_suggestion);
                             }
                         }
@@ -420,12 +420,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
                             (None, _) => {
                                 err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, depending_on_isize),
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_isize),
                                                     cast_suggestion);
                             }
                             (_, None) => {
                                 err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, depending_on_usize),
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_usize),
                                                     cast_suggestion);
                             }
                             _ => {
@@ -452,12 +456,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
                             (None, _) => {
                                 err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, depending_on_usize),
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_usize),
                                                     cast_suggestion);
                             }
                             (_, None) => {
                                 err.span_suggestion(expr.span,
-                                                    &format!("{}, which {}", msg, depending_on_isize),
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_isize),
                                                     cast_suggestion);
                             }
                             _ => {
