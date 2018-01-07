@@ -2,33 +2,21 @@ extern crate file;
 extern crate libsyntax2;
 extern crate testutils;
 
-use std::path::{Path};
 use std::fmt::Write;
 
 use libsyntax2::{tokenize, parse, Node, File};
-use testutils::{collect_tests, assert_equal_text};
+use testutils::dir_tests;
 
 #[test]
 fn parser_tests() {
-    for test_case in collect_tests(&["parser/ok", "parser/err"]) {
-        parser_test_case(&test_case);
-    }
-}
-
-fn parser_test_case(path: &Path) {
-    let actual = {
-        let text = file::get_text(path).unwrap();
-        let tokens = tokenize(&text);
-        let file = parse(text, &tokens);
-        dump_tree(&file)
-    };
-    let expected_path = path.with_extension("txt");
-    let expected = file::get_text(&expected_path).expect(
-        &format!("Can't read {}", expected_path.display())
-    );
-    let expected = expected.as_str();
-    let actual = actual.as_str();
-    assert_equal_text(expected, actual, &expected_path);
+    dir_tests(
+        &["parser/ok", "parser/err"],
+        |text| {
+            let tokens = tokenize(text);
+            let file = parse(text.to_string(), &tokens);
+            dump_tree(&file)
+        }
+    )
 }
 
 fn dump_tree(file: &File) -> String {

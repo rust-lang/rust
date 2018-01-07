@@ -6,7 +6,33 @@ use std::fs::read_dir;
 
 use difference::Changeset;
 
-pub fn assert_equal_text(
+pub fn dir_tests<F>(
+    paths: &[&str],
+    f: F
+)
+where
+    F: Fn(&str) -> String
+{
+    for path in collect_tests(paths) {
+        let actual = {
+            let text = file::get_text(&path).unwrap();
+            f(&text)
+        };
+        let path = path.with_extension("txt");
+        if !path.exists() {
+            println!("\nfile: {}", path.display());
+            println!("No .txt file with expected result, creating...");
+            file::put_text(&path, actual).unwrap();
+            panic!("No expected result")
+        }
+        let expected = file::get_text(&path).unwrap();
+        let expected = expected.as_str();
+        let actual = actual.as_str();
+        assert_equal_text(expected, actual, &path);
+    }
+}
+
+fn assert_equal_text(
     expected: &str,
     actual: &str,
     path: &Path
@@ -16,7 +42,7 @@ pub fn assert_equal_text(
     }
 }
 
-pub fn collect_tests(paths: &[&str]) -> Vec<PathBuf> {
+fn collect_tests(paths: &[&str]) -> Vec<PathBuf> {
     paths.iter().flat_map(|path|  {
         let path = test_data_dir().join(path);
         test_from_dir(&path).into_iter()

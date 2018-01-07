@@ -6,7 +6,7 @@ use syntax_kinds::*;
 
 pub fn file(p: &mut Parser) {
     node(p, FILE, |p| {
-        shebang(p);
+        p.optional(SHEBANG);
         inner_attributes(p);
         many(p, |p| {
             skip_to_first(
@@ -15,11 +15,6 @@ pub fn file(p: &mut Parser) {
             )
         });
     })
-}
-
-
-fn shebang(_: &mut Parser) {
-    //TODO
 }
 
 fn inner_attributes(_: &mut Parser) {
@@ -134,6 +129,12 @@ impl<'p> Parser<'p> {
                 .message(format!("expected {:?}", kind))
                 .emit();
             false
+        }
+    }
+
+    pub(crate) fn optional(&mut self, kind: SyntaxKind) {
+        if self.current_is(kind) {
+            self.bump();
         }
     }
 }
