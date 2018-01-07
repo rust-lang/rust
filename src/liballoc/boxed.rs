@@ -630,6 +630,7 @@ impl From<Box<str>> for Box<[u8]> {
 #[derive(Debug, Clone)]
 pub struct TryFromSliceError<T>(Box<[T]>);
 
+#[unstable(feature = "try_from", issue = "33417")]
 impl<T> fmt::Display for TryFromSliceError<T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -653,6 +654,7 @@ impl<T> TryFromSliceError<T> {
     /// This method is meant to avoid allocation. It will consume the error,
     /// moving out the boxed slice, so that a copy of the slice does not need to
     /// be made.
+    #[unstable(feature = "try_from", issue = "33417")]
     #[inline]
     pub fn into_boxed_slice(self) -> Box<[T]> {
         self.0
