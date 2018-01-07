@@ -46,12 +46,26 @@ macro_rules! fake_anon_field_expr {
      }
 }
 
+macro_rules! real_method_stmt {
+     () => {
+          2.0.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+     }
+}
+
+macro_rules! real_method_expr {
+     () => {
+          2.0.powi(2) //~ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+     }
+}
+
 fn main() {
     fake_method_stmt!();
     fake_field_stmt!();
     fake_anon_field_stmt!();
+    real_method_stmt!();
 
     let _ = fake_method_expr!();
     let _ = fake_field_expr!();
     let _ = fake_anon_field_expr!();
+    let _ = real_method_expr!();
 }

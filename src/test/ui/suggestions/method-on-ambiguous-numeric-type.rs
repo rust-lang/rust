@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_41652_b.rs
-
-extern crate issue_41652_b;
-
-struct S;
-
-impl issue_41652_b::Tr for S {
-    fn f() {
-        3.f()
-        //~^ ERROR can't call method `f` on ambiguous numeric type `{integer}`
-    }
+fn main() {
+    let x = 2.0.powi(2);
+    //~^ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+    let y = 2.0;
+    let x = y.powi(2);
+    //~^ ERROR can't call method `powi` on ambiguous numeric type `{float}`
+    println!("{:?}", x);
 }
-
-fn main() {}
