@@ -353,35 +353,33 @@
      * This code is an unmodified version of the code written by Marco de Wit
      * and was found at http://stackoverflow.com/a/18514751/745719
      */
-    var levenshtein = (function() {
-        var row2 = [];
-        return function(s1, s2) {
-            if (s1 === s2) {
-                return 0;
+    var levenshtein_row2 = [];
+    function levenshtein(s1, s2) {
+        if (s1 === s2) {
+            return 0;
+        }
+        var s1_len = s1.length, s2_len = s2.length;
+        if (s1_len && s2_len) {
+            var i1 = 0, i2 = 0, a, b, c, c2, row = levenshtein_row2;
+            while (i1 < s1_len) {
+                row[i1] = ++i1;
             }
-            var s1_len = s1.length, s2_len = s2.length;
-            if (s1_len && s2_len) {
-                var i1 = 0, i2 = 0, a, b, c, c2, row = row2;
-                while (i1 < s1_len) {
-                    row[i1] = ++i1;
+            while (i2 < s2_len) {
+                c2 = s2.charCodeAt(i2);
+                a = i2;
+                ++i2;
+                b = i2;
+                for (i1 = 0; i1 < s1_len; ++i1) {
+                    c = a + (s1.charCodeAt(i1) !== c2 ? 1 : 0);
+                    a = row[i1];
+                    b = b < a ? (b < c ? b + 1 : c) : (a < c ? a + 1 : c);
+                    row[i1] = b;
                 }
-                while (i2 < s2_len) {
-                    c2 = s2.charCodeAt(i2);
-                    a = i2;
-                    ++i2;
-                    b = i2;
-                    for (i1 = 0; i1 < s1_len; ++i1) {
-                        c = a + (s1.charCodeAt(i1) !== c2 ? 1 : 0);
-                        a = row[i1];
-                        b = b < a ? (b < c ? b + 1 : c) : (a < c ? a + 1 : c);
-                        row[i1] = b;
-                    }
-                }
-                return b;
             }
-            return s1_len + s2_len;
-        };
-    })();
+            return b;
+        }
+        return s1_len + s2_len;
+    }
 
     function initSearch(rawSearchIndex) {
         var currentResults, index, searchIndex;
@@ -400,12 +398,20 @@
         /**
          * Executes the query and builds an index of results
          * @param  {[Object]} query     [The user query]
-         * @param  {[type]} max         [The maximum results returned]
          * @param  {[type]} searchWords [The list of search words to query
          *                               against]
          * @return {[type]}             [A search index of results]
          */
-        function execQuery(query, max, searchWords) {
+        function execQuery(query, searchWords) {
+            function itemTypeFromName(typename) {
+                for (var i = 0; i < itemTypes.length; ++i) {
+                    if (itemTypes[i] === typename) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
             var valLower = query.query.toLowerCase(),
                 val = valLower,
                 typeFilter = itemTypeFromName(query.type),
@@ -1021,9 +1027,8 @@
             return true;
         }
 
-        function getQuery() {
-            var matches, type, query, raw =
-                document.getElementsByClassName('search-input')[0].value;
+        function getQuery(raw) {
+            var matches, type, query;
             query = raw;
 
             matches = query.match(/^(fn|mod|struct|enum|trait|type|const|macro)\s*:\s*/i);
@@ -1227,7 +1232,7 @@
         }
 
         function showResults(results) {
-            var output, query = getQuery();
+            var output, query = getQuery(document.getElementsByClassName('search-input')[0].value);
 
             currentResults = query.id;
             output = '<h1>Results for ' + escape(query.query) +
@@ -1271,7 +1276,7 @@
                 resultIndex;
             var params = getQueryStringParams();
 
-            query = getQuery();
+            query = getQuery(document.getElementsByClassName('search-input')[0].value);
             if (e) {
                 e.preventDefault();
             }
@@ -1293,17 +1298,8 @@
                 }
             }
 
-            results = execQuery(query, 20000, index);
+            results = execQuery(query, index);
             showResults(results);
-        }
-
-        function itemTypeFromName(typename) {
-            for (var i = 0; i < itemTypes.length; ++i) {
-                if (itemTypes[i] === typename) {
-                    return i;
-                }
-            }
-            return -1;
         }
 
         function buildIndex(rawSearchIndex) {
