@@ -17,16 +17,23 @@
 // @has - '//a/@href' '../intra_links/fn.this_function.html'
 // @has - '//a/@href' '../intra_links/constant.THIS_CONST.html'
 // @has - '//a/@href' '../intra_links/static.THIS_STATIC.html'
+// @has - '//a/@href' '../intra_links/macro.this_macro.html'
 //! In this crate we would like to link to:
 //!
-//! * [`ThisType`](struct ::ThisType)
-//! * [`ThisEnum`](enum ::ThisEnum)
-//! * [`ThisTrait`](trait ::ThisTrait)
-//! * [`ThisAlias`](type ::ThisAlias)
-//! * [`ThisUnion`](union ::ThisUnion)
-//! * [`this_function`](::this_function())
-//! * [`THIS_CONST`](const ::THIS_CONST)
-//! * [`THIS_STATIC`](static ::THIS_STATIC)
+//! * [`ThisType`](ThisType)
+//! * [`ThisEnum`](ThisEnum)
+//! * [`ThisTrait`](ThisTrait)
+//! * [`ThisAlias`](ThisAlias)
+//! * [`ThisUnion`](ThisUnion)
+//! * [`this_function`](this_function)
+//! * [`THIS_CONST`](THIS_CONST)
+//! * [`THIS_STATIC`](THIS_STATIC)
+//! * [`this_macro`](this_macro!)
+
+#[macro_export]
+macro_rules! this_macro {
+    () => {};
+}
 
 pub struct ThisType;
 pub enum ThisEnum { ThisVariant, }
