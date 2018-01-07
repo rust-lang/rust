@@ -86,6 +86,14 @@ impl<'t> Parser<'t> {
         Some(kind)
     }
 
+    pub(crate) fn lookahead(&self, kinds: &[SyntaxKind]) -> bool {
+        if self.non_ws_tokens[self.pos..].len() < kinds.len() {
+            return false
+        }
+        kinds.iter().zip(self.non_ws_tokens[self.pos..].iter())
+            .all(|(&k1, &(idx, _))| k1 == self.raw_tokens[idx].kind)
+    }
+
     pub(crate) fn curly_block<F: FnOnce(&mut Parser)>(&mut self, f: F) -> bool {
         let old_level = self.curly_level;
         let old_limit = self.curly_limit;

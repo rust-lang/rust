@@ -17,10 +17,6 @@ pub fn file(p: &mut Parser) {
     })
 }
 
-fn inner_attributes(_: &mut Parser) {
-    //TODO
-}
-
 fn item_first(p: &Parser) -> bool {
     let current = match p.current() {
         Some(c) => c,
@@ -57,6 +53,20 @@ fn fn_item(p: &mut Parser) {
 
 
 // Paths, types, attributes, and stuff //
+
+fn inner_attributes(p: &mut Parser) {
+    many(p, inner_attribute)
+}
+
+fn inner_attribute(p: &mut Parser) -> bool {
+    if !(p.lookahead(&[EXCL, POUND])) {
+        return false;
+    }
+    node(p, ATTR, |p| {
+        p.bump_n(2);
+    });
+    true
+}
 
 fn outer_attributes(_: &mut Parser) {
 }
@@ -143,8 +153,14 @@ impl<'p> Parser<'p> {
         }
     }
 
-    pub(crate) fn optional(&mut self, kind: SyntaxKind) {
+    fn optional(&mut self, kind: SyntaxKind) {
         if self.current_is(kind) {
+            self.bump();
+        }
+    }
+
+    fn bump_n(&mut self, n: u8) {
+        for _ in 0..n {
             self.bump();
         }
     }

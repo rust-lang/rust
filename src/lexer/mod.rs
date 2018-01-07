@@ -129,7 +129,7 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
                 ptr.bump();
                 NEQ
             }
-            _ => NOT,
+            _ => EXCL,
         },
         '-' => return if ptr.next_is('>') {
             ptr.bump();

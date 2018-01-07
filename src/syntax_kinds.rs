@@ -38,7 +38,7 @@ pub const EQ: SyntaxKind = SyntaxKind(33);
 pub const EQEQ: SyntaxKind = SyntaxKind(34);
 pub const FAT_ARROW: SyntaxKind = SyntaxKind(35);
 pub const NEQ: SyntaxKind = SyntaxKind(36);
-pub const NOT: SyntaxKind = SyntaxKind(37);
+pub const EXCL: SyntaxKind = SyntaxKind(37);
 pub const LIFETIME: SyntaxKind = SyntaxKind(38);
 pub const CHAR: SyntaxKind = SyntaxKind(39);
 pub const BYTE: SyntaxKind = SyntaxKind(40);
@@ -62,8 +62,9 @@ pub const FILE: SyntaxKind = SyntaxKind(57);
 pub const STRUCT_ITEM: SyntaxKind = SyntaxKind(58);
 pub const STRUCT_FIELD: SyntaxKind = SyntaxKind(59);
 pub const FN_ITEM: SyntaxKind = SyntaxKind(60);
+pub const ATTR: SyntaxKind = SyntaxKind(61);
 
-static INFOS: [SyntaxInfo; 61] = [
+static INFOS: [SyntaxInfo; 62] = [
     SyntaxInfo { name: "USE_KW" },
     SyntaxInfo { name: "FN_KW" },
     SyntaxInfo { name: "STRUCT_KW" },
@@ -101,7 +102,7 @@ static INFOS: [SyntaxInfo; 61] = [
     SyntaxInfo { name: "EQEQ" },
     SyntaxInfo { name: "FAT_ARROW" },
     SyntaxInfo { name: "NEQ" },
-    SyntaxInfo { name: "NOT" },
+    SyntaxInfo { name: "EXCL" },
     SyntaxInfo { name: "LIFETIME" },
     SyntaxInfo { name: "CHAR" },
     SyntaxInfo { name: "BYTE" },
@@ -125,6 +126,7 @@ static INFOS: [SyntaxInfo; 61] = [
     SyntaxInfo { name: "STRUCT_ITEM" },
     SyntaxInfo { name: "STRUCT_FIELD" },
     SyntaxInfo { name: "FN_ITEM" },
+    SyntaxInfo { name: "ATTR" },
 ];
 
 pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {
