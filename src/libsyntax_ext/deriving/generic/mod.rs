@@ -831,7 +831,7 @@ fn find_repr_type_name(diagnostic: &Handler, type_attrs: &[ast::Attribute]) -> &
         for r in &attr::find_repr_attrs(diagnostic, a) {
             repr_type_name = match *r {
                 attr::ReprPacked | attr::ReprSimd | attr::ReprAlign(_) => continue,
-                attr::ReprExtern => "i32",
+                attr::ReprC => "i32",
 
                 attr::ReprInt(attr::SignedInt(ast::IntTy::Isize)) => "isize",
                 attr::ReprInt(attr::SignedInt(ast::IntTy::I8)) => "i8",

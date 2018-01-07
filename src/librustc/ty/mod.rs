@@ -1538,7 +1538,7 @@ impl ReprOptions {
         for attr in tcx.get_attrs(did).iter() {
             for r in attr::find_repr_attrs(tcx.sess.diagnostic(), attr) {
                 flags.insert(match r {
-                    attr::ReprExtern => ReprFlags::IS_C,
+                    attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked => ReprFlags::IS_PACKED,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
                     attr::ReprInt(i) => {
