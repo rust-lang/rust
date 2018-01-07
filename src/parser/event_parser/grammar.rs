@@ -74,7 +74,7 @@ fn many<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
 fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
     many(p, |p| {
         f(p);
-        p.expect(COMMA)
+        p.is_eof() || p.expect(COMMA)
     })
 }
 
@@ -101,6 +101,14 @@ impl<'p> Parser<'p> {
     }
 
     pub(crate) fn expect(&mut self, kind: SyntaxKind) -> bool {
-        self.current_is(kind) && { self.bump(); true }
+        if self.current_is(kind) {
+            self.bump();
+            true
+        } else {
+            self.error()
+                .message(format!("expected {:?}", kind))
+                .emit();
+            false
+        }
     }
 }

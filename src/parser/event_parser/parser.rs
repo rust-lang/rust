@@ -10,7 +10,9 @@ pub struct Parser<'t> {
 
     pos: usize,
     events: Vec<Event>,
+
     curly_level: i32,
+    curly_limit: Option<i32>,
 }
 
 impl<'t> Parser<'t> {
@@ -32,6 +34,7 @@ impl<'t> Parser<'t> {
             pos: 0,
             events: Vec::new(),
             curly_level: 0,
+            curly_limit: None,
         }
     }
 
@@ -41,7 +44,14 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn is_eof(&self) -> bool {
-        self.pos == self.non_ws_tokens.len()
+        if self.pos == self.non_ws_tokens.len() {
+            return true
+        }
+        if let Some(limit) = self.curly_limit {
+            let idx = self.non_ws_tokens[self.pos].0;
+            return limit == self.curly_level && self.raw_tokens[idx].kind == R_CURLY;
+        }
+        false
     }
 
     pub(crate) fn start(&mut self, kind: SyntaxKind) {
@@ -50,6 +60,10 @@ impl<'t> Parser<'t> {
 
     pub(crate) fn finish(&mut self) {
         self.event(Event::Finish);
+    }
+
+    pub(crate) fn error<'p>(&'p mut self) -> ErrorBuilder<'p, 't> {
+        ErrorBuilder::new(self)
     }
 
     pub(crate) fn current(&self) -> Option<SyntaxKind> {
@@ -73,15 +87,18 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn curly_block<F: FnOnce(&mut Parser)>(&mut self, f: F) -> bool {
-        let level = self.curly_level;
+        let old_level = self.curly_level;
+        let old_limit = self.curly_limit;
         if !self.expect(L_CURLY) {
             return false
         }
+        self.curly_limit = Some(self.curly_level);
         f(self);
-        assert!(self.curly_level > level);
+        assert!(self.curly_level > old_level);
+        self.curly_limit = old_limit;
         if !self.expect(R_CURLY) {
             self.start(ERROR);
-            while self.curly_level > level {
+            while self.curly_level > old_level {
                 if self.bump().is_none() {
                     break;
                 }
@@ -93,5 +110,26 @@ impl<'t> Parser<'t> {
 
     fn event(&mut self, event: Event) {
         self.events.push(event)
+    }
+}
+
+pub(crate) struct ErrorBuilder<'p, 't: 'p> {
+    message: Option<String>,
+    parser: &'p mut Parser<'t>
+}
+
+impl<'t, 'p> ErrorBuilder<'p, 't> {
+    fn new(parser: &'p mut Parser<'t>) -> Self {
+        ErrorBuilder { message: None, parser }
+    }
+
+    pub fn message<M: Into<String>>(mut self, m: M) -> Self {
+        self.message = Some(m.into());
+        self
+    }
+
+    pub fn emit(self) {
+        let message = self.message.expect("Error message not set");
+        self.parser.event(Event::Error { message });
     }
 }

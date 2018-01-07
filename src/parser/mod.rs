@@ -44,6 +44,8 @@ fn from_events_to_file(
                     break;
                 }
             },
+            Event::Error { message } => builder.error().message(message).emit(),
+
         }
     }
     builder.finish()

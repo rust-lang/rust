@@ -73,7 +73,7 @@ impl<'f> Node<'f> {
 		Children { next: self.as_node(self.data().first_child) }
 	}
 
-	pub fn SyntaxErrors(&self) -> SyntaxErrors<'f> {
+	pub fn errors(&self) -> SyntaxErrors<'f> {
 		let pos = self.file.errors.iter().position(|e| e.node == self.idx);
 		let next = pos
 			.map(|i| ErrorIdx(i as u32))
@@ -112,12 +112,13 @@ impl<'f> SyntaxError<'f> {
 	}
 
 	fn next(&self) -> Option<SyntaxError<'f>> {
-		if self.file.errors.len() == self.idx.0 as usize {
+		let next_idx = self.idx.0 + 1;
+		if !((next_idx as usize) < self.file.errors.len()) {
 			return None;
 		}
 		let result = SyntaxError {
 			file: self.file,
-			idx: ErrorIdx(self.idx.0 + 1)
+			idx: ErrorIdx(next_idx)
 		};
 		if result.data().node != self.data().node {
 			return None;

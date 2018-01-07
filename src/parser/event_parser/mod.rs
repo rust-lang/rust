@@ -10,7 +10,10 @@ pub(crate) enum Event {
     Token {
         kind: SyntaxKind,
         n_raw_tokens: u8,
-    }
+    },
+    Error {
+        message: String,
+    },
 }
 
 pub(crate) fn parse<'t>(text: &'t str, raw_tokens: &'t [Token]) -> Vec<Event> {
