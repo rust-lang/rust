@@ -121,7 +121,9 @@ impl Deref for Interned<String> {
 impl Deref for Interned<PathBuf> {
     type Target = Path;
     fn deref(&self) -> &'static Path {
-        self.as_ref()
+        let l = INTERNER.paths.lock().unwrap();
+        let p: &Path = l.get(*self).as_ref();
+        unsafe { &*(p as *const _) }
     }
 }
 
