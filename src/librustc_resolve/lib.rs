@@ -2982,6 +2982,8 @@ impl<'a> Resolver<'a> {
                     let msg = "There are too many initial `super`s.".to_string();
                     return PathResult::Failed(ident.span, msg, false);
                 }
+            } else if i == 0 && ns == TypeNS && name == keywords::Extern.name() {
+                continue;
             }
             allow_super = false;
 
@@ -2996,16 +2998,19 @@ impl<'a> Resolver<'a> {
                     // `$crate::a::b`
                     module = Some(self.resolve_crate_root(ident.node.ctxt));
                     continue
-                } else if i == 1 && self.session.features.borrow().extern_absolute_paths &&
-                                    path[0].node.name == keywords::CrateRoot.name() &&
-                                    !token::Ident(ident.node).is_path_segment_keyword() {
-                    // `::extern_crate::a::b`
-                    let crate_id = self.crate_loader.resolve_crate_from_path(name, ident.span);
-                    let crate_root =
-                        self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                    self.populate_module_if_necessary(crate_root);
-                    module = Some(crate_root);
-                    continue
+                } else if i == 1 && !token::Ident(ident.node).is_path_segment_keyword() {
+                    let prev_name = path[0].node.name;
+                    if prev_name == keywords::Extern.name() ||
+                       prev_name == keywords::CrateRoot.name() &&
+                       self.session.features.borrow().extern_absolute_paths {
+                        // `::extern_crate::a::b`
+                        let crate_id = self.crate_loader.resolve_crate_from_path(name, ident.span);
+                        let crate_root =
+                            self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                        self.populate_module_if_necessary(crate_root);
+                        module = Some(crate_root);
+                        continue
+                    }
                 }
             }
 
@@ -3015,6 +3020,7 @@ impl<'a> Resolver<'a> {
                name == keywords::SelfValue.name() && i != 0 ||
                name == keywords::SelfType.name() && i != 0 ||
                name == keywords::Super.name() && i != 0 ||
+               name == keywords::Extern.name() && i != 0 ||
                name == keywords::Crate.name() && i != 1 &&
                     path[0].node.name != keywords::CrateRoot.name() {
                 let name_str = if name == keywords::CrateRoot.name() {

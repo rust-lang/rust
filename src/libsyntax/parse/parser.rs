@@ -1387,7 +1387,7 @@ impl<'a> Parser<'a> {
                 None
             };
             (ident, TraitItemKind::Const(ty, default), ast::Generics::default())
-        } else if self.token.is_path_start() {
+        } else if self.token.is_path_start() && !self.is_extern_non_path() {
             // trait item macro.
             // code copied from parse_macro_use_or_failure... abstraction!
             let prev_span = self.prev_span;
@@ -4037,6 +4037,10 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(keywords::Crate) && self.look_ahead(1, |t| t != &token::ModSep)
     }
 
+    fn is_extern_non_path(&self) -> bool {
+        self.token.is_keyword(keywords::Extern) && self.look_ahead(1, |t| t != &token::ModSep)
+    }
+
     fn eat_auto_trait(&mut self) -> bool {
         if self.token.is_keyword(keywords::Auto)
             && self.look_ahead(1, |t| t.is_keyword(keywords::Trait))
@@ -4152,10 +4156,12 @@ impl<'a> Parser<'a> {
         // like a path (1 token), but it fact not a path.
         // `union::b::c` - path, `union U { ... }` - not a path.
         // `crate::b::c` - path, `crate struct S;` - not a path.
+        // `extern::b::c` - path, `extern crate c;` - not a path.
         } else if self.token.is_path_start() &&
                   !self.token.is_qpath_start() &&
                   !self.is_union_item() &&
-                  !self.is_crate_vis() {
+                  !self.is_crate_vis() &&
+                  !self.is_extern_non_path() {
             let pth = self.parse_path(PathStyle::Expr)?;
 
             if !self.eat(&token::Not) {
@@ -5236,7 +5242,7 @@ impl<'a> Parser<'a> {
                          -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::Generics,
                              ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
-        if self.token.is_path_start() {
+        if self.token.is_path_start() && !self.is_extern_non_path() {
             // Method macro.
 
             let prev_span = self.prev_span;
@@ -6238,7 +6244,8 @@ impl<'a> Parser<'a> {
             return Ok(Some(item));
         }
 
-        if self.eat_keyword(keywords::Extern) {
+        if self.check_keyword(keywords::Extern) && self.is_extern_non_path() {
+            self.bump(); // `extern`
             if self.eat_keyword(keywords::Crate) {
                 return Ok(Some(self.parse_item_extern_crate(lo, visibility, attrs)?));
             }
