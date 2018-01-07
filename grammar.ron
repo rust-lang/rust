@@ -64,5 +64,6 @@ Grammar(
         "FILE",
         "STRUCT_ITEM",
         "STRUCT_FIELD",
+        "FN_ITEM",
     ]
 )

@@ -22,8 +22,12 @@ fn inner_attributes(_: &mut Parser) {
 }
 
 fn item_first(p: &Parser) -> bool {
-    match p.current() {
-        Some(STRUCT_KW) => true,
+    let current = match p.current() {
+        Some(c) => c,
+        None => return false,
+    };
+    match current {
+        STRUCT_KW | FN_KW => true,
         _ => false,
     }
 }
@@ -31,7 +35,8 @@ fn item_first(p: &Parser) -> bool {
 fn item(p: &mut Parser) {
     outer_attributes(p);
     visibility(p);
-    node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item);
+    node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item)
+        || node_if(p, FN_KW, FN_ITEM, fn_item);
 }
 
 fn struct_item(p: &mut Parser) {
@@ -44,6 +49,12 @@ fn struct_field(p: &mut Parser) -> bool {
         p.expect(COLON) && p.expect(IDENT);
     })
 }
+
+fn fn_item(p: &mut Parser) {
+    p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN)
+        && p.curly_block(|p| ());
+}
+
 
 // Paths, types, attributes, and stuff //
 
