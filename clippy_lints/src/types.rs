@@ -541,7 +541,7 @@ declare_lint! {
 fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
     match typ.sty {
         ty::TyInt(i) => match i {
-            IntTy::Is => tcx.data_layout.pointer_size.bits(),
+            IntTy::Isize => tcx.data_layout.pointer_size.bits(),
             IntTy::I8 => 8,
             IntTy::I16 => 16,
             IntTy::I32 => 32,
@@ -549,7 +549,7 @@ fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
             IntTy::I128 => 128,
         },
         ty::TyUint(i) => match i {
-            UintTy::Us => tcx.data_layout.pointer_size.bits(),
+            UintTy::Usize => tcx.data_layout.pointer_size.bits(),
             UintTy::U8 => 8,
             UintTy::U16 => 16,
             UintTy::U32 => 32,
@@ -562,7 +562,7 @@ fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
 
 fn is_isize_or_usize(typ: Ty) -> bool {
     match typ.sty {
-        ty::TyInt(IntTy::Is) | ty::TyUint(UintTy::Us) => true,
+        ty::TyInt(IntTy::Isize) | ty::TyUint(UintTy::Usize) => true,
         _ => false,
     }
 }
@@ -1151,15 +1151,15 @@ fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -
 
     let which = match (&ty.sty, cv.val) {
         (&ty::TyBool, Bool(false)) |
-        (&ty::TyInt(IntTy::Is), Integral(Isize(Is32(::std::i32::MIN)))) |
-        (&ty::TyInt(IntTy::Is), Integral(Isize(Is64(::std::i64::MIN)))) |
+        (&ty::TyInt(IntTy::Isize), Integral(Isize(Is32(::std::i32::MIN)))) |
+        (&ty::TyInt(IntTy::Isize), Integral(Isize(Is64(::std::i64::MIN)))) |
         (&ty::TyInt(IntTy::I8), Integral(I8(::std::i8::MIN))) |
         (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MIN))) |
         (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MIN))) |
         (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MIN))) |
         (&ty::TyInt(IntTy::I128), Integral(I128(::std::i128::MIN))) |
-        (&ty::TyUint(UintTy::Us), Integral(Usize(Us32(::std::u32::MIN)))) |
-        (&ty::TyUint(UintTy::Us), Integral(Usize(Us64(::std::u64::MIN)))) |
+        (&ty::TyUint(UintTy::Usize), Integral(Usize(Us32(::std::u32::MIN)))) |
+        (&ty::TyUint(UintTy::Usize), Integral(Usize(Us64(::std::u64::MIN)))) |
         (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MIN))) |
         (&ty::TyUint(UintTy::U16), Integral(U16(::std::u16::MIN))) |
         (&ty::TyUint(UintTy::U32), Integral(U32(::std::u32::MIN))) |
@@ -1167,15 +1167,15 @@ fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -
         (&ty::TyUint(UintTy::U128), Integral(U128(::std::u128::MIN))) => Minimum,
 
         (&ty::TyBool, Bool(true)) |
-        (&ty::TyInt(IntTy::Is), Integral(Isize(Is32(::std::i32::MAX)))) |
-        (&ty::TyInt(IntTy::Is), Integral(Isize(Is64(::std::i64::MAX)))) |
+        (&ty::TyInt(IntTy::Isize), Integral(Isize(Is32(::std::i32::MAX)))) |
+        (&ty::TyInt(IntTy::Isize), Integral(Isize(Is64(::std::i64::MAX)))) |
         (&ty::TyInt(IntTy::I8), Integral(I8(::std::i8::MAX))) |
         (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MAX))) |
         (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MAX))) |
         (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MAX))) |
         (&ty::TyInt(IntTy::I128), Integral(I128(::std::i128::MAX))) |
-        (&ty::TyUint(UintTy::Us), Integral(Usize(Us32(::std::u32::MAX)))) |
-        (&ty::TyUint(UintTy::Us), Integral(Usize(Us64(::std::u64::MAX)))) |
+        (&ty::TyUint(UintTy::Usize), Integral(Usize(Us32(::std::u32::MAX)))) |
+        (&ty::TyUint(UintTy::Usize), Integral(Usize(Us64(::std::u64::MAX)))) |
         (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MAX))) |
         (&ty::TyUint(UintTy::U16), Integral(U16(::std::u16::MAX))) |
         (&ty::TyUint(UintTy::U32), Integral(U32(::std::u32::MAX))) |
@@ -1329,7 +1329,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
                     FullInt::S(i128::from(i64::max_value())),
                 ),
                 IntTy::I128 => (FullInt::S(i128::min_value() as i128), FullInt::S(i128::max_value() as i128)),
-                IntTy::Is => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
+                IntTy::Isize => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
             }),
             ty::TyUint(uint_ty) => Some(match uint_ty {
                 UintTy::U8 => (FullInt::U(u128::from(u8::min_value())), FullInt::U(u128::from(u8::max_value()))),
@@ -1346,7 +1346,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
                     FullInt::U(u128::from(u64::max_value())),
                 ),
                 UintTy::U128 => (FullInt::U(u128::min_value() as u128), FullInt::U(u128::max_value() as u128)),
-                UintTy::Us => (FullInt::U(usize::min_value() as u128), FullInt::U(usize::max_value() as u128)),
+                UintTy::Usize => (FullInt::U(usize::min_value() as u128), FullInt::U(usize::max_value() as u128)),
             }),
             _ => None,
         }
