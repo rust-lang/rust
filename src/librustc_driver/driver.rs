@@ -141,7 +141,7 @@ pub fn compile_input(trans: Box<TransCrate>,
                 }
             )?
         };
-        
+
         let output_paths = generated_output_paths(sess, &outputs, &crate_name);
 
         // Ensure the source file isn't accidentally overwritten during compilation.
