@@ -1353,10 +1353,14 @@ fn test_range_step() {
 }
 
 #[test]
-fn test_range_max() {
-    assert_eq!((0..100).max(), Some(99));
-    assert_eq!((-20..-10).max(), Some(-11));
-    assert_eq!((1..1).max(), None);
+fn test_range_last_max() {
+    assert_eq!((0..20).last(), Some(19));
+    assert_eq!((-20..0).last(), Some(-1));
+    assert_eq!((5..5).last(), None);
+
+    assert_eq!((0..20).max(), Some(19));
+    assert_eq!((-20..0).max(), Some(-1));
+    assert_eq!((5..5).max(), None);
 }
 
 #[test]
@@ -1374,6 +1378,13 @@ fn test_range_inclusive_last_max() {
     let mut r = 10..=10;
     r.next();
     assert_eq!(r.max(), None);
+}
+
+#[test]
+fn test_range_min() {
+    assert_eq!((0..20).min(), Some(0));
+    assert_eq!((-20..0).min(), Some(-20));
+    assert_eq!((5..5).min(), None);
 }
 
 #[test]

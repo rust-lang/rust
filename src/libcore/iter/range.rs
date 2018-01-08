@@ -253,6 +253,16 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 
     #[inline]
+    fn last(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn min(mut self) -> Option<A> {
+        self.next()
+    }
+
+    #[inline]
     fn max(mut self) -> Option<A> {
         self.next_back()
     }
