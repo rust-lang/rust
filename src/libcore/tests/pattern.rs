@@ -262,3 +262,41 @@ fn test_reverse_search_shared_bytes() {
         [InRange(37, 40), Rejects(34, 37), InRange(10, 13), Rejects(8, 10), Done]
     );
 }
+
+#[test]
+fn double_ended_regression_test() {
+    // https://github.com/rust-lang/rust/issues/47175
+    // Ensures that double ended searching comes to a convergence
+    search_asserts!("abcdeabcdeabcde", 'a', "alternating double ended search",
+        [next_match,    next_match_back,    next_match,      next_match_back],
+        [InRange(0, 1), InRange(10, 11), InRange(5, 6), Done]
+    );
+    search_asserts!("abcdeabcdeabcde", 'a', "triple double ended search for a",
+        [next_match,    next_match_back,    next_match_back,      next_match_back],
+        [InRange(0, 1), InRange(10, 11), InRange(5, 6), Done]
+    );
+    search_asserts!("abcdeabcdeabcde", 'd', "triple double ended search for d",
+        [next_match,    next_match_back,    next_match_back,      next_match_back],
+        [InRange(3, 4), InRange(13, 14), InRange(8, 9), Done]
+    );
+    search_asserts!(STRESS, 'Á', "Double ended search for two-byte Latin character",
+        [next_match,    next_match_back,     next_match,      next_match_back],
+        [InRange(0, 2), InRange(32, 34), InRange(8, 10), Done]
+    );
+    search_asserts!(STRESS, '각', "Reverse double ended search for three-byte Hangul character",
+        [next_match_back, next_back,       next_match,      next,            next_match_back, next_match],
+        [InRange(34, 37), Rejects(32, 34), InRange(19, 22), Rejects(22, 25), InRange(28, 31), Done]
+    );
+    search_asserts!(STRESS, 'ก', "Double ended search for three-byte Thai character",
+        [next_match,      next_back,       next,            next_match_back, next_match],
+        [InRange(22, 25), Rejects(47, 48), Rejects(25, 28), InRange(40, 43), Done]
+    );
+    search_asserts!(STRESS, '😁', "Double ended search for four-byte emoji",
+        [next_match_back, next,          next_match,      next_back,       next_match],
+        [InRange(43, 47), Rejects(0, 2), InRange(15, 19), Rejects(40, 43), Done]
+    );
+    search_asserts!(STRESS, 'ꁁ', "Double ended search for three-byte Yi character with repeated bytes",
+        [next_match,      next,            next_match_back, next_back,       next_match],
+        [InRange(10, 13), Rejects(13, 14), InRange(37, 40), Rejects(34, 37), Done]
+    );
+}
