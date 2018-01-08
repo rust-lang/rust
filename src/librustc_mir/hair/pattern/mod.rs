@@ -65,6 +65,7 @@ pub struct Pattern<'tcx> {
 
 #[derive(Clone, Debug)]
 pub enum PatternKind<'tcx> {
+    /// Wildcard `_`
     Wild,
 
     /// x, ref x, x @ P, etc
@@ -305,6 +306,37 @@ impl<'a, 'tcx> Pattern<'tcx> {
         }
         debug!("Pattern::from_hir({:?}) = {:?}", pat, result);
         result
+    }
+
+    pub fn is_unreachable(&self) -> bool {
+        if self.ty.sty == ty::TyNever {
+            return true;
+        }
+        match *self.kind {
+            PatternKind::Binding { ty, ref subpattern, .. } => {
+                if ty.sty == ty::TyNever {
+                    return true;
+                }
+                if let &Some(ref subpattern) = subpattern {
+                    subpattern.is_unreachable()
+                } else { false }
+            },
+            PatternKind::Variant { ref subpatterns, .. } |
+            PatternKind::Leaf { ref subpatterns } => {
+                subpatterns.iter().any(|field_pattern|
+                    field_pattern.pattern.is_unreachable())
+            },
+            PatternKind::Deref { ref subpattern } => {
+                subpattern.is_unreachable()
+            },
+            PatternKind::Slice { ref prefix, ref slice, ref suffix } |
+            PatternKind::Array { ref prefix, ref slice, ref suffix } => {
+                prefix.iter().any(|pat| pat.is_unreachable()) ||
+                slice.iter().any(|pat| pat.is_unreachable()) ||
+                suffix.iter().any(|pat| pat.is_unreachable())
+            },
+            _ => false
+        }
     }
 }
 
