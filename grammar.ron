@@ -6,6 +6,8 @@ Grammar(
         "enum",
         "trait",
         "impl",
+        "true",
+        "false",
     ],
     tokens: [
         "ERROR",

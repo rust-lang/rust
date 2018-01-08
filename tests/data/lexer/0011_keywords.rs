@@ -1,1 +1,1 @@
-fn use struct trait enum impl
+fn use struct trait enum impl true false
