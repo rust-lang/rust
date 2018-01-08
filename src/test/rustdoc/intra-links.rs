@@ -27,9 +27,9 @@
 //! * [`ThisTrait`](ThisTrait)
 //! * [`ThisAlias`](ThisAlias)
 //! * [`ThisUnion`](ThisUnion)
-//! * [`this_function`](this_function)
-//! * [`THIS_CONST`](THIS_CONST)
-//! * [`THIS_STATIC`](THIS_STATIC)
+//! * [`this_function`](this_function())
+//! * [`THIS_CONST`](const@THIS_CONST)
+//! * [`THIS_STATIC`](static@THIS_STATIC)
 //! * [`this_macro`](this_macro!)
 //!
 //! In addition, there's some specifics we want to look at. There's [a trait called

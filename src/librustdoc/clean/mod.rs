@@ -926,8 +926,14 @@ impl Clean<Attributes> for [ast::Attribute] {
                             // for structs, etc, and the link won't work.
                             if let Ok(path) = resolve(false) {
                                 path.def
-                            } else if let Ok(path) = resolve(true) {
-                                path.def
+                            } else if let Ok(_path) = resolve(true) {
+                                let sp = attrs.doc_strings.first().map_or(DUMMY_SP, |a| a.span());
+                                cx.sess().struct_span_err(sp, &format!("could not resolve `{}`",
+                                                                       path_str))
+                                         .help(&format!("try `{0}()`, `static@{0}`, or `const@{0}`",
+                                                        path_str))
+                                         .emit();
+                                continue;
                             } else {
                                 // this could just be a normal link
                                 continue;
