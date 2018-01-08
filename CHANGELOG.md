@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.178
+* Rustup to *rustc 1.25.0-nightly (ee220daca 2018-01-07)*
+
 ## 0.0.177
 * Rustup to *rustc 1.24.0-nightly (250b49205 2017-12-21)*
 * New lint: [`match_as_ref`]
