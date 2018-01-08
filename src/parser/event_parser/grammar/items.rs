@@ -33,6 +33,14 @@ fn mod_item(p: &mut Parser) {
 fn item(p: &mut Parser) -> bool {
     attributes::outer_attributes(p);
     visibility(p);
+    //    node_if(p, USE_KW, USE_ITEM, use_item)
+    // || extern crate_fn
+    // || node_if(p, STATIC_KW, STATIC_ITEM, static_item)
+    // || node_if(p, CONST_KW, CONST_ITEM, const_item) or const FN!
+    // || unsafe trait, impl
+    // || node_if(p, FN_KW, FN_ITEM, fn_item)
+    // || node_if(p, MOD_KW, MOD_ITEM, mod_item)
+    // || node_if(p, TYPE_KW, TYPE_ITEM, type_item)
     node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item)
         || node_if(p, FN_KW, FN_ITEM, fn_item)
 }
