@@ -18,6 +18,8 @@
 // @has - '//a/@href' '../intra_links/constant.THIS_CONST.html'
 // @has - '//a/@href' '../intra_links/static.THIS_STATIC.html'
 // @has - '//a/@href' '../intra_links/macro.this_macro.html'
+// @has - '//a/@href' '../intra_links/trait.SoAmbiguous.html'
+// @has - '//a/@href' '../intra_links/fn.SoAmbiguous.html'
 //! In this crate we would like to link to:
 //!
 //! * [`ThisType`](ThisType)
@@ -29,6 +31,13 @@
 //! * [`THIS_CONST`](THIS_CONST)
 //! * [`THIS_STATIC`](THIS_STATIC)
 //! * [`this_macro`](this_macro!)
+//!
+//! In addition, there's some specifics we want to look at. There's [a trait called
+//! SoAmbiguous][ambig-trait], but there's also [a function called SoAmbiguous][ambig-fn] too!
+//! Whatever shall we do?
+//!
+//! [ambig-trait]: trait@SoAmbiguous
+//! [ambig-fn]: SoAmbiguous()
 
 #[macro_export]
 macro_rules! this_macro {
@@ -44,3 +53,8 @@ pub union ThisUnion { this_field: usize, }
 pub fn this_function() {}
 pub const THIS_CONST: usize = 5usize;
 pub static THIS_STATIC: usize = 5usize;
+
+pub trait SoAmbiguous {}
+
+#[allow(bad_style)]
+pub fn SoAmbiguous() {}
