@@ -10,7 +10,7 @@
 
 use syntax_pos::Span;
 use rustc::middle::region::ScopeTree;
-use rustc::mir::{BorrowKind, Field, Local, Location, Operand};
+use rustc::mir::{BorrowKind, Field, Local, LocalKind, Location, Operand};
 use rustc::mir::{Place, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty::{self, RegionKind};
 use rustc_data_structures::indexed_vec::Idx;
@@ -573,14 +573,28 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             &self.describe_place(place).unwrap_or("_".to_owned()),
             Origin::Mir,
         );
-        err.span_label(span, "cannot assign twice to immutable variable");
+        let mut msg = "cannot assign twice to immutable variable";
         if span != assigned_span {
-            let value_msg = match self.describe_place(place) {
-                Some(name) => format!("`{}`", name),
-                None => "value".to_owned(),
+            let suggestion = if let Place::Local(local) = place {
+                if let LocalKind::Arg = self.mir.local_kind(*local) {
+                    msg = "cannot assign to immutable argument";
+                    err.span_label(assigned_span, "argument not declared as `mut`");
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
             };
-            err.span_label(assigned_span, format!("first assignment to {}", value_msg));
+            if !suggestion {
+                let value_msg = match self.describe_place(place) {
+                    Some(name) => format!("`{}`", name),
+                    None => "value".to_owned(),
+                };
+                err.span_label(assigned_span, format!("first assignment to {}", value_msg));
+            }
         }
+        err.span_label(span, msg);
         err.emit();
     }
 }
