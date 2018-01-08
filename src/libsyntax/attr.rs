@@ -1008,8 +1008,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                 if let Some(mi) = item.word() {
                     let word = &*mi.name().as_str();
                     let hint = match word {
-                        // Can't use "extern" because it's not a lexical identifier.
-                        "C" => Some(ReprExtern),
+                        "C" => Some(ReprC),
                         "packed" => Some(ReprPacked),
                         "simd" => Some(ReprSimd),
                         _ => match int_type_of_word(word) {
@@ -1080,7 +1079,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 #[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum ReprAttr {
     ReprInt(IntType),
-    ReprExtern,
+    ReprC,
     ReprPacked,
     ReprSimd,
     ReprAlign(u32),

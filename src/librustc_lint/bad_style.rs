@@ -120,17 +120,15 @@ impl LintPass for NonCamelCaseTypes {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        let extern_repr_count = it.attrs
+        let has_repr_c = it.attrs
             .iter()
-            .filter(|attr| {
+            .any(|attr| {
                 attr::find_repr_attrs(cx.tcx.sess.diagnostic(), attr)
                     .iter()
-                    .any(|r| r == &attr::ReprExtern)
-            })
-            .count();
-        let has_extern_repr = extern_repr_count > 0;
+                    .any(|r| r == &attr::ReprC)
+            });
 
-        if has_extern_repr {
+        if has_repr_c {
             return;
         }
 
