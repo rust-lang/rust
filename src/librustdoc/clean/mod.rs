@@ -476,6 +476,7 @@ impl Clean<Item> for doctree::Module {
         // we could also pass this down through clean()
         // but that might complicate things.
         cx.mod_ids.borrow_mut().push(self.id);
+        let attrs = self.attrs.clean(cx);
 
         let mut items: Vec<Item> = vec![];
         items.extend(self.extern_crates.iter().map(|x| x.clean(cx)));
@@ -512,7 +513,7 @@ impl Clean<Item> for doctree::Module {
 
         Item {
             name: Some(name),
-            attrs: self.attrs.clean(cx),
+            attrs,
             source: whence.clean(cx),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
