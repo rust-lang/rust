@@ -23,6 +23,7 @@ use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::{LoadedMacro, CrateStore};
 use rustc::middle::privacy::AccessLevel;
+use rustc::ty::Visibility;
 use rustc::util::nodemap::FxHashSet;
 
 use rustc::hir;
@@ -204,7 +205,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.inside_public_path = orig_inside_public_path;
         let def_id = self.cx.tcx.hir.local_def_id(id);
         if let Some(exports) = self.cx.tcx.module_exports(def_id) {
-            for export in exports.iter() {
+            for export in exports.iter().filter(|e| e.vis == Visibility::Public) {
                 if let Def::Macro(def_id, ..) = export.def {
                     if def_id.krate == LOCAL_CRATE || self.reexported_macros.contains(&def_id) {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
