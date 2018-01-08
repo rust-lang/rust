@@ -20,7 +20,7 @@ pub use self::FunctionRetTy::*;
 pub use self::Visibility::*;
 
 use syntax::abi::Abi;
-use syntax::ast;
+use syntax::ast::{self, AttrStyle};
 use syntax::attr;
 use syntax::codemap::Spanned;
 use syntax::feature_gate::UnstableFeatures;
@@ -472,11 +472,22 @@ impl Clean<Item> for doctree::Module {
             "".to_string()
         };
 
-        // maintain a stack of mod ids
-        // we could also pass this down through clean()
-        // but that might complicate things.
-        cx.mod_ids.borrow_mut().push(self.id);
-        let attrs = self.attrs.clean(cx);
+        // maintain a stack of mod ids, for doc comment path resolution
+        // but we also need to resolve the module's own docs based on whether its docs were written
+        // inside or outside the module, so check for that
+        let attrs = if self.attrs.iter()
+                                 .filter(|a| a.check_name("doc"))
+                                 .next()
+                                 .map_or(true, |a| a.style == AttrStyle::Inner) {
+            // inner doc comment, use the module's own scope for resolution
+            cx.mod_ids.borrow_mut().push(self.id);
+            self.attrs.clean(cx)
+        } else {
+            // outer doc comment, use its parent's scope
+            let attrs = self.attrs.clean(cx);
+            cx.mod_ids.borrow_mut().push(self.id);
+            attrs
+        };
 
         let mut items: Vec<Item> = vec![];
         items.extend(self.extern_crates.iter().map(|x| x.clean(cx)));
