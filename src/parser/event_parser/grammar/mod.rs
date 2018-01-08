@@ -18,13 +18,13 @@ pub(crate) fn file(p: &mut Parser) {
 fn visibility(_: &mut Parser) {
 }
 
-fn node_if<F: FnOnce(&mut Parser)>(
+fn node_if<F: FnOnce(&mut Parser), L: Lookahead>(
     p: &mut Parser,
-    first: SyntaxKind,
+    first: L,
     node_kind: SyntaxKind,
     rest: F
 ) -> bool {
-    p.current() == first && { node(p, node_kind, |p| { p.bump(); rest(p); }); true }
+    first.is_ahead(p) && { node(p, node_kind, |p| { L::consume(p); rest(p); }); true }
 }
 
 fn node<F: FnOnce(&mut Parser)>(p: &mut Parser, node_kind: SyntaxKind, rest: F) {
@@ -99,13 +99,63 @@ impl<'p> Parser<'p> {
         }
     }
 
-    fn bump_n(&mut self, n: u8) {
-        for _ in 0..n {
-            self.bump();
-        }
-    }
-
     fn eat(&mut self, kind: SyntaxKind) -> bool {
         self.current() == kind && { self.bump(); true }
     }
+}
+
+trait Lookahead: Copy {
+    fn is_ahead(self, p: &Parser) -> bool;
+    fn consume(p: &mut Parser);
+}
+
+impl Lookahead for SyntaxKind {
+    fn is_ahead(self, p: &Parser) -> bool {
+        p.current() == self
+    }
+
+    fn consume(p: &mut Parser) {
+        p.bump();
+    }
+}
+
+impl Lookahead for [SyntaxKind; 2] {
+    fn is_ahead(self, p: &Parser) -> bool {
+        p.current() == self[0]
+        && p.raw_lookahead(1) == self[1]
+    }
+
+    fn consume(p: &mut Parser) {
+        p.bump();
+        p.bump();
+    }
+}
+
+impl Lookahead for [SyntaxKind; 3] {
+    fn is_ahead(self, p: &Parser) -> bool {
+        p.current() == self[0]
+        && p.raw_lookahead(1) == self[1]
+        && p.raw_lookahead(2) == self[2]
+    }
+
+    fn consume(p: &mut Parser) {
+        p.bump();
+        p.bump();
+        p.bump();
+    }
+}
+
+#[derive(Clone, Copy)]
+struct AnyOf<'a>(&'a [SyntaxKind]);
+
+impl<'a> Lookahead for AnyOf<'a> {
+    fn is_ahead(self, p: &Parser) -> bool {
+        let curr = p.current();
+        self.0.iter().any(|&k| k == curr)
+    }
+
+    fn consume(p: &mut Parser) {
+        p.bump();
+    }
+
 }

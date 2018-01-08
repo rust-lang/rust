@@ -9,16 +9,15 @@ pub(super) fn outer_attributes(_: &mut Parser) {
 
 
 fn attribute(p: &mut Parser, inner: bool) -> bool {
-    let attr_start = inner && p.lookahead(&[POUND, EXCL, L_BRACK])
-        || !inner && p.lookahead(&[POUND, L_BRACK]);
-    if !attr_start {
-        return false;
-    }
-    node(p, ATTR, |p| {
-        p.bump_n(if inner { 3 } else { 2 });
+    fn attr_tail(p: &mut Parser) {
         meta_item(p) && p.expect(R_BRACK);
-    });
-    true
+    }
+
+    if inner {
+        node_if(p, [POUND, EXCL, L_BRACK], ATTR, attr_tail)
+    } else {
+        node_if(p, [POUND, L_BRACK], ATTR, attr_tail)
+    }
 }
 
 fn meta_item(p: &mut Parser) -> bool {

@@ -88,12 +88,8 @@ impl<'t> Parser<'t> {
         kind
     }
 
-    pub(crate) fn lookahead(&self, kinds: &[SyntaxKind]) -> bool {
-        if self.tokens[self.pos..].len() < kinds.len() {
-            return false
-        }
-        kinds.iter().zip(self.tokens[self.pos..].iter().map(|t| t.kind))
-            .all(|(&k1, k2)| k1 == k2)
+    pub(crate) fn raw_lookahead(&self, n: usize) -> SyntaxKind {
+        self.tokens.get(self.pos + n).map(|t| t.kind).unwrap_or(EOF)
     }
 
     pub(crate) fn curly_block<F: FnOnce(&mut Parser)>(&mut self, f: F) -> bool {

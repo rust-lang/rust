@@ -58,7 +58,7 @@ fn struct_field(p: &mut Parser) -> bool {
 
 fn fn_item(p: &mut Parser) {
     p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN)
-        && p.curly_block(|p| ());
+        && p.curly_block(|_| ());
 }
 
 
