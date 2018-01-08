@@ -1,0 +1,141 @@
+- Feature Name: custom_cargo_profiles
+- Start Date: 2018-01-08
+- RFC PR: (leave this empty)
+- Rust Issue: (leave this empty)
+
+
+# Summary
+[summary]: #summary
+
+Add the ability to create custom profiles in Cargo.toml, to provide further control over how the project is built. Allow overriding profile keys for certain dependency trees. 
+
+# Motivation
+[motivation]: #motivation
+
+Currently the "stable" way to tweak build parameters like "debug symbols", "debug assertions", and "optimization level" is to edit Cargo.toml.
+
+This file is typically checked in tree, so for many projects overriding things involves making
+temporary changes to this, which feels hacky. On top of this, if Cargo is being called by an
+encompassing build system as what happens in Firefox, these changes can seem surprising. There are
+currently two main profiles in Cargo ("dev" and "release"), and we're forced to fit everything we
+need into these two categories. This isn't really enough.
+
+Furthermore, this doesn't allow for much customization. For example, when trying to optimize for
+compilation speed by building in debug mode, build scripts will get built in debug mode as well. In
+case of complex build-time dependencies like bindgen, this can end up significantly slowing down
+compilation. It would be nice to be able to say "build in debug mode, but build build dependencies
+in release". Also, your program may have large dependencies that it doesn't use in critical paths,
+being able to ask for just these dependencies to be run in debug mode would be nice.
+
+# Guide-level explanation
+[guide-level-explanation]: #guide-level-explanation
+
+
+Currently, the [Cargo guide has a section on this](http://doc.crates.io/manifest.html#the-profile-sections).
+
+We amend this to add that you can define custom profiles with the `profile.foo` key syntax. These can be invoked via
+`cargo build --profile foo`. The `dev`/`doc`/`bench`/etc profiles remain special. Each custom profile, aside from the
+"special" ones, gets a folder in `target/`, named after the profile. "dev" and "debug" are considered to be aliases
+
+Profile keys can be "overridden":
+
+```toml
+[profile.dev]
+opt-level = 0
+debug = true
+
+# the `image` crate will be compiled with -Copt-level=3
+[profile.dev.overrides.image]
+opt-level = 3
+
+# Dependencies semver-matching any entry in the space separated list
+# will be compiled without debuginfo
+[profile.dev.overrides."image=0.2 piston>5.0"]
+debug=false
+
+# All dependencies (but not this crate itself) will be compiled
+# with -Copt-level=2 . This includes build dependencies.
+[profile.dev.overrides."*"]
+opt-level = 2
+
+# Build scripts and their dependencies will be compiled with -Copt-level=3
+# By default, build scripts use the same rules as the rest of the profile
+[profile.dev.build_override]
+opt-level = 3
+```
+
+Custom profiles _can_ be listed in a `.cargo/config`, however the user is responsible for
+clearing up build directories if the profile changes. That is, it is undefined behavior
+to run `cargo build --profile foo` if `foo` has been defined in `.cargo/config` and the
+profile has been edited since the last time you ran `cargo build --profile foo`.
+
+# Reference-level explanation
+[reference-level-explanation]: #reference-level-explanation
+
+In case of overlapping rules, the last mentioned rule will be applied. This applies to build scripts
+as well; if, for example, you have the following profile:
+
+```toml
+[profile.dev]
+opt-level = 0
+[profile.dev.build_override]
+opt-level = 3
+```
+
+and the `image` crate is _both_ a build dependency and a regular dependency; it will be compiled
+as per the `build_override` rule. If you wish it to be compiled as per the original rule,
+use a normal override rule:
+
+```toml
+[profile.dev]
+opt-level = 0
+[profile.dev.build_override]
+opt-level = 3
+[profile.dev.overrides.image]
+opt-level = 0
+```
+
+It is not possible to have the same crate compiled in different modes as a build dependency and a regular dependency within the same profile.
+
+
+`cargo build --target foo` will fail to run if `foo` clashes with the name of a profile; so avoid
+giving profiles the same name as possible build targets.
+
+
+# Drawbacks
+[drawbacks]: #drawbacks
+
+This complicates cargo.
+
+# Rationale and alternatives
+[alternatives]: #alternatives
+
+There are really two or three concerns here:
+
+ - A stable interface for setting various profile keys (`cargo rustc -- -Clto` is not good, for example, and doesn't integrate into Cargo's target directories)
+ - The ability to use a different profile for build scripts (usually, the ability to flip optimization modes; I don't think folks care as much about `-g` in build scripts)
+ - The ability to use a different profile for specific dependencies
+
+The first one can be resolved partially by stabilizing `cargo` arguments for overriding these. It
+doesn't fix the target directory issue, but that might not be a major concern. Allowing profiles to
+come from `.cargo/config` is another minimal solution to this for use cases like Firefox, which
+wraps Cargo in another build system.
+
+The second one can be fixed with a specific `build-scripts = release` key for profiles.
+
+The third can't be as easily fixed, however it's not clear if that's a major need.
+
+The nice thing about this proposal is that it is able to handle all three of these concerns. However, separate RFCs for separate features could be introduced as well.
+
+In general there are plans for Cargo to support other build systems by making it more modular (so
+that you can ask it for a build plan and then execute it yourself). Such build systems would be able to
+provide the ability to override profiles themselves instead. It's unclear if the general Rust
+community needs the ability to override profiles.
+
+# Unresolved questions
+[unresolved]: #unresolved-questions
+
+- Bikeshedding the naming of the keys
+- The priority order when doing resolution
+- Should `build_override` itself take an `overrides.foo` key?
+- The current proposal provides a way to say "special-case all build dependencies, even if they are regular dependencies as well", but not "special-case all build-only dependencies" (which can be solved with a `!build_override` thing, but that's weird and unweildy)
