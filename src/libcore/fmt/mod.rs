@@ -83,8 +83,11 @@ pub type Result = result::Result<(), Error>;
 /// some other means.
 ///
 /// An important thing to remember is that the type `fmt::Error` should not be
-/// confused with `std::io::Error` or `std::error::Error`, which you may also
+/// confused with [`std::io::Error`] or [`std::error::Error`], which you may also
 /// have in scope.
+///
+/// [`std::io::Error`]: ../../std/io/struct.Error.html
+/// [`std::error::Error`]: ../../std/error/trait.Error.html
 ///
 /// # Examples
 ///
