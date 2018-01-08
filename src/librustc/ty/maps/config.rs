@@ -625,6 +625,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_predicates<'tcx> {
+    fn describe(tcx: TyCtxt, key: (DefId, &'tcx Substs<'tcx>)) -> String {
+        format!("testing substituted normalized predicates:`{}`", tcx.item_path_str(key.0))
+    }
+}
+
 macro_rules! impl_disk_cacheable_query(
     ($query_name:ident, |$key:tt| $cond:expr) => {
         impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {

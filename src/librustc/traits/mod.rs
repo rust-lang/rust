@@ -658,9 +658,9 @@ pub fn fully_normalize_with_fulfillcx<'a, 'gcx, 'tcx, T>(
 /// environment. If this returns false, then either normalize
 /// encountered an error or one of the predicates did not hold. Used
 /// when creating vtables to check for unsatisfiable methods.
-pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                               predicates: Vec<ty::Predicate<'tcx>>)
-                                               -> bool
+fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                           predicates: Vec<ty::Predicate<'tcx>>)
+                                           -> bool
 {
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
@@ -684,6 +684,22 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     debug!("normalize_and_test_predicates(predicates={:?}) = {:?}",
            predicates, result);
+    result
+}
+
+fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                      key: (DefId, &'tcx Substs<'tcx>))
+                                                      -> bool
+{
+    use ty::subst::Subst;
+    debug!("substitute_normalize_and_test_predicates(key={:?})",
+           key);
+
+    let predicates = tcx.predicates_of(key.0).predicates.subst(tcx, key.1);
+    let result = normalize_and_test_predicates(tcx, predicates);
+
+    debug!("substitute_normalize_and_test_predicates(key={:?}) = {:?}",
+           key, result);
     result
 }
 
@@ -879,6 +895,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         specializes: specialize::specializes,
         trans_fulfill_obligation: trans::trans_fulfill_obligation,
         vtable_methods,
+        substitute_normalize_and_test_predicates,
         ..*providers
     };
 }
