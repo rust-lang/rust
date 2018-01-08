@@ -69,8 +69,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
                         atomic_name
                     );
                     match mutex_param.sty {
-                        ty::TyUint(t) if t != ast::UintTy::Us => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
-                        ty::TyInt(t) if t != ast::IntTy::Is => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::TyUint(t) if t != ast::UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::TyInt(t) if t != ast::IntTy::Isize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg),
                     };
                 }
