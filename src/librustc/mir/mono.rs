@@ -12,9 +12,11 @@ use syntax::ast::NodeId;
 use syntax::symbol::InternedString;
 use ty::Instance;
 use util::nodemap::FxHashMap;
+use rustc_data_structures::base_n;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasherResult,
                                            StableHasher};
 use ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
+use std::hash::Hash;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum MonoItem<'tcx> {
@@ -118,6 +120,16 @@ impl<'tcx> CodegenUnit<'tcx> {
         -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>
     {
         &mut self.items
+    }
+
+    pub fn mangle_name(human_readable_name: &str) -> String {
+        // We generate a 80 bit hash from the name. This should be enough to
+        // avoid collisions and is still reasonably short for filenames.
+        let mut hasher = StableHasher::new();
+        human_readable_name.hash(&mut hasher);
+        let hash: u128 = hasher.finish();
+        let hash = hash & ((1u128 << 80) - 1);
+        base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 }
 
