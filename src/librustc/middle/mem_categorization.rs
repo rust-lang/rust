@@ -1248,7 +1248,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 Def::StructCtor(_, CtorKind::Fn) => {
                     match self.pat_ty(&pat)?.sty {
                         ty::TyAdt(adt_def, _) => {
-                            (cmt, adt_def.struct_variant().fields.len())
+                            (cmt, adt_def.non_enum_variant().fields.len())
                         }
                         ref ty => {
                             span_bug!(pat.span, "tuple struct pattern unexpected type {:?}", ty);

@@ -838,8 +838,8 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 CustomCoerceUnsized::Struct(i) => i
             };
 
-            let source_fields = &source_adt_def.struct_variant().fields;
-            let target_fields = &target_adt_def.struct_variant().fields;
+            let source_fields = &source_adt_def.non_enum_variant().fields;
+            let target_fields = &target_adt_def.non_enum_variant().fields;
 
             assert!(coerce_index < source_fields.len() &&
                     source_fields.len() == target_fields.len());

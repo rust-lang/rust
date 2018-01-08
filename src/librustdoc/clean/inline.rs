@@ -186,7 +186,7 @@ fn build_enum(cx: &DocContext, did: DefId) -> clean::Enum {
 
 fn build_struct(cx: &DocContext, did: DefId) -> clean::Struct {
     let predicates = cx.tcx.predicates_of(did);
-    let variant = cx.tcx.adt_def(did).struct_variant();
+    let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Struct {
         struct_type: match variant.ctor_kind {
@@ -202,7 +202,7 @@ fn build_struct(cx: &DocContext, did: DefId) -> clean::Struct {
 
 fn build_union(cx: &DocContext, did: DefId) -> clean::Union {
     let predicates = cx.tcx.predicates_of(did);
-    let variant = cx.tcx.adt_def(did).struct_variant();
+    let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Union {
         struct_type: doctree::Plain,

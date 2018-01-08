@@ -107,7 +107,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                     ty::TyAdt(adt_def, _) if adt_def.is_union() => match result {
                         RestrictionResult::Safe => RestrictionResult::Safe,
                         RestrictionResult::SafeIf(base_lp, mut base_vec) => {
-                            for field in &adt_def.struct_variant().fields {
+                            for field in &adt_def.non_enum_variant().fields {
                                 let field = InteriorKind::InteriorField(mc::NamedField(field.name));
                                 let field_ty = if field == interior {
                                     cmt.ty

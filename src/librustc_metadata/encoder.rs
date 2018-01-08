@@ -625,7 +625,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         debug!("IsolatedEncoder::encode_struct_ctor({:?})", def_id);
         let tcx = self.tcx;
         let adt_def = tcx.adt_def(adt_def_id);
-        let variant = adt_def.struct_variant();
+        let variant = adt_def.non_enum_variant();
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
@@ -935,7 +935,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             hir::ItemTy(..) => EntryKind::Type,
             hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
-                let variant = tcx.adt_def(def_id).struct_variant();
+                let variant = tcx.adt_def(def_id).non_enum_variant();
 
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method
@@ -956,7 +956,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 }), repr_options)
             }
             hir::ItemUnion(..) => {
-                let variant = tcx.adt_def(def_id).struct_variant();
+                let variant = tcx.adt_def(def_id).non_enum_variant();
                 let repr_options = get_repr_options(&tcx, def_id);
 
                 EntryKind::Union(self.lazy(&VariantData {
@@ -1049,7 +1049,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) => {
                     let def = self.tcx.adt_def(def_id);
-                    self.lazy_seq(def.struct_variant().fields.iter().map(|f| {
+                    self.lazy_seq(def.non_enum_variant().fields.iter().map(|f| {
                         assert!(f.did.is_local());
                         f.did.index
                     }))

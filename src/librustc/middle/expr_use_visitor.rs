@@ -663,7 +663,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         match with_cmt.ty.sty {
             ty::TyAdt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
-                for with_field in &adt.struct_variant().fields {
+                for with_field in &adt.non_enum_variant().fields {
                     if !contains_field_named(with_field, fields) {
                         let cmt_field = self.mc.cat_field(
                             &*with_expr,
