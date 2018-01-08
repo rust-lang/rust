@@ -627,8 +627,16 @@ impl From<Box<str>> for Box<[u8]> {
 /// The error type returned when a conversion from a boxed slice to a boxed
 /// array fails.
 #[unstable(feature = "try_from", issue = "33417")]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TryFromSliceError<T>(Box<[T]>);
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl<T> fmt::Debug for TryFromSliceError<T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TryFromSliceError").finish()
+    }
+}
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl<T> fmt::Display for TryFromSliceError<T> {
