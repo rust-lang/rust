@@ -1214,8 +1214,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     // don't have anything to attach a symbol to
                     let msg = "const items should never be #[no_mangle]";
                     let mut err = cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
+
+                    // account for "pub const" (#45562)
+                    let start = cx.tcx.sess.codemap().span_to_snippet(it.span)
+                        .map(|snippet| snippet.find("const").unwrap_or(0))
+                        .unwrap_or(0) as u32;
                     // `const` is 5 chars
-                    let const_span = it.span.with_hi(BytePos(it.span.lo().0 + 5));
+                    let const_span = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
                     err.span_suggestion(const_span,
                                         "try a static value",
                                         "pub static".to_owned());
