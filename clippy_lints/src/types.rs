@@ -36,6 +36,14 @@ pub struct TypePass;
 ///     values: Box<Vec<Foo>>,
 /// }
 /// ```
+///
+/// Better:
+///
+/// ```rust
+/// struct X {
+///     values: Vec<Foo>,
+/// }
+/// ```
 declare_lint! {
     pub BOX_VEC,
     Warn,
@@ -88,6 +96,12 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// fn foo(bar: &Box<T>) { ... }
+/// ```
+///
+/// Better:
+///
+/// ```rust
+/// fn foo(bar: &T) { ... }
 /// ```
 declare_lint! {
     pub BORROWED_BOX,
@@ -513,6 +527,12 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// fn as_u64(x: u8) -> u64 { x as u64 }
+/// ```
+///
+/// Using `::from` would look like this:
+///
+/// ```rust
+/// fn as_u64(x: u8) -> u64 { u64::from(x) }
 /// ```
 declare_lint! {
     pub CAST_LOSSLESS,
@@ -993,6 +1013,12 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
 /// **Example:**
 /// ```rust
 /// 'x' as u8
+/// ```
+///
+/// A better version, using the byte literal:
+///
+/// ```rust
+/// b'x'
 /// ```
 declare_lint! {
     pub CHAR_LIT_AS_U8,
