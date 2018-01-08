@@ -18,6 +18,13 @@ pub(crate) fn file(p: &mut Parser) {
 fn visibility(_: &mut Parser) {
 }
 
+fn alias(p: &mut Parser) -> bool {
+    node_if(p, AS_KW, ALIAS, |p| {
+        p.expect(IDENT);
+    });
+    true //FIXME: return false if three are errors
+}
+
 fn node_if<F: FnOnce(&mut Parser), L: Lookahead>(
     p: &mut Parser,
     first: L,

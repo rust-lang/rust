@@ -8,6 +8,9 @@ Grammar(
         "impl",
         "true",
         "false",
+        "as",
+        "extern",
+        "crate",
     ],
     tokens: [
         "ERROR",
@@ -67,8 +70,10 @@ Grammar(
         "STRUCT_ITEM",
         "STRUCT_FIELD",
         "FN_ITEM",
+        "EXTERN_CRATE_ITEM",
         "ATTR",
         "META_ITEM",
         "LITERAL",
+        "ALIAS",
     ]
 )
