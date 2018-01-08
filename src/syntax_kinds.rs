@@ -66,8 +66,9 @@ pub const STRUCT_FIELD: SyntaxKind = SyntaxKind(61);
 pub const FN_ITEM: SyntaxKind = SyntaxKind(62);
 pub const ATTR: SyntaxKind = SyntaxKind(63);
 pub const META_ITEM: SyntaxKind = SyntaxKind(64);
+pub const LITERAL: SyntaxKind = SyntaxKind(65);
 
-static INFOS: [SyntaxInfo; 65] = [
+static INFOS: [SyntaxInfo; 66] = [
     SyntaxInfo { name: "USE_KW" },
     SyntaxInfo { name: "FN_KW" },
     SyntaxInfo { name: "STRUCT_KW" },
@@ -133,6 +134,7 @@ static INFOS: [SyntaxInfo; 65] = [
     SyntaxInfo { name: "FN_ITEM" },
     SyntaxInfo { name: "ATTR" },
     SyntaxInfo { name: "META_ITEM" },
+    SyntaxInfo { name: "LITERAL" },
 ];
 
 pub(crate) fn syntax_info(kind: SyntaxKind) -> &'static SyntaxInfo {

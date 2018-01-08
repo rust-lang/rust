@@ -1,5 +1,16 @@
 use super::*;
 
 pub(super) fn literal(p: &mut Parser) -> bool {
-    p.eat(INT_NUMBER) || p.eat(FLOAT_NUMBER)
+    match p.current() {
+        TRUE_KW | FALSE_KW
+        | INT_NUMBER | FLOAT_NUMBER
+        | BYTE | CHAR
+        |STRING | RAW_STRING | BYTE_STRING | RAW_BYTE_STRING => {
+            node(p, LITERAL, |p| {
+                p.bump();
+            });
+            true
+        }
+        _ => false
+    }
 }

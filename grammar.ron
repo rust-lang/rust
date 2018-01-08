@@ -69,5 +69,6 @@ Grammar(
         "FN_ITEM",
         "ATTR",
         "META_ITEM",
+        "LITERAL",
     ]
 )
