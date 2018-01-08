@@ -1,17 +1,40 @@
 use super::*;
 
-pub(super) fn item_first(p: &Parser) -> bool {
+pub(super) fn mod_items(p: &mut Parser) {
+    many(p, |p| {
+        skip_to_first(
+            p, item_first, mod_item,
+            "expected item",
+        )
+    });
+}
+
+fn item_first(p: &Parser) -> bool {
     match p.current() {
         STRUCT_KW | FN_KW => true,
         _ => false,
     }
 }
 
-pub(super) fn item(p: &mut Parser) {
+fn mod_item(p: &mut Parser) {
+    if item(p) {
+        if p.current() == SEMI {
+            node(p, ERROR, |p| {
+                p.error()
+                    .message("expected item, found `;`\n\
+                              consider removing this semicolon")
+                    .emit();
+                p.bump();
+            })
+        }
+    }
+}
+
+fn item(p: &mut Parser) -> bool {
     attributes::outer_attributes(p);
     visibility(p);
     node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item)
-        || node_if(p, FN_KW, FN_ITEM, fn_item);
+        || node_if(p, FN_KW, FN_ITEM, fn_item)
 }
 
 fn struct_item(p: &mut Parser) {

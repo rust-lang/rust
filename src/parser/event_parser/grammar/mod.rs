@@ -11,12 +11,7 @@ pub(crate) fn file(p: &mut Parser) {
     node(p, FILE, |p| {
         p.optional(SHEBANG);
         attributes::inner_attributes(p);
-        many(p, |p| {
-            skip_to_first(
-                p, items::item_first, items::item,
-                "expected item",
-            )
-        });
+        items::mod_items(p);
     })
 }
 
