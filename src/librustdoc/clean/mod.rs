@@ -848,21 +848,21 @@ impl Clean<Attributes> for [ast::Attribute] {
                          "trait", "union"].iter()
                                           .find(|p| link.starts_with(**p)) {
                         kind = PathKind::Type;
-                        link.trim_left_matches(prefix).trim()
+                        link.trim_left_matches(prefix).trim_left_matches('@')
                     } else if let Some(prefix) =
                         ["const", "static"].iter()
                                            .find(|p| link.starts_with(**p)) {
                         kind = PathKind::Value;
-                        link.trim_left_matches(prefix).trim()
+                        link.trim_left_matches(prefix).trim_left_matches('@')
                     } else if link.ends_with("()") {
                         kind = PathKind::Value;
-                        link.trim_right_matches("()").trim()
+                        link.trim_right_matches("()")
                     } else if link.ends_with('!') {
                         kind = PathKind::Macro;
-                        link.trim_right_matches('!').trim()
+                        link.trim_right_matches('!')
                     } else {
-                        link.trim()
-                    };
+                        &link[..]
+                    }.trim();
 
                     // avoid resolving things (i.e. regular links) which aren't like paths
                     // FIXME(Manishearth) given that most links have slashes in them might be worth
