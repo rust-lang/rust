@@ -3431,8 +3431,20 @@ impl<'a> Parser<'a> {
         let mut pats = Vec::new();
         loop {
             pats.push(self.parse_pat()?);
-            if self.check(&token::BinOp(token::Or)) { self.bump();}
-            else { return Ok(pats); }
+
+            if self.token == token::OrOr {
+                let mut err = self.struct_span_err(self.span,
+                                                   "unexpected token `||` after pattern");
+                err.span_suggestion(self.span,
+                                    "use a single `|` to specify multiple patterns",
+                                    "|".to_owned());
+                err.emit();
+                self.bump();
+            } else if self.check(&token::BinOp(token::Or)) {
+                self.bump();
+            } else {
+                return Ok(pats);
+            }
         };
     }
 
