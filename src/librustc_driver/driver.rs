@@ -210,10 +210,6 @@ pub fn compile_input(sess: &Session,
                                     Ok(()));
         }
 
-        time(sess.time_passes(), "attribute checking", || {
-            hir::check_attr::check_crate(sess, &expanded_crate);
-        });
-
         let opt_crate = if control.keep_ast {
             Some(&expanded_crate)
         } else {
@@ -1037,6 +1033,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
         // Do some initialization of the DepGraph that can only be done with the
         // tcx available.
         rustc_incremental::dep_graph_tcx_init(tcx);
+
+        time(sess.time_passes(), "attribute checking", || {
+            hir::check_attr::check_crate(tcx)
+        });
 
         time(time_passes,
              "stability checking",

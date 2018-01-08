@@ -10,6 +10,8 @@
 
 // ignore-arm
 // ignore-aarch64
+// ignore-wasm
+// ignore-emscripten
 
 #![feature(target_feature)]
 
