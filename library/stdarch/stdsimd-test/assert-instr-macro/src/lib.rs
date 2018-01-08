@@ -76,7 +76,7 @@ pub fn assert_instr(
                     .segments
                     .first()
                     .unwrap()
-                    .item()
+                    .value()
                     .ident
                     .as_ref()
                     .starts_with("target")
@@ -95,7 +95,7 @@ pub fn assert_instr(
     };
 
     let tts: TokenStream = quote_spanned! {
-        proc_macro2::Span::call_site(),
+        proc_macro2::Span::call_site() =>
         #[test]
         #[allow(non_snake_case)]
         #maybe_ignore

@@ -14,11 +14,7 @@ use proc_macro2::{Term, TokenNode, TokenStream, TokenTree};
 use proc_macro2::Literal;
 
 fn string(s: &str) -> TokenTree {
-    TokenTree {
-        kind: TokenNode::Literal(Literal::string(s)),
-
-        span: Default::default(),
-    }
+    TokenNode::Literal(Literal::string(s)).into()
 }
 
 #[proc_macro_attribute]
@@ -62,7 +58,7 @@ pub fn simd_test(
     use quote::ToTokens;
     for feature in target_features {
         let q = quote_spanned! {
-            proc_macro2::Span::call_site(),
+            proc_macro2::Span::call_site() =>
             cfg_feature_enabled!(#feature) &&
         };
         q.to_tokens(&mut cfg_target_features);
@@ -71,7 +67,7 @@ pub fn simd_test(
     q.to_tokens(&mut cfg_target_features);
 
     let ret: TokenStream = quote_spanned! {
-        proc_macro2::Span::call_site(),
+        proc_macro2::Span::call_site() =>
         #[allow(non_snake_case)]
         #[test]
         fn #name() {

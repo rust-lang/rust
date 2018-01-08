@@ -8,6 +8,6 @@ proc-macro = true
 test = false
 
 [dependencies]
-proc-macro2 = { version = "0.1", features = ["unstable"] }
-quote = { git = 'https://github.com/dtolnay/quote' }
-syn = { git = 'https://github.com/dtolnay/syn', features = ["full"] }
+proc-macro2 = { version = "0.2", features = ["nightly"] }
+quote = "0.4"
+syn = { version = "0.12", features = ["full"] }

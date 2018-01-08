@@ -14,7 +14,7 @@ use proc_macro::TokenStream;
 use quote::Tokens;
 
 macro_rules! my_quote {
-    ($($t:tt)*) => (quote_spanned!(proc_macro2::Span::call_site(), $($t)*))
+    ($($t:tt)*) => (quote_spanned!(proc_macro2::Span::call_site() => $($t)*))
 }
 
 #[proc_macro]
@@ -46,9 +46,9 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
         }
         f.attrs
             .iter()
-            .filter_map(|a| a.meta_item())
+            .filter_map(|a| a.interpret_meta())
             .any(|a| match a {
-                syn::MetaItem::NameValue(i) => i.ident == "target_feature",
+                syn::Meta::NameValue(i) => i.ident == "target_feature",
                 _ => false,
             })
     });
@@ -158,11 +158,11 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
     if path.segments.len() != 1 {
         panic!("unsupported path that needs name resolution")
     }
-    match path.segments.first().unwrap().item().arguments {
+    match path.segments.first().unwrap().value().arguments {
         syn::PathArguments::None => {}
         _ => panic!("unsupported path that has path arguments"),
     }
-    path.segments.first().unwrap().item().ident
+    path.segments.first().unwrap().value().ident
 }
 
 fn walk(root: &Path, files: &mut Vec<syn::File>) {
@@ -192,9 +192,9 @@ fn walk(root: &Path, files: &mut Vec<syn::File>) {
 fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
     attrs
         .iter()
-        .filter_map(|a| a.meta_item())
+        .filter_map(|a| a.interpret_meta())
         .filter_map(|a| match a {
-            syn::MetaItem::List(i) => {
+            syn::Meta::List(i) => {
                 if i.ident == "cfg_attr" {
                     i.nested.into_iter().next()
                 } else {
@@ -204,7 +204,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
             _ => None,
         })
         .filter_map(|nested| match nested {
-            syn::NestedMetaItem::MetaItem(syn::MetaItem::List(i)) => {
+            syn::NestedMeta::Meta(syn::Meta::List(i)) => {
                 if i.ident == "assert_instr" {
                     i.nested.into_iter().next()
                 } else {
@@ -214,7 +214,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
             _ => None,
         })
         .filter_map(|nested| match nested {
-            syn::NestedMetaItem::MetaItem(syn::MetaItem::Term(i)) => Some(i),
+            syn::NestedMeta::Meta(syn::Meta::Word(i)) => Some(i),
             _ => None,
         })
         .collect()
@@ -225,9 +225,9 @@ fn find_target_feature(
 ) -> syn::Lit {
     attrs
         .iter()
-        .filter_map(|a| a.meta_item())
+        .filter_map(|a| a.interpret_meta())
         .filter_map(|a| match a {
-            syn::MetaItem::NameValue(i) => {
+            syn::Meta::NameValue(i) => {
                 if i.ident == "target_feature" {
                     Some(i.lit)
                 } else {
