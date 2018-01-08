@@ -160,7 +160,7 @@ impl Step for CargoBook {
 
         let target = self.target;
         let name = self.name;
-        let src = build.src.join("src/tools/cargo/src/doc/book");
+        let src = build.src.join("src/tools/cargo/src/doc");
 
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));

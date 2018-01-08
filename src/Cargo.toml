@@ -55,8 +55,18 @@ debug-assertions = false
 debug = false
 debug-assertions = false
 
+# We want the RLS to use the version of Cargo that we've got vendored in this
+# repository to ensure that the same exact version of Cargo is used by both the
+# RLS and the Cargo binary itself. The RLS depends on Cargo as a git repository
+# so we use a `[patch]` here to override the github repository with our local
+# vendored copy.
 [patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "tools/cargo" }
 
 [patch.crates-io]
+# Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
+# that we're shipping as well (to ensure that the rustfmt in RLS and the
+# `rustfmt` executable are the same exact vesion). Unlike Cargo, however, the
+# RLS depends on `rustfmt` from crates.io, so we put this in a `[patch]` section
+# for crates.io
 rustfmt-nightly = { path = "tools/rustfmt" }

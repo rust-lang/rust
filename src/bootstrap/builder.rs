@@ -620,6 +620,39 @@ impl<'a> Builder<'a> {
         // Set this for all builds to make sure doc builds also get it.
         cargo.env("CFG_RELEASE_CHANNEL", &self.build.config.channel);
 
+        // This one's a bit tricky. As of the time of this writing the compiler
+        // links to the `winapi` crate on crates.io. This crate provides raw
+        // bindings to Windows system functions, sort of like libc does for
+        // Unix. This crate also, however, provides "import libraries" for the
+        // MinGW targets. There's an import library per dll in the windows
+        // distribution which is what's linked to. These custom import libraries
+        // are used because the winapi crate can reference Windows functions not
+        // present in the MinGW import libraries.
+        //
+        // For example MinGW may ship libdbghelp.a, but it may not have
+        // references to all the functions in the dbghelp dll. Instead the
+        // custom import library for dbghelp in the winapi crates has all this
+        // information.
+        //
+        // Unfortunately for us though the import libraries are linked by
+        // default via `-ldylib=winapi_foo`. That is, they're linked with the
+        // `dylib` type with a `winapi_` prefix (so the winapi ones don't
+        // conflict with the system MinGW ones). This consequently means that
+        // the binaries we ship of things like rustc_trans (aka the rustc_trans
+        // DLL) when linked against *again*, for example with procedural macros
+        // or plugins, will trigger the propagation logic of `-ldylib`, passing
+        // `-lwinapi_foo` to the linker again. This isn't actually available in
+        // our distribution, however, so the link fails.
+        //
+        // To solve this problem we tell winapi to not use its bundled import
+        // libraries. This means that it will link to the system MinGW import
+        // libraries by default, and the `-ldylib=foo` directives will still get
+        // passed to the final linker, but they'll look like `-lfoo` which can
+        // be resolved because MinGW has the import library. The downside is we
+        // don't get newer functions from Windows, but we don't use any of them
+        // anyway.
+        cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
+
         if self.is_very_verbose() {
             cargo.arg("-v");
         }
