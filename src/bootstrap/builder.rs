@@ -254,7 +254,9 @@ impl<'a> Builder<'a> {
             Kind::Test => describe!(check::Tidy, check::Bootstrap, check::DefaultCompiletest,
                 check::HostCompiletest, check::Crate, check::CrateLibrustc, check::Rustdoc,
                 check::Linkcheck, check::Cargotest, check::Cargo, check::Rls, check::Docs,
-                check::ErrorIndex, check::Distcheck, check::Rustfmt, check::Miri, check::Clippy),
+                check::ErrorIndex, check::Distcheck, check::Rustfmt, check::Miri, check::Clippy,
+                check::RustdocJS),
+
             Kind::Bench => describe!(check::Crate, check::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,

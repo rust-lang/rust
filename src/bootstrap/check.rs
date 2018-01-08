@@ -430,12 +430,12 @@ pub struct RustdocJS {
 }
 
 impl Step for RustdocJS {
-    type Output = PathBuf;
+    type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("node")
+        run.path("src/tests/rustdoc-js")
     }
 
     fn make_run(run: RunConfig) {
@@ -444,17 +444,11 @@ impl Step for RustdocJS {
         });
     }
 
-    fn run(self, _: &Builder) {
-        let cmd = if cfg!(target_os = "windows") {
-            let command = Command::new("cmd");
-            command.args(&["/C", "node src/tools/rustdoc-js/tester.js"]);
-            command
-        } else {
-            let command = Command::new("sh");
-            command.args(&["-c", "node src/tools/rustdoc-js/tester.js"]);
-            command
-        };
-        builder.run(cmd);
+    fn run(self, builder: &Builder) {
+        let nodejs = builder.config.nodejs.clone();
+        let mut command = Command::new(&nodejs.expect("no nodejs found"));
+        command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
+        builder.run(&mut command);
     }
 }
 
@@ -604,7 +598,6 @@ static HOST_COMPILETESTS: &[Test] = &[
     },
     Test { path: "src/test/run-make", mode: "run-make", suite: "run-make" },
     Test { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" },
-    Test { path: "src/test/rustdoc-js", mode: "rustdoc-js", suite: "rustdoc-js" },
 
     Test { path: "src/test/pretty", mode: "pretty", suite: "pretty" },
     Test { path: "src/test/run-pass/pretty", mode: "pretty", suite: "run-pass" },
