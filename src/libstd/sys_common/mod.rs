@@ -43,6 +43,7 @@ pub mod thread_local;
 pub mod util;
 pub mod wtf8;
 pub mod bytestring;
+#[cfg(not(target_os = "cloudabi"))]
 pub mod process;
 
 cfg_if! {
@@ -50,6 +51,8 @@ cfg_if! {
         pub use sys::net;
     } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
         pub use sys::net;
+    } else if #[cfg(target_os = "cloudabi")] {
+        // No networking support on CloudABI (yet).
     } else {
         pub mod net;
     }

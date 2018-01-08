@@ -39,6 +39,9 @@ cfg_if! {
     } else if #[cfg(windows)] {
         mod windows;
         pub use self::windows::*;
+    } else if #[cfg(target_os = "cloudabi")] {
+        mod cloudabi;
+        pub use self::cloudabi::*;
     } else if #[cfg(target_os = "redox")] {
         mod redox;
         pub use self::redox::*;
