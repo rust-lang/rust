@@ -296,11 +296,6 @@ pub unsafe fn twine_to_string(tr: TwineRef) -> String {
     build_string(|s| LLVMRustWriteTwineToString(tr, s)).expect("got a non-UTF8 Twine from LLVM")
 }
 
-pub unsafe fn debug_loc_to_string(c: ContextRef, tr: DebugLocRef) -> String {
-    build_string(|s| LLVMRustWriteDebugLocToString(c, tr, s))
-        .expect("got a non-UTF8 DebugLoc from LLVM")
-}
-
 pub fn initialize_available_targets() {
     macro_rules! init_target(
         ($cfg:meta, $($method:ident),*) => { {

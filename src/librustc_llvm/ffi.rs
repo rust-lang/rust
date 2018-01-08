@@ -1315,9 +1315,6 @@ extern "C" {
                              ElementCount: c_uint,
                              Packed: Bool);
 
-    /// Enables LLVM debug output.
-    pub fn LLVMRustSetDebug(Enabled: c_int);
-
     /// Prepares inline assembly.
     pub fn LLVMRustInlineAsm(Ty: TypeRef,
                              AsmString: *const c_char,
@@ -1610,7 +1607,6 @@ extern "C" {
     pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *const c_char);
     pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef, AddLifetimes: bool);
     pub fn LLVMRustLinkInExternalBitcode(M: ModuleRef, bc: *const c_char, len: size_t) -> bool;
-    pub fn LLVMRustLinkInParsedExternalBitcode(M: ModuleRef, M: ModuleRef) -> bool;
     pub fn LLVMRustRunRestrictionPass(M: ModuleRef, syms: *const *const c_char, len: size_t);
     pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
 
@@ -1645,8 +1641,6 @@ extern "C" {
 
     pub fn LLVMRustWriteDiagnosticInfoToString(DI: DiagnosticInfoRef, s: RustStringRef);
     pub fn LLVMRustGetDiagInfoKind(DI: DiagnosticInfoRef) -> DiagnosticKind;
-
-    pub fn LLVMRustWriteDebugLocToString(C: ContextRef, DL: DebugLocRef, s: RustStringRef);
 
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(C: ContextRef,
                                                  H: InlineAsmDiagHandler,

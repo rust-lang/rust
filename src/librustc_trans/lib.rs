@@ -69,7 +69,7 @@ pub use base::trans_crate;
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
 
 pub use metadata::LlvmMetadataLoader;
-pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
+pub use llvm_util::{init, target_features, print_version, print_passes, print};
 
 use std::any::Any;
 use std::path::PathBuf;

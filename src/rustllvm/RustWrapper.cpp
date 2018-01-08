@@ -384,12 +384,6 @@ LLVMRustBuildAtomicFence(LLVMBuilderRef B, LLVMAtomicOrdering Order,
   return wrap(unwrap(B)->CreateFence(fromRust(Order), fromRust(Scope)));
 }
 
-extern "C" void LLVMRustSetDebug(int Enabled) {
-#ifndef NDEBUG
-  DebugFlag = Enabled;
-#endif
-}
-
 enum class LLVMRustAsmDialect {
   Other,
   Att,
@@ -933,23 +927,6 @@ extern "C" bool LLVMRustLinkInExternalBitcode(LLVMModuleRef DstRef, char *BC,
   return true;
 }
 
-extern "C" bool LLVMRustLinkInParsedExternalBitcode(
-    LLVMModuleRef DstRef, LLVMModuleRef SrcRef) {
-#if LLVM_VERSION_GE(4, 0)
-  Module *Dst = unwrap(DstRef);
-  std::unique_ptr<Module> Src(unwrap(SrcRef));
-
-  if (Linker::linkModules(*Dst, std::move(Src))) {
-    LLVMRustSetLastError("failed to link modules");
-    return false;
-  }
-  return true;
-#else
-  LLVMRustSetLastError("can't link parsed modules on this LLVM");
-  return false;
-#endif
-}
-
 // Note that the two following functions look quite similar to the
 // LLVMGetSectionName function. Sadly, it appears that this function only
 // returns a char* pointer, which isn't guaranteed to be null-terminated. The
@@ -981,7 +958,6 @@ extern "C" LLVMTypeRef LLVMRustArrayType(LLVMTypeRef ElementTy,
 }
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(Twine, LLVMTwineRef)
-DEFINE_SIMPLE_CONVERSION_FUNCTIONS(DebugLoc, LLVMDebugLocRef)
 
 extern "C" void LLVMRustWriteTwineToString(LLVMTwineRef T, RustStringRef Str) {
   RawRustStringOstream OS(Str);
@@ -1128,13 +1104,6 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMTokenTypeKind;
   }
   report_fatal_error("Unhandled TypeID.");
-}
-
-extern "C" void LLVMRustWriteDebugLocToString(LLVMContextRef C,
-                                              LLVMDebugLocRef DL,
-                                              RustStringRef Str) {
-  RawRustStringOstream OS(Str);
-  unwrap(DL)->print(OS);
 }
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)

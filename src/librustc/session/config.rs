@@ -1084,8 +1084,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "omit landing pads for unwinding"),
     fewer_names: bool = (false, parse_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR)"),
-    debug_llvm: bool = (false, parse_bool, [UNTRACKED],
-        "enable debug output from LLVM"),
     meta_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather metadata statistics"),
     print_link_args: bool = (false, parse_bool, [UNTRACKED],
@@ -2746,8 +2744,6 @@ mod tests {
         opts.debugging_opts.trans_stats = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.borrowck_stats = true;
-        assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.debug_llvm = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.meta_stats = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
