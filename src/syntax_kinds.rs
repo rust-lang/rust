@@ -72,10 +72,13 @@ pub const EXTERN_CRATE_ITEM: SyntaxKind = SyntaxKind(67);
 pub const ATTR: SyntaxKind = SyntaxKind(68);
 pub const META_ITEM: SyntaxKind = SyntaxKind(69);
 pub const MOD_ITEM: SyntaxKind = SyntaxKind(70);
-pub const LITERAL: SyntaxKind = SyntaxKind(71);
-pub const ALIAS: SyntaxKind = SyntaxKind(72);
+pub const USE_ITEM: SyntaxKind = SyntaxKind(71);
+pub const PATH: SyntaxKind = SyntaxKind(72);
+pub const PATH_SEGMENT: SyntaxKind = SyntaxKind(73);
+pub const LITERAL: SyntaxKind = SyntaxKind(74);
+pub const ALIAS: SyntaxKind = SyntaxKind(75);
 
-static INFOS: [SyntaxInfo; 73] = [
+static INFOS: [SyntaxInfo; 76] = [
     SyntaxInfo { name: "USE_KW" },
     SyntaxInfo { name: "FN_KW" },
     SyntaxInfo { name: "STRUCT_KW" },
@@ -147,6 +150,9 @@ static INFOS: [SyntaxInfo; 73] = [
     SyntaxInfo { name: "ATTR" },
     SyntaxInfo { name: "META_ITEM" },
     SyntaxInfo { name: "MOD_ITEM" },
+    SyntaxInfo { name: "USE_ITEM" },
+    SyntaxInfo { name: "PATH" },
+    SyntaxInfo { name: "PATH_SEGMENT" },
     SyntaxInfo { name: "LITERAL" },
     SyntaxInfo { name: "ALIAS" },
 ];

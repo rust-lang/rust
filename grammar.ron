@@ -75,6 +75,9 @@ Grammar(
         "ATTR",
         "META_ITEM",
         "MOD_ITEM",
+        "USE_ITEM",
+        "PATH",
+        "PATH_SEGMENT",
         "LITERAL",
         "ALIAS",
     ]

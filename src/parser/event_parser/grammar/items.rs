@@ -12,7 +12,7 @@ pub(super) fn mod_contents(p: &mut Parser) {
 
 fn item_first(p: &Parser) -> bool {
     match p.current() {
-        STRUCT_KW | FN_KW | EXTERN_KW | MOD_KW => true,
+        STRUCT_KW | FN_KW | EXTERN_KW | MOD_KW | USE_KW => true,
         _ => false,
     }
 }
@@ -43,6 +43,7 @@ fn item(p: &mut Parser) -> bool {
     // || node_if(p, TYPE_KW, TYPE_ITEM, type_item)
     node_if(p, [EXTERN_KW, CRATE_KW], EXTERN_CRATE_ITEM, extern_crate_item)
         || node_if(p, MOD_KW, MOD_ITEM, mod_item)
+        || node_if(p, USE_KW, USE_ITEM, use_item)
         || node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item)
         || node_if(p, FN_KW, FN_ITEM, fn_item)
 }
@@ -64,6 +65,11 @@ fn mod_item(p: &mut Parser) {
         return;
     }
     p.curly_block(mod_contents);
+}
+
+fn use_item(p: &mut Parser) {
+    paths::use_path(p);
+    p.expect(SEMI);
 }
 
 fn struct_field(p: &mut Parser) -> bool {

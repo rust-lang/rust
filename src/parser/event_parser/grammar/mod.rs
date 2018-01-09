@@ -6,10 +6,11 @@ use syntax_kinds::*;
 mod items;
 mod attributes;
 mod expressions;
+mod paths;
 
 pub(crate) fn file(p: &mut Parser) {
     node(p, FILE, |p| {
-        p.optional(SHEBANG);
+        p.eat(SHEBANG);
         items::mod_contents(p);
     })
 }
@@ -96,12 +97,6 @@ impl<'p> Parser<'p> {
                 .message(format!("expected {:?}", kind))
                 .emit();
             false
-        }
-    }
-
-    fn optional(&mut self, kind: SyntaxKind) {
-        if self.current() == kind {
-            self.bump();
         }
     }
 
