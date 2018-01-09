@@ -1621,7 +1621,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
 
                         let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
                         ctr_vis.visit_body(body);
-                        assert!(ctr_vis.suggestions.is_empty());
 
                         span_lint_and_then(
                             cx,
