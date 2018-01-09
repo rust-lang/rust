@@ -36,7 +36,7 @@ macro_rules! define_impl {
             }
 
             #[inline(always)]
-            pub fn splat(value: $elemty) -> $name {
+            pub const fn splat(value: $elemty) -> $name {
                 $name($({
                     #[allow(non_camel_case_types, dead_code)]
                     struct $elname;
