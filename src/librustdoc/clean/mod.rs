@@ -975,8 +975,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                 };
 
 
-                register_def(cx, def);
-                attrs.links.push((link, def.def_id()));
+                let id = register_def(cx, def);
+                attrs.links.push((link, id));
             }
 
             cx.sess().abort_if_errors();
