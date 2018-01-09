@@ -27,14 +27,14 @@ fn never_ref(x: &!) {
 }
 
 fn never_slice(x: &[!]) {
-	x[0];
+    x[0];
 }
 
 fn never_match(x: Result<(), !>) {
-	match x {
-		Ok(_) => {},
-		Err(_) => {},
-	}
+    match x {
+        Ok(_) => {},
+        Err(_) => {},
+    }
 }
 
 pub fn main() { }
