@@ -45,6 +45,9 @@ getopts = "0.2"
 derive-new = "0.5"
 cargo_metadata = "0.4"
 
+[dev-dependencies]
+lazy_static = "1.0.0"
+
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.11"
 

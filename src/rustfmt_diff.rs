@@ -97,15 +97,28 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     results
 }
 
+// A representation of how to write output.
+pub enum PrintType {
+    Fancy, // want to output color and the terminal supports it
+    Basic, // do not want to output color or the terminal does not support color
+}
+
+impl PrintType {
+    pub fn get(color: Color) -> Self {
+        match term::stdout() {
+            Some(ref t) if use_colored_tty(color) && t.supports_color() => PrintType::Fancy,
+            _ => PrintType::Basic,
+        }
+    }
+}
+
 pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F, color: Color)
 where
     F: Fn(u32) -> String,
 {
-    match term::stdout() {
-        Some(ref t) if use_colored_tty(color) && t.supports_color() => {
-            print_diff_fancy(diff, get_section_title, term::stdout().unwrap())
-        }
-        _ => print_diff_basic(diff, get_section_title),
+    match PrintType::get(color) {
+        PrintType::Fancy => print_diff_fancy(diff, get_section_title, term::stdout().unwrap()),
+        PrintType::Basic => print_diff_basic(diff, get_section_title),
     }
 }
 

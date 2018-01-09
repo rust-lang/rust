@@ -511,12 +511,12 @@ Maximum length of comments. No effect unless`wrap_comments = true`.
 
 **Note:** A value of `0` results in [`wrap_comments`](#wrap_comments) being applied regardless of a line's width.
 
-#### Comments shorter than `comment_width`:
+#### `80` (default; comments shorter than `comment_width`):
 ```rust
 // Lorem ipsum dolor sit amet, consectetur adipiscing elit.
 ```
 
-#### Comments longer than `comment_width`:
+#### `60` (comments longer than `comment_width`):
 ```rust
 // Lorem ipsum dolor sit amet,
 // consectetur adipiscing elit.
