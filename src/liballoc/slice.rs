@@ -613,6 +613,9 @@ impl<T> [T] {
     /// not divide the length of the slice, then the last chunk will
     /// not have length `chunk_size`.
     ///
+    /// See [`exact_chunks`] for a variant of this iterator that returns chunks
+    /// of always exactly `chunk_size` elements.
+    ///
     /// # Panics
     ///
     /// Panics if `chunk_size` is 0.
@@ -637,6 +640,10 @@ impl<T> [T] {
     /// time. The chunks are slices and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last up to `chunk_size-1`
     /// elements will be omitted.
+    ///
+    /// Due to each chunk having exactly `chunk_size` elements, the compiler
+    /// can often optimize the resulting code better than in the case of
+    /// [`chunks`].
     ///
     /// # Panics
     ///
@@ -663,6 +670,9 @@ impl<T> [T] {
     /// The chunks are mutable slices, and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last chunk will not
     /// have length `chunk_size`.
+    ///
+    /// See [`exact_chunks_mut`] for a variant of this iterator that returns chunks
+    /// of always exactly `chunk_size` elements.
     ///
     /// # Panics
     ///
@@ -692,6 +702,11 @@ impl<T> [T] {
     /// The chunks are mutable slices, and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last up to `chunk_size-1`
     /// elements will be omitted.
+    ///
+    ///
+    /// Due to each chunk having exactly `chunk_size` elements, the compiler
+    /// can often optimize the resulting code better than in the case of
+    /// [`chunks_mut`].
     ///
     /// # Panics
     ///
