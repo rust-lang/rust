@@ -1351,7 +1351,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn simd_type(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyAdt(def, substs) => {
-                def.struct_variant().fields[0].ty(tcx, substs)
+                def.non_enum_variant().fields[0].ty(tcx, substs)
             }
             _ => bug!("simd_type called on invalid type")
         }
@@ -1359,7 +1359,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn simd_size(&self, _cx: TyCtxt) -> usize {
         match self.sty {
-            TyAdt(def, _) => def.struct_variant().fields.len(),
+            TyAdt(def, _) => def.non_enum_variant().fields.len(),
             _ => bug!("simd_size called on invalid type")
         }
     }

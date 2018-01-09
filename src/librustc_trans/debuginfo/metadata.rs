@@ -969,7 +969,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let struct_name = compute_debuginfo_type_name(cx, struct_type, false);
 
     let (struct_def_id, variant) = match struct_type.sty {
-        ty::TyAdt(def, _) => (def.did, def.struct_variant()),
+        ty::TyAdt(def, _) => (def.did, def.non_enum_variant()),
         _ => bug!("prepare_struct_metadata on a non-ADT")
     };
 
@@ -1084,7 +1084,7 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let union_name = compute_debuginfo_type_name(cx, union_type, false);
 
     let (union_def_id, variant) = match union_type.sty {
-        ty::TyAdt(def, _) => (def.did, def.struct_variant()),
+        ty::TyAdt(def, _) => (def.did, def.non_enum_variant()),
         _ => bug!("prepare_union_metadata on a non-ADT")
     };
 

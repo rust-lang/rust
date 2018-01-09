@@ -1538,7 +1538,7 @@ impl ReprOptions {
         for attr in tcx.get_attrs(did).iter() {
             for r in attr::find_repr_attrs(tcx.sess.diagnostic(), attr) {
                 flags.insert(match r {
-                    attr::ReprExtern => ReprFlags::IS_C,
+                    attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked => ReprFlags::IS_PACKED,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
                     attr::ReprInt(i) => {
@@ -1691,10 +1691,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.destructor(tcx).is_some()
     }
 
-    /// Asserts this is a struct and returns the struct's unique
-    /// variant.
-    pub fn struct_variant(&self) -> &VariantDef {
-        assert!(!self.is_enum());
+    /// Asserts this is a struct or union and returns its unique variant.
+    pub fn non_enum_variant(&self) -> &VariantDef {
+        assert!(self.is_struct() || self.is_union());
         &self.variants[0]
     }
 
@@ -1733,7 +1732,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         match def {
             Def::Variant(vid) | Def::VariantCtor(vid, ..) => self.variant_with_id(vid),
             Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
-            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => self.struct_variant(),
+            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => self.non_enum_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
     }
@@ -2319,11 +2318,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 self.adt_def(enum_did).variant_with_id(did)
             }
             Def::Struct(did) | Def::Union(did) => {
-                self.adt_def(did).struct_variant()
+                self.adt_def(did).non_enum_variant()
             }
             Def::StructCtor(ctor_did, ..) => {
                 let did = self.parent_def_id(ctor_did).expect("struct ctor has no parent");
-                self.adt_def(did).struct_variant()
+                self.adt_def(did).non_enum_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)
         }

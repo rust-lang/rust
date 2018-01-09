@@ -2295,6 +2295,13 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             }, niche_start))
         };
 
+        // Locals variables which live across yields are stored
+        // in the generator type as fields. These may be uninitialized
+        // so we don't look for niches there.
+        if let ty::TyGenerator(..) = self.ty.sty {
+            return Ok(None);
+        }
+
         match self.abi {
             Abi::Scalar(ref scalar) => {
                 return Ok(scalar_component(scalar, Size::from_bytes(0)));

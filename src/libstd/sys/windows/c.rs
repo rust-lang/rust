@@ -20,11 +20,6 @@ use os::raw::c_ulonglong;
 use libc::{wchar_t, size_t, c_void};
 use ptr;
 
-#[repr(simd)]
-#[repr(C)]
-#[cfg(target_arch = "x86_64")]
-struct u64x2(u64, u64);
-
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
 pub use self::EXCEPTION_DISPOSITION::*;
 
@@ -700,9 +695,8 @@ pub struct FLOATING_SAVE_AREA {
 }
 
 #[cfg(target_arch = "x86_64")]
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct CONTEXT {
-    _align_hack: [u64x2; 0], // FIXME align on 16-byte
     pub P1Home: DWORDLONG,
     pub P2Home: DWORDLONG,
     pub P3Home: DWORDLONG,
@@ -760,17 +754,15 @@ pub struct CONTEXT {
 }
 
 #[cfg(target_arch = "x86_64")]
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct M128A {
-    _align_hack: [u64x2; 0], // FIXME align on 16-byte
     pub Low:  c_ulonglong,
     pub High: c_longlong
 }
 
 #[cfg(target_arch = "x86_64")]
-#[repr(C)]
+#[repr(C, align(16))]
 pub struct FLOATING_SAVE_AREA {
-    _align_hack: [u64x2; 0], // FIXME align on 16-byte
     _Dummy: [u8; 512] // FIXME: Fill this out
 }
 

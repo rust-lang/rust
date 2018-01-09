@@ -50,7 +50,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     live_symbols: Box<FxHashSet<ast::NodeId>>,
-    struct_has_extern_repr: bool,
+    repr_has_repr_c: bool,
     in_pat: bool,
     inherited_pub_visibility: bool,
     ignore_variant_stack: Vec<DefId>,
@@ -102,7 +102,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
         match self.tables.expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
-                self.insert_def_id(def.struct_variant().field_named(name).did);
+                self.insert_def_id(def.non_enum_variant().field_named(name).did);
             }
             _ => span_bug!(lhs.span, "named field access on non-ADT"),
         }
@@ -111,7 +111,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn handle_tup_field_access(&mut self, lhs: &hir::Expr, idx: usize) {
         match self.tables.expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
-                self.insert_def_id(def.struct_variant().fields[idx].did);
+                self.insert_def_id(def.non_enum_variant().fields[idx].did);
             }
             ty::TyTuple(..) => {}
             _ => span_bug!(lhs.span, "numeric field access on non-ADT"),
@@ -149,8 +149,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_node(&mut self, node: &hir_map::Node<'tcx>) {
-        let had_extern_repr = self.struct_has_extern_repr;
-        self.struct_has_extern_repr = false;
+        let had_repr_c = self.repr_has_repr_c;
+        self.repr_has_repr_c = false;
         let had_inherited_pub_visibility = self.inherited_pub_visibility;
         self.inherited_pub_visibility = false;
         match *node {
@@ -159,7 +159,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     hir::ItemStruct(..) | hir::ItemUnion(..) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
                         let def = self.tcx.adt_def(def_id);
-                        self.struct_has_extern_repr = def.repr.c();
+                        self.repr_has_repr_c = def.repr.c();
 
                         intravisit::walk_item(self, &item);
                     }
@@ -187,7 +187,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             }
             _ => ()
         }
-        self.struct_has_extern_repr = had_extern_repr;
+        self.repr_has_repr_c = had_repr_c;
         self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
 
@@ -223,10 +223,10 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
                         _: &hir::Generics, _: ast::NodeId, _: syntax_pos::Span) {
-        let has_extern_repr = self.struct_has_extern_repr;
+        let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields().iter().filter(|f| {
-            has_extern_repr || inherited_pub_visibility || f.vis == hir::Public
+            has_repr_c || inherited_pub_visibility || f.vis == hir::Public
         });
         self.live_symbols.extend(live_fields.map(|f| f.id));
 
@@ -428,7 +428,7 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx,
         tables: &ty::TypeckTables::empty(None),
         live_symbols: box FxHashSet(),
-        struct_has_extern_repr: false,
+        repr_has_repr_c: false,
         in_pat: false,
         inherited_pub_visibility: false,
         ignore_variant_stack: vec![],

@@ -158,13 +158,6 @@ fn check(cache: &mut Cache,
        file.ends_with("sync/struct.RwLock.html") {
         return None;
     }
-    // FIXME(#47038)
-    if file.ends_with("deriving/generic/index.html") ||
-       file.ends_with("deriving/generic/macro.vec.html") ||
-       file.ends_with("deriving/custom/macro.panic.html") ||
-       file.ends_with("proc_macro_impl/macro.panic.html") {
-        return None;
-    }
 
     let res = load_file(cache, root, file, SkipRedirect);
     let (pretty_file, contents) = match res {

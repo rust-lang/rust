@@ -1583,10 +1583,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                         if !self.span.filter_generated(sub_span, ex.span) {
                             let span =
                                 self.span_from_span(sub_span.expect("No span found for var ref"));
+                            let ref_id =
+                                ::id_from_def_id(def.non_enum_variant().fields[idx.node].did);
                             self.dumper.dump_ref(Ref {
                                 kind: RefKind::Variable,
                                 span,
-                                ref_id: ::id_from_def_id(def.struct_variant().fields[idx.node].did),
+                                ref_id,
                             });
                         }
                     }

@@ -289,7 +289,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     for (ty, _) in self.autoderef(span, rcvr_ty) {
                         match ty.sty {
                             ty::TyAdt(def, substs) if !def.is_enum() => {
-                                if let Some(field) = def.struct_variant()
+                                if let Some(field) = def.non_enum_variant()
                                     .find_field_named(item_name) {
                                     let snippet = tcx.sess.codemap().span_to_snippet(expr.span);
                                     let expr_string = match snippet {
