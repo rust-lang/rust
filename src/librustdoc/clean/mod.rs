@@ -926,12 +926,19 @@ impl Clean<Attributes> for [ast::Attribute] {
                             // for structs, etc, and the link won't work.
                             if let Ok(path) = resolve(false) {
                                 path.def
-                            } else if let Ok(_path) = resolve(true) {
+                            } else if let Ok(path) = resolve(true) {
+                                let kind = match path.def {
+                                    Def::Variant(..) | Def::VariantCtor(..) => ("variant", format!("{}()", path_str)),
+                                    Def::Fn(..) => ("function", format!("{}()", path_str)),
+                                    Def::Method(..) => ("method", format!("{}()", path_str)),
+                                    Def::Const(..) => ("const", format!("const@{}", path_str)),
+                                    Def::Static(..) => ("static", format!("static@{}", path_str)),
+                                    _ => ("value", format!("static@{}", path_str)),
+                                };
                                 let sp = attrs.doc_strings.first().map_or(DUMMY_SP, |a| a.span());
-                                cx.sess().struct_span_err(sp, &format!("could not resolve `{}`",
-                                                                       path_str))
-                                         .help(&format!("try `{0}()`, `static@{0}`, or `const@{0}`",
-                                                        path_str))
+                                cx.sess().struct_span_err(sp, &format!("could not resolve `{}` as a type, it is a {}",
+                                                                       path_str, kind.0))
+                                         .help(&format!("try `{}`", kind.1))
                                          .emit();
                                 continue;
                             } else {
