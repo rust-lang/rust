@@ -310,9 +310,13 @@ impl Handler {
         self.continue_after_error.set(continue_after_error);
     }
 
-    // NOTE: DO NOT call this function from rustc, as it relies on `err_count` being non-zero
-    // if an error happened to avoid ICEs. This function should only be called from tools.
+    /// Resets the diagnostic error count as well as the cached emitted diagnostics.
+    ///
+    /// NOTE: DO NOT call this function from rustc. It is only meant to be called from external
+    /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
+    /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
+        self.emitted_diagnostics.replace(FxHashSet());
         self.err_count.store(0, SeqCst);
     }
 
