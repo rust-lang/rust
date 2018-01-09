@@ -4,9 +4,13 @@
 
 # Ignore Windows and Apple
 
-# This does not work in its current form on Windows or Apple APFS due
-# to their filesystems requiring paths to be valid Unicode.
+# This does not work in its current form on windows, possibly due to
+# gcc bugs or something about valid Windows paths.  See issue #29151
+# for more information.
 ifndef IS_WINDOWS
+
+# This also does not work on Apple APFS due to the filesystem requiring
+# valid UTF-u paths.
 ifneq ($(shell uname),Darwin)
 
 # The zzz it to allow humans to tab complete or glob this thing.
