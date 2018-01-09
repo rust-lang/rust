@@ -470,9 +470,9 @@ impl f32 {
         return unsafe { intrinsics::logf32(self) };
     }
 
-    /// Returns the logarithm of the number with respect to an arbitrary base,
-    /// calculated as `self.ln() / base.ln()`.
+    /// Returns the logarithm of the number with respect to an arbitrary base.
     ///
+    /// The result may not be correctly rounded owing to implementation details;
     /// `self.log2()` can produce more accurate results for base 2, and
     /// `self.log10()` can produce more accurate results for base 10.
     ///

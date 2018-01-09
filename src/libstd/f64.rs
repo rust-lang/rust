@@ -430,9 +430,9 @@ impl f64 {
         self.log_wrapper(|n| { unsafe { intrinsics::logf64(n) } })
     }
 
-    /// Returns the logarithm of the number with respect to an arbitrary base,
-    /// calculated as `self.ln() / base.ln()`.
+    /// Returns the logarithm of the number with respect to an arbitrary base.
     ///
+    /// The result may not be correctly rounded owing to implementation details;
     /// `self.log2()` can produce more accurate results for base 2, and
     /// `self.log10()` can produce more accurate results for base 10.
     ///
