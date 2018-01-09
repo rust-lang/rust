@@ -3,6 +3,11 @@
 #[macro_use]
 mod macros;
 
+#[repr(simd)]
+#[derive(Clone, Copy, Debug)]
+#[allow(non_camel_case_types)]
+pub struct __m128(f32, f32, f32, f32);
+
 mod i386;
 pub use self::i386::*;
 

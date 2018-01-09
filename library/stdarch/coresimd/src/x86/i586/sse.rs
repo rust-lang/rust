@@ -6,6 +6,7 @@ use core::ptr;
 use simd_llvm::simd_shuffle4;
 use v128::*;
 use v64::*;
+use x86::__m128;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -15,7 +16,7 @@ use stdsimd_test::assert_instr;
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(addss))]
-pub unsafe fn _mm_add_ss(a: f32x4, b: f32x4) -> f32x4 {
+pub unsafe fn _mm_add_ss(a: __m128, b: __m128) -> __m128 {
     addss(a, b)
 }
 
@@ -720,13 +721,13 @@ pub unsafe fn _mm_set_ps1(a: f32) -> f32x4 {
 /// Alternatively:
 ///
 /// ```text
-/// assert_eq!(f32x4::new(a, b, c, d), _mm_set_ps(d, c, b, a));
+/// let v = _mm_set_ps(d, c, b, a);
 /// ```
 #[inline(always)]
 #[target_feature = "+sse"]
 #[cfg_attr(test, assert_instr(unpcklps))]
-pub unsafe fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> f32x4 {
-    f32x4::new(d, c, b, a)
+pub unsafe fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
+    __m128(d, c, b, a)
 }
 
 /// Construct a `f32x4` from four floating point values lowest to highest.
@@ -1600,7 +1601,7 @@ pub unsafe fn _MM_TRANSPOSE4_PS(
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.sse.add.ss"]
-    fn addss(a: f32x4, b: f32x4) -> f32x4;
+    fn addss(a: __m128, b: __m128) -> __m128;
     #[link_name = "llvm.x86.sse.sub.ss"]
     fn subss(a: f32x4, b: f32x4) -> f32x4;
     #[link_name = "llvm.x86.sse.mul.ss"]
@@ -1697,10 +1698,25 @@ pub unsafe fn _mm_stream_pi(mem_addr: *mut __m64, a: __m64) {
 
 #[cfg(test)]
 mod tests {
-    use v128::*;
     use x86::i586::sse;
+    use super::*;
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
+
+    #[target_feature = "+sse"]
+    unsafe fn assert_eq_m128(a: __m128, b: __m128) {
+        use std::mem;
+        let r = _mm_cmpeq_ps(mem::transmute(a), mem::transmute(b));
+        if _mm_movemask_ps(r) != 0b1111 {
+            panic!("{:?} != {:?}", a, b);
+        }
+    }
+
+    #[target_feature = "+sse"]
+    unsafe fn get_m128(a: __m128, idx: usize) -> f32 {
+        union A { a: __m128, b: [f32; 4] };
+        mem::transmute::<__m128, A>(a).b[idx]
+    }
 
     #[simd_test = "sse"]
     unsafe fn _mm_add_ps() {
@@ -1711,11 +1727,11 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    unsafe fn _mm_add_ss() {
-        let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
-        let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
-        let r = sse::_mm_add_ss(a, b);
-        assert_eq!(r, f32x4::new(-101.0, 5.0, 0.0, -10.0));
+    unsafe fn test_mm_add_ss() {
+        let a = _mm_set_ps(-1.0, 5.0, 0.0, -10.0);
+        let b = _mm_set_ps(-100.0, 20.0, 0.0, -5.0);
+        let r = _mm_add_ss(a, b);
+        assert_eq_m128(r, _mm_set_ps(-1.0, 5.0, 0.0, -15.0));
     }
 
     #[simd_test = "sse"]
@@ -2220,7 +2236,8 @@ mod tests {
         assert_eq!(rd, ed);
     }
 
-    unsafe fn _mm_cmpeq_ps() {
+    #[simd_test = "sse"]
+    unsafe fn test_mm_cmpeq_ps() {
         use std::mem::transmute;
         use std::f32::NAN;
 
@@ -2234,6 +2251,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
+    #[simd_test = "sse"]
     unsafe fn _mm_cmplt_ps() {
         use std::mem::transmute;
         use std::f32::NAN;
@@ -2876,7 +2894,7 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    pub unsafe fn _mm_cvtss_f32() {
+    pub unsafe fn test_mm_cvtss_f32() {
         let a = f32x4::new(312.0134, 5.0, 6.0, 7.0);
         assert_eq!(sse::_mm_cvtss_f32(a), 312.0134);
     }
@@ -2896,14 +2914,17 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    unsafe fn _mm_set_ps() {
-        let r = sse::_mm_set_ps(
+    unsafe fn test_mm_set_ps() {
+        let r = _mm_set_ps(
             black_box(1.0),
             black_box(2.0),
             black_box(3.0),
             black_box(4.0),
         );
-        assert_eq!(r, f32x4::new(4.0, 3.0, 2.0, 1.0));
+        assert_eq!(get_m128(r, 0), 4.0);
+        assert_eq!(get_m128(r, 1), 3.0);
+        assert_eq!(get_m128(r, 2), 2.0);
+        assert_eq!(get_m128(r, 3), 1.0);
     }
 
     #[simd_test = "sse"]
@@ -3196,7 +3217,7 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    unsafe fn _mm_movemask_ps() {
+    unsafe fn test_mm_movemask_ps() {
         let r = sse::_mm_movemask_ps(f32x4::new(-1.0, 5.0, -5.0, 0.0));
         assert_eq!(r, 0b0101);
 

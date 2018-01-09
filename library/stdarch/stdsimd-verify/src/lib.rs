@@ -97,6 +97,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
 fn to_type(t: &syn::Type) -> Tokens {
     match *t {
         syn::Type::Path(ref p) => match extract_path_ident(&p.path).as_ref() {
+            "__m128" => my_quote! { &F32x4 },
             "__m128i" => my_quote! { &I8x16 },
             "__m256i" => my_quote! { &I8x32 },
             "__m64" => my_quote! { &I8x8 },
