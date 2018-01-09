@@ -73,7 +73,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub const fn new(secs: u64, nanos: u32) -> Duration {
+    pub fn new(secs: u64, nanos: u32) -> Duration {
         let secs = secs.checked_add((nanos / NANOS_PER_SEC) as u64)
             .expect("overflow in Duration::new");
         let nanos = nanos % NANOS_PER_SEC;
@@ -113,9 +113,10 @@ impl Duration {
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub const fn from_millis(millis: u64) -> Duration {
-        let secs = millis / MILLIS_PER_SEC;
-        let nanos = ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI;
-        Duration { secs: secs, nanos: nanos }
+        Duration {
+		secs: millis / MILLIS_PER_SEC,
+		nanos: ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI,
+	}
     }
 
     /// Creates a new `Duration` from the specified number of microseconds.
@@ -134,9 +135,10 @@ impl Duration {
     #[unstable(feature = "duration_from_micros", issue = "44400")]
     #[inline]
     pub const fn from_micros(micros: u64) -> Duration {
-        let secs = micros / MICROS_PER_SEC;
-        let nanos = ((micros % MICROS_PER_SEC) as u32) * NANOS_PER_MICRO;
-        Duration { secs: secs, nanos: nanos }
+        Duration {
+		secs: micros / MICROS_PER_SEC,
+		nanos: ((micros % MICROS_PER_SEC) as u32) * NANOS_PER_MICRO,
+	}
     }
 
     /// Creates a new `Duration` from the specified number of nanoseconds.
@@ -155,9 +157,10 @@ impl Duration {
     #[unstable(feature = "duration_extras", issue = "46507")]
     #[inline]
     pub const fn from_nanos(nanos: u64) -> Duration {
-        let secs = nanos / (NANOS_PER_SEC as u64);
-        let nanos = (nanos % (NANOS_PER_SEC as u64)) as u32;
-        Duration { secs: secs, nanos: nanos }
+        Duration {
+		secs: nanos / (NANOS_PER_SEC as u64),
+		nanos: (nanos % (NANOS_PER_SEC as u64)) as u32,
+	}
     }
 
     /// Returns the number of _whole_ seconds contained by this `Duration`.
