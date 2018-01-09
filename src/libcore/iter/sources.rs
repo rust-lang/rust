@@ -19,7 +19,7 @@ use super::{FusedIterator, TrustedLen};
 /// This `struct` is created by the [`repeat`] function. See its documentation for more.
 ///
 /// [`repeat`]: fn.repeat.html
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat<A> {
     element: A
@@ -144,6 +144,9 @@ unsafe impl<T> TrustedLen for Empty<T> {}
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for Empty<T> {}
 
+#[stable(feature = "iter_empty", since = "1.25.0")]
+impl<T> Copy for Empty<T> {}
+
 // not #[derive] because that adds a Clone bound on T,
 // which isn't necessary.
 #[stable(feature = "iter_empty", since = "1.2.0")]
@@ -186,7 +189,7 @@ pub fn empty<T>() -> Empty<T> {
 /// This `struct` is created by the [`once`] function. See its documentation for more.
 ///
 /// [`once`]: fn.once.html
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
     inner: ::option::IntoIter<T>

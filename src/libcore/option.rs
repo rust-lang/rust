@@ -960,7 +960,7 @@ impl<T> From<T> for Option<T> {
 // The Option Iterators
 /////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 struct Item<A> {
     opt: Option<A>
 }
@@ -1031,6 +1031,9 @@ impl<'a, A> FusedIterator for Iter<'a, A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, A> TrustedLen for Iter<'a, A> {}
 
+#[stable(feature = "rust1", since = "1.25.0")]
+impl<'a, A> Copy for Iter<'a, A> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> Clone for Iter<'a, A> {
     fn clone(&self) -> Iter<'a, A> {
@@ -1084,7 +1087,7 @@ unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
 /// [`Option`]: enum.Option.html
 /// [`Some`]: enum.Option.html#variant.Some
 /// [`Option::into_iter`]: enum.Option.html#method.into_iter
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<A> { inner: Item<A> }
 
