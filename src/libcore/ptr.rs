@@ -2403,7 +2403,7 @@ impl<T: ?Sized> Unique<T> {
     ///
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&*my_ptr.ptr()`.
+    /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
     pub unsafe fn as_ref(&self) -> &T {
         &*self.as_ptr()
     }
@@ -2412,7 +2412,7 @@ impl<T: ?Sized> Unique<T> {
     ///
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&mut *my_ptr.ptr()`.
+    /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
@@ -2544,7 +2544,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&*my_ptr.ptr()`.
+    /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
     #[stable(feature = "nonnull", since = "1.24.0")]
     pub unsafe fn as_ref(&self) -> &T {
         &*self.as_ptr()
@@ -2554,7 +2554,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
-    /// (unbound) lifetime is needed, use `&mut *my_ptr.ptr_mut()`.
+    /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
     #[stable(feature = "nonnull", since = "1.24.0")]
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
