@@ -13,7 +13,8 @@
 #![allow(unused_features)]
 #![feature(const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd,
            simd_ffi, target_feature, cfg_target_feature, i128_type, asm,
-           const_atomic_usize_new, stmt_expr_attributes, core_intrinsics)]
+           const_atomic_usize_new, stmt_expr_attributes, core_intrinsics,
+           crate_in_paths)]
 #![cfg_attr(test, feature(proc_macro, test, repr_align, attr_literals))]
 #![cfg_attr(feature = "cargo-clippy",
             allow(inline_always, too_many_arguments, cast_sign_loss,
@@ -56,18 +57,32 @@ pub mod vendor {
     #[cfg(not(any(target_arch = "x86", target_arch = "x86_64",
                   target_arch = "arm", target_arch = "aarch64")))]
     pub use nvptx::*;
-
-    #[cfg(
-        // x86/x86_64:
-        any(target_arch = "x86", target_arch = "x86_64")
-    )]
-    pub use runtime::{__unstable_detect_feature, __Feature};
 }
 
-#[cfg(
-    // x86/x86_64:
-    any(target_arch = "x86", target_arch = "x86_64")
-)]
+/// Run-time feature detection.
+#[doc(hidden)]
+pub mod __vendor_runtime {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64",
+              all(target_os = "linux",
+                  any(target_arch = "arm", target_arch = "aarch64",
+                      target_arch = "powerpc64"))))]
+    pub use runtime::core::*;
+
+    // Re-exports `coresimd` run-time building blocks for usage in the
+    // `stdsimd` run-time.
+    #[cfg(all(target_os = "linux",
+              any(target_arch = "arm", target_arch = "aarch64",
+                  target_arch = "powerpc64")))]
+    #[doc(hidden)]
+    pub mod __runtime {
+        pub use runtime::*;
+    }
+}
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64",
+          all(target_os = "linux",
+              any(target_arch = "arm", target_arch = "aarch64",
+                  target_arch = "powerpc64"))))]
 #[macro_use]
 mod runtime;
 

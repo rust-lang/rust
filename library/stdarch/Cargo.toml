@@ -24,6 +24,9 @@ maintenance = { status = "experimental" }
 [dependencies]
 coresimd = { version = "0.0.3", path = "coresimd/" }
 
+[dev-dependencies]
+auxv = "0.3.3"
+
 [profile.release]
 debug = true
 opt-level = 3

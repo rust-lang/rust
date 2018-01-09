@@ -88,7 +88,7 @@ mod tests {
 
     #[cfg(target_os = "linux")]
     #[test]
-    fn test_cpuinfo_linux() {
+    fn raw_dump() {
         let cpuinfo = CpuInfo::new().unwrap();
         if cpuinfo.field("vendor_id") == "GenuineIntel" {
             assert!(cpuinfo.field("flags").exists());
@@ -131,7 +131,7 @@ power management:
 ";
 
     #[test]
-    fn test_cpuinfo_linux_core_duo_t6500() {
+    fn core_duo_t6500() {
         let cpuinfo = CpuInfo::from_str(CORE_DUO_T6500).unwrap();
         assert_eq!(cpuinfo.field("vendor_id"), "GenuineIntel");
         assert_eq!(cpuinfo.field("cpu family"), "6");
@@ -171,7 +171,7 @@ power management:
         ";
 
     #[test]
-    fn test_cpuinfo_linux_arm_cortex_a53() {
+    fn arm_cortex_a53() {
         let cpuinfo = CpuInfo::from_str(ARM_CORTEX_A53).unwrap();
         assert_eq!(
             cpuinfo.field("Processor"),
@@ -199,7 +199,7 @@ CPU part	: 0xd07
 CPU revision	: 1";
 
     #[test]
-    fn test_cpuinfo_linux_arm_cortex_a57() {
+    fn arm_cortex_a57() {
         let cpuinfo = CpuInfo::from_str(ARM_CORTEX_A57).unwrap();
         assert_eq!(
             cpuinfo.field("Processor"),
@@ -240,7 +240,7 @@ model           : IBM pSeries (emulated by qemu)
 machine         : CHRP IBM pSeries (emulated by qemu)";
 
     #[test]
-    fn test_cpuinfo_linux_power8_powerkvm() {
+    fn power8_powerkvm() {
         let cpuinfo = CpuInfo::from_str(POWER8E_POWERKVM).unwrap();
         assert_eq!(cpuinfo.field("cpu"), "POWER8E (raw), altivec supported");
 
@@ -292,7 +292,7 @@ platform        : pSeries
 machine         : CHRP IBM,9133-55A";
 
     #[test]
-    fn test_cpuinfo_linux_power5p() {
+    fn power5p() {
         let cpuinfo = CpuInfo::from_str(POWER5P).unwrap();
         assert_eq!(cpuinfo.field("cpu"), "POWER5+ (gs)");
 

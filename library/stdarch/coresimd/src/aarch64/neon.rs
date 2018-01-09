@@ -1,4 +1,6 @@
-//! ARMv8 NEON intrinsics
+//! ARMv8 ASIMD intrinsics
+
+// FIXME: replace neon with asimd
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -39,41 +41,43 @@ pub unsafe fn vaddd_u64(a: u64, b: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::f64x2;
+    use aarch64::neon;
+    use stdsimd_test::simd_test;
 
-    #[test]
-    fn vadd_f64_() {
+    #[simd_test = "neon"]
+    unsafe fn vadd_f64() {
         let a = 1.;
         let b = 8.;
         let e = 9.;
-        let r = unsafe { vadd_f64(a, b) };
+        let r = neon::vadd_f64(a, b);
         assert_eq!(r, e);
     }
 
-    #[test]
-    fn vaddq_f64_() {
+    #[simd_test = "neon"]
+    unsafe fn vaddq_f64() {
         let a = f64x2::new(1., 2.);
         let b = f64x2::new(8., 7.);
         let e = f64x2::new(9., 9.);
-        let r = unsafe { vaddq_f64(a, b) };
+        let r = neon::vaddq_f64(a, b);
         assert_eq!(r, e);
     }
 
-    #[test]
-    fn vaddd_s64_() {
+    #[simd_test = "neon"]
+    unsafe fn vaddd_s64() {
         let a = 1;
         let b = 8;
         let e = 9;
-        let r = unsafe { vaddd_s64(a, b) };
+        let r = neon::vaddd_s64(a, b);
         assert_eq!(r, e);
     }
 
-    #[test]
-    fn vaddd_u64_() {
+    #[simd_test = "neon"]
+    unsafe fn vaddd_u64() {
         let a = 1;
         let b = 8;
         let e = 9;
-        let r = unsafe { vaddd_u64(a, b) };
+        let r = neon::vaddd_u64(a, b);
         assert_eq!(r, e);
     }
 }

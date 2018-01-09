@@ -1,41 +1,40 @@
-//! Run-time feature detection for ARM on linux
+//! Run-time feature detection for ARM and PowerPC64  on Linux.
+
+use coresimd::__vendor_runtime::__runtime::cache;
+use coresimd::__vendor_runtime::__runtime::arch;
+pub use self::arch::__Feature;
+
+#[cfg(target_arch = "arm")]
+mod arm;
+
+#[cfg(target_arch = "aarch64")]
+mod aarch64;
+
+#[cfg(target_arch = "powerpc64")]
+mod powerpc64;
+
+mod auxv;
 mod cpuinfo;
-pub use self::cpuinfo::CpuInfo;
-
-mod auxvec;
-pub use self::auxvec::*;
-
-use super::__Feature;
-
-pub trait FeatureQuery {
-    fn has_feature(&mut self, x: &__Feature) -> bool;
-}
-
-fn detect_features_impl<T: FeatureQuery>(x: T) -> usize {
-    #[cfg(target_arch = "arm")]
-    {
-        super::arm::detect_features(x)
-    }
-    #[cfg(target_arch = "aarch64")]
-    {
-        super::aarch64::detect_features(x)
-    }
-    #[cfg(target_arch = "powerpc64")]
-    {
-        super::powerpc64::detect_features(x)
-    }
-}
 
 /// Detects CPU features:
 pub fn detect_features() -> usize {
-    // Try to read the ELF Auxiliary Vector
-    if let Ok(v) = auxvec::AuxVec::new() {
-        return detect_features_impl(v);
+    // Try to read the ELF Auxiliary Vector using libc's getauxval:
+    if let Ok(v) = auxv::libc::auxv() {
+        return arch::detect_features(v);
     }
-    // Try to read /proc/cpuinfo
+    // Try to read the ELF Auxiliary Vector from /proc/self/auxv:
+    if let Ok(v) = auxv::proc_self::auxv() {
+        return arch::detect_features(v);
+    }
+    // Try to read /proc/cpuinfo:
     if let Ok(v) = cpuinfo::CpuInfo::new() {
-        return detect_features_impl(v);
+        return arch::detect_features(v);
     }
     // Otherwise all features are disabled
     0
+}
+
+/// Performs run-time feature detection.
+pub fn __unstable_detect_feature(x: __Feature) -> bool {
+    cache::test(x as u32, detect_features)
 }

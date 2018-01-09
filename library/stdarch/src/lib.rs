@@ -123,25 +123,28 @@
 //! [simd_soundness_bug]: https://github.com/rust-lang/rust/issues/44367
 //! [target_feature_impr]: https://github.com/rust-lang/rust/issues/44839
 
-#![feature(macro_reexport, const_fn, const_atomic_usize_new)]
-
-/// We re-export run-time feature detection for those architectures that have
-/// suport for it in `core`:
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[macro_reexport(cfg_feature_enabled, __unstable_detect_feature)]
+#![feature(const_fn, const_size_of, use_extern_macros, cfg_target_feature)]
+#![cfg_attr(target_os = "linux", feature(linkage))]
 extern crate coresimd;
 
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-extern crate coresimd;
+/// Re-export run-time feature detection macros.
+#[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "arm",
+          target_arch = "aarch64", target_arch = "powerpc64"))]
+pub use coresimd::__unstable_detect_feature;
 
 /// Platform dependent vendor intrinsics.
 pub mod vendor {
     pub use coresimd::vendor::*;
+}
 
-    #[cfg(all(target_os = "linux",
-              any(target_arch = "arm", target_arch = "aarch64",
-                  target_arch = "powerpc64")))]
-    pub use super::runtime::{__unstable_detect_feature, __Feature};
+/// Run-time feature detection.
+#[doc(hidden)]
+pub mod __vendor_runtime {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64",
+              all(target_os = "linux",
+                  any(target_arch = "arm", target_arch = "aarch64",
+                      target_arch = "powerpc64"))))]
+    pub use runtime::std::*;
 }
 
 /// Platform independent SIMD vector types and operations.
@@ -149,8 +152,25 @@ pub mod simd {
     pub use coresimd::simd::*;
 }
 
-#[cfg(all(target_os = "linux",
-          any(target_arch = "arm", target_arch = "aarch64",
-              target_arch = "powerpc64")))]
+/// The `stdsimd` run-time.
 #[macro_use]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64",
+          all(target_os = "linux",
+              any(target_arch = "arm", target_arch = "aarch64",
+                  target_arch = "powerpc64"))))]
 mod runtime;
+
+/// Error gracefully in architectures without run-time detection support.
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64",
+              all(target_os = "linux",
+                  any(target_arch = "arm", target_arch = "aarch64",
+                      target_arch = "powerpc64")))))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! cfg_feature_enabled {
+    ($name:tt) => (
+        {
+            compile_error!("cfg_target_feature! is not supported in this architecture")
+        }
+    )
+}
