@@ -320,7 +320,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let ty = expr.ty;
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr));
 
-                if ty.sty == ty::TyNever {
+                if ty.requires_never_value() {
                     // It's impossible to have an rvalue of type `!`, so if we encounter one,
                     // we can terminate the block as unreachable immediately.
                     this.cfg.terminate(block, source_info, TerminatorKind::Unreachable);

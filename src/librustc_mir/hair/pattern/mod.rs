@@ -311,24 +311,12 @@ impl<'a, 'tcx> Pattern<'tcx> {
     // Returns true if the pattern cannot bind, as it would require a value of type `!` to have
     // been constructed. This check is conservative.
     pub fn is_unreachable(&self) -> bool {
-        // Returns true if the construction of the type `ty` would require a value of type `!`
-        // to have been constructed. This check is conservative.
-        fn requires_never_value<'tcx>(ty: &Ty<'tcx>) -> bool {
-            match ty.sty {
-                ty::TyNever => true,
-                ty::TyRawPtr(ty_and_mut) |
-                ty::TyRef(_, ty_and_mut) => requires_never_value(&ty_and_mut.ty),
-                ty::TyTuple(comps, _) => comps.iter().any(requires_never_value),
-                _ => false
-            }
-        }
-
-        if requires_never_value(&self.ty) {
+        if self.ty.requires_never_value() {
             return true;
         }
         match *self.kind {
             PatternKind::Binding { ty, ref subpattern, .. } => {
-                if requires_never_value(&ty) {
+                if ty.requires_never_value() {
                     return true;
                 }
                 if let &Some(ref subpattern) = subpattern {
