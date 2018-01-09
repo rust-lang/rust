@@ -11,181 +11,181 @@
  * except according to those terms.
  */
 @font-face {
-    font-family: 'Fira Sans';
-    font-style: normal;
-    font-weight: 400;
-    src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
+	font-family: 'Fira Sans';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
 }
 @font-face {
-    font-family: 'Fira Sans';
-    font-style: normal;
-    font-weight: 500;
-    src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
+	font-family: 'Fira Sans';
+	font-style: normal;
+	font-weight: 500;
+	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
 }
 @font-face {
-    font-family: 'Source Serif Pro';
-    font-style: normal;
-    font-weight: 400;
-    src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
+	font-family: 'Source Serif Pro';
+	font-style: normal;
+	font-weight: 400;
+	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.woff") format('woff');
 }
 @font-face {
-    font-family: 'Source Serif Pro';
-    font-style: italic;
-    font-weight: 400;
-    src: url("Heuristica-Italic.woff") format('woff');
+	font-family: 'Source Serif Pro';
+	font-style: italic;
+	font-weight: 400;
+	src: url("Heuristica-Italic.woff") format('woff');
 }
 @font-face {
-    font-family: 'Source Serif Pro';
-    font-style: normal;
-    font-weight: 700;
-    src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
+	font-family: 'Source Serif Pro';
+	font-style: normal;
+	font-weight: 700;
+	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
 }
 @font-face {
-    font-family: 'Source Code Pro';
-    font-style: normal;
-    font-weight: 400;
-    /* Avoid using locally installed font because bad versions are in circulation:
-     * see https://github.com/rust-lang/rust/issues/24355 */
-    src: url("SourceCodePro-Regular.woff") format('woff');
+	font-family: 'Source Code Pro';
+	font-style: normal;
+	font-weight: 400;
+	/* Avoid using locally installed font because bad versions are in circulation:
+	 * see https://github.com/rust-lang/rust/issues/24355 */
+	src: url("SourceCodePro-Regular.woff") format('woff');
 }
 
 *:not(body) {
   -webkit-box-sizing: border-box;
-     -moz-box-sizing: border-box;
-          box-sizing: border-box;
+	 -moz-box-sizing: border-box;
+		  box-sizing: border-box;
 }
 
 /* General structure */
 
 body {
-    background-color: white;
-    margin: 0 auto;
-    padding: 0 15px;
-    font-family: "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
-    font-size: 18px;
-    color: #333;
-    line-height: 1.428571429;
+	background-color: white;
+	margin: 0 auto;
+	padding: 0 15px;
+	font-family: "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
+	font-size: 18px;
+	color: #333;
+	line-height: 1.428571429;
 
-    -webkit-font-feature-settings: "kern", "liga";
-    -moz-font-feature-settings: "kern", "liga";
-    font-feature-settings: "kern", "liga";
+	-webkit-font-feature-settings: "kern", "liga";
+	-moz-font-feature-settings: "kern", "liga";
+	font-feature-settings: "kern", "liga";
 }
 @media (min-width: 768px) {
-    body {
-        max-width: 750px;
-    }
+	body {
+		max-width: 750px;
+	}
 }
 
 h1, h2, h3, h4, h5, h6, nav, #versioninfo {
-    font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 h1, h2, h3, h4, h5, h6 {
-    color: black;
-    font-weight: 400;
-    line-height: 1.1;
+	color: black;
+	font-weight: 400;
+	line-height: 1.1;
 }
 h1, h2, h3 {
-    margin-top: 20px;
-    margin-bottom: 15px;
+	margin-top: 20px;
+	margin-bottom: 15px;
 }
 h1 {
-    margin-bottom: 20px;
+	margin-bottom: 20px;
 }
 h4, h5, h6 {
-    margin-top: 12px;
-    margin-bottom: 10px;
-    padding: 5px 10px;
+	margin-top: 12px;
+	margin-bottom: 10px;
+	padding: 5px 10px;
 }
 h5, h6 {
-    text-decoration: underline;
+	text-decoration: underline;
 }
 
 h1 {
-    font-size: 28px;
-    font-weight: 500;
-    padding: .1em .4em;
-    border-bottom: 2px solid #ddd;
+	font-size: 28px;
+	font-weight: 500;
+	padding: .1em .4em;
+	border-bottom: 2px solid #ddd;
 }
 h1.title {
-    line-height: 1.5em;
+	line-height: 1.5em;
 }
 h2 {
-    font-size: 26px;
-    padding: .2em .5em;
-    border-bottom: 1px solid #ddd;
+	font-size: 26px;
+	padding: .2em .5em;
+	border-bottom: 1px solid #ddd;
 }
 h3 {
-    font-size: 24px;
-    padding: .2em .7em;
-    border-bottom: 1px solid #DDE8FC;
+	font-size: 24px;
+	padding: .2em .7em;
+	border-bottom: 1px solid #DDE8FC;
 }
 h4 {
-    font-size: 22px;
+	font-size: 22px;
 }
 h5 {
-    font-size: 20px;
+	font-size: 20px;
 }
 h6 {
-    font-size: 18px;
+	font-size: 18px;
 }
 @media (min-width: 992px) {
-    h1 {
-        font-size: 36px;
-    }
-    h2 {
-        font-size: 30px;
-    }
-    h3 {
-        font-size: 26px;
-    }
+	h1 {
+		font-size: 36px;
+	}
+	h2 {
+		font-size: 30px;
+	}
+	h3 {
+		font-size: 26px;
+	}
 }
 
 nav {
-    column-count: 2;
-    -moz-column-count: 2;
-    -webkit-column-count: 2;
-    font-size: 15px;
-    margin: 0 0 1em 0;
+	column-count: 2;
+	-moz-column-count: 2;
+	-webkit-column-count: 2;
+	font-size: 15px;
+	margin: 0 0 1em 0;
 }
 p {
-    margin: 0 0 1em 0;
+	margin: 0 0 1em 0;
 }
 
 strong {
-    font-weight: bold;
+	font-weight: bold;
 }
 
 em {
-    font-style: italic;
+	font-style: italic;
 }
 
 footer {
-    border-top: 1px solid #ddd;
-    font-size: 14px;
-    font-style: italic;
-    padding-top: 5px;
-    margin-top: 3em;
-    margin-bottom: 1em;
+	border-top: 1px solid #ddd;
+	font-size: 14px;
+	font-style: italic;
+	padding-top: 5px;
+	margin-top: 3em;
+	margin-bottom: 1em;
 }
 
 /* Links layout */
 
 a {
-    text-decoration: none;
-    color: #428BCA;
-    background: transparent;
+	text-decoration: none;
+	color: #428BCA;
+	background: transparent;
 }
 a:hover, a:focus {
-    color: #2A6496;
-    text-decoration: underline;
+	color: #2A6496;
+	text-decoration: underline;
 }
 a:focus {
-    outline: thin dotted #333;
-    outline: 5px auto -webkit-focus-ring-color;
-    outline-offset: -2px;
+	outline: thin dotted #333;
+	outline: 5px auto -webkit-focus-ring-color;
+	outline-offset: -2px;
 }
 a:hover, a:active {
-    outline: 0;
+	outline: 0;
 }
 
 h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
@@ -197,34 +197,34 @@ h5 a:hover {text-decoration: none;}
 /* Code */
 
 pre, code {
-    font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
-    word-wrap: break-word;
+	font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
+	word-wrap: break-word;
 }
 pre {
-    border-left: 2px solid #eee;
-    white-space: pre-wrap;
-    padding: 14px;
-    padding-right: 0;
-    margin: 20px 0;
-    font-size: 13px;
-    word-break: break-all;
+	border-left: 2px solid #eee;
+	white-space: pre-wrap;
+	padding: 14px;
+	padding-right: 0;
+	margin: 20px 0;
+	font-size: 15px;
+	word-break: break-all;
 }
 code {
-    padding: 0 2px;
-    color: #8D1A38;
+	padding: 0 2px;
+	color: #8D1A38;
 }
 pre code {
-    padding: 0;
-    font-size: inherit;
-    color: inherit;
+	padding: 0;
+	font-size: inherit;
+	color: inherit;
 }
 
 a > code {
-    color: #428BCA;
+	color: #428BCA;
 }
 
 .section-header > a > code {
-    color: #8D1A38;
+	color: #8D1A38;
 }
 
 /* Code highlighting */
@@ -241,178 +241,221 @@ pre.rust .lifetime { color: #B76514; }
 /* The rest */
 
 #versioninfo {
-    text-align: center;
-    margin: 0.5em;
-    font-size: 1.1em;
+	text-align: center;
+	margin: 0.5em;
+	font-size: 1.1em;
 }
 @media (min-width: 992px) {
-    #versioninfo {
-        font-size: 0.8em;
-        position: fixed;
-        bottom: 0px;
-        right: 0px;
-    }
-    .white-sticker {
-        background-color: #fff;
-        margin: 2px;
-        padding: 0 2px;
-        border-radius: .2em;
-    }
+	#versioninfo {
+		font-size: 0.8em;
+		position: fixed;
+		bottom: 0px;
+		right: 0px;
+	}
+	.white-sticker {
+		background-color: #fff;
+		margin: 2px;
+		padding: 0 2px;
+		border-radius: .2em;
+	}
 }
 #versioninfo a.hash {
-    color: gray;
-    font-size: 80%;
+	color: gray;
+	font-size: 80%;
 }
 
 blockquote {
-    color: #000;
-    margin: 20px 0;
-    padding: 15px 20px;
-    background-color: #f2f7f9;
-    border-top: .1em solid #e5eef2;
-    border-bottom: .1em solid #e5eef2;
+	color: #000;
+	margin: 20px 0;
+	padding: 15px 20px;
+	background-color: #f2f7f9;
+	border-top: .1em solid #e5eef2;
+	border-bottom: .1em solid #e5eef2;
 }
 blockquote p {
-    font-size: 17px;
-    font-weight: 300;
-    line-height: 1.4;
+	font-size: 17px;
+	font-weight: 300;
+	line-height: 1.4;
 }
 blockquote p:last-child {
-    margin-bottom: 0;
+	margin-bottom: 0;
 }
 
 ul, ol {
-    padding-left: 25px;
+	padding-left: 25px;
 }
 ul ul, ol ul, ul ol, ol ol {
-    margin-bottom: 0;
+	margin-bottom: 0;
 }
 dl {
-    margin-bottom: 20px;
+	margin-bottom: 20px;
 }
 dd {
-    margin-left: 0;
+	margin-left: 0;
 }
 
 nav ul {
-    list-style-type: none;
-    margin: 0;
-    padding-left: 0px;
+	list-style-type: none;
+	margin: 0;
+	padding-left: 0px;
 }
 
 /* Only display one level of hierarchy in the TOC */
 nav ul ul {
-    display: none;
+	display: none;
 }
 
 sub,
 sup {
-    font-size: 75%;
-    line-height: 0;
-    position: relative;
+	font-size: 75%;
+	line-height: 0;
+	position: relative;
 }
 
 hr {
-    margin-top: 20px;
-    margin-bottom: 20px;
-    border: 0;
-    border-top: 1px solid #eeeeee;
+	margin-top: 20px;
+	margin-bottom: 20px;
+	border: 0;
+	border-top: 1px solid #eeeeee;
 }
 
 table {
-    border-collapse: collapse;
-    border-spacing: 0;
-    overflow-x: auto;
-    display: block;
+	border-collapse: collapse;
+	border-spacing: 0;
+	overflow-x: auto;
+	display: block;
 }
 
 table tr.odd {
-    background: #eee;
+	background: #eee;
 }
 
 table td,
 table th {
-    border: 1px solid #ddd;
-    padding: 5px;
+	border: 1px solid #ddd;
+	padding: 5px;
 }
 
 /* Code snippets */
 
 pre.rust { position: relative; }
 a.test-arrow {
-    background-color: rgba(78, 139, 202, 0.2);
-    display: inline-block;
-    position: absolute;
-    color: #f5f5f5;
-    padding: 5px 10px 5px 10px;
-    border-radius: 5px;
-    font-size: 130%;
-    top: 5px;
-    right: 5px;
+	background-color: rgba(78, 139, 202, 0.2);
+	display: inline-block;
+	position: absolute;
+	color: #f5f5f5;
+	padding: 5px 10px 5px 10px;
+	border-radius: 5px;
+	font-size: 130%;
+	top: 5px;
+	right: 5px;
 }
 a.test-arrow:hover{
-    background-color: #4e8bca;
-    text-decoration: none;
+	background-color: #4e8bca;
+	text-decoration: none;
 }
 
 .unstable-feature {
-    border: 2px solid red;
-    padding: 5px;
+	border: 2px solid red;
+	padding: 5px;
 }
 
 @media (min-width: 1170px) {
-    pre {
-        font-size: 15px;
-    }
+	pre {
+		font-size: 15px;
+	}
 }
 
 @media print {
-    * {
-        text-shadow: none !important;
-        color: #000 !important;
-        background: transparent !important;
-        box-shadow: none !important;
-    }
-    a, a:visited {
-        text-decoration: underline;
-    }
-    p a[href]:after {
-        content: " (" attr(href) ")";
-    }
-    footer a[href]:after {
-        content: "";
-    }
-    a[href^="javascript:"]:after, a[href^="#"]:after {
-        content: "";
-    }
-    pre, blockquote {
-        border: 1px solid #999;
-        page-break-inside: avoid;
-    }
-    @page {
-        margin: 2cm .5cm;
-    }
-    h1:not(.title), h2, h3 {
-        border-bottom: 0px none;
-    }
-    p, h2, h3 {
-        orphans: 3;
-        widows: 3;
-    }
-    h2, h3 {
-        page-break-after: avoid;
-    }
-    table {
-        border-collapse: collapse !important;
-    }
-    table td, table th {
-        background-color: #fff !important;
-    }
+	* {
+		text-shadow: none !important;
+		color: #000 !important;
+		background: transparent !important;
+		box-shadow: none !important;
+	}
+	a, a:visited {
+		text-decoration: underline;
+	}
+	p a[href]:after {
+		content: " (" attr(href) ")";
+	}
+	footer a[href]:after {
+		content: "";
+	}
+	a[href^="javascript:"]:after, a[href^="#"]:after {
+		content: "";
+	}
+	pre, blockquote {
+		border: 1px solid #999;
+		page-break-inside: avoid;
+	}
+	@page {
+		margin: 2cm .5cm;
+	}
+	h1:not(.title), h2, h3 {
+		border-bottom: 0px none;
+	}
+	p, h2, h3 {
+		orphans: 3;
+		widows: 3;
+	}
+	h2, h3 {
+		page-break-after: avoid;
+	}
+	table {
+		border-collapse: collapse !important;
+	}
+	table td, table th {
+		background-color: #fff !important;
+	}
 }
 
 #keyword-table-marker + table thead { display: none; }
 #keyword-table-marker + table td { border: none; }
 #keyword-table-marker + table {
-    margin-left: 2em;
-    margin-bottom: 1em;
+	margin-left: 2em;
+	margin-bottom: 1em;
+}
+
+.error-described {
+	position: relative;
+}
+
+.information {
+	position: absolute;
+	left: -25px;
+	margin-top: 7px;
+	z-index: 1;
+}
+
+.tooltip {
+	position: relative;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.tooltip .tooltiptext {
+	width: 120px;
+	display: none;
+	text-align: center;
+	padding: 5px 3px;
+	border-radius: 6px;
+	margin-left: 5px;
+	top: -5px;
+	left: 105%;
+	z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+	display: inline;
+}
+
+.tooltip .tooltiptext::after {
+	content: " ";
+	position: absolute;
+	top: 50%;
+	left: 13px;
+	margin-top: -5px;
+	border-width: 5px;
+	border-style: solid;
 }
