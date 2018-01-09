@@ -41,6 +41,7 @@
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 
+extern crate glob;
 extern crate getopts;
 extern crate term;
 #[cfg(unix)]
@@ -80,7 +81,7 @@ pub mod test {
     pub use {Bencher, TestName, TestResult, TestDesc, TestDescAndFn, TestOpts, TrFailed,
              TrFailedMsg, TrIgnored, TrOk, Metric, MetricMap, StaticTestFn, StaticTestName,
              DynTestName, DynTestFn, run_test, test_main, test_main_static, filter_tests,
-             parse_opts, StaticBenchFn, ShouldPanic, Options};
+             parse_opts, StaticBenchFn, ShouldPanic, Options, TestNamePattern};
 }
 
 pub mod stats;
@@ -304,10 +305,39 @@ pub enum ColorConfig {
 }
 
 #[derive(Debug)]
+pub enum TestNamePattern {
+    Exact(String),
+    Substring(String),
+    Glob(glob::Pattern),
+}
+
+impl TestNamePattern {
+    pub fn new(pattern: String, force_exact: bool) -> Self {
+        if force_exact {
+            return TestNamePattern::Exact(pattern);
+        }
+        if pattern.chars().any(|c| ['*', '?', '['].contains(&c)) {
+            if let Ok(g) = glob::Pattern::new(&pattern) {
+                return TestNamePattern::Glob(g);
+            }
+        }
+        TestNamePattern::Substring(pattern)
+    }
+
+    fn matches(&self, test: &TestDescAndFn) -> bool {
+        let name = test.desc.name.as_slice();
+        match *self {
+            TestNamePattern::Exact(ref filter) => name == filter,
+            TestNamePattern::Substring(ref filter) => name.contains(&filter[..]),
+            TestNamePattern::Glob(ref g) => g.matches(name),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct TestOpts {
     pub list: bool,
-    pub filter: Option<String>,
-    pub filter_exact: bool,
+    pub filter: Option<TestNamePattern>,
     pub run_ignored: bool,
     pub run_tests: bool,
     pub bench_benchmarks: bool,
@@ -316,7 +346,7 @@ pub struct TestOpts {
     pub color: ColorConfig,
     pub quiet: bool,
     pub test_threads: Option<usize>,
-    pub skip: Vec<String>,
+    pub skip: Vec<TestNamePattern>,
     pub options: Options,
 }
 
@@ -326,7 +356,6 @@ impl TestOpts {
         TestOpts {
             list: false,
             filter: None,
-            filter_exact: false,
             run_ignored: false,
             run_tests: false,
             bench_benchmarks: false,
@@ -414,15 +443,15 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         return None;
     }
 
+    let exact = matches.opt_present("exact");
     let filter = if !matches.free.is_empty() {
-        Some(matches.free[0].clone())
+        Some(TestNamePattern::new(matches.free[0].clone(), exact))
     } else {
         None
     };
 
     let run_ignored = matches.opt_present("ignored");
     let quiet = matches.opt_present("quiet");
-    let exact = matches.opt_present("exact");
     let list = matches.opt_present("list");
 
     let logfile = matches.opt_str("logfile");
@@ -465,10 +494,14 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         }
     };
 
+    let skip = matches
+        .opt_strs("skip")
+        .into_iter().map(|s| TestNamePattern::new(s, exact))
+        .collect();
+
     let test_opts = TestOpts {
         list,
         filter,
-        filter_exact: exact,
         run_ignored,
         run_tests,
         bench_benchmarks,
@@ -477,7 +510,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         color,
         quiet,
         test_threads,
-        skip: matches.opt_strs("skip"),
+        skip,
         options: Options::new(),
     };
 
@@ -1269,26 +1302,14 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
         None => filtered,
         Some(ref filter) => {
             filtered.into_iter()
-                    .filter(|test| {
-                        if opts.filter_exact {
-                            test.desc.name.as_slice() == &filter[..]
-                        } else {
-                            test.desc.name.as_slice().contains(&filter[..])
-                        }
-                    })
+                    .filter(|test| filter.matches(test))
                     .collect()
         }
     };
 
     // Skip tests that match any of the skip filters
     filtered = filtered.into_iter()
-        .filter(|t| !opts.skip.iter().any(|sf| {
-                if opts.filter_exact {
-                    t.desc.name.as_slice() == &sf[..]
-                } else {
-                    t.desc.name.as_slice().contains(&sf[..])
-                }
-            }))
+        .filter(|t| !opts.skip.iter().any(|sf| sf.matches(t)))
         .collect();
 
     // Maybe pull out the ignored test and unignore them
@@ -1684,7 +1705,7 @@ pub mod bench {
 mod tests {
     use test::{TrFailed, TrFailedMsg, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc,
                TestDescAndFn, TestOpts, run_test, MetricMap, StaticTestName, DynTestName,
-               DynTestFn, ShouldPanic};
+               DynTestFn, ShouldPanic, TestNamePattern};
     use std::sync::mpsc::channel;
     use bench;
     use Bencher;
@@ -1852,7 +1873,7 @@ mod tests {
     }
 
     #[test]
-    pub fn exact_filter_match() {
+    pub fn filter_type_match() {
         fn tests() -> Vec<TestDescAndFn> {
             vec!["base",
                  "base::test",
@@ -1872,52 +1893,67 @@ mod tests {
         }
 
         let substr = filter_tests(&TestOpts {
-                filter: Some("base".into()),
+                filter: Some(TestNamePattern::Substring("base".into())),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(substr.len(), 4);
 
         let substr = filter_tests(&TestOpts {
-                filter: Some("bas".into()),
+                filter: Some(TestNamePattern::Substring("bas".into())),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(substr.len(), 4);
 
         let substr = filter_tests(&TestOpts {
-                filter: Some("::test".into()),
+                filter: Some(TestNamePattern::Substring("::test".into())),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(substr.len(), 3);
 
         let substr = filter_tests(&TestOpts {
-                filter: Some("base::test".into()),
+                filter: Some(TestNamePattern::Substring("base::test".into())),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(substr.len(), 3);
 
         let exact = filter_tests(&TestOpts {
-                filter: Some("base".into()),
-                filter_exact: true, ..TestOpts::new()
+                filter: Some(TestNamePattern::Exact("base".into())),
+                ..TestOpts::new()
             }, tests());
         assert_eq!(exact.len(), 1);
 
         let exact = filter_tests(&TestOpts {
-                filter: Some("bas".into()),
-                filter_exact: true,
+                filter: Some(TestNamePattern::Exact("bas".into())),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(exact.len(), 0);
 
         let exact = filter_tests(&TestOpts {
-                filter: Some("::test".into()),
-                filter_exact: true,
+                filter: Some(TestNamePattern::Exact("::test".into())),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(exact.len(), 0);
 
         let exact = filter_tests(&TestOpts {
-                filter: Some("base::test".into()),
-                filter_exact: true,
+                filter: Some(TestNamePattern::Exact("base::test".into())),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 1);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some(TestNamePattern::new("base*".into(), false)),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 4);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some(TestNamePattern::new("base::test?".into(), false)),
+                ..TestOpts::new()
+            }, tests());
+        assert_eq!(exact.len(), 2);
+
+        let exact = filter_tests(&TestOpts {
+                filter: Some(TestNamePattern::new("base::test[2-9]".into(), false)),
                 ..TestOpts::new()
             }, tests());
         assert_eq!(exact.len(), 1);
