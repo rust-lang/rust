@@ -10,7 +10,7 @@
 ifndef IS_WINDOWS
 
 # This also does not work on Apple APFS due to the filesystem requiring
-# valid UTF-u paths.
+# valid UTF-8 paths.
 ifneq ($(shell uname),Darwin)
 
 # The zzz it to allow humans to tab complete or glob this thing.
