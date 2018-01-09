@@ -279,8 +279,6 @@ impl TransCrate for MetadataOnlyTransCrate {
         sess.abort_if_errors();
         if !sess.opts.crate_types.contains(&CrateType::CrateTypeRlib)
             && !sess.opts.crate_types.contains(&CrateType::CrateTypeDylib)
-            // Don't error when running under compiletest
-            && ::std::env::var("RUSTC_COMPILETEST") != Ok("1".to_string())
         {
             sess.fatal("Executables are not supported by the metadata-only backend.");
         }
