@@ -1234,6 +1234,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "rewrite operators on i128 and u128 into lang item calls (typically provided \
          by compiler-builtins) so translation doesn't need to support them,
          overriding the default for the current target"),
+    human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
+        "generate human-readable, predictable names for codegen units"),
 }
 
 pub fn default_lib_output() -> CrateType {
