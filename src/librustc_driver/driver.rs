@@ -145,26 +145,23 @@ pub fn compile_input(trans: Box<TransCrate>,
         let output_paths = generated_output_paths(sess, &outputs, &crate_name);
 
         // Ensure the source file isn't accidentally overwritten during compilation.
-        match *input_path {
-            Some(ref input_path) => {
-                if sess.opts.will_create_output_file() {
-                    if output_contains_path(&output_paths, input_path) {
-                        sess.err(&format!(
-                            "the input file \"{}\" would be overwritten by the generated \
-                            executable",
-                            input_path.display()));
-                        return Err(CompileIncomplete::Stopped);
-                    }
-                    if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                        sess.err(&format!(
-                            "the generated executable for the input file \"{}\" conflicts with the \
-                            existing directory \"{}\"",
-                            input_path.display(), dir_path.display()));
-                        return Err(CompileIncomplete::Stopped);
-                    }
+        if let Some(ref input_path) = *input_path {
+            if sess.opts.will_create_output_file() {
+                if output_contains_path(&output_paths, input_path) {
+                    sess.err(&format!(
+                        "the input file \"{}\" would be overwritten by the generated \
+                        executable",
+                        input_path.display()));
+                    return Err(CompileIncomplete::Stopped);
                 }
-            },
-            None => {}
+                if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
+                    sess.err(&format!(
+                        "the generated executable for the input file \"{}\" conflicts with the \
+                        existing directory \"{}\"",
+                        input_path.display(), dir_path.display()));
+                    return Err(CompileIncomplete::Stopped);
+                }
+            }
         }
 
         write_out_deps(sess, &outputs, &output_paths);
