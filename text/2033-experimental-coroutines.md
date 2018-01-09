@@ -386,7 +386,6 @@ to coroutines which likely wish to be considered before stabilization
   mention the future aspect?
 * Can `Stream` implementations be created with similar syntax? Is async/await
   with coroutines too specific to futures?
-*
 
 ##### Tests - Basic usage
 
