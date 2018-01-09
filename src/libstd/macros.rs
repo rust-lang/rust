@@ -283,7 +283,7 @@ pub mod builtin {
     /// Unconditionally causes compilation to fail with the given error message when encountered.
     ///
     /// This macro should be used when a crate uses a conditional compilation strategy to provide
-    /// better error messages for errornous conditions.
+    /// better error messages for erroneous conditions.
     ///
     /// # Examples
     ///
