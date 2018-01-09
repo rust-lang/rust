@@ -11,6 +11,7 @@ Grammar(
         "as",
         "extern",
         "crate",
+        "mod",
     ],
     tokens: [
         "ERROR",
@@ -73,6 +74,7 @@ Grammar(
         "EXTERN_CRATE_ITEM",
         "ATTR",
         "META_ITEM",
+        "MOD_ITEM",
         "LITERAL",
         "ALIAS",
     ]

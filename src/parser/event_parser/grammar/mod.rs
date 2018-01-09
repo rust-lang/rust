@@ -10,8 +10,7 @@ mod expressions;
 pub(crate) fn file(p: &mut Parser) {
     node(p, FILE, |p| {
         p.optional(SHEBANG);
-        attributes::inner_attributes(p);
-        items::mod_items(p);
+        items::mod_contents(p);
     })
 }
 
