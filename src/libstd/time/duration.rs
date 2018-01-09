@@ -73,7 +73,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn new(secs: u64, nanos: u32) -> Duration {
+    pub const fn new(secs: u64, nanos: u32) -> Duration {
         let secs = secs.checked_add((nanos / NANOS_PER_SEC) as u64)
             .expect("overflow in Duration::new");
         let nanos = nanos % NANOS_PER_SEC;
@@ -94,7 +94,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn from_secs(secs: u64) -> Duration {
+    pub const fn from_secs(secs: u64) -> Duration {
         Duration { secs: secs, nanos: 0 }
     }
 
@@ -112,7 +112,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn from_millis(millis: u64) -> Duration {
+    pub const fn from_millis(millis: u64) -> Duration {
         let secs = millis / MILLIS_PER_SEC;
         let nanos = ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI;
         Duration { secs: secs, nanos: nanos }
@@ -133,7 +133,7 @@ impl Duration {
     /// ```
     #[unstable(feature = "duration_from_micros", issue = "44400")]
     #[inline]
-    pub fn from_micros(micros: u64) -> Duration {
+    pub const fn from_micros(micros: u64) -> Duration {
         let secs = micros / MICROS_PER_SEC;
         let nanos = ((micros % MICROS_PER_SEC) as u32) * NANOS_PER_MICRO;
         Duration { secs: secs, nanos: nanos }
@@ -154,7 +154,7 @@ impl Duration {
     /// ```
     #[unstable(feature = "duration_extras", issue = "46507")]
     #[inline]
-    pub fn from_nanos(nanos: u64) -> Duration {
+    pub const fn from_nanos(nanos: u64) -> Duration {
         let secs = nanos / (NANOS_PER_SEC as u64);
         let nanos = (nanos % (NANOS_PER_SEC as u64)) as u32;
         Duration { secs: secs, nanos: nanos }
