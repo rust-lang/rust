@@ -27,18 +27,18 @@ impl Frsqrt for f64x2 {
         #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
                   target_feature = "sse"))]
         {
-            use self::stdsimd::vendor;
-            use simd::f32x4;
+            use stdsimd::vendor::*;
 
             let t = self.as_f32x2();
 
             let u = unsafe {
-                vendor::_mm_rsqrt_ps(f32x4::new(
+                let res = _mm_rsqrt_ps(_mm_setr_ps(
                     t.extract(0),
                     t.extract(1),
                     0.,
                     0.,
-                )).as_f64x4()
+                ));
+                std::mem::transmute::<_, simd::f32x4>(res).as_f64x4()
             };
             Self::new(u.extract(0), u.extract(1))
         }
