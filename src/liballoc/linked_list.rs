@@ -1286,7 +1286,7 @@ impl<'a, T> Placer<T> for FrontPlace<'a, T> {
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
-impl<'a, T> Place<T> for FrontPlace<'a, T> {
+unsafe impl<'a, T> Place<T> for FrontPlace<'a, T> {
     fn pointer(&mut self) -> *mut T {
         unsafe { &mut (*self.node.pointer()).element }
     }
@@ -1341,7 +1341,7 @@ impl<'a, T> Placer<T> for BackPlace<'a, T> {
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
-impl<'a, T> Place<T> for BackPlace<'a, T> {
+unsafe impl<'a, T> Place<T> for BackPlace<'a, T> {
     fn pointer(&mut self) -> *mut T {
         unsafe { &mut (*self.node.pointer()).element }
     }
