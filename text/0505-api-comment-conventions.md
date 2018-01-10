@@ -2,6 +2,13 @@
 - RFC PR: [rust-lang/rfcs#505](https://github.com/rust-lang/rfcs/pull/505)
 - Rust Issue: N/A
 
+# Note
+
+This RFC has been amended by [RFC 1574], which contains [a combined version of the conventions][combined].
+
+[RFC 1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md
+[combined]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
+
 # Summary
 
 This is a conventions RFC, providing guidance on providing API documentation
