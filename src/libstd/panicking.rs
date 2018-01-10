@@ -316,7 +316,6 @@ impl<'a> Location<'a> {
     /// # Examples
     ///
     /// ```should_panic
-    /// #![feature(panic_col)]
     /// use std::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
@@ -329,7 +328,7 @@ impl<'a> Location<'a> {
     ///
     /// panic!("Normal panic");
     /// ```
-    #[unstable(feature = "panic_col", reason = "recently added", issue = "42939")]
+    #[stable(feature = "panic_col", since = "1.25")]
     pub fn column(&self) -> u32 {
         self.col
     }
