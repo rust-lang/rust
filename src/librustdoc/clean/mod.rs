@@ -856,16 +856,16 @@ impl Clean<Attributes> for [ast::Attribute] {
                 let def = {
                     let mut kind = PathKind::Unknown;
                     let path_str = if let Some(prefix) =
-                        ["struct", "enum", "type",
-                         "trait", "union"].iter()
+                        ["struct@", "enum@", "type@",
+                         "trait@", "union@"].iter()
                                           .find(|p| link.starts_with(**p)) {
                         kind = PathKind::Type;
-                        link.trim_left_matches(prefix).trim_left_matches('@')
+                        link.trim_left_matches(prefix)
                     } else if let Some(prefix) =
-                        ["const", "static"].iter()
+                        ["const@", "static@"].iter()
                                            .find(|p| link.starts_with(**p)) {
                         kind = PathKind::Value;
-                        link.trim_left_matches(prefix).trim_left_matches('@')
+                        link.trim_left_matches(prefix)
                     } else if link.ends_with("()") {
                         kind = PathKind::Value;
                         link.trim_right_matches("()")
@@ -923,24 +923,53 @@ impl Clean<Attributes> for [ast::Attribute] {
                             // try both!
                             // It is imperative we search for not-a-value first
                             // Otherwise we will find struct ctors for when we are looking
-                            // for structs, etc, and the link won't work.
+                            // for structs, and the link won't work.
                             if let Ok(path) = resolve(false) {
+                                // if there is something in both namespaces
+                                if let Ok(value_path) = resolve(true) {
+                                    let kind = match value_path.def {
+                                        // structs and mods exist in both namespaces. skip them
+                                        Def::StructCtor(..) | Def::Mod(..) => None,
+                                        Def::Variant(..) | Def::VariantCtor(..)
+                                            => Some(("variant", format!("{}()", path_str))),
+                                        Def::Fn(..)
+                                            => Some(("function", format!("{}()", path_str))),
+                                        Def::Method(..)
+                                            => Some(("method", format!("{}()", path_str))),
+                                        Def::Const(..)
+                                            => Some(("const", format!("const@{}", path_str))),
+                                        Def::Static(..)
+                                            => Some(("static", format!("static@{}", path_str))),
+                                        _ => Some(("value", format!("static@{}", path_str))),
+                                    };
+                                    if let Some((value_kind, disambig)) = kind {
+                                        let (type_kind, article) = match path.def {
+                                            // we can still have non-tuple structs
+                                            Def::Struct(..) => ("struct", "a"),
+                                            Def::Enum(..) => ("enum", "an"),
+                                            Def::Trait(..) => ("trait", "a"),
+                                            Def::Union(..) => ("union", "a"),
+                                            _ => ("type", "a"),
+                                        };
+                                        let sp = attrs.doc_strings.first()
+                                                      .map_or(DUMMY_SP, |a| a.span());
+                                        cx.sess()
+                                          .struct_span_err(sp,
+                                                           &format!("`{}` is both {} {} and a {}",
+                                                                    path_str, article, type_kind,
+                                                                    value_kind))
+                                          .help(&format!("try `{0}` if you want to select the {1}, \
+                                                          or `{2}@{3}` if you want to \
+                                                          select the {2}",
+                                                          disambig, value_kind, type_kind,
+                                                          path_str))
+                                                 .emit();
+                                        continue;
+                                    }
+                                }
                                 path.def
                             } else if let Ok(path) = resolve(true) {
-                                let kind = match path.def {
-                                    Def::Variant(..) | Def::VariantCtor(..) => ("variant", format!("{}()", path_str)),
-                                    Def::Fn(..) => ("function", format!("{}()", path_str)),
-                                    Def::Method(..) => ("method", format!("{}()", path_str)),
-                                    Def::Const(..) => ("const", format!("const@{}", path_str)),
-                                    Def::Static(..) => ("static", format!("static@{}", path_str)),
-                                    _ => ("value", format!("static@{}", path_str)),
-                                };
-                                let sp = attrs.doc_strings.first().map_or(DUMMY_SP, |a| a.span());
-                                cx.sess().struct_span_err(sp, &format!("could not resolve `{}` as a type, it is a {}",
-                                                                       path_str, kind.0))
-                                         .help(&format!("try `{}`", kind.1))
-                                         .emit();
-                                continue;
+                                path.def
                             } else {
                                 // this could just be a normal link
                                 continue;
