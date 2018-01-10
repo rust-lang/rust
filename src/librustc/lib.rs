@@ -48,6 +48,7 @@
 #![feature(drain_filter)]
 #![feature(dyn_trait)]
 #![feature(from_ref)]
+#![feature(fs_read_write)]
 #![feature(i128)]
 #![feature(i128_type)]
 #![feature(inclusive_range)]

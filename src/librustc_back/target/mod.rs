@@ -47,7 +47,6 @@
 use serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
 use std::default::Default;
-use std::io::prelude::*;
 use syntax::abi::{Abi, lookup as lookup_abi};
 
 use {LinkerFlavor, PanicStrategy, RelroLevel};
@@ -809,14 +808,12 @@ impl Target {
     pub fn search(target: &str) -> Result<Target, String> {
         use std::env;
         use std::ffi::OsString;
-        use std::fs::File;
+        use std::fs;
         use std::path::{Path, PathBuf};
         use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
-            let mut f = File::open(path).map_err(|e| e.to_string())?;
-            let mut contents = Vec::new();
-            f.read_to_end(&mut contents).map_err(|e| e.to_string())?;
+            let contents = fs::read(path).map_err(|e| e.to_string())?;
             let obj = json::from_reader(&mut &contents[..])
                            .map_err(|e| e.to_string())?;
             Target::from_json(obj)

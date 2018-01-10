@@ -55,7 +55,7 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::ich::{ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED};
 use graphviz::IntoCow;
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Write;
 use syntax::ast;
 use syntax_pos::Span;
@@ -260,7 +260,7 @@ fn dump_graph(tcx: TyCtxt) {
         let dot_path = format!("{}.dot", path);
         let mut v = Vec::new();
         dot::render(&GraphvizDepGraph(nodes, edges), &mut v).unwrap();
-        File::create(&dot_path).and_then(|mut f| f.write_all(&v)).unwrap();
+        fs::write(dot_path, v).unwrap();
     }
 }
 

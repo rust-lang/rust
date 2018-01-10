@@ -342,9 +342,7 @@ fn archive_config<'a>(sess: &'a Session,
 fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, tmpdir: &TempDir)
                      -> PathBuf {
     let out_filename = tmpdir.path().join(METADATA_FILENAME);
-    let result = fs::File::create(&out_filename).and_then(|mut f| {
-        f.write_all(&trans.metadata.raw_data)
-    });
+    let result = fs::write(&out_filename, &trans.metadata.raw_data);
 
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));

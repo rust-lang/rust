@@ -237,7 +237,7 @@ use rustc_back::target::Target;
 
 use std::cmp;
 use std::fmt;
-use std::fs::{self, File};
+use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -870,10 +870,7 @@ fn get_metadata_section_imp(target: &Target,
             }
         }
         CrateFlavor::Rmeta => {
-            let mut file = File::open(filename).map_err(|_|
-                format!("could not open file: '{}'", filename.display()))?;
-            let mut buf = vec![];
-            file.read_to_end(&mut buf).map_err(|_|
+            let buf = fs::read(filename).map_err(|_|
                 format!("failed to read rmeta metadata: '{}'", filename.display()))?;
             OwningRef::new(buf).map_owner_box().erase_owner()
         }

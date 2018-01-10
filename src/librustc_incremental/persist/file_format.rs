@@ -21,7 +21,7 @@
 
 use std::io::{self, Read};
 use std::path::Path;
-use std::fs::File;
+use std::fs;
 use std::env;
 
 use rustc::session::config::nightly_options;
@@ -66,11 +66,7 @@ pub fn read_file(report_incremental_info: bool, path: &Path)
         return Ok(None);
     }
 
-    let mut file = File::open(path)?;
-    let file_size = file.metadata()?.len() as usize;
-
-    let mut data = Vec::with_capacity(file_size);
-    file.read_to_end(&mut data)?;
+    let data = fs::read(path)?;
 
     let mut file = io::Cursor::new(data);
 
