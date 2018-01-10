@@ -122,7 +122,6 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     return_qualif: Option<Qualif>,
     qualif: Qualif,
     const_fn_arg_vars: BitVector,
-    local_needs_drop: IndexVec<Local, Option<Span>>,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
 }
@@ -136,6 +135,16 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         let mut rpo = traversal::reverse_postorder(mir);
         let temps = promote_consts::collect_temps(mir, &mut rpo);
         rpo.reset();
+
+        let param_env = tcx.param_env(def_id);
+
+        let mut temp_qualif = IndexVec::from_elem(None, &mir.local_decls);
+        for arg in mir.args_iter() {
+            let mut qualif = Qualif::NEEDS_DROP;
+            qualif.restrict(mir.local_decls[arg].ty, tcx, param_env);
+            temp_qualif[arg] = Some(qualif);
+        }
+
         Qualifier {
             mode,
             span: mir.span,
@@ -143,12 +152,11 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             mir,
             rpo,
             tcx,
-            param_env: tcx.param_env(def_id),
-            temp_qualif: IndexVec::from_elem(None, &mir.local_decls),
+            param_env,
+            temp_qualif,
             return_qualif: None,
             qualif: Qualif::empty(),
             const_fn_arg_vars: BitVector::new(mir.local_decls.len()),
-            local_needs_drop: IndexVec::from_elem(None, &mir.local_decls),
             temp_promotion_state: temps,
             promotion_candidates: vec![]
         }
@@ -253,15 +261,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
             return;
-        }
-
-        // When initializing a local, record whether the *value* being
-        // stored in it needs dropping, which it may not, even if its
-        // type does, e.g. `None::<String>`.
-        if let Place::Local(local) = *dest {
-            if qualif.intersects(Qualif::NEEDS_DROP) {
-                self.local_needs_drop[local] = Some(self.span);
-            }
         }
 
         match *dest {
@@ -424,17 +423,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                    &local: &Local,
                    _: PlaceContext<'tcx>,
                    _: Location) {
-        match self.mir.local_kind(local) {
+        let kind = self.mir.local_kind(local);
+        match kind {
             LocalKind::ReturnPointer => {
                 self.not_const();
-            }
-            LocalKind::Arg => {
-                self.add(Qualif::FN_ARGUMENT);
             }
             LocalKind::Var => {
                 self.add(Qualif::NOT_CONST);
             }
+            LocalKind::Arg |
             LocalKind::Temp => {
+                if let LocalKind::Arg = kind {
+                    self.add(Qualif::FN_ARGUMENT);
+                }
+
                 if !self.temp_promotion_state[local].is_promotable() {
                     self.add(Qualif::NOT_PROMOTABLE);
                 }
@@ -529,16 +531,18 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         match *operand {
-            Operand::Copy(ref place) |
-            Operand::Move(ref place) => {
+            Operand::Copy(_) |
+            Operand::Move(_) => {
                 self.nest(|this| {
                     this.super_operand(operand, location);
                     this.try_consume();
                 });
 
                 // Mark the consumed locals to indicate later drops are noops.
-                if let Place::Local(local) = *place {
-                    self.local_needs_drop[local] = None;
+                if let Operand::Move(Place::Local(local)) = *operand {
+                    self.temp_qualif[local] = self.temp_qualif[local].map(|q|
+                        q - Qualif::NEEDS_DROP
+                    );
                 }
             }
             Operand::Constant(ref constant) => {
@@ -847,9 +851,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 // HACK(eddyb) Emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
                 let needs_drop = if let Place::Local(local) = *place {
-                    self.local_needs_drop[local]
+                    if self.temp_qualif[local].map_or(true, |q| q.intersects(Qualif::NEEDS_DROP)) {
+                        Some(self.mir.local_decls[local].source_info.span)
+                    } else {
+                        None
+                    }
                 } else {
-                    None
+                    Some(self.span)
                 };
 
                 if let Some(span) = needs_drop {
