@@ -1566,7 +1566,7 @@ fn rewrite_static(
         context.config.space_before_colon(),
         context.config.space_after_colon(),
     );
-    let prefix = format!(
+    let mut prefix = format!(
         "{}{}{} {}{}{}",
         format_visibility(static_parts.vis),
         static_parts.defaultness.map_or("", format_defaultness),
@@ -1578,7 +1578,18 @@ fn rewrite_static(
     // 2 = " =".len()
     let ty_shape =
         Shape::indented(offset.block_only(), context.config).offset_left(prefix.len() + 2)?;
-    let ty_str = static_parts.ty.rewrite(context, ty_shape)?;
+    let ty_str = match static_parts.ty.rewrite(context, ty_shape) {
+        Some(ty_str) => ty_str,
+        None => {
+            if prefix.ends_with(' ') {
+                prefix.pop();
+            }
+            let nested_indent = offset.block_indent(context.config);
+            let nested_shape = Shape::indented(nested_indent, context.config);
+            let ty_str = static_parts.ty.rewrite(context, nested_shape)?;
+            format!("\n{}{}", nested_indent.to_string(context.config), ty_str)
+        }
+    };
 
     if let Some(expr) = static_parts.expr_opt {
         let lhs = format!("{}{} =", prefix, ty_str);
