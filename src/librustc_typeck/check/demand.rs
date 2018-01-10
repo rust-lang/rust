@@ -15,6 +15,7 @@ use rustc::infer::InferOk;
 use rustc::traits::ObligationCause;
 
 use syntax::ast;
+use syntax::util::parser::{expr_precedence, AssocOp};
 use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::hir::print;
@@ -335,10 +336,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // For now, don't suggest casting with `as`.
         let can_cast = false;
 
-        let needs_paren = match expr.node {
-            hir::ExprBinary(..) => true,
-            _ => false,
-        };
+        let needs_paren = expr_precedence(expr) < (AssocOp::As.precedence() as i8);
 
         if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
             let msg = format!("you can cast an `{}` to `{}`", checked_ty, expected_ty);
@@ -508,11 +506,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     true
                 }
                 (&ty::TyFloat(ref exp), &ty::TyUint(ref found)) => {
+                    // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                     if exp.bit_width() > found.bit_width().unwrap_or(256) {
                         err.span_suggestion(expr.span,
                                             &format!("{}, producing the floating point \
-                                                      representation of the integer, rounded if \
-                                                      necessary",
+                                                      representation of the integer",
                                                       msg),
                                             into_suggestion);
                     } else if can_cast {
@@ -526,11 +524,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     true
                 }
                 (&ty::TyFloat(ref exp), &ty::TyInt(ref found)) => {
+                    // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                     if exp.bit_width() > found.bit_width().unwrap_or(256) {
                         err.span_suggestion(expr.span,
                                             &format!("{}, producing the floating point \
-                                                      representation of the integer, rounded if \
-                                                      necessary",
+                                                      representation of the integer",
                                                       msg),
                                             into_suggestion);
                     } else if can_cast {

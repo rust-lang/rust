@@ -723,7 +723,7 @@ error[E0308]: mismatched types
     |
 272 |     foo::<f64>(x_u32);
     |                ^^^^^ expected f64, found u32
-help: you can cast an `u32` to `f64`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `u32` to `f64`, producing the floating point representation of the integer
     |
 272 |     foo::<f64>(x_u32.into());
     |                ^^^^^^^^^^^^
@@ -733,7 +733,7 @@ error[E0308]: mismatched types
     |
 274 |     foo::<f64>(x_u16);
     |                ^^^^^ expected f64, found u16
-help: you can cast an `u16` to `f64`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `u16` to `f64`, producing the floating point representation of the integer
     |
 274 |     foo::<f64>(x_u16.into());
     |                ^^^^^^^^^^^^
@@ -743,7 +743,7 @@ error[E0308]: mismatched types
     |
 276 |     foo::<f64>(x_u8);
     |                ^^^^ expected f64, found u8
-help: you can cast an `u8` to `f64`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `u8` to `f64`, producing the floating point representation of the integer
     |
 276 |     foo::<f64>(x_u8.into());
     |                ^^^^^^^^^^^
@@ -765,7 +765,7 @@ error[E0308]: mismatched types
     |
 282 |     foo::<f64>(x_i32);
     |                ^^^^^ expected f64, found i32
-help: you can cast an `i32` to `f64`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `i32` to `f64`, producing the floating point representation of the integer
     |
 282 |     foo::<f64>(x_i32.into());
     |                ^^^^^^^^^^^^
@@ -775,7 +775,7 @@ error[E0308]: mismatched types
     |
 284 |     foo::<f64>(x_i16);
     |                ^^^^^ expected f64, found i16
-help: you can cast an `i16` to `f64`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `i16` to `f64`, producing the floating point representation of the integer
     |
 284 |     foo::<f64>(x_i16.into());
     |                ^^^^^^^^^^^^
@@ -785,7 +785,7 @@ error[E0308]: mismatched types
     |
 286 |     foo::<f64>(x_i8);
     |                ^^^^ expected f64, found i8
-help: you can cast an `i8` to `f64`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `i8` to `f64`, producing the floating point representation of the integer
     |
 286 |     foo::<f64>(x_i8.into());
     |                ^^^^^^^^^^^
@@ -823,7 +823,7 @@ error[E0308]: mismatched types
     |
 298 |     foo::<f32>(x_u16);
     |                ^^^^^ expected f32, found u16
-help: you can cast an `u16` to `f32`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `u16` to `f32`, producing the floating point representation of the integer
     |
 298 |     foo::<f32>(x_u16.into());
     |                ^^^^^^^^^^^^
@@ -833,7 +833,7 @@ error[E0308]: mismatched types
     |
 300 |     foo::<f32>(x_u8);
     |                ^^^^ expected f32, found u8
-help: you can cast an `u8` to `f32`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `u8` to `f32`, producing the floating point representation of the integer
     |
 300 |     foo::<f32>(x_u8.into());
     |                ^^^^^^^^^^^
@@ -861,7 +861,7 @@ error[E0308]: mismatched types
     |
 308 |     foo::<f32>(x_i16);
     |                ^^^^^ expected f32, found i16
-help: you can cast an `i16` to `f32`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `i16` to `f32`, producing the floating point representation of the integer
     |
 308 |     foo::<f32>(x_i16.into());
     |                ^^^^^^^^^^^^
@@ -871,7 +871,7 @@ error[E0308]: mismatched types
     |
 310 |     foo::<f32>(x_i8);
     |                ^^^^ expected f32, found i8
-help: you can cast an `i8` to `f32`, producing the floating point representation of the integer, rounded if necessary
+help: you can cast an `i8` to `f32`, producing the floating point representation of the integer
     |
 310 |     foo::<f32>(x_i8.into());
     |                ^^^^^^^^^^^
