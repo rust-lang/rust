@@ -18,6 +18,7 @@ use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::adjustment::{Adjust, Adjustment};
 use rustc::ty::fold::{TypeFoldable, TypeFolder};
 use rustc::util::nodemap::DefIdSet;
 use syntax::ast;
@@ -159,7 +160,51 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             _ => {}
         }
     }
+
+    // Similar to operators, indexing is always assumed to be overloaded
+    // Here, correct cases where an indexing expression can be simplified
+    // to use builtin indexing because the index type is known to be
+    // usize-ish
+    fn fix_index_builtin_expr(&mut self, e: &hir::Expr) {
+        if let hir::ExprIndex(ref base, ref index) = e.node {
+            let mut tables = self.fcx.tables.borrow_mut();
+
+            match tables.expr_ty_adjusted(&base).sty {
+                // All valid indexing looks like this
+                ty::TyRef(_, ty::TypeAndMut { ty: ref base_ty, .. }) => {
+                    let index_ty = tables.expr_ty_adjusted(&index);
+                    let index_ty = self.fcx.resolve_type_vars_if_possible(&index_ty);
+
+                    if base_ty.builtin_index().is_some()
+                        && index_ty == self.fcx.tcx.types.usize {
+                        // Remove the method call record
+                        tables.type_dependent_defs_mut().remove(e.hir_id);
+                        tables.node_substs_mut().remove(e.hir_id);
+
+                        tables.adjustments_mut().get_mut(base.hir_id).map(|a| {
+                            // Discard the need for a mutable borrow
+                            match a.pop() {
+                                // Extra adjustment made when indexing causes a drop
+                                // of size information - we need to get rid of it
+                                // Since this is "after" the other adjustment to be
+                                // discarded, we do an extra `pop()`
+                                Some(Adjustment { kind: Adjust::Unsize, .. }) => {
+                                    // So the borrow discard actually happens here
+                                    a.pop();
+                                },
+                                _ => {}
+                            }
+                        });
+                    }
+                },
+                // Might encounter non-valid indexes at this point, so there
+                // has to be a fall-through
+                _ => {},
+            }
+        }
+    }
 }
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Impl of Visitor for Resolver
@@ -176,6 +221,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, e: &'gcx hir::Expr) {
         self.fix_scalar_builtin_expr(e);
+        self.fix_index_builtin_expr(e);
 
         self.visit_node_id(e.span, e.hir_id);
 
