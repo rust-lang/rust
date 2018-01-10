@@ -10,7 +10,7 @@
 
 use std::borrow::Cow;
 use std::cmp::min;
-use std::iter::{repeat, ExactSizeIterator};
+use std::iter::repeat;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, CodeMap, Span};
