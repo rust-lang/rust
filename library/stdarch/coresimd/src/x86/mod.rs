@@ -1,5 +1,7 @@
 //! `x86` and `x86_64` intrinsics.
 
+use core::mem;
+
 #[macro_use]
 mod macros;
 
@@ -7,6 +9,70 @@ mod macros;
 #[derive(Clone, Copy, Debug)]
 #[allow(non_camel_case_types)]
 pub struct __m128(f32, f32, f32, f32);
+
+#[repr(simd)]
+#[derive(Clone, Copy, Debug)]
+#[allow(non_camel_case_types)]
+pub struct __m128d(f64, f64);
+
+pub use v128::__m128i;
+pub use v64::__m64;
+
+#[cfg(test)]
+mod test;
+#[cfg(test)]
+pub use self::test::*;
+
+#[doc(hidden)]
+#[allow(non_camel_case_types)]
+trait m128iExt: Sized {
+    fn as_m128i(self) -> __m128i;
+
+    #[inline(always)]
+    fn as_u8x16(self) -> ::v128::u8x16 {
+        unsafe { mem::transmute(self.as_m128i()) }
+    }
+
+    #[inline(always)]
+    fn as_u16x8(self) -> ::v128::u16x8 {
+        unsafe { mem::transmute(self.as_m128i()) }
+    }
+
+    #[inline(always)]
+    fn as_u32x4(self) -> ::v128::u32x4 {
+        unsafe { mem::transmute(self.as_m128i()) }
+    }
+
+    #[inline(always)]
+    fn as_u64x2(self) -> ::v128::u64x2 {
+        unsafe { mem::transmute(self.as_m128i()) }
+    }
+
+    #[inline(always)]
+    fn as_i8x16(self) -> ::v128::i8x16 {
+        unsafe { mem::transmute(self.as_m128i()) }
+    }
+
+    #[inline(always)]
+    fn as_i16x8(self) -> ::v128::i16x8 {
+        unsafe { mem::transmute(self.as_m128i()) }
+    }
+
+    #[inline(always)]
+    fn as_i32x4(self) -> ::v128::i32x4 {
+        unsafe { mem::transmute(self.as_m128i()) }
+    }
+
+    #[inline(always)]
+    fn as_i64x2(self) -> ::v128::i64x2 {
+        unsafe { mem::transmute(self.as_m128i()) }
+    }
+}
+
+impl m128iExt for __m128i {
+    #[inline(always)]
+    fn as_m128i(self) -> __m128i { self }
+}
 
 mod i386;
 pub use self::i386::*;

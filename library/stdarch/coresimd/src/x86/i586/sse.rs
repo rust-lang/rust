@@ -1711,20 +1711,6 @@ mod tests {
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
 
-    #[target_feature = "+sse"]
-    unsafe fn assert_eq_m128(a: __m128, b: __m128) {
-        let r = _mm_cmpeq_ps(a, b);
-        if _mm_movemask_ps(r) != 0b1111 {
-            panic!("{:?} != {:?}", a, b);
-        }
-    }
-
-    #[target_feature = "+sse"]
-    unsafe fn get_m128(a: __m128, idx: usize) -> f32 {
-        union A { a: __m128, b: [f32; 4] };
-        transmute::<__m128, A>(a).b[idx]
-    }
-
     #[simd_test = "sse"]
     unsafe fn test_mm_add_ps() {
         let a = _mm_setr_ps(-1.0, 5.0, 0.0, -10.0);

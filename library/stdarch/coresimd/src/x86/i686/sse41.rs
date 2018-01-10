@@ -1,6 +1,7 @@
 //! `i686`'s Streaming SIMD Extensions 4.1 (SSE4.1)
 
 use v128::*;
+use x86::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -111,8 +112,7 @@ pub unsafe fn _mm_test_all_zeros(a: __m128i, mask: __m128i) -> i32 {
 #[cfg_attr(test, assert_instr(pcmpeqd))]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_test_all_ones(a: __m128i) -> i32 {
-    let b = i32x4::from(a);
-    _mm_testc_si128(a, __m128i::from(::x86::_mm_cmpeq_epi32(b, b)))
+    _mm_testc_si128(a, _mm_cmpeq_epi32(a, a))
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are

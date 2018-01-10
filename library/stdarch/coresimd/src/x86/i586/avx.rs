@@ -843,7 +843,7 @@ pub unsafe fn _mm256_extractf128_ps(a: f32x8, imm8: i32) -> __m128 {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vextractf128))]
-pub unsafe fn _mm256_extractf128_pd(a: f64x4, imm8: i32) -> f64x2 {
+pub unsafe fn _mm256_extractf128_pd(a: f64x4, imm8: i32) -> __m128d {
     match imm8 & 1 {
         0 => simd_shuffle2(a, _mm256_undefined_pd(), [0, 1]),
         _ => simd_shuffle2(a, _mm256_undefined_pd(), [2, 3]),
@@ -1068,9 +1068,7 @@ pub unsafe fn _mm256_permute_pd(a: f64x4, imm8: i32) -> f64x4 {
 #[inline(always)]
 #[target_feature = "+avx,+sse2"]
 #[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0x1))]
-pub unsafe fn _mm_permute_pd(a: f64x2, imm8: i32) -> f64x2 {
-    use x86::i586::sse2::_mm_undefined_pd;
-
+pub unsafe fn _mm_permute_pd(a: __m128d, imm8: i32) -> __m128d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle2 {
         ($a:expr, $b:expr) => {
@@ -1194,7 +1192,7 @@ pub unsafe fn _mm256_insertf128_ps(a: f32x8, b: __m128, imm8: i32) -> f32x8 {
 #[inline(always)]
 #[target_feature = "+avx"]
 #[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
-pub unsafe fn _mm256_insertf128_pd(a: f64x4, b: f64x2, imm8: i32) -> f64x4 {
+pub unsafe fn _mm256_insertf128_pd(a: f64x4, b: __m128d, imm8: i32) -> f64x4 {
     match imm8 & 1 {
         0 => simd_shuffle4(a, _mm256_castpd128_pd256(b), [4, 5, 2, 3]),
         _ => simd_shuffle4(a, _mm256_castpd128_pd256(b), [0, 1, 4, 5]),
@@ -2139,7 +2137,7 @@ pub unsafe fn _mm256_castps256_ps128(a: f32x8) -> __m128 {
 #[target_feature = "+avx"]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
-pub unsafe fn _mm256_castpd256_pd128(a: f64x4) -> f64x2 {
+pub unsafe fn _mm256_castpd256_pd128(a: f64x4) -> __m128d {
     simd_shuffle2(a, a, [0, 1])
 }
 
@@ -2171,7 +2169,7 @@ pub unsafe fn _mm256_castps128_ps256(a: __m128) -> f32x8 {
 #[target_feature = "+avx"]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
-pub unsafe fn _mm256_castpd128_pd256(a: f64x2) -> f64x4 {
+pub unsafe fn _mm256_castpd128_pd256(a: __m128d) -> f64x4 {
     // FIXME simd_shuffle4(a, a, [0, 1, -1, -1])
     simd_shuffle4(a, a, [0, 1, 0, 0])
 }
@@ -2221,8 +2219,7 @@ pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
 #[target_feature = "+avx,+sse2"]
 // This intrinsic is only used for compilation and does not generate any
 // instructions, thus it has zero latency.
-pub unsafe fn _mm256_zextpd128_pd256(a: f64x2) -> f64x4 {
-    use x86::i586::sse2::_mm_setzero_pd;
+pub unsafe fn _mm256_zextpd128_pd256(a: __m128d) -> f64x4 {
     simd_shuffle4(a, _mm_setzero_pd(), [0, 1, 2, 3])
 }
 
@@ -2326,7 +2323,6 @@ pub unsafe fn _mm256_loadu2_m128(
 pub unsafe fn _mm256_loadu2_m128d(
     hiaddr: *const f64, loaddr: *const f64
 ) -> f64x4 {
-    use x86::i586::sse2::_mm_loadu_pd;
     let a = _mm256_castpd128_pd256(_mm_loadu_pd(loaddr));
     _mm256_insertf128_pd(a, _mm_loadu_pd(hiaddr), 1)
 }
@@ -2371,7 +2367,6 @@ pub unsafe fn _mm256_storeu2_m128(
 pub unsafe fn _mm256_storeu2_m128d(
     hiaddr: *mut f64, loaddr: *mut f64, a: f64x4
 ) {
-    use x86::i586::sse2::_mm_storeu_pd;
     let lo = _mm256_castpd256_pd128(a);
     _mm_storeu_pd(loaddr, lo);
     let hi = _mm256_extractf128_pd(a, 1);
@@ -3104,9 +3099,9 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn test_mm256_extractf128_pd() {
         let a = f64x4::new(4., 3., 2., 5.);
-        let r = avx::_mm256_extractf128_pd(a, 0);
-        let e = f64x2::new(4., 3.);
-        assert_eq!(r, e);
+        let r = _mm256_extractf128_pd(a, 0);
+        let e = _mm_setr_pd(4., 3.);
+        assert_eq_m128d(r, e);
     }
 
     #[simd_test = "avx"]
@@ -3189,10 +3184,10 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn test_mm_permute_pd() {
-        let a = f64x2::new(4., 3.);
-        let r = avx::_mm_permute_pd(a, 1);
-        let e = f64x2::new(3., 4.);
-        assert_eq!(r, e);
+        let a = _mm_setr_pd(4., 3.);
+        let r = _mm_permute_pd(a, 1);
+        let e = _mm_setr_pd(3., 4.);
+        assert_eq_m128d(r, e);
     }
 
     #[simd_test = "avx"]
@@ -3271,8 +3266,8 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn test_mm256_insertf128_pd() {
         let a = f64x4::new(1., 2., 3., 4.);
-        let b = f64x2::new(5., 6.);
-        let r = avx::_mm256_insertf128_pd(a, b, 0);
+        let b = _mm_setr_pd(5., 6.);
+        let r = _mm256_insertf128_pd(a, b, 0);
         let e = f64x4::new(5., 6., 3., 4.);
         assert_eq!(r, e);
     }
@@ -4078,8 +4073,8 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn test_mm256_castpd256_pd128() {
         let a = f64x4::new(1., 2., 3., 4.);
-        let r = avx::_mm256_castpd256_pd128(a);
-        assert_eq!(r, f64x2::new(1., 2.));
+        let r = _mm256_castpd256_pd128(a);
+        assert_eq_m128d(r, _mm_setr_pd(1., 2.));
     }
 
     #[simd_test = "avx"]
@@ -4107,8 +4102,8 @@ mod tests {
 
     #[simd_test = "avx"]
     unsafe fn test_mm256_zextpd128_pd256() {
-        let a = f64x2::new(1., 2.);
-        let r = avx::_mm256_zextpd128_pd256(a);
+        let a = _mm_setr_pd(1., 2.);
+        let r = _mm256_zextpd128_pd256(a);
         let e = f64x4::new(1., 2., 0., 0.);
         assert_eq!(r, e);
     }
@@ -4271,8 +4266,8 @@ mod tests {
             &mut lo as *mut _ as *mut f64,
             a,
         );
-        assert_eq!(hi, f64x2::new(3., 4.));
-        assert_eq!(lo, f64x2::new(1., 2.));
+        assert_eq_m128d(hi, _mm_setr_pd(3., 4.));
+        assert_eq_m128d(lo, _mm_setr_pd(1., 2.));
     }
 
     #[simd_test = "avx"]

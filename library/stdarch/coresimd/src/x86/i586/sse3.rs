@@ -2,6 +2,7 @@
 
 use simd_llvm::{simd_shuffle2, simd_shuffle4};
 use v128::*;
+use x86::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -84,8 +85,7 @@ pub unsafe fn _mm_movedup_pd(a: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse3"]
 #[cfg_attr(test, assert_instr(movddup))]
-pub unsafe fn _mm_loaddup_pd(mem_addr: *const f64) -> f64x2 {
-    use x86::i586::sse2::_mm_load1_pd;
+pub unsafe fn _mm_loaddup_pd(mem_addr: *const f64) -> __m128d {
     _mm_load1_pd(mem_addr)
 }
 
@@ -131,9 +131,10 @@ mod tests {
 
     use v128::*;
     use x86::i586::sse3;
+    use x86::*;
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_addsub_ps() {
+    unsafe fn test_mm_addsub_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
         let r = sse3::_mm_addsub_ps(a, b);
@@ -141,7 +142,7 @@ mod tests {
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_addsub_pd() {
+    unsafe fn test_mm_addsub_pd() {
         let a = f64x2::new(-1.0, 5.0);
         let b = f64x2::new(-100.0, 20.0);
         let r = sse3::_mm_addsub_pd(a, b);
@@ -149,7 +150,7 @@ mod tests {
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_hadd_pd() {
+    unsafe fn test_mm_hadd_pd() {
         let a = f64x2::new(-1.0, 5.0);
         let b = f64x2::new(-100.0, 20.0);
         let r = sse3::_mm_hadd_pd(a, b);
@@ -157,7 +158,7 @@ mod tests {
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_hadd_ps() {
+    unsafe fn test_mm_hadd_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
         let r = sse3::_mm_hadd_ps(a, b);
@@ -165,7 +166,7 @@ mod tests {
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_hsub_pd() {
+    unsafe fn test_mm_hsub_pd() {
         let a = f64x2::new(-1.0, 5.0);
         let b = f64x2::new(-100.0, 20.0);
         let r = sse3::_mm_hsub_pd(a, b);
@@ -173,7 +174,7 @@ mod tests {
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_hsub_ps() {
+    unsafe fn test_mm_hsub_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let b = f32x4::new(-100.0, 20.0, 0.0, -5.0);
         let r = sse3::_mm_hsub_ps(a, b);
@@ -181,7 +182,7 @@ mod tests {
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_lddqu_si128() {
+    unsafe fn test_mm_lddqu_si128() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = __m128i::from(i8x16::new(
             1, 2, 3, 4,
@@ -194,30 +195,30 @@ mod tests {
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_movedup_pd() {
+    unsafe fn test_mm_movedup_pd() {
         let a = f64x2::new(-1.0, 5.0);
         let r = sse3::_mm_movedup_pd(a);
         assert_eq!(r, f64x2::new(-1.0, -1.0));
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_movehdup_ps() {
+    unsafe fn test_mm_movehdup_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let r = sse3::_mm_movehdup_ps(a);
         assert_eq!(r, f32x4::new(5.0, 5.0, -10.0, -10.0));
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_moveldup_ps() {
+    unsafe fn test_mm_moveldup_ps() {
         let a = f32x4::new(-1.0, 5.0, 0.0, -10.0);
         let r = sse3::_mm_moveldup_ps(a);
         assert_eq!(r, f32x4::new(-1.0, -1.0, 0.0, 0.0));
     }
 
     #[simd_test = "sse3"]
-    unsafe fn _mm_loaddup_pd() {
+    unsafe fn test_mm_loaddup_pd() {
         let d = -5.0;
-        let r = sse3::_mm_loaddup_pd(&d);
-        assert_eq!(r, f64x2::new(d, d));
+        let r = _mm_loaddup_pd(&d);
+        assert_eq_m128d(r, _mm_setr_pd(d, d));
     }
 }

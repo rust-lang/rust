@@ -98,6 +98,7 @@ fn to_type(t: &syn::Type) -> Tokens {
     match *t {
         syn::Type::Path(ref p) => match extract_path_ident(&p.path).as_ref() {
             "__m128" => my_quote! { &F32x4 },
+            "__m128d" => my_quote! { &F64x2 },
             "__m128i" => my_quote! { &I8x16 },
             "__m256i" => my_quote! { &I8x32 },
             "__m64" => my_quote! { &I8x8 },
@@ -176,6 +177,10 @@ fn walk(root: &Path, files: &mut Vec<syn::File>) {
         let path = file.path();
         if path.extension().and_then(|s| s.to_str()) != Some("rs") {
             continue;
+        }
+
+        if path.file_name().and_then(|s| s.to_str()) == Some("test.rs") {
+            continue
         }
 
         let mut contents = String::new();
