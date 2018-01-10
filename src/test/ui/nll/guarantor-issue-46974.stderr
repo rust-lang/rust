@@ -7,11 +7,14 @@ error[E0506]: cannot assign to `*s` because it is borrowed
 19 |     *s = (2,); //~ ERROR cannot assign to `*s`
    |     ^^^^^^^^^ assignment to borrowed `*s` occurs here
 
-error: free region `` does not outlive free region `'static`
+error[E0621]: explicit lifetime required in the type of `s`
   --> $DIR/guarantor-issue-46974.rs:25:5
    |
-25 |     &s.0 //~ ERROR free region `` does not outlive free region `'static`
-   |     ^^^^
+23 | fn bar(s: &Box<(i32,)>) -> &'static i32 {
+   |        - consider changing the type of `s` to `&'static std::boxed::Box<(i32,)>`
+24 |     // FIXME(#46983): error message should be better
+25 |     &s.0 //~ ERROR explicit lifetime required in the type of `s` [E0621]
+   |     ^^^^ lifetime `'static` required
 
 error: aborting due to 2 previous errors
 

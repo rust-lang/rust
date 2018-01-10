@@ -25,7 +25,7 @@ fn load(ss: &mut SomeStruct) -> Box<SomeTrait> {
     // `Box<SomeTrait>` defaults to a `'static` bound, so this return
     // is illegal.
 
-    ss.r //~ ERROR cannot infer an appropriate lifetime
+    ss.r //~ ERROR explicit lifetime required in the type of `ss` [E0621]
 }
 
 fn store(ss: &mut SomeStruct, b: Box<SomeTrait>) {
