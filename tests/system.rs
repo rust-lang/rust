@@ -651,14 +651,16 @@ impl ConfigCodeBlock {
 
         if self.config_name.is_none() {
             write_message(format!(
-                "configuration name not found for block beginning at line {}",
+                "No configuration name for {}:{}",
+                CONFIGURATIONS_FILE_NAME,
                 self.code_block_start.unwrap()
             ));
             return false;
         }
         if self.config_value.is_none() {
             write_message(format!(
-                "configuration value not found for block beginning at line {}",
+                "No configuration value for {}:{}",
+                CONFIGURATIONS_FILE_NAME,
                 self.code_block_start.unwrap()
             ));
             return false;
@@ -669,9 +671,9 @@ impl ConfigCodeBlock {
     fn has_parsing_errors(&self, error_summary: Summary) -> bool {
         if error_summary.has_parsing_errors() {
             write_message(format!(
-                "\u{261d}\u{1f3fd} Failed to format block starting at Line {} in {}",
-                self.code_block_start.unwrap(),
-                CONFIGURATIONS_FILE_NAME
+                "\u{261d}\u{1f3fd} Cannot format {}:{}",
+                CONFIGURATIONS_FILE_NAME,
+                self.code_block_start.unwrap()
             ));
             return true;
         }
