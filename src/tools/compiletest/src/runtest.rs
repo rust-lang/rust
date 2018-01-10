@@ -2867,7 +2867,7 @@ fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
                     *skipped += data.len();
                     if data.len() <= TAIL_LEN {
                         tail[..data.len()].copy_from_slice(data);
-                        tail.rotate(data.len());
+                        tail.rotate_left(data.len());
                     } else {
                         tail.copy_from_slice(&data[(data.len() - TAIL_LEN)..]);
                     }

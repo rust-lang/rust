@@ -329,17 +329,32 @@ fn test_iter_folds() {
 }
 
 #[test]
-fn test_rotate() {
+fn test_rotate_left() {
     const N: usize = 600;
     let a: &mut [_] = &mut [0; N];
     for i in 0..N {
         a[i] = i;
     }
 
-    a.rotate(42);
+    a.rotate_left(42);
     let k = N - 42;
 
     for i in 0..N {
-        assert_eq!(a[(i+k)%N], i);
+        assert_eq!(a[(i + k) % N], i);
+    }
+}
+
+#[test]
+fn test_rotate_right() {
+    const N: usize = 600;
+    let a: &mut [_] = &mut [0; N];
+    for i in 0..N {
+        a[i] = i;
+    }
+
+    a.rotate_right(42);
+
+    for i in 0..N {
+        assert_eq!(a[(i + 42) % N], i);
     }
 }
