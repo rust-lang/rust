@@ -2346,7 +2346,7 @@ pub struct Unique<T: ?Sized> {
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<T: ?Sized> fmt::Debug for Unique<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:p}", self.as_ptr())
+        fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }
 
@@ -2489,7 +2489,7 @@ pub struct NonNull<T: ?Sized> {
 #[stable(feature = "nonnull", since = "1.24.0")]
 impl<T: ?Sized> fmt::Debug for NonNull<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:p}", self.as_ptr())
+        fmt::Pointer::fmt(&self.as_ptr(), f)
     }
 }
 
