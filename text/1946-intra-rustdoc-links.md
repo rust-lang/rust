@@ -284,29 +284,36 @@ To be able to link to each item,
 we'll need a way to disambiguate the namespaces.
 Our proposal is this:
 
-- Links to types are written as described earlier,
-  with no pre- or suffix,
-  e.g., `Look at the [FOO] trait`.
-  For consistency,
-  it is also possible to prefix the type with the concrete item type:
-  - Links to `struct`s can be prefixed with `struct `,
+- In unambiguous cases paths can be written as described earlier,
+  with no pre- or suffix, e.g., `Look at the [FOO] trait`. This also
+  applies to modules and tuple structs which exist in both namespaces.
+  Rustdoc will throw an error if you use a non-disambiguated path in
+  the case of there being a value in both the type and value namespace.
+  Non-disambiguated paths cannot be used to link to macros.
+- Links to types can be disambiguated by prefixing them with the concrete
+  item type:
+  - Links to `struct`s can be prefixed with `struct@`,
     e.g., `See [struct@Foo]`.
-  - Links to `enum`s can be prefixed with `enum `,
+  - Links to `enum`s can be prefixed with `enum@`,
     e.g., `See [enum@foo]`.
-  - Links to type aliases can be prefixed with `type `,
+  - Links to type aliases can be prefixed with `type@`,
     e.g., `See [type@foo]`.
-  - Links to modules can be prefixed with `mod `,
+  - Links to modules can be prefixed with `mod@`,
     e.g., `See [mod@foo]`.
 - In links to macros,
-  the link label must end with a `!`,
+  the link label _must_ end with a `!`,
   e.g., `Look at the [FOO!] macro`.
-- For links to values, we differentiate three cases:
-  - Links to functions are written with a `()` suffix,
+- For disambiguating links to values, we differentiate three cases:
+  - Links to functions can be written with a `()` suffix,
     e.g., `Also see the [foo()] function`.
-  - Links to constants are prefixed with `const `,
+  - Links to constants are prefixed with `const@`,
     e.g., `As defined in [const@FOO].`
-  - Links to statics are prefixed with `static `,
+  - Links to statics are prefixed with `static@`,
     e.g., `See [static@FOO]`.
+
+For disambiguation markers using an `@`, in implied shortcut links
+you can use a space instead of the `@`. In other words, `[struct Foo]`
+is fine (and preferred).
 
 It should be noted that in the RFC discussion it was determined
 that exact knowledge of the item type
@@ -316,7 +323,6 @@ allows (and successfully resolves) a link
 with the wrong prefix that is in the same namespace.
 E.g., given an `struct Foo`, it may be possible to link to it using `[enum Foo]`,
 or, given a `mod bar`, it may be possible to link to that using `[struct bar]`.
-
 
 ## Errors
 [errors]: #errors
