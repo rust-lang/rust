@@ -166,7 +166,7 @@ fn assert_output(source: &Path, expected_filename: &Path) {
     if !compare.is_empty() {
         let mut failures = HashMap::new();
         failures.insert(source.to_owned(), compare);
-        print_mismatches_default_message(failures, source.display());
+        print_mismatches_default_message(failures);
         assert!(false, "Text does not match expected output");
     }
 }
@@ -281,7 +281,7 @@ fn check_files(files: Vec<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
             Ok(report) => reports.push(report),
             Err(err) => {
                 if let IdempotentCheckError::Mismatch(msg) = err {
-                    print_mismatches_default_message(msg, file_name.display());
+                    print_mismatches_default_message(msg);
                 }
                 fails += 1;
             }
@@ -293,13 +293,15 @@ fn check_files(files: Vec<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
     (reports, count, fails)
 }
 
-fn print_mismatches_default_message(
-    result: HashMap<PathBuf, Vec<Mismatch>>,
-    file_name: std::path::Display,
-) {
-    print_mismatches(result, |line_num| {
-        format!("\nMismatch at {}:{}:", file_name, line_num)
-    });
+fn print_mismatches_default_message(result: HashMap<PathBuf, Vec<Mismatch>>) {
+    let mut t = term::stdout().unwrap();
+    for (file_name, diff) in result {
+        let mismatch_msg_formatter =
+            |line_num| format!("\nMismatch at {}:{}:", file_name.display(), line_num);
+        print_diff(diff, &mismatch_msg_formatter, Color::Auto);
+    }
+
+    t.reset().unwrap();
 }
 
 fn print_mismatches<T: Fn(u32) -> String>(
