@@ -84,6 +84,7 @@
 #![cfg_attr(test, feature(rand, test))]
 #![feature(allow_internal_unstable)]
 #![feature(ascii_ctype)]
+#![feature(box_into_raw_non_null)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
