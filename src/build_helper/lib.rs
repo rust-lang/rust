@@ -214,6 +214,10 @@ pub fn sanitizer_lib_boilerplate(sanitizer_name: &str) -> Result<NativeLibBoiler
             format!("clang_rt.{}-x86_64", sanitizer_name),
             "build/lib/linux",
         ),
+        "x86_64-unknown-freebsd" => (
+            format!("clang_rt.{}-x86_64", sanitizer_name),
+            "build/lib/freebsd",
+        ),
         "x86_64-apple-darwin" => (
             format!("dylib=clang_rt.{}_osx_dynamic", sanitizer_name),
             "build/lib/darwin",
