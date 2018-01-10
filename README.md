@@ -10,7 +10,7 @@ See `docs` folder for more details and contribution instructions.
 
 ## License
 
-Cargo is primarily distributed under the terms of both the MIT license
+libsyntax2 is primarily distributed under the terms of both the MIT license
 and the Apache License (Version 2.0).
 
 See LICENSE-APACHE and LICENSE-MIT for details.
