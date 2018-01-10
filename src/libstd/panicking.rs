@@ -328,7 +328,7 @@ impl<'a> Location<'a> {
     ///
     /// panic!("Normal panic");
     /// ```
-    #[stable(feature = "panic_col", since = "1.24")]
+    #[stable(feature = "panic_col", since = "1.25")]
     pub fn column(&self) -> u32 {
         self.col
     }
