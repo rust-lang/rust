@@ -13,7 +13,7 @@ test = false
 bitflags = "1.0"
 flate2 = "1.0"
 jobserver = "0.1.5"
-log = "0.3"
+log = "0.4"
 num_cpus = "1.0"
 rustc = { path = "../librustc" }
 rustc-demangle = "0.1.4"

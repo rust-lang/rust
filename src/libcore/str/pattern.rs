@@ -284,7 +284,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next(&mut self) -> SearchStep {
         let old_finger = self.finger;
-        let slice = unsafe { self.haystack.get_unchecked(old_finger..self.haystack.len()) };
+        let slice = unsafe { self.haystack.get_unchecked(old_finger..self.finger_back) };
         let mut iter = slice.chars();
         let old_len = iter.iter.len();
         if let Some(ch) = iter.next() {
@@ -304,7 +304,8 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     fn next_match(&mut self) -> Option<(usize, usize)> {
         loop {
             // get the haystack after the last character found
-            let bytes = if let Some(slice) = self.haystack.as_bytes().get(self.finger..) {
+            let bytes = if let Some(slice) = self.haystack.as_bytes()
+                                                 .get(self.finger..self.finger_back) {
                 slice
             } else {
                 return None;
@@ -340,7 +341,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
                 }
             } else {
                 // found nothing, exit
-                self.finger = self.haystack.len();
+                self.finger = self.finger_back;
                 return None;
             }
         }
@@ -353,7 +354,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let old_finger = self.finger_back;
-        let slice = unsafe { self.haystack.slice_unchecked(0, old_finger) };
+        let slice = unsafe { self.haystack.slice_unchecked(self.finger, old_finger) };
         let mut iter = slice.chars();
         let old_len = iter.iter.len();
         if let Some(ch) = iter.next_back() {
@@ -374,7 +375,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
         let haystack = self.haystack.as_bytes();
         loop {
             // get the haystack up to but not including the last character searched
-            let bytes = if let Some(slice) = haystack.get(..self.finger_back) {
+            let bytes = if let Some(slice) = haystack.get(self.finger..self.finger_back) {
                 slice
             } else {
                 return None;
@@ -382,6 +383,9 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
             // the last byte of the utf8 encoded needle
             let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
             if let Some(index) = memchr::memrchr(last_byte, bytes) {
+                // we searched a slice that was offset by self.finger,
+                // add self.finger to recoup the original index
+                let index = self.finger + index;
                 // memrchr will return the index of the byte we wish to
                 // find. In case of an ASCII character, this is indeed
                 // were we wish our new finger to be ("after" the found
@@ -412,7 +416,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
                 // found the last byte when searching in reverse.
                 self.finger_back = index;
             } else {
-                self.finger_back = 0;
+                self.finger_back = self.finger;
                 // found nothing, exit
                 return None;
             }

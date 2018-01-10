@@ -9,7 +9,7 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-log = "0.3"
+log = "0.4"
 serialize = { path = "../libserialize" }
 cfg-if = "0.1.2"
 stable_deref_trait = "1.0.0"

@@ -572,7 +572,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push_str(".");
-        base_n::push_str(idx as u64, base_n::ALPHANUMERIC_ONLY, &mut name);
+        base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
     }
 

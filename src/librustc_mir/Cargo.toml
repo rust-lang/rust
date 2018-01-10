@@ -11,7 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 bitflags = "1.0"
 graphviz = { path = "../libgraphviz" }
-log = "0.3"
+log = "0.4"
 log_settings = "0.1.1"
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }

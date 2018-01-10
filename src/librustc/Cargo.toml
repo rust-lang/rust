@@ -14,7 +14,7 @@ bitflags = "1.0"
 fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
-log = "0.3"
+log = "0.4"
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_back = { path = "../librustc_back" }
 rustc_const_math = { path = "../librustc_const_math" }

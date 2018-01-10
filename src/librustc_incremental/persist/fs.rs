@@ -137,7 +137,7 @@ const QUERY_CACHE_FILENAME: &'static str = "query-cache.bin";
 // or hexadecimal numbers (we want short file and directory names). Since these
 // numbers will be used in file names, we choose an encoding that is not
 // case-sensitive (as opposed to base64, for example).
-const INT_ENCODE_BASE: u64 = 36;
+const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
 pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
@@ -357,7 +357,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     let mut new_sub_dir_name = String::from(&old_sub_dir_name[.. dash_indices[2] + 1]);
 
     // Append the svh
-    base_n::push_str(svh.as_u64(), INT_ENCODE_BASE, &mut new_sub_dir_name);
+    base_n::push_str(svh.as_u64() as u128, INT_ENCODE_BASE, &mut new_sub_dir_name);
 
     // Create the full path
     let new_path = incr_comp_session_dir.parent().unwrap().join(new_sub_dir_name);
@@ -465,7 +465,7 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
 
     let directory_name = format!("s-{}-{}-working",
                                   timestamp,
-                                  base_n::encode(random_number as u64,
+                                  base_n::encode(random_number as u128,
                                                  INT_ENCODE_BASE));
     debug!("generate_session_dir_path: directory_name = {}", directory_name);
     let directory_path = crate_dir.join(directory_name);
@@ -599,7 +599,7 @@ fn timestamp_to_string(timestamp: SystemTime) -> String {
     let duration = timestamp.duration_since(UNIX_EPOCH).unwrap();
     let micros = duration.as_secs() * 1_000_000 +
                 (duration.subsec_nanos() as u64) / 1000;
-    base_n::encode(micros, INT_ENCODE_BASE)
+    base_n::encode(micros as u128, INT_ENCODE_BASE)
 }
 
 fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
@@ -626,7 +626,8 @@ fn crate_path(sess: &Session,
     // The full crate disambiguator is really long. 64 bits of it should be
     // sufficient.
     let crate_disambiguator = crate_disambiguator.to_fingerprint().to_smaller_hash();
-    let crate_disambiguator = base_n::encode(crate_disambiguator, INT_ENCODE_BASE);
+    let crate_disambiguator = base_n::encode(crate_disambiguator as u128,
+                                             INT_ENCODE_BASE);
 
     let crate_name = format!("{}-{}", crate_name, crate_disambiguator);
     incr_dir.join(crate_name)

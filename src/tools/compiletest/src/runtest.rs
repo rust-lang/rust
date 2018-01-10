@@ -1513,6 +1513,10 @@ impl<'test> TestCx<'test> {
             rustc.args(&["-Z", "incremental-queries"]);
         }
 
+        if self.config.mode == CodegenUnits {
+            rustc.args(&["-Z", "human_readable_cgu_names"]);
+        }
+
         match self.config.mode {
             CompileFail | ParseFail | Incremental => {
                 // If we are extracting and matching errors in the new

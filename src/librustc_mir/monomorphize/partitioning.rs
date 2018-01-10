@@ -200,7 +200,16 @@ impl<'tcx> CodegenUnitExt<'tcx> for CodegenUnit<'tcx> {
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
-const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
+fn fallback_cgu_name(tcx: TyCtxt) -> InternedString {
+    const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
+
+    if tcx.sess.opts.debugging_opts.human_readable_cgu_names {
+        Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str()
+    } else {
+        Symbol::intern(&CodegenUnit::mangle_name(FALLBACK_CODEGEN_UNIT)).as_str()
+    }
+}
+
 
 pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               trans_items: I,
@@ -236,7 +245,9 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
-    internalize_symbols(tcx, &mut post_inlining, inlining_map);
+    if !tcx.sess.opts.cg.link_dead_code {
+        internalize_symbols(tcx, &mut post_inlining, inlining_map);
+    }
 
     // Finally, sort by codegen unit name, so that we get deterministic results
     let PostInliningPartitioning {
@@ -295,7 +306,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let codegen_unit_name = match characteristic_def_id {
             Some(def_id) => compute_codegen_unit_name(tcx, def_id, is_volatile),
-            None => Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str(),
+            None => fallback_cgu_name(tcx),
         };
 
         let make_codegen_unit = || {
@@ -379,7 +390,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // always ensure we have at least one CGU; otherwise, if we have a
     // crate with just types (for example), we could wind up with no CGU
     if codegen_units.is_empty() {
-        let codegen_unit_name = Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str();
+        let codegen_unit_name = fallback_cgu_name(tcx);
         codegen_units.insert(codegen_unit_name.clone(),
                              CodegenUnit::new(codegen_unit_name.clone()));
     }
@@ -628,10 +639,10 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Unfortunately we cannot just use the `ty::item_path` infrastructure here
     // because we need paths to modules and the DefIds of those are not
     // available anymore for external items.
-    let mut mod_path = String::with_capacity(64);
+    let mut cgu_name = String::with_capacity(64);
 
     let def_path = tcx.def_path(def_id);
-    mod_path.push_str(&tcx.crate_name(def_path.krate).as_str());
+    cgu_name.push_str(&tcx.crate_name(def_path.krate).as_str());
 
     for part in tcx.def_path(def_id)
                    .data
@@ -642,15 +653,21 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             _ => false,
                         }
                     }) {
-        mod_path.push_str("-");
-        mod_path.push_str(&part.data.as_interned_str());
+        cgu_name.push_str("-");
+        cgu_name.push_str(&part.data.as_interned_str());
     }
 
     if volatile {
-        mod_path.push_str(".volatile");
+        cgu_name.push_str(".volatile");
     }
 
-    return Symbol::intern(&mod_path[..]).as_str();
+    let cgu_name = if tcx.sess.opts.debugging_opts.human_readable_cgu_names {
+        cgu_name
+    } else {
+        CodegenUnit::mangle_name(&cgu_name)
+    };
+
+    Symbol::intern(&cgu_name[..]).as_str()
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
