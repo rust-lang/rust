@@ -322,7 +322,7 @@ impl<T: ?Sized> Box<T> {
     ///     let ptr = Box::into_raw_non_null(x);
     /// }
     /// ```
-    #[stable(feature = "nonnull", since = "1.24.0")]
+    #[unstable(feature = "nonnull", issue = "27730")]
     #[inline]
     pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
         Box::into_unique(b).into()
