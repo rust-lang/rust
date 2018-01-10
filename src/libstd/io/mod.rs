@@ -366,32 +366,50 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
-    let ret;
+    let size_snapshot = r.size_snapshot();
+
+    // Determine the size to start reading with.
+    let initial_resize_len = if let Some(size) = size_snapshot {
+        // We know the (present) size. Don't use reserve_exact because when the
+        // initial size of buf is zero, reserve should still give us exactly the
+        // size we request, and when it's non-zero, we're concatenating things.
+        g.buf.reserve(size);
+        start_len + size
+    } else {
+        // We don't know the size. Start with a relatively small guess.
+        g.buf.reserve(32);
+        g.buf.capacity()
+    };
+    unsafe {
+        g.buf.set_len(initial_resize_len);
+        r.initializer().initialize(&mut g.buf[g.len..]);
+    }
+
     loop {
+        match r.read(&mut g.buf[g.len..]) {
+            Ok(0) => break,
+            Ok(n) => g.len += n,
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e),
+        }
+
         if g.len == g.buf.len() {
+            if size_snapshot.is_some() {
+                // We finished what the snapshot told us, so we're done.
+                debug_assert_eq!(size_snapshot.unwrap(), g.len - start_len);
+                break;
+            }
+            // We've used up our available buffer space; allocate more.
+            g.buf.reserve(32);
+            let capacity = g.buf.capacity();
             unsafe {
-                g.buf.reserve(32);
-                let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
                 r.initializer().initialize(&mut g.buf[g.len..]);
             }
         }
-
-        match r.read(&mut g.buf[g.len..]) {
-            Ok(0) => {
-                ret = Ok(g.len - start_len);
-                break;
-            }
-            Ok(n) => g.len += n,
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            Err(e) => {
-                ret = Err(e);
-                break;
-            }
-        }
     }
 
-    ret
+    Ok(g.len - start_len)
 }
 
 /// The `Read` trait allows for reading bytes from a source.
@@ -552,6 +570,21 @@ pub trait Read {
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::zeroing()
+    }
+
+    /// Return a snapshot of how many bytes would be read from this source until EOF
+    /// if read immediately, or None if that is unknown. Depending on the source, the
+    /// size may change at any time, so this isn't a guarantee that exactly that number
+    /// of bytes will actually be read.
+    ///
+    /// This is used by [`read_to_end`] and [`read_to_string`] to pre-allocate a memory buffer.
+    ///
+    /// [`read_to_end`]: #method.read_to_end
+    /// [`read_to_string`]: #method.read_to_string
+    #[unstable(feature = "read_size_snapshot", issue = /* FIXME */ "0")]
+    #[inline]
+    fn size_snapshot(&self) -> Option<usize> {
+        None
     }
 
     /// Read all bytes until EOF in this source, placing them into `buf`.
@@ -1737,6 +1770,19 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         self.second.read(buf)
     }
 
+    fn size_snapshot(&self) -> Option<usize> {
+        if self.done_first {
+            self.second.size_snapshot()
+        } else {
+            if let Some(second_size) = self.second.size_snapshot() {
+                if let Some(first_size) = self.first.size_snapshot() {
+                    return first_size.checked_add(second_size);
+                }
+            }
+            None
+        }
+    }
+
     unsafe fn initializer(&self) -> Initializer {
         let initializer = self.first.initializer();
         if initializer.should_initialize() {
@@ -1933,6 +1979,17 @@ impl<T: Read> Read for Take<T> {
         let n = self.inner.read(&mut buf[..max])?;
         self.limit -= n as u64;
         Ok(n)
+    }
+
+    fn size_snapshot(&self) -> Option<usize> {
+        if let Some(inner_size) = self.inner.size_snapshot() {
+            let min = cmp::min(self.limit, inner_size as u64);
+            let size = min as usize;
+            if size as u64 == min {
+                return Some(size);
+            }
+        }
+        None
     }
 
     unsafe fn initializer(&self) -> Initializer {

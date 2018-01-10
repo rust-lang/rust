@@ -558,6 +558,25 @@ impl Read for File {
         self.inner.read(buf)
     }
 
+    fn size_snapshot(&self) -> Option<usize> {
+        // Ignore I/O errors; we're just querying the size and position of an
+        // already-open file in preparation for reading from it.
+        if let Ok(meta) = self.metadata() {
+            let len = meta.len();
+            if let Ok(position) = self.inner.seek(SeekFrom::Current(0)) {
+                if let Some(distance) = len.checked_sub(position) {
+                    let size = distance as usize;
+                    // Don't trust a length of zero. For example, "pseudofiles"
+                    // on Linux like /proc/meminfo report a size of 0.
+                    if size != 0 && size as u64 == distance {
+                        return Some(size);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -580,6 +599,10 @@ impl Seek for File {
 impl<'a> Read for &'a File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+
+    fn size_snapshot(&self) -> Option<usize> {
+        (**self).size_snapshot()
     }
 
     #[inline]
@@ -890,6 +913,8 @@ impl Metadata {
     pub fn is_file(&self) -> bool { self.file_type().is_file() }
 
     /// Returns the size of the file, in bytes, this metadata is for.
+    ///
+    /// As a special case, a size of `0` indicates that the size is unknown.
     ///
     /// # Examples
     ///
