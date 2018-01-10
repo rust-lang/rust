@@ -35,7 +35,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let ExprStruct(_, ref fields, Some(ref base)) = expr.node {
             let ty = cx.tables.expr_ty(expr);
             if let ty::TyAdt(def, _) = ty.sty {
-                if fields.len() == def.struct_variant().fields.len() {
+                if fields.len() == def.non_enum_variant().fields.len() {
                     span_lint(
                         cx,
                         NEEDLESS_UPDATE,
