@@ -47,13 +47,15 @@ fn main() {
 #### `"Visual"`:
 
 ```rust
-let lorem = vec!["ipsum",
-                 "dolor",
-                 "sit",
-                 "amet",
-                 "consectetur",
-                 "adipiscing",
-                 "elit"];
+fn main() {
+    let lorem = vec!["ipsum",
+                     "dolor",
+                     "sit",
+                     "amet",
+                     "consectetur",
+                     "adipiscing",
+                     "elit"];
+}
 ```
 
 ### Control flow
