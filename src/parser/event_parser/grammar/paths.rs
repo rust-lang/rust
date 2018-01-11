@@ -5,16 +5,20 @@ pub(crate) fn use_path(p: &mut Parser) {
         return;
     }
     node(p, PATH, |p| {
-        p.eat(COLONCOLON);
-        path_segment(p);
+        path_segment(p, true);
     });
     many(p, |p| {
         node_if(p, COLONCOLON, PATH, |p| {
-            path_segment(p);
+            path_segment(p, false);
         })
     });
 }
 
-fn path_segment(p: &mut Parser) -> bool {
-    node_if(p, IDENT, PATH_SEGMENT, |_| ())
+fn path_segment(p: &mut Parser, first: bool) {
+    node(p, PATH_SEGMENT, |p| {
+        if first {
+            p.eat(COLONCOLON);
+        }
+        p.expect(IDENT);
+    })
 }
