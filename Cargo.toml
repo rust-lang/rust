@@ -44,6 +44,8 @@ env_logger = "0.4"
 getopts = "0.2"
 derive-new = "0.5"
 cargo_metadata = "0.4"
+rustc-ap-syntax = "7.0.0"
+rustc-ap-rustc_errors = "7.0.0"
 
 [dev-dependencies]
 lazy_static = "1.0.0"
