@@ -40,7 +40,7 @@ use utils::{format_visibility, mk_sp};
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];
 
 // FIXME: use the enum from libsyntax?
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum MacroStyle {
     Parens,
     Brackets,
@@ -65,6 +65,7 @@ impl MacroStyle {
     }
 }
 
+#[derive(Debug)]
 pub enum MacroArg {
     Expr(ast::Expr),
     Ty(ast::Ty),
@@ -83,16 +84,16 @@ impl Rewrite for MacroArg {
 
 fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
     macro_rules! parse_macro_arg {
-        ($target:tt, $macro_arg:ident, $parser:ident) => {
+        ($macro_arg: ident, $parser: ident) => {
             let mut cloned_parser = (*parser).clone();
             match cloned_parser.$parser() {
-                Ok($target) => {
+                Ok(x) => {
                     if parser.sess.span_diagnostic.has_errors() {
                         parser.sess.span_diagnostic.reset_err_count();
                     } else {
                         // Parsing succeeded.
                         *parser = cloned_parser;
-                        return Some(MacroArg::$macro_arg((*$target).clone()));
+                        return Some(MacroArg::$macro_arg((*x).clone()));
                     }
                 }
                 Err(mut e) => {
@@ -103,9 +104,9 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
         }
     }
 
-    parse_macro_arg!(expr, Expr, parse_expr);
-    parse_macro_arg!(ty, Ty, parse_ty);
-    parse_macro_arg!(pat, Pat, parse_pat);
+    parse_macro_arg!(Expr, parse_expr);
+    parse_macro_arg!(Ty, parse_ty);
+    parse_macro_arg!(Pat, parse_pat);
 
     None
 }
