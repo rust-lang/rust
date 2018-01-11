@@ -246,53 +246,6 @@ fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
 }
 ```
 
-
-## `same_line_attributes`
-
-Try to put attributes on the same line as fields and variants
-
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-- **Stable**: No
-
-#### `true` (default):
-
-```rust
-struct Lorem {
-    #[serde(rename = "Ipsum")] ipsum: usize,
-    #[serde(rename = "Dolor")] dolor: usize,
-    #[serde(rename = "Amet")] amet: usize,
-}
-
-enum Lorem {
-    #[serde(skip_serializing)] Ipsum,
-    #[serde(skip_serializing)] Dolor,
-    #[serde(skip_serializing)] Amet,
-}
-```
-
-#### `false`:
-
-```rust
-struct Lorem {
-    #[serde(rename = "Ipsum")]
-    ipsum: usize,
-    #[serde(rename = "Dolor")]
-    dolor: usize,
-    #[serde(rename = "Amet")]
-    amet: usize,
-}
-
-enum Lorem {
-    #[serde(skip_serializing)]
-    Ipsum,
-    #[serde(skip_serializing)]
-    Dolor,
-    #[serde(skip_serializing)]
-    Amet,
-}
-```
-
 ## `use_small_heuristics`
 
 Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'.

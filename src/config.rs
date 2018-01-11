@@ -648,8 +648,6 @@ create_config! {
                                              threshold.";
     remove_blank_lines_at_start_or_end_of_block: bool, true, false,
         "Remove blank lines at start or end of a block";
-    same_line_attributes: bool, true, false,
-        "Try to put attributes on the same line as fields and variants.";
     match_arm_blocks: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \
         the same line with the pattern of arms";
     force_multiline_blocks: bool, false, false,
