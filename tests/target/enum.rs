@@ -42,7 +42,8 @@ enum StructLikeVariants {
     StructLike {
         x: i32, // Test comment
         // Pre-comment
-        #[Attr50] y: SomeType, // Aanother Comment
+        #[Attr50]
+        y: SomeType, // Aanother Comment
     },
     SL {
         a: A,
