@@ -799,10 +799,12 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// during initialization. Relies on the `indices` map having been
     /// fully initialized.
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        match r {
-            ty::ReEarlyBound(..) | ty::ReStatic => *self.indices.get(&r).unwrap(),
-            ty::ReVar(..) => r.to_region_vid(),
-            _ => bug!("cannot convert `{:?}` to a region vid", r),
+        if let ty::ReVar(..) = r {
+            r.to_region_vid()
+        } else {
+            *self.indices.get(&r).unwrap_or_else(|| {
+                bug!("cannot convert `{:?}` to a region vid", r)
+            })
         }
     }
 
