@@ -42,6 +42,7 @@
 #![feature(try_from)]
 #![feature(try_trait)]
 #![feature(unique)]
+#![feature(exact_chunks)]
 
 extern crate core;
 extern crate test;
