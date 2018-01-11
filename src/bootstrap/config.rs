@@ -107,6 +107,7 @@ pub struct Config {
     pub debug_jemalloc: bool,
     pub use_jemalloc: bool,
     pub backtrace: bool, // support for RUST_BACKTRACE
+    pub wasm_syscall: bool,
 
     // misc
     pub low_priority: bool,
@@ -282,6 +283,7 @@ struct Rust {
     test_miri: Option<bool>,
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
+    wasm_syscall: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -463,6 +465,7 @@ impl Config {
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.quiet_tests, rust.quiet_tests);
             set(&mut config.test_miri, rust.test_miri);
+            set(&mut config.wasm_syscall, rust.wasm_syscall);
             config.rustc_parallel_queries = rust.experimental_parallel_queries.unwrap_or(false);
             config.rustc_default_linker = rust.default_linker.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);

@@ -423,6 +423,9 @@ impl Build {
         if self.config.profiler {
             features.push_str(" profiler");
         }
+        if self.config.wasm_syscall {
+            features.push_str(" wasm_syscall");
+        }
         features
     }
 
