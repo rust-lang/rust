@@ -211,6 +211,14 @@ pub struct DirBuilder {
     recursive: bool,
 }
 
+/// How large a buffer to pre-allocate before reading the entire file at `path`.
+fn initial_buffer_size<P: AsRef<Path>>(path: P) -> usize {
+    // Allocate one extra byte so the buffer doesn't need to grow before the
+    // final `read` call at the end of the file.  Don't worry about `usize`
+    // overflow because reading will fail regardless in that case.
+    metadata(path).map(|m| m.len() as usize + 1).unwrap_or(0)
+}
+
 /// Read the entire contents of a file into a bytes vector.
 ///
 /// This is a convenience function for using [`File::open`] and [`read_to_end`]
@@ -246,7 +254,7 @@ pub struct DirBuilder {
 /// ```
 #[unstable(feature = "fs_read_write", issue = "46588")]
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
-    let mut bytes = Vec::new();
+    let mut bytes = Vec::with_capacity(initial_buffer_size(&path));
     File::open(path)?.read_to_end(&mut bytes)?;
     Ok(bytes)
 }
@@ -287,7 +295,7 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// ```
 #[unstable(feature = "fs_read_write", issue = "46588")]
 pub fn read_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
-    let mut string = String::new();
+    let mut string = String::with_capacity(initial_buffer_size(&path));
     File::open(path)?.read_to_string(&mut string)?;
     Ok(string)
 }

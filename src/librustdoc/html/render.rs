@@ -866,15 +866,8 @@ fn write_shared(cx: &Context,
     write(cx.dst.join("main.css"),
           include_bytes!("static/styles/main.css"))?;
     if let Some(ref css) = cx.shared.css_file_extension {
-        let mut content = String::new();
-        let css = css.as_path();
-        let mut f = try_err!(File::open(css), css);
-
-        try_err!(f.read_to_string(&mut content), css);
-        let css = cx.dst.join("theme.css");
-        let css = css.as_path();
-        let mut f = try_err!(File::create(css), css);
-        try_err!(write!(f, "{}", &content), css);
+        let out = cx.dst.join("theme.css");
+        try_err!(fs::copy(css, out), css);
     }
     write(cx.dst.join("normalize.css"),
           include_bytes!("static/normalize.css"))?;
@@ -1027,7 +1020,7 @@ fn render_sources(dst: &Path, scx: &mut SharedContext,
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
 fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
-    Ok(try_err!(try_err!(File::create(&dst), &dst).write_all(contents), &dst))
+    Ok(try_err!(fs::write(&dst, contents), &dst))
 }
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
@@ -1124,16 +1117,13 @@ impl<'a> SourceCollector<'a> {
             return Ok(());
         }
 
-        let mut contents = Vec::new();
-        File::open(&p).and_then(|mut f| f.read_to_end(&mut contents))?;
-
-        let contents = str::from_utf8(&contents).unwrap();
+        let contents = fs::read_string(&p)?;
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\u{feff}") {
             &contents[3..]
         } else {
-            contents
+            &contents[..]
         };
 
         // Create the intermediate directories
