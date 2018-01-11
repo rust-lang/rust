@@ -786,7 +786,7 @@ impl fmt::Debug for UdpSocket {
     }
 }
 
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
 mod tests {
     use io::ErrorKind;
     use net::*;

@@ -956,8 +956,7 @@ mod arch {
 mod tests {
     use super::*;
 
-    use ffi::OsStr;
-    use path::{Path, PathBuf};
+    use path::Path;
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
@@ -980,6 +979,8 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn split_paths_windows() {
+        use path::PathBuf;
+
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
                 parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
@@ -1000,6 +1001,8 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn split_paths_unix() {
+        use path::PathBuf;
+
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
                 parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
@@ -1015,6 +1018,8 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn join_paths_unix() {
+        use ffi::OsStr;
+
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==
                 OsStr::new(output)
@@ -1031,6 +1036,8 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn join_paths_windows() {
+        use ffi::OsStr;
+
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==
                 OsStr::new(output)
