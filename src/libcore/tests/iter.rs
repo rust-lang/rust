@@ -11,6 +11,7 @@
 use core::iter::*;
 use core::{i8, i16, isize};
 use core::usize;
+use std::cmp::Ordering;
 
 #[test]
 fn test_lt() {
@@ -1403,6 +1404,19 @@ fn test_repeat() {
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
+}
+
+#[test]
+fn test_repeat_iterator() {
+    let mut it = repeat(42);
+    assert_eq!(it.nth(usize::MAX), Some(42));
+    assert_eq!(it.all(|x| x == 42), true);
+    assert_eq!(repeat(42).max(), Some(42));
+    assert_eq!(repeat(42).min(), Some(42));
+    assert_eq!(repeat(42).max_by_key(|_| 0), Some(42));
+    assert_eq!(repeat(42).max_by_key(|_| Ordering::Greater), Some(42));
+    assert_eq!(repeat(42).min_by_key(|_| 0), Some(42));
+    assert_eq!(repeat(42).min_by_key(|_| Ordering::Greater), Some(42));
 }
 
 #[test]
