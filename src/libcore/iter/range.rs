@@ -320,6 +320,11 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
         self.start = plus_n.add_one();
         Some(plus_n)
     }
+
+    #[inline]
+    fn min(mut self) -> Option<A> {
+        self.next()
+    }
 }
 
 #[unstable(feature = "fused", issue = "35602")]

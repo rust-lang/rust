@@ -1398,6 +1398,12 @@ fn test_range_inclusive_min() {
 }
 
 #[test]
+fn test_range_from_min() {
+    assert_eq!((0..).min(), Some(0));
+    assert_eq!((-20..).min(), Some(-20));
+}
+
+#[test]
 fn test_repeat() {
     let mut it = repeat(42);
     assert_eq!(it.next(), Some(42));
