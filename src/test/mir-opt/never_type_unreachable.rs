@@ -55,6 +55,7 @@ pub fn main() { }
 
 // START rustc.never_ref.SimplifyCfg-initial.after.mir
 // bb0: {
+//     ...
 //     unreachable;
 // }
 // END rustc.never_ref.SimplifyCfg-initial.after.mir

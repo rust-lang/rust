@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.cfg.push_assign(block, dummy_source_info, &dummy_temp, dummy_access);
 
         let arms: Vec<Arm<'tcx>> = arms.into_iter().filter(|arm|
-            !arm.patterns.iter().any(|pat| pat.is_unreachable())
+            arm.patterns.iter().any(|pat| !pat.is_unreachable())
         ).collect();
 
         let mut arm_blocks = ArmBlocks {

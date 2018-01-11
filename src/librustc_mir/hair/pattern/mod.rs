@@ -311,12 +311,12 @@ impl<'a, 'tcx> Pattern<'tcx> {
     // Returns true if the pattern cannot bind, as it would require a value of type `!` to have
     // been constructed. This check is conservative.
     pub fn is_unreachable(&self) -> bool {
-        if self.ty.requires_never_value() {
+        if self.ty.conservative_is_uninhabited() {
             return true;
         }
         match *self.kind {
             PatternKind::Binding { ty, ref subpattern, .. } => {
-                if ty.requires_never_value() {
+                if ty.conservative_is_uninhabited() {
                     return true;
                 }
                 if let &Some(ref subpattern) = subpattern {

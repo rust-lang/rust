@@ -529,18 +529,6 @@ impl<'tcx> TyS<'tcx> {
             _ => true,
         }
     }
-
-    // Returns true if the construction of `self` would require a value of type `!`
-    // to have been constructed. This check is conservative.
-    pub fn requires_never_value(&self) -> bool {
-        match self.sty {
-            ty::TyNever => true,
-            ty::TyRawPtr(ty_and_mut) |
-            ty::TyRef(_, ty_and_mut) => ty_and_mut.ty.requires_never_value(),
-            ty::TyTuple(comps, _) => comps.iter().any(|ty| ty.requires_never_value()),
-            _ => false
-        }
-    }
 }
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::TyS<'gcx> {
