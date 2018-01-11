@@ -12,14 +12,11 @@
 
 // Test for issue #47189. Here, both `s` and `t` are live for the
 // generator's lifetime, but within the generator they have distinct
-// lifetimes.
-//
-// Currently, we accept this code (with NLL enabled) since `x` is only
-// borrowed once at a time -- though whether we should is not entirely
-// obvious to me (the borrows are live over a yield, but then they are
-// re-borrowing borrowed content, etc). Maybe I just haven't had
-// enough coffee today, but I'm not entirely sure at this moment what
-// effect a `suspend` should have on existing borrows. -nmatsakis
+// lifetimes. We accept this code -- even though the borrow extends
+// over a yield -- because the data that is borrowed (`*x`) is not
+// stored on the stack.
+
+// must-compile-successfully
 
 fn foo(x: &mut u32) {
     move || {
