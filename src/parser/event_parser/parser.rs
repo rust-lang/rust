@@ -19,6 +19,9 @@ pub(crate) struct Parser<'t> {
     curly_limit: Option<i32>,
 }
 
+#[derive(Debug, Clone, Copy,PartialEq, Eq)]
+pub(crate) struct Pos(u32);
+
 impl<'t> Parser<'t> {
     pub(crate) fn new(text: &'t str, raw_tokens: &'t [Token]) -> Parser<'t> {
         let mut tokens = Vec::new();
@@ -44,8 +47,8 @@ impl<'t> Parser<'t> {
         }
     }
 
-    pub(crate) fn pos(&self) -> usize {
-        self.pos
+    pub(crate) fn pos(&self) -> Pos {
+        Pos(self.pos as u32)
     }
 
     pub(crate) fn into_events(self) -> Vec<Event> {
