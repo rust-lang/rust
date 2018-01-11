@@ -1124,7 +1124,7 @@ fn test_mut_chunks() {
         }
     }
     let result = [0, 0, 0, 1, 1, 1, 2];
-    assert!(v == result);
+    assert_eq!(v, result);
 }
 
 #[test]
@@ -1136,7 +1136,7 @@ fn test_mut_chunks_rev() {
         }
     }
     let result = [2, 2, 2, 1, 1, 1, 0];
-    assert!(v == result);
+    assert_eq!(v, result);
 }
 
 #[test]
