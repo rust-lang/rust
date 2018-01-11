@@ -91,6 +91,8 @@ pub struct OsString {
 /// the traits which `OsStr` implements for conversions from/to native representations.
 ///
 /// [`OsString`]: struct.OsString.html
+/// [`&str`]: ../primitive.str.html
+/// [`String`]: ../string/struct.String.html
 /// [conversions]: index.html#conversions
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsStr {
