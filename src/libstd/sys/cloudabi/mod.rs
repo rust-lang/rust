@@ -34,6 +34,9 @@ pub mod time;
 
 mod abi;
 
+mod shims;
+pub use self::shims::*;
+
 #[allow(dead_code)]
 pub fn init() {}
 

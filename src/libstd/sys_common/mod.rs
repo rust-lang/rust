@@ -43,16 +43,13 @@ pub mod thread_local;
 pub mod util;
 pub mod wtf8;
 pub mod bytestring;
-#[cfg(not(target_os = "cloudabi"))]
 pub mod process;
 
 cfg_if! {
-    if #[cfg(any(target_os = "redox", target_os = "l4re"))] {
+    if #[cfg(any(target_os = "cloudabi", target_os = "l4re", target_os = "redox"))] {
         pub use sys::net;
     } else if #[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))] {
         pub use sys::net;
-    } else if #[cfg(target_os = "cloudabi")] {
-        // No networking support on CloudABI (yet).
     } else {
         pub mod net;
     }
