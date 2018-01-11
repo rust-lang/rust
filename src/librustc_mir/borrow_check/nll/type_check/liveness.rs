@@ -214,6 +214,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             // associated types here and possibly recursively process.
             for ty in dtorck_types {
                 let ty = self.cx.normalize(&ty, location);
+                let ty = self.cx.infcx.resolve_type_and_region_vars_if_possible(&ty);
                 match ty.sty {
                     ty::TyParam(..) | ty::TyProjection(..) | ty::TyAnon(..) => {
                         let cause = Cause::DropVar(dropped_local, location);
