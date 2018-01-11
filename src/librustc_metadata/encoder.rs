@@ -865,14 +865,15 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn encode_fn_arg_names_for_body(&mut self, body_id: hir::BodyId)
                                     -> LazySeq<ast::Name> {
-        let _ignore = self.tcx.dep_graph.in_ignore();
-        let body = self.tcx.hir.body(body_id);
-        self.lazy_seq(body.arguments.iter().map(|arg| {
-            match arg.pat.node {
-                PatKind::Binding(_, _, name, _) => name.node,
-                _ => Symbol::intern("")
-            }
-        }))
+        self.tcx.dep_graph.with_ignore(|| {
+            let body = self.tcx.hir.body(body_id);
+            self.lazy_seq(body.arguments.iter().map(|arg| {
+                match arg.pat.node {
+                    PatKind::Binding(_, _, name, _) => name.node,
+                    _ => Symbol::intern("")
+                }
+            }))
+        })
     }
 
     fn encode_fn_arg_names(&mut self, names: &[Spanned<ast::Name>])

@@ -191,7 +191,7 @@ pub fn compile_input(sess: &Session,
                            || hir_map::map_crate(sess, cstore, &mut hir_forest, &defs));
 
         {
-            let _ignore = hir_map.dep_graph.in_ignore();
+            hir_map.dep_graph.assert_ignored();
             controller_entry_point!(after_hir_lowering,
                                     sess,
                                     CompileState::state_after_hir_lowering(input,
@@ -233,18 +233,18 @@ pub fn compile_input(sess: &Session,
                                     |tcx, analysis, rx, result| {
             {
                 // Eventually, we will want to track plugins.
-                let _ignore = tcx.dep_graph.in_ignore();
-
-                let mut state = CompileState::state_after_analysis(input,
-                                                                   sess,
-                                                                   outdir,
-                                                                   output,
-                                                                   opt_crate,
-                                                                   tcx.hir.krate(),
-                                                                   &analysis,
-                                                                   tcx,
-                                                                   &crate_name);
-                (control.after_analysis.callback)(&mut state);
+                tcx.dep_graph.with_ignore(|| {
+                    let mut state = CompileState::state_after_analysis(input,
+                                                                       sess,
+                                                                       outdir,
+                                                                       output,
+                                                                       opt_crate,
+                                                                       tcx.hir.krate(),
+                                                                       &analysis,
+                                                                       tcx,
+                                                                       &crate_name);
+                    (control.after_analysis.callback)(&mut state);
+                });
 
                 if control.after_analysis.stop == Compilation::Stop {
                     return result.and_then(|_| Err(CompileIncomplete::Stopped));

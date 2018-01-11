@@ -165,113 +165,113 @@ impl<'sess> OnDiskCache<'sess> {
         where E: ty_codec::TyEncoder
      {
         // Serializing the DepGraph should not modify it:
-        let _in_ignore = tcx.dep_graph.in_ignore();
+        tcx.dep_graph.with_ignore(|| {
+            // Allocate FileMapIndices
+            let (file_to_file_index, file_index_to_stable_id) = {
+                let mut file_to_file_index = FxHashMap();
+                let mut file_index_to_stable_id = FxHashMap();
 
-        // Allocate FileMapIndices
-        let (file_to_file_index, file_index_to_stable_id) = {
-            let mut file_to_file_index = FxHashMap();
-            let mut file_index_to_stable_id = FxHashMap();
+                for (index, file) in tcx.sess.codemap().files().iter().enumerate() {
+                    let index = FileMapIndex(index as u32);
+                    let file_ptr: *const FileMap = &**file as *const _;
+                    file_to_file_index.insert(file_ptr, index);
+                    file_index_to_stable_id.insert(index, StableFilemapId::new(&file));
+                }
 
-            for (index, file) in tcx.sess.codemap().files().iter().enumerate() {
-                let index = FileMapIndex(index as u32);
-                let file_ptr: *const FileMap = &**file as *const _;
-                file_to_file_index.insert(file_ptr, index);
-                file_index_to_stable_id.insert(index, StableFilemapId::new(&file));
+                (file_to_file_index, file_index_to_stable_id)
+            };
+
+            let mut encoder = CacheEncoder {
+                tcx,
+                encoder,
+                type_shorthands: FxHashMap(),
+                predicate_shorthands: FxHashMap(),
+                expn_info_shorthands: FxHashMap(),
+                codemap: CachingCodemapView::new(tcx.sess.codemap()),
+                file_to_file_index,
+            };
+
+            // Load everything into memory so we can write it out to the on-disk
+            // cache. The vast majority of cacheable query results should already
+            // be in memory, so this should be a cheap operation.
+            tcx.dep_graph.exec_cache_promotions(tcx);
+
+            // Encode query results
+            let mut query_result_index = EncodedQueryResultIndex::new();
+
+            {
+                use ty::maps::queries::*;
+                let enc = &mut encoder;
+                let qri = &mut query_result_index;
+
+                // Encode TypeckTables
+                encode_query_results::<typeck_tables_of, _>(tcx, enc, qri)?;
+                encode_query_results::<optimized_mir, _>(tcx, enc, qri)?;
+                encode_query_results::<unsafety_check_result, _>(tcx, enc, qri)?;
+                encode_query_results::<borrowck, _>(tcx, enc, qri)?;
+                encode_query_results::<mir_borrowck, _>(tcx, enc, qri)?;
+                encode_query_results::<mir_const_qualif, _>(tcx, enc, qri)?;
+                encode_query_results::<def_symbol_name, _>(tcx, enc, qri)?;
+                encode_query_results::<const_is_rvalue_promotable_to_static, _>(tcx, enc, qri)?;
+                encode_query_results::<contains_extern_indicator, _>(tcx, enc, qri)?;
+                encode_query_results::<symbol_name, _>(tcx, enc, qri)?;
+                encode_query_results::<trans_fulfill_obligation, _>(tcx, enc, qri)?;
+                encode_query_results::<check_match, _>(tcx, enc, qri)?;
             }
 
-            (file_to_file_index, file_index_to_stable_id)
-        };
+            // Encode diagnostics
+            let diagnostics_index = {
+                let mut diagnostics_index = EncodedDiagnosticsIndex::new();
 
-        let mut encoder = CacheEncoder {
-            tcx,
-            encoder,
-            type_shorthands: FxHashMap(),
-            predicate_shorthands: FxHashMap(),
-            expn_info_shorthands: FxHashMap(),
-            codemap: CachingCodemapView::new(tcx.sess.codemap()),
-            file_to_file_index,
-        };
+                for (dep_node_index, diagnostics) in self.current_diagnostics
+                                                        .borrow()
+                                                        .iter() {
+                    let pos = AbsoluteBytePos::new(encoder.position());
+                    // Let's make sure we get the expected type here:
+                    let diagnostics: &EncodedDiagnostics = diagnostics;
+                    let dep_node_index =
+                        SerializedDepNodeIndex::new(dep_node_index.index());
+                    encoder.encode_tagged(dep_node_index, diagnostics)?;
+                    diagnostics_index.push((dep_node_index, pos));
+                }
 
-        // Load everything into memory so we can write it out to the on-disk
-        // cache. The vast majority of cacheable query results should already
-        // be in memory, so this should be a cheap operation.
-        tcx.dep_graph.exec_cache_promotions(tcx);
+                diagnostics_index
+            };
 
-        // Encode query results
-        let mut query_result_index = EncodedQueryResultIndex::new();
+            let sorted_cnums = sorted_cnums_including_local_crate(tcx);
+            let prev_cnums: Vec<_> = sorted_cnums.iter().map(|&cnum| {
+                let crate_name = tcx.original_crate_name(cnum).as_str().to_string();
+                let crate_disambiguator = tcx.crate_disambiguator(cnum);
+                (cnum.as_u32(), crate_name, crate_disambiguator)
+            }).collect();
 
-        {
-            use ty::maps::queries::*;
-            let enc = &mut encoder;
-            let qri = &mut query_result_index;
+            // Encode the file footer
+            let footer_pos = encoder.position() as u64;
+            encoder.encode_tagged(TAG_FILE_FOOTER, &Footer {
+                file_index_to_stable_id,
+                prev_cnums,
+                query_result_index,
+                diagnostics_index,
+            })?;
 
-            // Encode TypeckTables
-            encode_query_results::<typeck_tables_of, _>(tcx, enc, qri)?;
-            encode_query_results::<optimized_mir, _>(tcx, enc, qri)?;
-            encode_query_results::<unsafety_check_result, _>(tcx, enc, qri)?;
-            encode_query_results::<borrowck, _>(tcx, enc, qri)?;
-            encode_query_results::<mir_borrowck, _>(tcx, enc, qri)?;
-            encode_query_results::<mir_const_qualif, _>(tcx, enc, qri)?;
-            encode_query_results::<def_symbol_name, _>(tcx, enc, qri)?;
-            encode_query_results::<const_is_rvalue_promotable_to_static, _>(tcx, enc, qri)?;
-            encode_query_results::<contains_extern_indicator, _>(tcx, enc, qri)?;
-            encode_query_results::<symbol_name, _>(tcx, enc, qri)?;
-            encode_query_results::<trans_fulfill_obligation, _>(tcx, enc, qri)?;
-            encode_query_results::<check_match, _>(tcx, enc, qri)?;
-        }
+            // Encode the position of the footer as the last 8 bytes of the
+            // file so we know where to look for it.
+            IntEncodedWithFixedSize(footer_pos).encode(encoder.encoder)?;
 
-        // Encode diagnostics
-        let diagnostics_index = {
-            let mut diagnostics_index = EncodedDiagnosticsIndex::new();
+            // DO NOT WRITE ANYTHING TO THE ENCODER AFTER THIS POINT! The address
+            // of the footer must be the last thing in the data stream.
 
-            for (dep_node_index, diagnostics) in self.current_diagnostics
-                                                     .borrow()
-                                                     .iter() {
-                let pos = AbsoluteBytePos::new(encoder.position());
-                // Let's make sure we get the expected type here:
-                let diagnostics: &EncodedDiagnostics = diagnostics;
-                let dep_node_index =
-                    SerializedDepNodeIndex::new(dep_node_index.index());
-                encoder.encode_tagged(dep_node_index, diagnostics)?;
-                diagnostics_index.push((dep_node_index, pos));
+            return Ok(());
+
+            fn sorted_cnums_including_local_crate(tcx: TyCtxt) -> Vec<CrateNum> {
+                let mut cnums = vec![LOCAL_CRATE];
+                cnums.extend_from_slice(&tcx.crates()[..]);
+                cnums.sort_unstable();
+                // Just to be sure...
+                cnums.dedup();
+                cnums
             }
-
-            diagnostics_index
-        };
-
-        let sorted_cnums = sorted_cnums_including_local_crate(tcx);
-        let prev_cnums: Vec<_> = sorted_cnums.iter().map(|&cnum| {
-            let crate_name = tcx.original_crate_name(cnum).as_str().to_string();
-            let crate_disambiguator = tcx.crate_disambiguator(cnum);
-            (cnum.as_u32(), crate_name, crate_disambiguator)
-        }).collect();
-
-        // Encode the file footer
-        let footer_pos = encoder.position() as u64;
-        encoder.encode_tagged(TAG_FILE_FOOTER, &Footer {
-            file_index_to_stable_id,
-            prev_cnums,
-            query_result_index,
-            diagnostics_index,
-        })?;
-
-        // Encode the position of the footer as the last 8 bytes of the
-        // file so we know where to look for it.
-        IntEncodedWithFixedSize(footer_pos).encode(encoder.encoder)?;
-
-        // DO NOT WRITE ANYTHING TO THE ENCODER AFTER THIS POINT! The address
-        // of the footer must be the last thing in the data stream.
-
-        return Ok(());
-
-        fn sorted_cnums_including_local_crate(tcx: TyCtxt) -> Vec<CrateNum> {
-            let mut cnums = vec![LOCAL_CRATE];
-            cnums.extend_from_slice(&tcx.crates()[..]);
-            cnums.sort_unstable();
-            // Just to be sure...
-            cnums.dedup();
-            cnums
-        }
+        })
     }
 
     /// Load a diagnostic emitted during the previous compilation session.
@@ -380,30 +380,30 @@ impl<'sess> OnDiskCache<'sess> {
                         prev_cnums: &[(u32, String, CrateDisambiguator)])
                         -> IndexVec<CrateNum, Option<CrateNum>>
     {
-        let _in_ignore = tcx.dep_graph.in_ignore();
+        tcx.dep_graph.with_ignore(|| {
+            let current_cnums = tcx.all_crate_nums(LOCAL_CRATE).iter().map(|&cnum| {
+                let crate_name = tcx.original_crate_name(cnum)
+                                    .as_str()
+                                    .to_string();
+                let crate_disambiguator = tcx.crate_disambiguator(cnum);
+                ((crate_name, crate_disambiguator), cnum)
+            }).collect::<FxHashMap<_,_>>();
 
-        let current_cnums = tcx.all_crate_nums(LOCAL_CRATE).iter().map(|&cnum| {
-            let crate_name = tcx.original_crate_name(cnum)
-                                .as_str()
-                                .to_string();
-            let crate_disambiguator = tcx.crate_disambiguator(cnum);
-            ((crate_name, crate_disambiguator), cnum)
-        }).collect::<FxHashMap<_,_>>();
+            let map_size = prev_cnums.iter()
+                                    .map(|&(cnum, ..)| cnum)
+                                    .max()
+                                    .unwrap_or(0) + 1;
+            let mut map = IndexVec::new();
+            map.resize(map_size as usize, None);
 
-        let map_size = prev_cnums.iter()
-                                 .map(|&(cnum, ..)| cnum)
-                                 .max()
-                                 .unwrap_or(0) + 1;
-        let mut map = IndexVec::new();
-        map.resize(map_size as usize, None);
+            for &(prev_cnum, ref crate_name, crate_disambiguator) in prev_cnums {
+                let key = (crate_name.clone(), crate_disambiguator);
+                map[CrateNum::from_u32(prev_cnum)] = current_cnums.get(&key).cloned();
+            }
 
-        for &(prev_cnum, ref crate_name, crate_disambiguator) in prev_cnums {
-            let key = (crate_name.clone(), crate_disambiguator);
-            map[CrateNum::from_u32(prev_cnum)] = current_cnums.get(&key).cloned();
-        }
-
-        map[LOCAL_CRATE] = Some(LOCAL_CRATE);
-        map
+            map[LOCAL_CRATE] = Some(LOCAL_CRATE);
+            map
+        })
     }
 }
 

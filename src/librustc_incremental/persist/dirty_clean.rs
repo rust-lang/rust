@@ -223,25 +223,26 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         return;
     }
 
-    let _ignore = tcx.dep_graph.in_ignore();
-    let krate = tcx.hir.krate();
-    let mut dirty_clean_visitor = DirtyCleanVisitor {
-        tcx,
-        checked_attrs: FxHashSet(),
-    };
-    krate.visit_all_item_likes(&mut dirty_clean_visitor);
+    tcx.dep_graph.with_ignore(|| {
+        let krate = tcx.hir.krate();
+        let mut dirty_clean_visitor = DirtyCleanVisitor {
+            tcx,
+            checked_attrs: FxHashSet(),
+        };
+        krate.visit_all_item_likes(&mut dirty_clean_visitor);
 
-    let mut all_attrs = FindAllAttrs {
-        tcx,
-        attr_names: vec![ATTR_DIRTY, ATTR_CLEAN],
-        found_attrs: vec![],
-    };
-    intravisit::walk_crate(&mut all_attrs, krate);
+        let mut all_attrs = FindAllAttrs {
+            tcx,
+            attr_names: vec![ATTR_DIRTY, ATTR_CLEAN],
+            found_attrs: vec![],
+        };
+        intravisit::walk_crate(&mut all_attrs, krate);
 
-    // Note that we cannot use the existing "unused attribute"-infrastructure
-    // here, since that is running before trans. This is also the reason why
-    // all trans-specific attributes are `Whitelisted` in syntax::feature_gate.
-    all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
+        // Note that we cannot use the existing "unused attribute"-infrastructure
+        // here, since that is running before trans. This is also the reason why
+        // all trans-specific attributes are `Whitelisted` in syntax::feature_gate.
+        all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
+    })
 }
 
 pub struct DirtyCleanVisitor<'a, 'tcx:'a> {

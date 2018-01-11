@@ -141,14 +141,22 @@ impl DepGraph {
         DepGraphQuery::new(&nodes[..], &edges[..])
     }
 
-    pub fn in_ignore<'graph>(&'graph self) -> Option<raii::IgnoreTask<'graph>> {
-        self.data.as_ref().map(|data| raii::IgnoreTask::new(&data.current))
+    pub fn assert_ignored(&self)
+    {
+        if let Some(ref data) = self.data {
+            match data.current.borrow().task_stack.last() {
+                Some(&OpenTask::Ignore) | None => {
+                    // ignored
+                }
+                _ => panic!("expected an ignore context")
+            }
+        }
     }
 
     pub fn with_ignore<OP,R>(&self, op: OP) -> R
         where OP: FnOnce() -> R
     {
-        let _task = self.in_ignore();
+        let _task = self.data.as_ref().map(|data| raii::IgnoreTask::new(&data.current));
         op()
     }
 

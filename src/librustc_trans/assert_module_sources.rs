@@ -41,16 +41,16 @@ const CFG: &'static str = "cfg";
 enum Disposition { Reused, Translated }
 
 pub(crate) fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _ignore = tcx.dep_graph.in_ignore();
+    tcx.dep_graph.with_ignore(|| {
+        if tcx.sess.opts.incremental.is_none() {
+            return;
+        }
 
-    if tcx.sess.opts.incremental.is_none() {
-        return;
-    }
-
-    let ams = AssertModuleSource { tcx };
-    for attr in &tcx.hir.krate().attrs {
-        ams.check_attr(attr);
-    }
+        let ams = AssertModuleSource { tcx };
+        for attr in &tcx.hir.krate().attrs {
+            ams.check_attr(attr);
+        }
+    })
 }
 
 struct AssertModuleSource<'a, 'tcx: 'a> {
