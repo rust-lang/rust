@@ -15,6 +15,7 @@
 
 #![feature(box_patterns)]
 #![feature(conservative_impl_trait)]
+#![feature(fs_read_write)]
 #![feature(i128_type)]
 #![feature(libc)]
 #![feature(proc_macro_internals)]
