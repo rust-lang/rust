@@ -416,7 +416,14 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             RegionKind::ReEarlyBound(..) |
             RegionKind::ReLateBound(..) |
             RegionKind::ReFree(..) |
-            RegionKind::ReStatic => return,
+            RegionKind::ReStatic => {
+                self.bccx
+                    .tcx
+                    .sess.delay_span_bug(borrow_span,
+                                         &format!("unexpected region for local data {:?}",
+                                                  loan_region));
+                return
+            }
 
             // These cannot exist in borrowck
             RegionKind::ReVar(..) |
@@ -430,9 +437,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         let body_id = self.bccx.body.value.hir_id.local_id;
 
         if self.bccx.region_scope_tree.containing_body(scope) != Some(body_id) {
-            // We are borrowing a local data longer than it's storage.
+            // We are borrowing local data longer than its storage.
             // This should result in other borrowck errors.
-            // FIXME: Ensure an error is generated
+            self.bccx.tcx.sess.delay_span_bug(borrow_span,
+                                              "borrowing local data longer than its storage");
             return;
         }
 
