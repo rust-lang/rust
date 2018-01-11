@@ -18,6 +18,7 @@ use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
+use rustc::ich::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::lang_items;
 use rustc::mir;
@@ -189,6 +190,12 @@ impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext
                           predicates: &ty::GenericPredicates<'tcx>)
                           -> Result<(), Self::Error> {
         ty_codec::encode_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
+        f.encode_opaque(&mut self.opaque)
     }
 }
 

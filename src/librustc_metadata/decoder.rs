@@ -330,6 +330,12 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
+        Fingerprint::decode_opaque(&mut self.opaque)
+    }
+}
+
 impl<'a, 'tcx, T: Decodable> SpecializedDecoder<mir::ClearCrossCrate<T>>
 for DecodeContext<'a, 'tcx> {
     #[inline]

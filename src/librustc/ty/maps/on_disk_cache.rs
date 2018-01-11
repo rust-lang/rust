@@ -14,7 +14,7 @@ use hir;
 use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId,
                   RESERVED_FOR_INCR_COMP_CACHE, LOCAL_CRATE};
 use hir::map::definitions::DefPathHash;
-use ich::CachingCodemapView;
+use ich::{CachingCodemapView, Fingerprint};
 use mir;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -660,6 +660,12 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<NodeId> for CacheDecoder<'a, 'tcx, 'x> {
     }
 }
 
+impl<'a, 'tcx, 'x> SpecializedDecoder<Fingerprint> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
+        Fingerprint::decode_opaque(&mut self.opaque)
+    }
+}
+
 impl<'a, 'tcx, 'x, T: Decodable> SpecializedDecoder<mir::ClearCrossCrate<T>>
 for CacheDecoder<'a, 'tcx, 'x> {
     #[inline]
@@ -876,6 +882,14 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<NodeId> for CacheEncoder<'enc, 'a, 't
     fn specialized_encode(&mut self, node_id: &NodeId) -> Result<(), Self::Error> {
         let hir_id = self.tcx.hir.node_to_hir_id(*node_id);
         hir_id.encode(self)
+    }
+}
+
+impl<'enc, 'a, 'tcx> SpecializedEncoder<Fingerprint>
+for CacheEncoder<'enc, 'a, 'tcx, opaque::Encoder<'enc>>
+{
+    fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
+        f.encode_opaque(&mut self.encoder)
     }
 }
 

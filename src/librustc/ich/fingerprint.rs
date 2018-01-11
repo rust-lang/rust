@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::mem;
 use rustc_data_structures::stable_hasher;
+use serialize;
+use serialize::opaque::{EncodeResult, Encoder, Decoder};
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy, RustcEncodable, RustcDecodable)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy)]
 pub struct Fingerprint(u64, u64);
 
 impl Fingerprint {
@@ -46,6 +49,21 @@ impl Fingerprint {
         format!("{:x}{:x}", self.0, self.1)
     }
 
+    pub fn encode_opaque(&self, encoder: &mut Encoder) -> EncodeResult {
+        let bytes: [u8; 16] = unsafe { mem::transmute([self.0.to_le(), self.1.to_le()]) };
+
+        encoder.emit_raw_bytes(&bytes)
+    }
+
+    pub fn decode_opaque<'a>(decoder: &mut Decoder<'a>) -> Result<Fingerprint, String> {
+        let mut bytes = [0; 16];
+
+        decoder.read_raw_bytes(&mut bytes)?;
+
+        let [l, r]: [u64; 2] = unsafe { mem::transmute(bytes) };
+
+        Ok(Fingerprint(u64::from_le(l), u64::from_le(r)))
+    }
 }
 
 impl ::std::fmt::Display for Fingerprint {
@@ -67,5 +85,21 @@ impl<CTX> stable_hasher::HashStable<CTX> for Fingerprint {
                                           _: &mut CTX,
                                           hasher: &mut stable_hasher::StableHasher<W>) {
         ::std::hash::Hash::hash(self, hasher);
+    }
+}
+
+impl serialize::UseSpecializedEncodable for Fingerprint { }
+
+impl serialize::UseSpecializedDecodable for Fingerprint { }
+
+impl<'a> serialize::SpecializedEncoder<Fingerprint> for serialize::opaque::Encoder<'a> {
+    fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
+        f.encode_opaque(self)
+    }
+}
+
+impl<'a> serialize::SpecializedDecoder<Fingerprint> for serialize::opaque::Decoder<'a> {
+    fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
+        Fingerprint::decode_opaque(self)
     }
 }
