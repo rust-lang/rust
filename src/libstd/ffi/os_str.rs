@@ -84,7 +84,7 @@ pub struct OsString {
 /// This type represents a borrowed reference to a string in the operating system's preferred
 /// representation.
 ///
-/// `OsStr` is to [`OsString`] as [`String`] is to [`&str`]: the former in each pair are borrowed
+/// `OsStr` is to [`OsString`] as [`&str`] is to [`String`]: the former in each pair are borrowed
 /// references; the latter are owned strings.
 ///
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
