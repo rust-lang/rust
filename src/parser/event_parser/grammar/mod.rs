@@ -41,7 +41,15 @@ fn node<F: FnOnce(&mut Parser)>(p: &mut Parser, node_kind: SyntaxKind, rest: F) 
 }
 
 fn many<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
-    while f(p) { }
+    loop {
+        let pos = p.pos();
+        if !f(p) {
+            return
+        }
+        if pos == p.pos() {
+            panic!("Infinite loop in parser")
+        }
+    }
 }
 
 fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, end: SyntaxKind, f: F) {

@@ -44,6 +44,10 @@ impl<'t> Parser<'t> {
         }
     }
 
+    pub(crate) fn pos(&self) -> usize {
+        self.pos
+    }
+
     pub(crate) fn into_events(self) -> Vec<Event> {
         assert!(self.curly_limit.is_none());
         assert!(self.current() == EOF);

@@ -1,22 +1,26 @@
 use super::*;
 
+enum AttrKind {
+    Inner, Outer
+}
+
 pub(super) fn inner_attributes(p: &mut Parser) {
-    many(p, |p| attribute(p, true))
+    many(p, |p| attribute(p, AttrKind::Inner))
 }
 
-pub(super) fn outer_attributes(_: &mut Parser) {
+pub(super) fn outer_attributes(p: &mut Parser) {
+    many(p, |p| attribute(p, AttrKind::Outer))
 }
 
 
-fn attribute(p: &mut Parser, inner: bool) -> bool {
+fn attribute(p: &mut Parser, kind: AttrKind) -> bool {
     fn attr_tail(p: &mut Parser) {
         meta_item(p) && p.expect(R_BRACK);
     }
 
-    if inner {
-        node_if(p, [POUND, EXCL, L_BRACK], ATTR, attr_tail)
-    } else {
-        node_if(p, [POUND, L_BRACK], ATTR, attr_tail)
+    match kind {
+        AttrKind::Inner => node_if(p, [POUND, EXCL, L_BRACK], ATTR, attr_tail),
+        AttrKind::Outer => node_if(p, [POUND, L_BRACK], ATTR, attr_tail),
     }
 }
 
