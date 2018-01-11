@@ -148,6 +148,13 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
                         return;
                     }
                 }
+                for subst in substs {
+                    if let Some(subst) = subst.as_type() {
+                        if let ty::TyParam(_) = subst.sty {
+                            return;
+                        }
+                    }
+                }
             },
             _ => (),
         }
