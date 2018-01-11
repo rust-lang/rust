@@ -1046,7 +1046,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // calculated the lint levels for all AST nodes.
     for (_id, lints) in cx.buffered.map {
         for early_lint in lints {
-            span_bug!(early_lint.span, "failed to process bufferd lint here");
+            span_bug!(early_lint.span, "failed to process buffered lint here");
         }
     }
 }
