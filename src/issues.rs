@@ -16,8 +16,8 @@ use std::fmt;
 
 pub use config::ReportTactic;
 
-const TO_DO_CHARS: &[char] = &['T', 'O', 'D', 'O'];
-const FIX_ME_CHARS: &[char] = &['F', 'I', 'X', 'M', 'E'];
+const TO_DO_CHARS: &[char] = &['t', 'o', 'd', 'o'];
+const FIX_ME_CHARS: &[char] = &['f', 'i', 'x', 'm', 'e'];
 
 // Enabled implementation detail is here because it is
 // irrelevant outside the issues module
@@ -127,44 +127,45 @@ impl BadIssueSeeker {
     }
 
     fn inspect_issue(&mut self, c: char, mut todo_idx: usize, mut fixme_idx: usize) -> Seeking {
-        // FIXME: Should we also check for lower case characters?
-        if self.report_todo.is_enabled() && c == TO_DO_CHARS[todo_idx] {
-            todo_idx += 1;
-            if todo_idx == TO_DO_CHARS.len() {
-                return Seeking::Number {
-                    issue: Issue {
-                        issue_type: IssueType::Todo,
-                        missing_number: if let ReportTactic::Unnumbered = self.report_todo {
-                            true
-                        } else {
-                            false
+        if let Some(lower_case_c) = c.to_lowercase().next() {
+            if self.report_todo.is_enabled() && lower_case_c == TO_DO_CHARS[todo_idx] {
+                todo_idx += 1;
+                if todo_idx == TO_DO_CHARS.len() {
+                    return Seeking::Number {
+                        issue: Issue {
+                            issue_type: IssueType::Todo,
+                            missing_number: if let ReportTactic::Unnumbered = self.report_todo {
+                                true
+                            } else {
+                                false
+                            },
                         },
-                    },
-                    part: NumberPart::OpenParen,
-                };
-            }
-            fixme_idx = 0;
-        } else if self.report_fixme.is_enabled() && c == FIX_ME_CHARS[fixme_idx] {
-            // Exploit the fact that the character sets of todo and fixme
-            // are disjoint by adding else.
-            fixme_idx += 1;
-            if fixme_idx == FIX_ME_CHARS.len() {
-                return Seeking::Number {
-                    issue: Issue {
-                        issue_type: IssueType::Fixme,
-                        missing_number: if let ReportTactic::Unnumbered = self.report_fixme {
-                            true
-                        } else {
-                            false
+                        part: NumberPart::OpenParen,
+                    };
+                }
+                fixme_idx = 0;
+            } else if self.report_fixme.is_enabled() && lower_case_c == FIX_ME_CHARS[fixme_idx] {
+                // Exploit the fact that the character sets of todo and fixme
+                // are disjoint by adding else.
+                fixme_idx += 1;
+                if fixme_idx == FIX_ME_CHARS.len() {
+                    return Seeking::Number {
+                        issue: Issue {
+                            issue_type: IssueType::Fixme,
+                            missing_number: if let ReportTactic::Unnumbered = self.report_fixme {
+                                true
+                            } else {
+                                false
+                            },
                         },
-                    },
-                    part: NumberPart::OpenParen,
-                };
+                        part: NumberPart::OpenParen,
+                    };
+                }
+                todo_idx = 0;
+            } else {
+                todo_idx = 0;
+                fixme_idx = 0;
             }
-            todo_idx = 0;
-        } else {
-            todo_idx = 0;
-            fixme_idx = 0;
         }
 
         Seeking::Issue {
@@ -268,8 +269,20 @@ fn find_issue() {
         ReportTactic::Always,
     ));
 
+    assert!(!is_bad_issue(
+        "Todo: mixed case\n",
+        ReportTactic::Never,
+        ReportTactic::Always,
+    ));
+
     assert!(is_bad_issue(
         "This is a FIXME(#1)\n",
+        ReportTactic::Never,
+        ReportTactic::Always,
+    ));
+
+    assert!(is_bad_issue(
+        "This is a FixMe(#1) mixed case\n",
         ReportTactic::Never,
         ReportTactic::Always,
     ));
