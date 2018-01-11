@@ -251,6 +251,21 @@ impl<A: Step> Iterator for ops::Range<A> {
         self.start = self.end.clone();
         None
     }
+
+    #[inline]
+    fn last(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn min(mut self) -> Option<A> {
+        self.next()
+    }
+
+    #[inline]
+    fn max(mut self) -> Option<A> {
+        self.next_back()
+    }
 }
 
 // These macros generate `ExactSizeIterator` impls for various range types.
@@ -366,6 +381,21 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         self.start.replace_one();
         self.end.replace_zero();
         None
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<A> {
+        self.next_back()
+    }
+
+    #[inline]
+    fn min(mut self) -> Option<A> {
+        self.next()
+    }
+
+    #[inline]
+    fn max(mut self) -> Option<A> {
+        self.next_back()
     }
 }
 

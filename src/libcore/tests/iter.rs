@@ -1353,6 +1353,51 @@ fn test_range_step() {
 }
 
 #[test]
+fn test_range_last_max() {
+    assert_eq!((0..20).last(), Some(19));
+    assert_eq!((-20..0).last(), Some(-1));
+    assert_eq!((5..5).last(), None);
+
+    assert_eq!((0..20).max(), Some(19));
+    assert_eq!((-20..0).max(), Some(-1));
+    assert_eq!((5..5).max(), None);
+}
+
+#[test]
+fn test_range_inclusive_last_max() {
+    assert_eq!((0..=20).last(), Some(20));
+    assert_eq!((-20..=0).last(), Some(0));
+    assert_eq!((5..=5).last(), Some(5));
+    let mut r = 10..=10;
+    r.next();
+    assert_eq!(r.last(), None);
+
+    assert_eq!((0..=20).max(), Some(20));
+    assert_eq!((-20..=0).max(), Some(0));
+    assert_eq!((5..=5).max(), Some(5));
+    let mut r = 10..=10;
+    r.next();
+    assert_eq!(r.max(), None);
+}
+
+#[test]
+fn test_range_min() {
+    assert_eq!((0..20).min(), Some(0));
+    assert_eq!((-20..0).min(), Some(-20));
+    assert_eq!((5..5).min(), None);
+}
+
+#[test]
+fn test_range_inclusive_min() {
+    assert_eq!((0..=20).min(), Some(0));
+    assert_eq!((-20..=0).min(), Some(-20));
+    assert_eq!((5..=5).min(), Some(5));
+    let mut r = 10..=10;
+    r.next();
+    assert_eq!(r.min(), None);
+}
+
+#[test]
 fn test_repeat() {
     let mut it = repeat(42);
     assert_eq!(it.next(), Some(42));
