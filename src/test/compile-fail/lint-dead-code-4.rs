@@ -22,8 +22,8 @@ fn field_read(f: Foo) -> usize {
 }
 
 enum XYZ {
-    X, //~ ERROR variant is never used
-    Y { //~ ERROR variant is never used
+    X, //~ ERROR variant is never constructed
+    Y { //~ ERROR variant is never constructed
         a: String,
         b: i32,
         c: i32,
@@ -43,13 +43,13 @@ enum ABC { //~ ERROR enum is never used
 
 // ensure struct variants get warning for their fields
 enum IJK {
-    I, //~ ERROR variant is never used
+    I, //~ ERROR variant is never constructed
     J {
         a: String,
         b: i32, //~ ERROR field is never used
         c: i32, //~ ERROR field is never used
     },
-    K //~ ERROR variant is never used
+    K //~ ERROR variant is never constructed
 
 }
 

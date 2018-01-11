@@ -143,8 +143,7 @@ use std::path::{PathBuf, Path};
 use std::process::{self, Command};
 use std::slice;
 
-use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime,
-                   BuildExpectation};
+use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
 
 use util::{exe, libdir, OutputFolder, CiEnv};
 
@@ -190,6 +189,7 @@ mod job {
 pub use config::Config;
 use flags::Subcommand;
 use cache::{Interned, INTERNER};
+use toolstate::ToolState;
 
 /// A structure representing a Rust compiler.
 ///
@@ -222,6 +222,7 @@ pub struct Build {
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
     rls_info: channel::GitInfo,
+    rustfmt_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
     verbosity: usize,
@@ -304,6 +305,7 @@ impl Build {
         let rust_info = channel::GitInfo::new(&config, &src);
         let cargo_info = channel::GitInfo::new(&config, &src.join("src/tools/cargo"));
         let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
+        let rustfmt_info = channel::GitInfo::new(&config, &src.join("src/tools/rustfmt"));
 
         Build {
             initial_rustc: config.initial_rustc.clone(),
@@ -323,6 +325,7 @@ impl Build {
             rust_info,
             cargo_info,
             rls_info,
+            rustfmt_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             ar: HashMap::new(),
@@ -565,31 +568,24 @@ impl Build {
             .join(libdir(&self.config.build))
     }
 
-    /// Runs a command, printing out nice contextual information if its build
-    /// status is not the expected one
-    fn run_expecting(&self, cmd: &mut Command, expect: BuildExpectation) {
-        self.verbose(&format!("running: {:?}", cmd));
-        run_silent(cmd, expect)
-    }
-
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
-        self.run_expecting(cmd, BuildExpectation::None)
+        self.verbose(&format!("running: {:?}", cmd));
+        run_silent(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
         self.verbose(&format!("running: {:?}", cmd));
-        run_suppressed(cmd, BuildExpectation::None)
+        run_suppressed(cmd)
     }
 
-    /// Runs a command, printing out nice contextual information if its build
-    /// status is not the expected one.
-    /// Exits if the command failed to execute at all, otherwise returns whether
-    /// the expectation was met
-    fn try_run(&self, cmd: &mut Command, expect: BuildExpectation) -> bool {
+    /// Runs a command, printing out nice contextual information if it fails.
+    /// Exits if the command failed to execute at all, otherwise returns its
+    /// `status.success()`.
+    fn try_run(&self, cmd: &mut Command) -> bool {
         self.verbose(&format!("running: {:?}", cmd));
-        try_run_silent(cmd, expect)
+        try_run_silent(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -597,7 +593,7 @@ impl Build {
     /// `status.success()`.
     fn try_run_quiet(&self, cmd: &mut Command) -> bool {
         self.verbose(&format!("running: {:?}", cmd));
-        try_run_suppressed(cmd, BuildExpectation::None)
+        try_run_suppressed(cmd)
     }
 
     pub fn is_verbose(&self) -> bool {
@@ -722,6 +718,11 @@ impl Build {
         self.config.python.as_ref().unwrap()
     }
 
+    /// Temporary directory that extended error information is emitted to.
+    fn extended_error_dir(&self) -> PathBuf {
+        self.out.join("tmp/extended-error-metadata")
+    }
+
     /// Tests whether the `compiler` compiling for `target` should be forced to
     /// use a stage1 compiler instead.
     ///
@@ -814,6 +815,11 @@ impl Build {
         self.package_vers(&self.release_num("rls"))
     }
 
+    /// Returns the value of `package_vers` above for rustfmt
+    fn rustfmt_package_vers(&self) -> String {
+        self.package_vers(&self.release_num("rustfmt"))
+    }
+
     /// Returns the `version` string associated with this compiler for Rust
     /// itself.
     ///
@@ -863,6 +869,30 @@ impl Build {
             Some(OutputFolder::new(name().into()))
         } else {
             None
+        }
+    }
+
+    /// Updates the actual toolstate of a tool.
+    ///
+    /// The toolstates are saved to the file specified by the key
+    /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
+    /// done. The file is updated immediately after this function completes.
+    pub fn save_toolstate(&self, tool: &str, state: ToolState) {
+        use std::io::{Seek, SeekFrom};
+
+        if let Some(ref path) = self.config.save_toolstates {
+            let mut file = t!(fs::OpenOptions::new()
+                .create(true)
+                .read(true)
+                .write(true)
+                .open(path));
+
+            let mut current_toolstates: HashMap<Box<str>, ToolState> =
+                serde_json::from_reader(&mut file).unwrap_or_default();
+            current_toolstates.insert(tool.into(), state);
+            t!(file.seek(SeekFrom::Start(0)));
+            t!(file.set_len(0));
+            t!(serde_json::to_writer(file, &current_toolstates));
         }
     }
 

@@ -81,7 +81,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
     unsafe extern fn run_dtors(mut ptr: *mut u8) {
         while !ptr.is_null() {
             let list: Box<List> = Box::from_raw(ptr as *mut List);
-            for &(ptr, dtor) in list.iter() {
+            for (ptr, dtor) in list.into_iter() {
                 dtor(ptr);
             }
             ptr = DTORS.get();

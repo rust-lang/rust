@@ -261,9 +261,10 @@ impl<'a> Builder<'a> {
                 doc::Reference, doc::Rustdoc, doc::CargoBook),
             Kind::Dist => describe!(dist::Docs, dist::Mingw, dist::Rustc, dist::DebuggerScripts,
                 dist::Std, dist::Analysis, dist::Src, dist::PlainSourceTarball, dist::Cargo,
-                dist::Rls, dist::Extended, dist::HashSign, dist::DontDistWithMiriEnabled),
+                dist::Rls, dist::Rustfmt, dist::Extended, dist::HashSign,
+                dist::DontDistWithMiriEnabled),
             Kind::Install => describe!(install::Docs, install::Std, install::Cargo, install::Rls,
-                install::Analysis, install::Src, install::Rustc),
+                install::Rustfmt, install::Analysis, install::Src, install::Rustc),
         }
     }
 
@@ -418,7 +419,8 @@ impl<'a> Builder<'a> {
            .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
            .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
            .env("RUSTDOC_REAL", self.rustdoc(host))
-           .env("RUSTDOC_CRATE_VERSION", self.build.rust_version());
+           .env("RUSTDOC_CRATE_VERSION", self.build.rust_version())
+           .env("RUSTC_BOOTSTRAP", "1");
         if let Some(linker) = self.build.linker(host) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
@@ -482,8 +484,8 @@ impl<'a> Builder<'a> {
              } else {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
              })
-             .env("TEST_MIRI", self.config.test_miri.to_string());
-
+             .env("TEST_MIRI", self.config.test_miri.to_string())
+             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
         if let Some(n) = self.config.rust_codegen_units {
             cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
         }
@@ -498,9 +500,10 @@ impl<'a> Builder<'a> {
         if mode != Mode::Tool {
             // Tools don't get debuginfo right now, e.g. cargo and rls don't
             // get compiled with debuginfo.
-            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-                 .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
-                 .env("RUSTC_FORCE_UNSTABLE", "1");
+            // Adding debuginfo increases their sizes by a factor of 3-4.
+            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
+            cargo.env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
+            cargo.env("RUSTC_FORCE_UNSTABLE", "1");
 
             // Currently the compiler depends on crates from crates.io, and
             // then other crates can depend on the compiler (e.g. proc-macro
@@ -623,10 +626,8 @@ impl<'a> Builder<'a> {
                 cargo.arg("--release");
             }
 
-            if mode != Mode::Libstd && // FIXME(#45320)
-               self.config.rust_codegen_units.is_none() &&
-               self.build.is_rust_llvm(compiler.host) &&
-               !target.contains("mips") // FIXME(#45654)
+            if self.config.rust_codegen_units.is_none() &&
+               self.build.is_rust_llvm(compiler.host)
             {
                 cargo.env("RUSTC_THINLTO", "1");
             }

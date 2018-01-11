@@ -8,21 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // pretty-expanded FIXME #23616
 
-#![feature(libc)]
+pub struct Fd(u32);
 
-extern crate libc;
-use libc::c_int;
-
-pub struct Fd(c_int);
+fn foo(a: u32) {}
 
 impl Drop for Fd {
     fn drop(&mut self) {
         unsafe {
             let Fd(s) = *self;
-            libc::close(s);
+            foo(s);
         }
     }
 }

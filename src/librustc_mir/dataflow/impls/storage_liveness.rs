@@ -36,7 +36,7 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
         self.mir.local_decls.len()
     }
 
-    fn start_block_effect(&self, _sets: &mut BlockSets<Local>) {
+    fn start_block_effect(&self, _sets: &mut IdxSet<Local>) {
         // Nothing is live on function entry
     }
 
@@ -62,7 +62,7 @@ impl<'a, 'tcx> BitDenotation for MaybeStorageLive<'a, 'tcx> {
                              _in_out: &mut IdxSet<Local>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
-                             _dest_lval: &mir::Lvalue) {
+                             _dest_place: &mir::Place) {
         // Nothing to do when a call returns successfully
     }
 }
@@ -74,7 +74,7 @@ impl<'a, 'tcx> BitwiseOperator for MaybeStorageLive<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> DataflowOperator for MaybeStorageLive<'a, 'tcx> {
+impl<'a, 'tcx> InitialFlow for MaybeStorageLive<'a, 'tcx> {
     #[inline]
     fn bottom_value() -> bool {
         false // bottom = dead

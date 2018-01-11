@@ -120,15 +120,33 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         .pat_adjustments_mut()
                         .insert(pat.hir_id, pat_adjustments);
                 } else {
+                    let mut ref_sp = pat.span;
+                    let mut id = pat.id;
+                    loop {  // make span include all enclosing `&` to avoid confusing diag output
+                        id = tcx.hir.get_parent_node(id);
+                        let node = tcx.hir.find(id);
+                        if let Some(hir::map::NodePat(pat)) = node {
+                            if let hir::PatKind::Ref(..) = pat.node {
+                                ref_sp = pat.span;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    let sp = ref_sp.to(pat.span);
                     let mut err = feature_gate::feature_err(
                         &tcx.sess.parse_sess,
                         "match_default_bindings",
-                        pat.span,
+                        sp,
                         feature_gate::GateIssue::Language,
                         "non-reference pattern used to match a reference",
                     );
-                    if let Ok(snippet) = tcx.sess.codemap().span_to_snippet(pat.span) {
-                        err.span_suggestion(pat.span, "consider using", format!("&{}", &snippet));
+                    if let Ok(snippet) = tcx.sess.codemap().span_to_snippet(sp) {
+                        err.span_suggestion(sp,
+                                            "consider using a reference",
+                                            format!("&{}", &snippet));
                     }
                     err.emit();
                 }
@@ -471,7 +489,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // 2. Things go horribly wrong if we use subtype. The reason for
         // THIS is a fairly subtle case involving bound regions. See the
-        // `givens` field in `region_inference`, as well as the test
+        // `givens` field in `region_constraints`, as well as the test
         // `regions-relate-bound-regions-on-closures-to-inference-variables.rs`,
         // for details. Short version is that we must sometimes detect
         // relationships between specific region variables and regions
@@ -782,7 +800,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.id);
         // Replace constructor type with constructed type for tuple struct patterns.
         let pat_ty = pat_ty.fn_sig(tcx).output();
-        let pat_ty = tcx.no_late_bound_regions(&pat_ty).expect("expected fn type");
+        let pat_ty = pat_ty.no_late_bound_regions().expect("expected fn type");
 
         self.demand_eqtype(pat.span, expected, pat_ty);
 

@@ -12,7 +12,6 @@ fn main() {
     match Some(()) {
         None => { },
         option if option.take().is_none() => {}, //~ ERROR E0301
-        //~| NOTE borrowed mutably in pattern guard
         Some(_) => { }
     }
 }

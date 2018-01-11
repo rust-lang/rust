@@ -3,13 +3,13 @@ error: expected one of `(`, `const`, `default`, `extern`, `fn`, `type`, or `unsa
    |
 12 |     pub
    |        - expected one of 7 possible tokens here
-13 | }
+13 | } //~ ERROR expected one of
    | ^ unexpected token
 
 error[E0412]: cannot find type `S` in this scope
   --> $DIR/issue-41155.rs:11:6
    |
-11 | impl S {
+11 | impl S { //~ ERROR cannot find type
    |      ^ not found in this scope
 
 error[E0601]: main function not found

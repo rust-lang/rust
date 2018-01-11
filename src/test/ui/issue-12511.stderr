@@ -1,0 +1,20 @@
+error[E0391]: unsupported cyclic reference between types/traits detected
+  --> $DIR/issue-12511.rs:14:1
+   |
+14 | trait t2 : t1 {
+   | ^^^^^^^^^^^^^ cyclic reference
+   |
+note: the cycle begins when computing the supertraits of `t1`...
+  --> $DIR/issue-12511.rs:11:1
+   |
+11 | trait t1 : t2 {
+   | ^^^^^^^^^^^^^
+note: ...which then requires computing the supertraits of `t2`...
+  --> $DIR/issue-12511.rs:11:1
+   |
+11 | trait t1 : t2 {
+   | ^^^^^^^^^^^^^
+   = note: ...which then again requires computing the supertraits of `t1`, completing the cycle.
+
+error: aborting due to previous error
+

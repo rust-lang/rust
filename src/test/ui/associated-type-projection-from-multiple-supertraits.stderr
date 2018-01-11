@@ -1,0 +1,44 @@
+error[E0221]: ambiguous associated type `Color` in bounds of `C`
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:29:32
+   |
+15 |     type Color;
+   |     ----------- ambiguous `Color` from `Vehicle`
+...
+21 |     type Color;
+   |     ----------- ambiguous `Color` from `Box`
+...
+29 | fn dent<C:BoxCar>(c: C, color: C::Color) {
+   |                                ^^^^^^^^ ambiguous associated type `Color`
+
+error[E0221]: ambiguous associated type `Color` in bounds of `BoxCar`
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:33:33
+   |
+15 |     type Color;
+   |     ----------- ambiguous `Color` from `Vehicle`
+...
+21 |     type Color;
+   |     ----------- ambiguous `Color` from `Box`
+...
+33 | fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
+   |                                 ^^^^^^^^^^^ ambiguous associated type `Color`
+
+error[E0191]: the value of the associated type `Color` (from the trait `Vehicle`) must be specified
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:33:26
+   |
+33 | fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
+   |                          ^^^^^^^^^^^^^^^^^^^ missing associated type `Color` value
+
+error[E0221]: ambiguous associated type `Color` in bounds of `C`
+  --> $DIR/associated-type-projection-from-multiple-supertraits.rs:38:29
+   |
+15 |     type Color;
+   |     ----------- ambiguous `Color` from `Vehicle`
+...
+21 |     type Color;
+   |     ----------- ambiguous `Color` from `Box`
+...
+38 | fn paint<C:BoxCar>(c: C, d: C::Color) {
+   |                             ^^^^^^^^ ambiguous associated type `Color`
+
+error: aborting due to 4 previous errors
+

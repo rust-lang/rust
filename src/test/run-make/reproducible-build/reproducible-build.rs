@@ -124,5 +124,3 @@ fn main() {
 
     TupleStruct(1, 2, 3, 4).bar();
 }
-
-

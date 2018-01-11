@@ -15,13 +15,9 @@ trait Foo {
 }
 
 pub impl Bar {} //~ ERROR E0449
-                //~| NOTE `pub` not needed here
-                //~| NOTE place qualifiers on individual impl items instead
 
 pub impl Foo for Bar { //~ ERROR E0449
-                       //~| NOTE `pub` not needed here
     pub fn foo() {} //~ ERROR E0449
-                    //~| NOTE `pub` not needed here
 }
 
 fn main() {

@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use env;
 use alloc::boxed::FnBox;
-use libc;
+use env;
 use sync::atomic::{self, Ordering};
 use sys::stack_overflow;
 use sys::thread as imp;
 
-pub unsafe fn start_thread(main: *mut libc::c_void) {
+#[allow(dead_code)]
+pub unsafe fn start_thread(main: *mut u8) {
     // Next, set up our stack overflow handler which may get triggered if we run
     // out of stack.
     let _handler = stack_overflow::Handler::new();

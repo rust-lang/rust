@@ -21,7 +21,7 @@ use ptr::P;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use symbol::keywords;
 use syntax::parse::parse_stream_from_source_str;
-use syntax_pos::{self, Span};
+use syntax_pos::{self, Span, FileName};
 use tokenstream::{TokenStream, TokenTree};
 use tokenstream;
 
@@ -222,8 +222,8 @@ impl Token {
             BinOp(Or) | OrOr                  | // closure
             BinOp(And)                        | // reference
             AndAnd                            | // double reference
+            // DotDotDot is no longer supported, but we need some way to display the error
             DotDot | DotDotDot | DotDotEq     | // range notation
-                // SNAP remove DotDotDot
             Lt | BinOp(Shl)                   | // associated path
             ModSep                            | // global path
             Pound                             => true, // expression attributes
@@ -251,7 +251,7 @@ impl Token {
             Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
             Interpolated(ref nt) => match nt.0 {
-                NtIdent(..) | NtTy(..) | NtPath(..) => true,
+                NtIdent(..) | NtTy(..) | NtPath(..) | NtLifetime(..) => true,
                 _ => false,
             },
             _ => false,
@@ -314,12 +314,24 @@ impl Token {
         false
     }
 
+    /// Returns a lifetime with the span and a dummy id if it is a lifetime,
+    /// or the original lifetime if it is an interpolated lifetime, ignoring
+    /// the span.
+    pub fn lifetime(&self, span: Span) -> Option<ast::Lifetime> {
+        match *self {
+            Lifetime(ident) =>
+                Some(ast::Lifetime { ident: ident, span: span, id: ast::DUMMY_NODE_ID }),
+            Interpolated(ref nt) => match nt.0 {
+                NtLifetime(lifetime) => Some(lifetime),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     /// Returns `true` if the token is a lifetime.
     pub fn is_lifetime(&self) -> bool {
-        match *self {
-            Lifetime(..) => true,
-            _            => false,
-        }
+        self.lifetime(syntax_pos::DUMMY_SP).is_some()
     }
 
     /// Returns `true` if the token is either the `mut` or `const` keyword.
@@ -347,6 +359,8 @@ impl Token {
             Some(id) => id.name == keywords::Super.name() ||
                         id.name == keywords::SelfValue.name() ||
                         id.name == keywords::SelfType.name() ||
+                        id.name == keywords::Extern.name() ||
+                        id.name == keywords::Crate.name() ||
                         id.name == keywords::DollarCrate.name(),
             None => false,
         }
@@ -485,6 +499,10 @@ impl Token {
                 let token = Token::Ident(ident.node);
                 tokens = Some(TokenTree::Token(ident.span, token).into());
             }
+            Nonterminal::NtLifetime(lifetime) => {
+                let token = Token::Lifetime(lifetime.ident);
+                tokens = Some(TokenTree::Token(lifetime.span, token).into());
+            }
             Nonterminal::NtTT(ref tt) => {
                 tokens = Some(tt.clone().into());
             }
@@ -494,9 +512,8 @@ impl Token {
         tokens.unwrap_or_else(|| {
             nt.1.force(|| {
                 // FIXME(jseyfried): Avoid this pretty-print + reparse hack
-                let name = "<macro expansion>".to_owned();
                 let source = pprust::token_to_string(self);
-                parse_stream_from_source_str(name, source, sess, Some(span))
+                parse_stream_from_source_str(FileName::MacroExpansion, source, sess, Some(span))
             })
         })
     }
@@ -524,6 +541,7 @@ pub enum Nonterminal {
     NtGenerics(ast::Generics),
     NtWhereClause(ast::WhereClause),
     NtArg(ast::Arg),
+    NtLifetime(ast::Lifetime),
 }
 
 impl fmt::Debug for Nonterminal {
@@ -546,6 +564,7 @@ impl fmt::Debug for Nonterminal {
             NtWhereClause(..) => f.pad("NtWhereClause(..)"),
             NtArg(..) => f.pad("NtArg(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
+            NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
     }
 }
@@ -619,10 +638,7 @@ fn prepend_attrs(sess: &ParseSess,
                  span: syntax_pos::Span)
     -> Option<tokenstream::TokenStream>
 {
-    let tokens = match tokens {
-        Some(tokens) => tokens,
-        None => return None,
-    };
+    let tokens = tokens?;
     if attrs.len() == 0 {
         return Some(tokens.clone())
     }
@@ -631,7 +647,7 @@ fn prepend_attrs(sess: &ParseSess,
         assert_eq!(attr.style, ast::AttrStyle::Outer,
                    "inner attributes should prevent cached tokens from existing");
         // FIXME: Avoid this pretty-print + reparse hack as bove
-        let name = "<macro expansion>".to_owned();
+        let name = FileName::MacroExpansion;
         let source = pprust::attr_to_string(attr);
         let stream = parse_stream_from_source_str(name, source, sess, Some(span));
         builder.push(stream);

@@ -10,7 +10,6 @@
 
 // aux-build:static-methods-crate.rs
 
-
 extern crate static_methods_crate;
 
 use static_methods_crate::read;

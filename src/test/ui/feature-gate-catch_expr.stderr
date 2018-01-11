@@ -1,0 +1,14 @@
+error: `catch` expression is experimental (see issue #31436)
+  --> $DIR/feature-gate-catch_expr.rs:12:24
+   |
+12 |       let catch_result = do catch { //~ ERROR `catch` expression is experimental
+   |  ________________________^
+13 | |         let x = 5;
+14 | |         x
+15 | |     };
+   | |_____^
+   |
+   = help: add #![feature(catch_expr)] to the crate attributes to enable
+
+error: aborting due to previous error
+

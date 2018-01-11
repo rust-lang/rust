@@ -12,6 +12,5 @@ fn main () {
     loop {
         break 'a;
         //~^ ERROR E0426
-        //~| NOTE undeclared label `'a`
     }
 }

@@ -726,13 +726,16 @@ define_print! {
                     }
                 }
                 ty::ReVar(region_vid) if cx.identify_regions => {
-                    write!(f, "'{}rv", region_vid.index)
+                    write!(f, "'{}rv", region_vid.index())
                 }
                 ty::ReScope(_) |
                 ty::ReVar(_) |
                 ty::ReErased => Ok(()),
                 ty::ReStatic => write!(f, "'static"),
                 ty::ReEmpty => write!(f, "'<empty>"),
+
+                // The user should never encounter these in unsubstituted form.
+                ty::ReClosureBound(vid) => write!(f, "{:?}", vid),
             }
         }
         debug {
@@ -741,6 +744,11 @@ define_print! {
                     write!(f, "ReEarlyBound({}, {})",
                            data.index,
                            data.name)
+                }
+
+                ty::ReClosureBound(ref vid) => {
+                    write!(f, "ReClosureBound({:?})",
+                           vid)
                 }
 
                 ty::ReLateBound(binder_id, ref bound_region) => {
@@ -850,20 +858,24 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "'_#{}r", self.index)
+        write!(f, "'_#{}r", self.index())
     }
 }
 
 define_print! {
     () ty::InferTy, (self, f, cx) {
         display {
-            match *self {
-                ty::TyVar(_) => write!(f, "_"),
-                ty::IntVar(_) => write!(f, "{}", "{integer}"),
-                ty::FloatVar(_) => write!(f, "{}", "{float}"),
-                ty::FreshTy(v) => write!(f, "FreshTy({})", v),
-                ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
-                ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
+            if cx.is_verbose {
+                print!(f, cx, print_debug(self))
+            } else {
+                match *self {
+                    ty::TyVar(_) => write!(f, "_"),
+                    ty::IntVar(_) => write!(f, "{}", "{integer}"),
+                    ty::FloatVar(_) => write!(f, "{}", "{float}"),
+                    ty::FreshTy(v) => write!(f, "FreshTy({})", v),
+                    ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
+                    ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
+                }
             }
         }
         debug {
@@ -1015,6 +1027,10 @@ define_print! {
                 TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
                 TyProjection(ref data) => data.print(f, cx),
                 TyAnon(def_id, substs) => {
+                    if cx.is_verbose {
+                        return write!(f, "TyAnon({:?}, {:?})", def_id, substs);
+                    }
+
                     ty::tls::with(|tcx| {
                         // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                         // by looking up the projections associated with the def_id.
@@ -1257,7 +1273,7 @@ define_print! {
                     ty::tls::with(|tcx| {
                         write!(f, "the trait `{}` is object-safe", tcx.item_path_str(trait_def_id))
                     }),
-                ty::Predicate::ClosureKind(closure_def_id, kind) =>
+                ty::Predicate::ClosureKind(closure_def_id, _closure_substs, kind) =>
                     ty::tls::with(|tcx| {
                         write!(f, "the closure `{}` implements the trait `{}`",
                                tcx.item_path_str(closure_def_id), kind)
@@ -1281,8 +1297,8 @@ define_print! {
                 ty::Predicate::ObjectSafe(trait_def_id) => {
                     write!(f, "ObjectSafe({:?})", trait_def_id)
                 }
-                ty::Predicate::ClosureKind(closure_def_id, kind) => {
-                    write!(f, "ClosureKind({:?}, {:?})", closure_def_id, kind)
+                ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+                    write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
                 }
                 ty::Predicate::ConstEvaluatable(def_id, substs) => {
                     write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)

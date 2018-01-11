@@ -21,7 +21,7 @@ use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax::util::parser::{self, AssocOp, Fixity};
-use syntax_pos::{self, BytePos};
+use syntax_pos::{self, BytePos, FileName};
 
 use hir;
 use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
@@ -125,7 +125,7 @@ pub const default_columns: usize = 78;
 pub fn print_crate<'a>(cm: &'a CodeMap,
                        sess: &ParseSess,
                        krate: &hir::Crate,
-                       filename: String,
+                       filename: FileName,
                        input: &mut Read,
                        out: Box<Write + 'a>,
                        ann: &'a PpAnn,
@@ -144,7 +144,7 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
 impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
                           sess: &ParseSess,
-                          filename: String,
+                          filename: FileName,
                           input: &mut Read,
                           out: Box<Write + 'a>,
                           ann: &'a PpAnn,
@@ -390,16 +390,7 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             hir::TyBareFn(ref f) => {
-                let generics = hir::Generics {
-                    lifetimes: f.lifetimes.clone(),
-                    ty_params: hir::HirVec::new(),
-                    where_clause: hir::WhereClause {
-                        id: ast::DUMMY_NODE_ID,
-                        predicates: hir::HirVec::new(),
-                    },
-                    span: syntax_pos::DUMMY_SP,
-                };
-                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &generics,
+                self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &f.generic_params,
                                  &f.arg_names[..])?;
             }
             hir::TyPath(ref qpath) => {
@@ -408,21 +399,22 @@ impl<'a> State<'a> {
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 let mut first = true;
                 for bound in bounds {
-                    self.nbsp()?;
                     if first {
                         first = false;
                     } else {
+                        self.nbsp()?;
                         self.word_space("+")?;
                     }
                     self.print_poly_trait_ref(bound)?;
                 }
                 if !lifetime.is_elided() {
+                    self.nbsp()?;
                     self.word_space("+")?;
                     self.print_lifetime(lifetime)?;
                 }
             }
-            hir::TyImplTrait(ref bounds) => {
-                self.print_bounds("impl ", &bounds[..])?;
+            hir::TyImplTraitExistential(ref existty, ref _lifetimes) => {
+                self.print_bounds("impl", &existty.bounds[..])?;
             }
             hir::TyArray(ref ty, v) => {
                 self.s.word("[")?;
@@ -634,15 +626,15 @@ impl<'a> State<'a> {
                 self.s.word(&ga.asm.as_str())?;
                 self.end()?
             }
-            hir::ItemTy(ref ty, ref params) => {
+            hir::ItemTy(ref ty, ref generics) => {
                 self.ibox(indent_unit)?;
                 self.ibox(0)?;
                 self.word_nbsp(&visibility_qualified(&item.vis, "type"))?;
                 self.print_name(item.name)?;
-                self.print_generics(params)?;
+                self.print_generic_params(&generics.params)?;
                 self.end()?; // end the inner ibox
 
-                self.print_where_clause(&params.where_clause)?;
+                self.print_where_clause(&generics.where_clause)?;
                 self.s.space()?;
                 self.word_space("=")?;
                 self.print_type(&ty)?;
@@ -685,8 +677,8 @@ impl<'a> State<'a> {
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
 
-                if generics.is_parameterized() {
-                    self.print_generics(generics)?;
+                if !generics.params.is_empty() {
+                    self.print_generic_params(&generics.params)?;
                     self.s.space()?;
                 }
 
@@ -724,7 +716,7 @@ impl<'a> State<'a> {
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("trait")?;
                 self.print_name(item.name)?;
-                self.print_generics(generics)?;
+                self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
                     if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
@@ -744,6 +736,28 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span)?;
             }
+            hir::ItemTraitAlias(ref generics, ref bounds) => {
+                self.head("")?;
+                self.print_visibility(&item.vis)?;
+                self.word_nbsp("trait")?;
+                self.print_name(item.name)?;
+                self.print_generic_params(&generics.params)?;
+                let mut real_bounds = Vec::with_capacity(bounds.len());
+                // FIXME(durka) this seems to be some quite outdated syntax
+                for b in bounds.iter() {
+                    if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                        self.s.space()?;
+                        self.word_space("for ?")?;
+                        self.print_trait_ref(&ptr.trait_ref)?;
+                    } else {
+                        real_bounds.push(b.clone());
+                    }
+                }
+                self.nbsp()?;
+                self.print_bounds("=", &real_bounds[..])?;
+                self.print_where_clause(&generics.where_clause)?;
+                self.s.word(";")?;
+            }
         }
         self.ann.post(self, NodeItem(item))
     }
@@ -752,24 +766,20 @@ impl<'a> State<'a> {
         self.print_path(&t.path, false)
     }
 
-    fn print_formal_lifetime_list(&mut self, lifetimes: &[hir::LifetimeDef]) -> io::Result<()> {
-        if !lifetimes.is_empty() {
-            self.s.word("for<")?;
-            let mut comma = false;
-            for lifetime_def in lifetimes {
-                if comma {
-                    self.word_space(",")?
-                }
-                self.print_lifetime_def(lifetime_def)?;
-                comma = true;
-            }
-            self.s.word(">")?;
+    fn print_formal_generic_params(
+        &mut self,
+        generic_params: &[hir::GenericParam]
+    ) -> io::Result<()> {
+        if !generic_params.is_empty() {
+            self.s.word("for")?;
+            self.print_generic_params(generic_params)?;
+            self.nbsp()?;
         }
         Ok(())
     }
 
     fn print_poly_trait_ref(&mut self, t: &hir::PolyTraitRef) -> io::Result<()> {
-        self.print_formal_lifetime_list(&t.bound_lifetimes)?;
+        self.print_formal_generic_params(&t.bound_generic_params)?;
         self.print_trait_ref(&t.trait_ref)
     }
 
@@ -782,7 +792,7 @@ impl<'a> State<'a> {
                           -> io::Result<()> {
         self.head(&visibility_qualified(visibility, "enum"))?;
         self.print_name(name)?;
-        self.print_generics(generics)?;
+        self.print_generic_params(&generics.params)?;
         self.print_where_clause(&generics.where_clause)?;
         self.s.space()?;
         self.print_variants(&enum_definition.variants, span)
@@ -835,7 +845,7 @@ impl<'a> State<'a> {
                         print_finalizer: bool)
                         -> io::Result<()> {
         self.print_name(name)?;
-        self.print_generics(generics)?;
+        self.print_generic_params(&generics.params)?;
         if !struct_def.is_struct() {
             if struct_def.is_tuple() {
                 self.popen()?;
@@ -1252,6 +1262,15 @@ impl<'a> State<'a> {
             Fixity::Left => (prec, prec + 1),
             Fixity::Right => (prec + 1, prec),
             Fixity::None => (prec + 1, prec + 1),
+        };
+
+        let left_prec = match (&lhs.node, op.node) {
+            // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
+            // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
+            // of `(x as i32) < ...`. We need to convince it _not_ to do that.
+            (&hir::ExprCast { .. }, hir::BinOp_::BiLt) |
+            (&hir::ExprCast { .. }, hir::BinOp_::BiShl) => parser::PREC_FORCE_PAREN,
+            _ => left_prec,
         };
 
         self.print_expr_maybe_paren(lhs, left_prec)?;
@@ -1908,7 +1927,7 @@ impl<'a> State<'a> {
             self.nbsp()?;
             self.print_name(name)?;
         }
-        self.print_generics(generics)?;
+        self.print_generic_params(&generics.params)?;
 
         self.popen()?;
         let mut i = 0;
@@ -1983,30 +2002,29 @@ impl<'a> State<'a> {
             self.s.word(prefix)?;
             let mut first = true;
             for bound in bounds {
-                self.nbsp()?;
+                if !(first && prefix.is_empty()) {
+                    self.nbsp()?;
+                }
                 if first {
                     first = false;
                 } else {
                     self.word_space("+")?;
                 }
 
-                match *bound {
-                    TraitTyParamBound(ref tref, TraitBoundModifier::None) => {
-                        self.print_poly_trait_ref(tref)
+                match bound {
+                    TraitTyParamBound(tref, modifier) => {
+                        if modifier == &TraitBoundModifier::Maybe {
+                            self.s.word("?")?;
+                        }
+                        self.print_poly_trait_ref(tref)?;
                     }
-                    TraitTyParamBound(ref tref, TraitBoundModifier::Maybe) => {
-                        self.s.word("?")?;
-                        self.print_poly_trait_ref(tref)
+                    RegionTyParamBound(lt) => {
+                        self.print_lifetime(lt)?;
                     }
-                    RegionTyParamBound(ref lt) => {
-                        self.print_lifetime(lt)
-                    }
-                }?
+                }
             }
-            Ok(())
-        } else {
-            Ok(())
         }
+        Ok(())
     }
 
     pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
@@ -2024,31 +2042,19 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_generics(&mut self, generics: &hir::Generics) -> io::Result<()> {
-        let total = generics.lifetimes.len() + generics.ty_params.len();
-        if total == 0 {
-            return Ok(());
+    pub fn print_generic_params(&mut self, generic_params: &[hir::GenericParam]) -> io::Result<()> {
+        if !generic_params.is_empty() {
+            self.s.word("<")?;
+
+            self.commasep(Inconsistent, generic_params, |s, param| {
+                match *param {
+                    hir::GenericParam::Lifetime(ref ld) => s.print_lifetime_def(ld),
+                    hir::GenericParam::Type(ref tp) => s.print_ty_param(tp),
+                }
+            })?;
+
+            self.s.word(">")?;
         }
-
-        self.s.word("<")?;
-
-        let mut ints = Vec::new();
-        for i in 0..total {
-            ints.push(i);
-        }
-
-        self.commasep(Inconsistent, &ints[..], |s, &idx| {
-            if idx < generics.lifetimes.len() {
-                let lifetime = &generics.lifetimes[idx];
-                s.print_lifetime_def(lifetime)
-            } else {
-                let idx = idx - generics.lifetimes.len();
-                let param = &generics.ty_params[idx];
-                s.print_ty_param(param)
-            }
-        })?;
-
-        self.s.word(">")?;
         Ok(())
     }
 
@@ -2079,11 +2085,13 @@ impl<'a> State<'a> {
             }
 
             match predicate {
-                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate{ref bound_lifetimes,
-                                                                              ref bounded_ty,
-                                                                              ref bounds,
-                                                                              ..}) => {
-                    self.print_formal_lifetime_list(bound_lifetimes)?;
+                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                    ref bound_generic_params,
+                    ref bounded_ty,
+                    ref bounds,
+                    ..
+                }) => {
+                    self.print_formal_generic_params(bound_generic_params)?;
                     self.print_type(&bounded_ty)?;
                     self.print_bounds(":", bounds)?;
                 }
@@ -2152,17 +2160,16 @@ impl<'a> State<'a> {
                        unsafety: hir::Unsafety,
                        decl: &hir::FnDecl,
                        name: Option<ast::Name>,
-                       generics: &hir::Generics,
+                       generic_params: &[hir::GenericParam],
                        arg_names: &[Spanned<ast::Name>])
                        -> io::Result<()> {
         self.ibox(indent_unit)?;
-        if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
+        if !generic_params.is_empty() {
             self.s.word("for")?;
-            self.print_generics(generics)?;
+            self.print_generic_params(generic_params)?;
         }
         let generics = hir::Generics {
-            lifetimes: hir::HirVec::new(),
-            ty_params: hir::HirVec::new(),
+            params: hir::HirVec::new(),
             where_clause: hir::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: hir::HirVec::new(),

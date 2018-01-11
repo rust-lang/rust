@@ -1,0 +1,204 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/projection-one-region-trait-bound-closure.rs:48:39
+   |
+48 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                                       ^^^^^^^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/projection-one-region-trait-bound-closure.rs:59:39
+   |
+59 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                                       ^^^^^^^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/projection-one-region-trait-bound-closure.rs:80:39
+   |
+80 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                                       ^^^^^^^
+
+note: External requirements
+  --> $DIR/projection-one-region-trait-bound-closure.rs:48:29
+   |
+48 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:19 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_late[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
+           ]
+   = note: number of external vids: 3
+   = note: where '_#1r: '_#2r
+
+note: External requirements
+  --> $DIR/projection-one-region-trait-bound-closure.rs:59:29
+   |
+59 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:23 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_early[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
+           ]
+   = note: number of external vids: 4
+   = note: where '_#2r: '_#3r
+
+note: External requirements
+  --> $DIR/projection-one-region-trait-bound-closure.rs:80:29
+   |
+80 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:27 ~ projection_one_region_trait_bound_closure[317d]::projection_outlives[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
+           ]
+   = note: number of external vids: 4
+   = note: where '_#2r: '_#3r
+
+note: External requirements
+  --> $DIR/projection-one-region-trait-bound-closure.rs:91:29
+   |
+91 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:31 ~ projection_one_region_trait_bound_closure[317d]::elements_outlive[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               '_#2r,
+               T,
+               i32,
+               extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T))
+           ]
+   = note: number of external vids: 4
+   = note: where '_#2r: '_#3r
+
+note: External requirements
+   --> $DIR/projection-one-region-trait-bound-closure.rs:103:29
+    |
+103 |     with_signature(cell, t, |cell, t| require(cell, t));
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: defining type: DefId(0/1:34 ~ projection_one_region_trait_bound_closure[317d]::one_region[0]::{{closure}}[0]) with closure substs [
+                '_#1r,
+                T,
+                i32,
+                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T))
+            ]
+    = note: number of external vids: 3
+    = note: where '_#1r: '_#2r
+
+error: free region `ReEarlyBound(0, 'b)` does not outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`
+  --> $DIR/projection-one-region-trait-bound-closure.rs:48:20
+   |
+48 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                    ^^^^
+
+note: No external requirements
+  --> $DIR/projection-one-region-trait-bound-closure.rs:44:1
+   |
+44 | / fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+45 | | where
+46 | |     T: Anything<'b>,
+47 | | {
+...  |
+50 | |     //~| ERROR does not outlive free region
+51 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:8 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_late[0]) with substs [
+               '_#1r,
+               T
+           ]
+
+error: free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
+  --> $DIR/projection-one-region-trait-bound-closure.rs:59:20
+   |
+59 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                    ^^^^
+
+note: No external requirements
+  --> $DIR/projection-one-region-trait-bound-closure.rs:54:1
+   |
+54 | / fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+55 | | where
+56 | |     T: Anything<'b>,
+57 | |     'a: 'a,
+...  |
+61 | |     //~| ERROR does not outlive free region
+62 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:9 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_early[0]) with substs [
+               '_#1r,
+               '_#2r,
+               T
+           ]
+
+error: free region `ReEarlyBound(1, 'b)` does not outlive free region `ReEarlyBound(0, 'a)`
+  --> $DIR/projection-one-region-trait-bound-closure.rs:80:20
+   |
+80 |     with_signature(cell, t, |cell, t| require(cell, t));
+   |                    ^^^^
+
+note: No external requirements
+  --> $DIR/projection-one-region-trait-bound-closure.rs:65:1
+   |
+65 | / fn projection_outlives<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+66 | | where
+67 | |     T: Anything<'b>,
+68 | |     T::AssocType: 'a,
+...  |
+82 | |     //~| ERROR does not outlive free region
+83 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:10 ~ projection_one_region_trait_bound_closure[317d]::projection_outlives[0]) with substs [
+               '_#1r,
+               '_#2r,
+               T
+           ]
+
+note: No external requirements
+  --> $DIR/projection-one-region-trait-bound-closure.rs:86:1
+   |
+86 | / fn elements_outlive<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
+87 | | where
+88 | |     T: Anything<'b>,
+89 | |     'b: 'a,
+90 | | {
+91 | |     with_signature(cell, t, |cell, t| require(cell, t));
+92 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:11 ~ projection_one_region_trait_bound_closure[317d]::elements_outlive[0]) with substs [
+               '_#1r,
+               '_#2r,
+               T
+           ]
+
+note: No external requirements
+   --> $DIR/projection-one-region-trait-bound-closure.rs:95:1
+    |
+95  | / fn one_region<'a, T>(cell: Cell<&'a ()>, t: T)
+96  | | where
+97  | |     T: Anything<'a>,
+98  | | {
+...   |
+103 | |     with_signature(cell, t, |cell, t| require(cell, t));
+104 | | }
+    | |_^
+    |
+    = note: defining type: DefId(0/0:12 ~ projection_one_region_trait_bound_closure[317d]::one_region[0]) with substs [
+                '_#1r,
+                T
+            ]
+
+error: aborting due to 3 previous errors
+

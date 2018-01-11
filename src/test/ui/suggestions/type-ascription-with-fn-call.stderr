@@ -3,7 +3,7 @@ error[E0573]: expected type, found function `f`
    |
 14 |     f()  :
    |          - help: did you mean to use `;` here instead?
-15 |     f();
+15 |     f(); //~ ERROR expected type, found function
    |     ^^^
    |     |
    |     not a type

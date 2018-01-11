@@ -354,7 +354,7 @@ pub fn find(name: &str) -> Option<Intrinsic> {
         },
         "_mm256_sad_epu8" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 2] = [&::U8x32, &::U8x32]; &INPUTS },
-            output: &::U8x32,
+            output: &::U64x4,
             definition: Named("llvm.x86.avx2.psad.bw")
         },
         "_mm256_shuffle_epi8" => Intrinsic {

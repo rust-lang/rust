@@ -15,8 +15,8 @@ use std::ops::Deref;
 pub struct Foo;
 
 impl Deref for Foo {
-    type Target = i32;
-    fn deref(&self) -> &i32 { loop {} }
+    type Target = String;
+    fn deref(&self) -> &String { loop {} }
 }
 
 pub struct Bar;

@@ -17,7 +17,7 @@ struct S<'a> {
 
 fn copy_borrowed_ptr<'a,'b>(p: &'a mut S<'b>) -> S<'b> {
     S { pointer: &mut *p.pointer }
-    //~^ ERROR cannot infer
+    //~^ ERROR lifetime mismatch
 }
 
 fn main() {

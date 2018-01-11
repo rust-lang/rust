@@ -27,10 +27,21 @@ impl StyledBuffer {
     }
 
     fn replace_tabs(&mut self) {
-        for line in self.text.iter_mut() {
-            for c in line.iter_mut() {
+        for (line_pos, line) in self.text.iter_mut().enumerate() {
+            let mut tab_pos = vec![];
+            for (pos, c) in line.iter().enumerate() {
                 if *c == '\t' {
-                    *c = ' ';
+                    tab_pos.push(pos);
+                }
+            }
+            // start with the tabs at the end of the line to replace them with 4 space chars
+            for pos in tab_pos.iter().rev() {
+                assert_eq!(line.remove(*pos), '\t');
+                // fix the position of the style to match up after replacing the tabs
+                let s = self.styles[line_pos].remove(*pos);
+                for _ in 0..4 {
+                    line.insert(*pos, ' ');
+                    self.styles[line_pos].insert(*pos, s);
                 }
             }
         }

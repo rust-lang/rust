@@ -35,8 +35,6 @@ impl<C: Component> FnMut<(C,)> for Prototype {
 
 impl<C: Component> FnOnce<(C,)> for Prototype {
     //~^ ERROR E0046
-    //~| NOTE missing `Output` in implementation
-    //~| NOTE `Output` from trait: `type Output;`
     extern "rust-call" fn call_once(self, (comp,): (C,)) -> Prototype {
         Fn::call(&self, (comp,))
     }

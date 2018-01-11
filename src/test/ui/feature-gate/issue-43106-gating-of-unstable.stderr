@@ -1,0 +1,46 @@
+error[E0601]: main function not found
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:17:1
+   |
+17 | #![unstable                   = "1200"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:20:1
+   |
+20 | #[unstable = "1200"]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:23:17
+   |
+23 |     mod inner { #![unstable="1200"] }
+   |                 ^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:26:5
+   |
+26 |     #[unstable = "1200"] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:29:5
+   |
+29 |     #[unstable = "1200"] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:32:5
+   |
+32 |     #[unstable = "1200"] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:35:5
+   |
+35 |     #[unstable = "1200"] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

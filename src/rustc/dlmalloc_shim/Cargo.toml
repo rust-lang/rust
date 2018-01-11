@@ -1,0 +1,14 @@
+[package]
+name = "dlmalloc"
+version = "0.0.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+path = "../../dlmalloc/src/lib.rs"
+test = false
+bench = false
+doc = false
+
+[dependencies]
+core = { path = "../../libcore" }
+alloc = { path = "../../liballoc" }

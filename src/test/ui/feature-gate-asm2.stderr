@@ -1,0 +1,10 @@
+error: inline assembly is not stable enough for use and is subject to change (see issue #29722)
+  --> $DIR/feature-gate-asm2.rs:15:24
+   |
+15 |         println!("{}", asm!("")); //~ ERROR inline assembly is not stable
+   |                        ^^^^^^^^
+   |
+   = help: add #![feature(asm)] to the crate attributes to enable
+
+error: aborting due to previous error
+

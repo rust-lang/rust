@@ -75,10 +75,13 @@ This API is completely unstable and subject to change.
 #![feature(advanced_slice_patterns)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(crate_visibility_modifier)]
 #![feature(conservative_impl_trait)]
+#![feature(from_ref)]
 #![feature(match_default_bindings)]
 #![feature(never_type)]
 #![feature(quote)]
+#![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 
@@ -89,7 +92,6 @@ extern crate syntax_pos;
 extern crate arena;
 #[macro_use] extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
-extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
@@ -114,6 +116,7 @@ use syntax::abi::Abi;
 use syntax_pos::Span;
 
 use std::iter;
+
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
 mod diagnostics;
@@ -184,7 +187,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
                         hir::ItemFn(.., ref generics, _) => {
-                            if generics.is_parameterized() {
+                            if !generics.params.is_empty() {
                                 struct_span_err!(tcx.sess, generics.span, E0131,
                                          "main function is not allowed to have type parameters")
                                     .span_label(generics.span,
@@ -198,10 +201,22 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
                 _ => ()
             }
+
+            let actual = tcx.fn_sig(main_def_id);
+            let expected_return_type = if tcx.lang_items().termination().is_some()
+                && tcx.sess.features.borrow().termination_trait {
+                // we take the return type of the given main function, the real check is done
+                // in `check_fn`
+                actual.output().skip_binder()
+            } else {
+                // standard () main return type
+                tcx.mk_nil()
+            };
+
             let se_ty = tcx.mk_fn_ptr(ty::Binder(
                 tcx.mk_fn_sig(
                     iter::empty(),
-                    tcx.mk_nil(),
+                    expected_return_type,
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust
@@ -212,7 +227,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 tcx,
                 &ObligationCause::new(main_span, main_id, ObligationCauseCode::MainFunctionType),
                 se_ty,
-                tcx.mk_fn_ptr(tcx.fn_sig(main_def_id)));
+                tcx.mk_fn_ptr(actual));
         }
         _ => {
             span_bug!(main_span,
@@ -233,7 +248,7 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
                         hir::ItemFn(..,ref ps,_)
-                        if ps.is_parameterized() => {
+                        if !ps.params.is_empty() => {
                             struct_span_err!(tcx.sess, ps.span, E0132,
                                 "start function is not allowed to have type parameters")
                                 .span_label(ps.span,
@@ -347,7 +362,23 @@ pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> 
     let env_node_id = tcx.hir.get_parent(hir_ty.id);
     let env_def_id = tcx.hir.local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
-    item_cx.to_ty(hir_ty)
+    astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
 }
 
+pub fn hir_trait_to_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_trait: &hir::TraitRef)
+        -> (ty::PolyTraitRef<'tcx>, Vec<ty::PolyProjectionPredicate<'tcx>>) {
+    // In case there are any projections etc, find the "environment"
+    // def-id that will be used to determine the traits/predicates in
+    // scope.  This is derived from the enclosing item-like thing.
+    let env_node_id = tcx.hir.get_parent(hir_trait.ref_id);
+    let env_def_id = tcx.hir.local_def_id(env_node_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    let mut projections = Vec::new();
+    let principal = astconv::AstConv::instantiate_poly_trait_ref_inner(
+        &item_cx, hir_trait, tcx.types.err, &mut projections, true
+    );
+    (principal, projections)
+}
+
+#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }

@@ -1,7 +1,7 @@
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct.rs:23:1
+  --> $DIR/token-error-correct.rs:16:1
    |
-23 | }
+16 | }
    | ^
    |
 note: unclosed delimiter
@@ -11,9 +11,9 @@ note: unclosed delimiter
    |            ^
 
 error: incorrect close delimiter: `}`
-  --> $DIR/token-error-correct.rs:23:1
+  --> $DIR/token-error-correct.rs:16:1
    |
-23 | }
+16 | }
    | ^
    |
 note: unclosed delimiter
@@ -28,29 +28,5 @@ error: expected expression, found `;`
 14 |     foo(bar(;
    |             ^
 
-error: expected one of `)`, `,`, `.`, `<`, `?`, `break`, `continue`, `false`, `for`, `if`, `loop`, `match`, `move`, `return`, `true`, `unsafe`, `while`, `yield`, or an operator, found `;`
-  --> $DIR/token-error-correct.rs:14:13
-   |
-14 |     foo(bar(;
-   |             ^ expected one of 19 possible tokens here
-
-error: expected expression, found `)`
-  --> $DIR/token-error-correct.rs:23:1
-   |
-23 | }
-   | ^
-
-error[E0425]: cannot find function `foo` in this scope
-  --> $DIR/token-error-correct.rs:14:5
-   |
-14 |     foo(bar(;
-   |     ^^^ not found in this scope
-
-error[E0425]: cannot find function `bar` in this scope
-  --> $DIR/token-error-correct.rs:14:9
-   |
-14 |     foo(bar(;
-   |         ^^^ not found in this scope
-
-error: aborting due to 7 previous errors
+error: aborting due to 3 previous errors
 

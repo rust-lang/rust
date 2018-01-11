@@ -37,9 +37,7 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit::{self, FnKind};
 use hir;
-use session::Session;
-#[cfg(stage0)]
-use std::ascii::AsciiExt;
+use session::{Session, DiagnosticMessageId};
 use std::hash;
 use syntax::ast;
 use syntax::codemap::MultiSpan;
@@ -157,6 +155,7 @@ pub trait LateLintPass<'a, 'tcx>: LintPass {
     fn check_expr(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Expr) { }
     fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Expr) { }
     fn check_ty(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Ty) { }
+    fn check_generic_param(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::GenericParam) { }
     fn check_generics(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Generics) { }
     fn check_fn(&mut self,
                 _: &LateContext<'a, 'tcx>,
@@ -198,7 +197,6 @@ pub trait LateLintPass<'a, 'tcx>: LintPass {
                           _: &'tcx hir::Variant,
                           _: &'tcx hir::Generics) { }
     fn check_lifetime(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Lifetime) { }
-    fn check_lifetime_def(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::LifetimeDef) { }
     fn check_path(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Path, _: ast::NodeId) { }
     fn check_attribute(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx ast::Attribute) { }
 
@@ -229,6 +227,7 @@ pub trait EarlyLintPass: LintPass {
     fn check_expr(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_expr_post(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
+    fn check_generic_param(&mut self, _: &EarlyContext, _: &ast::GenericParam) { }
     fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
     fn check_fn(&mut self, _: &EarlyContext,
         _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
@@ -246,9 +245,7 @@ pub trait EarlyLintPass: LintPass {
     fn check_variant(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
     fn check_variant_post(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
     fn check_lifetime(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
-    fn check_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
     fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
-    fn check_path_list_item(&mut self, _: &EarlyContext, _: &ast::PathListItem) { }
     fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such
@@ -426,7 +423,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
         LintSource::Default => {
             sess.diag_note_once(
                 &mut err,
-                lint,
+                DiagnosticMessageId::from(lint),
                 &format!("#[{}({})] on by default", level.as_str(), name));
         }
         LintSource::CommandLine(lint_flag_val) => {
@@ -440,24 +437,25 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             if lint_flag_val.as_str() == name {
                 sess.diag_note_once(
                     &mut err,
-                    lint,
+                    DiagnosticMessageId::from(lint),
                     &format!("requested on the command line with `{} {}`",
                              flag, hyphen_case_lint_name));
             } else {
                 let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
                 sess.diag_note_once(
                     &mut err,
-                    lint,
+                    DiagnosticMessageId::from(lint),
                     &format!("`{} {}` implied by `{} {}`",
                              flag, hyphen_case_lint_name, flag,
                              hyphen_case_flag_val));
             }
         }
         LintSource::Node(lint_attr_name, src) => {
-            sess.diag_span_note_once(&mut err, lint, src, "lint level defined here");
+            sess.diag_span_note_once(&mut err, DiagnosticMessageId::from(lint),
+                                     src, "lint level defined here");
             if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
-                sess.diag_note_once(&mut err, lint,
+                sess.diag_note_once(&mut err, DiagnosticMessageId::from(lint),
                                     &format!("#[{}({})] implied by #[{}({})]",
                                              level_str, name, level_str, lint_attr_name));
             }

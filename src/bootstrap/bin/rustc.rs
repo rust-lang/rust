@@ -175,7 +175,7 @@ fn main() {
         if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
             cmd.arg("-C").arg(format!("codegen-units={}", s));
         }
-        if stage != "0" && env::var("RUSTC_THINLTO").is_ok() {
+        if env::var("RUSTC_THINLTO").is_ok() {
             cmd.arg("-Ccodegen-units=16").arg("-Zthinlto");
         }
 
@@ -183,7 +183,8 @@ fn main() {
         if env::var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
             cmd.arg("-Zsave-analysis");
             cmd.env("RUST_SAVE_ANALYSIS_CONFIG",
-                    "{\"output_file\": null,\"full_docs\": false,\"pub_only\": true,\
+                    "{\"output_file\": null,\"full_docs\": false,\
+                     \"pub_only\": true,\"reachable_only\": false,\
                      \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}");
         }
 
@@ -245,6 +246,9 @@ fn main() {
         // When running miri tests, we need to generate MIR for all libraries
         if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
             cmd.arg("-Zalways-encode-mir");
+            if stage != "0" {
+                cmd.arg("-Zmiri");
+            }
             cmd.arg("-Zmir-emit-validate=1");
         }
 
@@ -259,6 +263,10 @@ fn main() {
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
             cmd.arg(format!("-Clinker={}", host_linker));
         }
+    }
+
+    if env::var_os("RUSTC_PARALLEL_QUERIES").is_some() {
+        cmd.arg("--cfg").arg("parallel_queries");
     }
 
     let color = match env::var("RUSTC_COLOR") {

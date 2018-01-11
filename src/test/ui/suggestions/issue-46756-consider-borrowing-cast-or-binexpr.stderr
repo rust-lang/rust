@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-46756-consider-borrowing-cast-or-binexpr.rs:20:42
+   |
+20 |     light_flows_our_war_of_mocking_words(behold as usize);
+   |                                          ^^^^^^^^^^^^^^^
+   |                                          |
+   |                                          expected &usize, found usize
+   |                                          help: consider borrowing here: `&(behold as usize)`
+   |
+   = note: expected type `&usize`
+              found type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-46756-consider-borrowing-cast-or-binexpr.rs:22:42
+   |
+22 |     light_flows_our_war_of_mocking_words(with_tears + 4);
+   |                                          ^^^^^^^^^^^^^^
+   |                                          |
+   |                                          expected &usize, found usize
+   |                                          help: consider borrowing here: `&(with_tears + 4)`
+   |
+   = note: expected type `&usize`
+              found type `usize`
+
+error: aborting due to 2 previous errors
+

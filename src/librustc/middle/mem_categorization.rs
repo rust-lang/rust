@@ -70,7 +70,7 @@ pub use self::Note::*;
 use self::Aliasability::*;
 
 use middle::region;
-use hir::def_id::{DefId, DefIndex};
+use hir::def_id::{DefId, LocalDefId};
 use hir::map as hir_map;
 use infer::InferCtxt;
 use hir::def::{Def, CtorKind};
@@ -86,9 +86,9 @@ use syntax_pos::Span;
 
 use std::fmt;
 use std::rc::Rc;
-use util::nodemap::ItemLocalMap;
+use util::nodemap::ItemLocalSet;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Categorization<'tcx> {
     Rvalue(ty::Region<'tcx>),              // temporary val, argument is its scope
     StaticItem,
@@ -109,7 +109,7 @@ pub struct Upvar {
 }
 
 // different kinds of pointers:
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PointerKind<'tcx> {
     /// `Box<T>`
     Unique,
@@ -177,7 +177,7 @@ pub enum Note {
 // dereference, but its type is the type *before* the dereference
 // (`@T`). So use `cmt.ty` to find the type of the value in a consistent
 // fashion. For more details, see the method `cat_pattern`
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct cmt_<'tcx> {
     pub id: ast::NodeId,           // id of expr/pat producing this value
     pub span: Span,                // span of same expr/pat
@@ -191,7 +191,7 @@ pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 pub enum ImmutabilityBlame<'tcx> {
     ImmLocal(ast::NodeId),
-    ClosureEnv(DefIndex),
+    ClosureEnv(LocalDefId),
     LocalDeref(ast::NodeId),
     AdtFieldDeref(&'tcx ty::AdtDef, &'tcx ty::FieldDef)
 }
@@ -210,7 +210,7 @@ impl<'tcx> cmt_<'tcx> {
                 adt_def.variant_with_id(variant_did)
             }
             _ => {
-                assert!(adt_def.is_univariant());
+                assert_eq!(adt_def.variants.len(), 1);
                 &adt_def.variants[0]
             }
         };
@@ -286,7 +286,7 @@ pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
-    rvalue_promotable_map: Option<Rc<ItemLocalMap<bool>>>,
+    rvalue_promotable_map: Option<Rc<ItemLocalSet>>,
     infcx: Option<&'a InferCtxt<'a, 'gcx, 'tcx>>,
 }
 
@@ -395,7 +395,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
-               rvalue_promotable_map: Option<Rc<ItemLocalMap<bool>>>)
+               rvalue_promotable_map: Option<Rc<ItemLocalSet>>)
                -> MemCategorizationContext<'a, 'tcx, 'tcx> {
         MemCategorizationContext {
             tcx,
@@ -750,19 +750,29 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let kind = match self.node_ty(fn_hir_id)?.sty {
             ty::TyGenerator(..) => ty::ClosureKind::FnOnce,
-            _ => {
-                match self.tables.closure_kinds().get(fn_hir_id) {
-                    Some(&(kind, _)) => kind,
-                    None => span_bug!(span, "missing closure kind"),
+            ty::TyClosure(closure_def_id, closure_substs) => {
+                match self.infcx {
+                    // During upvar inference we may not know the
+                    // closure kind, just use the LATTICE_BOTTOM value.
+                    Some(infcx) =>
+                        infcx.closure_kind(closure_def_id, closure_substs)
+                             .unwrap_or(ty::ClosureKind::LATTICE_BOTTOM),
+
+                    None =>
+                        self.tcx.global_tcx()
+                                .lift(&closure_substs)
+                                .expect("no inference cx, but inference variables in closure ty")
+                                .closure_kind(closure_def_id, self.tcx.global_tcx()),
                 }
             }
+            ref t => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", t),
         };
 
-        let closure_expr_def_index = self.tcx.hir.local_def_id(fn_node_id).index;
+        let closure_expr_def_id = self.tcx.hir.local_def_id(fn_node_id);
         let var_hir_id = self.tcx.hir.node_to_hir_id(var_id);
         let upvar_id = ty::UpvarId {
             var_id: var_hir_id,
-            closure_expr_id: closure_expr_def_index
+            closure_expr_id: closure_expr_def_id.to_local(),
         };
 
         let var_ty = self.node_ty(var_hir_id)?;
@@ -837,7 +847,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: DefId::local(upvar_id.closure_expr_id),
+            scope: upvar_id.closure_expr_id.to_def_id(),
             bound_region: ty::BrEnv
         }));
 
@@ -897,7 +907,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                            expr_ty: Ty<'tcx>)
                            -> cmt<'tcx> {
         let hir_id = self.tcx.hir.node_to_hir_id(id);
-        let promotable = self.rvalue_promotable_map.as_ref().map(|m| m[&hir_id.local_id])
+        let promotable = self.rvalue_promotable_map.as_ref().map(|m| m.contains(&hir_id.local_id))
                                                             .unwrap_or(false);
 
         // Always promote `[T; 0]` (even when e.g. borrowed mutably).
@@ -1095,7 +1105,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                                               -> cmt<'tcx> {
         // univariant enums do not need downcasts
         let base_did = self.tcx.parent_def_id(variant_did).unwrap();
-        if !self.tcx.adt_def(base_did).is_univariant() {
+        if self.tcx.adt_def(base_did).variants.len() != 1 {
             let base_ty = base_cmt.ty;
             let ret = Rc::new(cmt_ {
                 id: node.id(),
@@ -1238,7 +1248,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 Def::StructCtor(_, CtorKind::Fn) => {
                     match self.pat_ty(&pat)?.sty {
                         ty::TyAdt(adt_def, _) => {
-                            (cmt, adt_def.struct_variant().fields.len())
+                            (cmt, adt_def.non_enum_variant().fields.len())
                         }
                         ref ty => {
                             span_bug!(pat.span, "tuple struct pattern unexpected type {:?}", ty);
@@ -1499,41 +1509,6 @@ impl<'tcx> cmt_<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for cmt_<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{{{:?} id:{} m:{:?} ty:{:?}}}",
-               self.cat,
-               self.id,
-               self.mutbl,
-               self.ty)
-    }
-}
-
-impl<'tcx> fmt::Debug for Categorization<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Categorization::StaticItem => write!(f, "static"),
-            Categorization::Rvalue(r) => { write!(f, "rvalue({:?})", r) }
-            Categorization::Local(id) => {
-               let name = ty::tls::with(|tcx| tcx.hir.name(id));
-               write!(f, "local({})", name)
-            }
-            Categorization::Upvar(upvar) => {
-                write!(f, "upvar({:?})", upvar)
-            }
-            Categorization::Deref(ref cmt, ptr) => {
-                write!(f, "{:?}-{:?}->", cmt.cat, ptr)
-            }
-            Categorization::Interior(ref cmt, interior) => {
-                write!(f, "{:?}.{:?}", cmt.cat, interior)
-            }
-            Categorization::Downcast(ref cmt, _) => {
-                write!(f, "{:?}->(enum)", cmt.cat)
-            }
-        }
-    }
-}
-
 pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
     match ptr {
         Unique => "Box",
@@ -1544,27 +1519,6 @@ pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
         BorrowedPtr(ty::UniqueImmBorrow, _) |
         Implicit(ty::UniqueImmBorrow, _) => "&unique",
         UnsafePtr(_) => "*",
-    }
-}
-
-impl<'tcx> fmt::Debug for PointerKind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Unique => write!(f, "Box"),
-            BorrowedPtr(ty::ImmBorrow, ref r) |
-            Implicit(ty::ImmBorrow, ref r) => {
-                write!(f, "&{:?}", r)
-            }
-            BorrowedPtr(ty::MutBorrow, ref r) |
-            Implicit(ty::MutBorrow, ref r) => {
-                write!(f, "&{:?} mut", r)
-            }
-            BorrowedPtr(ty::UniqueImmBorrow, ref r) |
-            Implicit(ty::UniqueImmBorrow, ref r) => {
-                write!(f, "&{:?} uniq", r)
-            }
-            UnsafePtr(_) => write!(f, "*")
-        }
     }
 }
 

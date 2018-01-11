@@ -13,6 +13,7 @@
 // compile-flags:-Zinline-in-all-cgus
 
 #![deny(dead_code)]
+#![feature(start)]
 
 trait Trait {
     fn foo(&self) -> u32;
@@ -28,8 +29,9 @@ impl<T> Trait for Struct<T> {
     fn bar(&self) {}
 }
 
-//~ TRANS_ITEM fn instantiation_through_vtable::main[0]
-fn main() {
+//~ TRANS_ITEM fn instantiation_through_vtable::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     let s1 = Struct { _a: 0u32 };
 
     //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<instantiation_through_vtable::Struct[0]<u32>> @@ instantiation_through_vtable0[Internal]
@@ -42,4 +44,6 @@ fn main() {
     //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::foo[0]<u64>
     //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::bar[0]<u64>
     let _ = &s1 as &Trait;
+
+    0
 }

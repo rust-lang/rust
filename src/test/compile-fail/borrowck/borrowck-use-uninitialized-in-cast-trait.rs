@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 // Variation on `borrowck-use-uninitialized-in-cast` in which we do a
 // trait cast from an uninitialized source. Issue #20791.
@@ -20,6 +20,5 @@ impl Foo for i32 { }
 fn main() {
     let x: &i32;
     let y = x as *const Foo; //[ast]~ ERROR use of possibly uninitialized variable: `*x`
-                             //[mir]~^ ERROR (Ast) [E0381]
-                             //[mir]~| ERROR (Mir) [E0381]
+                             //[mir]~^ ERROR [E0381]
 }

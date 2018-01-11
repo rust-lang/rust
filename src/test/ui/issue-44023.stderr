@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-44023.rs:15:42
    |
-15 |   fn საჭმელად_გემრიელი_სადილი ( ) -> isize {
+15 |   fn საჭმელად_გემრიელი_სადილი ( ) -> isize { //~ ERROR mismatched types
    |  __________________________________________^
 16 | | }
    | |_^ expected isize, found ()

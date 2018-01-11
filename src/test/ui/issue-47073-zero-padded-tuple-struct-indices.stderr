@@ -1,0 +1,14 @@
+error: invalid tuple or struct index
+  --> $DIR/issue-47073-zero-padded-tuple-struct-indices.rs:18:30
+   |
+18 |     let _condemned = justice.00;
+   |                              ^^ help: try simplifying the index: `0`
+
+error: invalid tuple or struct index
+  --> $DIR/issue-47073-zero-padded-tuple-struct-indices.rs:20:31
+   |
+20 |     let _punishment = justice.001;
+   |                               ^^^ help: try simplifying the index: `1`
+
+error: aborting due to 2 previous errors
+

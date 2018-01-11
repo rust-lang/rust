@@ -35,15 +35,9 @@ fn main() {
     let o = Obj { fn_ptr: empty, closure: || 42 };
     let p = &o;
     p.closure(); //~ ERROR no method named `closure` found
-    //~^ HELP use `(p.closure)(...)` if you meant to call the function stored in the `closure` field
-    //~| NOTE `closure` is a field storing a function, not a method
     let q = &p;
     q.fn_ptr(); //~ ERROR no method named `fn_ptr` found
-    //~^ HELP use `(q.fn_ptr)(...)` if you meant to call the function stored in the `fn_ptr` field
-    //~| NOTE `fn_ptr` is a field storing a function, not a method
     let r = D(C { c_fn_ptr: empty });
     let s = &r;
     s.c_fn_ptr(); //~ ERROR no method named `c_fn_ptr` found
-    //~^ HELP use `(s.c_fn_ptr)(...)` if you meant to call the function stored in the `c_fn_ptr`
-    //~| NOTE `c_fn_ptr` is a field storing a function, not a method
 }

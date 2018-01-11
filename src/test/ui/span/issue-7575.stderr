@@ -9,19 +9,19 @@ error[E0599]: no method named `f9` found for type `usize` in the current scope
 note: candidate #1 is defined in the trait `CtxtFn`
   --> $DIR/issue-7575.rs:16:5
    |
-16 |     fn f9(_: usize) -> usize; //~ NOTE candidate
+16 |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `CtxtFn::f9(u, 342)` instead
 note: candidate #2 is defined in the trait `OtherTrait`
   --> $DIR/issue-7575.rs:20:5
    |
-20 |     fn f9(_: usize) -> usize; //~ NOTE candidate
+20 |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `OtherTrait::f9(u, 342)` instead
 note: candidate #3 is defined in the trait `UnusedTrait`
   --> $DIR/issue-7575.rs:29:5
    |
-29 |     fn f9(_: usize) -> usize; //~ NOTE candidate
+29 |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `UnusedTrait::f9(u, 342)` instead
    = help: items from traits can only be used if the trait is implemented and in scope
@@ -33,6 +33,9 @@ note: candidate #3 is defined in the trait `UnusedTrait`
 error[E0599]: no method named `fff` found for type `Myisize` in the current scope
   --> $DIR/issue-7575.rs:74:30
    |
+48 | struct Myisize(isize);
+   | ---------------------- method `fff` not found for this
+...
 74 |     u.f8(42) + u.f9(342) + m.fff(42)
    |                              ^^^
    |
@@ -41,15 +44,13 @@ error[E0599]: no method named `fff` found for type `Myisize` in the current scop
 note: candidate #1 is defined in an impl for the type `Myisize`
   --> $DIR/issue-7575.rs:51:5
    |
-51 | /     fn fff(i: isize) -> isize { //~ NOTE candidate
-52 | |         i
-53 | |     }
-   | |_____^
+51 |     fn fff(i: isize) -> isize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `is_str` found for type `T` in the current scope
-  --> $DIR/issue-7575.rs:85:7
+  --> $DIR/issue-7575.rs:82:7
    |
-85 |     t.is_str()
+82 |     t.is_str()
    |       ^^^^^^
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
@@ -57,10 +58,8 @@ error[E0599]: no method named `is_str` found for type `T` in the current scope
 note: candidate #1 is defined in the trait `ManyImplTrait`
   --> $DIR/issue-7575.rs:57:5
    |
-57 | /     fn is_str() -> bool { //~ NOTE candidate
-58 | |         false
-59 | |     }
-   | |_____^
+57 |     fn is_str() -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `ManyImplTrait::is_str(t)` instead
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `is_str`, perhaps you need to implement it:

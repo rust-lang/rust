@@ -1,0 +1,22 @@
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:12:17
+   |
+12 |     let x = 2.0.powi(2);
+   |                 ^^^^
+help: you must specify a concrete type for this numeric value, like `f32`
+   |
+12 |     let x = 2.0_f32.powi(2);
+   |             ^^^^^^^
+
+error[E0689]: can't call method `powi` on ambiguous numeric type `{float}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:15:15
+   |
+15 |     let x = y.powi(2);
+   |               ^^^^
+help: you must specify a type for this binding, like `f32`
+   |
+14 |     let y: f32 = 2.0;
+   |         ^^^^^^
+
+error: aborting due to 2 previous errors
+

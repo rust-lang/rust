@@ -1,22 +1,22 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/range-2.rs:20:5
+  --> $DIR/range-2.rs:17:10
    |
 17 |         &a..&b
-   |          - borrow occurs here
+   |          ^ borrowed value does not live long enough
+18 |     };
+   |     - `a` dropped here while still borrowed
 ...
-20 |     };
-   |     ^ `a` dropped here while still borrowed
 21 | }
    | - borrowed value needs to live until here
 
 error[E0597]: `b` does not live long enough
-  --> $DIR/range-2.rs:20:5
+  --> $DIR/range-2.rs:17:14
    |
 17 |         &a..&b
-   |              - borrow occurs here
+   |              ^ borrowed value does not live long enough
+18 |     };
+   |     - `b` dropped here while still borrowed
 ...
-20 |     };
-   |     ^ `b` dropped here while still borrowed
 21 | }
    | - borrowed value needs to live until here
 

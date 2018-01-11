@@ -13,8 +13,6 @@
 
 // ignore-emscripten no threads support
 
-#![feature(const_atomic_usize_new)]
-
 use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

@@ -1,0 +1,10 @@
+error: type ascription is experimental (see issue #23416)
+  --> $DIR/feature-gate-type_ascription.rs:14:13
+   |
+14 |     let a = 10: u8; //~ ERROR type ascription is experimental
+   |             ^^^^^^
+   |
+   = help: add #![feature(type_ascription)] to the crate attributes to enable
+
+error: aborting due to previous error
+

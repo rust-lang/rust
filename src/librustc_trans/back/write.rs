@@ -22,6 +22,7 @@ use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Pas
                              AllPasses, Sanitizer};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
+use rustc_back::LinkerFlavor;
 use time_graph::{self, TimeGraph, Timeline};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
@@ -47,7 +48,7 @@ use std::any::Any;
 use std::ffi::{CString, CStr};
 use std::fs::{self, File};
 use std::io;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -186,6 +187,8 @@ pub fn target_machine_factory(sess: &Session)
         }
     };
 
+    let singlethread = sess.target.target.options.singlethread;
+
     let triple = &sess.target.target.llvm_target;
 
     let triple = CString::new(triple.as_bytes()).unwrap();
@@ -196,6 +199,7 @@ pub fn target_machine_factory(sess: &Session)
     let cpu = CString::new(cpu.as_bytes()).unwrap();
     let features = CString::new(target_feature(sess).as_bytes()).unwrap();
     let is_pie_binary = is_pie_binary(sess);
+    let trap_unreachable = sess.target.target.options.trap_unreachable;
 
     Arc::new(move || {
         let tm = unsafe {
@@ -208,6 +212,8 @@ pub fn target_machine_factory(sess: &Session)
                 is_pie_binary,
                 ffunction_sections,
                 fdata_sections,
+                trap_unreachable,
+                singlethread,
             )
         };
 
@@ -285,7 +291,7 @@ impl ModuleConfig {
     fn set_flags(&mut self, sess: &Session, no_builtins: bool) {
         self.no_verify = sess.no_verify();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
-        self.no_builtins = no_builtins;
+        self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
@@ -317,6 +323,7 @@ pub struct CodegenContext {
     pub thinlto: bool,
     pub no_landing_pads: bool,
     pub save_temps: bool,
+    pub fewer_names: bool,
     pub exported_symbols: Arc<ExportedSymbols>,
     pub opts: Arc<config::Options>,
     pub crate_types: Vec<config::CrateType>,
@@ -328,6 +335,9 @@ pub struct CodegenContext {
     pub tm_factory: Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>,
     pub msvc_imps_needed: bool,
     pub target_pointer_width: String,
+    binaryen_linker: bool,
+    debuginfo: config::DebugInfoLevel,
+    wasm_import_memory: bool,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
@@ -623,14 +633,21 @@ unsafe fn codegen(cgcx: &CodegenContext,
         f(cpm)
     }
 
+    // If we're going to generate wasm code from the assembly that llvm
+    // generates then we'll be transitively affecting a ton of options below.
+    // This only happens on the wasm target now.
+    let asm2wasm = cgcx.binaryen_linker &&
+        !cgcx.crate_types.contains(&config::CrateTypeRlib) &&
+        mtrans.kind == ModuleKind::Regular;
+
     // Change what we write and cleanup based on whether obj files are
     // just llvm bitcode. In that case write bitcode, and possibly
     // delete the bitcode if it wasn't requested. Don't generate the
     // machine code, instead copy the .o file from the .bc
-    let write_bc = config.emit_bc || config.obj_is_bitcode;
-    let rm_bc = !config.emit_bc && config.obj_is_bitcode;
-    let write_obj = config.emit_obj && !config.obj_is_bitcode;
-    let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
+    let write_bc = config.emit_bc || (config.obj_is_bitcode && !asm2wasm);
+    let rm_bc = !config.emit_bc && config.obj_is_bitcode && !asm2wasm;
+    let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm2wasm;
+    let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode && !asm2wasm;
 
     let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
     let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
@@ -709,7 +726,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
             timeline.record("ir");
         }
 
-        if config.emit_asm {
+        if config.emit_asm || (asm2wasm && config.emit_obj) {
             let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
 
             // We can't use the same module for asm and binary output, because that triggers
@@ -730,7 +747,15 @@ unsafe fn codegen(cgcx: &CodegenContext,
             timeline.record("asm");
         }
 
-        if write_obj {
+        if asm2wasm && config.emit_obj {
+            let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+            binaryen_assemble(cgcx, diag_handler, &assembly, &obj_out);
+            timeline.record("binaryen");
+
+            if !config.emit_asm {
+                drop(fs::remove_file(&assembly));
+            }
+        } else if write_obj {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
                                   llvm::FileType::ObjectFile)
@@ -760,6 +785,44 @@ unsafe fn codegen(cgcx: &CodegenContext,
                                    config.emit_bc,
                                    config.emit_bc_compressed,
                                    &cgcx.output_filenames))
+}
+
+/// Translates the LLVM-generated `assembly` on the filesystem into a wasm
+/// module using binaryen, placing the output at `object`.
+///
+/// In this case the "object" is actually a full and complete wasm module. We
+/// won't actually be doing anything else to the output for now. This is all
+/// pretty janky and will get removed as soon as a linker for wasm exists.
+fn binaryen_assemble(cgcx: &CodegenContext,
+                     handler: &Handler,
+                     assembly: &Path,
+                     object: &Path) {
+    use rustc_binaryen::{Module, ModuleOptions};
+
+    let input = File::open(&assembly).and_then(|mut f| {
+        let mut contents = Vec::new();
+        f.read_to_end(&mut contents)?;
+        Ok(CString::new(contents)?)
+    });
+    let mut options = ModuleOptions::new();
+    if cgcx.debuginfo != config::NoDebugInfo {
+        options.debuginfo(true);
+    }
+    if cgcx.crate_types.contains(&config::CrateTypeExecutable) {
+        options.start("main");
+    }
+    options.stack(1024 * 1024);
+    options.import_memory(cgcx.wasm_import_memory);
+    let assembled = input.and_then(|input| {
+        Module::new(&input, &options)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+    });
+    let err = assembled.and_then(|binary| {
+        File::create(&object).and_then(|mut f| f.write_all(binary.data()))
+    });
+    if let Err(e) = err {
+        handler.err(&format!("failed to run binaryen assembler: {}", e));
+    }
 }
 
 pub struct CompiledModules {
@@ -1316,18 +1379,36 @@ fn start_executing_work(tcx: TyCtxt,
 
     let mut each_linked_rlib_for_lto = Vec::new();
     drop(link::each_linked_rlib(sess, crate_info, &mut |cnum, path| {
-        if link::ignored_for_lto(crate_info, cnum) {
+        if link::ignored_for_lto(sess, crate_info, cnum) {
             return
         }
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
 
+    let crate_types = sess.crate_types.borrow();
+    let only_rlib = crate_types.len() == 1 &&
+        crate_types[0] == config::CrateTypeRlib;
+
+    let wasm_import_memory =
+        attr::contains_name(&tcx.hir.krate().attrs, "wasm_import_memory");
+
     let cgcx = CodegenContext {
         crate_types: sess.crate_types.borrow().clone(),
         each_linked_rlib_for_lto,
-        lto: sess.lto(),
-        thinlto: sess.opts.debugging_opts.thinlto,
+        // If we're only building an rlibc then allow the LTO flag to be passed
+        // but don't actually do anything, the full LTO will happen later
+        lto: sess.lto() && !only_rlib,
+
+        // Enable ThinLTO if requested, but only if the target we're compiling
+        // for doesn't require full LTO. Some targets require one LLVM module
+        // (they effectively don't have a linker) so it's up to us to use LTO to
+        // link everything together.
+        thinlto: sess.thinlto() &&
+            !sess.target.target.options.requires_lto &&
+            unsafe { llvm::LLVMRustThinLTOAvailable() },
+
         no_landing_pads: sess.no_landing_pads(),
+        fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),
         time_passes: sess.time_passes(),
@@ -1347,6 +1428,9 @@ fn start_executing_work(tcx: TyCtxt,
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
+        binaryen_linker: tcx.sess.linker_flavor() == LinkerFlavor::Binaryen,
+        debuginfo: tcx.sess.opts.debuginfo,
+        wasm_import_memory: wasm_import_memory,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1873,7 +1957,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
                 note.extend_from_slice(&prog.stdout);
 
                 sess.struct_err(&format!("linking with `{}` failed: {}",
-                                         pname,
+                                         pname.display(),
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
                     .note(str::from_utf8(&note[..]).unwrap())
@@ -1882,7 +1966,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
             }
         },
         Err(e) => {
-            sess.err(&format!("could not exec the linker `{}`: {}", pname, e));
+            sess.err(&format!("could not exec the linker `{}`: {}", pname.display(), e));
             sess.abort_if_errors();
         }
     }

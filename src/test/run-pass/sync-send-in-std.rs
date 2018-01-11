@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-cloudabi networking not available
+// ignore-wasm32-bare networking not available
+
 #![feature(lookup_host)]
 
 use std::net::lookup_host;

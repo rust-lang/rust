@@ -13,13 +13,13 @@
 
 #![feature(rustc_private)]
 
-extern crate rustc_back;
+extern crate tempdir;
 
 use std::env;
 use std::fs;
 use std::process;
 use std::str;
-use rustc_back::tempdir::TempDir;
+use tempdir::TempDir;
 
 fn main() {
     // If we're the child, make sure we were invoked correctly

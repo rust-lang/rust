@@ -1,0 +1,30 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/projection-no-regions-fn.rs:24:5
+   |
+24 |     Box::new(x.next())
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/projection-no-regions-fn.rs:40:5
+   |
+40 |     Box::new(x.next())
+   |     ^^^^^^^^^^^^^^^^^^
+
+error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+  --> $DIR/projection-no-regions-fn.rs:24:5
+   |
+24 |     Box::new(x.next())
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+
+error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
+  --> $DIR/projection-no-regions-fn.rs:40:5
+   |
+40 |     Box::new(x.next())
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<T as std::iter::Iterator>::Item: ReEarlyBound(0, 'a)`...
+
+error: aborting due to 2 previous errors
+

@@ -1,13 +1,13 @@
 warning: unused imports: `Eq`, `Ord`, `PartialEq`, `PartialOrd`
-  --> $DIR/multispan-import-lint.rs:13:16
+  --> $DIR/multispan-import-lint.rs:15:16
    |
-13 | use std::cmp::{Eq, Ord, min, PartialEq, PartialOrd};
+15 | use std::cmp::{Eq, Ord, min, PartialEq, PartialOrd};
    |                ^^  ^^^       ^^^^^^^^^  ^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/multispan-import-lint.rs:11:9
+  --> $DIR/multispan-import-lint.rs:13:9
    |
-11 | #![warn(unused)]
+13 | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(unused_imports)] implied by #[warn(unused)]
 

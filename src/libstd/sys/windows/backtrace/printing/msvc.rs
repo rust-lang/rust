@@ -10,7 +10,7 @@
 
 use ffi::CStr;
 use io;
-use libc::{c_ulong, c_int, c_char};
+use libc::{c_ulong, c_char};
 use mem;
 use sys::c;
 use sys::backtrace::BacktraceContext;
@@ -59,7 +59,7 @@ pub fn foreach_symbol_fileline<F>(frame: Frame,
                                   mut f: F,
                                   context: &BacktraceContext)
     -> io::Result<bool>
-    where F: FnMut(&[u8], c_int) -> io::Result<()>
+    where F: FnMut(&[u8], u32) -> io::Result<()>
 {
     let SymGetLineFromAddr64 = sym!(&context.dbghelp,
                                     "SymGetLineFromAddr64",
@@ -76,7 +76,7 @@ pub fn foreach_symbol_fileline<F>(frame: Frame,
                                        &mut line);
         if ret == c::TRUE {
             let name = CStr::from_ptr(line.Filename).to_bytes();
-            f(name, line.LineNumber as c_int)?;
+            f(name, line.LineNumber as u32)?;
         }
         Ok(false)
     }

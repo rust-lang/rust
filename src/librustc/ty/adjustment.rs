@@ -22,38 +22,38 @@ use ty::subst::Substs;
 /// Here are some common scenarios:
 ///
 /// 1. The simplest cases are where a pointer is not adjusted fat vs thin.
-/// Here the pointer will be dereferenced N times (where a dereference can
-/// happen to raw or borrowed pointers or any smart pointer which implements
-/// Deref, including Box<_>). The types of dereferences is given by
-/// `autoderefs`.  It can then be auto-referenced zero or one times, indicated
-/// by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
-/// `false`.
+///    Here the pointer will be dereferenced N times (where a dereference can
+///    happen to raw or borrowed pointers or any smart pointer which implements
+///    Deref, including Box<_>). The types of dereferences is given by
+///    `autoderefs`.  It can then be auto-referenced zero or one times, indicated
+///    by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
+///    `false`.
 ///
 /// 2. A thin-to-fat coercion involves unsizing the underlying data. We start
-/// with a thin pointer, deref a number of times, unsize the underlying data,
-/// then autoref. The 'unsize' phase may change a fixed length array to a
-/// dynamically sized one, a concrete object to a trait object, or statically
-/// sized struct to a dynamically sized one. E.g., &[i32; 4] -> &[i32] is
-/// represented by:
+///    with a thin pointer, deref a number of times, unsize the underlying data,
+///    then autoref. The 'unsize' phase may change a fixed length array to a
+///    dynamically sized one, a concrete object to a trait object, or statically
+///    sized struct to a dynamically sized one. E.g., &[i32; 4] -> &[i32] is
+///    represented by:
 ///
-/// ```
-/// Deref(None) -> [i32; 4],
-/// Borrow(AutoBorrow::Ref) -> &[i32; 4],
-/// Unsize -> &[i32],
-/// ```
+///    ```
+///    Deref(None) -> [i32; 4],
+///    Borrow(AutoBorrow::Ref) -> &[i32; 4],
+///    Unsize -> &[i32],
+///    ```
 ///
-/// Note that for a struct, the 'deep' unsizing of the struct is not recorded.
-/// E.g., `struct Foo<T> { x: T }` we can coerce &Foo<[i32; 4]> to &Foo<[i32]>
-/// The autoderef and -ref are the same as in the above example, but the type
-/// stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
-/// the underlying conversions from `[i32; 4]` to `[i32]`.
+///    Note that for a struct, the 'deep' unsizing of the struct is not recorded.
+///    E.g., `struct Foo<T> { x: T }` we can coerce &Foo<[i32; 4]> to &Foo<[i32]>
+///    The autoderef and -ref are the same as in the above example, but the type
+///    stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
+///    the underlying conversions from `[i32; 4]` to `[i32]`.
 ///
 /// 3. Coercing a `Box<T>` to `Box<Trait>` is an interesting special case.  In
-/// that case, we have the pointer we need coming in, so there are no
-/// autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
-/// At some point, of course, `Box` should move out of the compiler, in which
-/// case this is analogous to transforming a struct. E.g., Box<[i32; 4]> ->
-/// Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
+///    that case, we have the pointer we need coming in, so there are no
+///    autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
+///    At some point, of course, `Box` should move out of the compiler, in which
+///    case this is analogous to transforming a struct. E.g., Box<[i32; 4]> ->
+///    Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Adjustment<'tcx> {
     pub kind: Adjust<'tcx>,

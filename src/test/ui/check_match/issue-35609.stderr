@@ -1,49 +1,49 @@
 error[E0004]: non-exhaustive patterns: `(B, _)`, `(C, _)`, `(D, _)` and 2 more not covered
   --> $DIR/issue-35609.rs:20:11
    |
-20 |     match (A, ()) {
+20 |     match (A, ()) { //~ ERROR non-exhaustive
    |           ^^^^^^^ patterns `(B, _)`, `(C, _)`, `(D, _)` and 2 more not covered
 
 error[E0004]: non-exhaustive patterns: `(_, B)`, `(_, C)`, `(_, D)` and 2 more not covered
   --> $DIR/issue-35609.rs:24:11
    |
-24 |     match (A, A) {
+24 |     match (A, A) { //~ ERROR non-exhaustive
    |           ^^^^^^ patterns `(_, B)`, `(_, C)`, `(_, D)` and 2 more not covered
 
 error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:28:11
    |
-28 |     match ((A, ()), ()) {
+28 |     match ((A, ()), ()) { //~ ERROR non-exhaustive
    |           ^^^^^^^^^^^^^ patterns `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
 
 error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:32:11
    |
-32 |     match ((A, ()), A) {
+32 |     match ((A, ()), A) { //~ ERROR non-exhaustive
    |           ^^^^^^^^^^^^ patterns `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
 
 error[E0004]: non-exhaustive patterns: `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
   --> $DIR/issue-35609.rs:36:11
    |
-36 |     match ((A, ()), ()) {
+36 |     match ((A, ()), ()) { //~ ERROR non-exhaustive
    |           ^^^^^^^^^^^^^ patterns `((B, _), _)`, `((C, _), _)`, `((D, _), _)` and 2 more not covered
 
 error[E0004]: non-exhaustive patterns: `S(B, _)`, `S(C, _)`, `S(D, _)` and 2 more not covered
   --> $DIR/issue-35609.rs:41:11
    |
-41 |     match S(A, ()) {
+41 |     match S(A, ()) { //~ ERROR non-exhaustive
    |           ^^^^^^^^ patterns `S(B, _)`, `S(C, _)`, `S(D, _)` and 2 more not covered
 
 error[E0004]: non-exhaustive patterns: `Sd { x: B, .. }`, `Sd { x: C, .. }`, `Sd { x: D, .. }` and 2 more not covered
   --> $DIR/issue-35609.rs:45:11
    |
-45 |     match (Sd { x: A, y: () }) {
+45 |     match (Sd { x: A, y: () }) { //~ ERROR non-exhaustive
    |           ^^^^^^^^^^^^^^^^^^^^ patterns `Sd { x: B, .. }`, `Sd { x: C, .. }`, `Sd { x: D, .. }` and 2 more not covered
 
 error[E0004]: non-exhaustive patterns: `Some(B)`, `Some(C)`, `Some(D)` and 2 more not covered
   --> $DIR/issue-35609.rs:49:11
    |
-49 |     match Some(A) {
+49 |     match Some(A) { //~ ERROR non-exhaustive
    |           ^^^^^^^ patterns `Some(B)`, `Some(C)`, `Some(D)` and 2 more not covered
 
 error: aborting due to 8 previous errors

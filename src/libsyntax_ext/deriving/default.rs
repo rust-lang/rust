@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
@@ -28,7 +29,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, core::default::Default),
+        path: path_std!(cx, default::Default),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

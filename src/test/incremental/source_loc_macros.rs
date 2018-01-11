@@ -35,28 +35,30 @@ fn file_same() {
     let _ = file!();
 }
 
-#[cfg(rpass1)]
-fn line_different() {
-    let _ = line!();
-}
-
-#[cfg(rpass2)]
 #[rustc_clean(label="Hir", cfg="rpass2")]
 #[rustc_dirty(label="HirBody", cfg="rpass2")]
 fn line_different() {
-    let _ = line!();
+    #[cfg(rpass1)]
+    {
+        let _ = line!();
+    }
+    #[cfg(rpass2)]
+    {
+        let _ = line!();
+    }
 }
 
-#[cfg(rpass1)]
-fn col_different() {
-    let _ = column!();
-}
-
-#[cfg(rpass2)]
 #[rustc_clean(label="Hir", cfg="rpass2")]
 #[rustc_dirty(label="HirBody", cfg="rpass2")]
 fn col_different() {
-    let _ =        column!();
+    #[cfg(rpass1)]
+    {
+        let _ = column!();
+    }
+    #[cfg(rpass2)]
+    {
+        let _ =        column!();
+    }
 }
 
 fn main() {

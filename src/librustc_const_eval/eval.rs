@@ -17,7 +17,7 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::maps::Providers;
+use rustc::ty::layout::LayoutOf;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::{Substs, Subst};
 use rustc::util::common::ErrorReported;
@@ -133,8 +133,8 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                 (&LitKind::Int(I128_OVERFLOW, Signed(IntTy::I128)), _) => {
                     Some(I128(i128::min_value()))
                 },
-                (&LitKind::Int(n, _), &ty::TyInt(IntTy::Is)) |
-                (&LitKind::Int(n, Signed(IntTy::Is)), _) => {
+                (&LitKind::Int(n, _), &ty::TyInt(IntTy::Isize)) |
+                (&LitKind::Int(n, Signed(IntTy::Isize)), _) => {
                     match tcx.sess.target.isize_ty {
                         IntTy::I16 => if n == I16_OVERFLOW {
                             Some(Isize(Is16(i16::min_value())))
@@ -313,18 +313,18 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           if tcx.fn_sig(def_id).abi() == Abi::RustIntrinsic {
             let layout_of = |ty: Ty<'tcx>| {
                 let ty = tcx.erase_regions(&ty);
-                tcx.at(e.span).layout_raw(cx.param_env.reveal_all().and(ty)).map_err(|err| {
+                (tcx.at(e.span), cx.param_env).layout_of(ty).map_err(|err| {
                     ConstEvalErr { span: e.span, kind: LayoutError(err) }
                 })
             };
             match &tcx.item_name(def_id)[..] {
                 "size_of" => {
-                    let size = layout_of(substs.type_at(0))?.size(tcx).bytes();
+                    let size = layout_of(substs.type_at(0))?.size.bytes();
                     return Ok(mk_const(Integral(Usize(ConstUsize::new(size,
                         tcx.sess.target.usize_ty).unwrap()))));
                 }
                 "min_align_of" => {
-                    let align = layout_of(substs.type_at(0))?.align(tcx).abi();
+                    let align = layout_of(substs.type_at(0))?.align.abi();
                     return Ok(mk_const(Integral(Usize(ConstUsize::new(align,
                         tcx.sess.target.usize_ty).unwrap()))));
                 }
@@ -478,7 +478,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyInt(ast::IntTy::I32) => Ok(Integral(I32(v as i128 as i32))),
         ty::TyInt(ast::IntTy::I64) => Ok(Integral(I64(v as i128 as i64))),
         ty::TyInt(ast::IntTy::I128) => Ok(Integral(I128(v as i128))),
-        ty::TyInt(ast::IntTy::Is) => {
+        ty::TyInt(ast::IntTy::Isize) => {
             Ok(Integral(Isize(ConstIsize::new_truncating(v as i128, tcx.sess.target.isize_ty))))
         },
         ty::TyUint(ast::UintTy::U8) => Ok(Integral(U8(v as u8))),
@@ -486,7 +486,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyUint(ast::UintTy::U32) => Ok(Integral(U32(v as u32))),
         ty::TyUint(ast::UintTy::U64) => Ok(Integral(U64(v as u64))),
         ty::TyUint(ast::UintTy::U128) => Ok(Integral(U128(v as u128))),
-        ty::TyUint(ast::UintTy::Us) => {
+        ty::TyUint(ast::UintTy::Usize) => {
             Ok(Integral(Usize(ConstUsize::new_truncating(v, tcx.sess.target.usize_ty))))
         },
         ty::TyFloat(fty) => {
@@ -681,33 +681,4 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
         };
         compare_const_vals(tcx, span, &a.val, &b.val)
     }
-}
-
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        const_eval,
-        ..*providers
-    };
-}
-
-fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
-                        -> EvalResult<'tcx> {
-    let (def_id, substs) = if let Some(resolved) = lookup_const_by_id(tcx, key) {
-        resolved
-    } else {
-        return Err(ConstEvalErr {
-            span: tcx.def_span(key.value.0),
-            kind: TypeckError
-        });
-    };
-
-    let tables = tcx.typeck_tables_of(def_id);
-    let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        tcx.mir_const_qualif(def_id);
-        tcx.hir.body(tcx.hir.body_owned_by(id))
-    } else {
-        tcx.extern_const_body(def_id).body
-    };
-    ConstContext::new(tcx, key.param_env.and(substs), tables).eval(&body.value)
 }

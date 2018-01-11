@@ -34,9 +34,7 @@
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(libc)]
-#![cfg_attr(not(any(target_env = "msvc",
-                    all(windows, target_arch = "x86_64", target_env = "gnu"))),
-            feature(panic_unwind))]
+#![feature(panic_unwind)]
 #![feature(raw)]
 #![feature(staged_api)]
 #![feature(unwind_attributes)]
@@ -70,6 +68,7 @@ mod imp;
 
 // i686-pc-windows-gnu and all others
 #[cfg(any(all(unix, not(target_os = "emscripten")),
+          target_os = "cloudabi",
           target_os = "redox",
           all(windows, target_arch = "x86", target_env = "gnu")))]
 #[path = "gcc.rs"]
@@ -78,6 +77,10 @@ mod imp;
 // emscripten
 #[cfg(target_os = "emscripten")]
 #[path = "emcc.rs"]
+mod imp;
+
+#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
+#[path = "wasm32.rs"]
 mod imp;
 
 mod dwarf;

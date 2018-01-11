@@ -28,8 +28,10 @@
 //! perturb the reuse results.
 
 use rustc::dep_graph::{DepNode, DepConstructor};
+use rustc::mir::mono::CodegenUnit;
 use rustc::ty::TyCtxt;
 use syntax::ast;
+use syntax_pos::symbol::Symbol;
 use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_TRANSLATED};
 
 const MODULE: &'static str = "module";
@@ -39,16 +41,16 @@ const CFG: &'static str = "cfg";
 enum Disposition { Reused, Translated }
 
 pub(crate) fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _ignore = tcx.dep_graph.in_ignore();
+    tcx.dep_graph.with_ignore(|| {
+        if tcx.sess.opts.incremental.is_none() {
+            return;
+        }
 
-    if tcx.sess.opts.incremental.is_none() {
-        return;
-    }
-
-    let ams = AssertModuleSource { tcx };
-    for attr in &tcx.hir.krate().attrs {
-        ams.check_attr(attr);
-    }
+        let ams = AssertModuleSource { tcx };
+        for attr in &tcx.hir.krate().attrs {
+            ams.check_attr(attr);
+        }
+    })
 }
 
 struct AssertModuleSource<'a, 'tcx: 'a> {
@@ -71,9 +73,11 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
         }
 
         let mname = self.field(attr, MODULE);
+        let mangled_cgu_name = CodegenUnit::mangle_name(&mname.as_str());
+        let mangled_cgu_name = Symbol::intern(&mangled_cgu_name).as_str();
 
         let dep_node = DepNode::new(self.tcx,
-                                    DepConstructor::CompileCodegenUnit(mname.as_str()));
+                                    DepConstructor::CompileCodegenUnit(mangled_cgu_name));
 
         if let Some(loaded_from_cache) = self.tcx.dep_graph.was_loaded_from_cache(&dep_node) {
             match (disposition, loaded_from_cache) {

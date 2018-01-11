@@ -10,5 +10,4 @@
 
 fn main() {
     let w = || { break; }; //~ ERROR E0267
-            //~| NOTE cannot break inside of a closure
 }

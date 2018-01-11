@@ -52,8 +52,6 @@ extern {
     pub fn fn_type2(p: fn()); //~ ERROR found function pointer with Rust
     pub fn fn_contained(p: RustBadRet); //~ ERROR: found struct without
 
-    pub fn good1(size: *const libc::c_int);
-    pub fn good2(size: *const libc::c_uint);
     pub fn good3(fptr: Option<extern fn()>);
     pub fn good4(aptr: &[u8; 4 as usize]);
     pub fn good5(s: StructWithProjection);
@@ -64,6 +62,12 @@ extern {
     pub fn good10() -> CVoidRet;
     pub fn good11(size: isize);
     pub fn good12(size: usize);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+extern {
+    pub fn good1(size: *const libc::c_int);
+    pub fn good2(size: *const libc::c_uint);
 }
 
 fn main() {

@@ -12,7 +12,6 @@ fn main() {
     match Some(()) {
         None => { },
         option if { option = None; false } => { }, //~ ERROR E0302
-        //~| NOTE assignment in pattern guard
         Some(_) => { }
     }
 }

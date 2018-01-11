@@ -148,10 +148,11 @@ impl<T> TypedArena<T> {
         }
     }
 
-    /// Allocates a slice of objects that are copy into the `TypedArena`, returning a mutable
+    /// Allocates a slice of objects that are copied into the `TypedArena`, returning a mutable
     /// reference to it. Will panic if passed a zero-sized types.
     ///
     /// Panics:
+    ///
     ///  - Zero-sized types
     ///  - Zero-length slices
     #[inline]
@@ -369,6 +370,7 @@ impl DroplessArena {
     /// reference to it. Will panic if passed a zero-sized type.
     ///
     /// Panics:
+    ///
     ///  - Zero-sized types
     ///  - Zero-length slices
     #[inline]

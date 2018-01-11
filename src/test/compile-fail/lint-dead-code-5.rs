@@ -13,15 +13,15 @@
 
 enum Enum1 {
     Variant1(isize),
-    Variant2 //~ ERROR: variant is never used
+    Variant2 //~ ERROR: variant is never constructed
 }
 
 enum Enum2 {
     Variant3(bool),
     #[allow(dead_code)]
     Variant4(isize),
-    Variant5 { _x: isize }, //~ ERROR: variant is never used: `Variant5`
-    Variant6(isize), //~ ERROR: variant is never used: `Variant6`
+    Variant5 { _x: isize }, //~ ERROR: variant is never constructed: `Variant5`
+    Variant6(isize), //~ ERROR: variant is never constructed: `Variant6`
     _Variant7,
 }
 

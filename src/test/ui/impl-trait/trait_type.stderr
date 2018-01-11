@@ -8,26 +8,26 @@ error[E0053]: method `fmt` has an incompatible type for trait
               found type `fn(&MyType, &str)`
 
 error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2
-  --> $DIR/trait_type.rs:21:11
+  --> $DIR/trait_type.rs:22:11
    |
-21 |    fn fmt(&self) -> () { }
+22 |    fn fmt(&self) -> () { }
    |           ^^^^^ expected 2 parameters, found 1
    |
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 
 error[E0186]: method `fmt` has a `&self` declaration in the trait, but not in the impl
-  --> $DIR/trait_type.rs:25:4
+  --> $DIR/trait_type.rs:27:4
    |
-25 |    fn fmt() -> () { }
+27 |    fn fmt() -> () { }
    |    ^^^^^^^^^^^^^^^^^^ expected `&self` in impl
    |
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 
 error[E0046]: not all trait items implemented, missing: `fmt`
-  --> $DIR/trait_type.rs:28:1
+  --> $DIR/trait_type.rs:31:1
    |
-28 | impl std::fmt::Display for MyType4 {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `fmt` in implementation
+31 | impl std::fmt::Display for MyType4 {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `fmt` in implementation
    |
    = note: `fmt` from trait: `fn(&Self, &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error>`
 

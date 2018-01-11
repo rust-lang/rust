@@ -1,0 +1,18 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+   |
+19 |     &*x
+   |     ^^^
+
+error[E0623]: lifetime mismatch
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+   |
+18 | fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
+   |                   -------                 -------
+   |                   |
+   |                   this parameter and the return type are declared with different lifetimes...
+19 |     &*x
+   |     ^^^ ...but data from `x` is returned here
+
+error: aborting due to previous error
+

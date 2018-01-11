@@ -11,36 +11,44 @@
 fn main() {
     // bad arguments to the format! call
 
-    format!("{}");            //~ ERROR: invalid reference to argument
+    // bad number of arguments, see #44954 (originally #15780)
 
-    format!("{1}", 1);        //~ ERROR: invalid reference to argument `1`
-                            //~^ ERROR: argument never used
-    format!("{foo}");         //~ ERROR: no argument named `foo`
+    format!("{}");
+    //~^ ERROR: 1 positional argument in format string, but no arguments were given
 
-    format!("", 1, 2);                 //~ ERROR: multiple unused formatting arguments
-    format!("{}", 1, 2);               //~ ERROR: argument never used
-    format!("{1}", 1, 2);              //~ ERROR: argument never used
-    format!("{}", 1, foo=2);           //~ ERROR: named argument never used
-    format!("{foo}", 1, foo=2);        //~ ERROR: argument never used
-    format!("", foo=2);                //~ ERROR: named argument never used
+    format!("{1}", 1);
+    //~^ ERROR: invalid reference to positional argument 1 (there is 1 argument)
+    //~^^ ERROR: argument never used
 
-    format!("{foo}", foo=1, foo=2);    //~ ERROR: duplicate argument
-    format!("", foo=1, 2);             //~ ERROR: positional arguments cannot follow
-
-    // bad number of arguments, see #15780
-
-    format!("{0}");
-    //~^ ERROR invalid reference to argument `0` (no arguments given)
+    format!("{} {}");
+    //~^ ERROR: 2 positional arguments in format string, but no arguments were given
 
     format!("{0} {1}", 1);
-    //~^ ERROR invalid reference to argument `1` (there is 1 argument)
+    //~^ ERROR: invalid reference to positional argument 1 (there is 1 argument)
 
     format!("{0} {1} {2}", 1, 2);
-    //~^ ERROR invalid reference to argument `2` (there are 2 arguments)
+    //~^ ERROR: invalid reference to positional argument 2 (there are 2 arguments)
 
-    format!("{0} {1}");
-    //~^ ERROR invalid reference to argument `0` (no arguments given)
-    //~^^ ERROR invalid reference to argument `1` (no arguments given)
+    format!("{} {value} {} {}", 1, value=2);
+    //~^ ERROR: invalid reference to positional argument 2 (there are 2 arguments)
+    format!("{name} {value} {} {} {} {} {} {}", 0, name=1, value=2);
+    //~^ ERROR: invalid reference to positional arguments 3, 4 and 5 (there are 3 arguments)
+
+    format!("{} {foo} {} {bar} {}", 1, 2, 3);
+    //~^ ERROR: there is no argument named `foo`
+    //~^^ ERROR: there is no argument named `bar`
+
+    format!("{foo}");                //~ ERROR: no argument named `foo`
+    format!("", 1, 2);               //~ ERROR: multiple unused formatting arguments
+    format!("{}", 1, 2);             //~ ERROR: argument never used
+    format!("{1}", 1, 2);            //~ ERROR: argument never used
+    format!("{}", 1, foo=2);         //~ ERROR: named argument never used
+    format!("{foo}", 1, foo=2);      //~ ERROR: argument never used
+    format!("", foo=2);              //~ ERROR: named argument never used
+    format!("{} {}", 1, 2, foo=1, bar=2);  //~ ERROR: multiple unused formatting arguments
+
+    format!("{foo}", foo=1, foo=2);  //~ ERROR: duplicate argument
+    format!("", foo=1, 2);           //~ ERROR: positional arguments cannot follow
 
     // bad named arguments, #35082
 

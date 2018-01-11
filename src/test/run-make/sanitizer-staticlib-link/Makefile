@@ -13,6 +13,6 @@ all:
 ifeq ($(ASAN_SUPPORT),1)
 	$(RUSTC) -g -Z sanitizer=address --crate-type staticlib --target $(TARGET) library.rs
 	$(CC) program.c $(call STATICLIB,library) $(call OUT_EXE,program) $(EXTRACFLAGS) $(EXTRACXXFLAGS)
-	LD_LIBRARY_PATH=$(TMPDIR) $(TMPDIR)/program 2>&1 | grep -q stack-buffer-overflow
+	LD_LIBRARY_PATH=$(TMPDIR) $(TMPDIR)/program 2>&1 | $(CGREP) stack-buffer-overflow
 endif
 

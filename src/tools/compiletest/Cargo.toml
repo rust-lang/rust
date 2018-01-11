@@ -8,6 +8,13 @@ diff = "0.1.10"
 env_logger = { version = "0.4", default-features = false }
 filetime = "0.1"
 getopts = "0.2"
-log = "0.3"
+log = "0.4"
+regex = "0.2"
 rustc-serialize = "0.3"
+
+[target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+miow = "0.2"
+winapi = "0.2"

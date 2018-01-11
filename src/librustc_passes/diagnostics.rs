@@ -264,4 +264,5 @@ register_diagnostics! {
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
     E0561, // patterns aren't allowed in function pointer types
+    E0642, // patterns aren't allowed in methods without bodies
 }

@@ -26,6 +26,7 @@ pub struct EarlyProps {
     pub ignore: bool,
     pub should_fail: bool,
     pub aux: Vec<String>,
+    pub revisions: Vec<String>,
 }
 
 impl EarlyProps {
@@ -34,6 +35,7 @@ impl EarlyProps {
             ignore: false,
             should_fail: false,
             aux: Vec::new(),
+            revisions: vec![],
         };
 
         iter_header(testfile,
@@ -48,6 +50,10 @@ impl EarlyProps {
 
             if let Some(s) = config.parse_aux_build(ln) {
                 props.aux.push(s);
+            }
+
+            if let Some(r) = config.parse_revisions(ln) {
+                props.revisions.extend(r);
             }
 
             props.should_fail = props.should_fail || config.parse_name_directive(ln, "should-fail");
@@ -150,6 +156,14 @@ impl EarlyProps {
                     // Ignore if actual version is smaller the minimum required
                     // version
                     &actual_version[..] < min_version
+                } else if line.starts_with("min-system-llvm-version") {
+                    let min_version = line.trim_right()
+                        .rsplit(' ')
+                        .next()
+                        .expect("Malformed llvm version directive");
+                    // Ignore if using system LLVM and actual version
+                    // is smaller the minimum required version
+                    !(config.system_llvm && &actual_version[..] < min_version)
                 } else {
                     false
                 }
@@ -204,7 +218,7 @@ pub struct TestProps {
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
-    // Specifies that a cfail test must actually compile without errors.
+    // Specifies that a test must actually compile without errors.
     pub must_compile_successfully: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
@@ -259,9 +273,9 @@ impl TestProps {
         props
     }
 
-    pub fn from_file(testfile: &Path, config: &Config) -> Self {
+    pub fn from_file(testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
-        props.load_from(testfile, None, config);
+        props.load_from(testfile, cfg, config);
         props
     }
 
@@ -269,10 +283,10 @@ impl TestProps {
     /// tied to a particular revision `foo` (indicated by writing
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
-    pub fn load_from(&mut self,
-                     testfile: &Path,
-                     cfg: Option<&str>,
-                     config: &Config) {
+    fn load_from(&mut self,
+                 testfile: &Path,
+                 cfg: Option<&str>,
+                 config: &Config) {
         iter_header(testfile,
                     cfg,
                     &mut |ln| {
@@ -345,16 +359,18 @@ impl TestProps {
                 self.forbid_output.push(of);
             }
 
-            if !self.must_compile_successfully {
-                self.must_compile_successfully = config.parse_must_compile_successfully(ln);
-            }
-
             if !self.check_test_line_numbers_match {
                 self.check_test_line_numbers_match = config.parse_check_test_line_numbers_match(ln);
             }
 
             if !self.run_pass {
                 self.run_pass = config.parse_run_pass(ln);
+            }
+
+            if !self.must_compile_successfully {
+                // run-pass implies must_compile_sucessfully
+                self.must_compile_successfully =
+                    config.parse_must_compile_successfully(ln) || self.run_pass;
             }
 
             if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
@@ -531,7 +547,7 @@ impl Config {
             let name = line[prefix.len()+1 ..].split(&[':', ' '][..]).next().unwrap();
 
             name == "test" ||
-                name == util::get_os(&self.target) ||               // target
+                util::matches_os(&self.target, name) ||             // target
                 name == util::get_arch(&self.target) ||             // architecture
                 name == util::get_pointer_width(&self.target) ||    // pointer width
                 name == self.stage_id.split('-').next().unwrap() || // stage

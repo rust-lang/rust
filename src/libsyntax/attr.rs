@@ -31,7 +31,7 @@ use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::ThinVec;
 
-use std::cell::{RefCell, Cell};
+use std::cell::RefCell;
 use std::iter;
 
 thread_local! {
@@ -371,11 +371,13 @@ impl Attribute {
             let meta = mk_name_value_item_str(
                 Symbol::intern("doc"),
                 Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())));
-            if self.style == ast::AttrStyle::Outer {
-                f(&mk_attr_outer(self.span, self.id, meta))
+            let mut attr = if self.style == ast::AttrStyle::Outer {
+                mk_attr_outer(self.span, self.id, meta)
             } else {
-                f(&mk_attr_inner(self.span, self.id, meta))
-            }
+                mk_attr_inner(self.span, self.id, meta)
+            };
+            attr.is_sugared_doc = true;
+            f(&attr)
         } else {
             f(self)
         }
@@ -417,16 +419,14 @@ pub fn mk_spanned_word_item(sp: Span, name: Name) -> MetaItem {
     MetaItem { span: sp, name: name, node: MetaItemKind::Word }
 }
 
-
-
-thread_local! { static NEXT_ATTR_ID: Cell<usize> = Cell::new(0) }
-
 pub fn mk_attr_id() -> AttrId {
-    let id = NEXT_ATTR_ID.with(|slot| {
-        let r = slot.get();
-        slot.set(r + 1);
-        r
-    });
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::Ordering;
+
+    static NEXT_ATTR_ID: AtomicUsize = AtomicUsize::new(0);
+
+    let id = NEXT_ATTR_ID.fetch_add(1, Ordering::SeqCst);
+    assert!(id != ::std::usize::MAX);
     AttrId(id)
 }
 
@@ -1008,8 +1008,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                 if let Some(mi) = item.word() {
                     let word = &*mi.name().as_str();
                     let hint = match word {
-                        // Can't use "extern" because it's not a lexical identifier.
-                        "C" => Some(ReprExtern),
+                        "C" => Some(ReprC),
                         "packed" => Some(ReprPacked),
                         "simd" => Some(ReprSimd),
                         _ => match int_type_of_word(word) {
@@ -1071,8 +1070,8 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
         "u64" => Some(UnsignedInt(ast::UintTy::U64)),
         "i128" => Some(SignedInt(ast::IntTy::I128)),
         "u128" => Some(UnsignedInt(ast::UintTy::U128)),
-        "isize" => Some(SignedInt(ast::IntTy::Is)),
-        "usize" => Some(UnsignedInt(ast::UintTy::Us)),
+        "isize" => Some(SignedInt(ast::IntTy::Isize)),
+        "usize" => Some(UnsignedInt(ast::UintTy::Usize)),
         _ => None
     }
 }
@@ -1080,7 +1079,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 #[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum ReprAttr {
     ReprInt(IntType),
-    ReprExtern,
+    ReprC,
     ReprPacked,
     ReprSimd,
     ReprAlign(u32),
@@ -1121,10 +1120,7 @@ impl MetaItem {
             _ => return None,
         };
         let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
-        let node = match MetaItemKind::from_tokens(tokens) {
-            Some(node) => node,
-            _ => return None,
-        };
+        let node = MetaItemKind::from_tokens(tokens)?;
         let hi = match node {
             MetaItemKind::NameValue(ref lit) => lit.span.hi(),
             MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(span.hi()),
@@ -1180,10 +1176,8 @@ impl MetaItemKind {
         let mut tokens = delimited.into_trees().peekable();
         let mut result = Vec::new();
         while let Some(..) = tokens.peek() {
-            match NestedMetaItemKind::from_tokens(&mut tokens) {
-                Some(item) => result.push(respan(item.span(), item)),
-                None => return None,
-            }
+            let item = NestedMetaItemKind::from_tokens(&mut tokens)?;
+            result.push(respan(item.span(), item));
             match tokens.next() {
                 None | Some(TokenTree::Token(_, Token::Comma)) => {}
                 _ => return None,

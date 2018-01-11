@@ -7,7 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 // min-llvm-version 4.0
+// ignore-cloudabi no std::env
 
 #![feature(cfg_target_feature)]
 

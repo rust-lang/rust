@@ -9,5 +9,12 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-log = "0.3"
+log = "0.4"
 serialize = { path = "../libserialize" }
+cfg-if = "0.1.2"
+stable_deref_trait = "1.0.0"
+parking_lot_core = "0.2.8"
+
+[dependencies.parking_lot]
+version = "0.5"
+features = ["nightly"]

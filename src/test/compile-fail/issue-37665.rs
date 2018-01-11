@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z unstable-options --unpretty=mir
+// ignore-cloudabi no std::path
 
 use std::path::MAIN_SEPARATOR;
 

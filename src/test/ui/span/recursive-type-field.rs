@@ -10,12 +10,12 @@
 
 use std::rc::Rc;
 
-struct Foo<'a> {
+struct Foo<'a> { //~ ERROR recursive type
     bar: Bar<'a>,
     b: Rc<Bar<'a>>,
 }
 
-struct Bar<'a> {
+struct Bar<'a> { //~ ERROR recursive type
     y: (Foo<'a>, Foo<'a>),
     z: Option<Bar<'a>>,
     a: &'a Foo<'a>,

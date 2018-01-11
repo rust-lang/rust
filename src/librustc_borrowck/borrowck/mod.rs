@@ -29,7 +29,7 @@ use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
 use rustc::middle::borrowck::BorrowCheckResult;
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -269,6 +269,17 @@ impl<'b, 'tcx: 'b> BorrowckErrors for BorrowckCtxt<'b, 'tcx> {
     {
         self.tcx.sess.struct_span_err(sp, msg)
     }
+
+    fn cancel_if_wrong_origin<'a>(&'a self,
+                                mut diag: DiagnosticBuilder<'a>,
+                                o: Origin)
+                                -> DiagnosticBuilder<'a>
+    {
+        if !o.should_emit_errors(self.tcx.sess.borrowck_mode()) {
+            self.tcx.sess.diagnostic().cancel(&mut diag);
+        }
+        diag
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -335,6 +346,16 @@ impl<'tcx> LoanPath<'tcx> {
     }
 
     fn to_type(&self) -> Ty<'tcx> { self.ty }
+
+    fn has_downcast(&self) -> bool {
+        match self.kind {
+            LpDowncast(_, _) => true,
+            LpExtend(ref lp, _, LpInterior(_, _)) => {
+                lp.has_downcast()
+            }
+            _ => false,
+        }
+    }
 }
 
 // FIXME (pnkfelix): See discussion here
@@ -376,9 +397,9 @@ pub enum LoanPathElem<'tcx> {
     LpInterior(Option<DefId>, InteriorKind),
 }
 
-fn closure_to_block(closure_id: DefIndex,
+fn closure_to_block(closure_id: LocalDefId,
                     tcx: TyCtxt) -> ast::NodeId {
-    let closure_id = tcx.hir.def_index_to_node_id(closure_id);
+    let closure_id = tcx.hir.local_def_id_to_node_id(closure_id);
     match tcx.hir.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
             hir::ExprClosure(.., body_id, _, _) => {
@@ -473,52 +494,58 @@ impl<'a, 'tcx> LoanPath<'tcx> {
     }
 }
 
-pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
-    //! Computes the `LoanPath` (if any) for a `cmt`.
-    //! Note that this logic is somewhat duplicated in
-    //! the method `compute()` found in `gather_loans::restrictions`,
-    //! which allows it to share common loan path pieces as it
-    //! traverses the CMT.
-
+// Avoid "cannot borrow immutable field `self.x` as mutable" as that implies that a field *can* be
+// mutable independently of the struct it belongs to. (#35937)
+pub fn opt_loan_path_is_field<'tcx>(cmt: &mc::cmt<'tcx>) -> (Option<Rc<LoanPath<'tcx>>>, bool) {
     let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
 
     match cmt.cat {
         Categorization::Rvalue(..) |
         Categorization::StaticItem => {
-            None
+            (None, false)
         }
 
         Categorization::Local(id) => {
-            Some(new_lp(LpVar(id)))
+            (Some(new_lp(LpVar(id))), false)
         }
 
         Categorization::Upvar(mc::Upvar { id, .. }) => {
-            Some(new_lp(LpUpvar(id)))
+            (Some(new_lp(LpUpvar(id))), false)
         }
 
         Categorization::Deref(ref cmt_base, pk) => {
-            opt_loan_path(cmt_base).map(|lp| {
+            let lp = opt_loan_path_is_field(cmt_base);
+            (lp.0.map(|lp| {
                 new_lp(LpExtend(lp, cmt.mutbl, LpDeref(pk)))
-            })
+            }), lp.1)
         }
 
         Categorization::Interior(ref cmt_base, ik) => {
-            opt_loan_path(cmt_base).map(|lp| {
+            (opt_loan_path(cmt_base).map(|lp| {
                 let opt_variant_id = match cmt_base.cat {
                     Categorization::Downcast(_, did) =>  Some(did),
                     _ => None
                 };
                 new_lp(LpExtend(lp, cmt.mutbl, LpInterior(opt_variant_id, ik.cleaned())))
-            })
+            }), true)
         }
 
-        Categorization::Downcast(ref cmt_base, variant_def_id) =>
-            opt_loan_path(cmt_base)
-            .map(|lp| {
+        Categorization::Downcast(ref cmt_base, variant_def_id) => {
+            let lp = opt_loan_path_is_field(cmt_base);
+            (lp.0.map(|lp| {
                 new_lp(LpDowncast(lp, variant_def_id))
-            }),
-
+            }), lp.1)
+        }
     }
+}
+
+/// Computes the `LoanPath` (if any) for a `cmt`.
+/// Note that this logic is somewhat duplicated in
+/// the method `compute()` found in `gather_loans::restrictions`,
+/// which allows it to share common loan path pieces as it
+/// traverses the CMT.
+pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
+    opt_loan_path_is_field(cmt).0
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -655,10 +682,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     ty::TypeVariants::TyClosure(id, _) => {
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
-                        if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
-                            self.tables.closure_kinds().get(hir_id)
-                        {
-                            err.span_note(span, &format!(
+                        if let Some((span, name)) = self.tables.closure_kind_origins().get(hir_id) {
+                            err.span_note(*span, &format!(
                                 "closure cannot be invoked more than once because \
                                 it moves the variable `{}` out of its environment",
                                 name
@@ -706,16 +731,20 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                          move_note));
             err
         } else {
-            err.span_label(use_span, format!("value {} here after move", verb_participle))
-               .span_label(move_span, format!("value moved{} here", move_note));
+            err.span_label(use_span, format!("value {} here after move", verb_participle));
+            err.span_label(move_span, format!("value moved{} here", move_note));
             err
         };
 
         if need_note {
-            err.note(&format!("move occurs because `{}` has type `{}`, \
-                               which does not implement the `Copy` trait",
-                              self.loan_path_to_string(moved_lp),
-                              moved_lp.ty));
+            err.note(&format!(
+                "move occurs because {} has type `{}`, which does not implement the `Copy` trait",
+                if moved_lp.has_downcast() {
+                    "the value".to_string()
+                } else {
+                    format!("`{}`", self.loan_path_to_string(moved_lp))
+                },
+                moved_lp.ty));
         }
 
         // Note: we used to suggest adding a `ref binding` or calling
@@ -778,14 +807,26 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     mc::NoteClosureEnv(_) | mc::NoteUpvarRef(_) => {
                         self.cmt_to_string(&err.cmt)
                     }
-                    _ => match opt_loan_path(&err.cmt) {
-                        None => {
+                    _ => match opt_loan_path_is_field(&err.cmt) {
+                        (None, true) => {
+                            format!("{} of {} binding",
+                                    self.cmt_to_string(&err.cmt),
+                                    err.cmt.mutbl.to_user_str())
+
+                        }
+                        (None, false) => {
                             format!("{} {}",
                                     err.cmt.mutbl.to_user_str(),
                                     self.cmt_to_string(&err.cmt))
 
                         }
-                        Some(lp) => {
+                        (Some(lp), true) => {
+                            format!("{} `{}` of {} binding",
+                                    self.cmt_to_string(&err.cmt),
+                                    self.loan_path_to_string(&lp),
+                                    err.cmt.mutbl.to_user_str())
+                        }
+                        (Some(lp), false) => {
                             format!("{} {} `{}`",
                                     err.cmt.mutbl.to_user_str(),
                                     self.cmt_to_string(&err.cmt),
@@ -910,11 +951,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }
 
                 let mut db = self.path_does_not_live_long_enough(error_span, &msg, Origin::Ast);
-                let (value_kind, value_msg) = match err.cmt.cat {
-                    mc::Categorization::Rvalue(..) =>
-                        ("temporary value", "temporary value created here"),
-                    _ =>
-                        ("borrowed value", "borrow occurs here")
+                let value_kind = match err.cmt.cat {
+                    mc::Categorization::Rvalue(..) => "temporary value",
+                    _ => "borrowed value",
                 };
 
                 let is_closure = match cause {
@@ -927,14 +966,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             Some(primary) => {
                                 db.span = MultiSpan::from_span(s);
                                 db.span_label(primary, "capture occurs here");
-                                db.span_label(s, "does not live long enough");
+                                db.span_label(s, format!("{} does not live long enough",
+                                                         value_kind));
                                 true
                             }
                             None => false
                         }
                     }
                     _ => {
-                        db.span_label(error_span, "does not live long enough");
+                        db.span_label(error_span, format!("{} does not live long enough",
+                                                          value_kind));
                         false
                     }
                 };
@@ -945,8 +986,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 match (sub_span, super_span) {
                     (Some(s1), Some(s2)) if s1 == s2 => {
                         if !is_closure {
-                            db.span = MultiSpan::from_span(s1);
-                            db.span_label(error_span, value_msg);
                             let msg = match opt_loan_path(&err.cmt) {
                                 None => value_kind.to_string(),
                                 Some(lp) => {
@@ -962,8 +1001,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 they are created");
                     }
                     (Some(s1), Some(s2)) if !is_closure => {
-                        db.span = MultiSpan::from_span(s2);
-                        db.span_label(error_span, value_msg);
                         let msg = match opt_loan_path(&err.cmt) {
                             None => value_kind.to_string(),
                             Some(lp) => {
@@ -1075,15 +1112,20 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         };
 
         match cause {
-            mc::AliasableStatic |
+            mc::AliasableStatic => {
+                // This happens when we have an `&mut` or assignment to a
+                // static. We should have already reported a mutability
+                // violation first, but may have continued compiling.
+                self.tcx.sess.delay_span_bug(
+                    span,
+                    &format!("aliasability violation for static `{}`", prefix)
+                );
+                return;
+            }
             mc::AliasableStaticMut => {
-                // This path cannot occur. It happens when we have an
-                // `&mut` or assignment to a static. But in the case
-                // of `static X`, we get a mutability violation first,
-                // and never get here. In the case of `static mut X`,
-                // that is unsafe and hence the aliasability error is
-                // ignored.
-                span_bug!(span, "aliasability violation for static `{}`", prefix)
+                // This path cannot occur. `static mut X` is not checked
+                // for aliasability violations.
+                span_bug!(span, "aliasability violation for static mut `{}`", prefix)
             }
             mc::AliasableBorrowed => {}
         };
@@ -1101,7 +1143,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 } else {
                     "consider changing this closure to take self by mutable reference"
                 };
-                let node_id = self.tcx.hir.def_index_to_node_id(id);
+                let node_id = self.tcx.hir.local_def_id_to_node_id(id);
                 let help_span = self.tcx.hir.span(node_id);
                 self.cannot_act_on_capture_in_sharable_fn(span,
                                                           prefix,
@@ -1297,7 +1339,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
                 if kind == ty::ClosureKind::Fn {
                     let closure_node_id =
-                        self.tcx.hir.def_index_to_node_id(upvar_id.closure_expr_id);
+                        self.tcx.hir.local_def_id_to_node_id(upvar_id.closure_expr_id);
                     db.span_help(self.tcx.hir.span(closure_node_id),
                                  "consider changing this closure to take \
                                   self by mutable reference");
@@ -1321,7 +1363,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 } else if let Categorization::Interior(ref cmt, _) = err.cmt.cat {
                     if let mc::MutabilityCategory::McImmutable = cmt.mutbl {
                         db.span_label(*error_span,
-                                      "cannot mutably borrow immutable field");
+                                      "cannot mutably borrow field of immutable binding");
                     }
                 }
             }
@@ -1386,7 +1428,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             LpDowncast(ref lp_base, variant_def_id) => {
                 out.push('(');
                 self.append_autoderefd_loan_path_to_string(&lp_base, out);
-                out.push(':');
+                out.push_str(DOWNCAST_PRINTED_OPERATOR);
                 out.push_str(&self.tcx.item_path_str(variant_def_id));
                 out.push(')');
             }

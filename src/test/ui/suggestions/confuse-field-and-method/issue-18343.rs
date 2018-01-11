@@ -16,6 +16,4 @@ fn main() {
     let o = Obj { closure: || 42 };
     o.closure();
     //~^ ERROR no method named `closure` found
-    //~| HELP use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
-    //~| NOTE field, not a method
 }

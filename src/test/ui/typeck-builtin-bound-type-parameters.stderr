@@ -1,0 +1,38 @@
+error[E0244]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:11:11
+   |
+11 | fn foo1<T:Copy<U>, U>(x: T) {}
+   |           ^^^^^^^ expected no type arguments
+
+error[E0244]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:14:14
+   |
+14 | trait Trait: Copy<Send> {}
+   |              ^^^^^^^^^^ expected no type arguments
+
+error[E0244]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:17:21
+   |
+17 | struct MyStruct1<T: Copy<T>>;
+   |                     ^^^^^^^ expected no type arguments
+
+error[E0107]: wrong number of lifetime parameters: expected 0, found 1
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:20:25
+   |
+20 | struct MyStruct2<'a, T: Copy<'a>>;
+   |                         ^^^^^^^^ unexpected lifetime parameter
+
+error[E0107]: wrong number of lifetime parameters: expected 0, found 1
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:24:15
+   |
+24 | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
+   |               ^^^^^^^^^^^ unexpected lifetime parameter
+
+error[E0244]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:24:15
+   |
+24 | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
+   |               ^^^^^^^^^^^ expected no type arguments
+
+error: aborting due to 6 previous errors
+

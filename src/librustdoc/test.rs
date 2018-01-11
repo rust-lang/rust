@@ -27,11 +27,10 @@ use rustc::hir::intravisit;
 use rustc::session::{self, CompileIncomplete, config};
 use rustc::session::config::{OutputType, OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc_back::dynamic_lib::DynamicLibrary;
-use rustc_back::tempdir::TempDir;
+use rustc_metadata::dynamic_lib::DynamicLibrary;
+use tempdir::TempDir;
 use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
-use rustc_driver::pretty::ReplaceBodyWithLoop;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
@@ -39,8 +38,7 @@ use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::fold::Folder;
-use syntax_pos::{BytePos, DUMMY_SP, Pos, Span};
+use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
 use errors;
 use errors::emitter::ColorConfig;
 
@@ -53,7 +51,7 @@ pub struct TestOptions {
     pub attrs: Vec<String>,
 }
 
-pub fn run(input: &str,
+pub fn run(input_path: &Path,
            cfgs: Vec<String>,
            libs: SearchPaths,
            externs: Externs,
@@ -62,10 +60,9 @@ pub fn run(input: &str,
            maybe_sysroot: Option<PathBuf>,
            render_type: RenderType,
            display_warnings: bool,
-           linker: Option<String>)
+           linker: Option<PathBuf>)
            -> isize {
-    let input_path = PathBuf::from(input);
-    let input = config::Input::File(input_path.clone());
+    let input = config::Input::File(input_path.to_owned());
 
     let sessopts = config::Options {
         maybe_sysroot: maybe_sysroot.clone().or_else(
@@ -81,11 +78,13 @@ pub fn run(input: &str,
 
     let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let handler =
-        errors::Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
+        errors::Handler::with_tty_emitter(ColorConfig::Auto,
+                                          true, false,
+                                          Some(codemap.clone()));
 
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
-        sessopts, Some(input_path.clone()), handler, codemap.clone(),
+        sessopts, Some(input_path.to_owned()), handler, codemap.clone(),
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -95,7 +94,6 @@ pub fn run(input: &str,
     let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
                                                       &sess,
                                                       &input));
-    let krate = ReplaceBodyWithLoop::new().fold_crate(krate);
     let driver::ExpansionResult { defs, mut hir_forest, .. } = {
         phase_2_configure_and_expand(
             &sess,
@@ -178,12 +176,12 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     opts
 }
 
-fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs: SearchPaths,
+fn run_test(test: &str, cratename: &str, filename: &FileName, cfgs: Vec<String>, libs: SearchPaths,
             externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
             maybe_sysroot: Option<PathBuf>,
-            linker: Option<String>) {
+            linker: Option<PathBuf>) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = make_test(test, Some(cratename), as_test_harness, opts);
@@ -265,7 +263,7 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
     }
 
     let res = panic::catch_unwind(AssertUnwindSafe(|| {
-        driver::compile_input(&sess, &cstore, &input, &out, &None, None, &control)
+        driver::compile_input(&sess, &cstore, &None, &input, &out, &None, None, &control)
     }));
 
     let compile_result = match res {
@@ -337,14 +335,22 @@ pub fn make_test(s: &str,
 
     let mut prog = String::new();
 
-    // First push any outer attributes from the example, assuming they
-    // are intended to be crate attributes.
-    prog.push_str(&crate_attrs);
+    if opts.attrs.is_empty() {
+        // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
+        // lints that are commonly triggered in doctests. The crate-level test attributes are
+        // commonly used to make tests fail in case they trigger warnings, so having this there in
+        // that case may cause some tests to pass when they shouldn't have.
+        prog.push_str("#![allow(unused)]\n");
+    }
 
-    // Next, any attributes for other aspects such as lints.
+    // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
     for attr in &opts.attrs {
         prog.push_str(&format!("#![{}]\n", attr));
     }
+
+    // Now push any outer attributes from the example, assuming they
+    // are intended to be crate attributes.
+    prog.push_str(&crate_attrs);
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
@@ -444,17 +450,17 @@ pub struct Collector {
     maybe_sysroot: Option<PathBuf>,
     position: Span,
     codemap: Option<Rc<CodeMap>>,
-    filename: Option<String>,
+    filename: Option<PathBuf>,
     // to be removed when hoedown will be removed as well
     pub render_type: RenderType,
-    linker: Option<String>,
+    linker: Option<PathBuf>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
-               codemap: Option<Rc<CodeMap>>, filename: Option<String>,
-               render_type: RenderType, linker: Option<String>) -> Collector {
+               codemap: Option<Rc<CodeMap>>, filename: Option<PathBuf>,
+               render_type: RenderType, linker: Option<PathBuf>) -> Collector {
         Collector {
             tests: Vec::new(),
             old_tests: HashMap::new(),
@@ -474,16 +480,16 @@ impl Collector {
         }
     }
 
-    fn generate_name(&self, line: usize, filename: &str) -> String {
+    fn generate_name(&self, line: usize, filename: &FileName) -> String {
         format!("{} - {} (line {})", filename, self.names.join("::"), line)
     }
 
     // to be removed once hoedown is gone
-    fn generate_name_beginning(&self, filename: &str) -> String {
+    fn generate_name_beginning(&self, filename: &FileName) -> String {
         format!("{} - {} (line", filename, self.names.join("::"))
     }
 
-    pub fn add_old_test(&mut self, test: String, filename: String) {
+    pub fn add_old_test(&mut self, test: String, filename: FileName) {
         let name_beg = self.generate_name_beginning(&filename);
         let entry = self.old_tests.entry(name_beg)
                                   .or_insert(Vec::new());
@@ -493,7 +499,7 @@ impl Collector {
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    line: usize, filename: String, allow_fail: bool) {
+                    line: usize, filename: FileName, allow_fail: bool) {
         let name = self.generate_name(line, &filename);
         // to be removed when hoedown is removed
         if self.render_type == RenderType::Pulldown {
@@ -527,7 +533,7 @@ impl Collector {
                 should_panic: testing::ShouldPanic::No,
                 allow_fail,
             },
-            testfn: testing::DynTestFn(box move |()| {
+            testfn: testing::DynTestFn(box move || {
                 let panic = io::set_panic(None);
                 let print = io::set_print(None);
                 match {
@@ -571,21 +577,21 @@ impl Collector {
         self.position = position;
     }
 
-    pub fn get_filename(&self) -> String {
+    pub fn get_filename(&self) -> FileName {
         if let Some(ref codemap) = self.codemap {
             let filename = codemap.span_to_filename(self.position);
-            if let Ok(cur_dir) = env::current_dir() {
-                if let Ok(path) = Path::new(&filename).strip_prefix(&cur_dir) {
-                    if let Some(path) = path.to_str() {
-                        return path.to_owned();
+            if let FileName::Real(ref filename) = filename {
+                if let Ok(cur_dir) = env::current_dir() {
+                    if let Ok(path) = filename.strip_prefix(&cur_dir) {
+                        return path.to_owned().into();
                     }
                 }
             }
             filename
         } else if let Some(ref filename) = self.filename {
-            filename.clone()
+            filename.clone().into()
         } else {
-            "<input>".to_owned()
+            FileName::Custom("input".to_owned())
         }
     }
 
@@ -653,14 +659,16 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
 
         attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
-        if let Some(doc) = attrs.doc_value() {
+        // the collapse-docs pass won't combine sugared/raw doc attributes, or included files with
+        // anything else, this will combine them for us
+        if let Some(doc) = attrs.collapsed_doc_value() {
             if self.collector.render_type == RenderType::Pulldown {
-                markdown::old_find_testable_code(doc, self.collector,
+                markdown::old_find_testable_code(&doc, self.collector,
                                                  attrs.span.unwrap_or(DUMMY_SP));
-                markdown::find_testable_code(doc, self.collector,
+                markdown::find_testable_code(&doc, self.collector,
                                              attrs.span.unwrap_or(DUMMY_SP));
             } else {
-                markdown::old_find_testable_code(doc, self.collector,
+                markdown::old_find_testable_code(&doc, self.collector,
                                                  attrs.span.unwrap_or(DUMMY_SP));
             }
         }

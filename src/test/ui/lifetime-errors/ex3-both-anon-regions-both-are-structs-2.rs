@@ -13,7 +13,7 @@ struct Ref<'a, 'b> {
 }
 
 fn foo(mut x: Ref, y: Ref) {
-    x.b = y.b;
+    x.b = y.b; //~ ERROR lifetime mismatch
 }
 
 fn main() {}

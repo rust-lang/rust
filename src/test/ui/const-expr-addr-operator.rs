@@ -12,7 +12,7 @@
 
 pub fn main() {
     // Constant of generic type (int)
-    const X: &'static u32 = &22;
+    const X: &'static u32 = &22; //~ ERROR constant evaluation error
     assert_eq!(0, match &22 {
         X => 0,
         _ => 1,

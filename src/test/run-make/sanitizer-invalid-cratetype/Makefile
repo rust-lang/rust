@@ -14,5 +14,5 @@ endif
 
 all:
 ifeq ($(ASAN_SUPPORT),1)
-	$(RUSTC) -Z sanitizer=address --crate-type proc-macro --target $(TARGET) hello.rs 2>&1 | grep -q -- '-Z sanitizer'
+	$(RUSTC) -Z sanitizer=address --crate-type proc-macro --target $(TARGET) hello.rs 2>&1 | $(CGREP) '-Z sanitizer'
 endif

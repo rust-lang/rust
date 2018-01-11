@@ -21,8 +21,5 @@ struct Foo<T: ?Sized, U: ?Sized> {
 
 impl<T, U> CoerceUnsized<Foo<U, T>> for Foo<T, U> {}
 //~^ ERROR E0375
-//~| NOTE requires multiple coercions
-//~| NOTE `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
-//~| NOTE currently, 2 fields need coercions: b (T to U), c (U to T)
 
 fn main() {}

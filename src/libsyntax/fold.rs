@@ -56,8 +56,8 @@ pub trait Folder : Sized {
         noop_fold_meta_item(meta_item, self)
     }
 
-    fn fold_view_path(&mut self, view_path: P<ViewPath>) -> P<ViewPath> {
-        noop_fold_view_path(view_path, self)
+    fn fold_use_tree(&mut self, use_tree: UseTree) -> UseTree {
+        noop_fold_use_tree(use_tree, self)
     }
 
     fn fold_foreign_item(&mut self, ni: ForeignItem) -> ForeignItem {
@@ -237,8 +237,12 @@ pub trait Folder : Sized {
         noop_fold_ty_param(tp, self)
     }
 
-    fn fold_ty_params(&mut self, tps: Vec<TyParam>) -> Vec<TyParam> {
-        noop_fold_ty_params(tps, self)
+    fn fold_generic_param(&mut self, param: GenericParam) -> GenericParam {
+        noop_fold_generic_param(param, self)
+    }
+
+    fn fold_generic_params(&mut self, params: Vec<GenericParam>) -> Vec<GenericParam> {
+        noop_fold_generic_params(params, self)
     }
 
     fn fold_tt(&mut self, tt: TokenTree) -> TokenTree {
@@ -310,30 +314,18 @@ pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<MetaItem>, fld: &mut T) -
     meta_items.move_map(|x| fld.fold_meta_item(x))
 }
 
-pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<ViewPath> {
-    view_path.map(|Spanned {node, span}| Spanned {
-        node: match node {
-            ViewPathSimple(ident, path) => {
-                ViewPathSimple(fld.fold_ident(ident), fld.fold_path(path))
-            }
-            ViewPathGlob(path) => {
-                ViewPathGlob(fld.fold_path(path))
-            }
-            ViewPathList(path, path_list_idents) => {
-                let path = fld.fold_path(path);
-                let path_list_idents = path_list_idents.move_map(|path_list_ident| Spanned {
-                    node: PathListItem_ {
-                        id: fld.new_id(path_list_ident.node.id),
-                        rename: path_list_ident.node.rename.map(|ident| fld.fold_ident(ident)),
-                        name: fld.fold_ident(path_list_ident.node.name),
-                    },
-                    span: fld.new_span(path_list_ident.span)
-                });
-                ViewPathList(path, path_list_idents)
-            }
+pub fn noop_fold_use_tree<T: Folder>(use_tree: UseTree, fld: &mut T) -> UseTree {
+    UseTree {
+        span: fld.new_span(use_tree.span),
+        prefix: fld.fold_path(use_tree.prefix),
+        kind: match use_tree.kind {
+            UseTreeKind::Simple(ident) => UseTreeKind::Simple(fld.fold_ident(ident)),
+            UseTreeKind::Glob => UseTreeKind::Glob,
+            UseTreeKind::Nested(items) => UseTreeKind::Nested(items.move_map(|(tree, id)| {
+                (fld.fold_use_tree(tree), fld.new_id(id))
+            })),
         },
-        span: fld.new_span(span)
-    })
+    }
 }
 
 pub fn fold_attrs<T: Folder>(attrs: Vec<Attribute>, fld: &mut T) -> Vec<Attribute> {
@@ -375,8 +367,8 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 TyKind::Rptr(fld.fold_opt_lifetime(region), fld.fold_mt(mt))
             }
             TyKind::BareFn(f) => {
-                TyKind::BareFn(f.map(|BareFnTy {lifetimes, unsafety, abi, decl}| BareFnTy {
-                    lifetimes: fld.fold_lifetime_defs(lifetimes),
+                TyKind::BareFn(f.map(|BareFnTy {generic_params, unsafety, abi, decl}| BareFnTy {
+                    generic_params: fld.fold_generic_params(generic_params),
                     unsafety,
                     abi,
                     decl: fld.fold_fn_decl(decl)
@@ -650,6 +642,7 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
             token::NtWhereClause(fld.fold_where_clause(where_clause)),
         token::NtArg(arg) => token::NtArg(fld.fold_arg(arg)),
         token::NtVis(vis) => token::NtVis(fld.fold_vis(vis)),
+        token::NtLifetime(lifetime) => token::NtLifetime(fld.fold_lifetime(lifetime)),
     }
 }
 
@@ -689,8 +682,18 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
     }
 }
 
-pub fn noop_fold_ty_params<T: Folder>(tps: Vec<TyParam>, fld: &mut T) -> Vec<TyParam> {
-    tps.move_map(|tp| fld.fold_ty_param(tp))
+pub fn noop_fold_generic_param<T: Folder>(param: GenericParam, fld: &mut T) -> GenericParam {
+    match param {
+        GenericParam::Lifetime(l) => GenericParam::Lifetime(fld.fold_lifetime_def(l)),
+        GenericParam::Type(t) => GenericParam::Type(fld.fold_ty_param(t)),
+    }
+}
+
+pub fn noop_fold_generic_params<T: Folder>(
+    params: Vec<GenericParam>,
+    fld: &mut T
+) -> Vec<GenericParam> {
+    params.move_map(|p| fld.fold_generic_param(p))
 }
 
 pub fn noop_fold_lifetime<T: Folder>(l: Lifetime, fld: &mut T) -> Lifetime {
@@ -728,11 +731,10 @@ pub fn noop_fold_opt_lifetime<T: Folder>(o_lt: Option<Lifetime>, fld: &mut T)
     o_lt.map(|lt| fld.fold_lifetime(lt))
 }
 
-pub fn noop_fold_generics<T: Folder>(Generics {ty_params, lifetimes, where_clause, span}: Generics,
+pub fn noop_fold_generics<T: Folder>(Generics { params, where_clause, span }: Generics,
                                      fld: &mut T) -> Generics {
     Generics {
-        ty_params: fld.fold_ty_params(ty_params),
-        lifetimes: fld.fold_lifetime_defs(lifetimes),
+        params: fld.fold_generic_params(params),
         where_clause: fld.fold_where_clause(where_clause),
         span: fld.new_span(span),
     }
@@ -756,12 +758,12 @@ pub fn noop_fold_where_predicate<T: Folder>(
                                  fld: &mut T)
                                  -> WherePredicate {
     match pred {
-        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{bound_lifetimes,
+        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{bound_generic_params,
                                                                      bounded_ty,
                                                                      bounds,
                                                                      span}) => {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                bound_lifetimes: fld.fold_lifetime_defs(bound_lifetimes),
+                bound_generic_params: fld.fold_generic_params(bound_generic_params),
                 bounded_ty: fld.fold_ty(bounded_ty),
                 bounds: bounds.move_map(|x| fld.fold_ty_param_bound(x)),
                 span: fld.new_span(span)
@@ -818,7 +820,7 @@ pub fn noop_fold_trait_ref<T: Folder>(p: TraitRef, fld: &mut T) -> TraitRef {
 
 pub fn noop_fold_poly_trait_ref<T: Folder>(p: PolyTraitRef, fld: &mut T) -> PolyTraitRef {
     ast::PolyTraitRef {
-        bound_lifetimes: fld.fold_lifetime_defs(p.bound_lifetimes),
+        bound_generic_params: fld.fold_generic_params(p.bound_generic_params),
         trait_ref: fld.fold_trait_ref(p.trait_ref),
         span: fld.new_span(p.span),
     }
@@ -863,19 +865,20 @@ fn noop_fold_bounds<T: Folder>(bounds: TyParamBounds, folder: &mut T)
 }
 
 pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
-    b.map(|Block {id, stmts, rules, span}| Block {
+    b.map(|Block {id, stmts, rules, span, recovered}| Block {
         id: folder.new_id(id),
         stmts: stmts.move_flat_map(|s| folder.fold_stmt(s).into_iter()),
         rules,
         span: folder.new_span(span),
+        recovered,
     })
 }
 
 pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
     match i {
         ItemKind::ExternCrate(string) => ItemKind::ExternCrate(string),
-        ItemKind::Use(view_path) => {
-            ItemKind::Use(folder.fold_view_path(view_path))
+        ItemKind::Use(use_tree) => {
+            ItemKind::Use(use_tree.map(|tree| folder.fold_use_tree(tree)))
         }
         ItemKind::Static(t, m, e) => {
             ItemKind::Static(folder.fold_ty(t), m, folder.fold_expr(e))
@@ -933,6 +936,9 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             folder.fold_bounds(bounds),
             items.move_flat_map(|item| folder.fold_trait_item(item)),
         ),
+        ItemKind::TraitAlias(generics, bounds) => ItemKind::TraitAlias(
+            folder.fold_generics(generics),
+            folder.fold_bounds(bounds)),
         ItemKind::Mac(m) => ItemKind::Mac(folder.fold_mac(m)),
         ItemKind::MacroDef(def) => ItemKind::MacroDef(folder.fold_macro_def(def)),
     }

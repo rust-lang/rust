@@ -1,0 +1,10 @@
+error[E0277]: the trait bound `std::vec::Vec<{integer}>: std::ops::Index<i32>` is not satisfied
+  --> $DIR/index-help.rs:13:5
+   |
+13 |     x[0i32]; //~ ERROR E0277
+   |     ^^^^^^^ vector indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `std::ops::Index<i32>` is not implemented for `std::vec::Vec<{integer}>`
+
+error: aborting due to previous error
+

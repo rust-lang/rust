@@ -1,11 +1,11 @@
 error[E0597]: `d1` does not live long enough
-  --> $DIR/issue-24805-dropck-child-has-items-via-parent.rs:42:1
+  --> $DIR/issue-24805-dropck-child-has-items-via-parent.rs:38:19
    |
 38 |     _d = D_Child(&d1);
-   |                   -- borrow occurs here
+   |                   ^^ borrowed value does not live long enough
 ...
-42 | }
-   | ^ `d1` dropped here while still borrowed
+43 | }
+   | - `d1` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

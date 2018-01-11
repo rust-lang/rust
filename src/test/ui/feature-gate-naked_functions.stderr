@@ -1,0 +1,18 @@
+error: the `#[naked]` attribute is an experimental feature (see issue #32408)
+  --> $DIR/feature-gate-naked_functions.rs:11:1
+   |
+11 | #[naked]
+   | ^^^^^^^^
+   |
+   = help: add #![feature(naked_functions)] to the crate attributes to enable
+
+error: the `#[naked]` attribute is an experimental feature (see issue #32408)
+  --> $DIR/feature-gate-naked_functions.rs:15:1
+   |
+15 | #[naked]
+   | ^^^^^^^^
+   |
+   = help: add #![feature(naked_functions)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+

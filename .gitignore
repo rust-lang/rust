@@ -95,7 +95,6 @@ config.stamp
 keywords.md
 lexer.ml
 src/etc/dl
-src/librustc_llvm/llvmdeps.rs
 tmp.*.rs
 version.md
 version.ml

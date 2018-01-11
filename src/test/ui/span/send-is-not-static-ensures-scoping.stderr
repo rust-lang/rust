@@ -1,27 +1,27 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/send-is-not-static-ensures-scoping.rs:32:5
+  --> $DIR/send-is-not-static-ensures-scoping.rs:26:18
    |
-26 |         let y = &x; //~ ERROR `x` does not live long enough
-   |                  - borrow occurs here
+26 |         let y = &x;
+   |                  ^ borrowed value does not live long enough
 ...
-32 |     };
-   |     ^ `x` dropped here while still borrowed
+33 |     };
+   |     - `x` dropped here while still borrowed
 ...
-35 | }
+36 | }
    | - borrowed value needs to live until here
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/send-is-not-static-ensures-scoping.rs:29:22
+  --> $DIR/send-is-not-static-ensures-scoping.rs:30:22
    |
-28 |         scoped(|| {
+29 |         scoped(|| {
    |                -- capture occurs here
-29 |             let _z = y;
-   |                      ^ does not live long enough
+30 |             let _z = y;
+   |                      ^ borrowed value does not live long enough
 ...
-32 |     };
+33 |     };
    |     - borrowed value only lives until here
 ...
-35 | }
+36 | }
    | - borrowed value needs to live until here
 
 error: aborting due to 2 previous errors

@@ -1,7 +1,7 @@
 error[E0507]: cannot move out of captured outer variable in an `Fn` closure
   --> $DIR/borrowck-in-static.rs:15:17
    |
-14 |     let x = Box::new(0); //~ NOTE moved
+14 |     let x = Box::new(0);
    |         - captured outer variable
 15 |     Box::new(|| x) //~ ERROR cannot move out of captured outer variable
    |                 ^ cannot move out of captured outer variable in an `Fn` closure

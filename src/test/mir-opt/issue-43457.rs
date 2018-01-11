@@ -23,7 +23,7 @@ fn rc_refcell_test(r: RefCell<i32>) {
 fn main() { }
 
 // END RUST SOURCE
-// START rustc.node5.SimplifyCfg-qualify-consts.after.mir
+// START rustc.rc_refcell_test.SimplifyCfg-qualify-consts.after.mir
 //
 // fn rc_refcell_test(_1: std::cell::RefCell<i32>) -> () {
 //     let mut _0: ();

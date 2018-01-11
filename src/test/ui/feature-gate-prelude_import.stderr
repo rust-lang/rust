@@ -1,0 +1,10 @@
+error: `#[prelude_import]` is for use by rustc only
+  --> $DIR/feature-gate-prelude_import.rs:11:1
+   |
+11 | #[prelude_import] //~ ERROR `#[prelude_import]` is for use by rustc only
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(prelude_import)] to the crate attributes to enable
+
+error: aborting due to previous error
+

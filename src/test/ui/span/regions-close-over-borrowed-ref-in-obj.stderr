@@ -1,12 +1,12 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:24:5
+  --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:22:27
    |
 22 |         let ss: &isize = &id(1);
-   |                           ----- temporary value created here
-23 |         blah = box ss as Box<Foo>;
-24 |     }
-   |     ^ temporary value dropped here while still borrowed
-25 | }
+   |                           ^^^^^ temporary value does not live long enough
+...
+25 |     }
+   |     - temporary value dropped here while still borrowed
+26 | }
    | - temporary value needs to live until here
 
 error: aborting due to previous error

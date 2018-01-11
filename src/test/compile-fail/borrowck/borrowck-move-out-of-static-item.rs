@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 // Ensure that moves out of static items is forbidden
 
@@ -26,6 +26,5 @@ fn test(f: Foo) {
 
 fn main() {
     test(BAR); //[ast]~ ERROR cannot move out of static item [E0507]
-               //[mir]~^ ERROR (Ast) [E0507]
-               //[mir]~| ERROR (Mir) [E0507]
+               //[mir]~^ ERROR [E0507]
 }

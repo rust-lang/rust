@@ -110,10 +110,7 @@ impl Step for Llvm {
             None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon",
         };
 
-        let llvm_exp_targets = match build.config.llvm_experimental_targets {
-            Some(ref s) => s,
-            None => "",
-        };
+        let llvm_exp_targets = &build.config.llvm_experimental_targets;
 
         let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
@@ -319,7 +316,7 @@ impl Step for TestHelpers {
            .warnings(false)
            .debug(false)
            .file(build.src.join("src/rt/rust_test_helpers.c"))
-           .compile("librust_test_helpers.a");
+           .compile("rust_test_helpers");
     }
 }
 

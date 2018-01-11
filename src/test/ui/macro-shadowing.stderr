@@ -1,0 +1,24 @@
+error: `macro_two` is already in scope
+  --> $DIR/macro-shadowing.rs:22:5
+   |
+22 |     #[macro_use] //~ ERROR `macro_two` is already in scope
+   |     ^^^^^^^^^^^^
+...
+25 | m1!();
+   | ------ in this macro invocation
+   |
+   = note: macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)
+
+error: `foo` is already in scope
+  --> $DIR/macro-shadowing.rs:20:5
+   |
+20 |     macro_rules! foo { () => {} } //~ ERROR `foo` is already in scope
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+25 | m1!();
+   | ------ in this macro invocation
+   |
+   = note: macro-expanded `macro_rules!`s may not shadow existing macros (see RFC 1560)
+
+error: aborting due to 2 previous errors
+

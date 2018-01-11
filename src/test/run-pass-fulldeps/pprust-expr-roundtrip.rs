@@ -33,7 +33,7 @@
 extern crate syntax;
 
 use syntax::ast::*;
-use syntax::codemap::{Spanned, DUMMY_SP};
+use syntax::codemap::{Spanned, DUMMY_SP, FileName};
 use syntax::codemap::FilePathMapping;
 use syntax::fold::{self, Folder};
 use syntax::parse::{self, ParseSess};
@@ -44,7 +44,7 @@ use syntax::util::ThinVec;
 
 fn parse_expr(ps: &ParseSess, src: &str) -> P<Expr> {
     let mut p = parse::new_parser_from_source_str(ps,
-                                                  "<expr>".to_owned(),
+                                                  FileName::Custom("expr".to_owned()),
                                                   src.to_owned());
     p.parse_expr().unwrap()
 }
@@ -131,6 +131,7 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                     id: DUMMY_NODE_ID,
                     rules: BlockCheckMode::Default,
                     span: DUMMY_SP,
+                    recovered: false,
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             },

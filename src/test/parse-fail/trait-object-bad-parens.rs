@@ -14,9 +14,9 @@ fn main() {
     let _: Box<((Copy)) + Copy>;
     //~^ ERROR expected a path on the left-hand side of `+`, not `((Copy))`
     let _: Box<(Copy + Copy) + Copy>;
-    //~^ ERROR expected a path on the left-hand side of `+`, not `( Copy + Copy)`
+    //~^ ERROR expected a path on the left-hand side of `+`, not `(Copy + Copy)`
     let _: Box<(Copy +) + Copy>;
-    //~^ ERROR expected a path on the left-hand side of `+`, not `( Copy)`
+    //~^ ERROR expected a path on the left-hand side of `+`, not `(Copy)`
     let _: Box<(dyn Copy) + Copy>;
-    //~^ ERROR expected a path on the left-hand side of `+`, not `(dyn  Copy)`
+    //~^ ERROR expected a path on the left-hand side of `+`, not `(dyn Copy)`
 }

@@ -1,44 +1,44 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:73:1
+  --> $DIR/dropck-eyepatch-reorder.rs:57:20
    |
-57 |     dt = Dt("dt", &c); //~ ERROR `c` does not live long enough
-   |                    - borrow occurs here
+57 |     dt = Dt("dt", &c);
+   |                    ^ borrowed value does not live long enough
 ...
-73 | }
-   | ^ `c` dropped here while still borrowed
+77 | }
+   | - `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:73:1
+  --> $DIR/dropck-eyepatch-reorder.rs:59:20
    |
-58 |     dr = Dr("dr", &c); //~ ERROR `c` does not live long enough
-   |                    - borrow occurs here
+59 |     dr = Dr("dr", &c);
+   |                    ^ borrowed value does not live long enough
 ...
-73 | }
-   | ^ `c` dropped here while still borrowed
+77 | }
+   | - `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:73:1
+  --> $DIR/dropck-eyepatch-reorder.rs:67:29
    |
-65 |     pt = Pt("pt", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             - borrow occurs here
+67 |     pt = Pt("pt", &c_long, &c);
+   |                             ^ borrowed value does not live long enough
 ...
-73 | }
-   | ^ `c` dropped here while still borrowed
+77 | }
+   | - `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:73:1
+  --> $DIR/dropck-eyepatch-reorder.rs:69:29
    |
-66 |     pr = Pr("pr", &c_long, &c); //~ ERROR `c` does not live long enough
-   |                             - borrow occurs here
+69 |     pr = Pr("pr", &c_long, &c);
+   |                             ^ borrowed value does not live long enough
 ...
-73 | }
-   | ^ `c` dropped here while still borrowed
+77 | }
+   | - `c` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

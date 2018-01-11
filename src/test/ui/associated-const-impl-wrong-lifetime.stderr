@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/associated-const-impl-wrong-lifetime.rs:18:5
+   |
+18 |     const NAME: &'a str = "unit";
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `&'static str`
+              found type `&'a str`
+note: the lifetime 'a as defined on the impl at 17:1...
+  --> $DIR/associated-const-impl-wrong-lifetime.rs:17:1
+   |
+17 | / impl<'a> Foo for &'a () {
+18 | |     const NAME: &'a str = "unit";
+19 | |     //~^ ERROR mismatched types [E0308]
+20 | | }
+   | |_^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to previous error
+

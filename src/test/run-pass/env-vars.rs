@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-cloudabi no env vars
+// ignore-wasm32-bare no env vars
 
 use std::env::*;
 

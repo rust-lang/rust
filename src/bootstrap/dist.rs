@@ -28,7 +28,7 @@ use build_helper::output;
 
 use {Build, Compiler, Mode};
 use channel;
-use util::{cp_r, libdir, is_dylib, cp_filtered, copy};
+use util::{cp_r, libdir, is_dylib, cp_filtered, copy, replace_in_file};
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use compile;
 use tool::{self, Tool};
@@ -39,6 +39,8 @@ pub fn pkgname(build: &Build, component: &str) -> String {
         format!("{}-{}", component, build.cargo_package_vers())
     } else if component == "rls" {
         format!("{}-{}", component, build.rls_package_vers())
+    } else if component == "rustfmt" {
+        format!("{}-{}", component, build.rustfmt_package_vers())
     } else {
         assert!(component.starts_with("rust"));
         format!("{}-{}", component, build.rust_package_vers())
@@ -432,7 +434,22 @@ impl Step for Rustc {
 
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));
-            cp_r(&build.src.join("src/doc/man"), &image.join("share/man/man1"));
+            let man_src = build.src.join("src/doc/man");
+            let man_dst = image.join("share/man/man1");
+            let date_output = output(Command::new("date").arg("+%B %Y"));
+            let month_year = date_output.trim();
+            // don't use our `bootstrap::util::{copy, cp_r}`, because those try
+            // to hardlink, and we don't want to edit the source templates
+            for entry_result in t!(fs::read_dir(man_src)) {
+                let file_entry = t!(entry_result);
+                let page_src = file_entry.path();
+                let page_dst = man_dst.join(file_entry.file_name());
+                t!(fs::copy(&page_src, &page_dst));
+                // template in month/year and version number
+                replace_in_file(&page_dst,
+                                &[("<INSERT DATE HERE>", month_year),
+                                  ("<INSERT VERSION HERE>", channel::CFG_RELEASE_NUM)]);
+            }
 
             // Debugger scripts
             builder.ensure(DebuggerScripts {
@@ -487,6 +504,7 @@ impl Step for DebuggerScripts {
             install(&build.src.join("src/etc/rust-windbg.cmd"), &sysroot.join("bin"),
                 0o755);
 
+            cp_debugger_script("natvis/intrinsic.natvis");
             cp_debugger_script("natvis/liballoc.natvis");
             cp_debugger_script("natvis/libcore.natvis");
         } else {
@@ -670,6 +688,9 @@ fn copy_src_dirs(build: &Build, src_dirs: &[&str], exclude_dirs: &[&str], dst_di
              spath.ends_with(".s")) {
             return false
         }
+        if spath.contains("test/emscripten") || spath.contains("test\\emscripten") {
+            return false
+        }
 
         let full_path = Path::new(dir).join(path);
         if exclude_dirs.iter().any(|excl| full_path == Path::new(excl)) {
@@ -734,6 +755,7 @@ impl Step for Src {
         // (essentially libstd and all of its path dependencies)
         let std_src_dirs = [
             "src/build_helper",
+            "src/dlmalloc",
             "src/liballoc",
             "src/liballoc_jemalloc",
             "src/liballoc_system",
@@ -743,7 +765,6 @@ impl Step for Src {
             "src/liblibc",
             "src/libpanic_abort",
             "src/libpanic_unwind",
-            "src/librand",
             "src/librustc_asan",
             "src/librustc_lsan",
             "src/librustc_msan",
@@ -753,6 +774,7 @@ impl Step for Src {
             "src/libunwind",
             "src/rustc/compiler_builtins_shim",
             "src/rustc/libc_shim",
+            "src/rustc/dlmalloc_shim",
             "src/libtest",
             "src/libterm",
             "src/jemalloc",
@@ -1055,11 +1077,6 @@ impl Step for Rls {
         let target = self.target;
         assert!(build.config.extended);
 
-        if !builder.config.toolstate.rls.testing() {
-            println!("skipping Dist RLS stage{} ({})", stage, target);
-            return None
-        }
-
         println!("Dist RLS stage{} ({})", stage, target);
         let src = build.src.join("src/tools/rls");
         let release_num = build.release_num("rls");
@@ -1077,7 +1094,8 @@ impl Step for Rls {
         let rls = builder.ensure(tool::Rls {
             compiler: builder.compiler(stage, build.build),
             target
-        }).expect("Rls to build: toolstate is testing");
+        }).or_else(|| { println!("Unable to build RLS, skipping dist"); None })?;
+
         install(&rls, &image.join("bin"), 0o755);
         let doc = image.join("share/doc/rls");
         install(&src.join("README.md"), &doc, 0o644);
@@ -1106,6 +1124,91 @@ impl Step for Rls {
            .arg(format!("--package-name={}-{}", name, target))
            .arg("--legacy-manifest-dirs=rustlib,cargo")
            .arg("--component-name=rls-preview");
+
+        build.run(&mut cmd);
+        Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
+    }
+}
+
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Rustfmt {
+    pub stage: u32,
+    pub target: Interned<String>,
+}
+
+impl Step for Rustfmt {
+    type Output = Option<PathBuf>;
+    const ONLY_BUILD_TARGETS: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("rustfmt")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustfmt {
+            stage: run.builder.top_stage,
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
+        let build = builder.build;
+        let stage = self.stage;
+        let target = self.target;
+        assert!(build.config.extended);
+
+        println!("Dist Rustfmt stage{} ({})", stage, target);
+        let src = build.src.join("src/tools/rustfmt");
+        let release_num = build.release_num("rustfmt");
+        let name = pkgname(build, "rustfmt");
+        let version = build.rustfmt_info.version(build, &release_num);
+
+        let tmp = tmpdir(build);
+        let image = tmp.join("rustfmt-image");
+        drop(fs::remove_dir_all(&image));
+        t!(fs::create_dir_all(&image));
+
+        // Prepare the image directory
+        let rustfmt = builder.ensure(tool::Rustfmt {
+            compiler: builder.compiler(stage, build.build),
+            target
+        }).or_else(|| { println!("Unable to build Rustfmt, skipping dist"); None })?;
+        let cargofmt = builder.ensure(tool::Cargofmt {
+            compiler: builder.compiler(stage, build.build),
+            target
+        }).or_else(|| { println!("Unable to build Cargofmt, skipping dist"); None })?;
+
+        install(&rustfmt, &image.join("bin"), 0o755);
+        install(&cargofmt, &image.join("bin"), 0o755);
+        let doc = image.join("share/doc/rustfmt");
+        install(&src.join("README.md"), &doc, 0o644);
+        install(&src.join("LICENSE-MIT"), &doc, 0o644);
+        install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+
+        // Prepare the overlay
+        let overlay = tmp.join("rustfmt-overlay");
+        drop(fs::remove_dir_all(&overlay));
+        t!(fs::create_dir_all(&overlay));
+        install(&src.join("README.md"), &overlay, 0o644);
+        install(&src.join("LICENSE-MIT"), &overlay, 0o644);
+        install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
+        t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+
+        // Generate the installer tarball
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+           .arg("--product-name=Rust")
+           .arg("--rel-manifest-dir=rustlib")
+           .arg("--success-message=rustfmt-ready-to-fmt.")
+           .arg("--image-dir").arg(&image)
+           .arg("--work-dir").arg(&tmpdir(build))
+           .arg("--output-dir").arg(&distdir(build))
+           .arg("--non-installed-overlay").arg(&overlay)
+           .arg(format!("--package-name={}-{}", name, target))
+           .arg("--legacy-manifest-dirs=rustlib,cargo")
+           .arg("--component-name=rustfmt-preview");
 
         build.run(&mut cmd);
         Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
@@ -1175,6 +1278,7 @@ impl Step for Extended {
             compiler: builder.compiler(stage, target),
         });
         let cargo_installer = builder.ensure(Cargo { stage, target });
+        let rustfmt_installer = builder.ensure(Rustfmt { stage, target });
         let rls_installer = builder.ensure(Rls { stage, target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis {
@@ -1212,6 +1316,7 @@ impl Step for Extended {
         tarballs.push(rustc_installer);
         tarballs.push(cargo_installer);
         tarballs.extend(rls_installer.clone());
+        tarballs.extend(rustfmt_installer.clone());
         tarballs.push(analysis_installer);
         tarballs.push(std_installer);
         if build.config.docs {
@@ -1278,6 +1383,9 @@ impl Step for Extended {
             t!(t!(File::open(p)).read_to_string(&mut contents));
             if rls_installer.is_none() {
                 contents = filter(&contents, "rls");
+            }
+            if rustfmt_installer.is_none() {
+                contents = filter(&contents, "rustfmt");
             }
             let ret = tmp.join(p.file_name().unwrap());
             t!(t!(File::create(&ret)).write_all(contents.as_bytes()));
@@ -1607,6 +1715,7 @@ impl Step for HashSign {
         cmd.arg(build.rust_package_vers());
         cmd.arg(build.package_vers(&build.release_num("cargo")));
         cmd.arg(build.package_vers(&build.release_num("rls")));
+        cmd.arg(build.package_vers(&build.release_num("rustfmt")));
         cmd.arg(addr);
 
         t!(fs::create_dir_all(distdir(build)));

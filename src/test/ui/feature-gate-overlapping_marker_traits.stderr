@@ -1,0 +1,10 @@
+error[E0119]: conflicting implementations of trait `MyMarker`:
+  --> $DIR/feature-gate-overlapping_marker_traits.rs:16:1
+   |
+15 | impl<T: Display> MyMarker for T {}
+   | ------------------------------- first implementation here
+16 | impl<T: Debug> MyMarker for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: aborting due to previous error
+

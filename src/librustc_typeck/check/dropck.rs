@@ -11,12 +11,12 @@
 use check::regionck::RegionCtxt;
 
 use hir::def_id::DefId;
-use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferOk};
+use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{self, ObligationCause};
+use rustc::traits::{self, Reveal, ObligationCause};
 use util::common::ErrorReported;
 use util::nodemap::FxHashSet;
 
@@ -59,11 +59,13 @@ pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         _ => {
             // Destructors only work on nominal types.  This was
-            // already checked by coherence, so we can panic here.
+            // already checked by coherence, but compilation may
+            // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            span_bug!(span,
-                      "should have been rejected by coherence check: {}",
-                      dtor_self_type);
+            tcx.sess.delay_span_bug(span,
+                            &format!("should have been rejected by coherence check: {}",
+                            dtor_self_type));
+            Err(ErrorReported)
         }
     }
 }
@@ -115,8 +117,18 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         }
 
         let region_scope_tree = region::ScopeTree::default();
-        let free_regions = FreeRegionMap::new();
-        infcx.resolve_regions_and_report_errors(drop_impl_did, &region_scope_tree, &free_regions);
+
+        // NB. It seems a bit... suspicious to use an empty param-env
+        // here. The correct thing, I imagine, would be
+        // `OutlivesEnvironment::new(impl_param_env)`, which would
+        // allow region solving to take any `a: 'b` relations on the
+        // impl into account. But I could not create a test case where
+        // it did the wrong thing, so I chose to preserve existing
+        // behavior, since it ought to be simply more
+        // conservative. -nmatsakis
+        let outlives_env = OutlivesEnvironment::new(ty::ParamEnv::empty(Reveal::UserFacing));
+
+        infcx.resolve_regions_and_report_errors(drop_impl_did, &region_scope_tree, &outlives_env);
         Ok(())
     })
 }

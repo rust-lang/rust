@@ -41,8 +41,8 @@ fn main() {
     let raw_byte_string_lit_kind = LitKind::ByteStr(Rc::new(b"#\"two\"#".to_vec()));
     assert_eq!(raw_byte_string.node, ExprKind::Lit(P(dummy_spanned(raw_byte_string_lit_kind))));
 
-    // check dotdotdot
-    let closed_range = quote_expr!(&cx, 0 ... 1);
+    // check dotdoteq
+    let closed_range = quote_expr!(&cx, 0 ..= 1);
     assert_eq!(closed_range.node, ExprKind::Range(
         Some(quote_expr!(&cx, 0)),
         Some(quote_expr!(&cx, 1)),

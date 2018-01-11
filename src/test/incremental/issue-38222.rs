@@ -33,10 +33,9 @@ pub fn main() {
 
 mod mod1 {
     pub fn some_fn() {
-        let _ = 1;
-    }
+        #[cfg(rpass2)]
+        {}
 
-    #[cfg(rpass2)]
-    fn _some_other_fn() {
+        let _ = 1;
     }
 }

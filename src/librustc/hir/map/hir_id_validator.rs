@@ -20,16 +20,16 @@ pub fn check_crate<'hir>(hir_map: &hir::map::Map<'hir>) {
         errors: vec![],
     };
 
-    hir_map.dep_graph.with_ignore(|| {
-        hir_map.krate().visit_all_item_likes(&mut outer_visitor);
-        if !outer_visitor.errors.is_empty() {
-            let message = outer_visitor
-                .errors
-                .iter()
-                .fold(String::new(), |s1, s2| s1 + "\n" + s2);
-            bug!("{}", message);
-        }
-    });
+    hir_map.dep_graph.assert_ignored();
+
+    hir_map.krate().visit_all_item_likes(&mut outer_visitor);
+    if !outer_visitor.errors.is_empty() {
+        let message = outer_visitor
+            .errors
+            .iter()
+            .fold(String::new(), |s1, s2| s1 + "\n" + s2);
+        bug!("{}", message);
+    }
 }
 
 struct HirIdValidator<'a, 'hir: 'a> {

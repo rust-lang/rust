@@ -1,0 +1,30 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/impl-trait-outlives.rs:18:35
+   |
+18 | fn no_region<'a, T>(x: Box<T>) -> impl Debug + 'a
+   |                                   ^^^^^^^^^^^^^^^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/impl-trait-outlives.rs:34:42
+   |
+34 | fn wrong_region<'a, 'b, T>(x: Box<T>) -> impl Debug + 'a
+   |                                          ^^^^^^^^^^^^^^^
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/impl-trait-outlives.rs:23:5
+   |
+23 |     x
+   |     ^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/impl-trait-outlives.rs:39:5
+   |
+39 |     x
+   |     ^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+
+error: aborting due to 2 previous errors
+

@@ -327,8 +327,12 @@ macro_rules! newtype_index {
 #[derive(Clone, PartialEq, Eq)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
-    _marker: PhantomData<Fn(&I)>
+    _marker: PhantomData<fn(&I)>
 }
+
+// Whether `IndexVec` is `Send` depends only on the data,
+// not the phantom data.
+unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
 impl<I: Idx, T: serialize::Encodable> serialize::Encodable for IndexVec<I, T> {
     fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
@@ -385,6 +389,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn pop(&mut self) -> Option<T> {
+        self.raw.pop()
+    }
+
+    #[inline]
     pub fn len(&self) -> usize {
         self.raw.len()
     }
@@ -411,7 +420,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter_enumerated(&self) -> Enumerated<I, slice::Iter<T>>
+    pub fn iter_enumerated(&self) -> Enumerated<I, slice::Iter<'_, T>>
     {
         self.raw.iter().enumerate().map(IntoIdx { _marker: PhantomData })
     }
@@ -427,7 +436,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn iter_enumerated_mut(&mut self) -> Enumerated<I, slice::IterMut<T>>
+    pub fn iter_enumerated_mut(&mut self) -> Enumerated<I, slice::IterMut<'_, T>>
     {
         self.raw.iter_mut().enumerate().map(IntoIdx { _marker: PhantomData })
     }

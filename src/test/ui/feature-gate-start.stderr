@@ -1,0 +1,10 @@
+error: a #[start] function is an experimental feature whose signature may change over time (see issue #29633)
+  --> $DIR/feature-gate-start.rs:12:1
+   |
+12 | fn foo() {} //~ ERROR: a #[start] function is an experimental feature
+   | ^^^^^^^^^^^
+   |
+   = help: add #![feature(start)] to the crate attributes to enable
+
+error: aborting due to previous error
+

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled with panic=abort by default
 // aux-build:reachable-unnameable-items.rs
 
 extern crate reachable_unnameable_items;

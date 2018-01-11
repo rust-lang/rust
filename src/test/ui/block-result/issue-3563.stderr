@@ -6,16 +6,5 @@ error[E0599]: no method named `b` found for type `&Self` in the current scope
    |
    = help: did you mean `a`?
 
-error[E0308]: mismatched types
-  --> $DIR/issue-3563.rs:13:9
-   |
-12 |     fn a(&self) {
-   |                 - possibly return type missing here?
-13 |         || self.b()
-   |         ^^^^^^^^^^^ expected (), found closure
-   |
-   = note: expected type `()`
-              found type `[closure@$DIR/issue-3563.rs:13:9: 13:20 self:_]`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

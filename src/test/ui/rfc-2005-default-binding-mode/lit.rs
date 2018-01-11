@@ -16,7 +16,7 @@ fn with_str() {
     let s: &'static str = "abc";
 
     match &s {
-            "abc" => true,
+            "abc" => true, //~ ERROR mismatched types
             _ => panic!(),
     };
 }
@@ -25,7 +25,7 @@ fn with_bytes() {
     let s: &'static [u8] = b"abc";
 
     match &s {
-        b"abc" => true,
+        b"abc" => true, //~ ERROR mismatched types
         _ => panic!(),
     };
 }

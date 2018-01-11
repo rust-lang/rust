@@ -16,7 +16,7 @@ use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn ast_block(&mut self,
-                     destination: &Lvalue<'tcx>,
+                     destination: &Place<'tcx>,
                      block: BasicBlock,
                      ast_block: &'tcx hir::Block,
                      source_info: SourceInfo)
@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn ast_block_stmts(&mut self,
-                       destination: &Lvalue<'tcx>,
+                       destination: &Place<'tcx>,
                        mut block: BasicBlock,
                        span: Span,
                        stmts: Vec<StmtRef<'tcx>>,

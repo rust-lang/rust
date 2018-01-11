@@ -18,7 +18,7 @@
 
 // must-compile-successfully
 // revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph
+// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
 
 #![allow(warnings)]
@@ -26,287 +26,253 @@
 #![feature(intrinsics)]
 #![feature(linkage)]
 #![feature(rustc_attrs)]
-#![crate_type="rlib"]
+#![crate_type = "rlib"]
 
 
 // Add Parameter ---------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn add_parameter() {}
+pub fn add_parameter() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn add_parameter(p: i32) {}
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn add_parameter(p: i32) {}
 
 
 // Add Return Type -------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn add_return_type() {}
+pub fn add_return_type() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")] // The type doesn't change, so metadata is the same
-#[rustc_metadata_clean(cfg="cfail3")]
-fn add_return_type() -> () {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn add_return_type() -> () {}
 
 
 // Change Parameter Type -------------------------------------------------------
 
 #[cfg(cfail1)]
-fn type_of_parameter(p: i32) {}
+pub fn type_of_parameter(p: i32) {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn type_of_parameter(p: i64) {}
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn type_of_parameter(p: i64) {}
 
 
 // Change Parameter Type Reference ---------------------------------------------
 
 #[cfg(cfail1)]
-fn type_of_parameter_ref(p: &i32) {}
+pub fn type_of_parameter_ref(p: &i32) {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn type_of_parameter_ref(p: &mut i32) {}
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn type_of_parameter_ref(p: &mut i32) {}
 
 
 // Change Parameter Order ------------------------------------------------------
 
 #[cfg(cfail1)]
-fn order_of_parameters(p1: i32, p2: i64) {}
+pub fn order_of_parameters(p1: i32, p2: i64) {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn order_of_parameters(p2: i64, p1: i32) {}
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn order_of_parameters(p2: i64, p1: i32) {}
 
 
 // Unsafe ----------------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn make_unsafe() {}
+pub fn make_unsafe() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-unsafe fn make_unsafe() {}
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
+pub unsafe fn make_unsafe() {}
 
 
 // Extern ----------------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn make_extern() {}
+pub fn make_extern() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-extern fn make_extern() {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
+pub extern "C" fn make_extern() {}
 
 
 // Extern C Extern Rust-Intrinsic ----------------------------------------------
 
 #[cfg(cfail1)]
-extern "C" fn make_intrinsic() {}
+pub extern "C" fn make_intrinsic() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-extern "rust-intrinsic" fn make_intrinsic() {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
+pub extern "rust-intrinsic" fn make_intrinsic() {}
 
 
 // Type Parameter --------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn type_parameter() {}
+pub fn type_parameter() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn type_parameter<T>() {}
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn type_parameter<T>() {}
 
 
 // Lifetime Parameter ----------------------------------------------------------
 
 #[cfg(cfail1)]
-fn lifetime_parameter() {}
+pub fn lifetime_parameter() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-// #[rustc_metadata_dirty(cfg="cfail2")] -- Unused lifetime params don't show up in the type?
-#[rustc_metadata_clean(cfg="cfail3")]
-fn lifetime_parameter<'a>() {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, GenericsOfItem")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn lifetime_parameter<'a>() {}
 
 
 // Trait Bound -----------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn trait_bound<T>() {}
+pub fn trait_bound<T>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn trait_bound<T: Eq>() {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn trait_bound<T: Eq>() {}
 
 
 // Builtin Bound ---------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn builtin_bound<T>() {}
+pub fn builtin_bound<T>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn builtin_bound<T: Send>() {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn builtin_bound<T: Send>() {}
 
 
 // Lifetime Bound --------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn lifetime_bound<'a, T>() {}
+pub fn lifetime_bound<'a, T>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn lifetime_bound<'a, T: 'a>() {}
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn lifetime_bound<'a, T: 'a>() {}
 
 
 // Second Trait Bound ----------------------------------------------------------
 
 #[cfg(cfail1)]
-fn second_trait_bound<T: Eq>() {}
+pub fn second_trait_bound<T: Eq>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn second_trait_bound<T: Eq + Clone>() {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn second_trait_bound<T: Eq + Clone>() {}
 
 
 // Second Builtin Bound --------------------------------------------------------
 
 #[cfg(cfail1)]
-fn second_builtin_bound<T: Send>() {}
+pub fn second_builtin_bound<T: Send>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn second_builtin_bound<T: Send + Sized>() {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn second_builtin_bound<T: Send + Sized>() {}
 
 
 // Second Lifetime Bound -------------------------------------------------------
 
 #[cfg(cfail1)]
-fn second_lifetime_bound<'a, 'b, T: 'a>() {}
+pub fn second_lifetime_bound<'a, 'b, T: 'a>() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
+#[rustc_clean(cfg = "cfail2",
+              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
 
 
 // Inline ----------------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn inline() {}
+pub fn inline() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
 #[inline]
-fn inline() {}
+pub fn inline() {}
 
 
 // Inline Never ----------------------------------------------------------------
 
 #[cfg(cfail1)]
 #[inline(always)]
-fn inline_never() {}
+pub fn inline_never() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
 #[inline(never)]
-fn inline_never() {}
+pub fn inline_never() {}
 
 
 // No Mangle -------------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn no_mangle() {}
+pub fn no_mangle() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
 #[no_mangle]
-fn no_mangle() {}
+pub fn no_mangle() {}
 
 
 // Linkage ---------------------------------------------------------------------
 
 #[cfg(cfail1)]
-fn linkage() {}
+pub fn linkage() {}
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-#[linkage="weak_odr"]
-fn linkage() {}
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
+#[linkage = "weak_odr"]
+pub fn linkage() {}
 
 
 // Return Impl Trait -----------------------------------------------------------
 
 #[cfg(cfail1)]
-fn return_impl_trait() -> i32 {
+pub fn return_impl_trait() -> i32 {
     0
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
-#[rustc_metadata_clean(cfg="cfail3")]
-fn return_impl_trait() -> impl Clone {
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, TypeckTables, FnSignature")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn return_impl_trait() -> impl Clone {
     0
 }
 
@@ -314,36 +280,33 @@ fn return_impl_trait() -> impl Clone {
 // Change Return Impl Trait ----------------------------------------------------
 
 #[cfg(cfail1)]
-fn change_return_impl_trait() -> impl Clone {
+pub fn change_return_impl_trait() -> impl Clone {
     0u32
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="Hir", cfg="cfail2")]
-#[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_clean(cfg="cfail2")] // The actual type is the same, so: clean
-#[rustc_metadata_clean(cfg="cfail3")]
-fn change_return_impl_trait() -> impl Copy {
+#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail3")]
+pub fn change_return_impl_trait() -> impl Copy {
     0u32
 }
 
 
 // Change Return Type Indirectly -----------------------------------------------
 
-struct ReferencedType1;
-struct ReferencedType2;
+pub struct ReferencedType1;
+pub struct ReferencedType2;
 
-mod change_return_type_indirectly {
+pub mod change_return_type_indirectly {
     #[cfg(cfail1)]
     use super::ReferencedType1 as ReturnType;
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as ReturnType;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    fn indirect_return_type() -> ReturnType {
+    #[rustc_clean(cfg = "cfail2",
+                  except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+    #[rustc_clean(cfg = "cfail3")]
+    pub fn indirect_return_type() -> ReturnType {
         ReturnType {}
     }
 }
@@ -351,50 +314,49 @@ mod change_return_type_indirectly {
 
 // Change Parameter Type Indirectly --------------------------------------------
 
-mod change_parameter_type_indirectly {
+pub mod change_parameter_type_indirectly {
     #[cfg(cfail1)]
     use super::ReferencedType1 as ParameterType;
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as ParameterType;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    fn indirect_parameter_type(p: ParameterType) {}
+    #[rustc_clean(cfg = "cfail2",
+                  except = "Hir, HirBody, MirValidated, MirOptimized, TypeckTables, FnSignature")]
+    #[rustc_clean(cfg = "cfail3")]
+    pub fn indirect_parameter_type(p: ParameterType) {}
 }
 
 
 // Change Trait Bound Indirectly -----------------------------------------------
 
-trait ReferencedTrait1 {}
-trait ReferencedTrait2 {}
+pub trait ReferencedTrait1 {}
+pub trait ReferencedTrait2 {}
 
-mod change_trait_bound_indirectly {
+pub mod change_trait_bound_indirectly {
     #[cfg(cfail1)]
     use super::ReferencedTrait1 as Trait;
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    fn indirect_trait_bound<T: Trait>(p: T) {}
+    #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+    #[rustc_clean(cfg = "cfail3")]
+    pub fn indirect_trait_bound<T: Trait>(p: T) {}
 }
 
 
 // Change Trait Bound Indirectly In Where Clause -------------------------------
 
-mod change_trait_bound_indirectly_in_where_clause {
+pub mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(cfail1)]
     use super::ReferencedTrait1 as Trait;
     #[cfg(not(cfail1))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_dirty(label="Hir", cfg="cfail2")]
-    #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
-    #[rustc_metadata_clean(cfg="cfail3")]
-    fn indirect_trait_bound_where<T>(p: T) where T: Trait {}
+    #[rustc_clean(cfg = "cfail2", except = "Hir, HirBody, PredicatesOfItem")]
+    #[rustc_clean(cfg = "cfail3")]
+    pub fn indirect_trait_bound_where<T>(p: T)
+    where
+        T: Trait,
+    {
+    }
 }

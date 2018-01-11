@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -C debug_assertions=yes
+// ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(i128_type)]
 

@@ -1,0 +1,78 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
+  --> $DIR/main.rs:19:20
+   |
+18 | / macro_rules! pong {
+19 | |     () => { syntax error };
+   | |                    ^^^^^ expected one of 8 possible tokens here
+20 | | }
+   | |_- in this expansion of `pong!`
+...
+26 |       pong!();
+   |       -------- in this macro invocation
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
+  --> $DIR/main.rs:19:20
+   |
+18 | / macro_rules! pong {
+19 | |     () => { syntax error };
+   | |                    ^^^^^ expected one of 8 possible tokens here
+20 | | }
+   | |_- in this expansion of `pong!`
+...
+27 |       ping!();
+   |       -------- in this macro invocation
+   | 
+  ::: <ping macros>
+   |
+1  |   (  ) => { pong ! (  ) ; }
+   |   -------------------------
+   |   |         |
+   |   |         in this macro invocation
+   |   in this expansion of `ping!`
+
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
+  --> $DIR/main.rs:19:20
+   |
+18 | / macro_rules! pong {
+19 | |     () => { syntax error };
+   | |                    ^^^^^ expected one of 8 possible tokens here
+20 | | }
+   | |_- in this expansion of `pong!` (#5)
+...
+28 |       deep!();
+   |       -------- in this macro invocation (#1)
+   | 
+  ::: <deep macros>
+   |
+1  |   (  ) => { foo ! (  ) ; }
+   |   ------------------------
+   |   |         |
+   |   |         in this macro invocation (#2)
+   |   in this expansion of `deep!` (#1)
+   | 
+  ::: <foo macros>
+   |
+1  |   (  ) => { bar ! (  ) ; }
+   |   ------------------------
+   |   |         |
+   |   |         in this macro invocation (#3)
+   |   in this expansion of `foo!` (#2)
+   | 
+  ::: <bar macros>
+   |
+1  |   (  ) => { ping ! (  ) ; }
+   |   -------------------------
+   |   |         |
+   |   |         in this macro invocation (#4)
+   |   in this expansion of `bar!` (#3)
+   | 
+  ::: <ping macros>
+   |
+1  |   (  ) => { pong ! (  ) ; }
+   |   -------------------------
+   |   |         |
+   |   |         in this macro invocation (#5)
+   |   in this expansion of `ping!` (#4)
+
+error: aborting due to 3 previous errors
+

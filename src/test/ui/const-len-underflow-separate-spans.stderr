@@ -1,0 +1,22 @@
+warning: constant evaluation error: attempt to subtract with overflow
+  --> $DIR/const-len-underflow-separate-spans.rs:17:20
+   |
+17 | const LEN: usize = ONE - TWO;
+   |                    ^^^^^^^^^
+   |
+   = note: #[warn(const_err)] on by default
+
+error[E0080]: constant evaluation error
+  --> $DIR/const-len-underflow-separate-spans.rs:17:20
+   |
+17 | const LEN: usize = ONE - TWO;
+   |                    ^^^^^^^^^ attempt to subtract with overflow
+   |
+note: for constant expression here
+  --> $DIR/const-len-underflow-separate-spans.rs:22:12
+   |
+22 |     let a: [i8; LEN] = unimplemented!();
+   |            ^^^^^^^^^
+
+error: aborting due to previous error
+

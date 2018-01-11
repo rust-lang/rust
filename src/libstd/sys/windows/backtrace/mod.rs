@@ -95,8 +95,8 @@ pub fn unwind_backtrace(frames: &mut [Frame])
                frame.AddrReturn.Offset == 0 { break }
 
             frames[i] = Frame {
-                symbol_addr: (addr - 1) as *const c_void,
-                exact_position: (addr - 1) as *const c_void,
+                symbol_addr: (addr - 1) as *const u8,
+                exact_position: (addr - 1) as *const u8,
             };
             i += 1;
         }

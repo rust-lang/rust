@@ -32,22 +32,23 @@ fn float_to_decimal_common_exact<T>(fmt: &mut Formatter, num: &T,
 // Don't inline this so callers that call both this and the above won't wind
 // up using the combined stack space of both functions in some cases.
 #[inline(never)]
-fn float_to_decimal_common_shortest<T>(fmt: &mut Formatter,
-                                       num: &T, sign: flt2dec::Sign) -> Result
+fn float_to_decimal_common_shortest<T>(fmt: &mut Formatter, num: &T,
+                                       sign: flt2dec::Sign, precision: usize) -> Result
     where T: flt2dec::DecodableFloat
 {
     unsafe {
         // enough for f32 and f64
         let mut buf: [u8; flt2dec::MAX_SIG_DIGITS] = mem::uninitialized();
         let mut parts: [flt2dec::Part; 4] = mem::uninitialized();
-        let formatted = flt2dec::to_shortest_str(flt2dec::strategy::grisu::format_shortest,
-                                                 *num, sign, 0, false, &mut buf, &mut parts);
+        let formatted = flt2dec::to_shortest_str(flt2dec::strategy::grisu::format_shortest, *num,
+                                                 sign, precision, false, &mut buf, &mut parts);
         fmt.pad_formatted_parts(&formatted)
     }
 }
 
 // Common code of floating point Debug and Display.
-fn float_to_decimal_common<T>(fmt: &mut Formatter, num: &T, negative_zero: bool) -> Result
+fn float_to_decimal_common<T>(fmt: &mut Formatter, num: &T,
+                              negative_zero: bool, min_precision: usize) -> Result
     where T: flt2dec::DecodableFloat
 {
     let force_sign = fmt.sign_plus();
@@ -61,7 +62,7 @@ fn float_to_decimal_common<T>(fmt: &mut Formatter, num: &T, negative_zero: bool)
     if let Some(precision) = fmt.precision {
         float_to_decimal_common_exact(fmt, num, sign, precision)
     } else {
-        float_to_decimal_common_shortest(fmt, num, sign)
+        float_to_decimal_common_shortest(fmt, num, sign, min_precision)
     }
 }
 
@@ -125,14 +126,14 @@ macro_rules! floating {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Debug for $ty {
             fn fmt(&self, fmt: &mut Formatter) -> Result {
-                float_to_decimal_common(fmt, self, true)
+                float_to_decimal_common(fmt, self, true, 1)
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Display for $ty {
             fn fmt(&self, fmt: &mut Formatter) -> Result {
-                float_to_decimal_common(fmt, self, false)
+                float_to_decimal_common(fmt, self, false, 0)
             }
         }
 

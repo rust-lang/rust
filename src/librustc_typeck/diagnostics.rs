@@ -2455,9 +2455,9 @@ fn main() {
 }
 ```
 
-Send and Sync are an exception to this rule: it's possible to have bounds of
-one non-builtin trait, plus either or both of Send and Sync. For example, the
-following compiles correctly:
+Auto traits such as Send and Sync are an exception to this rule:
+It's possible to have bounds of one non-builtin trait, plus any number of
+auto traits. For example, the following compiles correctly:
 
 ```
 fn main() {
@@ -3818,46 +3818,6 @@ let s = Simba { mother: 1, father: 0 }; // ok!
 ```
 "##,
 
-E0562: r##"
-Abstract return types (written `impl Trait` for some trait `Trait`) are only
-allowed as function return types.
-
-Erroneous code example:
-
-```compile_fail,E0562
-#![feature(conservative_impl_trait)]
-
-fn main() {
-    let count_to_ten: impl Iterator<Item=usize> = 0..10;
-    // error: `impl Trait` not allowed outside of function and inherent method
-    //        return types
-    for i in count_to_ten {
-        println!("{}", i);
-    }
-}
-```
-
-Make sure `impl Trait` only appears in return-type position.
-
-```
-#![feature(conservative_impl_trait)]
-
-fn count_to_n(n: usize) -> impl Iterator<Item=usize> {
-    0..n
-}
-
-fn main() {
-    for i in count_to_n(10) {  // ok!
-        println!("{}", i);
-    }
-}
-```
-
-See [RFC 1522] for more details.
-
-[RFC 1522]: https://github.com/rust-lang/rfcs/blob/master/text/1522-conservative-impl-trait.md
-"##,
-
 E0569: r##"
 If an impl has a generic parameter with the `#[may_dangle]` attribute, then
 that impl must be declared as an `unsafe impl.
@@ -4665,6 +4625,48 @@ It is recommended that you look for a `new` function or equivalent in the
 crate's documentation.
 "##,
 
+E0643: r##"
+This error indicates that there is a mismatch between generic parameters and
+impl Trait parameters in a trait declaration versus its impl.
+
+```compile_fail,E0643
+#![feature(universal_impl_trait)]
+trait Foo {
+    fn foo(&self, _: &impl Iterator);
+}
+impl Foo for () {
+    fn foo<U: Iterator>(&self, _: &U) { } // error method `foo` has incompatible
+                                          // signature for trait
+}
+```
+"##,
+
+E0689: r##"
+This error indicates that the numeric value for the method being passed exists
+but the type of the numeric value or binding could not be identified.
+
+The error happens on numeric literals:
+
+```compile_fail,E0689
+2.0.powi(2);
+```
+
+and on numeric bindings without an identified concrete type:
+
+```compile_fail,E0689
+let x = 2.0;
+x.powi(2);  // same error as above
+```
+
+Because of this, you must give the numeric literal or binding a type:
+
+```
+let _ = 2.0_f32.powi(2);
+let x: f32 = 2.0;
+let _ = x.powi(2);
+let _ = (2.0 as f32).powi(2);
+```
+"##,
 }
 
 register_diagnostics! {
@@ -4724,6 +4726,7 @@ register_diagnostics! {
 //  E0247,
 //  E0248, // value used as a type, now reported earlier during resolution as E0412
 //  E0249,
+    E0307, // invalid method `self` type
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
@@ -4743,4 +4746,6 @@ register_diagnostics! {
     E0627, // yield statement outside of generator literal
     E0632, // cannot provide explicit type parameters when `impl Trait` is used in
            // argument position.
+    E0641, // cannot cast to/from a pointer with an unknown kind
+    E0645, // trait aliases not finished
 }

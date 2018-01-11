@@ -12,9 +12,13 @@
 
 use io::{self, ErrorKind};
 
+pub use libc::strlen;
+pub use self::rand::hashmap_random_keys;
+
 pub mod args;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;
+pub mod cmath;
 pub mod condvar;
 pub mod env;
 pub mod ext;

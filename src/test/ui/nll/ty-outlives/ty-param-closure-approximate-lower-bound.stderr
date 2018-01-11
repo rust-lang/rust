@@ -1,0 +1,87 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:35:31
+   |
+35 |     twice(cell, value, |a, b| invoke(a, b));
+   |                               ^^^^^^^^^^^^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:31
+   |
+43 |     twice(cell, value, |a, b| invoke(a, b));
+   |                               ^^^^^^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:31
+   |
+43 |     twice(cell, value, |a, b| invoke(a, b));
+   |                               ^^^^^^^^^^^^
+
+note: External requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:35:24
+   |
+35 |     twice(cell, value, |a, b| invoke(a, b));
+   |                        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:14 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]::{{closure}}[0]) with closure substs [
+               T,
+               i16,
+               for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) ()>>, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) T))
+           ]
+   = note: number of external vids: 2
+   = note: where T: '_#1r
+
+note: External requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:24
+   |
+43 |     twice(cell, value, |a, b| invoke(a, b));
+   |                        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: DefId(0/1:17 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]::{{closure}}[0]) with closure substs [
+               T,
+               i16,
+               for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) ()>>, &ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 's)) T))
+           ]
+   = note: number of external vids: 2
+   = note: where T: '_#1r
+
+note: No external requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:33:1
+   |
+33 | / fn generic<T>(value: T) {
+34 | |     let cell = Cell::new(&());
+35 | |     twice(cell, value, |a, b| invoke(a, b));
+36 | |     //~^ WARNING not reporting region error
+37 | |     //
+38 | |     // This error from the old region solver looks bogus.
+39 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:5 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]) with substs [
+               T
+           ]
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:24
+   |
+43 |     twice(cell, value, |a, b| invoke(a, b));
+   |                        ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]), BrNamed(crate0:DefIndex(1:15), 'a))`...
+
+note: No external requirements
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:1
+   |
+42 | / fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
+43 | |     twice(cell, value, |a, b| invoke(a, b));
+44 | |     //~^ WARNING not reporting region error
+45 | |     //~| WARNING not reporting region error
+46 | |     //~| ERROR the parameter type `T` may not live long enough
+47 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:6 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]) with substs [
+               T
+           ]
+
+error: aborting due to previous error
+

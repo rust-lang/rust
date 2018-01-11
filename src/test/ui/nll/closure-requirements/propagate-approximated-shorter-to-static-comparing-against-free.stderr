@@ -1,0 +1,85 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:5
+   |
+31 |     foo(cell, |cell_a, cell_x| {
+   |     ^^^
+
+error: free region `ReFree(DefId(0/1:12 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case1[0]::{{closure}}[0]), BrAnon(1))` does not outlive free region `'_#1r`
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:33:9
+   |
+33 |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
+   |         ^^^^^^
+
+note: No external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:15
+   |
+31 |       foo(cell, |cell_a, cell_x| {
+   |  _______________^
+32 | |         //~^ WARNING not reporting region error due to -Znll
+33 | |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
+34 | |         //~^ ERROR does not outlive free region
+35 | |     })
+   | |_____^
+   |
+   = note: defining type: DefId(0/1:12 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case1[0]::{{closure}}[0]) with closure substs [
+               i32,
+               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>))
+           ]
+
+note: No external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:28:1
+   |
+28 | / fn case1() {
+29 | |     let a = 0;
+30 | |     let cell = Cell::new(&a);
+31 | |     foo(cell, |cell_a, cell_x| {
+...  |
+35 | |     })
+36 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:5 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case1[0]) with substs []
+
+note: External requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:46:15
+   |
+46 |       foo(cell, |cell_a, cell_x| {
+   |  _______________^
+47 | |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
+48 | |     })
+   | |_____^
+   |
+   = note: defining type: DefId(0/1:13 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case2[0]::{{closure}}[0]) with closure substs [
+               i32,
+               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex { depth: 1 }, BrNamed(crate0:DefIndex(0:0), 'r)) u32>))
+           ]
+   = note: number of external vids: 2
+   = note: where '_#1r: '_#0r
+
+note: No external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:39:1
+   |
+39 | / fn case2() {
+40 | |     let a = 0;
+41 | |     let cell = Cell::new(&a);
+42 | |     //~^ ERROR `a` does not live long enough
+...  |
+48 | |     })
+49 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:6 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case2[0]) with substs []
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:41:26
+   |
+41 |     let cell = Cell::new(&a);
+   |                          ^^ borrowed value does not live long enough
+...
+49 | }
+   | - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for lifetime '_#2r...
+
+error: aborting due to 2 previous errors
+

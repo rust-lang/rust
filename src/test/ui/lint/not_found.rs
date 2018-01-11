@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// must-compile-successfully
+
 // this tests the `unknown_lint` lint, especially the suggestions
 
 // the suggestion only appears if a lint with the lowercase name exists

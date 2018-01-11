@@ -16,7 +16,7 @@ use std::mem;
 use std::string::String;
 use std::path::PathBuf;
 
-use rustc_back::dynamic_lib as dl;
+use rustc_metadata::dynamic_lib as dl;
 
 pub type PluginResult = clean::Crate;
 pub type PluginCallback = fn (clean::Crate) -> PluginResult;

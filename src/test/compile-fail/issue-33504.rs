@@ -14,6 +14,6 @@ struct Test;
 
 fn main() {
     || {
-        let Test = 1; //~ ERROR let bindings cannot shadow unit structs
+        let Test = 1; //~ ERROR mismatched types
     };
 }

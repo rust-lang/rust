@@ -22,7 +22,9 @@
 
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(match_default_bindings)]
 #![feature(i128_type)]
+#![feature(const_atomic_usize_new)]
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
@@ -149,4 +151,5 @@ pub mod ext {
 #[cfg(test)]
 mod test_snippet;
 
+#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { libsyntax, DIAGNOSTICS }

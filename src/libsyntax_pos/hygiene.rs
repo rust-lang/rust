@@ -10,10 +10,10 @@
 
 //! Machinery for hygienic macros, inspired by the MTWT[1] paper.
 //!
-//! [1] Matthew Flatt, Ryan Culpepper, David Darais, and Robert Bruce Findler.
-//! 2012. *Macros that work together: Compile-time bindings, partial expansion,
+//! [1] Matthew Flatt, Ryan Culpepper, David Darais, and Robert Bruce Findler. 2012.
+//! *Macros that work together: Compile-time bindings, partial expansion,
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
-//! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
+//! DOI=10.1017/S0956796812000093 <http://dx.doi.org/10.1017/S0956796812000093>
 
 use Span;
 use symbol::{Ident, Symbol};
@@ -27,7 +27,7 @@ use std::fmt;
 #[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
 pub struct SyntaxContext(pub(super) u32);
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct SyntaxContextData {
     pub outer_mark: Mark,
     pub prev_ctxt: SyntaxContext,
@@ -35,41 +35,52 @@ pub struct SyntaxContextData {
 }
 
 /// A mark is a unique id associated with a macro expansion.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Mark(u32);
 
-#[derive(Default)]
 struct MarkData {
     parent: Mark,
-    modern: bool,
+    kind: MarkKind,
     expn_info: Option<ExpnInfo>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum MarkKind {
+    Modern,
+    Builtin,
+    Legacy,
 }
 
 impl Mark {
     pub fn fresh(parent: Mark) -> Self {
         HygieneData::with(|data| {
-            data.marks.push(MarkData { parent: parent, modern: false, expn_info: None });
+            data.marks.push(MarkData { parent: parent, kind: MarkKind::Legacy, expn_info: None });
             Mark(data.marks.len() as u32 - 1)
         })
     }
 
     /// The mark of the theoretical expansion that generates freshly parsed, unexpanded AST.
+    #[inline]
     pub fn root() -> Self {
         Mark(0)
     }
 
+    #[inline]
     pub fn as_u32(self) -> u32 {
         self.0
     }
 
+    #[inline]
     pub fn from_u32(raw: u32) -> Mark {
         Mark(raw)
     }
 
+    #[inline]
     pub fn expn_info(self) -> Option<ExpnInfo> {
         HygieneData::with(|data| data.marks[self.0 as usize].expn_info.clone())
     }
 
+    #[inline]
     pub fn set_expn_info(self, info: ExpnInfo) {
         HygieneData::with(|data| data.marks[self.0 as usize].expn_info = Some(info))
     }
@@ -77,7 +88,7 @@ impl Mark {
     pub fn modern(mut self) -> Mark {
         HygieneData::with(|data| {
             loop {
-                if self == Mark::root() || data.marks[self.0 as usize].modern {
+                if self == Mark::root() || data.marks[self.0 as usize].kind == MarkKind::Modern {
                     return self;
                 }
                 self = data.marks[self.0 as usize].parent;
@@ -85,12 +96,14 @@ impl Mark {
         })
     }
 
-    pub fn is_modern(self) -> bool {
-        HygieneData::with(|data| data.marks[self.0 as usize].modern)
+    #[inline]
+    pub fn kind(self) -> MarkKind {
+        HygieneData::with(|data| data.marks[self.0 as usize].kind)
     }
 
-    pub fn set_modern(self) {
-        HygieneData::with(|data| data.marks[self.0 as usize].modern = true)
+    #[inline]
+    pub fn set_kind(self, kind: MarkKind) {
+        HygieneData::with(|data| data.marks[self.0 as usize].kind = kind)
     }
 
     pub fn is_descendant_of(mut self, ancestor: Mark) -> bool {
@@ -116,8 +129,16 @@ struct HygieneData {
 impl HygieneData {
     fn new() -> Self {
         HygieneData {
-            marks: vec![MarkData::default()],
-            syntax_contexts: vec![SyntaxContextData::default()],
+            marks: vec![MarkData {
+                parent: Mark::root(),
+                kind: MarkKind::Builtin,
+                expn_info: None,
+            }],
+            syntax_contexts: vec![SyntaxContextData {
+                outer_mark: Mark::root(),
+                prev_ctxt: SyntaxContext(0),
+                modern: SyntaxContext(0),
+            }],
             markings: HashMap::new(),
             gensym_to_ctxt: HashMap::new(),
         }
@@ -140,12 +161,37 @@ impl SyntaxContext {
         SyntaxContext(0)
     }
 
+    // Allocate a new SyntaxContext with the given ExpnInfo. This is used when
+    // deserializing Spans from the incr. comp. cache.
+    // FIXME(mw): This method does not restore MarkData::parent or
+    // SyntaxContextData::prev_ctxt or SyntaxContextData::modern. These things
+    // don't seem to be used after HIR lowering, so everything should be fine
+    // as long as incremental compilation does not kick in before that.
+    pub fn allocate_directly(expansion_info: ExpnInfo) -> Self {
+        HygieneData::with(|data| {
+            data.marks.push(MarkData {
+                parent: Mark::root(),
+                kind: MarkKind::Legacy,
+                expn_info: Some(expansion_info)
+            });
+
+            let mark = Mark(data.marks.len() as u32 - 1);
+
+            data.syntax_contexts.push(SyntaxContextData {
+                outer_mark: mark,
+                prev_ctxt: SyntaxContext::empty(),
+                modern: SyntaxContext::empty(),
+            });
+            SyntaxContext(data.syntax_contexts.len() as u32 - 1)
+        })
+    }
+
     /// Extend a syntax context with a given mark
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
         HygieneData::with(|data| {
             let syntax_contexts = &mut data.syntax_contexts;
             let mut modern = syntax_contexts[self.0 as usize].modern;
-            if data.marks[mark.0 as usize].modern {
+            if data.marks[mark.0 as usize].kind == MarkKind::Modern {
                 modern = *data.markings.entry((modern, mark)).or_insert_with(|| {
                     let len = syntax_contexts.len() as u32;
                     syntax_contexts.push(SyntaxContextData {
@@ -178,6 +224,7 @@ impl SyntaxContext {
 
     /// Adjust this context for resolution in a scope created by the given expansion.
     /// For example, consider the following three resolutions of `f`:
+    ///
     /// ```rust
     /// mod foo { pub fn f() {} } // `f`'s `SyntaxContext` is empty.
     /// m!(f);
@@ -209,7 +256,8 @@ impl SyntaxContext {
 
     /// Adjust this context for resolution in a scope created by the given expansion
     /// via a glob import with the given `SyntaxContext`.
-    /// For example,
+    /// For example:
+    ///
     /// ```rust
     /// m!(f);
     /// macro m($i:ident) {
@@ -247,6 +295,7 @@ impl SyntaxContext {
     }
 
     /// Undo `glob_adjust` if possible:
+    ///
     /// ```rust
     /// if let Some(privacy_checking_scope) = self.reverse_glob_adjust(expansion, glob_ctxt) {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
@@ -270,10 +319,12 @@ impl SyntaxContext {
         Some(scope)
     }
 
+    #[inline]
     pub fn modern(self) -> SyntaxContext {
         HygieneData::with(|data| data.syntax_contexts[self.0 as usize].modern)
     }
 
+    #[inline]
     pub fn outer(self) -> Mark {
         HygieneData::with(|data| data.syntax_contexts[self.0 as usize].outer_mark)
     }
@@ -286,7 +337,7 @@ impl fmt::Debug for SyntaxContext {
 }
 
 /// Extra information for tracking spans of macro and syntax sugar expansion
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
@@ -302,7 +353,7 @@ pub struct ExpnInfo {
     pub callee: NameAndSpan
 }
 
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct NameAndSpan {
     /// The format with which the macro was invoked.
     pub format: ExpnFormat,
@@ -330,7 +381,7 @@ impl NameAndSpan {
 }
 
 /// The source of expansion.
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum ExpnFormat {
     /// e.g. #[derive(...)] <item>
     MacroAttribute(Symbol),
@@ -341,7 +392,7 @@ pub enum ExpnFormat {
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CompilerDesugaringKind {
     BackArrow,
     DotFill,

@@ -25,7 +25,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
 use syntax::ext::expand::{Expansion, ExpansionKind, Invocation, InvocationKind, find_attr_invoc};
-use syntax::ext::hygiene::Mark;
+use syntax::ext::hygiene::{Mark, MarkKind};
 use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, emit_feature_err, GateIssue};
@@ -81,6 +81,14 @@ pub struct LegacyBinding<'a> {
     pub ident: Ident,
     def_id: DefId,
     pub span: Span,
+}
+
+pub struct ProcMacError {
+    crate_name: Symbol,
+    name: Symbol,
+    module: ast::NodeId,
+    use_span: Span,
+    warn_msg: &'static str,
 }
 
 #[derive(Copy, Clone)]
@@ -289,16 +297,19 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { attr: None, .. } => return Ok(None),
             _ => self.resolve_invoc_to_def(invoc, scope, force)?,
         };
+        let def_id = def.def_id();
 
-        self.macro_defs.insert(invoc.expansion_data.mark, def.def_id());
+        self.macro_defs.insert(invoc.expansion_data.mark, def_id);
         let normal_module_def_id =
             self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
         self.definitions.add_macro_def_scope(invoc.expansion_data.mark, normal_module_def_id);
 
-        self.unused_macros.remove(&def.def_id());
+        self.unused_macros.remove(&def_id);
         let ext = self.get_macro(def);
         if ext.is_modern() {
-            invoc.expansion_data.mark.set_modern();
+            invoc.expansion_data.mark.set_kind(MarkKind::Modern);
+        } else if def_id.krate == BUILTIN_MACROS_CRATE {
+            invoc.expansion_data.mark.set_kind(MarkKind::Builtin);
         }
         Ok(Some(ext))
     }
@@ -418,7 +429,15 @@ impl<'a> Resolver<'a> {
             let def = match self.resolve_path(&path, Some(MacroNS), false, span) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
-                    def @ _ => Ok(def),
+                    def @ _ => {
+                        if path_res.unresolved_segments() > 0 {
+                            self.found_unresolved_macro = true;
+                            self.session.span_err(span, "fail to resolve non-ident macro path");
+                            Err(Determinacy::Determined)
+                        } else {
+                            Ok(def)
+                        }
+                    }
                 },
                 PathResult::Module(..) => unreachable!(),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
@@ -738,8 +757,13 @@ impl<'a> Resolver<'a> {
             }));
             if attr::contains_name(&item.attrs, "macro_export") {
                 let def = Def::Macro(def_id, MacroKind::Bang);
-                self.macro_exports
-                    .push(Export { ident: ident.modern(), def: def, span: item.span });
+                self.macro_exports.push(Export {
+                    ident: ident.modern(),
+                    def: def,
+                    vis: ty::Visibility::Public,
+                    span: item.span,
+                    is_import: false,
+                });
             } else {
                 self.unused_macros.insert(def_id);
             }
@@ -779,12 +803,37 @@ impl<'a> Resolver<'a> {
             _ => return,
         };
 
-        let crate_name = self.cstore.crate_name_untracked(krate);
+        let def_id = self.current_module.normal_ancestor_id;
+        let node_id = self.definitions.as_local_node_id(def_id).unwrap();
 
-        self.session.struct_span_err(use_span, warn_msg)
-            .help(&format!("instead, import the procedural macro like any other item: \
-                             `use {}::{};`", crate_name, name))
-            .emit();
+        self.proc_mac_errors.push(ProcMacError {
+            crate_name: self.cstore.crate_name_untracked(krate),
+            name,
+            module: node_id,
+            use_span,
+            warn_msg,
+        });
+    }
+
+    pub fn report_proc_macro_import(&mut self, krate: &ast::Crate) {
+        for err in self.proc_mac_errors.drain(..) {
+            let (span, found_use) = ::UsePlacementFinder::check(krate, err.module);
+
+            if let Some(span) = span {
+                let found_use = if found_use { "" } else { "\n" };
+                self.session.struct_span_err(err.use_span, err.warn_msg)
+                    .span_suggestion(
+                        span,
+                        "instead, import the procedural macro like any other item",
+                        format!("use {}::{};{}", err.crate_name, err.name, found_use),
+                    ).emit();
+            } else {
+                self.session.struct_span_err(err.use_span, err.warn_msg)
+                    .help(&format!("instead, import the procedural macro like any other item: \
+                                    `use {}::{};`", err.crate_name, err.name))
+                    .emit();
+            }
+        }
     }
 
     fn gate_legacy_custom_derive(&mut self, name: Symbol, span: Span) {

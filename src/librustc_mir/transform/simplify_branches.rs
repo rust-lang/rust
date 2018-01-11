@@ -12,8 +12,8 @@
 
 use rustc::ty::{self, TyCtxt};
 use rustc::middle::const_val::ConstVal;
-use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::*;
+use transform::{MirPass, MirSource};
 
 use std::borrow::Cow;
 

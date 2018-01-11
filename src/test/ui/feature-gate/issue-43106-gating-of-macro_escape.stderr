@@ -1,0 +1,12 @@
+warning: macro_escape is a deprecated synonym for macro_use
+  --> $DIR/issue-43106-gating-of-macro_escape.rs:16:1
+   |
+16 | #![macro_escape]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: consider an outer attribute, #[macro_use] mod ...
+
+error[E0601]: main function not found
+
+error: aborting due to previous error
+

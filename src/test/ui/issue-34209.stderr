@@ -1,0 +1,10 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-34209.rs:17:9
+   |
+17 |         S::B{ } => { },
+   |         ^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<S as Trait>::B`
+
+error: aborting due to previous error
+

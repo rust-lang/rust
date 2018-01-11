@@ -87,7 +87,7 @@ impl Thread {
         };
 
         extern fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
-            unsafe { start_thread(main); }
+            unsafe { start_thread(main as *mut u8); }
             ptr::null_mut()
         }
     }
@@ -255,10 +255,7 @@ pub mod guard {
 
     pub unsafe fn init() -> Option<usize> {
         let psize = os::page_size();
-        let mut stackaddr = match get_stack_start() {
-            Some(addr) => addr,
-            None => return None,
-        };
+        let mut stackaddr = get_stack_start()?;
 
         // Ensure stackaddr is page aligned! A parent process might
         // have reset RLIMIT_STACK to be non-page aligned. The

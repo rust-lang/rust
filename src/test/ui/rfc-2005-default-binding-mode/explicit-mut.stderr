@@ -3,7 +3,7 @@ error[E0594]: cannot assign to immutable borrowed content `*n`
    |
 18 |         Some(n) => {
    |              - consider changing this to `n`
-19 |             *n += 1;
+19 |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content `*n`
@@ -11,7 +11,7 @@ error[E0594]: cannot assign to immutable borrowed content `*n`
    |
 26 |         Some(n) => {
    |              - consider changing this to `n`
-27 |             *n += 1;
+27 |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content `*n`
@@ -19,7 +19,7 @@ error[E0594]: cannot assign to immutable borrowed content `*n`
    |
 34 |         Some(n) => {
    |              - consider changing this to `n`
-35 |             *n += 1;
+35 |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ cannot borrow as mutable
 
 error: aborting due to 3 previous errors

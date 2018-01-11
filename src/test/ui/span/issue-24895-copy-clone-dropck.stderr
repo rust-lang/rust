@@ -1,10 +1,10 @@
 error[E0597]: `d1` does not live long enough
-  --> $DIR/issue-24895-copy-clone-dropck.rs:38:1
+  --> $DIR/issue-24895-copy-clone-dropck.rs:37:15
    |
 37 |     d2 = D(S(&d1, "inner"), "d2");
-   |               -- borrow occurs here
-38 | } //~ ERROR `d1` does not live long enough
-   | ^ `d1` dropped here while still borrowed
+   |               ^^ borrowed value does not live long enough
+38 | }
+   | - `d1` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

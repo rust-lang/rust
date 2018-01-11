@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-wasm32-bare compiled with panic=abort by default
+
 // check that we don't emit multiple drop flags when they are not needed.
 
 fn main() {
     let x = S.other(S.id());
 }
 
+// no_mangle to make sure this gets instantiated even in an executable.
+#[no_mangle]
 pub fn test() {
     let u = S;
     let mut v = S;
@@ -33,7 +37,7 @@ impl S {
 }
 
 // END RUST SOURCE
-// START rustc.node4.ElaborateDrops.after.mir
+// START rustc.main.ElaborateDrops.after.mir
 //    let mut _0: ();
 //    scope 1 {
 //        let _1: ();
@@ -44,8 +48,8 @@ impl S {
 //    let mut _4: S;
 //    let mut _5: bool;
 //    bb0: {
-// END rustc.node4.ElaborateDrops.after.mir
-// START rustc.node13.ElaborateDrops.after.mir
+// END rustc.main.ElaborateDrops.after.mir
+// START rustc.test.ElaborateDrops.after.mir
 //    let mut _0: ();
 //    ...
 //    let _1: S;
@@ -57,4 +61,4 @@ impl S {
 //    let mut _5: S;
 //    let mut _6: bool;
 //    bb0: {
-// END rustc.node13.ElaborateDrops.after.mir
+// END rustc.test.ElaborateDrops.after.mir

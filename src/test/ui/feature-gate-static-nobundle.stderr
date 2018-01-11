@@ -1,0 +1,10 @@
+error: kind="static-nobundle" is feature gated (see issue #37403)
+  --> $DIR/feature-gate-static-nobundle.rs:11:1
+   |
+11 | #[link(name="foo", kind="static-nobundle")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(static_nobundle)] to the crate attributes to enable
+
+error: aborting due to previous error
+

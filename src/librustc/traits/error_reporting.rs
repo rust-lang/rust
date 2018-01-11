@@ -33,9 +33,9 @@ use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
 use middle::const_val;
-use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
 use syntax::ast;
+use session::DiagnosticMessageId;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
 use ty::fast_reject;
@@ -219,13 +219,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            let mut diag = struct_span_err!(
-                self.tcx.sess, obligation.cause.span, E0271,
-                "type mismatch resolving `{}`", predicate
-            );
-            self.note_type_err(&mut diag, &obligation.cause, None, values, err);
-            self.note_obligation_cause(&mut diag, obligation);
-            diag.emit();
+            let msg = format!("type mismatch resolving `{}`", predicate);
+            let error_id = (DiagnosticMessageId::ErrorId(271),
+                            Some(obligation.cause.span), msg.clone());
+            let fresh = self.tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
+            if fresh {
+                let mut diag = struct_span_err!(
+                    self.tcx.sess, obligation.cause.span, E0271,
+                    "type mismatch resolving `{}`", predicate
+                );
+                self.note_type_err(&mut diag, &obligation.cause, None, values, err);
+                self.note_obligation_cause(&mut diag, obligation);
+                diag.emit();
+            }
         });
     }
 
@@ -474,39 +480,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                         item_name: ast::Name,
                                         _impl_item_def_id: DefId,
                                         trait_item_def_id: DefId,
-                                        requirement: &fmt::Display,
-                                        lint_id: Option<ast::NodeId>) // (*)
+                                        requirement: &fmt::Display)
                                         -> DiagnosticBuilder<'tcx>
     {
-        // (*) This parameter is temporary and used only for phasing
-        // in the bug fix to #18937. If it is `Some`, it has a kind of
-        // weird effect -- the diagnostic is reported as a lint, and
-        // the builder which is returned is marked as canceled.
-
         let msg = "impl has stricter requirements than trait";
-        let mut err = match lint_id {
-            Some(node_id) => {
-                self.tcx.struct_span_lint_node(EXTRA_REQUIREMENT_IN_IMPL,
-                                               node_id,
-                                               error_span,
-                                               msg)
-            }
-            None => {
-                struct_span_err!(self.tcx.sess,
-                                 error_span,
-                                 E0276,
-                                 "{}", msg)
-            }
-        };
+        let sp = self.tcx.sess.codemap().def_span(error_span);
+
+        let mut err = struct_span_err!(self.tcx.sess, sp, E0276, "{}", msg);
 
         if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
             let span = self.tcx.sess.codemap().def_span(trait_item_span);
             err.span_label(span, format!("definition of `{}` from trait", item_name));
         }
 
-        err.span_label(
-            error_span,
-            format!("impl has extra requirement {}", requirement));
+        err.span_label(sp, format!("impl has extra requirement {}", requirement));
 
         err
     }
@@ -536,15 +523,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut err = match *error {
             SelectionError::Unimplemented => {
                 if let ObligationCauseCode::CompareImplMethodObligation {
-                    item_name, impl_item_def_id, trait_item_def_id, lint_id
+                    item_name, impl_item_def_id, trait_item_def_id,
                 } = obligation.cause.code {
                     self.report_extra_impl_obligation(
                         span,
                         item_name,
                         impl_item_def_id,
                         trait_item_def_id,
-                        &format!("`{}`", obligation.predicate),
-                        lint_id)
+                        &format!("`{}`", obligation.predicate))
                         .emit();
                     return;
                 }
@@ -591,6 +577,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                      trait_ref,
                                                      trait_ref.self_ty()));
                         }
+
+                        self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
 
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
@@ -654,9 +642,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                             violations)
                     }
 
-                    ty::Predicate::ClosureKind(closure_def_id, kind) => {
-                        let found_kind = self.closure_kind(closure_def_id).unwrap();
-                        let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
+                    ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+                        let found_kind = self.closure_kind(closure_def_id, closure_substs).unwrap();
+                        let closure_span = self.tcx.sess.codemap()
+                            .def_span(self.tcx.hir.span_if_local(closure_def_id).unwrap());
                         let node_id = self.tcx.hir.as_local_node_id(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
                             self.tcx.sess, closure_span, E0525,
@@ -666,6 +655,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             found_kind);
 
                         err.span_label(
+                            closure_span,
+                            format!("this closure implements `{}`, not `{}`", found_kind, kind));
+                        err.span_label(
                             obligation.cause.span,
                             format!("the requirement to implement `{}` derives from here", kind));
 
@@ -674,14 +666,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         if let Some(tables) = self.in_progress_tables {
                             let tables = tables.borrow();
                             let closure_hir_id = self.tcx.hir.node_to_hir_id(node_id);
-                            match tables.closure_kinds().get(closure_hir_id) {
-                                Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) => {
-                                    err.span_note(span, &format!(
+                            match (found_kind, tables.closure_kind_origins().get(closure_hir_id)) {
+                                (ty::ClosureKind::FnOnce, Some((span, name))) => {
+                                    err.span_label(*span, format!(
                                         "closure is `FnOnce` because it moves the \
                                          variable `{}` out of its environment", name));
                                 },
-                                Some(&(ty::ClosureKind::FnMut, Some((span, name)))) => {
-                                    err.span_note(span, &format!(
+                                (ty::ClosureKind::FnMut, Some((span, name))) => {
+                                    err.span_label(*span, format!(
                                         "closure is `FnMut` because it mutates the \
                                          variable `{}` here", name));
                                 },
@@ -723,7 +715,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let found_did = found_trait_ty.ty_to_def_id();
                 let found_span = found_did.and_then(|did| {
                     self.tcx.hir.span_if_local(did)
-                });
+                }).map(|sp| self.tcx.sess.codemap().def_span(sp)); // the sp could be an fn def
 
                 let found_ty_count =
                     match found_trait_ref.skip_binder().substs.type_at(1).sty {
@@ -760,7 +752,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     //
                     // ```
                     // [1i32, 2, 3].sort_by(|(a, b)| ..)
-                    // //                   ^^^^^^^^
+                    // //           ^^^^^^^ --------
                     // // expected_trait_ref:  std::ops::FnMut<(&i32, &i32)>
                     // //    found_trait_ref:  std::ops::FnMut<(&i32,)>
                     // ```
@@ -830,6 +822,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
         self.note_obligation_cause(&mut err, obligation);
         err.emit();
+    }
+
+    /// When encountering an assignment of an unsized trait, like `let x = ""[..];`, provide a
+    /// suggestion to borrow the initializer in order to use have a slice instead.
+    fn suggest_borrow_on_unsized_slice(&self,
+                                       code: &ObligationCauseCode<'tcx>,
+                                       err: &mut DiagnosticBuilder<'tcx>) {
+        if let &ObligationCauseCode::VariableType(node_id) = code {
+            let parent_node = self.tcx.hir.get_parent_node(node_id);
+            if let Some(hir::map::NodeLocal(ref local)) = self.tcx.hir.find(parent_node) {
+                if let Some(ref expr) = local.init {
+                    if let hir::ExprIndex(_, _) = expr.node {
+                        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                            err.span_suggestion(expr.span,
+                                                "consider borrowing here",
+                                                format!("&{}", snippet));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn report_arg_count_mismatch(

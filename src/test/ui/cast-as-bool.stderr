@@ -1,0 +1,10 @@
+error[E0054]: cannot cast as `bool`
+  --> $DIR/cast-as-bool.rs:12:13
+   |
+12 |     let u = 5 as bool;
+   |             ^^^^^^^^^ unsupported cast
+   |
+   = help: compare with zero instead
+
+error: aborting due to previous error
+

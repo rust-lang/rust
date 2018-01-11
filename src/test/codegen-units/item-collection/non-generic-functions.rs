@@ -12,6 +12,7 @@
 // compile-flags:-Zprint-trans-items=eager
 
 #![deny(dead_code)]
+#![feature(start)]
 
 //~ TRANS_ITEM fn non_generic_functions::foo[0]
 fn foo() {
@@ -69,11 +70,14 @@ impl Struct {
     }
 }
 
-//~ TRANS_ITEM fn non_generic_functions::main[0]
-fn main() {
+//~ TRANS_ITEM fn non_generic_functions::start[0]
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     foo();
     bar();
     Struct::foo();
     let x = Struct { _x: 0 };
     x.bar();
+
+    0
 }

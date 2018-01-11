@@ -1,0 +1,14 @@
+error[E0432]: unresolved import `core`
+  --> $DIR/feature-gate-extern_absolute_paths.rs:11:5
+   |
+11 | use core::default; //~ ERROR unresolved import `core`
+   |     ^^^^ Maybe a missing `extern crate core;`?
+
+error[E0433]: failed to resolve. Maybe a missing `extern crate core;`?
+  --> $DIR/feature-gate-extern_absolute_paths.rs:14:19
+   |
+14 |     let _: u8 = ::core::default::Default(); //~ ERROR failed to resolve
+   |                   ^^^^ Maybe a missing `extern crate core;`?
+
+error: aborting due to 2 previous errors
+

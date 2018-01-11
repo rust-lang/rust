@@ -1,0 +1,43 @@
+error: #[derive] can't be used on a #[repr(packed)] struct with type parameters (error E0133)
+  --> $DIR/deriving-with-repr-packed.rs:18:16
+   |
+18 | #[derive(Copy, Clone, PartialEq, Eq)]
+   |                ^^^^^
+   |
+note: lint level defined here
+  --> $DIR/deriving-with-repr-packed.rs:11:9
+   |
+11 | #![deny(safe_packed_borrows)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+
+error: #[derive] can't be used on a #[repr(packed)] struct with type parameters (error E0133)
+  --> $DIR/deriving-with-repr-packed.rs:18:23
+   |
+18 | #[derive(Copy, Clone, PartialEq, Eq)]
+   |                       ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+
+error: #[derive] can't be used on a non-Copy #[repr(packed)] struct (error E0133)
+  --> $DIR/deriving-with-repr-packed.rs:26:10
+   |
+26 | #[derive(PartialEq, Eq)]
+   |          ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+
+error: #[derive] can't be used on a non-Copy #[repr(packed)] struct (error E0133)
+  --> $DIR/deriving-with-repr-packed.rs:35:10
+   |
+35 | #[derive(PartialEq)]
+   |          ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+
+error: aborting due to 4 previous errors
+

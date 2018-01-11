@@ -27,7 +27,7 @@ fn main() {
     } else if target.contains("netbsd") {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("openbsd") {
-        println!("cargo:rustc-link-lib=gcc");
+        println!("cargo:rustc-link-lib=c++abi");
     } else if target.contains("solaris") {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("bitrig") {
@@ -43,5 +43,7 @@ fn main() {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("redox") {
         println!("cargo:rustc-link-lib=gcc");
+    } else if target.contains("cloudabi") {
+        println!("cargo:rustc-link-lib=unwind");
     }
 }

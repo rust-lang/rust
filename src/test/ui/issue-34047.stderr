@@ -1,0 +1,11 @@
+error[E0530]: match bindings cannot shadow constants
+  --> $DIR/issue-34047.rs:15:13
+   |
+11 | const C: u8 = 0;
+   | ---------------- a constant `C` is defined here
+...
+15 |         mut C => {} //~ ERROR match bindings cannot shadow constants
+   |             ^ cannot be named the same as a constant
+
+error: aborting due to previous error
+

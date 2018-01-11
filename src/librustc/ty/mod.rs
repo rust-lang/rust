@@ -17,8 +17,9 @@ pub use self::fold::TypeFoldable;
 
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
-use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use hir::map::DefPathData;
+use hir::svh::Svh;
 use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
@@ -77,7 +78,7 @@ pub use self::sty::TypeVariants::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 
-pub use self::context::{TyCtxt, GlobalArenas, tls, keep_local};
+pub use self::context::{TyCtxt, GlobalArenas, AllArenas, tls, keep_local};
 pub use self::context::{Lift, TypeckTables};
 
 pub use self::instance::{Instance, InstanceDef};
@@ -89,6 +90,7 @@ pub use self::maps::queries;
 pub mod adjustment;
 pub mod binding;
 pub mod cast;
+#[macro_use]
 pub mod codec;
 pub mod error;
 mod erase_regions;
@@ -144,6 +146,15 @@ pub enum AssociatedItemContainer {
 }
 
 impl AssociatedItemContainer {
+    /// Asserts that this is the def-id of an associated item declared
+    /// in a trait, and returns the trait def-id.
+    pub fn assert_trait(&self) -> DefId {
+        match *self {
+            TraitContainer(id) => id,
+            _ => bug!("associated item has wrong container type: {:?}", self)
+        }
+    }
+
     pub fn id(&self) -> DefId {
         match *self {
             TraitContainer(id) => id,
@@ -297,6 +308,15 @@ impl Visibility {
 
         self.is_accessible_from(vis_restriction, tree)
     }
+
+    // Returns true if this item is visible anywhere in the local crate.
+    pub fn is_visible_locally(self) -> bool {
+        match self {
+            Visibility::Public => true,
+            Visibility::Restricted(def_id) => def_id.is_local(),
+            Visibility::Invisible => false,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Copy)]
@@ -402,8 +422,18 @@ bitflags! {
         const HAS_TY_INFER       = 1 << 2;
         const HAS_RE_INFER       = 1 << 3;
         const HAS_RE_SKOL        = 1 << 4;
+
+        /// Does this have any `ReEarlyBound` regions? Used to
+        /// determine whether substitition is required, since those
+        /// represent regions that are bound in a `ty::Generics` and
+        /// hence may be substituted.
         const HAS_RE_EARLY_BOUND = 1 << 5;
+
+        /// Does this have any region that "appears free" in the type?
+        /// Basically anything but `ReLateBound` and `ReErased`.
         const HAS_FREE_REGIONS   = 1 << 6;
+
+        /// Is an error type reachable?
         const HAS_TY_ERR         = 1 << 7;
         const HAS_PROJECTION     = 1 << 8;
 
@@ -573,7 +603,7 @@ impl<T> Slice<T> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UpvarId {
     pub var_id: hir::HirId,
-    pub closure_expr_id: DefIndex,
+    pub closure_expr_id: LocalDefId,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy)]
@@ -768,10 +798,20 @@ impl<'a, 'gcx, 'tcx> Generics {
         if let Some(idx) = param.idx.checked_sub(self.parent_count() as u32) {
             // non-Self type parameters are always offset by exactly
             // `self.regions.len()`. In the absence of a Self, this is obvious,
-            // but even in the absence of a `Self` we just have to "compensate"
+            // but even in the presence of a `Self` we just have to "compensate"
             // for the regions:
             //
-            // For example, for `trait Foo<'a, 'b, T1, T2>`, the
+            // Without a `Self` (or in a nested generics that doesn't have
+            // a `Self` in itself, even through it parent does), for example
+            // for `fn foo<'a, T1, T2>()`, the situation is:
+            //     Substs:
+            //         0  1  2
+            //         'a T1 T2
+            //     generics.types:
+            //         0  1
+            //         T1 T2
+            //
+            // And with a `Self`, for example for `trait Foo<'a, 'b, T1, T2>`, the
             // situation is:
             //     Substs:
             //         0   1  2  3  4
@@ -779,14 +819,20 @@ impl<'a, 'gcx, 'tcx> Generics {
             //     generics.types:
             //         0  1  2
             //       Self T1 T2
-            // And it can be seen that to move from a substs offset to a
-            // generics offset you just have to offset by the number of regions.
+            //
+            // And it can be seen that in both cases, to move from a substs
+            // offset to a generics offset you just have to offset by the
+            // number of regions.
             let type_param_offset = self.regions.len();
+
+            let has_self = self.has_self && self.parent.is_none();
+            let is_separated_self = type_param_offset != 0 && idx == 0 && has_self;
+
             if let Some(idx) = (idx as usize).checked_sub(type_param_offset) {
-                assert!(!(self.has_self && idx == 0));
+                assert!(!is_separated_self, "found a Self after type_param_offset");
                 &self.types[idx]
             } else {
-                assert!(self.has_self && idx == 0);
+                assert!(is_separated_self, "non-Self param before type_param_offset");
                 &self.types[0]
             }
         } else {
@@ -886,13 +932,19 @@ pub enum Predicate<'tcx> {
     /// No direct syntax. May be thought of as `where T : FnFoo<...>`
     /// for some substitutions `...` and T being a closure type.
     /// Satisfied (or refuted) once we know the closure's kind.
-    ClosureKind(DefId, ClosureKind),
+    ClosureKind(DefId, ClosureSubsts<'tcx>, ClosureKind),
 
     /// `T1 <: T2`
     Subtype(PolySubtypePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(DefId, &'tcx Substs<'tcx>),
+}
+
+impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {
+    fn as_ref(&self) -> &Predicate<'tcx> {
+        self
+    }
 }
 
 impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
@@ -983,8 +1035,8 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
                 Predicate::WellFormed(data.subst(tcx, substs)),
             Predicate::ObjectSafe(trait_def_id) =>
                 Predicate::ObjectSafe(trait_def_id),
-            Predicate::ClosureKind(closure_def_id, kind) =>
-                Predicate::ClosureKind(closure_def_id, kind),
+            Predicate::ClosureKind(closure_def_id, closure_substs, kind) =>
+                Predicate::ClosureKind(closure_def_id, closure_substs.subst(tcx, substs), kind),
             Predicate::ConstEvaluatable(def_id, const_substs) =>
                 Predicate::ConstEvaluatable(def_id, const_substs.subst(tcx, substs)),
         }
@@ -1046,8 +1098,8 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
 /// In particular, form #1 is "desugared" to the combination of a
 /// normal trait predicate (`T : TraitRef<...>`) and one of these
 /// predicates. Form #2 is a broader form in that it also permits
-/// equality between arbitrary types. Processing an instance of Form
-/// #2 eventually yields one of these `ProjectionPredicate`
+/// equality between arbitrary types. Processing an instance of
+/// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct ProjectionPredicate<'tcx> {
@@ -1166,8 +1218,8 @@ impl<'tcx> Predicate<'tcx> {
             ty::Predicate::ObjectSafe(_trait_def_id) => {
                 vec![]
             }
-            ty::Predicate::ClosureKind(_closure_def_id, _kind) => {
-                vec![]
+            ty::Predicate::ClosureKind(_closure_def_id, closure_substs, _kind) => {
+                closure_substs.substs.types().collect()
             }
             ty::Predicate::ConstEvaluatable(_, substs) => {
                 substs.types().collect()
@@ -1195,6 +1247,25 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::ObjectSafe(..) |
             Predicate::ClosureKind(..) |
             Predicate::TypeOutlives(..) |
+            Predicate::ConstEvaluatable(..) => {
+                None
+            }
+        }
+    }
+
+    pub fn to_opt_type_outlives(&self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
+        match *self {
+            Predicate::TypeOutlives(data) => {
+                Some(data)
+            }
+            Predicate::Trait(..) |
+            Predicate::Projection(..) |
+            Predicate::Equate(..) |
+            Predicate::Subtype(..) |
+            Predicate::RegionOutlives(..) |
+            Predicate::WellFormed(..) |
+            Predicate::ObjectSafe(..) |
+            Predicate::ClosureKind(..) |
             Predicate::ConstEvaluatable(..) => {
                 None
             }
@@ -1330,7 +1401,7 @@ bitflags! {
         /// fields/variants) and as such, whether downstream crates must match exhaustively on the
         /// fields/variants of this data type.
         ///
-        /// See RFC 2008 (https://github.com/rust-lang/rfcs/pull/2008).
+        /// See RFC 2008 (<https://github.com/rust-lang/rfcs/pull/2008>).
         const IS_NON_EXHAUSTIVE   = 1 << 5;
     }
 }
@@ -1467,7 +1538,7 @@ impl ReprOptions {
         for attr in tcx.get_attrs(did).iter() {
             for r in attr::find_repr_attrs(tcx.sess.diagnostic(), attr) {
                 flags.insert(match r {
-                    attr::ReprExtern => ReprFlags::IS_C,
+                    attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked => ReprFlags::IS_PACKED,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
                     attr::ReprInt(i) => {
@@ -1504,7 +1575,7 @@ impl ReprOptions {
     pub fn linear(&self) -> bool { self.flags.contains(ReprFlags::IS_LINEAR) }
 
     pub fn discr_type(&self) -> attr::IntType {
-        self.int.unwrap_or(attr::SignedInt(ast::IntTy::Is))
+        self.int.unwrap_or(attr::SignedInt(ast::IntTy::Isize))
     }
 
     /// Returns true if this `#[repr()]` should inhabit "smart enum
@@ -1620,10 +1691,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.destructor(tcx).is_some()
     }
 
-    /// Asserts this is a struct and returns the struct's unique
-    /// variant.
-    pub fn struct_variant(&self) -> &VariantDef {
-        assert!(!self.is_enum());
+    /// Asserts this is a struct or union and returns its unique variant.
+    pub fn non_enum_variant(&self) -> &VariantDef {
+        assert!(self.is_struct() || self.is_union());
         &self.variants[0]
     }
 
@@ -1637,11 +1707,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     #[inline]
     pub fn all_fields<'s>(&'s self) -> impl Iterator<Item = &'s FieldDef> {
         self.variants.iter().flat_map(|v| v.fields.iter())
-    }
-
-    #[inline]
-    pub fn is_univariant(&self) -> bool {
-        self.variants.len() == 1
     }
 
     pub fn is_payloadfree(&self) -> bool {
@@ -1667,7 +1732,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         match def {
             Def::Variant(vid) | Def::VariantCtor(vid, ..) => self.variant_with_id(vid),
             Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
-            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => self.struct_variant(),
+            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => self.non_enum_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
     }
@@ -1891,6 +1956,12 @@ impl<'a, 'gcx, 'tcx> FieldDef {
     }
 }
 
+/// Represents the various closure traits in the Rust language. This
+/// will determine the type of the environment (`self`, in the
+/// desuaring) argument that the closure expects.
+///
+/// You can get the environment type of a closure using
+/// `tcx.closure_env_ty()`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
     // Warning: Ordering is significant here! The ordering is chosen
@@ -1902,6 +1973,9 @@ pub enum ClosureKind {
 }
 
 impl<'a, 'tcx> ClosureKind {
+    // This is the initial value used when doing upvar inference.
+    pub const LATTICE_BOTTOM: ClosureKind = ClosureKind::Fn;
+
     pub fn trait_did(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> DefId {
         match *self {
             ClosureKind::Fn => tcx.require_lang_item(FnTraitLangItem),
@@ -1925,6 +1999,16 @@ impl<'a, 'tcx> ClosureKind {
             (ClosureKind::FnMut, ClosureKind::FnOnce) => true,
             (ClosureKind::FnOnce, ClosureKind::FnOnce) => true,
             _ => false,
+        }
+    }
+
+    /// Returns the representative scalar type for this closure kind.
+    /// See `TyS::to_opt_closure_kind` for more details.
+    pub fn to_ty(self, tcx: TyCtxt<'_, '_, 'tcx>) -> Ty<'tcx> {
+        match self {
+            ty::ClosureKind::Fn => tcx.types.i8,
+            ty::ClosureKind::FnMut => tcx.types.i16,
+            ty::ClosureKind::FnOnce => tcx.types.i32,
         }
     }
 }
@@ -2234,11 +2318,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 self.adt_def(enum_did).variant_with_id(did)
             }
             Def::Struct(did) | Def::Union(did) => {
-                self.adt_def(did).struct_variant()
+                self.adt_def(did).non_enum_variant()
             }
             Def::StructCtor(ctor_did, ..) => {
                 let did = self.parent_def_id(ctor_did).expect("struct ctor has no parent");
-                self.adt_def(did).struct_variant()
+                self.adt_def(did).non_enum_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)
         }
@@ -2259,9 +2343,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn item_name(self, id: DefId) -> InternedString {
-        if let Some(id) = self.hir.as_local_node_id(id) {
-            self.hir.name(id).as_str()
-        } else if id.index == CRATE_DEF_INDEX {
+        if id.index == CRATE_DEF_INDEX {
             self.original_crate_name(id.krate).as_str()
         } else {
             let def_key = self.def_key(id);
@@ -2319,7 +2401,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Determine whether an item is annotated with an attribute
     pub fn has_attr(self, did: DefId, attr: &str) -> bool {
-        self.get_attrs(did).iter().any(|item| item.check_name(attr))
+        attr::contains_name(&self.get_attrs(did), attr)
     }
 
     /// Returns true if this is an `auto trait`.
@@ -2521,6 +2603,7 @@ fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           .map(|id| tcx.hir.local_def_id(id.node_id))
                           .collect()
         }
+        hir::ItemTraitAlias(..) => vec![],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
     };
     Rc::new(vec)
@@ -2586,10 +2669,18 @@ fn original_crate_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.crate_name.clone()
 }
 
+fn crate_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        crate_num: CrateNum)
+                        -> Svh {
+    assert_eq!(crate_num, LOCAL_CRATE);
+    tcx.hir.crate_hash
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
-    util::provide(providers);
     context::provide(providers);
     erase_regions::provide(providers);
+    layout::provide(providers);
+    util::provide(providers);
     *providers = ty::maps::Providers {
         associated_item,
         associated_item_def_ids,
@@ -2600,21 +2691,11 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         trait_of_item,
         crate_disambiguator,
         original_crate_name,
+        crate_hash,
         trait_impls_of: trait_def::trait_impls_of_provider,
         ..*providers
     };
 }
-
-pub fn provide_extern(providers: &mut ty::maps::Providers) {
-    *providers = ty::maps::Providers {
-        adt_sized_constraint,
-        adt_dtorck_constraint,
-        trait_impls_of: trait_def::trait_impls_of_provider,
-        param_env,
-        ..*providers
-    };
-}
-
 
 /// A map for the local crate mapping each type to a vector of its
 /// inherent impls. This is not meant to be used outside of coherence;
@@ -2669,7 +2750,7 @@ impl<'tcx> DtorckConstraint<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 pub struct SymbolName {
     // FIXME: we don't rely on interning or equality here - better have
     // this be a `&'tcx str`.

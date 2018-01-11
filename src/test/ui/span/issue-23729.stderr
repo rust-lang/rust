@@ -1,14 +1,8 @@
 error[E0046]: not all trait items implemented, missing: `Item`
   --> $DIR/issue-23729.rs:20:9
    |
-20 | /         impl Iterator for Recurrence {
-21 | |             //~^ ERROR E0046
-22 | |             //~| NOTE missing `Item` in implementation
-23 | |             //~| NOTE `Item` from trait: `type Item;`
-...  |
-36 | |             }
-37 | |         }
-   | |_________^ missing `Item` in implementation
+20 |         impl Iterator for Recurrence {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Item` in implementation
    |
    = note: `Item` from trait: `type Item;`
 

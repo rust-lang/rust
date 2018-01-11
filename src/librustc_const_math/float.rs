@@ -203,3 +203,11 @@ impl ::std::ops::Neg for ConstFloat {
         ConstFloat { bits, ty: self.ty }
     }
 }
+
+/// This is `f32::MAX + (0.5 ULP)` as an integer. Numbers greater or equal to this
+/// are rounded to infinity when converted to `f32`.
+///
+/// NB: Computed as maximum significand with an extra 1 bit added (for the half ULP)
+/// shifted by the maximum exponent (accounting for normalization).
+pub const MAX_F32_PLUS_HALF_ULP: u128 = ((1 << (Single::PRECISION + 1)) - 1)
+                                        << (Single::MAX_EXP - Single::PRECISION as i16);

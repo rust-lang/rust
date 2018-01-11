@@ -221,3 +221,24 @@ pub struct Config {
     pub llvm_cxxflags: String,
     pub nodejs: Option<String>,
 }
+
+#[derive(Clone)]
+pub struct TestPaths {
+    pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
+    pub base: PathBuf,         // e.g., compile-test, auxiliary
+    pub relative_dir: PathBuf, // e.g., foo/bar
+}
+
+/// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
+pub fn expected_output_path(testpaths: &TestPaths, revision: Option<&str>, kind: &str) -> PathBuf {
+    assert!(UI_EXTENSIONS.contains(&kind));
+    let extension = match revision {
+        Some(r) => format!("{}.{}", r, kind),
+        None => kind.to_string(),
+    };
+    testpaths.file.with_extension(extension)
+}
+
+pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT];
+pub const UI_STDERR: &str = "stderr";
+pub const UI_STDOUT: &str = "stdout";

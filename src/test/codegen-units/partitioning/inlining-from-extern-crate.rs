@@ -35,10 +35,10 @@ pub fn user()
     cgu_explicit_inlining::never_inlined();
 }
 
-mod mod1 {
+pub mod mod1 {
     use cgu_explicit_inlining;
 
-    //~ TRANS_ITEM fn inlining_from_extern_crate::mod1[0]::user[0] @@ inlining_from_extern_crate-mod1[Internal]
+    //~ TRANS_ITEM fn inlining_from_extern_crate::mod1[0]::user[0] @@ inlining_from_extern_crate-mod1[External]
     pub fn user()
     {
         cgu_explicit_inlining::inlined();
@@ -48,10 +48,10 @@ mod mod1 {
     }
 }
 
-mod mod2 {
+pub mod mod2 {
     use cgu_explicit_inlining;
 
-    //~ TRANS_ITEM fn inlining_from_extern_crate::mod2[0]::user[0] @@ inlining_from_extern_crate-mod2[Internal]
+    //~ TRANS_ITEM fn inlining_from_extern_crate::mod2[0]::user[0] @@ inlining_from_extern_crate-mod2[External]
     pub fn user()
     {
         cgu_explicit_inlining::always_inlined();

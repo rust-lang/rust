@@ -4,8 +4,8 @@ error[E0276]: impl has stricter requirements than trait
 15 |     fn foo();
    |     --------- definition of `foo` from trait
 ...
-19 |     fn foo() where 'a: 'b { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'a: 'b`
+19 |     fn foo() where 'a: 'b { } //~ ERROR impl has stricter
+   |     ^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'a: 'b`
 
 error: aborting due to previous error
 

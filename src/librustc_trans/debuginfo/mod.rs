@@ -15,7 +15,7 @@ use self::VariableAccess::*;
 use self::VariableKind::*;
 
 use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
-use self::namespace::mangled_name_of_item;
+use self::namespace::mangled_name_of_instance;
 use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
@@ -27,7 +27,7 @@ use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::ty::subst::Substs;
 
 use abi::Abi;
-use common::{self, CrateContext};
+use common::CrateContext;
 use builder::Builder;
 use monomorphize::Instance;
 use rustc::ty::{self, Ty};
@@ -43,7 +43,7 @@ use std::ptr;
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use rustc::ty::layout::{self, LayoutTyper};
+use rustc::ty::layout::{self, LayoutOf};
 
 pub mod gdb;
 mod utils;
@@ -56,6 +56,7 @@ mod source_loc;
 pub use self::create_scope_map::{create_mir_scopes, MirDebugScope};
 pub use self::source_loc::start_emitting_source_locations;
 pub use self::metadata::create_global_var_metadata;
+pub use self::metadata::create_vtable_metadata;
 pub use self::metadata::extend_scope_to_file;
 pub use self::source_loc::set_source_location;
 
@@ -70,7 +71,7 @@ pub struct CrateDebugContext<'tcx> {
     llmod: ModuleRef,
     builder: DIBuilderRef,
     created_files: RefCell<FxHashMap<(Symbol, Symbol), DIFile>>,
-    created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Integer), DIType>>,
+    created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
     namespace_map: RefCell<DefIdMap<DIScope>>,
@@ -236,7 +237,6 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // Find the enclosing function, in case this is a closure.
     let def_key = cx.tcx().def_key(def_id);
     let mut name = def_key.disambiguated_data.data.to_string();
-    let name_len = name.len();
 
     let enclosing_fn_def_id = cx.tcx().closure_base_def_id(def_id);
 
@@ -250,8 +250,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                       file_metadata,
                                                       &mut name);
 
-    // Build the linkage_name out of the item path and "template" parameters.
-    let linkage_name = mangled_name_of_item(cx, instance.def_id(), &name[name_len..]);
+    // Get the linkage_name, which is just the symbol name
+    let linkage_name = mangled_name_of_instance(cx, instance);
 
     let scope_line = span_start(cx, span).line;
 
@@ -259,7 +259,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let is_local_to_unit = local_id.map_or(false, |id| is_node_local_to_unit(cx, id));
 
     let function_name = CString::new(name).unwrap();
-    let linkage_name = CString::new(linkage_name).unwrap();
+    let linkage_name = CString::new(linkage_name.to_string()).unwrap();
 
     let mut flags = DIFlags::FlagPrototyped;
     match *cx.sess().entry_fn.borrow() {
@@ -334,8 +334,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             signature.extend(inputs.iter().map(|&t| {
                 let t = match t.sty {
                     ty::TyArray(ct, _)
-                        if (ct == cx.tcx().types.u8) ||
-                           (cx.layout_of(ct).size(cx).bytes() == 0) => {
+                        if (ct == cx.tcx().types.u8) || cx.layout_of(ct).is_zst() => {
                         cx.tcx().mk_imm_ptr(ct)
                     }
                     _ => t
@@ -427,8 +426,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let self_type = cx.tcx().impl_of_method(instance.def_id()).and_then(|impl_def_id| {
             // If the method does *not* belong to a trait, proceed
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
-                let impl_self_ty =
-                    common::def_ty(cx.tcx(), impl_def_id, instance.substs);
+                let impl_self_ty = cx.tcx().trans_impl_self_ty(impl_def_id, instance.substs);
 
                 // Only "class" methods are generally understood by LLVM,
                 // so avoid methods on other types (e.g. `<*mut T>::null`).
@@ -469,7 +467,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
     let file = span_start(cx, span).file;
     let file_metadata = file_metadata(cx,
-                                      &file.name[..],
+                                      &file.name,
                                       dbg_context.get_ref(span).defining_crate);
 
     let loc = span_start(cx, span);
@@ -498,7 +496,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     cx.sess().opts.optimize != config::OptLevel::No,
                     DIFlags::FlagZero,
                     argument_index,
-                    align,
+                    align.abi() as u32,
                 )
             };
             source_loc::set_debug_location(bcx,

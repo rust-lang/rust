@@ -11,7 +11,8 @@ crate-type = ["dylib"]
 [dependencies]
 syntax = { path = "../libsyntax" }
 serialize = { path = "../libserialize" }
-log = "0.3"
+log = "0.4"
+rand = "0.3"
 
 [features]
 jemalloc = []

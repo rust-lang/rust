@@ -3,10 +3,10 @@ error[E0502]: cannot borrow `*collection` as mutable because `collection` is als
    |
 12 |     let _a = &collection;
    |               ---------- immutable borrow occurs here
-13 |     collection.swap(1, 2);
+13 |     collection.swap(1, 2); //~ ERROR also borrowed as immutable
    |     ^^^^^^^^^^ mutable borrow occurs here
 14 | }
    | - immutable borrow ends here
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

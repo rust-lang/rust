@@ -1,0 +1,20 @@
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:20:47
+   |
+20 |     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
+   |                                               ^^ lifetime parameter not allowed on this type
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:25:48
+   |
+25 |     type Iter2<'a>: Deref<Target = <Self::Iter<'a> as Iterator>::Item>;
+   |                                                ^^ lifetime parameter not allowed on this type
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/iterable.rs:28:41
+   |
+28 |     fn iter<'a>(&'a self) -> Self::Iter<'a>;
+   |                                         ^^ lifetime parameter not allowed on this type
+
+error: aborting due to 3 previous errors
+

@@ -77,6 +77,11 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
             ret.extend(build_impls(cx, did));
             clean::EnumItem(build_enum(cx, did))
         }
+        Def::TyForeign(did) => {
+            record_extern_fqn(cx, did, clean::TypeKind::Foreign);
+            ret.extend(build_impls(cx, did));
+            clean::ForeignTypeItem
+        }
         // Never inline enum variants but leave them shown as reexports.
         Def::Variant(..) => return None,
         // Assume that enum variants and struct types are reexported next to
@@ -140,11 +145,13 @@ pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
     let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
+    let is_spotlight = load_attrs(cx, did).has_doc_flag("spotlight");
     clean::Trait {
         unsafety: cx.tcx.trait_def(did).unsafety,
         generics,
         items: trait_items,
         bounds: supertrait_bounds,
+        is_spotlight,
     }
 }
 
@@ -179,7 +186,7 @@ fn build_enum(cx: &DocContext, did: DefId) -> clean::Enum {
 
 fn build_struct(cx: &DocContext, did: DefId) -> clean::Struct {
     let predicates = cx.tcx.predicates_of(did);
-    let variant = cx.tcx.adt_def(did).struct_variant();
+    let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Struct {
         struct_type: match variant.ctor_kind {
@@ -195,7 +202,7 @@ fn build_struct(cx: &DocContext, did: DefId) -> clean::Struct {
 
 fn build_union(cx: &DocContext, did: DefId) -> clean::Union {
     let predicates = cx.tcx.predicates_of(did);
-    let variant = cx.tcx.adt_def(did).struct_variant();
+    let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Union {
         struct_type: doctree::Plain,
@@ -262,6 +269,7 @@ pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
         lang_items.char_impl(),
         lang_items.str_impl(),
         lang_items.slice_impl(),
+        lang_items.slice_u8_impl(),
         lang_items.const_ptr_impl(),
         lang_items.mut_ptr_impl(),
     ];
@@ -325,74 +333,10 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
 
     let predicates = tcx.predicates_of(did);
     let trait_items = tcx.associated_items(did).filter_map(|item| {
-        match item.kind {
-            ty::AssociatedKind::Const => {
-                let default = if item.defaultness.has_value() {
-                    Some(print_inlined_const(cx, item.def_id))
-                } else {
-                    None
-                };
-                Some(clean::Item {
-                    name: Some(item.name.clean(cx)),
-                    inner: clean::AssociatedConstItem(
-                        tcx.type_of(item.def_id).clean(cx),
-                        default,
-                    ),
-                    source: tcx.def_span(item.def_id).clean(cx),
-                    attrs: clean::Attributes::default(),
-                    visibility: None,
-                    stability: tcx.lookup_stability(item.def_id).clean(cx),
-                    deprecation: tcx.lookup_deprecation(item.def_id).clean(cx),
-                    def_id: item.def_id
-                })
-            }
-            ty::AssociatedKind::Method => {
-                if item.vis != ty::Visibility::Public && associated_trait.is_none() {
-                    return None
-                }
-                let mut cleaned = item.clean(cx);
-                cleaned.inner = match cleaned.inner.clone() {
-                    clean::TyMethodItem(clean::TyMethod {
-                        unsafety, decl, generics, abi
-                    }) => {
-                        let constness = if tcx.is_const_fn(item.def_id) {
-                            hir::Constness::Const
-                        } else {
-                            hir::Constness::NotConst
-                        };
-
-                        clean::MethodItem(clean::Method {
-                            unsafety,
-                            constness,
-                            decl,
-                            generics,
-                            abi,
-                        })
-                    }
-                    ref r => panic!("not a tymethod: {:?}", r),
-                };
-                Some(cleaned)
-            }
-            ty::AssociatedKind::Type => {
-                let typedef = clean::Typedef {
-                    type_: tcx.type_of(item.def_id).clean(cx),
-                    generics: clean::Generics {
-                        lifetimes: vec![],
-                        type_params: vec![],
-                        where_predicates: vec![]
-                    }
-                };
-                Some(clean::Item {
-                    name: Some(item.name.clean(cx)),
-                    inner: clean::TypedefItem(typedef, true),
-                    source: tcx.def_span(item.def_id).clean(cx),
-                    attrs: clean::Attributes::default(),
-                    visibility: None,
-                    stability: tcx.lookup_stability(item.def_id).clean(cx),
-                    deprecation: tcx.lookup_deprecation(item.def_id).clean(cx),
-                    def_id: item.def_id
-                })
-            }
+        if associated_trait.is_some() || item.vis == ty::Visibility::Public {
+            Some(item.clean(cx))
+        } else {
+            None
         }
     }).collect::<Vec<_>>();
     let polarity = tcx.impl_polarity(did);
@@ -448,7 +392,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
         let mut visited = FxHashSet();
         for &item in cx.tcx.item_children(did).iter() {
             let def_id = item.def.def_id();
-            if cx.tcx.visibility(def_id) == ty::Visibility::Public {
+            if item.vis == ty::Visibility::Public {
                 if !visited.insert(def_id) { continue }
                 if let Some(i) = try_inline(cx, item.def, item.ident.name) {
                     items.extend(i)
@@ -504,8 +448,7 @@ fn build_static(cx: &DocContext, did: DefId, mutable: bool) -> clean::Static {
 ///
 /// The inverse of this filtering logic can be found in the `Clean`
 /// implementation for `AssociatedType`
-fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics)
-                             -> clean::Generics {
+fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean::Generics {
     for pred in &mut g.where_predicates {
         match *pred {
             clean::WherePredicate::BoundPredicate {

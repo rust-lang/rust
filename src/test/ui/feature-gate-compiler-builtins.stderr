@@ -1,0 +1,10 @@
+error: the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate which contains compiler-rt intrinsics and will never be stable
+  --> $DIR/feature-gate-compiler-builtins.rs:11:1
+   |
+11 | #![compiler_builtins] //~ ERROR the `#[compiler_builtins]` attribute is
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(compiler_builtins)] to the crate attributes to enable
+
+error: aborting due to previous error
+

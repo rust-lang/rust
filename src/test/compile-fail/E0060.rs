@@ -10,7 +10,6 @@
 
 extern "C" {
     fn printf(_: *const u8, ...) -> u32;
-    //~^ NOTE defined here
 }
 
 fn main() {

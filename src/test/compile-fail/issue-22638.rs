@@ -12,13 +12,13 @@
 
 #![recursion_limit = "20"]
 #![type_length_limit = "20000000"]
+#![crate_type = "rlib"]
 
 #[derive(Clone)]
 struct A (B);
 
 impl A {
     pub fn matches<F: Fn()>(&self, f: &F) {
-        //~^ ERROR reached the recursion limit while instantiating `A::matches::<[closure
         let &A(ref term) = self;
         term.matches(f);
     }
@@ -58,6 +58,7 @@ struct D (Box<A>);
 
 impl D {
     pub fn matches<F: Fn()>(&self, f: &F) {
+        //~^ ERROR reached the type-length limit while instantiating `D::matches::<[closure
         let &D(ref a) = self;
         a.matches(f)
     }
@@ -66,5 +67,3 @@ impl D {
 pub fn matches() {
     A(B::Variant1).matches(&(|| ()))
 }
-
-fn main() {}

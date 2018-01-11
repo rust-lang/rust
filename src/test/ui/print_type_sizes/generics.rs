@@ -9,10 +9,13 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
+// must-compile-successfully
 
 // This file illustrates how generics are handled: types have to be
 // monomorphized, in the MIR of the original function in which they
 // occur, to have their size reported.
+
+#![feature(start)]
 
 // In an ad-hoc attempt to avoid the injection of unwinding code
 // (which clutters the output of `-Z print-type-sizes` with types from
@@ -65,9 +68,11 @@ pub fn f1<T:Copy>(x: T) {
         Pair::new(FiftyBytes::new(), FiftyBytes::new());
 }
 
-pub fn main() {
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
     let _b: Pair<u8> = Pair::new(0, 0);
     let _s: Pair<SevenBytes> = Pair::new(SevenBytes::new(), SevenBytes::new());
     let _z: ZeroSized = ZeroSized;
     f1::<SevenBytes>(SevenBytes::new());
+    0
 }

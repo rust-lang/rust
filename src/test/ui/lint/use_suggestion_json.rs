@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-cloudabi
 // compile-flags: --error-format pretty-json -Zunstable-options
 
 // The output for humans should just highlight the whole span without showing

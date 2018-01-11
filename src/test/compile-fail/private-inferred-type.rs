@@ -11,10 +11,11 @@
 #![feature(associated_consts)]
 #![feature(conservative_impl_trait)]
 #![feature(decl_macro)]
-#![allow(warnings)]
+#![allow(private_in_public)]
 
 mod m {
     fn priv_fn() {}
+    static PRIV_STATIC: u8 = 0;
     enum PrivEnum { Variant }
     pub enum PubEnum { Variant }
     trait PrivTrait { fn method() {} }
@@ -47,6 +48,7 @@ mod m {
 
     pub macro m() {
         priv_fn; //~ ERROR type `fn() {m::priv_fn}` is private
+        PRIV_STATIC; // OK, not cross-crate
         PrivEnum::Variant; //~ ERROR type `m::PrivEnum` is private
         PubEnum::Variant; // OK
         <u8 as PrivTrait>::method; //~ ERROR type `fn() {<u8 as m::PrivTrait>::method}` is private
@@ -68,6 +70,7 @@ mod m {
     impl<T> TraitWithTyParam<T> for u8 {}
     impl TraitWithTyParam2<Priv> for u8 {}
     impl TraitWithAssocTy for u8 { type AssocTy = Priv; }
+    //~^ ERROR private type `m::Priv` in public interface
 
     pub fn leak_anon1() -> impl Trait + 'static { 0 }
     pub fn leak_anon2() -> impl TraitWithTyParam<Alias> { 0 }
@@ -88,7 +91,7 @@ mod adjust {
     pub struct S3;
 
     impl Deref for S1 {
-        type Target = S2Alias;
+        type Target = S2Alias; //~ ERROR private type `adjust::S2` in public interface
         fn deref(&self) -> &Self::Target { loop {} }
     }
     impl Deref for S2 {

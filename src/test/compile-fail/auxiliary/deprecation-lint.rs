@@ -52,6 +52,24 @@ pub enum Enum {
 #[deprecated(since = "1.0.0", note = "text")]
 pub struct DeprecatedTupleStruct(pub isize);
 
+pub mod nested {
+    #[deprecated(since = "1.0.0", note = "text")]
+    pub struct DeprecatedStruct {
+        pub i: isize
+    }
+
+    #[deprecated(since = "1.0.0", note = "text")]
+    pub struct DeprecatedUnitStruct;
+
+    pub enum Enum {
+        #[deprecated(since = "1.0.0", note = "text")]
+        DeprecatedVariant,
+    }
+
+    #[deprecated(since = "1.0.0", note = "text")]
+    pub struct DeprecatedTupleStruct(pub isize);
+}
+
 pub struct Stable {
     #[deprecated(since = "1.0.0", note = "text")]
     pub override2: u8,

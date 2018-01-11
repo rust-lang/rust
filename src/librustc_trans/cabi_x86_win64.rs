@@ -8,32 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{ArgType, FnType, LayoutExt, Reg};
-use common::CrateContext;
+use abi::{ArgType, FnType, Reg};
 
-use rustc::ty::layout::Layout;
+use rustc::ty::layout;
 
 // Win64 ABI: http://msdn.microsoft.com/en-us/library/zthk2dkh.aspx
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
-    let fixup = |a: &mut ArgType<'tcx>| {
-        let size = a.layout.size(ccx);
-        if a.layout.is_aggregate() {
-            match size.bits() {
-                8 => a.cast_to(ccx, Reg::i8()),
-                16 => a.cast_to(ccx, Reg::i16()),
-                32 => a.cast_to(ccx, Reg::i32()),
-                64 => a.cast_to(ccx, Reg::i64()),
-                _ => a.make_indirect(ccx)
-            };
-        } else {
-            if let Layout::Vector { .. } = *a.layout {
+pub fn compute_abi_info(fty: &mut FnType) {
+    let fixup = |a: &mut ArgType| {
+        match a.layout.abi {
+            layout::Abi::Uninhabited => {}
+            layout::Abi::ScalarPair(..) |
+            layout::Abi::Aggregate { .. } => {
+                match a.layout.size.bits() {
+                    8 => a.cast_to(Reg::i8()),
+                    16 => a.cast_to(Reg::i16()),
+                    32 => a.cast_to(Reg::i32()),
+                    64 => a.cast_to(Reg::i64()),
+                    _ => a.make_indirect()
+                }
+            }
+            layout::Abi::Vector { .. } => {
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
-            } else if size.bytes() > 8 {
-                a.make_indirect(ccx);
-            } else {
-                a.extend_integer_width_to(32);
+            }
+            layout::Abi::Scalar(_) => {
+                if a.layout.size.bytes() > 8 {
+                    a.make_indirect();
+                } else {
+                    a.extend_integer_width_to(32);
+                }
             }
         }
     };

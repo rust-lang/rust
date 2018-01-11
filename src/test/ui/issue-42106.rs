@@ -10,7 +10,7 @@
 
 fn do_something<T>(collection: &mut Vec<T>) {
     let _a = &collection;
-    collection.swap(1, 2);
+    collection.swap(1, 2); //~ ERROR also borrowed as immutable
 }
 
 fn main() {}

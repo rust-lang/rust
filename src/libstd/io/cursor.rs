@@ -230,6 +230,13 @@ impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
         Ok(n)
     }
 
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        let n = buf.len();
+        Read::read_exact(&mut self.fill_buf()?, buf)?;
+        self.pos += n as u64;
+        Ok(())
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -245,14 +252,54 @@ impl<T> BufRead for Cursor<T> where T: AsRef<[u8]> {
     fn consume(&mut self, amt: usize) { self.pos += amt as u64; }
 }
 
+// Non-resizing write implementation
+fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<usize> {
+    let pos = cmp::min(*pos_mut, slice.len() as u64);
+    let amt = (&mut slice[(pos as usize)..]).write(buf)?;
+    *pos_mut += amt as u64;
+    Ok(amt)
+}
+
+// Resizing write implementation
+fn vec_write(pos_mut: &mut u64, vec: &mut Vec<u8>, buf: &[u8]) -> io::Result<usize> {
+    let pos: usize = (*pos_mut).try_into().map_err(|_| {
+        Error::new(ErrorKind::InvalidInput,
+                    "cursor position exceeds maximum possible vector length")
+    })?;
+    // Make sure the internal buffer is as least as big as where we
+    // currently are
+    let len = vec.len();
+    if len < pos {
+        // use `resize` so that the zero filling is as efficient as possible
+        vec.resize(pos, 0);
+    }
+    // Figure out what bytes will be used to overwrite what's currently
+    // there (left), and what will be appended on the end (right)
+    {
+        let space = vec.len() - pos;
+        let (left, right) = buf.split_at(cmp::min(space, buf.len()));
+        vec[pos..pos + left.len()].copy_from_slice(left);
+        vec.extend_from_slice(right);
+    }
+
+    // Bump us forward
+    *pos_mut = (pos + buf.len()) as u64;
+    Ok(buf.len())
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for Cursor<&'a mut [u8]> {
     #[inline]
-    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        let pos = cmp::min(self.pos, self.inner.len() as u64);
-        let amt = (&mut self.inner[(pos as usize)..]).write(data)?;
-        self.pos += amt as u64;
-        Ok(amt)
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        slice_write(&mut self.pos, self.inner, buf)
+    }
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}
+
+#[unstable(feature = "cursor_mut_vec", issue = "30132")]
+impl<'a> Write for Cursor<&'a mut Vec<u8>> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        vec_write(&mut self.pos, self.inner, buf)
     }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
@@ -260,29 +307,7 @@ impl<'a> Write for Cursor<&'a mut [u8]> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Cursor<Vec<u8>> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let pos: usize = self.position().try_into().map_err(|_| {
-            Error::new(ErrorKind::InvalidInput,
-                       "cursor position exceeds maximum possible vector length")
-        })?;
-        // Make sure the internal buffer is as least as big as where we
-        // currently are
-        let len = self.inner.len();
-        if len < pos {
-            // use `resize` so that the zero filling is as efficient as possible
-            self.inner.resize(pos, 0);
-        }
-        // Figure out what bytes will be used to overwrite what's currently
-        // there (left), and what will be appended on the end (right)
-        {
-            let space = self.inner.len() - pos;
-            let (left, right) = buf.split_at(cmp::min(space, buf.len()));
-            self.inner[pos..pos + left.len()].copy_from_slice(left);
-            self.inner.extend_from_slice(right);
-        }
-
-        // Bump us forward
-        self.set_position((pos + buf.len()) as u64);
-        Ok(buf.len())
+        vec_write(&mut self.pos, &mut self.inner, buf)
     }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
@@ -291,10 +316,7 @@ impl Write for Cursor<Vec<u8>> {
 impl Write for Cursor<Box<[u8]>> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let pos = cmp::min(self.pos, self.inner.len() as u64);
-        let amt = (&mut self.inner[(pos as usize)..]).write(buf)?;
-        self.pos += amt as u64;
-        Ok(amt)
+        slice_write(&mut self.pos, &mut self.inner, buf)
     }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
@@ -317,6 +339,17 @@ mod tests {
     #[test]
     fn test_mem_writer() {
         let mut writer = Cursor::new(Vec::new());
+        assert_eq!(writer.write(&[0]).unwrap(), 1);
+        assert_eq!(writer.write(&[1, 2, 3]).unwrap(), 3);
+        assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
+        let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
+        assert_eq!(&writer.get_ref()[..], b);
+    }
+
+    #[test]
+    fn test_mem_mut_writer() {
+        let mut vec = Vec::new();
+        let mut writer = Cursor::new(&mut vec);
         assert_eq!(writer.write(&[0]).unwrap(), 1);
         assert_eq!(writer.write(&[1, 2, 3]).unwrap(), 3);
         assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
@@ -473,6 +506,24 @@ mod tests {
         let b: &[_] = &[5, 6, 7];
         assert_eq!(&buf[..3], b);
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_read_exact() {
+        let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        let reader = &mut &in_buf[..];
+        let mut buf = [];
+        assert!(reader.read_exact(&mut buf).is_ok());
+        let mut buf = [8];
+        assert!(reader.read_exact(&mut buf).is_ok());
+        assert_eq!(buf[0], 0);
+        assert_eq!(reader.len(), 7);
+        let mut buf = [0, 0, 0, 0, 0, 0, 0];
+        assert!(reader.read_exact(&mut buf).is_ok());
+        assert_eq!(buf, [1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(reader.len(), 0);
+        let mut buf = [0];
+        assert!(reader.read_exact(&mut buf).is_err());
     }
 
     #[test]

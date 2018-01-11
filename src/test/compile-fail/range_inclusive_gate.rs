@@ -19,5 +19,3 @@ pub fn main() {
     //~| ERROR core_intrinsics
     //~| ERROR core_intrinsics
 }
-
-

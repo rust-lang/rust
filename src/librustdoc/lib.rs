@@ -48,6 +48,7 @@ extern crate std_unicode;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
 extern crate pulldown_cmark;
+extern crate tempdir;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -57,7 +58,7 @@ use std::env;
 use std::fmt::Display;
 use std::io;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::mpsc::channel;
 
@@ -252,6 +253,14 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable("linker", |o| {
             o.optopt("", "linker", "linker used for building executable test code", "PATH")
         }),
+        unstable("sort-modules-by-appearance", |o| {
+            o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
+                                                         program, rather than alphabetically")
+        }),
+        unstable("deny-render-differences", |o| {
+            o.optflag("", "deny-render-differences", "abort doc runs when markdown rendering \
+                                                      differences are found")
+        }),
     ]
 }
 
@@ -330,7 +339,8 @@ pub fn main_args(args: &[String]) -> isize {
                                           .collect();
 
     let should_test = matches.opt_present("test");
-    let markdown_input = input.ends_with(".md") || input.ends_with(".markdown");
+    let markdown_input = Path::new(input).extension()
+        .map_or(false, |e| e == "md" || e == "markdown");
 
     let output = matches.opt_str("o").map(|s| PathBuf::from(&s));
     let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
@@ -366,18 +376,19 @@ pub fn main_args(args: &[String]) -> isize {
     let playground_url = matches.opt_str("playground-url");
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
     let display_warnings = matches.opt_present("display-warnings");
-    let linker = matches.opt_str("linker");
+    let linker = matches.opt_str("linker").map(PathBuf::from);
+    let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
 
     match (should_test, markdown_input) {
         (true, true) => {
-            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot, render_type,
-                                  display_warnings, linker)
+            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot,
+                                  render_type, display_warnings, linker)
         }
         (true, false) => {
-            return test::run(input, cfgs, libs, externs, test_args, crate_name, maybe_sysroot,
-                             render_type, display_warnings, linker)
+            return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
+                             maybe_sysroot, render_type, display_warnings, linker)
         }
-        (false, true) => return markdown::render(input,
+        (false, true) => return markdown::render(Path::new(input),
                                                  output.unwrap_or(PathBuf::from("doc")),
                                                  &matches, &external_html,
                                                  !matches.opt_present("markdown-no-toc"),
@@ -386,7 +397,8 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     let output_format = matches.opt_str("w");
-    let res = acquire_input(input, externs, &matches, move |out| {
+    let deny_render_differences = matches.opt_present("deny-render-differences");
+    let res = acquire_input(PathBuf::from(input), externs, &matches, move |out| {
         let Output { krate, passes, renderinfo } = out;
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
@@ -396,7 +408,9 @@ pub fn main_args(args: &[String]) -> isize {
                                   passes.into_iter().collect(),
                                   css_file_extension,
                                   renderinfo,
-                                  render_type)
+                                  render_type,
+                                  sort_modules_alphabetically,
+                                  deny_render_differences)
                     .expect("failed to generate documentation");
                 0
             }
@@ -423,7 +437,7 @@ fn print_error<T>(error_message: T) where T: Display {
 
 /// Looks inside the command line arguments to extract the relevant input format
 /// and files and then generates the necessary rustdoc output for formatting.
-fn acquire_input<R, F>(input: &str,
+fn acquire_input<R, F>(input: PathBuf,
                        externs: Externs,
                        matches: &getopts::Matches,
                        f: F)
@@ -458,7 +472,7 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input<R, F>(cratefile: &str, externs: Externs, matches: &getopts::Matches, f: F) -> R
+fn rust_input<R, F>(cratefile: PathBuf, externs: Externs, matches: &getopts::Matches, f: F) -> R
 where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
@@ -470,7 +484,6 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         default_passes = false;
 
         passes = vec![
-            String::from("strip-hidden"),
             String::from("collapse-docs"),
             String::from("unindent-comments"),
         ];
@@ -488,7 +501,6 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let crate_version = matches.opt_str("crate-version");
     let plugin_path = matches.opt_str("plugin-path");
 
-    let cr = PathBuf::from(cratefile);
     info!("starting to run rustc");
     let display_warnings = matches.opt_present("display-warnings");
 
@@ -501,7 +513,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         use rustc::session::config::Input;
 
         let (mut krate, renderinfo) =
-            core::run_core(paths, cfgs, externs, Input::File(cr), triple, maybe_sysroot,
+            core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
                            display_warnings, force_unstable_if_unmarked);
 
         info!("finished with rustc");

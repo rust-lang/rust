@@ -89,7 +89,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -141,8 +141,11 @@ code, pre {
 	border-radius: 3px;
 	padding: 0 0.2em;
 }
-.docblock pre code, .docblock-short pre code {
+.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;
+}
+.docblock code.spotlight :last-child {
+	padding-bottom: 0.6em;
 }
 pre {
 	padding: 14px;
@@ -205,7 +208,7 @@ nav.sub {
 .sidebar .version {
 	font-size: 15px;
 	text-align: center;
-	border-bottom: #DDDDDD 1px solid;
+	border-bottom: 1px solid;
 	overflow-wrap: break-word;
 	word-wrap: break-word; /* deprecated */
 	word-break: break-word; /* Chrome, non-standard */
@@ -244,8 +247,8 @@ nav.sub {
 }
 
 .sidebar-title {
-	border-top: 1px solid #777;
-	border-bottom: 1px solid #777;
+	border-top: 1px solid;
+	border-bottom: 1px solid;
 	text-align: center;
 	font-size: 17px;
 	margin-bottom: 5px;
@@ -260,6 +263,10 @@ nav.sub {
 	width: 100%;
 }
 
+.sidebar-menu {
+	display: none;
+}
+
 .content {
 	padding: 15px 0;
 }
@@ -269,9 +276,19 @@ nav.sub {
 	overflow: auto;
 	padding-left: 0;
 }
+
 #search {
 	margin-left: 230px;
+	position: relative;
 }
+
+#results {
+	position: absolute;
+	right: 0;
+	left: 0;
+	overflow: auto;
+}
+
 .content pre.line-numbers {
 	float: left;
 	border: none;
@@ -351,7 +368,6 @@ h4 > code, h3 > code, .invisible > code {
 }
 
 .invisible {
-	background: rgba(0, 0, 0, 0);
 	width: 100%;
 	display: inline-block;
 }
@@ -431,14 +447,14 @@ h4 > code, h3 > code, .invisible > code {
 .content .fn .where,
 .content .where.fmt-newline {
 	display: block;
-	color: #4E4C4C;
 	font-size: 0.8em;
 }
 
-.content .methods > div { margin-left: 40px; }
+.content .methods > div:not(.important-traits) { margin-left: 40px; }
 
 .content .impl-items .docblock, .content .impl-items .stability {
 	margin-left: 40px;
+	margin-bottom: .6em;
 }
 .content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 	margin-left: 20px;
@@ -524,7 +540,6 @@ a {
 }
 
 .search-input:focus {
-	border-color: #66afe9;
 	border-radius: 2px;
 	border: 0;
 	outline: 0;
@@ -546,7 +561,8 @@ a {
 .content .search-results td:first-child a { padding-right: 10px; }
 
 tr.result span.primitive::after {
-	content: ' (primitive type)'; font-style: italic; color: black;
+	content: ' (primitive type)';
+	font-style: italic;
 }
 
 body.blur > :not(#help) {
@@ -582,13 +598,14 @@ body.blur > :not(#help) {
 	display: block;
 	margin-top: -1px;
 }
-#help dd { margin: 5px 33px; }
+#help dd { margin: 5px 35px; }
 #help .infos { padding-left: 0; }
 #help h1, #help h2 { margin-top: 0; }
 #help > div div {
 	width: 50%;
 	float: left;
 	padding: 20px;
+	padding-left: 17px;
 }
 
 .stab {
@@ -682,7 +699,6 @@ a.test-arrow:hover{
 	font-weight: 300;
 	position: absolute;
 	left: -23px;
-	color: #999;
 	top: 0;
 }
 
@@ -806,9 +822,10 @@ span.since {
 		margin-left: -15px;
 		padding: 0 15px;
 		position: static;
+		z-index: 1;
 	}
 
-	.sidebar .location {
+	.sidebar > .location {
 		float: right;
 		margin: 0px;
 		margin-top: 2px;
@@ -828,14 +845,40 @@ span.since {
 		margin-top: 5px;
 		margin-bottom: 5px;
 		float: left;
+		margin-left: 50px;
+	}
+
+	.sidebar-menu {
+		position: fixed;
+		z-index: 10;
+		font-size: 2rem;
+		cursor: pointer;
+		width: 45px;
+		left: 0;
+		text-align: center;
+		display: block;
+		border-bottom: 1px solid;
+		border-right: 1px solid;
+	}
+
+	.sidebar-elems {
+		position: fixed;
+		z-index: 1;
+		left: 0;
+		top: 45px;
+		bottom: 0;
+		overflow-y: auto;
+		border-right: 1px solid;
+		display: none;
+	}
+
+	.sidebar > .block.version {
+		border-bottom: none;
+		margin-top: 12px;
 	}
 
 	nav.sub {
 		margin: 0 auto;
-	}
-
-	.sidebar .block {
-		display: none;
 	}
 
 	.content {
@@ -889,8 +932,6 @@ span.since {
 .tooltip .tooltiptext {
 	width: 120px;
 	display: none;
-	background-color: black;
-	color: #fff;
 	text-align: center;
 	padding: 5px 3px;
 	border-radius: 6px;
@@ -912,7 +953,10 @@ span.since {
 	margin-top: -5px;
 	border-width: 5px;
 	border-style: solid;
-	border-color: transparent black transparent transparent;
+}
+
+.important-traits .tooltip .tooltiptext {
+	border: 1px solid;
 }
 
 pre.rust {
@@ -932,15 +976,161 @@ pre.rust {
 	float: left;
 	width: 33.3%;
 	text-align: center;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid;
 	font-size: 18px;
 	cursor: pointer;
 }
 
 #titles > div.selected {
-	border-bottom: 3px solid #0078ee;
+	border-bottom: 3px solid;
 }
 
 #titles > div:hover {
-	border-bottom: 3px solid #0089ff;
+	border-bottom: 3px solid;
+}
+
+#titles > div > div.count {
+	display: inline-block;
+	font-size: 16px;
+}
+
+.important-traits {
+	cursor: pointer;
+	z-index: 2;
+}
+
+h4 > .important-traits {
+	position: absolute;
+	left: -44px;
+	top: 2px;
+}
+
+@media (max-width: 700px) {
+	h4 > .important-traits {
+		position: absolute;
+		left: -22px;
+		top: 24px;
+	}
+
+	#titles > div > div.count {
+		float: left;
+		width: 100%;
+	}
+
+	#titles {
+		height: 50px;
+	}
+
+	.sidebar.mobile {
+		position: fixed;
+		width: 100%;
+		margin-left: 0;
+		background-color: rgba(0,0,0,0);
+		height: 100%;
+	}
+
+	.show-it {
+		display: block;
+	}
+
+	/* Because of ios, we need to actually have a full height sidebar title so the
+	 * actual sidebar can show up. But then we need to make it transparent so we don't
+	 * hide content. The filler just allows to create the background for the sidebar
+	 * title. But because of the absolute position, I had to lower the z-index.
+	 */
+	#sidebar-filler {
+		position: fixed;
+		left: 45px;
+		width: calc(100% - 45px);
+		top: 0;
+		height: 45px;
+		z-index: -1;
+		border-bottom: 1px solid;
+	}
+}
+
+
+@media (max-width: 416px) {
+	#titles {
+		height: 73px;
+	}
+
+	#titles > div {
+		height: 73px;
+	}
+}
+
+.modal {
+	position: fixed;
+	width: 100vw;
+	height: 100vh;
+	z-index: 10000;
+	top: 0;
+	left: 0;
+}
+
+.modal-content {
+	display: block;
+	max-width: 60%;
+	min-width: 200px;
+	padding: 8px;
+	top: 40%;
+	position: absolute;
+	left: 50%;
+	transform: translate(-50%, -40%);
+	border: 1px solid;
+	border-radius: 4px;
+	border-top-right-radius: 0;
+}
+
+.modal-content > .docblock {
+	margin: 0;
+}
+
+h3.important {
+	margin: 0;
+	margin-bottom: 13px;
+	font-size: 19px;
+}
+
+.modal-content > .docblock > code.content {
+	margin: 0;
+	padding: 0;
+	font-size: 20px;
+}
+
+.modal-content > .close {
+	position: absolute;
+	font-weight: 900;
+	right: -25px;
+	top: -1px;
+	font-size: 18px;
+	width: 25px;
+	padding-right: 2px;
+	border-top-right-radius: 5px;
+	border-bottom-right-radius: 5px;
+	text-align: center;
+	border: 1px solid;
+	border-right: 0;
+	cursor: pointer;
+}
+
+.modal-content > .whiter {
+	height: 25px;
+	position: absolute;
+	width: 3px;
+	right: -2px;
+	top: 0px;
+}
+
+#main > div.important-traits {
+	position: absolute;
+	left: -24px;
+	margin-top: 16px;
+}
+
+.content > .methods > div.important-traits {
+	position: absolute;
+	left: -42px;
+	margin-top: 2px;
 }

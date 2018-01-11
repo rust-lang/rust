@@ -34,6 +34,6 @@
 //! }
 //! ```
 
-// @matches foo/index.html '//a[@class="test-arrow"][@href="https://www.example.com/?code=fn%20main()%20%7B%0A%20%20%20%20println!(%22Hello%2C%20world!%22)%3B%0A%7D%0A"]' "Run"
-// @matches foo/index.html '//a[@class="test-arrow"][@href="https://www.example.com/?code=fn%20main()%20%7B%0Aprintln!(%22Hello%2C%20world!%22)%3B%0A%7D"]' "Run"
-// @matches foo/index.html '//a[@class="test-arrow"][@href="https://www.example.com/?code=%23!%5Bfeature(something)%5D%0A%0Afn%20main()%20%7B%0A%20%20%20%20println!(%22Hello%2C%20world!%22)%3B%0A%7D%0A&version=nightly"]' "Run"
+// @matches foo/index.html '//a[@class="test-arrow"][@href="https://www.example.com/?code=%23!%5Ballow(unused)%5D%0Afn%20main()%20%7B%0A%20%20%20%20println!(%22Hello%2C%20world!%22)%3B%0A%7D%0A"]' "Run"
+// @matches foo/index.html '//a[@class="test-arrow"][@href="https://www.example.com/?code=%23!%5Ballow(unused)%5D%0Afn%20main()%20%7B%0Aprintln!(%22Hello%2C%20world!%22)%3B%0A%7D"]' "Run"
+// @matches foo/index.html '//a[@class="test-arrow"][@href="https://www.example.com/?code=%23!%5Ballow(unused)%5D%0A%23!%5Bfeature(something)%5D%0A%0Afn%20main()%20%7B%0A%20%20%20%20println!(%22Hello%2C%20world!%22)%3B%0A%7D%0A&version=nightly"]' "Run"

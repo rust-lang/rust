@@ -27,7 +27,7 @@ fn caller1<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
 
 fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
-    f.method(b); //~ ERROR cannot infer
+    f.method(b); //~ ERROR 30:7: 30:13: lifetime mismatch [E0623]
 }
 
 fn caller3<'a,'b:'a,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {

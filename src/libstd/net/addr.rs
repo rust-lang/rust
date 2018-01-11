@@ -759,7 +759,7 @@ impl hash::Hash for SocketAddrV6 {
 /// ```
 ///
 /// [`TcpStream::connect`] is an example of an function that utilizes
-/// `ToSocketsAddr` as a trait bound on its parameter in order to accept
+/// `ToSocketAddrs` as a trait bound on its parameter in order to accept
 /// different types:
 ///
 /// ```no_run

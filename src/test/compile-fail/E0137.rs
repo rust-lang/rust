@@ -11,9 +11,8 @@
 #![feature(main)]
 
 #[main]
-fn foo() {} //~ NOTE first #[main] function
+fn foo() {}
 
 #[main]
 fn f() {}
 //~^ ERROR E0137
-//~| NOTE additional #[main] function

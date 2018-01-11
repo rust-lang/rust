@@ -1,0 +1,68 @@
+error[E0606]: casting `&[i32]` as `usize` is invalid
+  --> $DIR/fat-ptr-cast.rs:20:5
+   |
+20 |     a as usize; //~ ERROR casting
+   |     ^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0606]: casting `&[i32]` as `isize` is invalid
+  --> $DIR/fat-ptr-cast.rs:21:5
+   |
+21 |     a as isize; //~ ERROR casting
+   |     ^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0606]: casting `&[i32]` as `i16` is invalid
+  --> $DIR/fat-ptr-cast.rs:22:5
+   |
+22 |     a as i16; //~ ERROR casting `&[i32]` as `i16` is invalid
+   |     ^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0606]: casting `&[i32]` as `u32` is invalid
+  --> $DIR/fat-ptr-cast.rs:23:5
+   |
+23 |     a as u32; //~ ERROR casting `&[i32]` as `u32` is invalid
+   |     ^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0605]: non-primitive cast: `std::boxed::Box<[i32]>` as `usize`
+  --> $DIR/fat-ptr-cast.rs:24:5
+   |
+24 |     b as usize; //~ ERROR non-primitive cast
+   |     ^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
+
+error[E0606]: casting `*const [i32]` as `usize` is invalid
+  --> $DIR/fat-ptr-cast.rs:25:5
+   |
+25 |     p as usize;
+   |     ^^^^^^^^^^
+   |
+   = help: cast through a thin pointer first
+
+error[E0607]: cannot cast thin pointer `*const i32` to fat pointer `*const [i32]`
+  --> $DIR/fat-ptr-cast.rs:29:5
+   |
+29 |     q as *const [i32]; //~ ERROR cannot cast
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0606]: casting `usize` as `*mut Trait + 'static` is invalid
+  --> $DIR/fat-ptr-cast.rs:32:37
+   |
+32 |     let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR casting
+   |                                     ^^^^^^^^^^^
+
+error[E0606]: casting `usize` as `*const str` is invalid
+  --> $DIR/fat-ptr-cast.rs:33:32
+   |
+33 |     let mut fail: *const str = 0 as *const str; //~ ERROR casting
+   |                                ^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,19 @@
+error[E0038]: the trait `Array` cannot be made into an object
+  --> $DIR/issue-20692.rs:17:5
+   |
+17 |     &Array;
+   |     ^^^^^^ the trait `Array` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+
+error[E0038]: the trait `Array` cannot be made into an object
+  --> $DIR/issue-20692.rs:14:13
+   |
+14 |     let _ = x
+   |             ^ the trait `Array` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&Array>` for `&T`
+
+error: aborting due to 2 previous errors
+

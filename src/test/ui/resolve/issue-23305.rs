@@ -13,10 +13,6 @@ pub trait ToNbt<T> {
 }
 
 impl ToNbt<Self> {}
-//~^ ERROR unresolved type `Self`
-//~| NOTE `Self` is only available in traits and impls
-//~| ERROR the trait `ToNbt` cannot be made into an object
-//~| NOTE the trait `ToNbt` cannot be made into an object
-//~| NOTE method `new` has no receiver
+//~^ ERROR unsupported cyclic reference
 
 fn main() {}

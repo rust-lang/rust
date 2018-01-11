@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck-mir
+//[mir]compile-flags: -Z borrowck=mir
 
 // Issue 4691: Ensure that functional-struct-update can only copy, not
 // move, when the struct implements Drop.
@@ -24,15 +24,13 @@ impl Drop for T { fn drop(&mut self) { } }
 fn f(s0:S) {
     let _s2 = S{a: 2, ..s0};
     //[ast]~^ error: cannot move out of type `S`, which implements the `Drop` trait
-    //[mir]~^^ ERROR (Ast) [E0509]
-    //[mir]~|  ERROR (Mir) [E0509]
+    //[mir]~^^ ERROR [E0509]
 }
 
 fn g(s0:T) {
     let _s2 = T{a: 2, ..s0};
     //[ast]~^ error: cannot move out of type `T`, which implements the `Drop` trait
-    //[mir]~^^ ERROR (Ast) [E0509]
-    //[mir]~|  ERROR (Mir) [E0509]
+    //[mir]~^^ ERROR [E0509]
 }
 
 fn main() { }

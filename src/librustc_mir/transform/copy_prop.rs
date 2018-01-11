@@ -29,10 +29,11 @@
 //! (non-mutating) use of `SRC`. These restrictions are conservative and may be relaxed in the
 //! future.
 
-use rustc::mir::{Constant, Local, LocalKind, Location, Lvalue, Mir, Operand, Rvalue, StatementKind};
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::hir;
+use rustc::mir::{Constant, Local, LocalKind, Location, Place, Mir, Operand, Rvalue, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
+use transform::{MirPass, MirSource};
 use util::def_use::DefUseAnalysis;
 
 pub struct CopyPropagation;
@@ -42,25 +43,22 @@ impl MirPass for CopyPropagation {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        match source {
-            MirSource::Const(_) => {
-                // Don't run on constants, because constant qualification might reject the
-                // optimized IR.
-                return
-            }
-            MirSource::Static(..) | MirSource::Promoted(..) => {
-                // Don't run on statics and promoted statics, because trans might not be able to
-                // evaluate the optimized IR.
-                return
-            }
-            MirSource::Fn(function_node_id) => {
-                if tcx.is_const_fn(tcx.hir.local_def_id(function_node_id)) {
+        // Don't run on constant MIR, because trans might not be able to
+        // evaluate the modified MIR.
+        // FIXME(eddyb) Remove check after miri is merged.
+        let id = tcx.hir.as_local_node_id(source.def_id).unwrap();
+        match (tcx.hir.body_owner_kind(id), source.promoted) {
+            (_, Some(_)) |
+            (hir::BodyOwnerKind::Const, _) |
+            (hir::BodyOwnerKind::Static(_), _) => return,
+
+            (hir::BodyOwnerKind::Fn, _) => {
+                if tcx.is_const_fn(source.def_id) {
                     // Don't run on const functions, as, again, trans might not be able to evaluate
                     // the optimized IR.
                     return
                 }
             }
-            MirSource::GeneratorDrop(_) => (),
         }
 
         // We only run when the MIR optimization level is > 1.
@@ -69,9 +67,13 @@ impl MirPass for CopyPropagation {
             return;
         }
 
+        let mut def_use_analysis = DefUseAnalysis::new(mir);
         loop {
-            let mut def_use_analysis = DefUseAnalysis::new(mir);
             def_use_analysis.analyze(mir);
+
+            if eliminate_self_assignments(mir, &def_use_analysis) {
+                def_use_analysis.analyze(mir);
+            }
 
             let mut changed = false;
             for dest_local in mir.local_decls.indices() {
@@ -99,10 +101,15 @@ impl MirPass for CopyPropagation {
                                dest_local);
                         continue
                     }
-                    let dest_lvalue_def = dest_use_info.defs_and_uses.iter().filter(|lvalue_def| {
-                        lvalue_def.context.is_mutating_use() && !lvalue_def.context.is_drop()
-                    }).next().unwrap();
-                    location = dest_lvalue_def.location;
+                    // Conservatively gives up if the dest is an argument,
+                    // because there may be uses of the original argument value.
+                    if mir.local_kind(dest_local) == LocalKind::Arg {
+                        debug!("  Can't copy-propagate local: dest {:?} (argument)",
+                            dest_local);
+                        continue;
+                    }
+                    let dest_place_def = dest_use_info.defs_not_including_drop().next().unwrap();
+                    location = dest_place_def.location;
 
                     let basic_block = &mir[location.block];
                     let statement_index = location.statement_index;
@@ -116,11 +123,12 @@ impl MirPass for CopyPropagation {
 
                     // That use of the source must be an assignment.
                     match statement.kind {
-                        StatementKind::Assign(Lvalue::Local(local), Rvalue::Use(ref operand)) if
+                        StatementKind::Assign(Place::Local(local), Rvalue::Use(ref operand)) if
                                 local == dest_local => {
                             let maybe_action = match *operand {
-                                Operand::Consume(ref src_lvalue) => {
-                                    Action::local_copy(&mir, &def_use_analysis, src_lvalue)
+                                Operand::Copy(ref src_place) |
+                                Operand::Move(ref src_place) => {
+                                    Action::local_copy(&mir, &def_use_analysis, src_place)
                                 }
                                 Operand::Constant(ref src_constant) => {
                                     Action::constant(src_constant)
@@ -151,16 +159,53 @@ impl MirPass for CopyPropagation {
     }
 }
 
+fn eliminate_self_assignments<'tcx>(
+    mir: &mut Mir<'tcx>,
+    def_use_analysis: &DefUseAnalysis<'tcx>,
+) -> bool {
+    let mut changed = false;
+
+    for dest_local in mir.local_decls.indices() {
+        let dest_use_info = def_use_analysis.local_info(dest_local);
+
+        for def in dest_use_info.defs_not_including_drop() {
+            let location = def.location;
+            if let Some(stmt) = mir[location.block].statements.get(location.statement_index) {
+                match stmt.kind {
+                    StatementKind::Assign(
+                        Place::Local(local),
+                        Rvalue::Use(Operand::Copy(Place::Local(src_local))),
+                    ) |
+                    StatementKind::Assign(
+                        Place::Local(local),
+                        Rvalue::Use(Operand::Move(Place::Local(src_local))),
+                    ) if local == dest_local && dest_local == src_local => {}
+                    _ => {
+                        continue;
+                    }
+                }
+            } else {
+                continue;
+            }
+            debug!("Deleting a self-assignment for {:?}", dest_local);
+            mir.make_statement_nop(location);
+            changed = true;
+        }
+    }
+
+    changed
+}
+
 enum Action<'tcx> {
     PropagateLocalCopy(Local),
     PropagateConstant(Constant<'tcx>),
 }
 
 impl<'tcx> Action<'tcx> {
-    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_lvalue: &Lvalue<'tcx>)
+    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
-        let src_local = if let Lvalue::Local(local) = *src_lvalue {
+        let src_local = if let Place::Local(local) = *src_place {
             local
         } else {
             debug!("  Can't copy-propagate local: source is not a local");
@@ -194,10 +239,13 @@ impl<'tcx> Action<'tcx> {
         //     USE(SRC);
         let src_def_count = src_use_info.def_count_not_including_drop();
         // allow function arguments to be propagated
-        if src_def_count > 1 ||
-            (src_def_count == 0 && mir.local_kind(src_local) != LocalKind::Arg) {
-            debug!("  Can't copy-propagate local: {} defs of src",
-                   src_use_info.def_count_not_including_drop());
+        let is_arg = mir.local_kind(src_local) == LocalKind::Arg;
+        if (is_arg && src_def_count != 0) || (!is_arg && src_def_count != 1) {
+            debug!(
+                "  Can't copy-propagate local: {} defs of src{}",
+                src_def_count,
+                if is_arg { " (argument)" } else { "" },
+            );
             return None
         }
 
@@ -224,14 +272,14 @@ impl<'tcx> Action<'tcx> {
                 debug!("  Replacing all uses of {:?} with {:?} (local)",
                        dest_local,
                        src_local);
-                for lvalue_use in &def_use_analysis.local_info(dest_local).defs_and_uses {
-                    if lvalue_use.context.is_storage_marker() {
-                        mir.make_statement_nop(lvalue_use.location)
+                for place_use in &def_use_analysis.local_info(dest_local).defs_and_uses {
+                    if place_use.context.is_storage_marker() {
+                        mir.make_statement_nop(place_use.location)
                     }
                 }
-                for lvalue_use in &def_use_analysis.local_info(src_local).defs_and_uses {
-                    if lvalue_use.context.is_storage_marker() {
-                        mir.make_statement_nop(lvalue_use.location)
+                for place_use in &def_use_analysis.local_info(src_local).defs_and_uses {
+                    if place_use.context.is_storage_marker() {
+                        mir.make_statement_nop(place_use.location)
                     }
                 }
 
@@ -252,22 +300,22 @@ impl<'tcx> Action<'tcx> {
                        dest_local,
                        src_constant);
                 let dest_local_info = def_use_analysis.local_info(dest_local);
-                for lvalue_use in &dest_local_info.defs_and_uses {
-                    if lvalue_use.context.is_storage_marker() {
-                        mir.make_statement_nop(lvalue_use.location)
+                for place_use in &dest_local_info.defs_and_uses {
+                    if place_use.context.is_storage_marker() {
+                        mir.make_statement_nop(place_use.location)
                     }
                 }
 
                 // Replace all uses of the destination local with the constant.
                 let mut visitor = ConstantPropagationVisitor::new(dest_local,
                                                                   src_constant);
-                for dest_lvalue_use in &dest_local_info.defs_and_uses {
-                    visitor.visit_location(mir, dest_lvalue_use.location)
+                for dest_place_use in &dest_local_info.defs_and_uses {
+                    visitor.visit_location(mir, dest_place_use.location)
                 }
 
                 // Zap the assignment instruction if we eliminated all the uses. We won't have been
                 // able to do that if the destination was used in a projection, because projections
-                // must have lvalues on their LHS.
+                // must have places on their LHS.
                 let use_count = dest_local_info.use_count();
                 if visitor.uses_replaced == use_count {
                     debug!("  {} of {} use(s) replaced; deleting assignment",
@@ -311,7 +359,8 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
         self.super_operand(operand, location);
 
         match *operand {
-            Operand::Consume(Lvalue::Local(local)) if local == self.dest_local => {}
+            Operand::Copy(Place::Local(local)) |
+            Operand::Move(Place::Local(local)) if local == self.dest_local => {}
             _ => return,
         }
 

@@ -14,7 +14,6 @@ enum X {
 
 fn main() {
     X::Entry(); //~ ERROR expected function, found `X::Entry` [E0618]
-                //~| HELP did you mean to write `X::Entry`?
     let x = 0i32;
     x(); //~ ERROR expected function, found `i32` [E0618]
 }

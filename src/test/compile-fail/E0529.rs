@@ -15,7 +15,6 @@ fn main() {
     match r {
         [a, b] => {
         //~^ ERROR E0529
-        //~| NOTE pattern cannot match with input type `f32`
         }
     }
 }

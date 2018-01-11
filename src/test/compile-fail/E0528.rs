@@ -15,7 +15,6 @@ fn main() {
     match r {
         &[a, b, c, rest..] => {
         //~^ ERROR E0528
-        //~| NOTE pattern cannot match array of 2 elements
         }
     }
 }

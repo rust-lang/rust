@@ -228,43 +228,7 @@ impl<T: Ord> BTreeSet<T> {
     pub fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
     }
-}
 
-impl<T> BTreeSet<T> {
-    /// Gets an iterator that visits the values in the `BTreeSet` in ascending order.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// let set: BTreeSet<usize> = [1, 2, 3].iter().cloned().collect();
-    /// let mut set_iter = set.iter();
-    /// assert_eq!(set_iter.next(), Some(&1));
-    /// assert_eq!(set_iter.next(), Some(&2));
-    /// assert_eq!(set_iter.next(), Some(&3));
-    /// assert_eq!(set_iter.next(), None);
-    /// ```
-    ///
-    /// Values returned by the iterator are returned in ascending order:
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// let set: BTreeSet<usize> = [3, 1, 2].iter().cloned().collect();
-    /// let mut set_iter = set.iter();
-    /// assert_eq!(set_iter.next(), Some(&1));
-    /// assert_eq!(set_iter.next(), Some(&2));
-    /// assert_eq!(set_iter.next(), Some(&3));
-    /// assert_eq!(set_iter.next(), None);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
-        Iter { iter: self.map.keys() }
-    }
-}
-
-impl<T: Ord> BTreeSet<T> {
     /// Constructs a double-ended iterator over a sub-range of elements in the set.
     /// The simplest way is to use the range syntax `min..max`, thus `range(min..max)` will
     /// yield elements from min (inclusive) to max (exclusive).
@@ -293,9 +257,7 @@ impl<T: Ord> BTreeSet<T> {
     {
         Range { iter: self.map.range(range) }
     }
-}
 
-impl<T: Ord> BTreeSet<T> {
     /// Visits the values representing the difference,
     /// i.e. the values that are in `self` but not in `other`,
     /// in ascending order.
@@ -408,40 +370,6 @@ impl<T: Ord> BTreeSet<T> {
         }
     }
 
-    /// Returns the number of elements in the set.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// let mut v = BTreeSet::new();
-    /// assert_eq!(v.len(), 0);
-    /// v.insert(1);
-    /// assert_eq!(v.len(), 1);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    /// Returns `true` if the set contains no elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// let mut v = BTreeSet::new();
-    /// assert!(v.is_empty());
-    /// v.insert(1);
-    /// assert!(!v.is_empty());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
     /// Clears the set, removing all values.
     ///
     /// # Examples
@@ -487,6 +415,16 @@ impl<T: Ord> BTreeSet<T> {
     /// The value may be any borrowed form of the set's value type,
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert_eq!(set.get(&2), Some(&2));
+    /// assert_eq!(set.get(&4), None);
+    /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
         where T: Borrow<Q>,
@@ -612,6 +550,19 @@ impl<T: Ord> BTreeSet<T> {
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set = BTreeSet::new();
+    /// set.insert(Vec::<i32>::new());
+    ///
+    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 0);
+    /// set.replace(Vec::with_capacity(10));
+    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
+    /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         Recover::replace(&mut self.map, value)
@@ -648,6 +599,16 @@ impl<T: Ord> BTreeSet<T> {
     /// The value may be any borrowed form of the set's value type,
     /// but the ordering on the borrowed form *must* match the
     /// ordering on the value type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// assert_eq!(set.take(&2), Some(2));
+    /// assert_eq!(set.take(&2), None);
+    /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
         where T: Borrow<Q>,
@@ -721,6 +682,74 @@ impl<T: Ord> BTreeSet<T> {
     #[stable(feature = "btree_split_off", since = "1.11.0")]
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where T: Borrow<Q> {
         BTreeSet { map: self.map.split_off(key) }
+    }
+}
+
+impl<T> BTreeSet<T> {
+    /// Gets an iterator that visits the values in the `BTreeSet` in ascending order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<usize> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set_iter = set.iter();
+    /// assert_eq!(set_iter.next(), Some(&1));
+    /// assert_eq!(set_iter.next(), Some(&2));
+    /// assert_eq!(set_iter.next(), Some(&3));
+    /// assert_eq!(set_iter.next(), None);
+    /// ```
+    ///
+    /// Values returned by the iterator are returned in ascending order:
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<usize> = [3, 1, 2].iter().cloned().collect();
+    /// let mut set_iter = set.iter();
+    /// assert_eq!(set_iter.next(), Some(&1));
+    /// assert_eq!(set_iter.next(), Some(&2));
+    /// assert_eq!(set_iter.next(), Some(&3));
+    /// assert_eq!(set_iter.next(), None);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn iter(&self) -> Iter<T> {
+        Iter { iter: self.map.keys() }
+    }
+
+    /// Returns the number of elements in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut v = BTreeSet::new();
+    /// assert_eq!(v.len(), 0);
+    /// v.insert(1);
+    /// assert_eq!(v.len(), 1);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    /// Returns `true` if the set contains no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut v = BTreeSet::new();
+    /// assert!(v.is_empty());
+    /// v.insert(1);
+    /// assert!(!v.is_empty());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -1067,21 +1096,15 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
 
     fn next(&mut self) -> Option<&'a T> {
         loop {
-            let o_cmp = match (self.a.peek(), self.b.peek()) {
-                (None, _) => None,
-                (_, None) => None,
-                (Some(a1), Some(b1)) => Some(a1.cmp(b1)),
-            };
-            match o_cmp {
-                None => return None,
-                Some(Less) => {
+            match Ord::cmp(self.a.peek()?, self.b.peek()?) {
+                Less => {
                     self.a.next();
                 }
-                Some(Equal) => {
+                Equal => {
                     self.b.next();
                     return self.a.next();
                 }
-                Some(Greater) => {
+                Greater => {
                     self.b.next();
                 }
             }

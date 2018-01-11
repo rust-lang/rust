@@ -22,22 +22,22 @@ struct Foo {
 
 fn a() {
     // struct expr is unreachable:
-    let x = Foo { a: 22, b: 33, ..return };
+    let x = Foo { a: 22, b: 33, ..return }; //~ ERROR unreachable
 }
 
 fn b() {
     // the `33` is unreachable:
-    let x = Foo { a: return, b: 33, ..return };
+    let x = Foo { a: return, b: 33, ..return }; //~ ERROR unreachable
 }
 
 fn c() {
     // the `..return` is unreachable:
-    let x = Foo { a: 22, b: return, ..return };
+    let x = Foo { a: 22, b: return, ..return }; //~ ERROR unreachable
 }
 
 fn d() {
     // the struct expr is unreachable:
-    let x = Foo { a: 22, b: return };
+    let x = Foo { a: 22, b: return }; //~ ERROR unreachable
 }
 
 fn main() { }

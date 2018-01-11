@@ -74,7 +74,6 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ptr_null")]
 pub const fn null<T>() -> *const T { 0 as *const T }
 
 /// Creates a null mutable raw pointer.
@@ -89,12 +88,15 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ptr_null_mut")]
 pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Swaps the values at two mutable locations of the same type, without
-/// deinitializing either. They may overlap, unlike `mem::swap` which is
-/// otherwise equivalent.
+/// deinitializing either.
+///
+/// The values pointed at by `x` and `y` may overlap, unlike `mem::swap` which
+/// is otherwise equivalent. If the values do overlap, then the overlapping
+/// region of memory from `x` will be used. This is demonstrated in the
+/// examples section below.
 ///
 /// # Safety
 ///
@@ -102,6 +104,40 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 /// as arguments.
 ///
 /// Ensure that these pointers are valid before calling `swap`.
+///
+/// # Examples
+///
+/// Swapping two non-overlapping regions:
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut array = [0, 1, 2, 3];
+///
+/// let x = array[0..].as_mut_ptr() as *mut [u32; 2];
+/// let y = array[2..].as_mut_ptr() as *mut [u32; 2];
+///
+/// unsafe {
+///     ptr::swap(x, y);
+///     assert_eq!([2, 3, 0, 1], array);
+/// }
+/// ```
+///
+/// Swapping two overlapping regions:
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut array = [0, 1, 2, 3];
+///
+/// let x = array[0..].as_mut_ptr() as *mut [u32; 3];
+/// let y = array[1..].as_mut_ptr() as *mut [u32; 3];
+///
+/// unsafe {
+///     ptr::swap(x, y);
+///     assert_eq!([1, 0, 1, 2], array);
+/// }
+/// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
@@ -474,6 +510,11 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 impl<T: ?Sized> *const T {
     /// Returns `true` if the pointer is null.
     ///
+    /// Note that unsized types have many possible null pointers, as only the
+    /// raw data pointer is considered, not their length, vtable, etc.
+    /// Therefore, two pointers that are null may still not compare equal to
+    /// each other.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -485,8 +526,10 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool where T: Sized {
-        self == null()
+    pub fn is_null(self) -> bool {
+        // Compare via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        (self as *const u8) == null()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -517,7 +560,7 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         if self.is_null() {
             None
         } else {
@@ -538,8 +581,7 @@ impl<T: ?Sized> *const T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow or underflow an
-    ///   `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
@@ -671,8 +713,7 @@ impl<T: ?Sized> *const T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow or underflow an
-    ///   `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum must fit in a `usize`.
@@ -1105,6 +1146,11 @@ impl<T: ?Sized> *const T {
 impl<T: ?Sized> *mut T {
     /// Returns `true` if the pointer is null.
     ///
+    /// Note that unsized types have many possible null pointers, as only the
+    /// raw data pointer is considered, not their length, vtable, etc.
+    /// Therefore, two pointers that are null may still not compare equal to
+    /// each other.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1116,8 +1162,10 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool where T: Sized {
-        self == null_mut()
+    pub fn is_null(self) -> bool {
+        // Compare via a cast to a thin pointer, so fat pointers are only
+        // considering their "data" part for null-ness.
+        (self as *mut u8) == null_mut()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -1148,7 +1196,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         if self.is_null() {
             None
         } else {
@@ -1169,8 +1217,7 @@ impl<T: ?Sized> *mut T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow or underflow an
-    ///   `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
@@ -1272,7 +1319,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> where T: Sized {
+    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         if self.is_null() {
             None
         } else {
@@ -1369,8 +1416,7 @@ impl<T: ?Sized> *mut T {
     /// * Both the starting and resulting pointer must be either in bounds or one
     ///   byte past the end of an allocated object.
     ///
-    /// * The computed offset, **in bytes**, cannot overflow or underflow an
-    ///   `isize`.
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The offset being in bounds cannot rely on "wrapping around" the address
     ///   space. That is, the infinite-precision sum must fit in a `usize`.
@@ -1783,7 +1829,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst = Vec::with_capacity(elts);
+    ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
     ///     dst.as_mut_ptr().copy_from(ptr, elts);
     ///     dst
@@ -1822,7 +1868,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// # #[allow(dead_code)]
     /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
-    ///     let mut dst = Vec::with_capacity(elts);
+    ///     let mut dst: Vec<T> = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
     ///     dst.as_mut_ptr().copy_from_nonoverlapping(ptr, elts);
     ///     dst
@@ -2333,7 +2379,6 @@ impl<T: ?Sized> Unique<T> {
     ///
     /// `ptr` must be non-null.
     #[unstable(feature = "unique", issue = "27730")]
-    #[rustc_const_unstable(feature = "const_unique_new")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         Unique { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
     }
@@ -2401,16 +2446,11 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     }
 }
 
-/// A wrapper around a raw `*mut T` that indicates that the possessor
-/// of this wrapper has shared ownership of the referent. Useful for
-/// building abstractions like `Rc<T>`, `Arc<T>`, or doubly-linked lists, which
-/// internally use aliased raw pointers to manage the memory that they own.
+/// `*mut T` but non-zero and covariant.
 ///
-/// This is similar to `Unique`, except that it doesn't make any aliasing
-/// guarantees, and doesn't derive Send and Sync. Note that unlike `&T`,
-/// Shared has no special mutability requirements. Shared may mutate data
-/// aliased by other Shared pointers. More precise rules require Rust to
-/// develop an actual aliasing model.
+/// This is often the correct thing to use when building data structures using
+/// raw pointers, but is ultimately more dangerous to use because of its additional
+/// properties. If you're not sure if you should use `Shared<T>`, just use `*mut T`!
 ///
 /// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
 /// is never dereferenced. This is so that enums may use this forbidden value
@@ -2420,20 +2460,14 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
 /// Unlike `*mut T`, `Shared<T>` is covariant over `T`. If this is incorrect
 /// for your use case, you should include some PhantomData in your type to
 /// provide invariance, such as `PhantomData<Cell<T>>` or `PhantomData<&'a mut T>`.
-/// Usually this won't be necessary; covariance is correct for Rc, Arc, and LinkedList
-/// because they provide a public API that follows the normal shared XOR mutable
-/// rules of Rust.
+/// Usually this won't be necessary; covariance is correct for most safe abstractions,
+/// such as Box, Rc, Arc, Vec, and LinkedList. This is the case because they
+/// provide a public API that follows the normal shared XOR mutable rules of Rust.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "shared", reason = "needs an RFC to flesh out design",
            issue = "27730")]
 pub struct Shared<T: ?Sized> {
     pointer: NonZero<*const T>,
-    // NOTE: this marker has no consequences for variance, but is necessary
-    // for dropck to understand that we logically own a `T`.
-    //
-    // For details, see:
-    // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
-    _marker: PhantomData<T>,
 }
 
 /// `Shared` pointers are not `Send` because the data they reference may be aliased.
@@ -2468,14 +2502,13 @@ impl<T: ?Sized> Shared<T> {
     ///
     /// `ptr` must be non-null.
     #[unstable(feature = "shared", issue = "27730")]
-    #[rustc_const_unstable(feature = "const_shared_new")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        Shared { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
+        Shared { pointer: NonZero::new_unchecked(ptr) }
     }
 
     /// Creates a new `Shared` if `ptr` is non-null.
     pub fn new(ptr: *mut T) -> Option<Self> {
-        NonZero::new(ptr as *const T).map(|nz| Shared { pointer: nz, _marker: PhantomData })
+        NonZero::new(ptr as *const T).map(|nz| Shared { pointer: nz })
     }
 
     /// Acquires the underlying `*mut` pointer.
@@ -2532,20 +2565,20 @@ impl<T: ?Sized> fmt::Pointer for Shared<T> {
 #[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> From<Unique<T>> for Shared<T> {
     fn from(unique: Unique<T>) -> Self {
-        Shared { pointer: unique.pointer, _marker: PhantomData }
+        Shared { pointer: unique.pointer }
     }
 }
 
 #[unstable(feature = "shared", issue = "27730")]
 impl<'a, T: ?Sized> From<&'a mut T> for Shared<T> {
     fn from(reference: &'a mut T) -> Self {
-        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
+        Shared { pointer: NonZero::from(reference) }
     }
 }
 
 #[unstable(feature = "shared", issue = "27730")]
 impl<'a, T: ?Sized> From<&'a T> for Shared<T> {
     fn from(reference: &'a T) -> Self {
-        Shared { pointer: NonZero::from(reference), _marker: PhantomData }
+        Shared { pointer: NonZero::from(reference) }
     }
 }

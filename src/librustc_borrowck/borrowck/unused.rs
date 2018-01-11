@@ -13,7 +13,7 @@ use rustc::hir::{self, HirId};
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::ty;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_back::slice;
+use std::slice;
 use syntax::ptr::P;
 
 use borrowck::BorrowckCtxt;
@@ -26,7 +26,7 @@ pub fn check<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>, body: &'tcx hir::Body) {
     }.visit_expr(&body.value);
     let mut cx = UnusedMutCx { bccx, used_mut };
     for arg in body.arguments.iter() {
-        cx.check_unused_mut_pat(slice::ref_slice(&arg.pat));
+        cx.check_unused_mut_pat(slice::from_ref(&arg.pat));
     }
     cx.visit_expr(&body.value);
 }
@@ -101,7 +101,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnusedMutCx<'a, 'tcx> {
     }
 
     fn visit_local(&mut self, local: &hir::Local) {
-        self.check_unused_mut_pat(slice::ref_slice(&local.pat));
+        self.check_unused_mut_pat(slice::from_ref(&local.pat));
     }
 }
 

@@ -1,21 +1,22 @@
 error[E0597]: `container` does not live long enough
-  --> $DIR/issue-25199.rs:83:1
+  --> $DIR/issue-25199.rs:80:28
    |
 80 |     let test = Test{test: &container};
-   |                            --------- borrow occurs here
+   |                            ^^^^^^^^^ borrowed value does not live long enough
 ...
-83 | }
-   | ^ `container` dropped here while still borrowed
+85 | }
+   | - `container` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `container` does not live long enough
-  --> $DIR/issue-25199.rs:83:1
+  --> $DIR/issue-25199.rs:83:5
    |
-82 |     container.store(test);
-   |     --------- borrow occurs here
-83 | }
-   | ^ `container` dropped here while still borrowed
+83 |     container.store(test);
+   |     ^^^^^^^^^ borrowed value does not live long enough
+84 |     //~^ ERROR `container` does not live long enough
+85 | }
+   | - `container` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 

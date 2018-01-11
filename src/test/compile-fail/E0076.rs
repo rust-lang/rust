@@ -13,7 +13,6 @@
 #[repr(simd)]
 struct Bad(u16, u32, u32);
 //~^ ERROR E0076
-//~| NOTE SIMD elements must have the same type
 
 fn main() {
 }

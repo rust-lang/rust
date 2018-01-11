@@ -18,7 +18,7 @@ use lint;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::DebugInfoLevel;
+use session::config::{BorrowckMode, DebugInfoLevel, OutputType};
 use ty::tls;
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -69,10 +69,10 @@ pub struct Session {
     pub default_sysroot: Option<PathBuf>,
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
-    pub local_crate_source_file: Option<String>,
+    pub local_crate_source_file: Option<PathBuf>,
     /// The directory the compiler has been executed in plus a flag indicating
     /// if the value stored here has been affected by path remapping.
-    pub working_dir: (String, bool),
+    pub working_dir: (PathBuf, bool),
     pub lint_store: RefCell<lint::LintStore>,
     pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
     /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
@@ -161,14 +161,23 @@ pub struct PerfStats {
 enum DiagnosticBuilderMethod {
     Note,
     SpanNote,
+    SpanSuggestion(String), // suggestion
     // add more variants as needed to support one-time diagnostics
 }
 
-/// Diagnostic message id - used in order to avoid emitting the same message more than once
+/// Diagnostic message ID—used by `Session.one_time_diagnostics` to avoid
+/// emitting the same message more than once
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DiagnosticMessageId {
+    ErrorId(u16), // EXXXX error code as integer
     LintId(lint::LintId),
-    StabilityId(u32)
+    StabilityId(u32) // issue number
+}
+
+impl From<&'static lint::Lint> for DiagnosticMessageId {
+    fn from(lint: &'static lint::Lint) -> Self {
+        DiagnosticMessageId::LintId(lint::LintId::of(lint))
+    }
 }
 
 impl Session {
@@ -353,34 +362,27 @@ impl Session {
 
     /// Analogous to calling methods on the given `DiagnosticBuilder`, but
     /// deduplicates on lint ID, span (if any), and message for this `Session`
-    /// if we're not outputting in JSON mode.
     fn diag_once<'a, 'b>(&'a self,
                          diag_builder: &'b mut DiagnosticBuilder<'a>,
                          method: DiagnosticBuilderMethod,
-                         lint: &'static lint::Lint, message: &str, span: Option<Span>) {
-        let mut do_method = || {
+                         msg_id: DiagnosticMessageId,
+                         message: &str,
+                         span_maybe: Option<Span>) {
+
+        let id_span_message = (msg_id, span_maybe, message.to_owned());
+        let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
+        if fresh {
             match method {
                 DiagnosticBuilderMethod::Note => {
                     diag_builder.note(message);
                 },
                 DiagnosticBuilderMethod::SpanNote => {
-                    diag_builder.span_note(span.expect("span_note expects a span"), message);
-                }
-            }
-        };
-
-        match self.opts.error_format {
-            // when outputting JSON for tool consumption, the tool might want
-            // the duplicates
-            config::ErrorOutputType::Json(_) => {
-                do_method()
-            },
-            _ => {
-                let lint_id = DiagnosticMessageId::LintId(lint::LintId::of(lint));
-                let id_span_message = (lint_id, span, message.to_owned());
-                let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
-                if fresh {
-                    do_method()
+                    let span = span_maybe.expect("span_note needs a span");
+                    diag_builder.span_note(span, message);
+                },
+                DiagnosticBuilderMethod::SpanSuggestion(suggestion) => {
+                    let span = span_maybe.expect("span_suggestion needs a span");
+                    diag_builder.span_suggestion(span, message, suggestion);
                 }
             }
         }
@@ -388,14 +390,25 @@ impl Session {
 
     pub fn diag_span_note_once<'a, 'b>(&'a self,
                                        diag_builder: &'b mut DiagnosticBuilder<'a>,
-                                       lint: &'static lint::Lint, span: Span, message: &str) {
-        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanNote, lint, message, Some(span));
+                                       msg_id: DiagnosticMessageId, span: Span, message: &str) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanNote,
+                       msg_id, message, Some(span));
     }
 
     pub fn diag_note_once<'a, 'b>(&'a self,
                                   diag_builder: &'b mut DiagnosticBuilder<'a>,
-                                  lint: &'static lint::Lint, message: &str) {
-        self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, lint, message, None);
+                                  msg_id: DiagnosticMessageId, message: &str) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, msg_id, message, None);
+    }
+
+    pub fn diag_span_suggestion_once<'a, 'b>(&'a self,
+                                             diag_builder: &'b mut DiagnosticBuilder<'a>,
+                                             msg_id: DiagnosticMessageId,
+                                             span: Span,
+                                             message: &str,
+                                             suggestion: String) {
+        self.diag_once(diag_builder, DiagnosticBuilderMethod::SpanSuggestion(suggestion),
+                       msg_id, message, Some(span));
     }
 
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
@@ -424,13 +437,64 @@ impl Session {
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
     }
-    pub fn emit_end_regions(&self) -> bool {
-        self.opts.debugging_opts.emit_end_regions ||
-            (self.opts.debugging_opts.mir_emit_validate > 0) ||
-            self.opts.debugging_opts.borrowck_mir
+
+    /// If true, we should use NLL-style region checking instead of
+    /// lexical style.
+    pub fn nll(&self) -> bool {
+        self.features.borrow().nll || self.opts.debugging_opts.nll
     }
+
+    /// If true, we should use the MIR-based borrowck (we may *also* use
+    /// the AST-based borrowck).
+    pub fn use_mir(&self) -> bool {
+        self.borrowck_mode().use_mir()
+    }
+
+    /// If true, we should gather causal information during NLL
+    /// checking. This will eventually be the normal thing, but right
+    /// now it is too unoptimized.
+    pub fn nll_dump_cause(&self) -> bool {
+        self.opts.debugging_opts.nll_dump_cause
+    }
+
+    /// If true, we should enable two-phase borrows checks. This is
+    /// done with either `-Ztwo-phase-borrows` or with
+    /// `#![feature(nll)]`.
+    pub fn two_phase_borrows(&self) -> bool {
+        self.features.borrow().nll || self.opts.debugging_opts.two_phase_borrows
+    }
+
+    /// What mode(s) of borrowck should we run? AST? MIR? both?
+    /// (Also considers the `#![feature(nll)]` setting.)
+    pub fn borrowck_mode(&self) -> BorrowckMode {
+        match self.opts.borrowck_mode {
+            mode @ BorrowckMode::Mir |
+            mode @ BorrowckMode::Compare => mode,
+
+            mode @ BorrowckMode::Ast => {
+                if self.nll() {
+                    BorrowckMode::Mir
+                } else {
+                    mode
+                }
+            }
+
+        }
+    }
+
+    /// Should we emit EndRegion MIR statements? These are consumed by
+    /// MIR borrowck, but not when NLL is used. They are also consumed
+    /// by the validation stuff.
+    pub fn emit_end_regions(&self) -> bool {
+        // FIXME(#46875) -- we should not emit end regions when NLL is enabled,
+        // but for now we can't stop doing so because it causes false positives
+        self.opts.debugging_opts.emit_end_regions ||
+            self.opts.debugging_opts.mir_emit_validate > 0 ||
+            self.use_mir()
+    }
+
     pub fn lto(&self) -> bool {
-        self.opts.cg.lto
+        self.opts.cg.lto || self.target.target.options.requires_lto
     }
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
@@ -440,6 +504,13 @@ impl Session {
     pub fn linker_flavor(&self) -> LinkerFlavor {
         self.opts.debugging_opts.linker_flavor.unwrap_or(self.target.target.linker_flavor)
     }
+
+    pub fn fewer_names(&self) -> bool {
+        let more_names = self.opts.output_types.contains_key(&OutputType::LlvmAssembly) ||
+                         self.opts.output_types.contains_key(&OutputType::Bitcode);
+        self.opts.debugging_opts.fewer_names || !more_names
+    }
+
     pub fn no_landing_pads(&self) -> bool {
         self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort
     }
@@ -578,6 +649,7 @@ impl Session {
             IncrCompSession::Active { ref session_directory, .. } => {
                 session_directory.clone()
             }
+            IncrCompSession::InvalidBecauseOfErrors { .. } => return,
             _ => bug!("Trying to invalidate IncrCompSession `{:?}`",
                       *incr_comp_session),
         };
@@ -622,9 +694,13 @@ impl Session {
                  self.perf_stats.incr_comp_hashes_count.get());
         println!("Total number of bytes hashed for incr. comp.:  {}",
                  self.perf_stats.incr_comp_bytes_hashed.get());
-        println!("Average bytes hashed per incr. comp. HIR node: {}",
-                 self.perf_stats.incr_comp_bytes_hashed.get() /
-                 self.perf_stats.incr_comp_hashes_count.get());
+        if self.perf_stats.incr_comp_hashes_count.get() != 0 {
+            println!("Average bytes hashed per incr. comp. HIR node: {}",
+                    self.perf_stats.incr_comp_bytes_hashed.get() /
+                    self.perf_stats.incr_comp_hashes_count.get());
+        } else {
+            println!("Average bytes hashed per incr. comp. HIR node: N/A");
+        }
         println!("Total time spent computing symbol hashes:      {}",
                  duration_to_secs_str(self.perf_stats.symbol_hash_time.get()));
         println!("Total time spent decoding DefPath tables:      {}",
@@ -657,6 +733,12 @@ impl Session {
         ret
     }
 
+    /// Returns the number of query threads that should be used for this
+    /// compilation
+    pub fn query_threads(&self) -> usize {
+        self.opts.debugging_opts.query_threads.unwrap_or(1)
+    }
+
     /// Returns the number of codegen units that should be used for this
     /// compilation
     pub fn codegen_units(&self) -> usize {
@@ -667,30 +749,88 @@ impl Session {
             return n as usize
         }
 
-        match self.opts.optimize {
-            // If we're compiling at `-O0` then default to 16 codegen units.
-            // The number here shouldn't matter too too much as debug mode
-            // builds don't rely on performance at all, meaning that lost
-            // opportunities for inlining through multiple codegen units is
-            // a non-issue.
-            //
-            // Note that the high number here doesn't mean that we'll be
-            // spawning a large number of threads in parallel. The backend
-            // of rustc contains global rate limiting through the
-            // `jobserver` crate so we'll never overload the system with too
-            // much work, but rather we'll only be optimizing when we're
-            // otherwise cooperating with other instances of rustc.
-            //
-            // Rather the high number here means that we should be able to
-            // keep a lot of idle cpus busy. By ensuring that no codegen
-            // unit takes *too* long to build we'll be guaranteed that all
-            // cpus will finish pretty closely to one another and we should
-            // make relatively optimal use of system resources
-            config::OptLevel::No => 16,
+        // Why is 16 codegen units the default all the time?
+        //
+        // The main reason for enabling multiple codegen units by default is to
+        // leverage the ability for the trans backend to do translation and
+        // codegen in parallel. This allows us, especially for large crates, to
+        // make good use of all available resources on the machine once we've
+        // hit that stage of compilation. Large crates especially then often
+        // take a long time in trans/codegen and this helps us amortize that
+        // cost.
+        //
+        // Note that a high number here doesn't mean that we'll be spawning a
+        // large number of threads in parallel. The backend of rustc contains
+        // global rate limiting through the `jobserver` crate so we'll never
+        // overload the system with too much work, but rather we'll only be
+        // optimizing when we're otherwise cooperating with other instances of
+        // rustc.
+        //
+        // Rather a high number here means that we should be able to keep a lot
+        // of idle cpus busy. By ensuring that no codegen unit takes *too* long
+        // to build we'll be guaranteed that all cpus will finish pretty closely
+        // to one another and we should make relatively optimal use of system
+        // resources
+        //
+        // Note that the main cost of codegen units is that it prevents LLVM
+        // from inlining across codegen units. Users in general don't have a lot
+        // of control over how codegen units are split up so it's our job in the
+        // compiler to ensure that undue performance isn't lost when using
+        // codegen units (aka we can't require everyone to slap `#[inline]` on
+        // everything).
+        //
+        // If we're compiling at `-O0` then the number doesn't really matter too
+        // much because performance doesn't matter and inlining is ok to lose.
+        // In debug mode we just want to try to guarantee that no cpu is stuck
+        // doing work that could otherwise be farmed to others.
+        //
+        // In release mode, however (O1 and above) performance does indeed
+        // matter! To recover the loss in performance due to inlining we'll be
+        // enabling ThinLTO by default (the function for which is just below).
+        // This will ensure that we recover any inlining wins we otherwise lost
+        // through codegen unit partitioning.
+        //
+        // ---
+        //
+        // Ok that's a lot of words but the basic tl;dr; is that we want a high
+        // number here -- but not too high. Additionally we're "safe" to have it
+        // always at the same number at all optimization levels.
+        //
+        // As a result 16 was chosen here! Mostly because it was a power of 2
+        // and most benchmarks agreed it was roughly a local optimum. Not very
+        // scientific.
+        16
+    }
 
-            // All other optimization levels default use one codegen unit,
-            // the historical default in Rust for a Long Time.
-            _ => 1,
+    /// Returns whether ThinLTO is enabled for this compilation
+    pub fn thinlto(&self) -> bool {
+        // If processing command line options determined that we're incompatible
+        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
+        if let Some(enabled) = self.opts.cli_forced_thinlto {
+            return enabled
+        }
+
+        // If explicitly specified, use that with the next highest priority
+        if let Some(enabled) = self.opts.debugging_opts.thinlto {
+            return enabled
+        }
+
+        // If there's only one codegen unit and LTO isn't enabled then there's
+        // no need for ThinLTO so just return false.
+        if self.codegen_units() == 1 && !self.lto() {
+            return false
+        }
+
+        // Right now ThinLTO isn't compatible with incremental compilation.
+        if self.opts.incremental.is_some() {
+            return false
+        }
+
+        // Now we're in "defaults" territory. By default we enable ThinLTO for
+        // optimized compiles (anything greater than O0).
+        match self.opts.optimize {
+            config::OptLevel::No => false,
+            _ => true,
         }
     }
 }
@@ -725,9 +865,11 @@ pub fn build_session_with_codemap(sopts: config::Options,
         .unwrap_or(false);
     let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
 
-    let can_print_warnings = !(warnings_allow || cap_lints_allow);
+    let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
+
+    let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
 
     let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
         (config::ErrorOutputType::HumanReadable(color_config), None) => {
@@ -751,9 +893,14 @@ pub fn build_session_with_codemap(sopts: config::Options,
     };
 
     let diagnostic_handler =
-        errors::Handler::with_emitter(can_print_warnings,
-                                      treat_err_as_bug,
-                                      emitter);
+        errors::Handler::with_emitter_and_flags(
+            emitter,
+            errors::HandlerFlags {
+                can_emit_warnings,
+                treat_err_as_bug,
+                external_macro_backtrace,
+                .. Default::default()
+            });
 
     build_session_(sopts,
                    local_crate_source_file,
@@ -783,7 +930,7 @@ pub fn build_session_(sopts: config::Options,
     let file_path_mapping = sopts.file_path_mapping();
 
     let local_crate_source_file = local_crate_source_file.map(|path| {
-        file_path_mapping.map_prefix(path.to_string_lossy().into_owned()).0
+        file_path_mapping.map_prefix(path).0
     });
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
@@ -793,7 +940,7 @@ pub fn build_session_(sopts: config::Options,
     let print_fuel = Cell::new(0);
 
     let working_dir = match env::current_dir() {
-        Ok(dir) => dir.to_string_lossy().into_owned(),
+        Ok(dir) => dir,
         Err(e) => {
             panic!(p_s.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)))
         }

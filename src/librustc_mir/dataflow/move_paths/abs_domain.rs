@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! The move-analysis portion of borrowck needs to work in an abstract
-//! domain of lifted Lvalues.  Most of the Lvalue variants fall into a
+//! domain of lifted Places.  Most of the Place variants fall into a
 //! one-to-one mapping between the concrete and abstract (e.g. a
 //! field-deref on a local-variable, `x.field`, has the same meaning
 //! in both domains). Indexed-Projections are the exception: `a[x]`
@@ -21,7 +21,7 @@
 //! `a[x]` would still overlap them both. But that is not this
 //! representation does today.)
 
-use rustc::mir::{Local, LvalueElem, Operand, ProjectionElem};
+use rustc::mir::{Local, PlaceElem, Operand, ProjectionElem};
 use rustc::ty::Ty;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -47,7 +47,7 @@ impl<'tcx> Lift for Ty<'tcx> {
     type Abstract = AbstractType;
     fn lift(&self) -> Self::Abstract { AbstractType }
 }
-impl<'tcx> Lift for LvalueElem<'tcx> {
+impl<'tcx> Lift for PlaceElem<'tcx> {
     type Abstract = AbstractElem<'tcx>;
     fn lift(&self) -> Self::Abstract {
         match *self {

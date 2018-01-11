@@ -13,8 +13,9 @@
 use self::SelectionCandidate::*;
 use self::EvaluationResult::*;
 
-use super::coherence;
+use super::coherence::{self, Conflict};
 use super::DerivedObligationCause;
+use super::IntercrateMode;
 use super::project;
 use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
@@ -87,7 +88,7 @@ pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     /// other words, we consider `$0 : Bar` to be unimplemented if
     /// there is no type that the user could *actually name* that
     /// would satisfy it. This avoids crippling inference, basically.
-    intercrate: bool,
+    intercrate: Option<IntercrateMode>,
 
     inferred_obligations: SnapshotVec<InferredObligationsSnapshotVecDelegate<'tcx>>,
 
@@ -111,21 +112,24 @@ impl IntercrateAmbiguityCause {
     /// See #23980 for details.
     pub fn add_intercrate_ambiguity_hint<'a, 'tcx>(&self,
                                                    err: &mut ::errors::DiagnosticBuilder) {
+        err.note(&self.intercrate_ambiguity_hint());
+    }
+
+    pub fn intercrate_ambiguity_hint(&self) -> String {
         match self {
             &IntercrateAmbiguityCause::DownstreamCrate { ref trait_desc, ref self_desc } => {
                 let self_desc = if let &Some(ref ty) = self_desc {
                     format!(" for type `{}`", ty)
                 } else { "".to_string() };
-                err.note(&format!("downstream crates may implement trait `{}`{}",
-                                  trait_desc, self_desc));
+                format!("downstream crates may implement trait `{}`{}", trait_desc, self_desc)
             }
             &IntercrateAmbiguityCause::UpstreamCrateUpdate { ref trait_desc, ref self_desc } => {
                 let self_desc = if let &Some(ref ty) = self_desc {
                     format!(" for type `{}`", ty)
                 } else { "".to_string() };
-                err.note(&format!("upstream crates may add new impl of trait `{}`{} \
-                                  in future versions",
-                                  trait_desc, self_desc));
+                format!("upstream crates may add new impl of trait `{}`{} \
+                         in future versions",
+                        trait_desc, self_desc)
             }
         }
     }
@@ -417,17 +421,19 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         SelectionContext {
             infcx,
             freshener: infcx.freshener(),
-            intercrate: false,
+            intercrate: None,
             inferred_obligations: SnapshotVec::new(),
             intercrate_ambiguity_causes: Vec::new(),
         }
     }
 
-    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>) -> SelectionContext<'cx, 'gcx, 'tcx> {
+    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+                      mode: IntercrateMode) -> SelectionContext<'cx, 'gcx, 'tcx> {
+        debug!("intercrate({:?})", mode);
         SelectionContext {
             infcx,
             freshener: infcx.freshener(),
-            intercrate: true,
+            intercrate: Some(mode),
             inferred_obligations: SnapshotVec::new(),
             intercrate_ambiguity_causes: Vec::new(),
         }
@@ -718,8 +724,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            ty::Predicate::ClosureKind(closure_def_id, kind) => {
-                match self.infcx.closure_kind(closure_def_id) {
+            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
+                match self.infcx.closure_kind(closure_def_id, closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
                             EvaluatedToOk
@@ -758,7 +764,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("evaluate_trait_predicate_recursively({:?})",
                obligation);
 
-        if !self.intercrate && obligation.is_global() {
+        if !self.intercrate.is_some() && obligation.is_global() {
             // If a param env is consistent, global obligations do not depend on its particular
             // value in order to work, so we can clear out the param env and get better
             // caching. (If the current param env is inconsistent, we don't care what happens).
@@ -814,7 +820,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
         let unbound_input_types = stack.fresh_trait_ref.input_types().any(|ty| ty.is_fresh());
-        if unbound_input_types && self.intercrate {
+        // this check was an imperfect workaround for a bug n the old
+        // intercrate mode, it should be removed when that goes away.
+        if unbound_input_types &&
+            self.intercrate == Some(IntercrateMode::Issue43355)
+        {
             debug!("evaluate_stack({:?}) --> unbound argument, intercrate -->  ambiguous",
                    stack.fresh_trait_ref);
             // Heuristics: show the diagnostics when there are no candidates in crate.
@@ -896,6 +906,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     /// For defaulted traits, we use a co-inductive strategy to solve, so
     /// that recursion is ok. This routine returns true if the top of the
     /// stack (`cycle[0]`):
+    ///
     /// - is a defaulted trait, and
     /// - it also appears in the backtrace at some position `X`; and,
     /// - all the predicates at positions `X..` between `X` an the top are
@@ -1077,28 +1088,32 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(None);
         }
 
-        if !self.is_knowable(stack) {
-            debug!("coherence stage: not knowable");
-            // Heuristics: show the diagnostics when there are no candidates in crate.
-            let candidate_set = self.assemble_candidates(stack)?;
-            if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
-                let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
-                let self_ty = trait_ref.self_ty();
-                let trait_desc = trait_ref.to_string();
-                let self_desc = if self_ty.has_concrete_skeleton() {
-                    Some(self_ty.to_string())
-                } else {
-                    None
-                };
-                let cause = if !coherence::trait_ref_is_local_or_fundamental(self.tcx(),
-                                                                             trait_ref) {
-                    IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
-                } else {
-                    IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
-                };
-                self.intercrate_ambiguity_causes.push(cause);
+        match self.is_knowable(stack) {
+            None => {}
+            Some(conflict) => {
+                debug!("coherence stage: not knowable");
+                // Heuristics: show the diagnostics when there are no candidates in crate.
+                let candidate_set = self.assemble_candidates(stack)?;
+                if !candidate_set.ambiguous && candidate_set.vec.iter().all(|c| {
+                    !self.evaluate_candidate(stack, &c).may_apply()
+                }) {
+                    let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
+                    let self_ty = trait_ref.self_ty();
+                    let trait_desc = trait_ref.to_string();
+                    let self_desc = if self_ty.has_concrete_skeleton() {
+                        Some(self_ty.to_string())
+                    } else {
+                        None
+                    };
+                    let cause = if let Conflict::Upstream = conflict {
+                        IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
+                    } else {
+                        IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
+                    };
+                    self.intercrate_ambiguity_causes.push(cause);
+                }
+                return Ok(None);
             }
-            return Ok(None);
         }
 
         let candidate_set = self.assemble_candidates(stack)?;
@@ -1205,12 +1220,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     fn is_knowable<'o>(&mut self,
                        stack: &TraitObligationStack<'o, 'tcx>)
-                       -> bool
+                       -> Option<Conflict>
     {
-        debug!("is_knowable(intercrate={})", self.intercrate);
+        debug!("is_knowable(intercrate={:?})", self.intercrate);
 
-        if !self.intercrate {
-            return true;
+        if !self.intercrate.is_some() {
+            return None;
         }
 
         let obligation = &stack.obligation;
@@ -1221,7 +1236,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // bound regions
         let trait_ref = predicate.skip_binder().trait_ref;
 
-        coherence::trait_ref_is_knowable(self.tcx(), trait_ref)
+        let result = coherence::trait_ref_is_knowable(self.tcx(), trait_ref);
+        if let (Some(Conflict::Downstream { used_to_be_broken: true }),
+                Some(IntercrateMode::Issue43355)) = (result, self.intercrate) {
+            debug!("is_knowable: IGNORING conflict to be bug-compatible with #43355");
+            None
+        } else {
+            result
+        }
     }
 
     /// Returns true if the global caches can be used.
@@ -1246,7 +1268,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // the master cache. Since coherence executes pretty quickly,
         // it's not worth going to more trouble to increase the
         // hit-rate I don't think.
-        if self.intercrate {
+        if self.intercrate.is_some() {
             return false;
         }
 
@@ -1593,10 +1615,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         match obligation.self_ty().skip_binder().sty {
-            ty::TyClosure(closure_def_id, _) => {
+            ty::TyClosure(closure_def_id, closure_substs) => {
                 debug!("assemble_unboxed_candidates: kind={:?} obligation={:?}",
                        kind, obligation);
-                match self.infcx.closure_kind(closure_def_id) {
+                match self.infcx.closure_kind(closure_def_id, closure_substs) {
                     Some(closure_kind) => {
                         debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
                         if closure_kind.extends(kind) {
@@ -1834,7 +1856,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         //     T: Trait
         // so it seems ok if we (conservatively) fail to accept that `Unsize`
         // obligation above. Should be possible to extend this in the future.
-        let source = match self.tcx().no_late_bound_regions(&obligation.self_ty()) {
+        let source = match obligation.self_ty().no_late_bound_regions() {
             Some(t) => t,
             None => {
                 // Don't add any candidates if there are bound regions.
@@ -2726,7 +2748,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligations.push(Obligation::new(
             obligation.cause.clone(),
             obligation.param_env,
-            ty::Predicate::ClosureKind(closure_def_id, kind)));
+            ty::Predicate::ClosureKind(closure_def_id, substs, kind)));
 
         Ok(VtableClosureData {
             closure_def_id,
@@ -2784,7 +2806,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // assemble_candidates_for_unsizing should ensure there are no late bound
         // regions here. See the comment there for more details.
         let source = self.infcx.shallow_resolve(
-            tcx.no_late_bound_regions(&obligation.self_ty()).unwrap());
+            obligation.self_ty().no_late_bound_regions().unwrap());
         let target = obligation.predicate.skip_binder().trait_ref.substs.type_at(1);
         let target = self.infcx.shallow_resolve(target);
 
@@ -3162,8 +3184,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                       substs: ty::ClosureSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
-        let closure_type = self.infcx.fn_sig(closure_def_id)
-            .subst(self.tcx(), substs.substs);
+        let closure_type = self.infcx.closure_sig(closure_def_id, substs);
         let ty::Binder((trait_ref, _)) =
             self.tcx().closure_trait_ref_and_return_type(obligation.predicate.def_id(),
                                                          obligation.predicate.0.self_ty(), // (1)
@@ -3184,8 +3205,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                       substs: ty::ClosureSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
-        let gen_sig = self.infcx.generator_sig(closure_def_id).unwrap()
-            .subst(self.tcx(), substs.substs);
+        let gen_sig = substs.generator_poly_sig(closure_def_id, self.tcx());
         let ty::Binder((trait_ref, ..)) =
             self.tcx().generator_trait_ref_and_outputs(obligation.predicate.def_id(),
                                                        obligation.predicate.0.self_ty(), // (1)

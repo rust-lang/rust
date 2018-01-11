@@ -1,0 +1,62 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:37:27
+   |
+37 |     with_signature(x, |y| y)
+   |                           ^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:53:5
+   |
+53 |     x
+   |     ^
+
+note: External requirements
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:37:23
+   |
+37 |     with_signature(x, |y| y)
+   |                       ^^^^^
+   |
+   = note: defining type: DefId(0/1:14 ~ ty_param_closure_outlives_from_return_type[317d]::no_region[0]::{{closure}}[0]) with closure substs [
+               '_#1r,
+               T,
+               i32,
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<std::fmt::Debug + '_#2r>
+           ]
+   = note: number of external vids: 3
+   = note: where T: '_#2r
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:37:23
+   |
+37 |     with_signature(x, |y| y)
+   |                       ^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+
+note: No external requirements
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:26:1
+   |
+26 | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
+27 | | where
+28 | |     T: Debug,
+29 | | {
+...  |
+39 | |     //~| ERROR the parameter type `T` may not live long enough
+40 | | }
+   | |_^
+   |
+   = note: defining type: DefId(0/0:5 ~ ty_param_closure_outlives_from_return_type[317d]::no_region[0]) with substs [
+               '_#1r,
+               T
+           ]
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:53:5
+   |
+53 |     x
+   |     ^
+   |
+   = help: consider adding an explicit lifetime bound `T: ReEarlyBound(0, 'a)`...
+
+error: aborting due to 2 previous errors
+

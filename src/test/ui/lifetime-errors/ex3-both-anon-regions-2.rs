@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn foo((v, w): (&u8, &u8), x: &u8) {
-    v = x;
+    v = x; //~ ERROR lifetime mismatch
 }
 
 fn main() { }

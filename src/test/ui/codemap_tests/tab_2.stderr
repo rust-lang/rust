@@ -1,8 +1,8 @@
 error: unterminated double quote string
   --> $DIR/tab_2.rs:14:7
    |
-14 |       """;
-   |  _______^
+14 |                   """; //~ ERROR unterminated double quote
+   |  ___________________^
 15 | | }
    | |__^
 

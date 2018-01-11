@@ -1,0 +1,16 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/capture-ref-in-struct.rs:33:16
+   |
+33 |             y: &y,
+   |                ^^ borrowed value does not live long enough
+...
+38 |     }
+   |      - borrowed value only lives until here
+39 | 
+40 |     deref(p);
+   |           - borrow later used here
+   |
+   = note: borrowed value must be valid for lifetime '_#5r...
+
+error: aborting due to previous error
+

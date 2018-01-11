@@ -1,0 +1,11 @@
+error[E0453]: allow(deprecated) overruled by outer forbid(deprecated)
+  --> $DIR/lint-forbid-attr.rs:13:9
+   |
+11 | #![forbid(deprecated)]
+   |           ---------- `forbid` level set here
+12 | 
+13 | #[allow(deprecated)]
+   |         ^^^^^^^^^^ overruled by previous forbid
+
+error: aborting due to previous error
+

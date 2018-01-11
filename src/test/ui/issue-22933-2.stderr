@@ -1,0 +1,11 @@
+error[E0599]: no variant named `PIE` found for type `Delicious` in the current scope
+  --> $DIR/issue-22933-2.rs:14:44
+   |
+11 | enum Delicious {
+   | -------------- variant `PIE` not found here
+...
+14 |     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
+   |                                            ^^^^^^^^^^^^^^ variant not found in `Delicious`
+
+error: aborting due to previous error
+

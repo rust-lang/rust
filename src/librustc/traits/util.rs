@@ -43,8 +43,8 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::Predicate::ObjectSafe(data) =>
             ty::Predicate::ObjectSafe(data),
 
-        ty::Predicate::ClosureKind(closure_def_id, kind) =>
-            ty::Predicate::ClosureKind(closure_def_id, kind),
+        ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) =>
+            ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind),
 
         ty::Predicate::Subtype(ref data) =>
             ty::Predicate::Subtype(tcx.anonymize_late_bound_regions(data)),

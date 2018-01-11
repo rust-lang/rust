@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for 64-bits floats (`f64` type)
+//! This module provides constants which are specific to the implementation
+//! of the `f64` floating point data type.
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -256,7 +261,7 @@ impl Float for f64 {
         // Since we do not support sNaN in Rust yet, we do not need to handle them.
         // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if self < other || self.is_nan() { other } else { self }) * 1.0
+        (if self.is_nan() || self < other { other } else { self }) * 1.0
     }
 
     /// Returns the minimum of the two numbers.
@@ -270,6 +275,6 @@ impl Float for f64 {
         // Since we do not support sNaN in Rust yet, we do not need to handle them.
         // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if self < other || other.is_nan() { self } else { other }) * 1.0
+        (if other.is_nan() || self < other { self } else { other }) * 1.0
     }
 }

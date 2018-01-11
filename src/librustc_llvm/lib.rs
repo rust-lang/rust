@@ -74,22 +74,19 @@ pub fn AddFunctionAttrStringValue(llfn: ValueRef,
     }
 }
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub enum AttributePlace {
+    ReturnValue,
     Argument(u32),
     Function,
 }
 
 impl AttributePlace {
-    pub fn ReturnValue() -> Self {
-        AttributePlace::Argument(0)
-    }
-
     pub fn as_uint(self) -> c_uint {
         match self {
+            AttributePlace::ReturnValue => 0,
+            AttributePlace::Argument(i) => 1 + i,
             AttributePlace::Function => !0,
-            AttributePlace::Argument(i) => i,
         }
     }
 }
@@ -297,11 +294,6 @@ pub fn build_string<F>(f: F) -> Option<String>
 
 pub unsafe fn twine_to_string(tr: TwineRef) -> String {
     build_string(|s| LLVMRustWriteTwineToString(tr, s)).expect("got a non-UTF8 Twine from LLVM")
-}
-
-pub unsafe fn debug_loc_to_string(c: ContextRef, tr: DebugLocRef) -> String {
-    build_string(|s| LLVMRustWriteDebugLocToString(c, tr, s))
-        .expect("got a non-UTF8 DebugLoc from LLVM")
 }
 
 pub fn initialize_available_targets() {

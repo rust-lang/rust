@@ -23,7 +23,7 @@ pub mod animal {
 
 fn main() {
     let dog = animal::Dog::new(3);
-    let dog_age = dog.dog_age();
+    let dog_age = dog.dog_age(); //~ ERROR no method
     //let dog_age = dog.dog_age;
     println!("{}", dog_age);
 }

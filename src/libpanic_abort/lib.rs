@@ -20,13 +20,13 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![deny(warnings)]
-
-#![feature(staged_api)]
-
 #![panic_runtime]
+#![allow(unused_features)]
+
+#![feature(core_intrinsics)]
+#![feature(libc)]
 #![feature(panic_runtime)]
-#![cfg_attr(unix, feature(libc))]
-#![cfg_attr(any(target_os = "redox", windows), feature(core_intrinsics))]
+#![feature(staged_api)]
 
 // Rust's "try" function, but if we're aborting on panics we just call the
 // function as there's nothing else we need to do here.
@@ -53,13 +53,15 @@ pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
 pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
     abort();
 
-    #[cfg(unix)]
+    #[cfg(any(unix, target_os = "cloudabi"))]
     unsafe fn abort() -> ! {
         extern crate libc;
         libc::abort();
     }
 
-    #[cfg(any(target_os = "redox", windows))]
+    #[cfg(any(target_os = "redox",
+              windows,
+              all(target_arch = "wasm32", not(target_os = "emscripten"))))]
     unsafe fn abort() -> ! {
         core::intrinsics::abort();
     }
@@ -92,7 +94,6 @@ pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
 // binaries, but it should never be called as we don't link in an unwinding
 // runtime at all.
 pub mod personalities {
-
     #[no_mangle]
     #[cfg(not(all(target_os = "windows",
                   target_env = "gnu",

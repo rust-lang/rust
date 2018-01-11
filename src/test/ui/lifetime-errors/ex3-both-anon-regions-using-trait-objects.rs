@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 fn foo(x:Box<Fn(&u8, &u8)> , y: Vec<&u8>, z: &u8) {
-  y.push(z);
+  y.push(z); //~ ERROR lifetime mismatch
 }
 
 fn main() { }

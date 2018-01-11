@@ -512,14 +512,16 @@ impl_stable_hash_for!(struct MethodData<'tcx> { fn_data, container, has_self });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ClosureData<'tcx> {
-    pub kind: ty::ClosureKind,
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
-impl_stable_hash_for!(struct ClosureData<'tcx> { kind, sig });
+impl_stable_hash_for!(struct ClosureData<'tcx> { sig });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct GeneratorData<'tcx> {
-    pub sig: ty::PolyGenSig<'tcx>,
     pub layout: mir::GeneratorLayout<'tcx>,
 }
-impl_stable_hash_for!(struct GeneratorData<'tcx> { sig, layout });
+impl_stable_hash_for!(struct GeneratorData<'tcx> { layout });
+
+// Tags used for encoding Spans:
+pub const TAG_VALID_SPAN: u8 = 0;
+pub const TAG_INVALID_SPAN: u8 = 1;

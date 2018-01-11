@@ -38,6 +38,7 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
     let mut tybounds = Vec::new();
+
     for clause in clauses {
         match clause {
             WP::BoundPredicate { ty, bounds } => {

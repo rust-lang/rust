@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use deriving::path_std;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
@@ -44,18 +45,26 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
     match *item {
         Annotatable::Item(ref annitem) => {
             match annitem.node {
-                ItemKind::Struct(_, Generics { ref ty_params, .. }) |
-                ItemKind::Enum(_, Generics { ref ty_params, .. })
-                        if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") &&
-                           ty_params.is_empty() => {
-                    bounds = vec![];
-                    is_shallow = true;
-                    substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone_shallow("Clone", c, s, sub, false)
-                    }));
+                ItemKind::Struct(_, Generics { ref params, .. }) |
+                ItemKind::Enum(_, Generics { ref params, .. }) => {
+                    if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") &&
+                        !params.iter().any(|param| param.is_type_param())
+                    {
+                        bounds = vec![];
+                        is_shallow = true;
+                        substructure = combine_substructure(Box::new(|c, s, sub| {
+                            cs_clone_shallow("Clone", c, s, sub, false)
+                        }));
+                    } else {
+                        bounds = vec![];
+                        is_shallow = false;
+                        substructure = combine_substructure(Box::new(|c, s, sub| {
+                            cs_clone("Clone", c, s, sub)
+                        }));
+                    }
                 }
                 ItemKind::Union(..) => {
-                    bounds = vec![Literal(path_std!(cx, core::marker::Copy))];
+                    bounds = vec![Literal(path_std!(cx, marker::Copy))];
                     is_shallow = true;
                     substructure = combine_substructure(Box::new(|c, s, sub| {
                         cs_clone_shallow("Clone", c, s, sub, true)
@@ -79,7 +88,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, core::clone::Clone),
+        path: path_std!(cx, clone::Clone),
         additional_bounds: bounds,
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

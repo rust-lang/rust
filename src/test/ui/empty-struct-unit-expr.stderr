@@ -1,0 +1,41 @@
+error[E0618]: expected function, found `Empty2`
+  --> $DIR/empty-struct-unit-expr.rs:25:14
+   |
+25 |     let e2 = Empty2(); //~ ERROR expected function, found `Empty2`
+   |              ^^^^^^^^
+   |
+note: defined here
+  --> $DIR/empty-struct-unit-expr.rs:18:1
+   |
+18 | struct Empty2;
+   | ^^^^^^^^^^^^^^
+
+error[E0618]: expected function, found `E::Empty4`
+  --> $DIR/empty-struct-unit-expr.rs:26:14
+   |
+26 |     let e4 = E::Empty4();
+   |              ^^^^^^^^^^^
+   |
+   = help: did you mean to write `E::Empty4`?
+note: defined here
+  --> $DIR/empty-struct-unit-expr.rs:21:5
+   |
+21 |     Empty4
+   |     ^^^^^^
+
+error[E0618]: expected function, found `empty_struct::XEmpty2`
+  --> $DIR/empty-struct-unit-expr.rs:28:15
+   |
+28 |     let xe2 = XEmpty2(); //~ ERROR expected function, found `empty_struct::XEmpty2`
+   |               ^^^^^^^^^
+
+error[E0618]: expected function, found `XE::XEmpty4`
+  --> $DIR/empty-struct-unit-expr.rs:29:15
+   |
+29 |     let xe4 = XE::XEmpty4();
+   |               ^^^^^^^^^^^^^
+   |
+   = help: did you mean to write `XE::XEmpty4`?
+
+error: aborting due to 4 previous errors
+

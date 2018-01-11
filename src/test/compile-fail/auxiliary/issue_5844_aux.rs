@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(libc)]
-
-extern crate libc;
-
 extern "C" {
-    pub fn rand() -> libc::c_int;
+    pub fn rand() -> u32;
 }

@@ -1,7 +1,7 @@
 error: found 2 equal signs, need exactly 3
   --> $DIR/three-equals.rs:25:5
    |
-25 |     three_equals!(==);
+25 |     three_equals!(==); //~ ERROR found 2 equal signs, need exactly 3
    |     ^^^^^^^^^^^^^^^^^^
    |
    = help: input must be: `===`
@@ -9,38 +9,38 @@ error: found 2 equal signs, need exactly 3
 error: expected EOF, found `=`.
   --> $DIR/three-equals.rs:28:21
    |
-28 |     three_equals!(=====);
+28 |     three_equals!(=====); //~ ERROR expected EOF
    |                     ^^
    |
 note: last good input was here
   --> $DIR/three-equals.rs:28:21
    |
-28 |     three_equals!(=====);
+28 |     three_equals!(=====); //~ ERROR expected EOF
    |                     ^^
    = help: input must be: `===`
 
 error: expected `=`, found `abc`.
   --> $DIR/three-equals.rs:31:19
    |
-31 |     three_equals!(abc);
+31 |     three_equals!(abc); //~ ERROR expected `=`
    |                   ^^^
 
 error: expected `=`, found `!`.
   --> $DIR/three-equals.rs:34:19
    |
-34 |     three_equals!(!!);
+34 |     three_equals!(!!); //~ ERROR expected `=`
    |                   ^
 
 error: expected EOF, found `a`.
   --> $DIR/three-equals.rs:37:22
    |
-37 |     three_equals!(===a);
+37 |     three_equals!(===a); //~ ERROR expected EOF
    |                      ^
    |
 note: last good input was here
   --> $DIR/three-equals.rs:37:21
    |
-37 |     three_equals!(===a);
+37 |     three_equals!(===a); //~ ERROR expected EOF
    |                     ^
    = help: input must be: `===`
 

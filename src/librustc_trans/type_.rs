@@ -17,7 +17,7 @@ use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 use context::CrateContext;
 
 use syntax::ast;
-use rustc::ty::layout;
+use rustc::ty::layout::{self, Align, Size};
 
 use std::ffi::CString;
 use std::fmt;
@@ -64,10 +64,6 @@ impl Type {
 
     pub fn void(ccx: &CrateContext) -> Type {
         ty!(llvm::LLVMVoidTypeInContext(ccx.llcx()))
-    }
-
-    pub fn nil(ccx: &CrateContext) -> Type {
-        Type::empty_struct(ccx)
     }
 
     pub fn metadata(ccx: &CrateContext) -> Type {
@@ -151,7 +147,7 @@ impl Type {
 
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::IntTy::Is => ccx.isize_ty(),
+            ast::IntTy::Isize => ccx.isize_ty(),
             ast::IntTy::I8 => Type::i8(ccx),
             ast::IntTy::I16 => Type::i16(ccx),
             ast::IntTy::I32 => Type::i32(ccx),
@@ -162,7 +158,7 @@ impl Type {
 
     pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::UintTy::Us => ccx.isize_ty(),
+            ast::UintTy::Usize => ccx.isize_ty(),
             ast::UintTy::U8 => Type::i8(ccx),
             ast::UintTy::U16 => Type::i16(ccx),
             ast::UintTy::U32 => Type::i32(ccx),
@@ -202,9 +198,6 @@ impl Type {
         ty!(llvm::LLVMStructCreateNamed(ccx.llcx(), name.as_ptr()))
     }
 
-    pub fn empty_struct(ccx: &CrateContext) -> Type {
-        Type::struct_(ccx, &[], false)
-    }
 
     pub fn array(ty: &Type, len: u64) -> Type {
         ty!(llvm::LLVMRustArrayType(ty.to_ref(), len))
@@ -212,20 +205,6 @@ impl Type {
 
     pub fn vector(ty: &Type, len: u64) -> Type {
         ty!(llvm::LLVMVectorType(ty.to_ref(), len as c_uint))
-    }
-
-    pub fn vec(ccx: &CrateContext, ty: &Type) -> Type {
-        Type::struct_(ccx,
-            &[Type::array(ty, 0), Type::isize(ccx)],
-        false)
-    }
-
-    pub fn opaque_vec(ccx: &CrateContext) -> Type {
-        Type::vec(ccx, &Type::i8(ccx))
-    }
-
-    pub fn vtable_ptr(ccx: &CrateContext) -> Type {
-        Type::func(&[Type::i8p(ccx)], &Type::void(ccx)).ptr_to().ptr_to()
     }
 
     pub fn kind(&self) -> TypeKind {
@@ -259,19 +238,6 @@ impl Type {
         }
     }
 
-    pub fn field_types(&self) -> Vec<Type> {
-        unsafe {
-            let n_elts = llvm::LLVMCountStructElementTypes(self.to_ref()) as usize;
-            if n_elts == 0 {
-                return Vec::new();
-            }
-            let mut elts = vec![Type { rf: ptr::null_mut() }; n_elts];
-            llvm::LLVMGetStructElementTypes(self.to_ref(),
-                                            elts.as_mut_ptr() as *mut TypeRef);
-            elts
-        }
-    }
-
     pub fn func_params(&self) -> Vec<Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as usize;
@@ -302,12 +268,33 @@ impl Type {
     pub fn from_integer(cx: &CrateContext, i: layout::Integer) -> Type {
         use rustc::ty::layout::Integer::*;
         match i {
-            I1 => Type::i1(cx),
             I8 => Type::i8(cx),
             I16 => Type::i16(cx),
             I32 => Type::i32(cx),
             I64 => Type::i64(cx),
             I128 => Type::i128(cx),
         }
+    }
+
+    /// Return a LLVM type that has at most the required alignment,
+    /// as a conservative approximation for unknown pointee types.
+    pub fn pointee_for_abi_align(ccx: &CrateContext, align: Align) -> Type {
+        // FIXME(eddyb) We could find a better approximation if ity.align < align.
+        let ity = layout::Integer::approximate_abi_align(ccx, align);
+        Type::from_integer(ccx, ity)
+    }
+
+    /// Return a LLVM type that has at most the required alignment,
+    /// and exactly the required size, as a best-effort padding array.
+    pub fn padding_filler(ccx: &CrateContext, size: Size, align: Align) -> Type {
+        let unit = layout::Integer::approximate_abi_align(ccx, align);
+        let size = size.bytes();
+        let unit_size = unit.size().bytes();
+        assert_eq!(size % unit_size, 0);
+        Type::array(&Type::from_integer(ccx, unit), size / unit_size)
+    }
+
+    pub fn x86_mmx(ccx: &CrateContext) -> Type {
+        ty!(llvm::LLVMX86MMXTypeInContext(ccx.llcx()))
     }
 }

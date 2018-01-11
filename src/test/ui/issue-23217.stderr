@@ -1,0 +1,10 @@
+error[E0599]: no variant named `A` found for type `SomeEnum` in the current scope
+  --> $DIR/issue-23217.rs:12:9
+   |
+11 | pub enum SomeEnum {
+   | ----------------- variant `A` not found here
+12 |     B = SomeEnum::A,
+   |         ^^^^^^^^^^^ variant not found in `SomeEnum`
+
+error: aborting due to previous error
+

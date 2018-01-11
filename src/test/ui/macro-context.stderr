@@ -1,0 +1,45 @@
+error: macro expansion ignores token `;` and any following
+  --> $DIR/macro-context.rs:13:15
+   |
+13 |     () => ( i ; typeof );   //~ ERROR expected expression, found reserved keyword `typeof`
+   |               ^
+   |
+note: caused by the macro expansion here; the usage of `m!` is likely invalid in type context
+  --> $DIR/macro-context.rs:20:12
+   |
+20 |     let a: m!();
+   |            ^^^^
+
+error: macro expansion ignores token `typeof` and any following
+  --> $DIR/macro-context.rs:13:17
+   |
+13 |     () => ( i ; typeof );   //~ ERROR expected expression, found reserved keyword `typeof`
+   |                 ^^^^^^
+   |
+note: caused by the macro expansion here; the usage of `m!` is likely invalid in expression context
+  --> $DIR/macro-context.rs:21:13
+   |
+21 |     let i = m!();
+   |             ^^^^
+
+error: macro expansion ignores token `;` and any following
+  --> $DIR/macro-context.rs:13:15
+   |
+13 |     () => ( i ; typeof );   //~ ERROR expected expression, found reserved keyword `typeof`
+   |               ^
+   |
+note: caused by the macro expansion here; the usage of `m!` is likely invalid in pattern context
+  --> $DIR/macro-context.rs:23:9
+   |
+23 |         m!() => {}
+   |         ^^^^
+
+error: expected expression, found reserved keyword `typeof`
+  --> $DIR/macro-context.rs:13:17
+   |
+13 |     () => ( i ; typeof );   //~ ERROR expected expression, found reserved keyword `typeof`
+   |                 ^^^^^^
+...
+26 |     m!();
+   |     ----- in this macro invocation
+

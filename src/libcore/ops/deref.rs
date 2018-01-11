@@ -35,13 +35,13 @@
 ///
 /// For more details, visit [the chapter in *The Rust Programming Language*]
 /// [book] as well as the reference sections on [the dereference operator]
-/// [ref-deref-op], [the `Deref` trait][ref-deref-trait], and [type coercions].
+/// [ref-deref-op], [method resolution] and [type coercions].
 ///
 /// [book]: ../../book/second-edition/ch15-02-deref.html
 /// [`DerefMut`]: trait.DerefMut.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
-/// [ref-deref-trait]: ../../reference/the-deref-trait.html
+/// [method resolution]: ../../reference/expressions/method-call-expr.html
 /// [type coercions]: ../../reference/type-coercions.html
 ///
 /// # Examples
@@ -122,13 +122,13 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 ///
 /// For more details, visit [the chapter in *The Rust Programming Language*]
 /// [book] as well as the reference sections on [the dereference operator]
-/// [ref-deref-op], [the `Deref` trait][ref-deref-trait], and [type coercions].
+/// [ref-deref-op], [method resolution] and [type coercions].
 ///
 /// [book]: ../../book/second-edition/ch15-02-deref.html
 /// [`Deref`]: trait.Deref.html
 /// [more]: #more-on-deref-coercion
 /// [ref-deref-op]: ../../reference/expressions/operator-expr.html#the-dereference-operator
-/// [ref-deref-trait]: ../../reference/the-deref-trait.html
+/// [method resolution]: ../../reference/expressions/method-call-expr.html
 /// [type coercions]: ../../reference/type-coercions.html
 ///
 /// # Examples

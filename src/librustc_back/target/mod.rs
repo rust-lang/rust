@@ -57,6 +57,7 @@ mod apple_base;
 mod apple_ios_base;
 mod arm_base;
 mod bitrig_base;
+mod cloudabi_base;
 mod dragonfly_base;
 mod emscripten_base;
 mod freebsd_base;
@@ -150,6 +151,7 @@ supported_targets! {
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
     ("arm-unknown-linux-musleabi", arm_unknown_linux_musleabi),
     ("arm-unknown-linux-musleabihf", arm_unknown_linux_musleabihf),
+    ("armv4t-unknown-linux-gnueabi", armv4t_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
@@ -218,6 +220,7 @@ supported_targets! {
 
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
+    ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-experimental-emscripten", wasm32_experimental_emscripten),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
@@ -226,6 +229,11 @@ supported_targets! {
     ("thumbv7em-none-eabihf", thumbv7em_none_eabihf),
 
     ("msp430-none-elf", msp430_none_elf),
+
+    ("aarch64-unknown-cloudabi", aarch64_unknown_cloudabi),
+    ("armv7-unknown-cloudabi-eabihf", armv7_unknown_cloudabi_eabihf),
+    ("i686-unknown-cloudabi", i686_unknown_cloudabi),
+    ("x86_64-unknown-cloudabi", x86_64_unknown_cloudabi),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -303,6 +311,8 @@ pub struct TargetOptions {
     pub features: String,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
+    /// If dynamic linking is available, whether only cdylibs are supported.
+    pub only_cdylib: bool,
     /// Whether executables are available on this target. iOS, for example, only allows static
     /// libraries. Defaults to false.
     pub executables: bool,
@@ -357,7 +367,7 @@ pub struct TargetOptions {
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
-    /// handling COFF object files with more than 2^15 sections. Since each weak
+    /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
     /// symbol needs its own COMDAT section, weak linkage implies a large
     /// number sections that easily exceeds the given limit for larger
     /// codebases. Consequently we want a way to disallow weak linkage on some
@@ -435,6 +445,25 @@ pub struct TargetOptions {
 
     /// Default number of codegen units to use in debug mode
     pub default_codegen_units: Option<u64>,
+
+    /// Whether to generate trap instructions in places where optimization would
+    /// otherwise produce control flow that falls through into unrelated memory.
+    pub trap_unreachable: bool,
+
+    /// This target requires everything to be compiled with LTO to emit a final
+    /// executable, aka there is no native linker for this target.
+    pub requires_lto: bool,
+
+    /// This target has no support for threads.
+    pub singlethread: bool,
+
+    /// Whether library functions call lowering/optimization is disabled in LLVM
+    /// for this target unconditionally.
+    pub no_builtins: bool,
+
+    /// Whether to lower 128-bit operations to compiler_builtins calls.  Use if
+    /// your backend only supports 64-bit and smaller math.
+    pub i128_lowering: bool,
 }
 
 impl Default for TargetOptions {
@@ -450,6 +479,7 @@ impl Default for TargetOptions {
             cpu: "generic".to_string(),
             features: "".to_string(),
             dynamic_linking: false,
+            only_cdylib: false,
             executables: false,
             relocation_model: "pic".to_string(),
             code_model: "default".to_string(),
@@ -498,6 +528,11 @@ impl Default for TargetOptions {
             stack_probes: false,
             min_global_align: None,
             default_codegen_units: None,
+            trap_unreachable: true,
+            requires_lto: false,
+            singlethread: false,
+            no_builtins: false,
+            i128_lowering: false,
         }
     }
 }
@@ -697,6 +732,7 @@ impl Target {
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
+        key!(only_cdylib, bool);
         key!(executables, bool);
         key!(relocation_model);
         key!(code_model);
@@ -739,6 +775,10 @@ impl Target {
         key!(stack_probes, bool);
         key!(min_global_align, Option<u64>);
         key!(default_codegen_units, Option<u64>);
+        key!(trap_unreachable, bool);
+        key!(requires_lto, bool);
+        key!(singlethread, bool);
+        key!(no_builtins, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -890,6 +930,7 @@ impl ToJson for Target {
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
+        target_option_val!(only_cdylib);
         target_option_val!(executables);
         target_option_val!(relocation_model);
         target_option_val!(code_model);
@@ -932,6 +973,10 @@ impl ToJson for Target {
         target_option_val!(stack_probes);
         target_option_val!(min_global_align);
         target_option_val!(default_codegen_units);
+        target_option_val!(trap_unreachable);
+        target_option_val!(requires_lto);
+        target_option_val!(singlethread);
+        target_option_val!(no_builtins);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

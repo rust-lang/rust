@@ -11,7 +11,7 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/translation.
 
-use rustc::middle::free_region::FreeRegionMap;
+use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 
@@ -288,7 +288,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // conversion). This will work out because `U:
                 // Unsize<V>`, and we have a builtin rule that `*mut
                 // U` can be coerced to `*mut V` if `U: Unsize<V>`.
-                let fields = &def_a.struct_variant().fields;
+                let fields = &def_a.non_enum_variant().fields;
                 let diff_fields = fields.iter()
                     .enumerate()
                     .filter_map(|(i, f)| {
@@ -391,9 +391,12 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Finally, resolve all regions.
         let region_scope_tree = region::ScopeTree::default();
-        let mut free_regions = FreeRegionMap::new();
-        free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
-        infcx.resolve_regions_and_report_errors(impl_did, &region_scope_tree, &free_regions);
+        let outlives_env = OutlivesEnvironment::new(param_env);
+        infcx.resolve_regions_and_report_errors(
+            impl_did,
+            &region_scope_tree,
+            &outlives_env,
+        );
 
         CoerceUnsizedInfo {
             custom_kind: kind

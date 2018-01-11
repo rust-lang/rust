@@ -10,7 +10,6 @@
 
 #[link(name = "")] extern {}
 //~^ ERROR E0454
-//~| NOTE empty name given
 
 fn main() {
 }

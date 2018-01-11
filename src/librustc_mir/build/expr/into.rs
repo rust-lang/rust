@@ -22,7 +22,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
     pub fn into_expr(&mut self,
-                     destination: &Lvalue<'tcx>,
+                     destination: &Place<'tcx>,
                      mut block: BasicBlock,
                      expr: Expr<'tcx>)
                      -> BlockAnd<()>
@@ -237,23 +237,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ty: ptr_ty,
                         name: None,
                         source_info,
-                        lexical_scope: source_info.scope,
+                        syntactic_scope: source_info.scope,
                         internal: true,
                         is_user_variable: false
                     });
-                    let ptr_temp = Lvalue::Local(ptr_temp);
+                    let ptr_temp = Place::Local(ptr_temp);
                     let block = unpack!(this.into(&ptr_temp, block, ptr));
                     this.into(&ptr_temp.deref(), block, val)
                 } else {
                     let args: Vec<_> =
                         args.into_iter()
-                            .map(|arg| {
-                                let scope = this.local_scope();
-                                // Function arguments are owned by the callee, so we need as_temp()
-                                // instead of as_operand() to enforce copies
-                                let operand = unpack!(block = this.as_temp(block, scope, arg));
-                                Operand::Consume(Lvalue::Local(operand))
-                            })
+                            .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
                             .collect();
 
                     let success = this.cfg.start_new_block();
@@ -261,7 +255,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.cfg.terminate(block, source_info, TerminatorKind::Call {
                         func: fun,
                         args,
-                        cleanup,
+                        cleanup: Some(cleanup),
                         destination: if diverges {
                             None
                         } else {
@@ -279,7 +273,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Break { .. } |
             ExprKind::InlineAsm { .. } |
             ExprKind::Return {.. } => {
-                this.stmt_expr(block, expr)
+                unpack!(block = this.stmt_expr(block, expr));
+                this.cfg.push_assign_unit(block, source_info, destination);
+                block.unit()
             }
 
             // these are the cases that are more naturally handled by some other mode

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![feature(panic_handler, std_panic)]
-#![feature(const_atomic_usize_new)]
 
 // ignore-emscripten no threads support
 
