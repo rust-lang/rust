@@ -31,15 +31,17 @@ Indent on expressions or items.
 #### `"Block"` (default):
 
 ```rust
-let lorem = vec![
-    "ipsum",
-    "dolor",
-    "sit",
-    "amet",
-    "consectetur",
-    "adipiscing",
-    "elit",
-];
+fn main() {
+    let lorem = vec![
+        "ipsum",
+        "dolor",
+        "sit",
+        "amet",
+        "consectetur",
+        "adipiscing",
+        "elit",
+    ];
+}
 ```
 
 #### `"Visual"`:
