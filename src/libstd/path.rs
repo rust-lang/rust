@@ -2195,7 +2195,7 @@ impl Path {
     /// let path = Path::new("/../../../cannot_go_above_root");
     /// assert_eq!(path.normalize(), PathBuf::from("/cannot_go_above_root"));
     /// ```
-    #[stable(feature = "path_ext", since = "1.24.0")]
+    #[unstable]
     pub fn normalize(&self) -> PathBuf {
         let mut stack: Vec<Component> = vec![];
 
