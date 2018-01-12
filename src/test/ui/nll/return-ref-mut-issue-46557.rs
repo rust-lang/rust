@@ -10,8 +10,6 @@
 
 // Regression test for issue #46557
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
-
 #![feature(nll)]
 #![allow(dead_code)]
 
