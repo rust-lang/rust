@@ -36,7 +36,7 @@ use sys_common::rwlock as sys;
 /// required that `T` satisfies [`Send`] to be shared across threads and
 /// [`Sync`] to allow concurrent access through readers. The RAII guards
 /// returned from the locking methods implement [`Deref`][] (and [`DerefMut`]
-/// for the `write` methods) to allow access to the contained of the lock.
+/// for the `write` methods) to allow access to the content of the lock.
 ///
 /// # Poisoning
 ///

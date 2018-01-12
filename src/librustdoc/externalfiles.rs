@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fs::File;
-use std::io::prelude::*;
+use std::fs;
 use std::path::Path;
 use std::str;
 use html::markdown::{Markdown, RenderType};
@@ -65,13 +64,13 @@ pub enum LoadStringError {
 
 pub fn load_string<P: AsRef<Path>>(file_path: P) -> Result<String, LoadStringError> {
     let file_path = file_path.as_ref();
-    let mut contents = vec![];
-    let result = File::open(file_path)
-                      .and_then(|mut f| f.read_to_end(&mut contents));
-    if let Err(e) = result {
-        eprintln!("error reading `{}`: {}", file_path.display(), e);
-        return Err(LoadStringError::ReadFail);
-    }
+    let contents = match fs::read(file_path) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            eprintln!("error reading `{}`: {}", file_path.display(), e);
+            return Err(LoadStringError::ReadFail);
+        }
+    };
     match str::from_utf8(&contents) {
         Ok(s) => Ok(s.to_string()),
         Err(_) => {

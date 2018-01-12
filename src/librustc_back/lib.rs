@@ -28,6 +28,7 @@
 
 #![feature(box_syntax)]
 #![feature(const_fn)]
+#![feature(fs_read_write)]
 
 extern crate syntax;
 extern crate rand;

@@ -18,6 +18,7 @@
 #![feature(rustc_private)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(fs_read_write)]
 #![feature(libc)]
 #![feature(set_stdio)]
 #![feature(slice_patterns)]

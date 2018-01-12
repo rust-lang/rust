@@ -18,7 +18,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use dot;
 use dot::IntoCow;
 
-use std::fs::File;
+use std::fs;
 use std::io;
 use std::io::prelude::*;
 use std::marker::PhantomData;
@@ -67,7 +67,7 @@ pub(crate) fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
     dot::render(&g, &mut v)?;
     debug!("print_borrowck_graph_to path: {} node_id: {}",
            path.display(), mbcx.node_id);
-    File::create(path).and_then(|mut f| f.write_all(&v))
+    fs::write(path, v)
 }
 
 pub type Node = BasicBlock;
