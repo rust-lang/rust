@@ -402,6 +402,9 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             for i in 0..tupled_arg_tys.len() {
                 let arg = &mircx.fn_ty.args[idx];
                 idx += 1;
+                if arg.pad.is_some() {
+                    llarg_idx += 1;
+                }
                 arg.store_fn_arg(bcx, &mut llarg_idx, place.project_field(bcx, i));
             }
 
