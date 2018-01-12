@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Remove `same_line_attributes` configuration option.
+
 ## [0.3.4] 2017-12-23
 
 ### Added

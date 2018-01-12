@@ -204,7 +204,8 @@ impl str::FromStr for FileLines {
 // For JSON decoding.
 #[derive(Clone, Debug, Deserialize)]
 struct JsonSpan {
-    #[serde(deserialize_with = "deserialize_filename")] file: FileName,
+    #[serde(deserialize_with = "deserialize_filename")]
+    file: FileName,
     range: (usize, usize),
 }
 
