@@ -32,12 +32,12 @@ One way to use clippy is by installing clippy through cargo as a cargo
 subcommand.
 
 ```terminal
-cargo install clippy
+cargo +nightly install clippy
 ```
 
-Now you can run clippy by invoking `cargo clippy`, or
-`cargo +nightly clippy` directly from a directory that is usually
-compiled with stable.
+(The `+nightly` is not necessary if your default `rustup` install is nightly)
+
+Now you can run clippy by invoking `cargo +nightly clippy`.
 
 In case you are not using rustup, you need to set the environment flag
 `SYSROOT` during installation so clippy knows where to find `librustc` and
