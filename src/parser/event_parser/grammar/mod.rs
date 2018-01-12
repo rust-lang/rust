@@ -40,7 +40,7 @@ fn node<F: FnOnce(&mut Parser)>(p: &mut Parser, node_kind: SyntaxKind, rest: F) 
     p.finish();
 }
 
-fn many<F: Fn(&mut Parser) -> bool>(p: &mut Parser, f: F) {
+fn many<F: FnMut(&mut Parser) -> bool>(p: &mut Parser, mut f: F) {
     loop {
         let pos = p.pos();
         if !f(p) {
