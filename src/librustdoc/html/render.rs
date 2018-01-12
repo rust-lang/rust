@@ -2059,7 +2059,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             curty = myty;
             let (short, name) = match myty.unwrap() {
                 ItemType::ExternCrate |
-                ItemType::Import          => ("reexports", "Reexports"),
+                ItemType::Import          => ("reexports", "Re-exports"),
                 ItemType::Module          => ("modules", "Modules"),
                 ItemType::Struct          => ("structs", "Structs"),
                 ItemType::Union           => ("unions", "Unions"),
@@ -3959,7 +3959,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                              it.type_() == ItemType::Import) {
         sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
                                   id = "reexports",
-                                  name = "Reexports"));
+                                  name = "Re-exports"));
     }
 
     // ordering taken from item_module, reorder, where it prioritized elements in a certain order
@@ -3972,7 +3972,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
         if items.iter().any(|it| !it.is_stripped() && it.type_() == myty) {
             let (short, name) = match myty {
                 ItemType::ExternCrate |
-                ItemType::Import          => ("reexports", "Reexports"),
+                ItemType::Import          => ("reexports", "Re-exports"),
                 ItemType::Module          => ("modules", "Modules"),
                 ItemType::Struct          => ("structs", "Structs"),
                 ItemType::Union           => ("unions", "Unions"),
