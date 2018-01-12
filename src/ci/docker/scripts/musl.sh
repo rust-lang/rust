@@ -30,7 +30,7 @@ exit 1
 TAG=$1
 shift
 
-MUSL=musl-1.1.17
+MUSL=musl-1.1.18
 
 # may have been downloaded in a previous run
 if [ ! -d $MUSL ]; then
