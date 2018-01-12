@@ -22,6 +22,9 @@ pub(crate) struct Parser<'t> {
 #[derive(Debug, Clone, Copy,PartialEq, Eq)]
 pub(crate) struct Pos(u32);
 
+#[derive(Debug, Clone, Copy,PartialEq, Eq)]
+pub(crate) struct Mark(u32);
+
 impl<'t> Parser<'t> {
     pub(crate) fn new(text: &'t str, raw_tokens: &'t [Token]) -> Parser<'t> {
         let mut tokens = Vec::new();
@@ -44,6 +47,21 @@ impl<'t> Parser<'t> {
             events: Vec::new(),
             curly_level: 0,
             curly_limit: None,
+        }
+    }
+
+    pub(crate) fn mark(&self) -> Mark {
+        Mark(self.events.len() as u32)
+    }
+
+    pub(crate) fn forward_parent(&mut self, child: Mark, parent: Mark) {
+        assert!(child.0 < parent.0);
+        let diff = parent.0 - child.0;
+        match self.events[child.0 as usize] {
+            Event::Start { ref mut forward_parent, .. } => {
+                *forward_parent = Some(diff);
+            }
+            _ => unreachable!()
         }
     }
 
@@ -71,7 +89,7 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn start(&mut self, kind: SyntaxKind) {
-        self.event(Event::Start { kind });
+        self.event(Event::Start { kind, forward_parent: None });
     }
 
     pub(crate) fn finish(&mut self) {

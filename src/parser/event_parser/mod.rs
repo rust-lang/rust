@@ -5,7 +5,10 @@ mod parser;
 
 #[derive(Debug)]
 pub(crate) enum Event {
-    Start { kind: SyntaxKind },
+    Start {
+        kind: SyntaxKind,
+        forward_parent: Option<u32>,
+    },
     Finish,
     Token {
         kind: SyntaxKind,

@@ -32,6 +32,7 @@ fn mod_contents_item(p: &mut Parser) {
 }
 
 fn item(p: &mut Parser) -> bool {
+    let attrs_start = p.mark();
     attributes::outer_attributes(p);
     visibility(p);
     //    node_if(p, USE_KW, USE_ITEM, use_item)
@@ -41,11 +42,17 @@ fn item(p: &mut Parser) -> bool {
     // || unsafe trait, impl
     // || node_if(p, FN_KW, FN_ITEM, fn_item)
     // || node_if(p, TYPE_KW, TYPE_ITEM, type_item)
-    node_if(p, [EXTERN_KW, CRATE_KW], EXTERN_CRATE_ITEM, extern_crate_item)
+    let item_start = p.mark();
+    let item_parsed = node_if(p, [EXTERN_KW, CRATE_KW], EXTERN_CRATE_ITEM, extern_crate_item)
         || node_if(p, MOD_KW, MOD_ITEM, mod_item)
         || node_if(p, USE_KW, USE_ITEM, use_item)
         || node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item)
-        || node_if(p, FN_KW, FN_ITEM, fn_item)
+        || node_if(p, FN_KW, FN_ITEM, fn_item);
+
+    if item_parsed && attrs_start != item_start {
+        p.forward_parent(attrs_start, item_start);
+    }
+    item_parsed
 }
 
 fn struct_item(p: &mut Parser) {
