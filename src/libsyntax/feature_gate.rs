@@ -1479,7 +1479,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::ExternCrate(_) => {
                 if let Some(attr) = attr::find_by_name(&i.attrs[..], "macro_reexport") {
                     gate_feature_post!(&self, macro_reexport, attr.span,
-                                       "macros reexports are experimental \
+                                       "macros re-exports are experimental \
                                         and possibly buggy");
                 }
             }

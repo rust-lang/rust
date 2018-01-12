@@ -2751,7 +2751,7 @@ impl<'a> Resolver<'a> {
                                 let lint = lint::builtin::LEGACY_CONSTRUCTOR_VISIBILITY;
                                 self.session.buffer_lint(lint, id, span,
                                     "private struct constructors are not usable through \
-                                     reexports in outer modules",
+                                     re-exports in outer modules",
                                 );
                                 res = Some(PathResolution::new(ctor_def));
                             }
