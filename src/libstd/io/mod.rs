@@ -297,7 +297,7 @@ pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
 pub use self::stdio::{_print, _eprint};
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
-pub use self::stdio::{set_panic, set_print};
+pub use self::stdio::{set_panic, set_print, set_eprint};
 
 pub mod prelude;
 mod buffered;

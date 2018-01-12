@@ -26,6 +26,13 @@ thread_local! {
     }
 }
 
+/// Stderr used by eprint! and eprintln! macros
+thread_local! {
+    static LOCAL_STDERR: RefCell<Option<Box<Write + Send>>> = {
+        RefCell::new(None)
+    }
+}
+
 /// A handle to a raw instance of the standard input stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
@@ -658,6 +665,29 @@ pub fn set_print(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
     })
 }
 
+/// Resets the thread-local stderr handle to the specified writer
+///
+/// This will replace the current thread's stderr handle, returning the old
+/// handle. All future calls to `eprint!` and friends will emit their output to
+/// this specified handle.
+///
+/// Note that this does not need to be called for all new threads; the default
+/// output handle is to the process's stderr stream.
+#[unstable(feature = "set_stdio",
+           reason = "this function may disappear completely or be replaced \
+                     with a more general mechanism",
+           issue = "0")]
+#[doc(hidden)]
+pub fn set_eprint(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
+    use mem;
+    LOCAL_STDERR.with(move |slot| {
+        mem::replace(&mut *slot.borrow_mut(), sink)
+    }).and_then(|mut s| {
+        let _ = s.flush();
+        Some(s)
+    })
+}
+
 /// Write `args` to output stream `local_s` if possible, `global_s`
 /// otherwise. `label` identifies the stream in a panic message.
 ///
@@ -704,7 +734,6 @@ pub fn _print(args: fmt::Arguments) {
            issue = "0")]
 #[doc(hidden)]
 pub fn _eprint(args: fmt::Arguments) {
-    use panicking::LOCAL_STDERR;
     print_to(args, &LOCAL_STDERR, stderr, "stderr");
 }
 

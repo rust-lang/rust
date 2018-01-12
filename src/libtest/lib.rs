@@ -1383,6 +1383,7 @@ pub fn run_test(opts: &TestOpts,
             let oldio = if !nocapture {
                 Some((
                     io::set_print(Some(Box::new(Sink(data2.clone())))),
+                    io::set_eprint(Some(Box::new(Sink(data2.clone())))),
                     io::set_panic(Some(Box::new(Sink(data2))))
                 ))
             } else {
@@ -1391,8 +1392,9 @@ pub fn run_test(opts: &TestOpts,
 
             let result = catch_unwind(AssertUnwindSafe(testfn));
 
-            if let Some((printio, panicio)) = oldio {
+            if let Some((printio, eprintio, panicio)) = oldio {
                 io::set_print(printio);
+                io::set_eprint(eprintio);
                 io::set_panic(panicio);
             };
 
