@@ -126,7 +126,7 @@ matrix:
       if: branch = auto
     - env: IMAGE=dist-armv7-linux DEPLOY=1
       if: branch = auto
-    - env: IMAGE=dist-i586-gnu-i686-musl DEPLOY=1
+    - env: IMAGE=dist-i586-gnu-i586-i686-musl DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-i686-freebsd DEPLOY=1
       if: branch = auto

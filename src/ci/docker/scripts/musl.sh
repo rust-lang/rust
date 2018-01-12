@@ -30,7 +30,7 @@ exit 1
 TAG=$1
 shift
 
-MUSL=musl-1.1.17
+MUSL=musl-1.1.18
 
 # may have been downloaded in a previous run
 if [ ! -d $MUSL ]; then
@@ -39,7 +39,7 @@ fi
 
 cd $MUSL
 ./configure --disable-shared --prefix=/musl-$TAG $@
-if [ "$TAG" = "i686" ]; then
+if [ "$TAG" = "i586" -o "$TAG" = "i686" ]; then
   hide_output make -j$(nproc) AR=ar RANLIB=ranlib
 else
   hide_output make -j$(nproc)
