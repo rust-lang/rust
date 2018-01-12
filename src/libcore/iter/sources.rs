@@ -40,7 +40,7 @@ impl<A: Clone> Iterator for Repeat<A> {
     fn nth(&mut self, _: usize) -> Option<A> { self.next() }
 
     #[inline]
-    fn all<F>(&mut self, f: F) -> bool where F: FnMut(A) -> bool { self.any(f) }
+    fn all<F>(&mut self, mut f: F) -> bool where F: FnMut(A) -> bool { f(self.element.clone()) }
 
     #[inline]
     fn max(mut self) -> Option<A> { self.next() }

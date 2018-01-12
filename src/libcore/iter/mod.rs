@@ -645,7 +645,9 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
     }
 
     #[inline]
-    fn all<F>(&mut self, f: F) -> bool where F: FnMut(Self::Item) -> bool { self.orig.clone().all(f) }
+    fn all<F>(&mut self, f: F) -> bool where F: FnMut(Self::Item) -> bool {
+        self.iter.clone().chain(self.orig.clone()).all(f)
+    }
 
     #[inline]
     fn max(self) -> Option<Self::Item> where Self::Item: cmp::Ord { self.orig.clone().max() }
