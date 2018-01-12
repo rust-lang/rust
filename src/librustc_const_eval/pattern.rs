@@ -92,7 +92,9 @@ pub enum PatternKind<'tcx> {
         end: RangeEnd,
     },
 
-    /// matches against a slice, checking the length and extracting elements
+    /// matches against a slice, checking the length and extracting elements.
+    /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
+    /// e.g. `&[ref xs..]`.
     Slice {
         prefix: Vec<Pattern<'tcx>>,
         slice: Option<Pattern<'tcx>>,
