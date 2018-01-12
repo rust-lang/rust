@@ -2333,12 +2333,6 @@ mod tests {
     use x86::*;
 	use v128::*;
 
-    // not actually an intrinsics in SSE2 but useful in the tests below
-    #[target_feature = "+sse2"]
-    unsafe fn _mm_setr_epi64x(a: i64, b: i64) -> __m128i {
-        _mm_set_epi64x(b, a)
-    }
-
     #[simd_test = "sse2"]
     unsafe fn test_mm_pause() {
         _mm_pause();
