@@ -302,7 +302,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cmp;
+use cmp::{self, Ordering};
 use fmt;
 use iter_private::TrustedRandomAccess;
 use ops::Try;
@@ -642,6 +642,41 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
             (0, _) => (0, None),
             _ => (usize::MAX, None)
         }
+    }
+
+    #[inline]
+    fn all<F>(&mut self, f: F) -> bool where F: FnMut(Self::Item) -> bool { self.orig.clone().all(f) }
+
+    #[inline]
+    fn max(self) -> Option<Self::Item> where Self::Item: cmp::Ord { self.orig.clone().max() }
+
+    #[inline]
+    fn min(self) -> Option<Self::Item> where Self::Item: cmp::Ord {
+        cmp::min(self.iter.min(), self.orig.clone().min())
+    }
+
+    #[inline]
+    fn max_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
+            where F: FnMut(&Self::Item) -> B {
+        self.orig.clone().max_by_key(f)
+    }
+
+    #[inline]
+    fn max_by<F>(self, f: F) -> Option<Self::Item>
+            where F: FnMut(&Self::Item, &Self::Item) -> Ordering {
+        self.orig.clone().max_by(f)
+    }
+
+    #[inline]
+    fn min_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
+            where F: FnMut(&Self::Item) -> B {
+        self.iter.chain(self.orig.clone()).min_by_key(f)
+    }
+
+    #[inline]
+    fn min_by<F>(self, f: F) -> Option<Self::Item>
+            where F: FnMut(&Self::Item, &Self::Item) -> Ordering {
+        self.iter.chain(self.orig.clone()).min_by(f)
     }
 }
 
