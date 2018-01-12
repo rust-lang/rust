@@ -889,10 +889,11 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     let dep_graph = match future_dep_graph {
         None => DepGraph::new_disabled(),
         Some(future) => {
-            let prev_graph = future
-                .open()
-                .expect("Could not join with background dep_graph thread")
-                .open(sess);
+            let prev_graph = time(time_passes, "blocked while dep-graph loading finishes", || {
+                future.open()
+                      .expect("Could not join with background dep_graph thread")
+                      .open(sess)
+            });
             DepGraph::new(prev_graph)
         }
     };
