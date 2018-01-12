@@ -46,8 +46,8 @@ pub enum ImportDirectiveSubclass<'a> {
     },
     GlobImport {
         is_prelude: bool,
-        max_vis: Cell<ty::Visibility>, // The visibility of the greatest reexport.
-        // n.b. `max_vis` is only used in `finalize_import` to check for reexport errors.
+        max_vis: Cell<ty::Visibility>, // The visibility of the greatest re-export.
+        // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
     },
     ExternCrate(Option<Name>),
     MacroUse,
@@ -877,7 +877,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.record_def(directive.id, PathResolution::new(module.def().unwrap()));
     }
 
-    // Miscellaneous post-processing, including recording reexports,
+    // Miscellaneous post-processing, including recording re-exports,
     // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(&mut self, module: Module<'b>) {
         // Since import resolution is finished, globs will not define any more names.

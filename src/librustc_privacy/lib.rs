@@ -219,7 +219,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemExternCrate(..) => {}
             // All nested items are checked by visit_item
             hir::ItemMod(..) => {}
-            // Reexports are handled in visit_mod
+            // Re-exports are handled in visit_mod
             hir::ItemUse(..) => {}
             // The interface is empty
             hir::ItemGlobalAsm(..) => {}
@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
-            // contents of a private mod can be reexported, so we need
+            // contents of a private mod can be re-exported, so we need
             // to check internals.
             hir::ItemMod(_) => {}
 

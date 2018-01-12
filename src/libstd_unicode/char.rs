@@ -33,7 +33,7 @@ use core::iter::FusedIterator;
 use core::fmt::{self, Write};
 use tables::{conversions, derived_property, general_category, property};
 
-// stable reexports
+// stable re-exports
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -41,7 +41,7 @@ pub use core::char::{EscapeDebug, EscapeDefault, EscapeUnicode};
 #[stable(feature = "char_from_str", since = "1.20.0")]
 pub use core::char::ParseCharError;
 
-// unstable reexports
+// unstable re-exports
 #[unstable(feature = "try_from", issue = "33417")]
 pub use core::char::CharTryFromError;
 #[unstable(feature = "decode_utf8", issue = "33906")]

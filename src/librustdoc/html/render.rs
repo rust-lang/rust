@@ -1286,9 +1286,9 @@ impl DocFolder for Cache {
             clean::ConstantItem(..) | clean::StaticItem(..) |
             clean::UnionItem(..) | clean::ForeignTypeItem
             if !self.stripped_mod => {
-                // Reexported items mean that the same id can show up twice
+                // Re-exported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
-                // however, that a reexported item doesn't show up in the
+                // however, that a re-exported item doesn't show up in the
                 // `public_items` map, so we can skip inserting into the
                 // paths map if there was already an entry present and we're
                 // not a public item.
@@ -1545,7 +1545,7 @@ impl Context {
     {
         // Stripped modules survive the rustdoc passes (i.e. `strip-private`)
         // if they contain impls for public types. These modules can also
-        // contain items such as publicly reexported structures.
+        // contain items such as publicly re-exported structures.
         //
         // External crates will provide links to these structures, so
         // these modules are recursed into, but not rendered normally
@@ -2008,7 +2008,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     if cx.shared.sort_modules_alphabetically {
         indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
     }
-    // This call is to remove reexport duplicates in cases such as:
+    // This call is to remove re-export duplicates in cases such as:
     //
     // ```
     // pub mod foo {

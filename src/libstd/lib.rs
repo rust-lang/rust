@@ -351,9 +351,9 @@ use prelude::v1::*;
 #[cfg(test)] extern crate test;
 #[cfg(test)] extern crate rand;
 
-// We want to reexport a few macros from core but libcore has already been
+// We want to re-export a few macros from core but libcore has already been
 // imported by the compiler (via our #[no_std] attribute) In this case we just
-// add a new crate name so we can attach the reexports to it.
+// add a new crate name so we can attach the re-exports to it.
 #[macro_reexport(assert, assert_eq, assert_ne, debug_assert, debug_assert_eq,
                  debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
 extern crate core as __core;
@@ -390,7 +390,7 @@ mod macros;
 // The Rust prelude
 pub mod prelude;
 
-// Public module declarations and reexports
+// Public module declarations and re-exports
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -155,7 +155,7 @@ declare_features! (
     // OIBIT specific features
     (active, optin_builtin_traits, "1.0.0", Some(13231)),
 
-    // macro reexport needs more discussion and stabilization
+    // macro re-export needs more discussion and stabilization
     (active, macro_reexport, "1.0.0", Some(29638)),
 
     // Allows use of #[staged_api]

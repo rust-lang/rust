@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that macro reexports item are gated by `macro_reexport` feature gate.
+// Test that macro re-exports item are gated by `macro_reexport` feature gate.
 
 // aux-build:macro_reexport_1.rs
 // gate-test-macro_reexport
