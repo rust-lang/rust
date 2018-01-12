@@ -427,6 +427,7 @@ fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocJS {
     pub host: Interned<String>,
+    pub target: Interned<String>,
 }
 
 impl Step for RustdocJS {
@@ -435,12 +436,13 @@ impl Step for RustdocJS {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/tests/rustdoc-js")
+        run.path("src/test/rustdoc-js")
     }
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(RustdocJS {
             host: run.host,
+            target: run.target,
         });
     }
 
@@ -448,6 +450,10 @@ impl Step for RustdocJS {
         let nodejs = builder.config.nodejs.clone();
         let mut command = Command::new(&nodejs.expect("no nodejs found"));
         command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
+        builder.ensure(::doc::Std {
+            target: self.target,
+            stage: builder.top_stage,
+        });
         builder.run(&mut command);
     }
 }
