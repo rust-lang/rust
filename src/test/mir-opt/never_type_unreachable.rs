@@ -37,6 +37,13 @@ fn never_match(x: Result<(), !>) {
     }
 }
 
+fn never_match_disj_patterns() {
+    let x: Option<!> = None;
+    match x {
+        Some(_) | None => {}
+    }
+}
+
 pub fn main() { }
 
 // END RUST SOURCE
@@ -82,3 +89,20 @@ pub fn main() { }
 //     }
 // }
 // END rustc.never_match.SimplifyCfg-initial.after.mir
+
+// START rustc.never_match_disj_patterns.SimplifyCfg-initial.after.mir
+// fn never_match_disj_patterns() -> () {
+//     ...
+//     bb0: {
+//         ...
+//     }
+//     bb1: {
+//         unreachable;
+//     }
+//     bb2: {
+//         _0 = ();
+//         StorageDead(_1);
+//         return;
+//     }
+// }
+// END rustc.never_match_disj_patterns.SimplifyCfg-initial.after.mir
