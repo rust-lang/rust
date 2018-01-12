@@ -188,6 +188,33 @@ impl SyntaxContext {
 
     /// Extend a syntax context with a given mark
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
+        if mark.kind() == MarkKind::Modern {
+            return self.apply_mark_internal(mark);
+        }
+
+        let call_site_ctxt =
+            mark.expn_info().map_or(SyntaxContext::empty(), |info| info.call_site.ctxt()).modern();
+        if call_site_ctxt == SyntaxContext::empty() {
+            return self.apply_mark_internal(mark);
+        }
+
+        // Otherwise, `mark` is a macros 1.0 definition and the call site is in a
+        // macros 2.0 expansion, i.e. a macros 1.0 invocation is in a macros 2.0 definition.
+        //
+        // In this case, the tokens from the macros 1.0 definition inherit the hygiene
+        // at their invocation. That is, we pretend that the macros 1.0 definition
+        // was defined at its invocation (i.e. inside the macros 2.0 definition)
+        // so that the macros 2.0 definition remains hygienic.
+        //
+        // See the example at `test/run-pass/hygiene/legacy_interaction.rs`.
+        let mut ctxt = call_site_ctxt;
+        for mark in self.marks() {
+            ctxt = ctxt.apply_mark_internal(mark);
+        }
+        ctxt.apply_mark_internal(mark)
+    }
+
+    fn apply_mark_internal(self, mark: Mark) -> SyntaxContext {
         HygieneData::with(|data| {
             let syntax_contexts = &mut data.syntax_contexts;
             let mut modern = syntax_contexts[self.0 as usize].modern;
@@ -219,6 +246,18 @@ impl SyntaxContext {
             let outer_mark = data.syntax_contexts[self.0 as usize].outer_mark;
             *self = data.syntax_contexts[self.0 as usize].prev_ctxt;
             outer_mark
+        })
+    }
+
+    pub fn marks(mut self) -> Vec<Mark> {
+        HygieneData::with(|data| {
+            let mut marks = Vec::new();
+            while self != SyntaxContext::empty() {
+                marks.push(data.syntax_contexts[self.0 as usize].outer_mark);
+                self = data.syntax_contexts[self.0 as usize].prev_ctxt;
+            }
+            marks.reverse();
+            marks
         })
     }
 

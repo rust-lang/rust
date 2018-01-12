@@ -623,7 +623,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                          "crate root imports need to be explicitly named: \
                                           `use crate as name;`".to_string()));
                         } else {
-                            Some(self.resolve_crate_root(source.ctxt.modern()))
+                            Some(self.resolve_crate_root(source.ctxt.modern(), false))
                         }
                     } else if is_extern && !token::Ident(source).is_path_segment_keyword() {
                         let crate_id =
