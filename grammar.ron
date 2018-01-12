@@ -12,6 +12,9 @@ Grammar(
         "extern",
         "crate",
         "mod",
+        "pub",
+        "self",
+        "super",
     ],
     tokens: [
         "ERROR",
@@ -80,5 +83,6 @@ Grammar(
         "PATH_SEGMENT",
         "LITERAL",
         "ALIAS",
+        "VISIBILITY",
     ]
 )

@@ -15,7 +15,25 @@ pub(crate) fn file(p: &mut Parser) {
     })
 }
 
-fn visibility(_: &mut Parser) {
+fn visibility(p: &mut Parser) {
+    node_if(p, PUB_KW, VISIBILITY, |p| {
+        if p.current() != L_PAREN {
+            return
+        }
+        match p.raw_lookahead(1) {
+            CRATE_KW | SELF_KW | SUPER_KW => {
+                p.bump();
+                p.bump();
+            }
+            IN_KW => {
+                p.bump();
+                p.bump();
+                paths::use_path(p);
+            }
+            _ => return
+        }
+        p.expect(R_PAREN);
+    });
 }
 
 fn alias(p: &mut Parser) -> bool {

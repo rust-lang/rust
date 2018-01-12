@@ -12,7 +12,7 @@ pub(super) fn mod_contents(p: &mut Parser) {
 
 fn item_first(p: &Parser) -> bool {
     match p.current() {
-        STRUCT_KW | FN_KW | EXTERN_KW | MOD_KW | USE_KW | POUND => true,
+        STRUCT_KW | FN_KW | EXTERN_KW | MOD_KW | USE_KW | POUND | PUB_KW => true,
         _ => false,
     }
 }
