@@ -1106,6 +1106,20 @@ enum AbsurdComparisonResult {
 }
 
 
+fn is_cast_between_fixed_and_target<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx Expr
+) -> bool {
+
+    if let ExprCast(ref cast_exp, _) = expr.node {
+        let precast_ty = cx.tables.expr_ty(cast_exp);
+        let cast_ty = cx.tables.expr_ty(expr);
+
+        return is_isize_or_usize(precast_ty) != is_isize_or_usize(cast_ty)
+    }
+
+    return false;
+}
 
 fn detect_absurd_comparison<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
@@ -1120,6 +1134,11 @@ fn detect_absurd_comparison<'a, 'tcx>(
     // absurd comparison only makes sense on primitive types
     // primitive types don't implement comparison operators with each other
     if cx.tables.expr_ty(lhs) != cx.tables.expr_ty(rhs) {
+        return None;
+    }
+
+    // comparisons between fix sized types and target sized types are considered unanalyzable
+    if is_cast_between_fixed_and_target(cx, lhs) || is_cast_between_fixed_and_target(cx, rhs) {
         return None;
     }
 
