@@ -1,18 +1,21 @@
 //! Supplemental Streaming SIMD Extensions 3 (SSSE3)
 
+use core::mem;
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
 use simd_llvm::simd_shuffle16;
 use v128::*;
+use x86::*;
 
 /// Compute the absolute value of packed 8-bit signed integers in `a` and
 /// return the unsigned results.
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(pabsb))]
-pub unsafe fn _mm_abs_epi8(a: i8x16) -> u8x16 {
-    pabsb128(a)
+pub unsafe fn _mm_abs_epi8(a: __m128i) -> __m128i {
+    mem::transmute(pabsb128(a.as_i8x16()))
 }
 
 /// Compute the absolute value of each of the packed 16-bit signed integers in
@@ -21,8 +24,8 @@ pub unsafe fn _mm_abs_epi8(a: i8x16) -> u8x16 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(pabsw))]
-pub unsafe fn _mm_abs_epi16(a: i16x8) -> u16x8 {
-    pabsw128(a)
+pub unsafe fn _mm_abs_epi16(a: __m128i) -> __m128i {
+    mem::transmute(pabsw128(a.as_i16x8()))
 }
 
 /// Compute the absolute value of each of the packed 32-bit signed integers in
@@ -31,8 +34,8 @@ pub unsafe fn _mm_abs_epi16(a: i16x8) -> u16x8 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(pabsd))]
-pub unsafe fn _mm_abs_epi32(a: i32x4) -> u32x4 {
-    pabsd128(a)
+pub unsafe fn _mm_abs_epi32(a: __m128i) -> __m128i {
+    mem::transmute(pabsd128(a.as_i32x4()))
 }
 
 /// Shuffle bytes from `a` according to the content of `b`.
@@ -62,8 +65,8 @@ pub unsafe fn _mm_abs_epi32(a: i32x4) -> u32x4 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(pshufb))]
-pub unsafe fn _mm_shuffle_epi8(a: u8x16, b: u8x16) -> u8x16 {
-    pshufb128(a, b)
+pub unsafe fn _mm_shuffle_epi8(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(pshufb128(a.as_u8x16(), b.as_u8x16()))
 }
 
 /// Concatenate 16-byte blocks in `a` and `b` into a 32-byte temporary result,
@@ -71,20 +74,22 @@ pub unsafe fn _mm_shuffle_epi8(a: u8x16, b: u8x16) -> u8x16 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(palignr, n = 15))]
-pub unsafe fn _mm_alignr_epi8(a: i8x16, b: i8x16, n: i32) -> i8x16 {
+pub unsafe fn _mm_alignr_epi8(a: __m128i, b: __m128i, n: i32) -> __m128i {
     let n = n as u32;
     // If palignr is shifting the pair of vectors more than the size of two
     // lanes, emit zero.
     if n > 32 {
-        return i8x16::splat(0);
+        return _mm_set1_epi8(0);
     }
     // If palignr is shifting the pair of input vectors more than one lane,
     // but less than two lanes, convert to shifting in zeroes.
     let (a, b, n) = if n > 16 {
-        (i8x16::splat(0), a, n - 16)
+        (_mm_set1_epi8(0), a, n - 16)
     } else {
         (a, b, n)
     };
+    let a = a.as_i8x16();
+    let b = b.as_i8x16();
 
     macro_rules! shuffle {
         ($shift:expr) => {
@@ -100,7 +105,7 @@ pub unsafe fn _mm_alignr_epi8(a: i8x16, b: i8x16, n: i32) -> i8x16 {
             ])
         }
     }
-    match n {
+    let r: i8x16 = match n {
         0 => shuffle!(0),
         1 => shuffle!(1),
         2 => shuffle!(2),
@@ -118,7 +123,8 @@ pub unsafe fn _mm_alignr_epi8(a: i8x16, b: i8x16, n: i32) -> i8x16 {
         14 => shuffle!(14),
         15 => shuffle!(15),
         _ => shuffle!(16),
-    }
+    };
+    mem::transmute(r)
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
@@ -126,8 +132,8 @@ pub unsafe fn _mm_alignr_epi8(a: i8x16, b: i8x16, n: i32) -> i8x16 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(phaddw))]
-pub unsafe fn _mm_hadd_epi16(a: i16x8, b: i16x8) -> i16x8 {
-    phaddw128(a, b)
+pub unsafe fn _mm_hadd_epi16(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(phaddw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
@@ -136,8 +142,8 @@ pub unsafe fn _mm_hadd_epi16(a: i16x8, b: i16x8) -> i16x8 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(phaddsw))]
-pub unsafe fn _mm_hadds_epi16(a: i16x8, b: i16x8) -> i16x8 {
-    phaddsw128(a, b)
+pub unsafe fn _mm_hadds_epi16(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(phaddsw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
@@ -145,8 +151,8 @@ pub unsafe fn _mm_hadds_epi16(a: i16x8, b: i16x8) -> i16x8 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(phaddd))]
-pub unsafe fn _mm_hadd_epi32(a: i32x4, b: i32x4) -> i32x4 {
-    phaddd128(a, b)
+pub unsafe fn _mm_hadd_epi32(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(phaddd128(a.as_i32x4(), b.as_i32x4()))
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
@@ -154,8 +160,8 @@ pub unsafe fn _mm_hadd_epi32(a: i32x4, b: i32x4) -> i32x4 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(phsubw))]
-pub unsafe fn _mm_hsub_epi16(a: i16x8, b: i16x8) -> i16x8 {
-    phsubw128(a, b)
+pub unsafe fn _mm_hsub_epi16(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(phsubw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
@@ -165,8 +171,8 @@ pub unsafe fn _mm_hsub_epi16(a: i16x8, b: i16x8) -> i16x8 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(phsubsw))]
-pub unsafe fn _mm_hsubs_epi16(a: i16x8, b: i16x8) -> i16x8 {
-    phsubsw128(a, b)
+pub unsafe fn _mm_hsubs_epi16(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(phsubsw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
@@ -174,8 +180,8 @@ pub unsafe fn _mm_hsubs_epi16(a: i16x8, b: i16x8) -> i16x8 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(phsubd))]
-pub unsafe fn _mm_hsub_epi32(a: i32x4, b: i32x4) -> i32x4 {
-    phsubd128(a, b)
+pub unsafe fn _mm_hsub_epi32(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(phsubd128(a.as_i32x4(), b.as_i32x4()))
 }
 
 /// Multiply corresponding pairs of packed 8-bit unsigned integer
@@ -186,8 +192,8 @@ pub unsafe fn _mm_hsub_epi32(a: i32x4, b: i32x4) -> i32x4 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(pmaddubsw))]
-pub unsafe fn _mm_maddubs_epi16(a: u8x16, b: i8x16) -> i16x8 {
-    pmaddubsw128(a, b)
+pub unsafe fn _mm_maddubs_epi16(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(pmaddubsw128(a.as_u8x16(), b.as_i8x16()))
 }
 
 /// Multiply packed 16-bit signed integer values, truncate the 32-bit
@@ -196,8 +202,8 @@ pub unsafe fn _mm_maddubs_epi16(a: u8x16, b: i8x16) -> i16x8 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(pmulhrsw))]
-pub unsafe fn _mm_mulhrs_epi16(a: i16x8, b: i16x8) -> i16x8 {
-    pmulhrsw128(a, b)
+pub unsafe fn _mm_mulhrs_epi16(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(pmulhrsw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Negate packed 8-bit integers in `a` when the corresponding signed 8-bit
@@ -207,8 +213,8 @@ pub unsafe fn _mm_mulhrs_epi16(a: i16x8, b: i16x8) -> i16x8 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(psignb))]
-pub unsafe fn _mm_sign_epi8(a: i8x16, b: i8x16) -> i8x16 {
-    psignb128(a, b)
+pub unsafe fn _mm_sign_epi8(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(psignb128(a.as_i8x16(), b.as_i8x16()))
 }
 
 /// Negate packed 16-bit integers in `a` when the corresponding signed 16-bit
@@ -218,8 +224,8 @@ pub unsafe fn _mm_sign_epi8(a: i8x16, b: i8x16) -> i8x16 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(psignw))]
-pub unsafe fn _mm_sign_epi16(a: i16x8, b: i16x8) -> i16x8 {
-    psignw128(a, b)
+pub unsafe fn _mm_sign_epi16(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(psignw128(a.as_i16x8(), b.as_i16x8()))
 }
 
 /// Negate packed 32-bit integers in `a` when the corresponding signed 32-bit
@@ -229,8 +235,8 @@ pub unsafe fn _mm_sign_epi16(a: i16x8, b: i16x8) -> i16x8 {
 #[inline(always)]
 #[target_feature = "+ssse3"]
 #[cfg_attr(test, assert_instr(psignd))]
-pub unsafe fn _mm_sign_epi32(a: i32x4, b: i32x4) -> i32x4 {
-    psignd128(a, b)
+pub unsafe fn _mm_sign_epi32(a: __m128i, b: __m128i) -> __m128i {
+    mem::transmute(psignd128(a.as_i32x4(), b.as_i32x4()))
 }
 
 #[allow(improper_ctypes)]
@@ -285,175 +291,174 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use v128::*;
-    use x86::i586::ssse3;
+    use x86::*;
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_abs_epi8() {
-        let r = ssse3::_mm_abs_epi8(i8x16::splat(-5));
-        assert_eq!(r, u8x16::splat(5));
+    unsafe fn test_mm_abs_epi8() {
+        let r = _mm_abs_epi8(_mm_set1_epi8(-5));
+        assert_eq!(r, _mm_set1_epi8(5));
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_abs_epi16() {
-        let r = ssse3::_mm_abs_epi16(i16x8::splat(-5));
-        assert_eq!(r, u16x8::splat(5));
+    unsafe fn test_mm_abs_epi16() {
+        let r = _mm_abs_epi16(_mm_set1_epi16(-5));
+        assert_eq!(r, _mm_set1_epi16(5));
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_abs_epi32() {
-        let r = ssse3::_mm_abs_epi32(i32x4::splat(-5));
-        assert_eq!(r, u32x4::splat(5));
+    unsafe fn test_mm_abs_epi32() {
+        let r = _mm_abs_epi32(_mm_set1_epi32(-5));
+        assert_eq!(r, _mm_set1_epi32(5));
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_shuffle_epi8() {
+    unsafe fn test_mm_shuffle_epi8() {
         let a =
-            u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+            _mm_setr_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let b =
-            u8x16::new(4, 128, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+            _mm_setr_epi8(4, 128u8 as i8, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
         let expected =
-            u8x16::new(5, 0, 5, 4, 9, 13, 7, 4, 13, 6, 6, 11, 5, 2, 9, 1);
-        let r = ssse3::_mm_shuffle_epi8(a, b);
+            _mm_setr_epi8(5, 0, 5, 4, 9, 13, 7, 4, 13, 6, 6, 11, 5, 2, 9, 1);
+        let r = _mm_shuffle_epi8(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_alignr_epi8() {
+    unsafe fn test_mm_alignr_epi8() {
         let a =
-            i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+            _mm_setr_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let b =
-            i8x16::new(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
-        let r = ssse3::_mm_alignr_epi8(a, b, 33);
-        assert_eq!(r, i8x16::splat(0));
+            _mm_setr_epi8(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+        let r = _mm_alignr_epi8(a, b, 33);
+        assert_eq!(r, _mm_set1_epi8(0));
 
-        let r = ssse3::_mm_alignr_epi8(a, b, 17);
+        let r = _mm_alignr_epi8(a, b, 17);
         let expected =
-            i8x16::new(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0);
+            _mm_setr_epi8(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0);
         assert_eq!(r, expected);
 
-        let r = ssse3::_mm_alignr_epi8(a, b, 16);
+        let r = _mm_alignr_epi8(a, b, 16);
         assert_eq!(r, a);
 
-        let r = ssse3::_mm_alignr_epi8(a, b, 15);
+        let r = _mm_alignr_epi8(a, b, 15);
         let expected =
-            i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+            _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         assert_eq!(r, expected);
 
-        let r = ssse3::_mm_alignr_epi8(a, b, 0);
+        let r = _mm_alignr_epi8(a, b, 0);
         assert_eq!(r, b);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hadd_epi16() {
-        let a = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let b = i16x8::new(4, 128, 4, 3, 24, 12, 6, 19);
-        let expected = i16x8::new(3, 7, 11, 15, 132, 7, 36, 25);
-        let r = ssse3::_mm_hadd_epi16(a, b);
+    unsafe fn test_mm_hadd_epi16() {
+        let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm_setr_epi16(4, 128, 4, 3, 24, 12, 6, 19);
+        let expected = _mm_setr_epi16(3, 7, 11, 15, 132, 7, 36, 25);
+        let r = _mm_hadd_epi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hadds_epi16() {
-        let a = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let b = i16x8::new(4, 128, 4, 3, 32767, 1, -32768, -1);
-        let expected = i16x8::new(3, 7, 11, 15, 132, 7, 32767, -32768);
-        let r = ssse3::_mm_hadds_epi16(a, b);
+    unsafe fn test_mm_hadds_epi16() {
+        let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm_setr_epi16(4, 128, 4, 3, 32767, 1, -32768, -1);
+        let expected = _mm_setr_epi16(3, 7, 11, 15, 132, 7, 32767, -32768);
+        let r = _mm_hadds_epi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hadd_epi32() {
-        let a = i32x4::new(1, 2, 3, 4);
-        let b = i32x4::new(4, 128, 4, 3);
-        let expected = i32x4::new(3, 7, 132, 7);
-        let r = ssse3::_mm_hadd_epi32(a, b);
+    unsafe fn test_mm_hadd_epi32() {
+        let a = _mm_setr_epi32(1, 2, 3, 4);
+        let b = _mm_setr_epi32(4, 128, 4, 3);
+        let expected = _mm_setr_epi32(3, 7, 132, 7);
+        let r = _mm_hadd_epi32(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hsub_epi16() {
-        let a = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let b = i16x8::new(4, 128, 4, 3, 24, 12, 6, 19);
-        let expected = i16x8::new(-1, -1, -1, -1, -124, 1, 12, -13);
-        let r = ssse3::_mm_hsub_epi16(a, b);
+    unsafe fn test_mm_hsub_epi16() {
+        let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm_setr_epi16(4, 128, 4, 3, 24, 12, 6, 19);
+        let expected = _mm_setr_epi16(-1, -1, -1, -1, -124, 1, 12, -13);
+        let r = _mm_hsub_epi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hsubs_epi16() {
-        let a = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let b = i16x8::new(4, 128, 4, 3, 32767, -1, -32768, 1);
-        let expected = i16x8::new(-1, -1, -1, -1, -124, 1, 32767, -32768);
-        let r = ssse3::_mm_hsubs_epi16(a, b);
+    unsafe fn test_mm_hsubs_epi16() {
+        let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm_setr_epi16(4, 128, 4, 3, 32767, -1, -32768, 1);
+        let expected = _mm_setr_epi16(-1, -1, -1, -1, -124, 1, 32767, -32768);
+        let r = _mm_hsubs_epi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hsub_epi32() {
-        let a = i32x4::new(1, 2, 3, 4);
-        let b = i32x4::new(4, 128, 4, 3);
-        let expected = i32x4::new(-1, -1, -124, 1);
-        let r = ssse3::_mm_hsub_epi32(a, b);
+    unsafe fn test_mm_hsub_epi32() {
+        let a = _mm_setr_epi32(1, 2, 3, 4);
+        let b = _mm_setr_epi32(4, 128, 4, 3);
+        let expected = _mm_setr_epi32(-1, -1, -124, 1);
+        let r = _mm_hsub_epi32(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_maddubs_epi16() {
+    unsafe fn test_mm_maddubs_epi16() {
         let a =
-            u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+            _mm_setr_epi8(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let b =
-            i8x16::new(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
-        let expected = i16x8::new(130, 24, 192, 194, 158, 175, 66, 120);
-        let r = ssse3::_mm_maddubs_epi16(a, b);
+            _mm_setr_epi8(4, 63, 4, 3, 24, 12, 6, 19, 12, 5, 5, 10, 4, 1, 8, 0);
+        let expected = _mm_setr_epi16(130, 24, 192, 194, 158, 175, 66, 120);
+        let r = _mm_maddubs_epi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_mulhrs_epi16() {
-        let a = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let b = i16x8::new(4, 128, 4, 3, 32767, -1, -32768, 1);
-        let expected = i16x8::new(0, 0, 0, 0, 5, 0, -7, 0);
-        let r = ssse3::_mm_mulhrs_epi16(a, b);
+    unsafe fn test_mm_mulhrs_epi16() {
+        let a = _mm_setr_epi16(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm_setr_epi16(4, 128, 4, 3, 32767, -1, -32768, 1);
+        let expected = _mm_setr_epi16(0, 0, 0, 0, 5, 0, -7, 0);
+        let r = _mm_mulhrs_epi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_sign_epi8() {
+    unsafe fn test_mm_sign_epi8() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a = i8x16::new(
+        let a = _mm_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, -14, -15, 16,
         );
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let b = i8x16::new(
+        let b = _mm_setr_epi8(
             4, 63, -4, 3, 24, 12, -6, -19,
             12, 5, -5, 10, 4, 1, -8, 0,
         );
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let expected = i8x16::new(
+        let expected = _mm_setr_epi8(
             1, 2, -3, 4, 5, 6, -7, -8,
             9, 10, -11, 12, 13, -14, 15, 0,
         );
-        let r = ssse3::_mm_sign_epi8(a, b);
+        let r = _mm_sign_epi8(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_sign_epi16() {
-        let a = i16x8::new(1, 2, 3, 4, -5, -6, 7, 8);
-        let b = i16x8::new(4, 128, 0, 3, 1, -1, -2, 1);
-        let expected = i16x8::new(1, 2, 0, 4, -5, 6, -7, 8);
-        let r = ssse3::_mm_sign_epi16(a, b);
+    unsafe fn test_mm_sign_epi16() {
+        let a = _mm_setr_epi16(1, 2, 3, 4, -5, -6, 7, 8);
+        let b = _mm_setr_epi16(4, 128, 0, 3, 1, -1, -2, 1);
+        let expected = _mm_setr_epi16(1, 2, 0, 4, -5, 6, -7, 8);
+        let r = _mm_sign_epi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_sign_epi32() {
-        let a = i32x4::new(-1, 2, 3, 4);
-        let b = i32x4::new(1, -1, 1, 0);
-        let expected = i32x4::new(-1, -2, 3, 0);
-        let r = ssse3::_mm_sign_epi32(a, b);
+    unsafe fn test_mm_sign_epi32() {
+        let a = _mm_setr_epi32(-1, 2, 3, 4);
+        let b = _mm_setr_epi32(1, -1, 1, 0);
+        let expected = _mm_setr_epi32(-1, -2, 3, 0);
+        let r = _mm_sign_epi32(a, b);
         assert_eq!(r, expected);
     }
 }
