@@ -576,6 +576,13 @@ impl<'a> AsRef<OsStr> for Component<'a> {
     }
 }
 
+#[stable(feature = "path_component_asref", since = "1.24.0")]
+impl<'a> AsRef<Path> for Component<'a> {
+    fn as_ref(&self) -> &Path {
+        self.as_os_str().as_ref()
+    }
+}
+
 /// An iterator over the [`Component`]s of a [`Path`].
 ///
 /// This `struct` is created by the [`components`] method on [`Path`].
