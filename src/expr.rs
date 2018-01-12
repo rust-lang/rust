@@ -31,9 +31,10 @@ use shape::{Indent, Shape};
 use spanned::Spanned;
 use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
-use utils::{colon_spaces, contains_skip, extra_offset, first_line_width, inner_attributes,
-            last_line_extendable, last_line_width, mk_sp, outer_attributes, paren_overhead,
-            ptr_vec_to_ref_vec, semicolon_for_stmt, trimmed_last_line_width, wrap_str};
+use utils::{colon_spaces, contains_skip, count_newlines, extra_offset, first_line_width,
+            inner_attributes, last_line_extendable, last_line_width, mk_sp, outer_attributes,
+            paren_overhead, ptr_vec_to_ref_vec, semicolon_for_stmt, trimmed_last_line_width,
+            wrap_str};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -2053,6 +2054,26 @@ where
     // Replace the stub with the full overflowing last argument if the rewrite
     // succeeded and its first line fits with the other arguments.
     match (overflow_last, tactic, placeholder) {
+        (true, DefinitiveListTactic::Horizontal, Some(ref overflowed)) if args.len() == 1 => {
+            // When we are rewriting a nested function call, we restrict the
+            // bugdet for the inner function to avoid them being deeply nested.
+            // However, when the inner function has a prefix or a suffix
+            // (e.g. `foo() as u32`), this budget reduction may produce poorly
+            // formatted code, where a prefix or a suffix being left on its own
+            // line. Here we explicitlly check those cases.
+            if count_newlines(overflowed) == 1 {
+                let rw = args.last()
+                    .and_then(|last_arg| last_arg.rewrite(context, nested_shape));
+                let no_newline = rw.as_ref().map_or(false, |s| !s.contains('\n'));
+                if no_newline {
+                    item_vec[args.len() - 1].item = rw;
+                } else {
+                    item_vec[args.len() - 1].item = Some(overflowed.to_owned());
+                }
+            } else {
+                item_vec[args.len() - 1].item = Some(overflowed.to_owned());
+            }
+        }
         (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
             item_vec[args.len() - 1].item = placeholder;
         }
@@ -2824,7 +2845,6 @@ pub fn choose_rhs<R: Rewrite>(
 }
 
 fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str) -> bool {
-    use utils::count_newlines;
     !next_line_rhs.contains('\n') || count_newlines(orig_rhs) > count_newlines(next_line_rhs) + 1
 }
 
