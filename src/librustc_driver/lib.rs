@@ -190,63 +190,8 @@ pub mod rustc_trans {
 }
 
 fn load_backend_from_dylib(sess: &Session, backend_name: &str) -> Box<TransCrate> {
-    use std::sync::mpsc;
     use std::path::Path;
-    use syntax::symbol::Symbol;
-    use rustc::session::config::OutputFilenames;
-    use rustc::ty::TyCtxt;
-    use rustc::ty::maps::Providers;
-    use rustc::middle::cstore::MetadataLoader;
-    use rustc::dep_graph::DepGraph;
     use rustc_metadata::dynamic_lib::DynamicLibrary;
-    /// This prevents the dylib from being unloaded when there is still a TransCrate open
-    struct ExternTransCrate {
-        _lib: DynamicLibrary,
-        trans: Box<TransCrate>,
-    }
-
-    impl Drop for ExternTransCrate {
-        fn drop(&mut self) {
-            // Make sure trans gets dropped before _lib as bad things happen otherwise
-            self.trans = Box::new(::rustc_trans_utils::trans_crate::DummyTransCrate)
-        }
-    }
-
-    impl TransCrate for ExternTransCrate {
-        fn print(&self, req: PrintRequest, sess: &Session) {
-            self.trans.print(req, sess);
-        }
-        fn target_features(&self, sess: &Session) -> Vec<Symbol> {
-            self.trans.target_features((sess))
-        }
-
-        fn metadata_loader(&self) -> Box<MetadataLoader> {
-            self.trans.metadata_loader()
-        }
-        fn provide(&self, providers: &mut Providers) {
-            self.trans.provide(providers)
-        }
-        fn provide_extern(&self, providers: &mut Providers) {
-            self.trans.provide_extern(providers)
-        }
-        fn trans_crate<'a, 'tcx>(
-            &self,
-            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-            rx: mpsc::Receiver<Box<Any + Send>>
-        ) -> Box<Any> {
-            self.trans.trans_crate(tcx, rx)
-        }
-
-        fn join_trans_and_link(
-            &self,
-            trans: Box<Any>,
-            sess: &Session,
-            dep_graph: &DepGraph,
-            outputs: &OutputFilenames,
-        ) -> Result<(), CompileIncomplete> {
-            self.trans.join_trans_and_link(trans, sess, dep_graph, outputs)
-        }
-    }
 
     match DynamicLibrary::open(Some(Path::new(backend_name))) {
         Ok(lib) => {
@@ -260,10 +205,8 @@ fn load_backend_from_dylib(sess: &Session, backend_name: &str) -> Box<TransCrate
                     };
                     __rustc_codegen_backend(sess)
                 };
-                Box::new(ExternTransCrate {
-                    _lib: lib,
-                    trans
-                })
+                ::std::mem::forget(lib);
+                trans
             }
         }
         Err(err) => {
