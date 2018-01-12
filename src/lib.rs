@@ -540,6 +540,7 @@ pub fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
     let input = Input::Text(snippet.into());
     let mut config = config.clone();
     config.set().write_mode(config::WriteMode::Plain);
+    config.set().hide_parse_errors(true);
     match format_input(input, &config, Some(&mut out)) {
         // `format_input()` returns an empty string on parsing error.
         Ok(..) if out.is_empty() && !snippet.is_empty() => None,
