@@ -92,9 +92,19 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             let cfg = items.iter().find(|k| {
                 k.check_name("cfg")
             }).and_then(|a| a.meta_item_list());
-            let cfg = cfg.map(|list| {
-                list[0].meta_item().unwrap().clone()
-            });
+            let cfg = if let Some(list) = cfg {
+                if list.is_empty() {
+                    self.tcx.sess.span_err(m.span(), "`cfg()` must have an argument");
+                    return;
+                } else if let cfg @ Some(..) = list[0].meta_item() {
+                    cfg.cloned()
+                } else {
+                    self.tcx.sess.span_err(list[0].span(), "invalid argument for `cfg(..)`");
+                    return;
+                }
+            } else {
+                None
+            };
             let foreign_items = fm.items.iter()
                 .map(|it| self.tcx.hir.local_def_id(it.id))
                 .collect();
