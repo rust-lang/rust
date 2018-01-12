@@ -36,7 +36,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// and platform-native string values, and in particular allowing a Rust string
 /// to be converted into an "OS" string with no cost if possible.
 ///
-/// `OsString` is to [`OsStr`] as [`String`] is to [`&str`]: the former
+/// `OsString` is to [`&OsStr`] as [`String`] is to [`&str`]: the former
 /// in each pair are owned strings; the latter are borrowed
 /// references.
 ///
@@ -64,6 +64,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// the traits which `OsString` implements for conversions from/to native representations.
 ///
 /// [`OsStr`]: struct.OsStr.html
+/// [`&OsStr`]: struct.OsStr.html
 /// [`From`]: ../convert/trait.From.html
 /// [`String`]: ../string/struct.String.html
 /// [`&str`]: ../primitive.str.html
@@ -84,13 +85,15 @@ pub struct OsString {
 /// This type represents a borrowed reference to a string in the operating system's preferred
 /// representation.
 ///
-/// `OsStr` is to [`OsString`] as [`String`] is to [`&str`]: the former in each pair are borrowed
+/// `&OsStr` is to [`OsString`] as [`&str`] is to [`String`]: the former in each pair are borrowed
 /// references; the latter are owned strings.
 ///
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
 /// the traits which `OsStr` implements for conversions from/to native representations.
 ///
 /// [`OsString`]: struct.OsString.html
+/// [`&str`]: ../primitive.str.html
+/// [`String`]: ../string/struct.String.html
 /// [conversions]: index.html#conversions
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsStr {
