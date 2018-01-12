@@ -185,6 +185,69 @@ pub unsafe fn _mm_unpacklo_pi32(a: __m64, b: __m64) -> __m64 {
     punpckldq(a, b)
 }
 
+/// Set packed 16-bit integers in dst with the supplied values.
+#[inline(always)]
+#[target_feature = "+mmx"]
+pub unsafe fn _mm_set_pi16(e3: i16, e2: i16, e1: i16, e0: i16) -> __m64 {
+    _mm_setr_pi16(e0, e1, e2, e3)
+}
+
+/// Set packed 32-bit integers in dst with the supplied values.
+#[inline(always)]
+#[target_feature = "+mmx"]
+pub unsafe fn _mm_set_pi32(e1: i32, e0: i32) -> __m64 {
+    _mm_setr_pi32(e0, e1)
+}
+
+/// Set packed 8-bit integers in dst with the supplied values.
+#[inline(always)]
+#[target_feature = "+mmx"]
+pub unsafe fn _mm_set_pi8(e7: i8, e6: i8, e5: i8, e4: i8, e3: i8, e2: i8, e1: i8, e0: i8) -> __m64 {
+    _mm_setr_pi8(e0, e1, e2, e3, e4, e5, e6, e7)
+}
+
+/// Broadcast 16-bit integer a to all all elements of dst.
+#[inline(always)]
+#[target_feature = "+mmx"]
+pub unsafe fn _mm_set1_pi16(a: i16) -> __m64 {
+    _mm_setr_pi16(a, a, a, a)
+}
+
+/// Broadcast 32-bit integer a to all all elements of dst.
+#[inline(always)]
+#[target_feature = "+mmx"]
+pub unsafe fn _mm_set1_pi32(a: i32) -> __m64 {
+    _mm_setr_pi32(a, a)
+}
+
+/// Broadcast 8-bit integer a to all all elements of dst.
+#[inline(always)]
+#[target_feature = "+mmx"]
+pub unsafe fn _mm_set1_pi8(a: i8) -> __m64 {
+    _mm_setr_pi8(a, a, a, a, a, a, a, a)
+}
+
+/// Set packed 16-bit integers in dst with the supplied values in reverse order.
+#[inline(always)]
+#[target_feature = "+mmx"]
+pub unsafe fn _mm_setr_pi16(e0: i16, e1: i16, e2: i16, e3: i16) -> __m64 {
+    mem::transmute(i16x4::new(e0, e1, e2, e3))
+}
+
+/// Set packed 32-bit integers in dst with the supplied values in reverse order.
+#[inline(always)]
+#[target_feature = "+mmx"]
+pub unsafe fn _mm_setr_pi32(e0: i32, e1: i32) -> __m64 {
+    mem::transmute(i32x2::new(e0, e1))
+}
+
+/// Set packed 8-bit integers in dst with the supplied values in reverse order.
+#[inline(always)]
+#[target_feature = "+mmx"]
+pub unsafe fn _mm_setr_pi8(e0: i8, e1: i8, e2: i8, e3: i8, e4: i8, e5: i8, e6: i8, e7: i8) -> __m64 {
+    mem::transmute(i8x8::new(e0, e1, e2, e3, e4, e5, e6, e7))
+}
+
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.mmx.padd.b"]

@@ -9,11 +9,11 @@ use stdsimd_test::assert_instr;
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.sse41.ptestz"]
-    fn ptestz(a: i64x2, mask: i64x2) -> i32;
+    fn ptestz(a: __m128i, mask: __m128i) -> i32;
     #[link_name = "llvm.x86.sse41.ptestc"]
-    fn ptestc(a: i64x2, mask: i64x2) -> i32;
+    fn ptestc(a: __m128i, mask: __m128i) -> i32;
     #[link_name = "llvm.x86.sse41.ptestnzc"]
-    fn ptestnzc(a: i64x2, mask: i64x2) -> i32;
+    fn ptestnzc(a: __m128i, mask: __m128i) -> i32;
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -33,7 +33,7 @@ extern "C" {
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
-    ptestz(i64x2::from(a), i64x2::from(mask))
+    ptestz(a, mask)
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -53,7 +53,7 @@ pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
-    ptestc(i64x2::from(a), i64x2::from(mask))
+    ptestc(a, mask)
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are
@@ -73,7 +73,7 @@ pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
 #[target_feature = "+sse4.1"]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testnzc_si128(a: __m128i, mask: __m128i) -> i32 {
-    ptestnzc(i64x2::from(a), i64x2::from(mask))
+    ptestnzc(a, mask)
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -138,104 +138,103 @@ pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
 #[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
-    use x86::i686::sse41;
-    use v128::*;
+    use x86::*;
 
     #[simd_test = "sse4.1"]
-    unsafe fn _mm_testz_si128() {
-        let a = i8x16::splat(1);
-        let mask = i8x16::splat(0);
-        let r = sse41::_mm_testz_si128(a.into(), mask.into());
+    unsafe fn test_mm_testz_si128() {
+        let a = _mm_set1_epi8(1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_testz_si128(a, mask);
         assert_eq!(r, 1);
-        let a = i8x16::splat(0b101);
-        let mask = i8x16::splat(0b110);
-        let r = sse41::_mm_testz_si128(a.into(), mask.into());
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_testz_si128(a, mask);
         assert_eq!(r, 0);
-        let a = i8x16::splat(0b011);
-        let mask = i8x16::splat(0b100);
-        let r = sse41::_mm_testz_si128(a.into(), mask.into());
+        let a = _mm_set1_epi8(0b011);
+        let mask = _mm_set1_epi8(0b100);
+        let r = _mm_testz_si128(a, mask);
         assert_eq!(r, 1);
     }
 
     #[simd_test = "sse4.1"]
-    unsafe fn _mm_testc_si128() {
-        let a = i8x16::splat(-1);
-        let mask = i8x16::splat(0);
-        let r = sse41::_mm_testc_si128(a.into(), mask.into());
+    unsafe fn test_mm_testc_si128() {
+        let a = _mm_set1_epi8(-1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_testc_si128(a, mask);
         assert_eq!(r, 1);
-        let a = i8x16::splat(0b101);
-        let mask = i8x16::splat(0b110);
-        let r = sse41::_mm_testc_si128(a.into(), mask.into());
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_testc_si128(a, mask);
         assert_eq!(r, 0);
-        let a = i8x16::splat(0b101);
-        let mask = i8x16::splat(0b100);
-        let r = sse41::_mm_testc_si128(a.into(), mask.into());
-        assert_eq!(r, 1);
-    }
-
-    #[simd_test = "sse4.1"]
-    unsafe fn _mm_testnzc_si128() {
-        let a = i8x16::splat(0);
-        let mask = i8x16::splat(1);
-        let r = sse41::_mm_testnzc_si128(a.into(), mask.into());
-        assert_eq!(r, 0);
-        let a = i8x16::splat(-1);
-        let mask = i8x16::splat(0);
-        let r = sse41::_mm_testnzc_si128(a.into(), mask.into());
-        assert_eq!(r, 0);
-        let a = i8x16::splat(0b101);
-        let mask = i8x16::splat(0b110);
-        let r = sse41::_mm_testnzc_si128(a.into(), mask.into());
-        assert_eq!(r, 1);
-        let a = i8x16::splat(0b101);
-        let mask = i8x16::splat(0b101);
-        let r = sse41::_mm_testnzc_si128(a.into(), mask.into());
-        assert_eq!(r, 0);
-    }
-
-    #[simd_test = "sse4.1"]
-    unsafe fn _mm_test_all_zeros() {
-        let a = i8x16::splat(1);
-        let mask = i8x16::splat(0);
-        let r = sse41::_mm_test_all_zeros(a.into(), mask.into());
-        assert_eq!(r, 1);
-        let a = i8x16::splat(0b101);
-        let mask = i8x16::splat(0b110);
-        let r = sse41::_mm_test_all_zeros(a.into(), mask.into());
-        assert_eq!(r, 0);
-        let a = i8x16::splat(0b011);
-        let mask = i8x16::splat(0b100);
-        let r = sse41::_mm_test_all_zeros(a.into(), mask.into());
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b100);
+        let r = _mm_testc_si128(a, mask);
         assert_eq!(r, 1);
     }
 
     #[simd_test = "sse4.1"]
-    unsafe fn _mm_test_all_ones() {
-        let a = i8x16::splat(-1);
-        let r = sse41::_mm_test_all_ones(a.into());
+    unsafe fn test_mm_testnzc_si128() {
+        let a = _mm_set1_epi8(0);
+        let mask = _mm_set1_epi8(1);
+        let r = _mm_testnzc_si128(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(-1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_testnzc_si128(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_testnzc_si128(a, mask);
         assert_eq!(r, 1);
-        let a = i8x16::splat(0b101);
-        let r = sse41::_mm_test_all_ones(a.into());
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b101);
+        let r = _mm_testnzc_si128(a, mask);
         assert_eq!(r, 0);
     }
 
     #[simd_test = "sse4.1"]
-    unsafe fn _mm_test_mix_ones_zeros() {
-        let a = i8x16::splat(0);
-        let mask = i8x16::splat(1);
-        let r = sse41::_mm_test_mix_ones_zeros(a.into(), mask.into());
-        assert_eq!(r, 0);
-        let a = i8x16::splat(-1);
-        let mask = i8x16::splat(0);
-        let r = sse41::_mm_test_mix_ones_zeros(a.into(), mask.into());
-        assert_eq!(r, 0);
-        let a = i8x16::splat(0b101);
-        let mask = i8x16::splat(0b110);
-        let r = sse41::_mm_test_mix_ones_zeros(a.into(), mask.into());
+    unsafe fn test_mm_test_all_zeros() {
+        let a = _mm_set1_epi8(1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_test_all_zeros(a, mask);
         assert_eq!(r, 1);
-        let a = i8x16::splat(0b101);
-        let mask = i8x16::splat(0b101);
-        let r = sse41::_mm_test_mix_ones_zeros(a.into(), mask.into());
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_test_all_zeros(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(0b011);
+        let mask = _mm_set1_epi8(0b100);
+        let r = _mm_test_all_zeros(a, mask);
+        assert_eq!(r, 1);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn test_mm_test_all_ones() {
+        let a = _mm_set1_epi8(-1);
+        let r = _mm_test_all_ones(a);
+        assert_eq!(r, 1);
+        let a = _mm_set1_epi8(0b101);
+        let r = _mm_test_all_ones(a);
+        assert_eq!(r, 0);
+    }
+
+    #[simd_test = "sse4.1"]
+    unsafe fn test_mm_test_mix_ones_zeros() {
+        let a = _mm_set1_epi8(0);
+        let mask = _mm_set1_epi8(1);
+        let r = _mm_test_mix_ones_zeros(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(-1);
+        let mask = _mm_set1_epi8(0);
+        let r = _mm_test_mix_ones_zeros(a, mask);
+        assert_eq!(r, 0);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b110);
+        let r = _mm_test_mix_ones_zeros(a, mask);
+        assert_eq!(r, 1);
+        let a = _mm_set1_epi8(0b101);
+        let mask = _mm_set1_epi8(0b101);
+        let r = _mm_test_mix_ones_zeros(a, mask);
         assert_eq!(r, 0);
     }
 }
