@@ -280,7 +280,7 @@ impl<'a, 'tcx> Pattern<'tcx> {
         let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
-            span_bug!(pat.span, "encountered errors lowering pattern: {:?}", pcx.errors)
+            debug!("encountered errors lowering pattern: {:?}", pcx.errors)
         }
         debug!("Pattern::from_hir({:?}) = {:?}", pat, result);
         result
