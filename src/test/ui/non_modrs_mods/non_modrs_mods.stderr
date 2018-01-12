@@ -34,14 +34,5 @@ error: mod statements in non-mod.rs files are unstable (see issue #44660)
    = help: add #![feature(non_modrs_mods)] to the crate attributes to enable
    = help: on stable builds, rename this file to inner_foors_mod/mod.rs
 
-error: mod statements in non-mod.rs files are unstable (see issue #44660)
-  --> $DIR/some_crazy_attr_mod_dir/arbitrary_name.rs:11:9
-   |
-11 | pub mod inner_modrs_mod;
-   |         ^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(non_modrs_mods)] to the crate attributes to enable
-   = help: on stable builds, rename this file to attr_mod/mod.rs
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
