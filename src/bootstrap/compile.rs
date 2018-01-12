@@ -80,7 +80,7 @@ impl Step for Std {
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the musl startup objects.
-            if target.contains("musl") && !target.contains("mips") {
+            if target.contains("musl") {
                 let libdir = builder.sysroot_libdir(compiler, target);
                 copy_musl_third_party_objects(build, target, &libdir);
             }
@@ -97,7 +97,7 @@ impl Step for Std {
         println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target);
 
-        if target.contains("musl") && !target.contains("mips") {
+        if target.contains("musl") {
             let libdir = builder.sysroot_libdir(compiler, target);
             copy_musl_third_party_objects(build, target, &libdir);
         }

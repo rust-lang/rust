@@ -49,7 +49,16 @@ hide_output make clean
 
 cd ..
 
-LLVM=39
+# use version 60 for all targets after llvm 6.0 release
+case $TAG in
+  mips|mipsel)
+    LLVM=60
+    ;;
+  *)
+    LLVM=39
+    ;;
+esac
+
 # may have been downloaded in a previous run
 if [ ! -d libunwind-release_$LLVM ]; then
   curl -L https://github.com/llvm-mirror/llvm/archive/release_$LLVM.tar.gz | tar xzf -
