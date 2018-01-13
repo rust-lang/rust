@@ -16,6 +16,7 @@ Grammar(
         "self",
         "super",
         "in",
+        "where",
     ],
     tokens: [
         "ERROR",
@@ -73,7 +74,8 @@ Grammar(
     nodes: [
         "FILE",
         "STRUCT_ITEM",
-        "STRUCT_FIELD",
+        "NAMED_FIELD",
+        "POS_FIELD",
         "FN_ITEM",
         "EXTERN_CRATE_ITEM",
         "ATTR",

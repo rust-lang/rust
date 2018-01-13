@@ -56,8 +56,84 @@ fn item(p: &mut Parser) -> bool {
 }
 
 fn struct_item(p: &mut Parser) {
-    p.expect(IDENT)
-        && p.curly_block(|p| comma_list(p, EOF, struct_field));
+    if !p.expect(IDENT) {
+        return
+    }
+    generic_parameters(p);
+    match p.current() {
+        WHERE_KW => {
+            where_clause(p);
+            match p.current() {
+                SEMI => {
+                    p.bump();
+                    return
+                }
+                L_CURLY => named_fields(p),
+                _ => { //TODO: special case `(` error message
+                    p.error()
+                        .message("expected `;` or `{`")
+                        .emit();
+                    return
+                }
+            }
+        }
+        SEMI => {
+            p.bump();
+            return
+        }
+        L_CURLY => named_fields(p),
+        L_PAREN => {
+            tuple_fields(p);
+            p.expect(SEMI);
+        },
+        _ => {
+            p.error()
+                .message("expected `;`, `{`, or `(`")
+                .emit();
+            return
+        }
+    }
+}
+
+fn named_fields(p: &mut Parser) {
+    p.curly_block(|p| comma_list(p, EOF, |p| {
+        named_field(p);
+        true
+    }));
+
+    fn named_field(p: &mut Parser) {
+        node(p, NAMED_FIELD, |p| {
+            visibility(p);
+            p.expect(IDENT) && p.expect(COLON) && {
+                types::type_ref(p);
+                true
+            };
+        })
+    }
+}
+
+fn tuple_fields(p: &mut Parser) {
+    if !p.expect(L_PAREN) {
+        return
+    }
+    comma_list(p, R_PAREN, |p| {
+        tuple_field(p);
+        true
+    });
+    p.expect(R_PAREN);
+
+    fn tuple_field(p: &mut Parser) {
+        node(p, POS_FIELD, |p| {
+            visibility(p);
+            types::type_ref(p);
+        })
+    }
+}
+
+fn generic_parameters(_: &mut Parser) {
+}
+
+fn where_clause(_: &mut Parser) {
 }
 
 fn extern_crate_item(p: &mut Parser) {
@@ -133,11 +209,7 @@ fn use_item(p: &mut Parser) {
     }
 }
 
-fn struct_field(p: &mut Parser) -> bool {
-    node_if(p, IDENT, STRUCT_FIELD, |p| {
-        p.expect(COLON) && p.expect(IDENT);
-    })
-}
+
 
 fn fn_item(p: &mut Parser) {
     p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN)

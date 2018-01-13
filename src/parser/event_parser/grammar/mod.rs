@@ -6,6 +6,7 @@ use syntax_kinds::*;
 mod items;
 mod attributes;
 mod expressions;
+mod types;
 mod paths;
 
 pub(crate) fn file(p: &mut Parser) {
@@ -72,12 +73,21 @@ fn many<F: FnMut(&mut Parser) -> bool>(p: &mut Parser, mut f: F) {
 
 fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, end: SyntaxKind, f: F) {
     many(p, |p| {
-        if !f(p) || p.current() == end {
-            false
+        if p.current() == end {
+            return false
+        }
+        let pos = p.pos();
+        f(p);
+        if p.pos() == pos {
+            return false
+        }
+
+        if p.current() == end {
+            p.eat(COMMA);
         } else {
             p.expect(COMMA);
-            true
         }
+         true
     })
 }
 
