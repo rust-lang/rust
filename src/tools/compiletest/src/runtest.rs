@@ -21,6 +21,7 @@ use header::TestProps;
 use util::logv;
 use regex::Regex;
 
+use std::collections::VecDeque;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
@@ -46,6 +47,88 @@ pub fn dylib_env_var() -> &'static str {
     } else {
         "LD_LIBRARY_PATH"
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum DiffLine {
+    Context(String),
+    Expected(String),
+    Resulting(String),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Mismatch {
+    pub line_number: u32,
+    pub lines: Vec<DiffLine>,
+}
+
+impl Mismatch {
+    fn new(line_number: u32) -> Mismatch {
+        Mismatch {
+            line_number: line_number,
+            lines: Vec::new(),
+        }
+    }
+}
+
+// Produces a diff between the expected output and actual output.
+pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
+    let mut line_number = 1;
+    let mut context_queue: VecDeque<&str> = VecDeque::with_capacity(context_size);
+    let mut lines_since_mismatch = context_size + 1;
+    let mut results = Vec::new();
+    let mut mismatch = Mismatch::new(0);
+
+    for result in diff::lines(actual, expected) {
+        match result {
+            diff::Result::Left(str) => {
+                if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
+                    results.push(mismatch);
+                    mismatch = Mismatch::new(line_number - context_queue.len() as u32);
+                }
+
+                while let Some(line) = context_queue.pop_front() {
+                    mismatch.lines.push(DiffLine::Context(line.to_owned()));
+                }
+
+                mismatch.lines.push(DiffLine::Resulting(str.to_owned()));
+                lines_since_mismatch = 0;
+            }
+            diff::Result::Right(str) => {
+                if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
+                    results.push(mismatch);
+                    mismatch = Mismatch::new(line_number - context_queue.len() as u32);
+                }
+
+                while let Some(line) = context_queue.pop_front() {
+                    mismatch.lines.push(DiffLine::Context(line.to_owned()));
+                }
+
+                mismatch.lines.push(DiffLine::Expected(str.to_owned()));
+                line_number += 1;
+                lines_since_mismatch = 0;
+            }
+            diff::Result::Both(str, _) => {
+                if context_queue.len() >= context_size {
+                    let _ = context_queue.pop_front();
+                }
+
+                if lines_since_mismatch < context_size {
+                    mismatch.lines.push(DiffLine::Context(str.to_owned()));
+                } else if context_size > 0 {
+                    context_queue.push_back(str);
+                }
+
+                line_number += 1;
+                lines_since_mismatch += 1;
+            }
+        }
+    }
+
+    results.push(mismatch);
+    results.remove(0);
+
+    results
 }
 
 pub fn run(config: Config, testpaths: &TestPaths) {
@@ -2720,15 +2803,29 @@ impl<'test> TestCx<'test> {
             return 0;
         }
 
-        println!("normalized {}:\n{}\n", kind, actual);
-        println!("expected {}:\n{}\n", kind, expected);
-        println!("diff of {}:\n", kind);
-
-        for diff in diff::lines(expected, actual) {
-            match diff {
-                diff::Result::Left(l) => println!("-{}", l),
-                diff::Result::Both(l, _) => println!(" {}", l),
-                diff::Result::Right(r) => println!("+{}", r),
+        if expected.is_empty() {
+            println!("normalized {}:\n{}\n", kind, actual);
+        } else {
+            println!("diff of {}:\n", kind);
+            let diff_results = make_diff(expected, actual, 3);
+            for result in diff_results {
+                let mut line_number = result.line_number;
+                for line in result.lines {
+                    match line {
+                        DiffLine::Expected(e) => {
+                            println!("-\t{}", e);
+                            line_number += 1;
+                        },
+                        DiffLine::Context(c) => {
+                            println!("{}\t{}", line_number, c);
+                            line_number += 1;
+                        },
+                        DiffLine::Resulting(r) => {
+                            println!("+\t{}", r);
+                        },
+                    }
+                }
+                println!("");
             }
         }
 

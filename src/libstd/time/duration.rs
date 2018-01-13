@@ -206,7 +206,7 @@ impl Duration {
     ///
     /// let duration = Duration::from_millis(5432);
     /// assert_eq!(duration.as_secs(), 5);
-    /// assert_eq!(duration.subsec_nanos(), 432_000_000);
+    /// assert_eq!(duration.subsec_millis(), 432);
     /// ```
     #[unstable(feature = "duration_extras", issue = "46507")]
     #[inline]
@@ -226,7 +226,7 @@ impl Duration {
     ///
     /// let duration = Duration::from_micros(1_234_567);
     /// assert_eq!(duration.as_secs(), 1);
-    /// assert_eq!(duration.subsec_nanos(), 234_567_000);
+    /// assert_eq!(duration.subsec_micros(), 234_567);
     /// ```
     #[unstable(feature = "duration_extras", issue = "46507")]
     #[inline]

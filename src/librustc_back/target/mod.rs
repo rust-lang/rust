@@ -47,7 +47,6 @@
 use serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
 use std::default::Default;
-use std::io::prelude::*;
 use syntax::abi::{Abi, lookup as lookup_abi};
 
 use {LinkerFlavor, PanicStrategy, RelroLevel};
@@ -147,6 +146,7 @@ supported_targets! {
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
+    ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
     ("arm-unknown-linux-musleabi", arm_unknown_linux_musleabi),
@@ -156,15 +156,16 @@ supported_targets! {
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
+
     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
+    ("i586-unknown-linux-musl", i586_unknown_linux_musl),
     ("mips-unknown-linux-musl", mips_unknown_linux_musl),
     ("mipsel-unknown-linux-musl", mipsel_unknown_linux_musl),
+
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
-
-    ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
 
     ("i686-linux-android", i686_linux_android),
     ("x86_64-linux-android", x86_64_linux_android),
@@ -809,14 +810,12 @@ impl Target {
     pub fn search(target: &str) -> Result<Target, String> {
         use std::env;
         use std::ffi::OsString;
-        use std::fs::File;
+        use std::fs;
         use std::path::{Path, PathBuf};
         use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
-            let mut f = File::open(path).map_err(|e| e.to_string())?;
-            let mut contents = Vec::new();
-            f.read_to_end(&mut contents).map_err(|e| e.to_string())?;
+            let contents = fs::read(path).map_err(|e| e.to_string())?;
             let obj = json::from_reader(&mut &contents[..])
                            .map_err(|e| e.to_string())?;
             Target::from_json(obj)

@@ -46,9 +46,8 @@ use rustc_demangle;
 
 use std::any::Any;
 use std::ffi::{CString, CStr};
-use std::fs::{self, File};
-use std::io;
-use std::io::{Read, Write};
+use std::fs;
+use std::io::{self, Write};
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -666,7 +665,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
         timeline.record("make-bc");
 
         if write_bc {
-            if let Err(e) = File::create(&bc_out).and_then(|mut f| f.write_all(data)) {
+            if let Err(e) = fs::write(&bc_out, data) {
                 diag_handler.err(&format!("failed to write bytecode: {}", e));
             }
             timeline.record("write-bc");
@@ -675,7 +674,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
         if config.emit_bc_compressed {
             let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
             let data = bytecode::encode(&mtrans.llmod_id, data);
-            if let Err(e) = File::create(&dst).and_then(|mut f| f.write_all(&data)) {
+            if let Err(e) = fs::write(&dst, data) {
                 diag_handler.err(&format!("failed to write bytecode: {}", e));
             }
             timeline.record("compress-bc");
@@ -799,9 +798,7 @@ fn binaryen_assemble(cgcx: &CodegenContext,
                      object: &Path) {
     use rustc_binaryen::{Module, ModuleOptions};
 
-    let input = File::open(&assembly).and_then(|mut f| {
-        let mut contents = Vec::new();
-        f.read_to_end(&mut contents)?;
+    let input = fs::read(&assembly).and_then(|contents| {
         Ok(CString::new(contents)?)
     });
     let mut options = ModuleOptions::new();
@@ -818,7 +815,7 @@ fn binaryen_assemble(cgcx: &CodegenContext,
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     });
     let err = assembled.and_then(|binary| {
-        File::create(&object).and_then(|mut f| f.write_all(binary.data()))
+        fs::write(&object, binary.data())
     });
     if let Err(e) = err {
         handler.err(&format!("failed to run binaryen assembler: {}", e));

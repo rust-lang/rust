@@ -15,8 +15,8 @@ use rustc::util::common::time;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
-use std::io::{self, Cursor, Write};
-use std::fs::{self, File};
+use std::io::{self, Cursor};
+use std::fs;
 use std::path::PathBuf;
 
 use super::data::*;
@@ -125,7 +125,7 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
 
     // write the data out
     let data = wr.into_inner();
-    match File::create(&path_buf).and_then(|mut file| file.write_all(&data)) {
+    match fs::write(&path_buf, data) {
         Ok(_) => {
             debug!("save: data written to disk successfully");
         }

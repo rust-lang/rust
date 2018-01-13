@@ -218,13 +218,10 @@ pub fn record_time<T, F>(accu: &Cell<Duration>, f: F) -> T where
 // Memory reporting
 #[cfg(unix)]
 fn get_resident() -> Option<usize> {
-    use std::fs::File;
-    use std::io::Read;
+    use std::fs;
 
     let field = 1;
-    let mut f = File::open("/proc/self/statm").ok()?;
-    let mut contents = String::new();
-    f.read_to_string(&mut contents).ok()?;
+    let contents = fs::read_string("/proc/self/statm").ok()?;
     let s = contents.split_whitespace().nth(field)?;
     let npages = s.parse::<usize>().ok()?;
     Some(npages * 4096)

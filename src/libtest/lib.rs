@@ -36,14 +36,14 @@
 
 #![feature(asm)]
 #![feature(fnbox)]
-#![cfg_attr(unix, feature(libc))]
+#![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 
 extern crate getopts;
 extern crate term;
-#[cfg(unix)]
+#[cfg(any(unix, target_os = "cloudabi"))]
 extern crate libc;
 extern crate panic_unwind;
 
@@ -1191,13 +1191,14 @@ fn get_concurrency() -> usize {
         1
     }
 
-    #[cfg(any(target_os = "linux",
-              target_os = "macos",
-              target_os = "ios",
-              target_os = "android",
-              target_os = "solaris",
+    #[cfg(any(target_os = "android",
+              target_os = "cloudabi",
               target_os = "emscripten",
-              target_os = "fuchsia"))]
+              target_os = "fuchsia",
+              target_os = "ios",
+              target_os = "linux",
+              target_os = "macos",
+              target_os = "solaris"))]
     fn num_cpus() -> usize {
         unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize }
     }
