@@ -1,7 +1,11 @@
 use super::*;
 
+pub (crate) fn is_path_start(p: &Parser) -> bool {
+    AnyOf(&[IDENT, SELF_KW, SUPER_KW, COLONCOLON]).is_ahead(p)
+}
+
 pub(crate) fn use_path(p: &mut Parser) {
-    if !AnyOf(&[IDENT, SELF_KW, SUPER_KW, COLONCOLON]).is_ahead(p) {
+    if !is_path_start(p) {
         return;
     }
     let mut prev = p.mark();
@@ -10,11 +14,17 @@ pub(crate) fn use_path(p: &mut Parser) {
     });
     many(p, |p| {
         let curr = p.mark();
-        node_if(p, COLONCOLON, PATH, |p| {
-            path_segment(p, false);
-            p.forward_parent(prev, curr);
-            prev = curr;
-        })
+        if p.current() == COLONCOLON && !items::is_use_tree_start(p.raw_lookahead(1)) {
+            node(p, PATH, |p| {
+                p.bump();
+                path_segment(p, false);
+                p.forward_parent(prev, curr);
+                prev = curr;
+            });
+            true
+        } else {
+            false
+        }
     });
 }
 

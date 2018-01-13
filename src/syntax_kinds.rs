@@ -77,13 +77,14 @@ pub const ATTR: SyntaxKind = SyntaxKind(72);
 pub const META_ITEM: SyntaxKind = SyntaxKind(73);
 pub const MOD_ITEM: SyntaxKind = SyntaxKind(74);
 pub const USE_ITEM: SyntaxKind = SyntaxKind(75);
-pub const PATH: SyntaxKind = SyntaxKind(76);
-pub const PATH_SEGMENT: SyntaxKind = SyntaxKind(77);
-pub const LITERAL: SyntaxKind = SyntaxKind(78);
-pub const ALIAS: SyntaxKind = SyntaxKind(79);
-pub const VISIBILITY: SyntaxKind = SyntaxKind(80);
+pub const USE_TREE: SyntaxKind = SyntaxKind(76);
+pub const PATH: SyntaxKind = SyntaxKind(77);
+pub const PATH_SEGMENT: SyntaxKind = SyntaxKind(78);
+pub const LITERAL: SyntaxKind = SyntaxKind(79);
+pub const ALIAS: SyntaxKind = SyntaxKind(80);
+pub const VISIBILITY: SyntaxKind = SyntaxKind(81);
 
-static INFOS: [SyntaxInfo; 81] = [
+static INFOS: [SyntaxInfo; 82] = [
     SyntaxInfo { name: "USE_KW" },
     SyntaxInfo { name: "FN_KW" },
     SyntaxInfo { name: "STRUCT_KW" },
@@ -160,6 +161,7 @@ static INFOS: [SyntaxInfo; 81] = [
     SyntaxInfo { name: "META_ITEM" },
     SyntaxInfo { name: "MOD_ITEM" },
     SyntaxInfo { name: "USE_ITEM" },
+    SyntaxInfo { name: "USE_TREE" },
     SyntaxInfo { name: "PATH" },
     SyntaxInfo { name: "PATH_SEGMENT" },
     SyntaxInfo { name: "LITERAL" },

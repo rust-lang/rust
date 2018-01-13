@@ -80,6 +80,7 @@ Grammar(
         "META_ITEM",
         "MOD_ITEM",
         "USE_ITEM",
+        "USE_TREE",
         "PATH",
         "PATH_SEGMENT",
         "LITERAL",

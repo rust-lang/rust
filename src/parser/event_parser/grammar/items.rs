@@ -74,9 +74,63 @@ fn mod_item(p: &mut Parser) {
     p.curly_block(mod_contents);
 }
 
+pub(super) fn is_use_tree_start(kind: SyntaxKind) -> bool {
+    kind == STAR || kind == L_CURLY
+}
+
 fn use_item(p: &mut Parser) {
-    paths::use_path(p);
+    use_tree(p);
     p.expect(SEMI);
+
+    fn use_tree(p: &mut Parser) -> bool{
+        if node_if(p, STAR, USE_TREE, |_| ()) {
+            return true
+        }
+        if node_if(p, [COLONCOLON, STAR], USE_TREE, |_| ()) {
+           return true
+        }
+        if [COLONCOLON, L_CURLY].is_ahead(p) || L_CURLY.is_ahead(p) {
+            node(p, USE_TREE, |p| {
+                p.eat(COLONCOLON);
+                p.curly_block(|p| {
+                    comma_list(p, EOF, use_tree);
+                });
+            });
+            return true;
+        }
+        if paths::is_path_start(p) {
+            node(p, USE_TREE, |p| {
+                paths::use_path(p);
+                match p.current() {
+                    AS_KW => {
+                        alias(p);
+                    }
+                    COLONCOLON => {
+                        p.bump();
+                        match p.current() {
+                            STAR => {
+                                p.bump();
+                            }
+                            L_CURLY => {
+                                p.curly_block(|p| {
+                                    comma_list(p, EOF, use_tree);
+                                });
+                            }
+                            _ => {
+                                // is this unreachable?
+                                p.error()
+                                    .message("expected `{` or `*`")
+                                    .emit();
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+            });
+            return true;
+        }
+        false
+    }
 }
 
 fn struct_field(p: &mut Parser) -> bool {

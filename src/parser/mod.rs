@@ -29,7 +29,7 @@ fn from_events_to_file(
         }
 
         match event {
-            &Event::Start { kind, forward_parent } => {
+            &Event::Start { .. } => {
                 forward_parents.clear();
                 let mut idx = i;
                 loop {
