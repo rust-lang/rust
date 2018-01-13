@@ -1,4 +1,4 @@
-error: #[unwind] is experimental
+error[E0658]: #[unwind] is experimental
   --> $DIR/feature-gate-unwind-attributes.rs:21:5
    |
 21 |     #[unwind] //~ ERROR #[unwind] is experimental

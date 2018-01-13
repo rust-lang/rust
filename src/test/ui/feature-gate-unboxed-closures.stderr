@@ -1,4 +1,4 @@
-error: rust-call ABI is subject to change (see issue #29625)
+error[E0658]: rust-call ABI is subject to change (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures.rs:16:5
    |
 16 | /     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {

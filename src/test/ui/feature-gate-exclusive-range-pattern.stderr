@@ -1,4 +1,4 @@
-error: exclusive range pattern syntax is experimental (see issue #37854)
+error[E0658]: exclusive range pattern syntax is experimental (see issue #37854)
   --> $DIR/feature-gate-exclusive-range-pattern.rs:13:9
    |
 13 |         0 .. 3 => {} //~ ERROR exclusive range pattern syntax is experimental

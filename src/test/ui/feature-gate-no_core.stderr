@@ -1,4 +1,4 @@
-error: no_core is experimental (see issue #29639)
+error[E0658]: no_core is experimental (see issue #29639)
   --> $DIR/feature-gate-no_core.rs:11:1
    |
 11 | #![no_core] //~ ERROR no_core is experimental
