@@ -10,10 +10,7 @@
 
 #![feature(optin_builtin_traits)]
 
-trait MyTrait {}
-
-#[allow(auto_impl)]
-impl MyTrait for .. {}
+auto trait MyTrait {}
 
 struct MyS;
 

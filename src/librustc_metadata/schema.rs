@@ -303,7 +303,6 @@ pub enum EntryKind<'tcx> {
     Generator(Lazy<GeneratorData<'tcx>>),
     Trait(Lazy<TraitData<'tcx>>),
     Impl(Lazy<ImplData<'tcx>>),
-    AutoImpl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
     AssociatedConst(AssociatedContainer, u8),
@@ -359,7 +358,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for EntryKind<'gcx> {
             EntryKind::Trait(ref trait_data) => {
                 trait_data.hash_stable(hcx, hasher);
             }
-            EntryKind::AutoImpl(ref impl_data) |
             EntryKind::Impl(ref impl_data) => {
                 impl_data.hash_stable(hcx, hasher);
             }

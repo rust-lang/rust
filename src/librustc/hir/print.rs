@@ -652,18 +652,6 @@ impl<'a> State<'a> {
                 self.head(&visibility_qualified(&item.vis, "union"))?;
                 self.print_struct(struct_def, generics, item.name, item.span, true)?;
             }
-            hir::ItemAutoImpl(unsafety, ref trait_ref) => {
-                self.head("")?;
-                self.print_visibility(&item.vis)?;
-                self.print_unsafety(unsafety)?;
-                self.word_nbsp("impl")?;
-                self.print_trait_ref(trait_ref)?;
-                self.s.space()?;
-                self.word_space("for")?;
-                self.word_space("..")?;
-                self.bopen()?;
-                self.bclose(item.span)?;
-            }
             hir::ItemImpl(unsafety,
                           polarity,
                           defaultness,

@@ -150,6 +150,13 @@ Trait methods cannot be declared `const` by design. For more information, see
 [RFC 911]: https://github.com/rust-lang/rfcs/pull/911
 "##,
 
+E0380: r##"
+Auto traits cannot have methods or associated items.
+For more information see the [opt-in builtin traits RFC][RFC 19].
+
+[RFC 19]: https://github.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md
+"##,
+
 E0449: r##"
 A visibility qualifier was used when it was unnecessary. Erroneous code
 examples:
@@ -264,5 +271,7 @@ register_diagnostics! {
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
     E0561, // patterns aren't allowed in function pointer types
+    E0567, // auto traits can not have generic parameters
+    E0568, // auto traits can not have super traits
     E0642, // patterns aren't allowed in methods without bodies
 }

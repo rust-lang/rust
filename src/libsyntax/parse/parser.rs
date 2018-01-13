@@ -4084,14 +4084,14 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(keywords::Extern) && self.look_ahead(1, |t| t != &token::ModSep)
     }
 
-    fn eat_auto_trait(&mut self) -> bool {
-        if self.token.is_keyword(keywords::Auto)
-            && self.look_ahead(1, |t| t.is_keyword(keywords::Trait))
-        {
-            self.eat_keyword(keywords::Auto) && self.eat_keyword(keywords::Trait)
-        } else {
-            false
-        }
+    fn is_auto_trait_item(&mut self) -> bool {
+        // auto trait
+        (self.token.is_keyword(keywords::Auto)
+            && self.look_ahead(1, |t| t.is_keyword(keywords::Trait)))
+        || // unsafe auto trait
+        (self.token.is_keyword(keywords::Unsafe) &&
+         self.look_ahead(1, |t| t.is_keyword(keywords::Auto)) &&
+         self.look_ahead(2, |t| t.is_keyword(keywords::Trait)))
     }
 
     fn is_defaultness(&self) -> bool {
@@ -4194,7 +4194,8 @@ impl<'a> Parser<'a> {
                 node: StmtKind::Item(macro_def),
                 span: lo.to(self.prev_span),
             }
-        // Starts like a simple path, but not a union item or item with `crate` visibility.
+        // Starts like a simple path, being careful to avoid contextual keywords
+        // such as a union items, item with `crate` visibility or auto trait items.
         // Our goal here is to parse an arbitrary path `a::b::c` but not something that starts
         // like a path (1 token), but it fact not a path.
         // `union::b::c` - path, `union U { ... }` - not a path.
@@ -4204,7 +4205,8 @@ impl<'a> Parser<'a> {
                   !self.token.is_qpath_start() &&
                   !self.is_union_item() &&
                   !self.is_crate_vis() &&
-                  !self.is_extern_non_path() {
+                  !self.is_extern_non_path() &&
+                  !self.is_auto_trait_item() {
             let pth = self.parse_path(PathStyle::Expr)?;
 
             if !self.eat(&token::Not) {
@@ -5374,11 +5376,9 @@ impl<'a> Parser<'a> {
     /// Parses items implementations variants
     ///    impl<T> Foo { ... }
     ///    impl<T> ToString for &'static T { ... }
-    ///    impl Send for .. {}
     fn parse_item_impl(&mut self,
                        unsafety: ast::Unsafety,
                        defaultness: Defaultness) -> PResult<'a, ItemInfo> {
-        let impl_span = self.span;
 
         // First, parse type parameters if necessary.
         let mut generics = self.parse_generics()?;
@@ -5421,48 +5421,35 @@ impl<'a> Parser<'a> {
             None
         };
 
-        if opt_trait.is_some() && self.eat(&token::DotDot) {
-            if generics.is_parameterized() {
-                self.span_err(impl_span, "auto trait implementations are not \
-                                          allowed to have generics");
+        if opt_trait.is_some() {
+            ty = if self.eat(&token::DotDot) {
+                P(Ty { node: TyKind::Err, span: self.prev_span, id: ast::DUMMY_NODE_ID })
+            } else {
+                self.parse_ty()?
             }
+        }
+        generics.where_clause = self.parse_where_clause()?;
 
-            if let ast::Defaultness::Default = defaultness {
-                self.span_err(impl_span, "`default impl` is not allowed for \
-                                         auto trait implementations");
-            }
+        self.expect(&token::OpenDelim(token::Brace))?;
+        let attrs = self.parse_inner_attributes()?;
 
-            self.expect(&token::OpenDelim(token::Brace))?;
-            self.expect(&token::CloseDelim(token::Brace))?;
-            Ok((keywords::Invalid.ident(),
-             ItemKind::AutoImpl(unsafety, opt_trait.unwrap()), None))
-        } else {
-            if opt_trait.is_some() {
-                ty = self.parse_ty()?;
-            }
-            generics.where_clause = self.parse_where_clause()?;
-
-            self.expect(&token::OpenDelim(token::Brace))?;
-            let attrs = self.parse_inner_attributes()?;
-
-            let mut impl_items = vec![];
-            while !self.eat(&token::CloseDelim(token::Brace)) {
-                let mut at_end = false;
-                match self.parse_impl_item(&mut at_end) {
-                    Ok(item) => impl_items.push(item),
-                    Err(mut e) => {
-                        e.emit();
-                        if !at_end {
-                            self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
-                        }
+        let mut impl_items = vec![];
+        while !self.eat(&token::CloseDelim(token::Brace)) {
+            let mut at_end = false;
+            match self.parse_impl_item(&mut at_end) {
+                Ok(item) => impl_items.push(item),
+                Err(mut e) => {
+                    e.emit();
+                    if !at_end {
+                        self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
                     }
                 }
             }
-
-            Ok((keywords::Invalid.ident(),
-             ItemKind::Impl(unsafety, polarity, defaultness, generics, opt_trait, ty, impl_items),
-             Some(attrs)))
         }
+
+        Ok((keywords::Invalid.ident(),
+            ItemKind::Impl(unsafety, polarity, defaultness, generics, opt_trait, ty, impl_items),
+            Some(attrs)))
     }
 
     fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
@@ -6387,7 +6374,8 @@ impl<'a> Parser<'a> {
             let is_auto = if self.eat_keyword(keywords::Trait) {
                 IsAuto::No
             } else {
-                self.eat_auto_trait();
+                self.expect_keyword(keywords::Auto)?;
+                self.expect_keyword(keywords::Trait)?;
                 IsAuto::Yes
             };
             let (ident, item_, extra_attrs) =
@@ -6501,7 +6489,8 @@ impl<'a> Parser<'a> {
             let is_auto = if self.eat_keyword(keywords::Trait) {
                 IsAuto::No
             } else {
-                self.eat_auto_trait();
+                self.expect_keyword(keywords::Auto)?;
+                self.expect_keyword(keywords::Trait)?;
                 IsAuto::Yes
             };
             // TRAIT ITEM

@@ -461,10 +461,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                           intravisit::walk_item(this, item);
                 });
             }
+
             hir::ItemExternCrate(_)
             | hir::ItemUse(..)
             | hir::ItemMod(..)
-            | hir::ItemAutoImpl(..)
             | hir::ItemForeignMod(..)
             | hir::ItemGlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.

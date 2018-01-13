@@ -1964,12 +1964,8 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     document(w, cx, item)?;
 
-    let mut indices = (0..items.len()).filter(|i| {
-        if let clean::AutoImplItem(..) = items[*i].inner {
-            return false;
-        }
-        !items[*i].is_stripped()
-    }).collect::<Vec<usize>>();
+    let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped())
+                                      .collect::<Vec<usize>>();
 
     // the order of item types in the listing
     fn reorder(ty: ItemType) -> u8 {
@@ -3973,13 +3969,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                    ItemType::Function, ItemType::Typedef, ItemType::Union, ItemType::Impl,
                    ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
                    ItemType::AssociatedType, ItemType::AssociatedConst, ItemType::ForeignType] {
-        if items.iter().any(|it| {
-            if let clean::AutoImplItem(..) = it.inner {
-                false
-            } else {
-                !it.is_stripped() && it.type_() == myty
-            }
-        }) {
+        if items.iter().any(|it| !it.is_stripped() && it.type_() == myty) {
             let (short, name) = match myty {
                 ItemType::ExternCrate |
                 ItemType::Import          => ("reexports", "Reexports"),

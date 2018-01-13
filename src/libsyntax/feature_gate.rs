@@ -1532,13 +1532,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                    "trait aliases are not yet fully implemented");
             }
 
-            ast::ItemKind::AutoImpl(..) => {
-                gate_feature_post!(&self, optin_builtin_traits,
-                                   i.span,
-                                   "auto trait implementations are experimental \
-                                    and possibly buggy");
-            }
-
             ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, ref impl_items) => {
                 if polarity == ast::ImplPolarity::Negative {
                     gate_feature_post!(&self, optin_builtin_traits,

@@ -801,7 +801,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::SuperPredicatesOfItem => { force!(super_predicates_of, def_id!()); }
         DepKind::TraitDefOfItem => { force!(trait_def, def_id!()); }
         DepKind::AdtDefOfItem => { force!(adt_def, def_id!()); }
-        DepKind::IsAutoImpl => { force!(is_auto_impl, def_id!()); }
         DepKind::ImplTraitRef => { force!(impl_trait_ref, def_id!()); }
         DepKind::ImplPolarity => { force!(impl_polarity, def_id!()); }
         DepKind::FnSignature => { force!(fn_sig, def_id!()); }
