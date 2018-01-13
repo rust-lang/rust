@@ -2,7 +2,7 @@ error: expected identifier, found keyword `true`
   --> $DIR/issue-44406.rs:18:10
    |
 18 |     foo!(true); //~ ERROR expected type, found keyword
-   |          ^^^^
+   |          ^^^^ expected identifier, found keyword
 
 error: expected type, found keyword `true`
   --> $DIR/issue-44406.rs:18:10

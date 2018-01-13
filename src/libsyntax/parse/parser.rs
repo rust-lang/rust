@@ -609,14 +609,21 @@ impl<'a> Parser<'a> {
         Parser::token_to_string(&self.token)
     }
 
+    pub fn token_descr(&self) -> Option<&'static str> {
+        Some(match &self.token {
+            t if t.is_special_ident() => "reserved identifier",
+            t if t.is_used_keyword() => "keyword",
+            t if t.is_unused_keyword() => "reserved keyword",
+            _ => return None,
+        })
+    }
+
     pub fn this_token_descr(&self) -> String {
-        let prefix = match &self.token {
-            t if t.is_special_ident() => "reserved identifier ",
-            t if t.is_used_keyword() => "keyword ",
-            t if t.is_unused_keyword() => "reserved keyword ",
-            _ => "",
-        };
-        format!("{}`{}`", prefix, self.this_token_to_string())
+        if let Some(prefix) = self.token_descr() {
+            format!("{} `{}`", prefix, self.this_token_to_string())
+        } else {
+            format!("`{}`", self.this_token_to_string())
+        }
     }
 
     pub fn unexpected_last<T>(&self, t: &token::Token) -> PResult<'a, T> {
@@ -752,11 +759,27 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
+        self.parse_ident_common(true)
+    }
+
+    fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
         match self.token {
             token::Ident(i) => {
                 if self.token.is_reserved_ident() {
-                    self.span_err(self.span, &format!("expected identifier, found {}",
-                                                      self.this_token_descr()));
+                    let mut err = self.struct_span_err(self.span,
+                                                       &format!("expected identifier, found {}",
+                                                                self.this_token_descr()));
+                    if let Some(token_descr) = self.token_descr() {
+                        err.span_label(self.span, format!("expected identifier, found {}",
+                                                          token_descr));
+                    } else {
+                        err.span_label(self.span, "expected identifier");
+                    }
+                    if recover {
+                        err.emit();
+                    } else {
+                        return Err(err);
+                    }
                 }
                 self.bump();
                 Ok(i)
@@ -767,6 +790,12 @@ impl<'a> Parser<'a> {
                     } else {
                         let mut err = self.fatal(&format!("expected identifier, found `{}`",
                                                           self.this_token_to_string()));
+                        if let Some(token_descr) = self.token_descr() {
+                            err.span_label(self.span, format!("expected identifier, found {}",
+                                                              token_descr));
+                        } else {
+                            err.span_label(self.span, "expected identifier");
+                        }
                         if self.token == token::Underscore {
                             err.note("`_` is a wildcard pattern, not an identifier");
                         }
@@ -2058,7 +2087,7 @@ impl<'a> Parser<'a> {
             self.bump();
             Ok(Ident::with_empty_ctxt(name))
         } else {
-            self.parse_ident()
+            self.parse_ident_common(false)
         }
     }
 
@@ -2075,7 +2104,7 @@ impl<'a> Parser<'a> {
             hi = self.prev_span;
             (fieldname, self.parse_expr()?, false)
         } else {
-            let fieldname = self.parse_ident()?;
+            let fieldname = self.parse_ident_common(false)?;
             hi = self.prev_span;
 
             // Mimic `x: x` for the `x` field shorthand.
@@ -2426,6 +2455,7 @@ impl<'a> Parser<'a> {
 
     fn parse_struct_expr(&mut self, lo: Span, pth: ast::Path, mut attrs: ThinVec<Attribute>)
                          -> PResult<'a, P<Expr>> {
+        let struct_sp = lo.to(self.prev_span);
         self.bump();
         let mut fields = Vec::new();
         let mut base = None;
@@ -2460,6 +2490,7 @@ impl<'a> Parser<'a> {
             match self.parse_field() {
                 Ok(f) => fields.push(f),
                 Err(mut e) => {
+                    e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
                     self.recover_stmt();
                     break;

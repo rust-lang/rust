@@ -13,7 +13,7 @@
 enum bird {
     pub duck,
     //~^ ERROR: expected identifier, found keyword `pub`
-    //~^^ ERROR: expected
+    //~| ERROR: expected
     goose
 }
 
