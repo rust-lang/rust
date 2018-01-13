@@ -74,10 +74,9 @@ impl<'tcx> LazySeq<Index> {
     #[inline(never)]
     pub fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         let words = &bytes_to_words(&bytes[self.position..])[..self.len];
-        let index = def_index.as_usize();
 
         debug!("Index::lookup: index={:?} words.len={:?}",
-               index,
+               def_index,
                words.len());
 
         let positions = match def_index.address_space() {
