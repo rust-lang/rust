@@ -113,5 +113,4 @@ The introduced form in this RFC is comparatively both shorter and clearer.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- Does this introduce any parsing ambiguities?
 - Does allowing this for `dyn` trait objects introduce any unforseen issues?
