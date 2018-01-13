@@ -15,7 +15,7 @@ error[E0597]: `z` does not live long enough (Mir)
 16 |         &mut z
    |         ^^^^^^ borrowed value does not live long enough
 17 |     };
-   |      - `z` dropped here while still borrowed
+   |     - `z` dropped here while still borrowed
 ...
 21 | }
    | - borrowed value needs to live until here
