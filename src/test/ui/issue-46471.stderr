@@ -16,7 +16,7 @@ error[E0597]: `x` does not live long enough (Mir)
    |     ^^ borrowed value does not live long enough
 ...
 18 | }
-   |  - borrowed value only lives until here
+   | - borrowed value only lives until here
    |
    = note: borrowed value must be valid for the static lifetime...
 
