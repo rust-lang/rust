@@ -215,8 +215,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_item(&mut self, item: &'a Item) {
         match item.node {
-            ItemKind::Impl(.., Some(..), _, ref impl_items) => {
+            ItemKind::Impl(.., Some(..), ref ty, ref impl_items) => {
                 self.invalid_visibility(&item.vis, item.span, None);
+                if ty.node == TyKind::Err {
+                    self.err_handler()
+                        .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
+                        .help("use `auto trait Trait {}` instead").emit();
+                }
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, impl_item.span, None);
                     if let ImplItemKind::Method(ref sig, _) = impl_item.node {

@@ -5422,7 +5422,11 @@ impl<'a> Parser<'a> {
         };
 
         if opt_trait.is_some() {
-            ty = self.parse_ty()?;
+            ty = if self.eat(&token::DotDot) {
+                P(Ty { node: TyKind::Err, span: self.prev_span, id: ast::DUMMY_NODE_ID })
+            } else {
+                self.parse_ty()?
+            }
         }
         generics.where_clause = self.parse_where_clause()?;
 
