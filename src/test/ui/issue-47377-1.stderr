@@ -1,0 +1,12 @@
+error[E0369]: binary operation `+` cannot be applied to type `&str`
+  --> $DIR/issue-47377-1.rs:13:37
+   |
+13 |         println!("🦀🦀🦀🦀🦀"); let _a = b + ", World!"; //~ERROR 13:37: 13:51: binary operation `+` cannot be applied to type `&str` [E0369]
+   |                                          ^^^^^^^^^^^^^^ `+` can't be used to concatenate two `&str` strings
+help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   |
+13 |         println!("🦀🦀🦀🦀🦀"); let _a = b.to_owned() + ", World!"; //~ERROR 13:37: 13:51: binary operation `+` cannot be applied to type `&str` [E0369]
+   |                                          ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
