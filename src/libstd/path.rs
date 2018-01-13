@@ -2233,7 +2233,7 @@ impl Path {
     /// let path = Path::new("/../../../cannot_go_above_root");
     /// assert_eq!(path.normalize(), PathBuf::from("/cannot_go_above_root"));
     /// ```
-    #[unstable]
+    #[unstable(feature = "path normalize", issue = "47402")]
     pub fn normalize(&self) -> PathBuf {
         let mut stack: Vec<Component> = vec![];
 
@@ -2260,10 +2260,12 @@ impl Path {
                                 // The parent of a RootDir is itself, so drop the ParentDir (no-op).
                                 Component::RootDir => {},
 
-                                // A CurDir should never be found on the stack, since they are dropped when seen.
+                                // A CurDir should never be found on the stack,
+                                // since they are dropped when seen.
                                 Component::CurDir => { unreachable!(); },
 
-                                // If a ParentDir is found, it must be due to it piling up at the start of a path.
+                                // If a ParentDir is found, it must be due to it
+                                // piling up at the start of a path.
                                 // Push the new ParentDir onto the stack.
                                 Component::ParentDir => { stack.push(component); },
 
@@ -4169,6 +4171,7 @@ mod tests {
             tn!(r#"\\?\a/\\b/"#, r#"\\?\a/\\b/"#);
             tn!(r#"\\?\a\b"#, r#"\\?\a\b"#);
         }
+    }
 
     fn into_rc() {
         let orig = "hello/world";
