@@ -15,6 +15,7 @@ Grammar(
         "pub",
         "self",
         "super",
+        "in",
     ],
     tokens: [
         "ERROR",

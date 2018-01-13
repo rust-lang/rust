@@ -1,7 +1,7 @@
 use super::*;
 
 pub(crate) fn use_path(p: &mut Parser) {
-    if !AnyOf(&[IDENT, COLONCOLON]).is_ahead(p) {
+    if !AnyOf(&[IDENT, SELF_KW, SUPER_KW, COLONCOLON]).is_ahead(p) {
         return;
     }
     let mut prev = p.mark();
@@ -23,6 +23,15 @@ fn path_segment(p: &mut Parser, first: bool) {
         if first {
             p.eat(COLONCOLON);
         }
-        p.expect(IDENT);
+        match p.current() {
+            IDENT | SELF_KW | SUPER_KW => {
+                p.bump();
+            },
+            _ => {
+                p.error()
+                    .message("expected identifier")
+                    .emit();
+            }
+        };
     })
 }
