@@ -131,7 +131,6 @@ declare_features! (
     (active, link_llvm_intrinsics, "1.0.0", Some(29602)),
     (active, linkage, "1.0.0", Some(29603)),
     (active, quote, "1.0.0", Some(29601)),
-    (active, simd, "1.0.0", Some(27731)),
 
 
     // rustc internal
@@ -473,6 +472,8 @@ declare_features! (
     (removed, unmarked_api, "1.0.0", None),
     (removed, pushpop_unsafe, "1.2.0", None),
     (removed, allocator, "1.0.0", None),
+    // Allows the `#[simd]` attribute -- removed in favor of `#[repr(simd)]`
+    (removed, simd, "1.0.0", Some(27731)),
 );
 
 declare_features! (
@@ -636,7 +637,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("start", Normal, Ungated),
     ("test", Normal, Ungated),
     ("bench", Normal, Ungated),
-    ("simd", Normal, Ungated),
     ("repr", Normal, Ungated),
     ("path", Normal, Ungated),
     ("abi", Normal, Ungated),
@@ -1511,14 +1511,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Struct(..) => {
-                if let Some(attr) = attr::find_by_name(&i.attrs[..], "simd") {
-                    gate_feature_post!(&self, simd, attr.span,
-                                       "SIMD types are experimental and possibly buggy");
-                    self.context.parse_sess.span_diagnostic.span_warn(attr.span,
-                                                                      "the `#[simd]` attribute \
-                                                                       is deprecated, use \
-                                                                       `#[repr(simd)]` instead");
-                }
                 if let Some(attr) = attr::find_by_name(&i.attrs[..], "repr") {
                     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
                         if item.check_name("simd") {

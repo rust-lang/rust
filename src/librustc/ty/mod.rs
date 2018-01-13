@@ -1553,11 +1553,6 @@ impl ReprOptions {
             }
         }
 
-        // FIXME(eddyb) This is deprecated and should be removed.
-        if tcx.has_attr(did, "simd") {
-            flags.insert(ReprFlags::IS_SIMD);
-        }
-
         // This is here instead of layout because the choice must make it into metadata.
         if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.item_path_str(did))) {
             flags.insert(ReprFlags::IS_LINEAR);
