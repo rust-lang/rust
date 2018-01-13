@@ -1,4 +1,4 @@
-error: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
+error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
   --> $DIR/feature-gate-cfg-target-vendor.rs:12:12
    |
 12 | #[cfg_attr(target_vendor = "x", x)] //~ ERROR `cfg(target_vendor)` is experimental
@@ -6,7 +6,7 @@ error: `cfg(target_vendor)` is experimental and subject to change (see issue #29
    |
    = help: add #![feature(cfg_target_vendor)] to the crate attributes to enable
 
-error: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
+error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
   --> $DIR/feature-gate-cfg-target-vendor.rs:11:7
    |
 11 | #[cfg(target_vendor = "x")] //~ ERROR `cfg(target_vendor)` is experimental
@@ -14,7 +14,7 @@ error: `cfg(target_vendor)` is experimental and subject to change (see issue #29
    |
    = help: add #![feature(cfg_target_vendor)] to the crate attributes to enable
 
-error: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
+error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
   --> $DIR/feature-gate-cfg-target-vendor.rs:15:19
    |
 15 | #[cfg(not(any(all(target_vendor = "x"))))] //~ ERROR `cfg(target_vendor)` is experimental
@@ -22,7 +22,7 @@ error: `cfg(target_vendor)` is experimental and subject to change (see issue #29
    |
    = help: add #![feature(cfg_target_vendor)] to the crate attributes to enable
 
-error: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
+error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
   --> $DIR/feature-gate-cfg-target-vendor.rs:19:10
    |
 19 |     cfg!(target_vendor = "x");

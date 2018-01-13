@@ -1,4 +1,4 @@
-error: `global_asm!` is not stable enough for use and is subject to change (see issue #35119)
+error[E0658]: `global_asm!` is not stable enough for use and is subject to change (see issue #35119)
   --> $DIR/feature-gate-global_asm.rs:11:1
    |
 11 | global_asm!(""); //~ ERROR `global_asm!` is not stable

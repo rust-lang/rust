@@ -1179,7 +1179,9 @@ fn leveled_feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue
     };
 
     let mut err = match level {
-        GateStrength::Hard => diag.struct_span_err(span, &explanation),
+        GateStrength::Hard => {
+            diag.struct_span_err_with_code(span, &explanation, stringify_error_code!(E0658))
+        }
         GateStrength::Soft => diag.struct_span_warn(span, &explanation),
     };
 

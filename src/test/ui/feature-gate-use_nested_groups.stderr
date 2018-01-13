@@ -1,4 +1,4 @@
-error: nested groups in `use` are experimental (see issue #44494)
+error[E0658]: nested groups in `use` are experimental (see issue #44494)
   --> $DIR/feature-gate-use_nested_groups.rs:27:12
    |
 27 | use a::{B, d::{*, g::H}};  //~ ERROR glob imports in `use` groups are experimental
@@ -6,7 +6,7 @@ error: nested groups in `use` are experimental (see issue #44494)
    |
    = help: add #![feature(use_nested_groups)] to the crate attributes to enable
 
-error: glob imports in `use` groups are experimental (see issue #44494)
+error[E0658]: glob imports in `use` groups are experimental (see issue #44494)
   --> $DIR/feature-gate-use_nested_groups.rs:27:16
    |
 27 | use a::{B, d::{*, g::H}};  //~ ERROR glob imports in `use` groups are experimental
@@ -14,7 +14,7 @@ error: glob imports in `use` groups are experimental (see issue #44494)
    |
    = help: add #![feature(use_nested_groups)] to the crate attributes to enable
 
-error: paths in `use` groups are experimental (see issue #44494)
+error[E0658]: paths in `use` groups are experimental (see issue #44494)
   --> $DIR/feature-gate-use_nested_groups.rs:27:19
    |
 27 | use a::{B, d::{*, g::H}};  //~ ERROR glob imports in `use` groups are experimental

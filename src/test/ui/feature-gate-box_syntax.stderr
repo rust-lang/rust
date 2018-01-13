@@ -1,4 +1,4 @@
-error: box expression syntax is experimental; you can call `Box::new` instead. (see issue #27779)
+error[E0658]: box expression syntax is experimental; you can call `Box::new` instead. (see issue #27779)
   --> $DIR/feature-gate-box_syntax.rs:14:13
    |
 14 |     let x = box 3;

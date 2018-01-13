@@ -1,4 +1,4 @@
-error: `crate` in paths is experimental (see issue #45477)
+error[E0658]: `crate` in paths is experimental (see issue #45477)
   --> $DIR/feature-gate-crate_in_paths.rs:14:15
    |
 14 |     let _ = ::crate::S; //~ ERROR `crate` in paths is experimental

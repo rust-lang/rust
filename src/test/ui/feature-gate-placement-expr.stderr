@@ -1,4 +1,4 @@
-error: placement-in expression syntax is experimental and subject to change. (see issue #27779)
+error[E0658]: placement-in expression syntax is experimental and subject to change. (see issue #27779)
   --> $DIR/feature-gate-placement-expr.rs:24:13
    |
 24 |     let x = HEAP <- 'c'; //~ ERROR placement-in expression syntax is experimental

@@ -1,4 +1,4 @@
-error: kind="static-nobundle" is feature gated (see issue #37403)
+error[E0658]: kind="static-nobundle" is feature gated (see issue #37403)
   --> $DIR/feature-gate-static-nobundle.rs:11:1
    |
 11 | #[link(name="foo", kind="static-nobundle")]
