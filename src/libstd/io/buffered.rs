@@ -285,6 +285,8 @@ impl<R: Seek> Seek for BufReader<R> {
     /// `.into_inner()` immediately after a seek yields the underlying reader
     /// at the same position.
     ///
+    /// To seek without discarding the internal buffer, use [`seek_relative`].
+    ///
     /// See `std::io::Seek` for more details.
     ///
     /// Note: In the edge case where you're seeking with `SeekFrom::Current(n)`
@@ -292,6 +294,8 @@ impl<R: Seek> Seek for BufReader<R> {
     /// seeks will be performed instead of one. If the second seek returns
     /// `Err`, the underlying reader will be left at the same position it would
     /// have if you seeked to `SeekFrom::Current(0)`.
+    ///
+    /// [`seek_relative`]: #method.seek_relative
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         let result: u64;
         if let SeekFrom::Current(n) = pos {
