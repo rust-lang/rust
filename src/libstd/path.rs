@@ -1709,6 +1709,7 @@ impl Path {
     /// let path_buf = Path::new("foo.txt").to_path_buf();
     /// assert_eq!(path_buf, std::path::PathBuf::from("foo.txt"));
     /// ```
+    #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_path_buf(&self) -> PathBuf {
         PathBuf::from(self.inner.to_os_string())

@@ -969,6 +969,13 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                       never be stable",
                                      cfg_fn!(rustc_attrs))),
 
+    // whitelists "identity-like" conversion methods to suggest on type mismatch
+    ("rustc_conversion_suggestion", Whitelisted, Gated(Stability::Unstable,
+                                                       "rustc_attrs",
+                                                       "this is an internal attribute that will \
+                                                        never be stable",
+                                                       cfg_fn!(rustc_attrs))),
+
     ("wasm_import_memory", Whitelisted, Gated(Stability::Unstable,
                                  "wasm_import_memory",
                                  "wasm_import_memory attribute is currently unstable",
