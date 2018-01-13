@@ -447,14 +447,17 @@ impl Step for RustdocJS {
     }
 
     fn run(self, builder: &Builder) {
-        let nodejs = builder.config.nodejs.clone();
-        let mut command = Command::new(&nodejs.expect("no nodejs found"));
-        command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
-        builder.ensure(::doc::Std {
-            target: self.target,
-            stage: builder.top_stage,
-        });
-        builder.run(&mut command);
+        if let Some(ref nodejs) = builder.config.nodejs {
+            let mut command = Command::new(nodejs);
+            command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
+            builder.ensure(::doc::Std {
+                target: self.target,
+                stage: builder.top_stage,
+            });
+            builder.run(&mut command);
+        } else {
+            println!("No nodejs found, skipping \"src/test/rustdoc-js\" tests");
+        }
     }
 }
 
