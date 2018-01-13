@@ -562,8 +562,8 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 ///       possible. eg. it will only return Ok for Result<T, !>
 ///
 /// This finds whether a (row) vector `v` of patterns is 'useful' in relation
-/// to a set of such vectors `m` is defined as there being a set of inputs
-/// that will match `v` but not any of the sets in `m`.
+/// to a set of such vectors `m` - this is defined as there being a set of
+/// inputs that will match `v` but not any of the sets in `m`.
 ///
 /// All the patterns at each column of the `matrix ++ v` matrix must
 /// have the same type, except that wildcard (PatternKind::Wild) patterns
@@ -602,9 +602,25 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
     let pcx = PatternContext {
-        // () is used to represent an unknown type in this context. If
-        // one of the fields has a known type, use it instead (other
-        // than that, all types should be equal modulo normalization).
+        // TyErr is used to represent the type of wildcard patterns matching
+        // against inaccessible (private) fields of structs, so that we won't
+        // be able to observe whether the types of the struct's fields are
+        // inhabited.
+        //
+        // If the field is truely inaccessible, then all the patterns
+        // matching against it must be wildcard patterns, so its type
+        // does not matter.
+        //
+        // However, if we are matching against non-wildcard patterns, we
+        // need to know the real type of the field so we can specialize
+        // against it. This primarily occurs through constants - they
+        // can include contents for fields that are inaccessible at the
+        // location of the match. In that case, the field's type is
+        // inhabited - by the constant - so we can just use it.
+        //
+        // FIXME: this might lead to "unstable" behavior with macro hygiene
+        // introducing uninhabited patterns for inaccessible fields. We
+        // need to figure out how to model that.
         ty: rows.iter().map(|r| r[0].ty).find(|ty| !ty.references_error())
             .unwrap_or(v[0].ty),
         max_slice_length: max_slice_length(cx, rows.iter().map(|r| r[0]).chain(Some(v[0])))
