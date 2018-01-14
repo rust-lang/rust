@@ -1139,53 +1139,42 @@ fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
     assert!(fold_args.len() == 3,
         "Expected fold_args to have three entries - the receiver, the initial value and the closure");
 
-    if let hir::ExprLit(ref lit) = fold_args[1].node {
-        if let ast::LitKind::Bool(ref b) = lit.node {
-            let initial_value = b.to_string();
+    if_chain! {
+        // Check if the initial value for the fold is the literal `false`
+        if let hir::ExprLit(ref lit) = fold_args[1].node;
+        if lit.node == ast::LitKind::Bool(false);
 
-            if let hir::ExprClosure(_, ref decl, body_id, _, _) = fold_args[2].node {
-                let closure_body = cx.tcx.hir.body(body_id);
-                let closure_expr = remove_blocks(&closure_body.value);
+        // Extract the body of the closure passed to fold
+        if let hir::ExprClosure(_, _, body_id, _, _) = fold_args[2].node;
+        let closure_body = cx.tcx.hir.body(body_id);
+        let closure_expr = remove_blocks(&closure_body.value);
 
-                let first_arg = &closure_body.arguments[0];
-                let arg_ident = get_arg_name(&first_arg.pat).unwrap();
+        // Extract the names of the two arguments to the closure
+        if let Some(first_arg_ident) = get_arg_name(&closure_body.arguments[0].pat);
+        if let Some(second_first_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
 
-                let second_arg = &closure_body.arguments[1];
-                let second_arg_ident = get_arg_name(&second_arg.pat).unwrap();
+        // Check if the closure body is of the form `acc || some_expr(x)`
+        if let hir::ExprBinary(ref bin_op, ref left_expr, ref right_expr) = closure_expr.node;
+        if bin_op.node == hir::BinOp_::BiOr;
+        if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = left_expr.node;
+        if path.segments.len() == 1 && &path.segments[0].name == &first_arg_ident;
 
-                if let hir::ExprBinary(ref bin_op, ref left_expr, ref right_expr) = closure_expr.node {
-                    if bin_op.node != hir::BinOp_::BiOr {
-                        return;
-                    }
-                    if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = left_expr.node {
-                        if path.segments.len() == 1 {
-                            let left_name =  &path.segments[0].name;
-                            let right_source = cx.sess().codemap().span_to_snippet(right_expr.span).unwrap();
+        then {
+            let right_source = snippet(cx, right_expr.span, "EXPR");
 
-                            if left_name == &arg_ident {
-                                span_lint(
-                                    cx,
-                                    FOLD_ANY,
-                                    expr.span,
-                                    // TODO: don't suggest .any(|x| f(x)) if we can suggest .any(f)
-                                    // TODO: these have difference semantics - original code might be deliberately avoiding short-circuiting
-                                    &format!(
-                                        ".fold(false, |{f}, {s}| {f} || {r})) is more succinctly expressed as .any(|{s}| {r})",
-                                        f = arg_ident,
-                                        s = second_arg_ident,
-                                        r = right_source
-                                    ),
-                                );
-                            }
-                        }
-                    }
-                }
-            } else{
-                panic!("DONOTMERGE: can this happen?");
-            }
+            span_lint(
+                cx,
+                FOLD_ANY,
+                expr.span,
+                // TODO: don't suggest .any(|x| f(x)) if we can suggest .any(f)
+                &format!(
+                    ".fold(false, |{f}, {s}| {f} || {r})) is more succinctly expressed as .any(|{s}| {r})",
+                    f = first_arg_ident,
+                    s = second_first_arg_ident,
+                    r = right_source
+                ),
+            );
         }
-    } else {
-        return;
     }
 }
 

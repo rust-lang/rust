@@ -390,6 +390,11 @@ fn fold_any() {
     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
 }
 
+/// Checks implementation of the `FOLD_ANY` lint
+fn fold_any_ignore_initial_value_of_true() {
+    let _ = (0..3).fold(true, |acc, x| acc || x > 2);
+}
+
 #[allow(similar_names)]
 fn main() {
     let opt = Some(0);

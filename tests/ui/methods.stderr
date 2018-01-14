@@ -502,9 +502,9 @@ error: .fold(false, |acc, x| acc || x > 2)) is more succinctly expressed as .any
     = note: `-D fold-any` implied by `-D warnings`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:396:13
+   --> $DIR/methods.rs:401:13
     |
-396 |     let _ = opt.unwrap();
+401 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
