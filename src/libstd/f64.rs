@@ -432,18 +432,17 @@ impl f64 {
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
     ///
+    /// The result may not be correctly rounded owing to implementation details;
+    /// `self.log2()` can produce more accurate results for base 2, and
+    /// `self.log10()` can produce more accurate results for base 10.
+    ///
     /// ```
-    /// let ten = 10.0_f64;
-    /// let two = 2.0_f64;
+    /// let five = 5.0_f64;
     ///
-    /// // log10(10) - 1 == 0
-    /// let abs_difference_10 = (ten.log(10.0) - 1.0).abs();
+    /// // log5(5) - 1 == 0
+    /// let abs_difference = (five.log(5.0) - 1.0).abs();
     ///
-    /// // log2(2) - 1 == 0
-    /// let abs_difference_2 = (two.log(2.0) - 1.0).abs();
-    ///
-    /// assert!(abs_difference_10 < 1e-10);
-    /// assert!(abs_difference_2 < 1e-10);
+    /// assert!(abs_difference < 1e-10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
