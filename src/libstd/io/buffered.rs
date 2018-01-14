@@ -194,6 +194,31 @@ impl<R: Read> BufReader<R> {
     pub fn into_inner(self) -> R { self.inner }
 }
 
+impl<R: Seek> BufReader<R> {
+    /// Seeks relative to the current position. If the new position lies within the buffer,
+    /// the buffer will not be flushed, allowing for more efficient seeks.
+    /// This method does not return the location of the underlying reader, so the caller
+    /// must track this information themselves if it is required.
+    #[unstable(feature = "bufreader_seek_relative", issue = "31100")]
+    pub fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        let pos = self.pos as u64;
+        if offset < 0 {
+            if let Some(new_pos) = pos.checked_sub((-offset) as u64) {
+                self.pos = new_pos as usize;
+                return Ok(())
+            }
+        } else {
+            if let Some(new_pos) = pos.checked_add(offset as u64) {
+                if new_pos <= self.cap as u64 {
+                    self.pos = new_pos as usize;
+                    return Ok(())
+                }
+            }
+        }
+        self.seek(SeekFrom::Current(offset)).map(|_|())
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<R: Read> Read for BufReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -260,6 +285,8 @@ impl<R: Seek> Seek for BufReader<R> {
     /// `.into_inner()` immediately after a seek yields the underlying reader
     /// at the same position.
     ///
+    /// To seek without discarding the internal buffer, use [`seek_relative`].
+    ///
     /// See `std::io::Seek` for more details.
     ///
     /// Note: In the edge case where you're seeking with `SeekFrom::Current(n)`
@@ -267,6 +294,8 @@ impl<R: Seek> Seek for BufReader<R> {
     /// seeks will be performed instead of one. If the second seek returns
     /// `Err`, the underlying reader will be left at the same position it would
     /// have if you seeked to `SeekFrom::Current(0)`.
+    ///
+    /// [`seek_relative`]: #method.seek_relative
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         let result: u64;
         if let SeekFrom::Current(n) = pos {
@@ -951,6 +980,23 @@ mod tests {
         assert_eq!(reader.fill_buf().ok(), Some(&[1, 2][..]));
         reader.consume(1);
         assert_eq!(reader.seek(SeekFrom::Current(-2)).ok(), Some(3));
+    }
+
+    #[test]
+    fn test_buffered_reader_seek_relative() {
+        let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
+        let mut reader = BufReader::with_capacity(2, io::Cursor::new(inner));
+
+        assert!(reader.seek_relative(3).is_ok());
+        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
+        assert!(reader.seek_relative(0).is_ok());
+        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
+        assert!(reader.seek_relative(1).is_ok());
+        assert_eq!(reader.fill_buf().ok(), Some(&[1][..]));
+        assert!(reader.seek_relative(-1).is_ok());
+        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
+        assert!(reader.seek_relative(2).is_ok());
+        assert_eq!(reader.fill_buf().ok(), Some(&[2, 3][..]));
     }
 
     #[test]
