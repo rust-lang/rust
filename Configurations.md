@@ -334,16 +334,16 @@ let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 #### `"Back"`:
 
 ```rust
-let or = foo ||
-    bar ||
-    foobar;
+fn main() {
+    r = foofoofoofoofoofoofoofoofoofoofoofoofoofoofoofoo ||
+        barbarbarbarbarbarbarbarbarbarbarbarbarbarbarbar;
 
-let sum = 1234 +
-    5678 +
-    910;
+    let sum = 123456789012345678901234567890 + 123456789012345678901234567890 +
+        123456789012345678901234567890;
 
-let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..
-    bbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+    let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        ..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb; // 🐜 See #2364.
+}
 ```
 
 ## `combine_control_expr`
