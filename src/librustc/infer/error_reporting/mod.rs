@@ -958,7 +958,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // `sp` only covers `T`, change it so that it covers
                             // `T:` when appropriate
                             let sp = if has_lifetimes {
-                                sp.to(sp.next_point().next_point())
+                                sp.to(self.tcx.sess.codemap().next_point(
+                                        self.tcx.sess.codemap().next_point(sp)))
                             } else {
                                 sp
                             };
