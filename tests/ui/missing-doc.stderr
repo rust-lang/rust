@@ -264,9 +264,3 @@ error: missing documentation for a function
 191 |         fn also_undocumented2() {}
     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: missing documentation for a function
-   --> $DIR/missing-doc.rs:202:1
-    |
-202 | fn main() {}
-    | ^^^^^^^^^^^^
-
