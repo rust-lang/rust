@@ -1,5 +1,4 @@
 use rustc::mir;
-use rustc::traits::Reveal;
 use rustc::ty::layout::{TyLayout, LayoutOf};
 use rustc::ty;
 
@@ -19,7 +18,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -349,7 +348,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 match dest {
                     Place::Local { frame, local } => self.modify_local(frame, local, init)?,
                     Place::Ptr {
-                        ptr: ptr,
+                        ptr,
                         align: _align,
                         extra: PlaceExtra::None,
                     } => self.memory.write_repeat(ptr, 0, size)?,
@@ -381,8 +380,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
             "needs_drop" => {
                 let ty = substs.type_at(0);
-                let env = ty::ParamEnv::empty(Reveal::All);
-                let needs_drop = ty.needs_drop(self.tcx, env);
+                let env = ty::ParamEnv::reveal_all();
+                let needs_drop = ty.needs_drop(self.tcx.tcx, env);
                 self.write_primval(
                     dest,
                     PrimVal::from_bool(needs_drop),
@@ -542,10 +541,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
             "transmute" => {
                 let src_ty = substs.type_at(0);
-                let src_align = self.layout_of(src_ty)?.align;
+                let _src_align = self.layout_of(src_ty)?.align;
                 let ptr = self.force_allocation(dest)?.to_ptr()?;
                 let dest_align = self.layout_of(substs.type_at(1))?.align;
-                self.write_value_to_ptr(args[0].value, ptr.into(), dest_align, src_ty);
+                self.write_value_to_ptr(args[0].value, ptr.into(), dest_align, src_ty).unwrap();
             }
 
             "unchecked_shl" => {
@@ -626,7 +625,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 match dest {
                     Place::Local { frame, local } => self.modify_local(frame, local, uninit)?,
                     Place::Ptr {
-                        ptr: ptr,
+                        ptr,
                         align: _align,
                         extra: PlaceExtra::None,
                     } => self.memory.mark_definedness(ptr, size, false)?,

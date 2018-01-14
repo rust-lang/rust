@@ -99,7 +99,7 @@ pub trait MemoryExt<'tcx> {
 }
 
 
-impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn check_locks(
         &self,
         ptr: MemoryPointer,

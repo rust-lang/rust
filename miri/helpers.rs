@@ -18,7 +18,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx, Pointer>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
     fn wrapping_pointer_offset(
         &self,
         ptr: Pointer,

@@ -5,6 +5,7 @@ extern crate miri;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
+extern crate rustc_trans_utils;
 extern crate env_logger;
 extern crate log_settings;
 extern crate syntax;
@@ -17,7 +18,8 @@ use rustc_driver::driver::{CompileState, CompileController};
 use rustc::session::config::{self, Input, ErrorOutputType};
 use rustc::hir::{self, itemlikevisit};
 use rustc::ty::TyCtxt;
-use syntax::ast::{self, MetaItemKind, NestedMetaItemKind};
+use rustc_trans_utils::trans_crate::TransCrate;
+use syntax::ast;
 use std::path::PathBuf;
 
 struct MiriCompilerCalls {
@@ -61,6 +63,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     }
     fn late_callback(
         &mut self,
+        trans: &TransCrate,
         matches: &getopts::Matches,
         sess: &Session,
         cstore: &CrateStore,
@@ -68,7 +71,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
     ) -> Compilation {
-        self.default.late_callback(matches, sess, cstore, input, odir, ofile)
+        self.default.late_callback(trans, matches, sess, cstore, input, odir, ofile)
     }
     fn build_controller(
         &mut self,
@@ -98,11 +101,9 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
     state.session.abort_if_errors();
 
     let tcx = state.tcx.unwrap();
-    let limits = resource_limits_from_attributes(state);
 
     if std::env::args().any(|arg| arg == "--test") {
         struct Visitor<'a, 'tcx: 'a>(
-            miri::ResourceLimits,
             TyCtxt<'a, 'tcx, 'tcx>,
             &'a CompileState<'a, 'tcx>
         );
@@ -113,13 +114,13 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
                         attr.name().map_or(false, |n| n == "test")
                     })
                     {
-                        let did = self.1.hir.body_owner_def_id(body_id);
+                        let did = self.0.hir.body_owner_def_id(body_id);
                         println!(
                             "running test: {}",
-                            self.1.def_path_debug_str(did),
+                            self.0.def_path_debug_str(did),
                         );
-                        miri::eval_main(self.1, did, None, self.0);
-                        self.2.session.abort_if_errors();
+                        miri::eval_main(self.0, did, None);
+                        self.1.session.abort_if_errors();
                     }
                 }
             }
@@ -127,7 +128,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
             fn visit_impl_item(&mut self, _impl_item: &'hir hir::ImplItem) {}
         }
         state.hir_crate.unwrap().visit_all_item_likes(
-            &mut Visitor(limits, tcx, state),
+            &mut Visitor(tcx, state),
         );
     } else if let Some((entry_node_id, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
@@ -138,56 +139,12 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
                 None
             }
         });
-        miri::eval_main(tcx, entry_def_id, start_wrapper, limits);
+        miri::eval_main(tcx, entry_def_id, start_wrapper);
 
         state.session.abort_if_errors();
     } else {
         println!("no main function found, assuming auxiliary build");
     }
-}
-
-fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits {
-    let mut limits = miri::ResourceLimits::default();
-    let krate = state.hir_crate.as_ref().unwrap();
-    let err_msg = "miri attributes need to be in the form `miri(key = value)`";
-    let extract_int = |lit: &syntax::ast::Lit| -> u128 {
-        match lit.node {
-            syntax::ast::LitKind::Int(i, _) => i,
-            _ => {
-                state.session.span_fatal(
-                    lit.span,
-                    "expected an integer literal",
-                )
-            }
-        }
-    };
-
-    for attr in krate.attrs.iter().filter(|a| {
-        a.name().map_or(false, |n| n == "miri")
-    })
-    {
-        if let Some(items) = attr.meta_item_list() {
-            for item in items {
-                if let NestedMetaItemKind::MetaItem(ref inner) = item.node {
-                    if let MetaItemKind::NameValue(ref value) = inner.node {
-                        match &inner.name().as_str()[..] {
-                            "memory_size" => limits.memory_size = extract_int(value) as u64,
-                            "step_limit" => limits.step_limit = extract_int(value) as u64,
-                            "stack_limit" => limits.stack_limit = extract_int(value) as usize,
-                            _ => state.session.span_err(item.span, "unknown miri attribute"),
-                        }
-                    } else {
-                        state.session.span_err(inner.span, err_msg);
-                    }
-                } else {
-                    state.session.span_err(item.span, err_msg);
-                }
-            }
-        } else {
-            state.session.span_err(attr.span, err_msg);
-        }
-    }
-    limits
 }
 
 fn init_logger() {

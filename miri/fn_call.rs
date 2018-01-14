@@ -8,8 +8,6 @@ use syntax::codemap::Span;
 
 use std::mem;
 
-use rustc::traits;
-
 use super::*;
 
 use tls::MemoryExt;
@@ -49,7 +47,7 @@ pub trait EvalContextExt<'tcx> {
     fn write_null(&mut self, dest: Place, dest_ty: Ty<'tcx>) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -385,13 +383,17 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                             promoted: None,
                         };
                         // compute global if not cached
-                        let val = match self.tcx.interpret_interner.borrow().get_cached(cid) {
-                            Some(ptr) => MemoryPointer::new(ptr, 0).into(),
-                            None => eval_body(self.tcx, instance, ty::ParamEnv::empty(traits::Reveal::All))?.0,
+                        let value: Value = match self.tcx.interpret_interner.get_cached(instance.def_id()) {
+                            Some(ptr) => {
+                                Value::ByRef(MemoryPointer::new(ptr, 0).into(), name_align)
+                            }
+                            None => {
+                                let res: Option<(Value, Pointer, Ty)> = eval_body(self.tcx.tcx, cid, ty::ParamEnv::reveal_all());
+                                res.ok_or_else(||EvalErrorKind::MachineError("<already reported>".to_string()))?.0
+                            },
                         };
-                        let val = self.value_to_primval(ValTy { value: Value::ByRef(val, name_align),
-                                                                ty: args[0].ty })?.to_u64()?;
-                        if val == name {
+                        let value = self.value_to_primval(ValTy { value, ty: args[0].ty })?.to_u64()?;
+                        if value == name {
                             result = Some(path_value);
                             break;
                         }
@@ -420,7 +422,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 };
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
-                let key_type = args[0].ty.builtin_deref(true, ty::LvaluePreference::NoPreference)
+                let key_type = args[0].ty.builtin_deref(true)
                                    .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
                 let key_size = self.layout_of(key_type)?.size;
 
@@ -502,7 +504,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                     for item in mem::replace(&mut items, Default::default()).iter() {
                         if item.ident.name == *segment {
                             if path_it.peek().is_none() {
-                                return Some(ty::Instance::mono(self.tcx, item.def.def_id()));
+                                return Some(ty::Instance::mono(self.tcx.tcx, item.def.def_id()));
                             }
 
                             items = self.tcx.item_children(item.def.def_id());

@@ -24,7 +24,7 @@ pub trait EvalContextExt<'tcx> {
     ) -> EvalResult<'tcx, (PrimVal, bool)>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
@@ -42,7 +42,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
         match bin_op {
             Offset if left_kind == Ptr && right_kind == usize => {
                 let pointee_ty = left_ty
-                    .builtin_deref(true, ty::LvaluePreference::NoPreference)
+                    .builtin_deref(true)
                     .expect("Offset called on non-ptr type")
                     .ty;
                 let ptr = self.pointer_offset(
