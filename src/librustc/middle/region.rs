@@ -12,7 +12,7 @@
 //! the parent links in the region hierarchy.
 //!
 //! Most of the documentation on regions can be found in
-//! `middle/infer/region_constraints/README.md`
+//! `librustc/infer/region_constraints/README.md`
 
 use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};

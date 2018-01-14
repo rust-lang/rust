@@ -14,7 +14,7 @@
 use abi::{ArgType, CastTarget, FnType, LayoutExt, Reg, RegKind};
 use context::CrateContext;
 
-use rustc::ty::layout::{self, TyLayout, Size};
+use rustc::ty::layout::{self, Integer, Primitive, TyLayout, Size};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Class {
@@ -22,6 +22,25 @@ enum Class {
     Int,
     Sse,
     SseUp
+}
+
+impl Class {
+    pub fn from_layout<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, layout: TyLayout<'tcx>) -> Self {
+        match layout.abi {
+            layout::Abi::Scalar(ref scalar) => match scalar.value {
+                layout::Int(..) |
+                layout::Pointer => Class::Int,
+                layout::F32 |
+                layout::F64 => Class::Sse,
+            },
+            layout::Abi::ScalarPair(..) | layout::Abi::Aggregate { .. } => {
+                let last_idx = layout.fields.count().checked_sub(1).unwrap_or(0);
+                Class::from_layout(ccx, layout.field(ccx, last_idx))
+            }
+            layout::Abi::Vector{ .. } => Class::SseUp,
+            layout::Abi::Uninhabited => unreachable!(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -64,17 +83,17 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
             return Ok(());
         }
 
-        match layout.abi {
-            layout::Abi::Uninhabited => {}
+        let mut offset = match layout.abi {
+            layout::Abi::Uninhabited => return Ok(()),
 
             layout::Abi::Scalar(ref scalar) => {
-                let reg = match scalar.value {
-                    layout::Int(..) |
-                    layout::Pointer => Class::Int,
-                    layout::F32 |
-                    layout::F64 => Class::Sse
-                };
-                unify(cls, off, reg);
+                if let Primitive::Int(Integer::I128, _) = scalar.value {
+                    unify(cls, off, Class::Int);
+                    unify(cls, off + Size::from_bytes(8), Class::Int);
+                } else {
+                unify(cls, off, Class::from_layout(ccx, layout));
+                }
+                off + scalar.value.size(ccx)
             }
 
             layout::Abi::Vector { ref element, count } => {
@@ -83,26 +102,39 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 // everything after the first one is the upper
                 // half of a register.
                 let stride = element.value.size(ccx);
+                let mut field_off = off;
                 for i in 1..count {
-                    let field_off = off + stride * i;
+                    field_off = off + stride * i;
                     unify(cls, field_off, Class::SseUp);
                 }
+                field_off + stride
             }
 
             layout::Abi::ScalarPair(..) |
             layout::Abi::Aggregate { .. } => {
                 match layout.variants {
                     layout::Variants::Single { .. } => {
+                        let mut field_off = off;
+                        let mut last_size = Size::from_bytes(0);
                         for i in 0..layout.fields.count() {
-                            let field_off = off + layout.fields.offset(i);
+                            field_off = off + layout.fields.offset(i);
                             classify(ccx, layout.field(ccx, i), cls, field_off)?;
+                            last_size = layout.field(ccx, i).size;
                         }
+                        field_off + last_size
                     }
                     layout::Variants::Tagged { .. } |
                     layout::Variants::NicheFilling { .. } => return Err(Memory),
                 }
             }
 
+        };
+
+        // Add registers for padding.
+        let reg = Class::from_layout(ccx, layout);
+        while offset < layout.size {
+            unify(cls, offset, reg);
+            offset = offset + Size::from_bytes(8);
         }
 
         Ok(())
@@ -175,18 +207,18 @@ fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
     }
 }
 
-fn cast_target(cls: &[Class], size: Size) -> CastTarget {
+fn cast_target(cls: &[Class], size: Size) -> Option<CastTarget> {
     let mut i = 0;
-    let lo = reg_component(cls, &mut i, size).unwrap();
+    let lo = reg_component(cls, &mut i, size)?;
     let offset = Size::from_bytes(8) * (i as u64);
     let target = if size <= offset {
         CastTarget::from(lo)
     } else {
-        let hi = reg_component(cls, &mut i, size - offset).unwrap();
+        let hi = reg_component(cls, &mut i, size - offset)?;
         CastTarget::Pair(lo, hi)
     };
     assert_eq!(reg_component(cls, &mut i, Size::from_bytes(0)), None);
-    target
+    Some(target)
 }
 
 pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
@@ -229,7 +261,12 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
 
             if arg.layout.is_aggregate() {
                 let size = arg.layout.size;
-                arg.cast_to(cast_target(cls.as_ref().unwrap(), size))
+                let cls = cls.as_ref().unwrap(); // This cannot fail when `in_mem` is false.
+                if let Some(target) = cast_target(cls, size) {
+                    arg.cast_to(target);
+                } else {
+                    bug!("cast_target() failed: cls {:?} size {:?} arg {:?}", cls, size, arg);
+                }
             } else {
                 arg.extend_integer_width_to(32);
             }

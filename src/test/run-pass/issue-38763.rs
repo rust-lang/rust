@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// #45662
+#![feature(i128_type)]
 
-#![feature(repr_align)]
-#![feature(attr_literals)]
-
-#[repr(align(16))]
-pub struct A {
-    y: i64,
-}
+#[repr(C)]
+pub struct Foo(i128);
 
 #[no_mangle]
-pub extern "C" fn foo(x: A) {}
+pub extern "C" fn foo(x: Foo) -> Foo { x }
 
-fn main() {}
+fn main() {
+    foo(Foo(1));
+}
