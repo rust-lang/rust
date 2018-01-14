@@ -836,7 +836,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             },
             ty::TyAdt(adt_def, _) => {
-                let struct_var = adt_def.struct_variant();
+                let struct_var = adt_def.non_enum_variant();
                 PatternKind::Leaf {
                     subpatterns: struct_var.fields.iter().enumerate().map(|(i, _)| {
                         let field = Field::new(i);

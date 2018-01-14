@@ -205,15 +205,29 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Place, mir::BasicBlock)>,
-        _args: &[ValTy<'tcx>],
+        args: &[ValTy<'tcx>],
         span: Span,
-        _sig: ty::FnSig<'tcx>,
+        sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         debug!("eval_fn_call: {:?}", instance);
         if !ecx.tcx.is_const_fn(instance.def_id()) {
-            return Err(
-                ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into(),
-            );
+            let def_id = instance.def_id();
+            let (op, oflo) = if let Some(op) = ecx.tcx.is_binop_lang_item(def_id) {
+                op
+            } else {
+                return Err(
+                    ConstEvalError::NotConst(format!("calling non-const fn `{}`", instance)).into(),
+                );
+            };
+            let (dest, bb) = destination.expect("128 lowerings can't diverge");
+            let dest_ty = sig.output();
+            if oflo {
+                ecx.intrinsic_with_overflow(op, args[0], args[1], dest, dest_ty)?;
+            } else {
+                ecx.intrinsic_overflowing(op, args[0], args[1], dest, dest_ty)?;
+            }
+            ecx.goto_block(bb);
+            return Ok(true);
         }
         let mir = match ecx.load_mir(instance.def) {
             Ok(mir) => mir,
@@ -472,8 +486,8 @@ pub fn const_eval_provider<'a, 'tcx>(
             ecx.report(&mut err, true);
         }
         ConstEvalErr {
-        kind: err.into(),
-        span,
+            kind: err.into(),
+            span,
         }
     })
 }
