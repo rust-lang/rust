@@ -1,3 +1,5 @@
+error[E0601]: main function not found
+
 error[E0518]: attribute should be applied to function
   --> $DIR/issue-43106-gating-of-inline.rs:21:1
    |
@@ -36,8 +38,6 @@ error[E0518]: attribute should be applied to function
    |
 35 |     #[inline = "2100"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^ ---------- not a function
-
-error[E0601]: main function not found
 
 error: aborting due to 6 previous errors
 

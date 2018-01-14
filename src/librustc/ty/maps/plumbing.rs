@@ -917,6 +917,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         }
         DepKind::IsTranslatedFunction => { force!(is_translated_function, def_id!()); }
         DepKind::OutputFilenames => { force!(output_filenames, LOCAL_CRATE); }
+
+        DepKind::TargetFeaturesWhitelist => { force!(target_features_whitelist, LOCAL_CRATE); }
+        DepKind::TargetFeaturesEnabled => { force!(target_features_enabled, def_id!()); }
     }
 
     true

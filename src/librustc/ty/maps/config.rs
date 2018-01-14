@@ -631,6 +631,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_pre
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::target_features_whitelist<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the whitelist of target features")
+    }
+}
+
 macro_rules! impl_disk_cacheable_query(
     ($query_name:ident, |$key:tt| $cond:expr) => {
         impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {

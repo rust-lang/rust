@@ -634,6 +634,10 @@ define_dep_nodes!( <'tcx>
     [] Null,
 
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
+
+    [input] TargetFeaturesWhitelist,
+    [] TargetFeaturesEnabled(DefId),
+
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

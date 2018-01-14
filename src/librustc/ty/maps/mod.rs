@@ -360,6 +360,11 @@ define_maps! { <'tcx>
 
     [] fn substitute_normalize_and_test_predicates:
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
+
+    [] fn target_features_whitelist:
+        target_features_whitelist_node(CrateNum) -> Rc<FxHashSet<String>>,
+    [] fn target_features_enabled: TargetFeaturesEnabled(DefId) -> Rc<Vec<String>>,
+
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -504,4 +509,8 @@ fn normalize_ty_node<'tcx>(_: Ty<'tcx>) -> DepConstructor<'tcx> {
 fn substitute_normalize_and_test_predicates_node<'tcx>(key: (DefId, &'tcx Substs<'tcx>))
                                             -> DepConstructor<'tcx> {
     DepConstructor::SubstituteNormalizeAndTestPredicates { key }
+}
+
+fn target_features_whitelist_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::TargetFeaturesWhitelist
 }
