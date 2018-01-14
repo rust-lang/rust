@@ -175,18 +175,18 @@ fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
     }
 }
 
-fn cast_target(cls: &[Class], size: Size) -> CastTarget {
+fn cast_target(cls: &[Class], size: Size) -> Option<CastTarget> {
     let mut i = 0;
-    let lo = reg_component(cls, &mut i, size).unwrap();
+    let lo = reg_component(cls, &mut i, size)?;
     let offset = Size::from_bytes(8) * (i as u64);
     let target = if size <= offset {
         CastTarget::from(lo)
     } else {
-        let hi = reg_component(cls, &mut i, size - offset).unwrap();
+        let hi = reg_component(cls, &mut i, size - offset)?;
         CastTarget::Pair(lo, hi)
     };
     assert_eq!(reg_component(cls, &mut i, Size::from_bytes(0)), None);
-    target
+    Some(target)
 }
 
 pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
@@ -229,7 +229,12 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
 
             if arg.layout.is_aggregate() {
                 let size = arg.layout.size;
-                arg.cast_to(cast_target(cls.as_ref().unwrap(), size))
+                let cls = cls.as_ref().unwrap(); // This cannot fail when `in_mem` is false.
+                if let Some(target) = cast_target(cls, size) {
+                    arg.cast_to(target);
+                } else {
+                    bug!("cast_target() failed: cls {:?} size {:?} arg {:?}", cls, size, arg);
+                }
             } else {
                 arg.extend_integer_width_to(32);
             }
