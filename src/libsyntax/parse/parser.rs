@@ -4772,21 +4772,13 @@ impl<'a> Parser<'a> {
         }
         let lo = self.prev_span;
 
-        // This is a temporary future proofing.
-        //
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
         // parameter syntax (as in `where<'a>` or `where<T>`. To avoid that being a breaking
-        // change, for now we refuse to parse `where < (ident | lifetime) (> | , | :)`.
-        if token::Lt == self.token {
-            let ident_or_lifetime = self.look_ahead(1, |t| t.is_ident() || t.is_lifetime());
-            if ident_or_lifetime {
-                let gt_comma_or_colon = self.look_ahead(2, |t| {
-                    *t == token::Gt || *t == token::Comma || *t == token::Colon
-                });
-                if gt_comma_or_colon {
-                    self.span_err(self.span, "syntax `where<T>` is reserved for future use");
-                }
-            }
+        // change we parse those generics now, but report an error.
+        if self.choose_generics_over_qpath() {
+            let generics = self.parse_generics()?;
+            self.span_err(generics.span,
+                          "generic parameters on `where` clauses are reserved for future use");
         }
 
         loop {
@@ -5348,6 +5340,29 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn choose_generics_over_qpath(&self) -> bool {
+        // There's an ambiguity between generic parameters and qualified paths in impls.
+        // If we see `<` it may start both, so we have to inspect some following tokens.
+        // The following combinations can only start generics,
+        // but not qualified paths (with one exception):
+        //     `<` `>` - empty generic parameters
+        //     `<` `#` - generic parameters with attributes
+        //     `<` (LIFETIME|IDENT) `>` - single generic parameter
+        //     `<` (LIFETIME|IDENT) `,` - first generic parameter in a list
+        //     `<` (LIFETIME|IDENT) `:` - generic parameter with bounds
+        //     `<` (LIFETIME|IDENT) `=` - generic parameter with a default
+        // The only truly ambiguous case is
+        //     `<` IDENT `>` `::` IDENT ...
+        // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
+        // because this is what almost always expected in practice, qualified paths in impls
+        // (`impl <Type>::AssocTy { ... }`) aren't even allowed by type checker at the moment.
+        self.token == token::Lt &&
+            (self.look_ahead(1, |t| t == &token::Pound || t == &token::Gt) ||
+             self.look_ahead(1, |t| t.is_lifetime() || t.is_ident()) &&
+                self.look_ahead(2, |t| t == &token::Gt || t == &token::Comma ||
+                                       t == &token::Colon || t == &token::Eq))
+    }
+
     fn parse_impl_body(&mut self) -> PResult<'a, (Vec<ImplItem>, Vec<Attribute>)> {
         self.expect(&token::OpenDelim(token::Brace))?;
         let attrs = self.parse_inner_attributes()?;
@@ -5378,8 +5393,11 @@ impl<'a> Parser<'a> {
     fn parse_item_impl(&mut self, unsafety: Unsafety, defaultness: Defaultness)
                        -> PResult<'a, ItemInfo> {
         // First, parse generic parameters if necessary.
-        // FIXME: Disambiguate generic parameters and qualified paths (`impl <A as B>::C {}`).
-        let mut generics = self.parse_generics()?;
+        let mut generics = if self.choose_generics_over_qpath() {
+            self.parse_generics()?
+        } else {
+            ast::Generics::default()
+        };
 
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
         let polarity = if self.check(&token::Not) && self.look_ahead(1, |t| t.can_begin_type()) {

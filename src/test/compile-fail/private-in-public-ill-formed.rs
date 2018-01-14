@@ -21,7 +21,7 @@ mod aliases_pub {
         type AssocAlias = m::Pub3;
     }
 
-    impl (<Priv as PrivTr>::AssocAlias) { //~ ERROR no base type found for inherent implementation
+    impl <Priv as PrivTr>::AssocAlias { //~ ERROR no base type found for inherent implementation
         pub fn f(arg: Priv) {} // private type `aliases_pub::Priv` in public interface
     }
 }
@@ -37,7 +37,7 @@ mod aliases_priv {
         type AssocAlias = Priv3;
     }
 
-    impl (<Priv as PrivTr>::AssocAlias) { //~ ERROR no base type found for inherent implementation
+    impl <Priv as PrivTr>::AssocAlias { //~ ERROR no base type found for inherent implementation
         pub fn f(arg: Priv) {} // OK
     }
 }

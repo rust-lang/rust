@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,7 +10,9 @@
 
 // compile-flags: -Z parse-only
 
-fn foo<T>() where <T>::Item: ToString, T: Iterator { }
-//~^ ERROR generic parameters on `where` clauses are reserved for future use
+impl <*const u8>::AssocTy {} // OK
+impl <Type as Trait>::AssocTy {} // OK
+impl <'a + Trait>::AssocTy {} // OK
+impl <<Type>::AssocTy>::AssocTy {} // OK
 
-fn main() {}
+FAIL //~ ERROR
