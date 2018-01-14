@@ -699,12 +699,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let region_scope_span = region_scope.span(self.hir.tcx(),
                                                           &self.hir.region_scope_tree);
                 // Attribute scope exit drops to scope's closing brace.
-                // Without this check when finding the endpoint, we'll run into an ICE.
-                let scope_end = if region_scope_span.hi().0 == 0 {
-                    region_scope_span
-                } else {
-                    region_scope_span.end_point()
-                };
+                let scope_end = region_scope_span.end_point();
 
                 scope.drops.push(DropData {
                     span: scope_end,
