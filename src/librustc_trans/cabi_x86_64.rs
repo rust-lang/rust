@@ -14,7 +14,7 @@
 use abi::{ArgType, CastTarget, FnType, LayoutExt, Reg, RegKind};
 use context::CrateContext;
 
-use rustc::ty::layout::{self, TyLayout, Size};
+use rustc::ty::layout::{self, Integer, Primitive, TyLayout, Size};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Class {
@@ -87,7 +87,12 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
             layout::Abi::Uninhabited => return Ok(()),
 
             layout::Abi::Scalar(ref scalar) => {
+                if let Primitive::Int(Integer::I128, _) = scalar.value {
+                    unify(cls, off, Class::Int);
+                    unify(cls, off + Size::from_bytes(8), Class::Int);
+                } else {
                 unify(cls, off, Class::from_layout(ccx, layout));
+                }
                 off + scalar.value.size(ccx)
             }
 
