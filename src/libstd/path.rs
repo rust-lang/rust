@@ -2293,13 +2293,13 @@ impl Path {
 
         // If an empty PathBuf would be returned, instead return CurDir ('.').
         if stack.is_empty() {
-            return PathBuf::from(Component::CurDir.as_ref());
+            return PathBuf::from(Component::CurDir.as_os_str());
         }
 
         let mut norm_path = PathBuf::new();
 
         for item in &stack {
-            norm_path.push(item.as_ref());
+            norm_path.push(item.as_os_str());
         }
 
         norm_path
@@ -4109,7 +4109,7 @@ mod tests {
     fn test_normalize() {
         macro_rules! tn(
             ($path:expr, $expected:expr) => ( {
-                let mut actual = PathBuf::from($path).normalize();
+                let actual = PathBuf::from($path).normalize();
                 assert!(actual.to_str() == Some($expected),
                         "normalizing {:?}: Expected {:?}, got {:?}",
                         $path, $expected,
