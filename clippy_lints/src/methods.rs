@@ -1126,7 +1126,11 @@ fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir
 }
 
 fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
-    // DONOTMERGE: What if this is just some other method called fold?
+    // Check that this is a call to Iterator::fold rather than just some function called fold
+    if !match_trait_method(cx, expr, &paths::ITERATOR) {
+        return;
+    }
+
     assert!(fold_args.len() == 3,
         "Expected fold_args to have three entries - the receiver, the initial value and the closure");
 

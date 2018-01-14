@@ -385,17 +385,17 @@ fn iter_skip_next() {
     let _ = foo.filter().skip(42).next();
 }
 
-/// Checks implementation of the `FOLD_ANY` lint
+/// Should trigger the `FOLD_ANY` lint
 fn fold_any() {
     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
 }
 
-/// Checks implementation of the `FOLD_ANY` lint
+/// Should not trigger the `FOLD_ANY` lint as the initial value is not the literal `false`
 fn fold_any_ignores_initial_value_of_true() {
     let _ = (0..3).fold(true, |acc, x| acc || x > 2);
 }
 
-/// Checks implementation of the `FOLD_ANY` lint
+/// Should not trigger the `FOLD_ANY` lint as the accumulator is not integer valued
 fn fold_any_ignores_non_boolean_accumalator() {
     let _ = (0..3).fold(0, |acc, x| acc + if x > 2 { 1 } else { 0 });
 }
