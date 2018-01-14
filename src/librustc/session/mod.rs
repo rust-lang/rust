@@ -562,14 +562,14 @@ impl Session {
                                             index: DefIndex)
                                             -> String {
         format!("__rustc_plugin_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
-                                                   index.as_usize())
+                                                   index.to_proc_macro_index())
     }
 
     pub fn generate_derive_registrar_symbol(&self, disambiguator: CrateDisambiguator,
                                             index: DefIndex)
                                             -> String {
         format!("__rustc_derive_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
-                                                   index.as_usize())
+                                                   index.to_proc_macro_index())
     }
 
     pub fn sysroot<'a>(&'a self) -> &'a Path {

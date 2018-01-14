@@ -112,9 +112,6 @@ define_maps! { <'tcx>
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     [] fn is_foreign_item: IsForeignItem(DefId) -> bool,
 
-    /// True if this is an auto impl (aka impl Foo for ..)
-    [] fn is_auto_impl: IsAutoImpl(DefId) -> bool,
-
     /// Get a map with the variance of every item; use `item_variance`
     /// instead.
     [] fn crate_variances: crate_variances(CrateNum) -> Rc<ty::CrateVariancesMap>,
@@ -363,6 +360,11 @@ define_maps! { <'tcx>
 
     [] fn substitute_normalize_and_test_predicates:
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
+
+    [] fn target_features_whitelist:
+        target_features_whitelist_node(CrateNum) -> Rc<FxHashSet<String>>,
+    [] fn target_features_enabled: TargetFeaturesEnabled(DefId) -> Rc<Vec<String>>,
+
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -507,4 +509,8 @@ fn normalize_ty_node<'tcx>(_: Ty<'tcx>) -> DepConstructor<'tcx> {
 fn substitute_normalize_and_test_predicates_node<'tcx>(key: (DefId, &'tcx Substs<'tcx>))
                                             -> DepConstructor<'tcx> {
     DepConstructor::SubstituteNormalizeAndTestPredicates { key }
+}
+
+fn target_features_whitelist_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::TargetFeaturesWhitelist
 }

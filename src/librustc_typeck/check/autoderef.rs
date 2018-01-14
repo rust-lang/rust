@@ -14,6 +14,7 @@ use super::{FnCtxt, LvalueOp};
 use super::method::MethodCallee;
 
 use rustc::infer::InferOk;
+use rustc::session::DiagnosticMessageId;
 use rustc::traits;
 use rustc::ty::{self, Ty, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
@@ -56,19 +57,25 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
             return Some((self.cur_ty, 0));
         }
 
-        if self.steps.len() == tcx.sess.recursion_limit.get() {
+        if self.steps.len() >= tcx.sess.recursion_limit.get() {
             // We've reached the recursion limit, error gracefully.
             let suggested_limit = tcx.sess.recursion_limit.get() * 2;
-            struct_span_err!(tcx.sess,
-                             self.span,
-                             E0055,
-                             "reached the recursion limit while auto-dereferencing {:?}",
-                             self.cur_ty)
-                .span_label(self.span, "deref recursion limit reached")
-                .help(&format!(
-                        "consider adding a `#[recursion_limit=\"{}\"]` attribute to your crate",
+            let msg = format!("reached the recursion limit while auto-dereferencing {:?}",
+                              self.cur_ty);
+            let error_id = (DiagnosticMessageId::ErrorId(55), Some(self.span), msg.clone());
+            let fresh = tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
+            if fresh {
+                struct_span_err!(tcx.sess,
+                                 self.span,
+                                 E0055,
+                                 "reached the recursion limit while auto-dereferencing {:?}",
+                                 self.cur_ty)
+                    .span_label(self.span, "deref recursion limit reached")
+                    .help(&format!(
+                        "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
                         suggested_limit))
-                .emit();
+                    .emit();
+            }
             return None;
         }
 

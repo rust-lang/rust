@@ -18,7 +18,8 @@ use rustc::hir;
 use rustc::middle::cstore::{LinkagePreference, ExternConstBody,
                             ExternBodyNestedBodies};
 use rustc::hir::def::{self, Def, CtorKind};
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex,
+                         CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::ich::Fingerprint;
 use rustc::middle::lang_items;
 use rustc::mir;
@@ -36,7 +37,6 @@ use std::rc::Rc;
 use std::u32;
 
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
-use rustc_data_structures::indexed_vec::Idx;
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::codemap;
@@ -264,7 +264,7 @@ impl<'a, 'tcx> SpecializedDecoder<DefId> for DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<DefIndex, Self::Error> {
-        Ok(DefIndex::from_u32(self.read_u32()?))
+        Ok(DefIndex::from_raw_u32(self.read_u32()?))
     }
 }
 
@@ -404,7 +404,6 @@ impl<'tcx> EntryKind<'tcx> {
 
             EntryKind::ForeignMod |
             EntryKind::Impl(_) |
-            EntryKind::AutoImpl(_) |
             EntryKind::Field |
             EntryKind::Generator(_) |
             EntryKind::Closure(_) => return None,
@@ -453,7 +452,7 @@ impl<'a, 'tcx> CrateMetadata {
         if !self.is_proc_macro(index) {
             self.entry(index).kind.to_def(self.local_def_id(index))
         } else {
-            let kind = self.proc_macros.as_ref().unwrap()[index.as_usize() - 1].1.kind();
+            let kind = self.proc_macros.as_ref().unwrap()[index.to_proc_macro_index()].1.kind();
             Some(Def::Macro(self.local_def_id(index), kind))
         }
     }
@@ -634,7 +633,7 @@ impl<'a, 'tcx> CrateMetadata {
                     let def = Def::Macro(
                         DefId {
                             krate: self.cnum,
-                            index: DefIndex::new(id + 1)
+                            index: DefIndex::from_proc_macro_index(id),
                         },
                         ext.kind()
                     );
@@ -690,8 +689,7 @@ impl<'a, 'tcx> CrateMetadata {
                         }
                         continue;
                     }
-                    EntryKind::Impl(_) |
-                    EntryKind::AutoImpl(_) => continue,
+                    EntryKind::Impl(_) => continue,
 
                     _ => {}
                 }
@@ -1043,13 +1041,6 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
         self.dllimport_foreign_items.contains(&id)
-    }
-
-    pub fn is_auto_impl(&self, impl_id: DefIndex) -> bool {
-        match self.entry(impl_id).kind {
-            EntryKind::AutoImpl(_) => true,
-            _ => false,
-        }
     }
 
     pub fn fn_sig(&self,

@@ -1553,11 +1553,6 @@ impl ReprOptions {
             }
         }
 
-        // FIXME(eddyb) This is deprecated and should be removed.
-        if tcx.has_attr(did, "simd") {
-            flags.insert(ReprFlags::IS_SIMD);
-        }
-
         // This is here instead of layout because the choice must make it into metadata.
         if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.item_path_str(did))) {
             flags.insert(ReprFlags::IS_LINEAR);
@@ -2405,8 +2400,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Returns true if this is an `auto trait`.
-    ///
-    /// NB. For a limited time, also returns true if `impl Trait for .. { }` is in the code-base.
     pub fn trait_is_auto(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).has_auto_impl
     }

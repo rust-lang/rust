@@ -101,7 +101,7 @@ pub use panicking::{take_hook, set_hook, PanicInfo, Location};
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented = "the type {Self} may not be safely transferred \
                             across an unwind boundary"]
-pub trait UnwindSafe {}
+pub auto trait UnwindSafe {}
 
 /// A marker trait representing types where a shared reference is considered
 /// unwind safe.
@@ -115,7 +115,7 @@ pub trait UnwindSafe {}
 #[rustc_on_unimplemented = "the type {Self} may contain interior mutability \
                             and a reference may not be safely transferrable \
                             across a catch_unwind boundary"]
-pub trait RefUnwindSafe {}
+pub auto trait RefUnwindSafe {}
 
 /// A simple wrapper around a type to assert that it is unwind safe.
 ///
@@ -187,10 +187,7 @@ pub struct AssertUnwindSafe<T>(
 // * Unique, an owning pointer, lifts an implementation
 // * Types like Mutex/RwLock which are explicilty poisoned are unwind safe
 // * Our custom AssertUnwindSafe wrapper is indeed unwind safe
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-impl UnwindSafe for .. {}
+
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<'a, T: ?Sized> !UnwindSafe for &'a mut T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
@@ -219,13 +216,9 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Arc<T> {}
 
 // Pretty simple implementations for the `RefUnwindSafe` marker trait,
-// basically just saying that this is a marker trait and `UnsafeCell` is the
+// basically just saying that `UnsafeCell` is the
 // only thing which doesn't implement it (which then transitively applies to
 // everything else).
-#[stable(feature = "catch_unwind", since = "1.9.0")]
-#[allow(unknown_lints)]
-#[allow(auto_impl)]
-impl RefUnwindSafe for .. {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: ?Sized> !RefUnwindSafe for UnsafeCell<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]

@@ -616,7 +616,7 @@ impl Step for Rustc {
         t!(symlink_dir_force(&my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
-        compile::rustc_cargo(build, &compiler, target, &mut cargo);
+        compile::rustc_cargo(build, target, &mut cargo);
 
         if build.config.compiler_docs {
             // src/rustc/Cargo.toml contains a bin crate called rustc which

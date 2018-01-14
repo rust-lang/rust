@@ -1965,10 +1965,6 @@ pub enum Item_ {
     /// Represents a Trait Alias Declaration
     ItemTraitAlias(Generics, TyParamBounds),
 
-    /// Auto trait implementations
-    ///
-    /// `impl Trait for .. {}`
-    ItemAutoImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
              ImplPolarity,
@@ -1996,8 +1992,7 @@ impl Item_ {
             ItemUnion(..) => "union",
             ItemTrait(..) => "trait",
             ItemTraitAlias(..) => "trait alias",
-            ItemImpl(..) |
-            ItemAutoImpl(..) => "item",
+            ItemImpl(..) => "item",
         }
     }
 

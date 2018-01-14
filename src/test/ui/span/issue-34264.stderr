@@ -33,8 +33,6 @@ error[E0308]: mismatched types
    |
    = note: expected type `usize`
               found type `&'static str`
-   = help: here are some functions which might fulfill your needs:
-           - .len()
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
   --> $DIR/issue-34264.rs:20:5

@@ -104,8 +104,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into
         let def_data = match i.node {
-            ItemKind::AutoImpl(..) | ItemKind::Impl(..) =>
-                DefPathData::Impl,
+            ItemKind::Impl(..) => DefPathData::Impl,
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
             ItemKind::Trait(..) | ItemKind::TraitAlias(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>

@@ -8,9 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+use std::path::{Path, PathBuf};
 
-trait Foo {}
-impl Foo for .. {}
-//~^ ERROR The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`
-//~^^ WARN this was previously accepted by the compiler
+
+fn main() {
+    let _tis_an_instants_play: String = "'Tis a fond Ambush—"; //~ ERROR mismatched types
+    let _just_to_make_bliss: PathBuf = Path::new("/ern/her/own/surprise");
+    //~^ ERROR mismatched types
+
+    let _but_should_the_play: String = 2; // Perhaps surprisingly, we suggest .to_string() here
+    //~^ ERROR mismatched types
+
+    let _prove_piercing_earnest: Vec<usize> = &[1, 2, 3]; //~ ERROR mismatched types
+}

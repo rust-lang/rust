@@ -140,7 +140,7 @@ impl<'a, 'tcx> SpecializedEncoder<DefId> for EncodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_index: &DefIndex) -> Result<(), Self::Error> {
-        self.emit_u32(def_index.as_u32())
+        self.emit_u32(def_index.as_raw_u32())
     }
 }
 
@@ -974,17 +974,6 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     ctor_sig: None,
                 }), repr_options)
             }
-            hir::ItemAutoImpl(..) => {
-                let data = ImplData {
-                    polarity: hir::ImplPolarity::Positive,
-                    defaultness: hir::Defaultness::Final,
-                    parent_impl: None,
-                    coerce_unsized_info: None,
-                    trait_ref: tcx.impl_trait_ref(def_id).map(|trait_ref| self.lazy(&trait_ref)),
-                };
-
-                EntryKind::AutoImpl(self.lazy(&data))
-            }
             hir::ItemImpl(_, polarity, defaultness, ..) => {
                 let trait_ref = tcx.impl_trait_ref(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
@@ -1579,7 +1568,6 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemGlobalAsm(..) |
             hir::ItemExternCrate(..) |
             hir::ItemUse(..) |
-            hir::ItemAutoImpl(..) |
             hir::ItemTy(..) |
             hir::ItemTraitAlias(..) => {
                 // no sub-item recording needed in these cases

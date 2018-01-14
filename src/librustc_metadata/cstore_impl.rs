@@ -143,7 +143,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
     is_const_fn => { cdata.is_const_fn(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
-    is_auto_impl => { cdata.is_auto_impl(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     lookup_stability => {
@@ -463,7 +462,7 @@ impl CrateStore for cstore::CStore {
     fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
-            return LoadedMacro::ProcMacro(proc_macros[id.index.as_usize() - 1].1.clone());
+            return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
         } else if data.name == "proc_macro" &&
                   self.get_crate_data(id.krate).item_name(id.index) == "quote" {
             let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter));
