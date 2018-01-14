@@ -493,18 +493,18 @@ error: called `skip(x).next()` on an iterator. This is more succinctly expressed
 382 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: .fold(false, |acc, x| acc || x > 2)) is more succinctly expressed as .any(|x| x > 2)
+error: this `.fold` can more succintly be expressed as `.any`
    --> $DIR/methods.rs:390:13
     |
 390 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
     |
     = note: `-D fold-any` implied by `-D warnings`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:401:13
+   --> $DIR/methods.rs:406:13
     |
-401 |     let _ = opt.unwrap();
+406 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`

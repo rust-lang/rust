@@ -596,6 +596,20 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
     db.docs_link(lint);
 }
 
+/// Add a span lint with a suggestion on how to fix it.
+///
+/// These suggestions can be parsed by rustfix to allow it to automatically fix your code.
+/// In the example below, `help` is `"try"` and `sugg` is the suggested replacement `".any(|x| x > 2)"`.
+///
+/// <pre>
+/// error: This `.fold` can be more succinctly expressed as `.any`
+/// --> $DIR/methods.rs:390:13
+///     |
+/// 390 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
+///     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
+///     |
+///     = note: `-D fold-any` implied by `-D warnings`
+/// </pre>
 pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     cx: &'a T,
     lint: &'static Lint,

@@ -1153,17 +1153,18 @@ fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
         then {
             let right_source = snippet(cx, right_expr.span, "EXPR");
 
-            span_lint(
+            span_lint_and_sugg(
                 cx,
                 FOLD_ANY,
                 expr.span,
                 // TODO: don't suggest .any(|x| f(x)) if we can suggest .any(f)
-                &format!(
-                    ".fold(false, |{f}, {s}| {f} || {r})) is more succinctly expressed as .any(|{s}| {r})",
-                    f = first_arg_ident,
+                "this `.fold` can more succintly be expressed as `.any`",
+                "try",
+                format!(
+                    ".any(|{s}| {r})",
                     s = second_arg_ident,
                     r = right_source
-                ),
+                )
             );
         }
     }

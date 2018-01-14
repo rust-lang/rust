@@ -391,8 +391,13 @@ fn fold_any() {
 }
 
 /// Checks implementation of the `FOLD_ANY` lint
-fn fold_any_ignore_initial_value_of_true() {
+fn fold_any_ignores_initial_value_of_true() {
     let _ = (0..3).fold(true, |acc, x| acc || x > 2);
+}
+
+/// Checks implementation of the `FOLD_ANY` lint
+fn fold_any_ignores_non_boolean_accumalator() {
+    let _ = (0..3).fold(0, |acc, x| acc + if x > 2 { 1 } else { 0 });
 }
 
 #[allow(similar_names)]
