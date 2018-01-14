@@ -128,16 +128,18 @@ fn lorem(ipsum: usize,
 #### `"Block"` (default):
 
 ```rust
-lorem(
-    "lorem",
-    "ipsum",
-    "dolor",
-    "sit",
-    "amet",
-    "consectetur",
-    "adipiscing",
-    "elit",
-);
+fn main() {
+    lorem(
+        "lorem",
+        "ipsum",
+        "dolor",
+        "sit",
+        "amet",
+        "consectetur",
+        "adipiscing",
+        "elit",
+    );
+}
 ```
 
 #### `"Visual"`:
