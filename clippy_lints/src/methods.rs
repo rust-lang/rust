@@ -637,7 +637,7 @@ declare_lint! {
 declare_lint! {
     pub FOLD_ANY,
     Warn,
-    "TODO"
+    "using `fold` to emulate the behaviour of `any`"
 }
 
 impl LintPass for Pass {
