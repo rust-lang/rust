@@ -772,11 +772,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                 &move_data::Assignment) {
         let mut err = self.cannot_reassign_immutable(span,
                                                      &self.loan_path_to_string(lp),
+                                                     false,
                                                      Origin::Ast);
         err.span_label(span, "cannot assign twice to immutable variable");
         if span != assign.span {
             err.span_label(assign.span, format!("first assignment to `{}`",
-                                              self.loan_path_to_string(lp)));
+                                                self.loan_path_to_string(lp)));
         }
         err.emit();
     }

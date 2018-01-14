@@ -31,11 +31,11 @@ fn test_call() {
 }
 
 fn test_args(b: Box<i32>) {  //[ast]~ NOTE first assignment
-                                //[mir]~^ NOTE first assignment
+                                //[mir]~^ NOTE argument not declared as `mut`
     b = Box::new(2);            //[ast]~ ERROR cannot assign twice to immutable variable
-                                //[mir]~^ ERROR cannot assign twice to immutable variable `b`
+                                //[mir]~^ ERROR cannot assign to immutable argument `b`
                                 //[ast]~| NOTE cannot assign twice to immutable
-                                //[mir]~| NOTE cannot assign twice to immutable
+                                //[mir]~| NOTE cannot assign to immutable argument
 }
 
 fn main() {}
