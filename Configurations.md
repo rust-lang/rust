@@ -210,10 +210,12 @@ fn lorem<Ipsum: Eq = usize,
 #### `"Block"` (default):
 
 ```rust
-let lorem = Lorem {
-    ipsum: dolor,
-    sit: amet,
-};
+fn main() {
+    let lorem = Lorem {
+        ipsum: dolor,
+        sit: amet,
+    };
+}
 ```
 
 #### `"Visual"`:
