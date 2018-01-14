@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that inherent impls cannot be unsafe.
+// compile-flags: -Z parse-only
 
-struct SomeStruct;
+impl <*const u8>::AssocTy {} // OK
+impl <Type as Trait>::AssocTy {} // OK
+impl <'a + Trait>::AssocTy {} // OK
+impl <<Type>::AssocTy>::AssocTy {} // OK
 
-unsafe impl SomeStruct { //~ ERROR inherent impls cannot be unsafe
-    fn foo(self) { }
-}
-
-fn main() { }
+FAIL //~ ERROR

@@ -215,12 +215,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_item(&mut self, item: &'a Item) {
         match item.node {
-            ItemKind::Impl(.., Some(..), ref ty, ref impl_items) => {
+            ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
                 self.invalid_visibility(&item.vis, item.span, None);
                 if ty.node == TyKind::Err {
                     self.err_handler()
                         .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
                         .help("use `auto trait Trait {}` instead").emit();
+                }
+                if unsafety == Unsafety::Unsafe && polarity == ImplPolarity::Negative {
+                    span_err!(self.session, item.span, E0198, "negative impls cannot be unsafe");
                 }
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, impl_item.span, None);
@@ -229,10 +232,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
             }
-            ItemKind::Impl(.., None, _, _) => {
+            ItemKind::Impl(unsafety, polarity, defaultness, _, None, _, _) => {
                 self.invalid_visibility(&item.vis,
                                         item.span,
                                         Some("place qualifiers on individual impl items instead"));
+                if unsafety == Unsafety::Unsafe {
+                    span_err!(self.session, item.span, E0197, "inherent impls cannot be unsafe");
+                }
+                if polarity == ImplPolarity::Negative {
+                    self.err_handler().span_err(item.span, "inherent impls cannot be negative");
+                }
+                if defaultness == Defaultness::Default {
+                    self.err_handler().span_err(item.span, "inherent impls cannot be default");
+                }
             }
             ItemKind::ForeignMod(..) => {
                 self.invalid_visibility(&item.vis,

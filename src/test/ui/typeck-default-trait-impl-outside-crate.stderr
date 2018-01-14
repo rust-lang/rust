@@ -1,8 +1,0 @@
-error[E0318]: cannot create default implementations for traits outside the crate they're defined in; define a new trait instead
-  --> $DIR/typeck-default-trait-impl-outside-crate.rs:14:6
-   |
-14 | impl Copy for .. {} //~ ERROR E0318
-   |      ^^^^ `Copy` trait not defined in this crate
-
-error: aborting due to previous error
-

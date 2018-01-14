@@ -1502,8 +1502,8 @@ impl<'a> LoweringContext<'a> {
                      fn_def_id: Option<DefId>,
                      impl_trait_return_allow: bool)
                      -> P<hir::FnDecl> {
-        // NOTE: The two last paramters here have to do with impl Trait. If fn_def_id is Some,
-        //       then impl Trait arguments are lowered into generic paramters on the given
+        // NOTE: The two last parameters here have to do with impl Trait. If fn_def_id is Some,
+        //       then impl Trait arguments are lowered into generic parameters on the given
         //       fn_def_id, otherwise impl Trait is disallowed. (for now)
         //
         //       Furthermore, if impl_trait_return_allow is true, then impl Trait may be used in

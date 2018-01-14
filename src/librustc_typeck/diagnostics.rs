@@ -1715,7 +1715,7 @@ type Foo = Trait<Bar=i32>; // ok!
 "##,
 
 E0192: r##"
-Negative impls are only allowed for traits with default impls. For more
+Negative impls are only allowed for auto traits. For more
 information see the [opt-in builtin traits RFC][RFC 19].
 
 [RFC 19]: https://github.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md
@@ -1819,52 +1819,6 @@ impl Trait for Foo {
     }
 }
 ```
-"##,
-
-E0197: r##"
-Inherent implementations (one that do not implement a trait but provide
-methods associated with a type) are always safe because they are not
-implementing an unsafe trait. Removing the `unsafe` keyword from the inherent
-implementation will resolve this error.
-
-```compile_fail,E0197
-struct Foo;
-
-// this will cause this error
-unsafe impl Foo { }
-// converting it to this will fix it
-impl Foo { }
-```
-"##,
-
-E0198: r##"
-A negative implementation is one that excludes a type from implementing a
-particular trait. Not being able to use a trait is always a safe operation,
-so negative implementations are always safe and never need to be marked as
-unsafe.
-
-```compile_fail
-#![feature(optin_builtin_traits)]
-
-struct Foo;
-
-// unsafe is unnecessary
-unsafe impl !Clone for Foo { }
-```
-
-This will compile:
-
-```
-#![feature(optin_builtin_traits)]
-
-struct Foo;
-
-auto trait Enterprise {}
-
-impl !Enterprise for Foo { }
-```
-
-Please note that negative impls are only allowed for traits with default impls.
 "##,
 
 E0199: r##"

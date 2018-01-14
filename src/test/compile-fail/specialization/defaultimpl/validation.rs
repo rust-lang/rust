@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,10 +9,15 @@
 // except according to those terms.
 
 #![feature(optin_builtin_traits)]
+#![feature(specialization)]
 
-struct Foo;
+struct S;
+struct Z;
 
-unsafe impl !Send for Foo { } //~ ERROR E0198
+default impl S {} //~ ERROR inherent impls cannot be default
 
-fn main() {
-}
+default unsafe impl Send for S {} //~ ERROR impls of auto traits cannot be default
+default impl !Send for Z {} //~ ERROR impls of auto traits cannot be default
+
+trait Tr {}
+default impl !Tr for S {} //~ ERROR negative impls are only allowed for auto traits
