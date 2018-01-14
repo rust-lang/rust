@@ -735,7 +735,7 @@ pub mod tests {
             let b: u32 = Arbitrary::arbitrary(g);
             DefId_(DefId {
                 krate: CrateNum::new(a as usize),
-                index: DefIndex::from_u32(b),
+                index: DefIndex::from_raw_u32(b),
             })
         }
     }
