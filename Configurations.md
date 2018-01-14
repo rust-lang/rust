@@ -221,8 +221,10 @@ fn main() {
 #### `"Visual"`:
 
 ```rust
-let lorem = Lorem { ipsum: dolor,
-                    sit: amet, };
+fn main() {
+    let lorem = Lorem { ipsum: dolor,
+                        sit: amet, };
+}
 ```
 
 See also: [`struct_lit_single_line`](#struct_lit_single_line), [`indent_style`](#indent_style).
