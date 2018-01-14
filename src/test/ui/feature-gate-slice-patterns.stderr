@@ -1,4 +1,4 @@
-error: slice pattern syntax is experimental (see issue #23121)
+error[E0658]: slice pattern syntax is experimental (see issue #23121)
   --> $DIR/feature-gate-slice-patterns.rs:16:9
    |
 16 |         [1, 2, xs..] => {} //~ ERROR slice pattern syntax is experimental

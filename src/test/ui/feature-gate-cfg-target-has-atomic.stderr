@@ -1,4 +1,4 @@
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:23:7
    |
 23 | #[cfg(target_has_atomic = "8")]
@@ -6,7 +6,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:29:7
    |
 29 | #[cfg(target_has_atomic = "8")]
@@ -14,7 +14,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:34:7
    |
 34 | #[cfg(target_has_atomic = "16")]
@@ -22,7 +22,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:39:7
    |
 39 | #[cfg(target_has_atomic = "16")]
@@ -30,7 +30,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:44:7
    |
 44 | #[cfg(target_has_atomic = "32")]
@@ -38,7 +38,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:49:7
    |
 49 | #[cfg(target_has_atomic = "32")]
@@ -46,7 +46,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:54:7
    |
 54 | #[cfg(target_has_atomic = "64")]
@@ -54,7 +54,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:59:7
    |
 59 | #[cfg(target_has_atomic = "64")]
@@ -62,7 +62,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:64:7
    |
 64 | #[cfg(target_has_atomic = "ptr")]
@@ -70,7 +70,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:69:7
    |
 69 | #[cfg(target_has_atomic = "ptr")]
@@ -78,7 +78,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:76:10
    |
 76 |     cfg!(target_has_atomic = "8");
@@ -86,7 +86,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:78:10
    |
 78 |     cfg!(target_has_atomic = "16");
@@ -94,7 +94,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:80:10
    |
 80 |     cfg!(target_has_atomic = "32");
@@ -102,7 +102,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:82:10
    |
 82 |     cfg!(target_has_atomic = "64");
@@ -110,7 +110,7 @@ error: `cfg(target_has_atomic)` is experimental and subject to change (see issue
    |
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:84:10
    |
 84 |     cfg!(target_has_atomic = "ptr");

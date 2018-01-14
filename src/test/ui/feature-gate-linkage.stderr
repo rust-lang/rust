@@ -1,4 +1,4 @@
-error: the `linkage` attribute is experimental and not portable across platforms (see issue #29603)
+error[E0658]: the `linkage` attribute is experimental and not portable across platforms (see issue #29603)
   --> $DIR/feature-gate-linkage.rs:12:5
    |
 12 |     #[linkage = "extern_weak"] static foo: isize;

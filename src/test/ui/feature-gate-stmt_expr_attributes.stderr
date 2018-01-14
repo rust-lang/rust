@@ -1,4 +1,4 @@
-error: attributes on non-item statements and expressions are experimental. (see issue #15701)
+error[E0658]: attributes on non-item statements and expressions are experimental. (see issue #15701)
   --> $DIR/feature-gate-stmt_expr_attributes.rs:11:16
    |
 11 | const X: i32 = #[allow(dead_code)] 8;

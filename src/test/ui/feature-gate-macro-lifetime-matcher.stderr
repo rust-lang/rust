@@ -1,4 +1,4 @@
-error: :lifetime fragment specifier is experimental and subject to change (see issue #46895)
+error[E0658]: :lifetime fragment specifier is experimental and subject to change (see issue #46895)
   --> $DIR/feature-gate-macro-lifetime-matcher.rs:14:19
    |
 14 | macro_rules! m { ($lt:lifetime) => {} }

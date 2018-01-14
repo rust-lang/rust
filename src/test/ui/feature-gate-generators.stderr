@@ -1,4 +1,4 @@
-error: yield syntax is experimental
+error[E0658]: yield syntax is experimental
   --> $DIR/feature-gate-generators.rs:12:5
    |
 12 |     yield true; //~ ERROR yield syntax is experimental

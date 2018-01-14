@@ -16,7 +16,7 @@ error[E0379]: trait fns cannot be declared const
 27 |     const fn foo() -> u32 { 0 } //~ ERROR const fn is unstable
    |     ^^^^^ trait fns cannot be const
 
-error: const fn is unstable (see issue #24111)
+error[E0658]: const fn is unstable (see issue #24111)
   --> $DIR/feature-gate-const_fn.rs:13:1
    |
 13 | const fn foo() -> usize { 0 } //~ ERROR const fn is unstable
@@ -24,7 +24,7 @@ error: const fn is unstable (see issue #24111)
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: const fn is unstable (see issue #24111)
+error[E0658]: const fn is unstable (see issue #24111)
   --> $DIR/feature-gate-const_fn.rs:16:5
    |
 16 |     const fn foo() -> u32; //~ ERROR const fn is unstable
@@ -32,7 +32,7 @@ error: const fn is unstable (see issue #24111)
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: const fn is unstable (see issue #24111)
+error[E0658]: const fn is unstable (see issue #24111)
   --> $DIR/feature-gate-const_fn.rs:18:5
    |
 18 |     const fn bar() -> u32 { 0 } //~ ERROR const fn is unstable
@@ -40,7 +40,7 @@ error: const fn is unstable (see issue #24111)
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: const fn is unstable (see issue #24111)
+error[E0658]: const fn is unstable (see issue #24111)
   --> $DIR/feature-gate-const_fn.rs:23:5
    |
 23 |     const fn baz() -> u32 { 0 } //~ ERROR const fn is unstable
@@ -48,7 +48,7 @@ error: const fn is unstable (see issue #24111)
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error: const fn is unstable (see issue #24111)
+error[E0658]: const fn is unstable (see issue #24111)
   --> $DIR/feature-gate-const_fn.rs:27:5
    |
 27 |     const fn foo() -> u32 { 0 } //~ ERROR const fn is unstable

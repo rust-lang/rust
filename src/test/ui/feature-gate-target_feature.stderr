@@ -1,4 +1,4 @@
-error: the `#[target_feature]` attribute is an experimental feature
+error[E0658]: the `#[target_feature]` attribute is an experimental feature
   --> $DIR/feature-gate-target_feature.rs:11:1
    |
 11 | #[target_feature = "+sse2"]

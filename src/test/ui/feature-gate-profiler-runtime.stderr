@@ -1,4 +1,4 @@
-error: the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate which contains the profiler runtime and will never be stable
+error[E0658]: the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate which contains the profiler runtime and will never be stable
   --> $DIR/feature-gate-profiler-runtime.rs:11:1
    |
 11 | #![profiler_runtime] //~ ERROR the `#[profiler_runtime]` attribute is
