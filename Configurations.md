@@ -335,16 +335,16 @@ Where to put a binary operator when a binary expression goes multiline.
 #### `"Front"` (default):
 
 ```rust
-let or = foo
-    || bar
-    || foobar;
+fn main() {
+    let or = foofoofoofoofoofoofoofoofoofoofoofoofoofoofoofoo
+        || barbarbarbarbarbarbarbarbarbarbarbarbarbarbarbar;
 
-let sum = 1234
-    + 5678
-    + 910;
+    let sum = 123456789012345678901234567890 + 123456789012345678901234567890
+        + 123456789012345678901234567890;
 
-let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-    ..bbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+    let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        ..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+}
 ```
 
 #### `"Back"`:
