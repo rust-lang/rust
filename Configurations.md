@@ -145,14 +145,16 @@ fn main() {
 #### `"Visual"`:
 
 ```rust
-lorem("lorem",
-      "ipsum",
-      "dolor",
-      "sit",
-      "amet",
-      "consectetur",
-      "adipiscing",
-      "elit");
+fn main() {
+    lorem("lorem",
+          "ipsum",
+          "dolor",
+          "sit",
+          "amet",
+          "consectetur",
+          "adipiscing",
+          "elit");
+}
 ```
 
 ### Generics
