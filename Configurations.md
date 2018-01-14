@@ -239,7 +239,7 @@ where
     Ipsum: Eq,
     Dolor: Eq,
     Sit: Eq,
-    Amet: Eq
+    Amet: Eq,
 {
     // body
 }
