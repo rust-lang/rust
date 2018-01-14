@@ -286,7 +286,11 @@ fn main() {
         "adipiscing",
     );
 
-    let lorem = Lorem { ipsum: dolor, sit: amet };
+    let lorem = Lorem {
+        ipsum: dolor,
+        sit: amet,
+    };
+    let lorem = Lorem { ipsum: dolor };
 
     let lorem = if ipsum { dolor } else { sit };
 }
