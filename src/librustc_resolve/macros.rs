@@ -36,7 +36,7 @@ use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::{TokenStream, TokenTree, Delimited};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP, BytePos};
 
 use std::cell::Cell;
 use std::mem;
@@ -691,7 +691,10 @@ impl<'a> Resolver<'a> {
         if let Some(suggestion) = suggestion {
             if suggestion != name {
                 if let MacroKind::Bang = kind {
-                    err.span_suggestion(span, "you could try the macro",
+                    // Our suggested replacement includes the macro's bang. Extend the span by one
+                    // byte to ensure it does as well.
+                    let span_with_bang = span.with_hi(span.hi() + BytePos(1));
+                    err.span_suggestion(span_with_bang, "you could try the macro",
                                         format!("{}!", suggestion));
                 } else {
                     err.span_suggestion(span, "try", suggestion.to_string());
