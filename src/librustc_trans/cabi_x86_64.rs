@@ -24,6 +24,25 @@ enum Class {
     SseUp
 }
 
+impl Class {
+    pub fn from_layout<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, layout: TyLayout<'tcx>) -> Self {
+        match layout.abi {
+            layout::Abi::Scalar(ref scalar) => match scalar.value {
+                layout::Int(..) |
+                layout::Pointer => Class::Int,
+                layout::F32 |
+                layout::F64 => Class::Sse,
+            },
+            layout::Abi::ScalarPair(..) | layout::Abi::Aggregate { .. } => {
+                let last_idx = layout.fields.count().checked_sub(1).unwrap_or(0);
+                Class::from_layout(ccx, layout.field(ccx, last_idx))
+            }
+            layout::Abi::Vector{ .. } => Class::SseUp,
+            layout::Abi::Uninhabited => unreachable!(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct Memory;
 
@@ -64,17 +83,12 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
             return Ok(());
         }
 
-        match layout.abi {
-            layout::Abi::Uninhabited => {}
+        let mut offset = match layout.abi {
+            layout::Abi::Uninhabited => return Ok(()),
 
             layout::Abi::Scalar(ref scalar) => {
-                let reg = match scalar.value {
-                    layout::Int(..) |
-                    layout::Pointer => Class::Int,
-                    layout::F32 |
-                    layout::F64 => Class::Sse
-                };
-                unify(cls, off, reg);
+                unify(cls, off, Class::from_layout(ccx, layout));
+                off + scalar.value.size(ccx)
             }
 
             layout::Abi::Vector { ref element, count } => {
@@ -83,26 +97,39 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 // everything after the first one is the upper
                 // half of a register.
                 let stride = element.value.size(ccx);
+                let mut field_off = off;
                 for i in 1..count {
-                    let field_off = off + stride * i;
+                    field_off = off + stride * i;
                     unify(cls, field_off, Class::SseUp);
                 }
+                field_off + stride
             }
 
             layout::Abi::ScalarPair(..) |
             layout::Abi::Aggregate { .. } => {
                 match layout.variants {
                     layout::Variants::Single { .. } => {
+                        let mut field_off = off;
+                        let mut last_size = Size::from_bytes(0);
                         for i in 0..layout.fields.count() {
-                            let field_off = off + layout.fields.offset(i);
+                            field_off = off + layout.fields.offset(i);
                             classify(ccx, layout.field(ccx, i), cls, field_off)?;
+                            last_size = layout.field(ccx, i).size;
                         }
+                        field_off + last_size
                     }
                     layout::Variants::Tagged { .. } |
                     layout::Variants::NicheFilling { .. } => return Err(Memory),
                 }
             }
 
+        };
+
+        // Add registers for padding.
+        let reg = Class::from_layout(ccx, layout);
+        while offset < layout.size {
+            unify(cls, offset, reg);
+            offset = offset + Size::from_bytes(8);
         }
 
         Ok(())
