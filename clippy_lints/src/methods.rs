@@ -10,7 +10,7 @@ use std::fmt;
 use std::iter;
 use syntax::ast;
 use syntax::codemap::Span;
-use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_self, is_self_ty,
+use utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_self, is_self_ty,
             iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
             match_type, method_chain_args, return_ty, remove_blocks, same_tys, single_segment_path, snippet, span_lint,
             span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
@@ -1122,15 +1122,6 @@ fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir
             "called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
              more readable",
         );
-    }
-}
-
-// DONOTMERGE: copy-pasted from map_clone
-fn get_arg_name(pat: &hir::Pat) -> Option<ast::Name> {
-    match pat.node {
-        hir::PatKind::Binding(_, _, name, None) => Some(name.node),
-        hir::PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
-        _ => None,
     }
 }
 

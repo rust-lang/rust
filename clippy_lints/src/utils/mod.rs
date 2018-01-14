@@ -1034,3 +1034,11 @@ pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Option<u
 pub fn is_allowed(cx: &LateContext, lint: &'static Lint, id: NodeId) -> bool {
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
+
+pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
+    match pat.node {
+        PatKind::Binding(_, _, name, None) => Some(name.node),
+        PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
+        _ => None,
+    }
+}
