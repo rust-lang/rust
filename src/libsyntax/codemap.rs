@@ -25,6 +25,7 @@ pub use self::ExpnFormat::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use std::cell::{RefCell, Ref};
+use std::cmp;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -605,6 +606,42 @@ impl CodeMap {
 
     pub fn def_span(&self, sp: Span) -> Span {
         self.span_until_char(sp, '{')
+    }
+
+    /// Returns a new span representing just the end-point of this span
+    pub fn end_point(&self, sp: Span) -> Span {
+        let hi = sp.hi().0.checked_sub(1).unwrap_or(sp.hi().0);
+        let hi = self.get_start_of_char_bytepos(BytePos(hi));
+        let lo = cmp::max(hi.0, sp.lo().0);
+        sp.with_lo(BytePos(lo))
+    }
+
+    /// Returns a new span representing the next character after the end-point of this span
+    pub fn next_point(&self, sp: Span) -> Span {
+        let hi = sp.lo().0.checked_add(1).unwrap_or(sp.lo().0);
+        let hi = self.get_start_of_char_bytepos(BytePos(hi));
+        let lo = cmp::max(sp.hi().0, hi.0);
+        Span::new(BytePos(lo), BytePos(lo), sp.ctxt())
+    }
+
+    fn get_start_of_char_bytepos(&self, bpos: BytePos) -> BytePos {
+        let idx = self.lookup_filemap_idx(bpos);
+        let files = self.files.borrow();
+        let map = &(*files)[idx];
+
+        for mbc in map.multibyte_chars.borrow().iter() {
+            if mbc.pos < bpos {
+                if bpos.to_usize() >= mbc.pos.to_usize() + mbc.bytes {
+                    // If we do, then return the start of the character.
+                    return mbc.pos;
+                }
+            } else {
+                break;
+            }
+        }
+
+        // If this isn't a multibyte character, return the original position.
+        return bpos;
     }
 
     pub fn get_filemap(&self, filename: &FileName) -> Option<Rc<FileMap>> {

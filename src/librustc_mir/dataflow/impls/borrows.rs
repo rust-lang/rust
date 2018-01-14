@@ -537,8 +537,8 @@ impl<'a, 'gcx, 'tcx> ActiveBorrows<'a, 'gcx, 'tcx> {
             Some(_) => None,
             None => {
                 match self.0.region_span_map.get(region) {
-                    Some(span) => Some(span.end_point()),
-                    None => Some(self.0.mir.span.end_point())
+                    Some(span) => Some(self.0.tcx.sess.codemap().end_point(*span)),
+                    None => Some(self.0.tcx.sess.codemap().end_point(self.0.mir.span))
                 }
             }
         }
