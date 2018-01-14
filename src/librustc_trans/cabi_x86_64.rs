@@ -16,9 +16,11 @@ use context::CodegenCx;
 
 use rustc::ty::layout::{self, TyLayout, Size};
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+/// Classification of "eightbyte" components.
+// NB: the order of the variants is from general to specific,
+// such that `unify(a, b)` is the "smaller" of `a` and `b`.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Class {
-    None,
     Int,
     Sse,
     SseUp
@@ -32,29 +34,10 @@ const LARGEST_VECTOR_SIZE: usize = 512;
 const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
 fn classify_arg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &ArgType<'tcx>)
-                          -> Result<[Class; MAX_EIGHTBYTES], Memory> {
-    fn unify(cls: &mut [Class],
-             off: Size,
-             c: Class) {
-        let i = (off.bytes() / 8) as usize;
-        let to_write = match (cls[i], c) {
-            (Class::None, _) => c,
-            (_, Class::None) => return,
-
-            (Class::Int, _) |
-            (_, Class::Int) => Class::Int,
-
-            (Class::Sse, _) |
-            (_, Class::Sse) => Class::Sse,
-
-            (Class::SseUp, Class::SseUp) => Class::SseUp
-        };
-        cls[i] = to_write;
-    }
-
+                          -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory> {
     fn classify<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                           layout: TyLayout<'tcx>,
-                          cls: &mut [Class],
+                          cls: &mut [Option<Class>],
                           off: Size)
                           -> Result<(), Memory> {
         if !off.is_abi_aligned(layout.align) {
@@ -64,30 +47,19 @@ fn classify_arg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &ArgType<'tcx>)
             return Ok(());
         }
 
-        match layout.abi {
-            layout::Abi::Uninhabited => {}
+        let mut c = match layout.abi {
+            layout::Abi::Uninhabited => return Ok(()),
 
             layout::Abi::Scalar(ref scalar) => {
-                let reg = match scalar.value {
+                match scalar.value {
                     layout::Int(..) |
                     layout::Pointer => Class::Int,
                     layout::F32 |
                     layout::F64 => Class::Sse
-                };
-                unify(cls, off, reg);
-            }
-
-            layout::Abi::Vector { ref element, count } => {
-                unify(cls, off, Class::Sse);
-
-                // everything after the first one is the upper
-                // half of a register.
-                let stride = element.value.size(cx);
-                for i in 1..count {
-                    let field_off = off + stride * i;
-                    unify(cls, field_off, Class::SseUp);
                 }
             }
+
+            layout::Abi::Vector { .. } => Class::Sse,
 
             layout::Abi::ScalarPair(..) |
             layout::Abi::Aggregate { .. } => {
@@ -97,12 +69,26 @@ fn classify_arg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &ArgType<'tcx>)
                             let field_off = off + layout.fields.offset(i);
                             classify(cx, layout.field(cx, i), cls, field_off)?;
                         }
+                        return Ok(());
                     }
                     layout::Variants::Tagged { .. } |
                     layout::Variants::NicheFilling { .. } => return Err(Memory),
                 }
             }
 
+        };
+
+        // Fill in `cls` for scalars (Int/Sse) and vectors (Sse).
+        let first = (off.bytes() / 8) as usize;
+        let last = ((off.bytes() + layout.size.bytes() - 1) / 8) as usize;
+        for cls in &mut cls[first..=last] {
+            *cls = Some(cls.map_or(c, |old| old.min(c)));
+
+            // Everything after the first Sse "eightbyte"
+            // component is the upper half of a register.
+            if c == Class::Sse {
+                c = Class::SseUp;
+            }
         }
 
         Ok(())
@@ -113,23 +99,23 @@ fn classify_arg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &ArgType<'tcx>)
         return Err(Memory);
     }
 
-    let mut cls = [Class::None; MAX_EIGHTBYTES];
+    let mut cls = [None; MAX_EIGHTBYTES];
     classify(cx, arg.layout, &mut cls, Size::from_bytes(0))?;
     if n > 2 {
-        if cls[0] != Class::Sse {
+        if cls[0] != Some(Class::Sse) {
             return Err(Memory);
         }
-        if cls[1..n].iter().any(|&c| c != Class::SseUp) {
+        if cls[1..n].iter().any(|&c| c != Some(Class::SseUp)) {
             return Err(Memory);
         }
     } else {
         let mut i = 0;
         while i < n {
-            if cls[i] == Class::SseUp {
-                cls[i] = Class::Sse;
-            } else if cls[i] == Class::Sse {
+            if cls[i] == Some(Class::SseUp) {
+                cls[i] = Some(Class::Sse);
+            } else if cls[i] == Some(Class::Sse) {
                 i += 1;
-                while i != n && cls[i] == Class::SseUp { i += 1; }
+                while i != n && cls[i] == Some(Class::SseUp) { i += 1; }
             } else {
                 i += 1;
             }
@@ -139,14 +125,14 @@ fn classify_arg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &ArgType<'tcx>)
     Ok(cls)
 }
 
-fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
+fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg> {
     if *i >= cls.len() {
         return None;
     }
 
     match cls[*i] {
-        Class::None => None,
-        Class::Int => {
+        None => None,
+        Some(Class::Int) => {
             *i += 1;
             Some(match size.bytes() {
                 1 => Reg::i8(),
@@ -156,8 +142,10 @@ fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
                 _ => Reg::i64()
             })
         }
-        Class::Sse => {
-            let vec_len = 1 + cls[*i+1..].iter().take_while(|&&c| c == Class::SseUp).count();
+        Some(Class::Sse) => {
+            let vec_len = 1 + cls[*i+1..].iter()
+                .take_while(|&&c| c == Some(Class::SseUp))
+                .count();
             *i += vec_len;
             Some(if vec_len == 1 {
                 match size.bytes() {
@@ -171,11 +159,11 @@ fn reg_component(cls: &[Class], i: &mut usize, size: Size) -> Option<Reg> {
                 }
             })
         }
-        c => bug!("reg_component: unhandled class {:?}", c)
+        Some(c) => bug!("reg_component: unhandled class {:?}", c)
     }
 }
 
-fn cast_target(cls: &[Class], size: Size) -> CastTarget {
+fn cast_target(cls: &[Option<Class>], size: Size) -> CastTarget {
     let mut i = 0;
     let lo = reg_component(cls, &mut i, size).unwrap();
     let offset = Size::from_bytes(8) * (i as u64);
@@ -203,8 +191,8 @@ pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tc
             Ok(ref cls) if is_arg => {
                 for &c in cls {
                     match c {
-                        Class::Int => needed_int += 1,
-                        Class::Sse => needed_sse += 1,
+                        Some(Class::Int) => needed_int += 1,
+                        Some(Class::Sse) => needed_sse += 1,
                         _ => {}
                     }
                 }
