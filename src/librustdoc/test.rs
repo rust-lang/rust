@@ -176,7 +176,8 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     opts
 }
 
-fn run_test(test: &str, cratename: &str, filename: &FileName, cfgs: Vec<String>, libs: SearchPaths,
+fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
+            cfgs: Vec<String>, libs: SearchPaths,
             externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
@@ -184,7 +185,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, cfgs: Vec<String>,
             linker: Option<PathBuf>) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
-    let test = make_test(test, Some(cratename), as_test_harness, opts);
+    let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
     // FIXME(#44940): if doctests ever support path remapping, then this filename
     // needs to be the result of CodeMap::span_to_unmapped_path
     let input = config::Input::Str {
@@ -234,7 +235,9 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, cfgs: Vec<String>,
         }
     }
     let data = Arc::new(Mutex::new(Vec::new()));
-    let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
+    let codemap = Rc::new(CodeMap::new_doctest(
+        sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
+    ));
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
                                                       Some(codemap.clone()),
                                                       false);
@@ -326,13 +329,14 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, cfgs: Vec<String>,
     }
 }
 
+/// Makes the test file. Also returns the number of lines before the code begins
 pub fn make_test(s: &str,
                  cratename: Option<&str>,
                  dont_insert_main: bool,
                  opts: &TestOptions)
-                 -> String {
+                 -> (String, usize) {
     let (crate_attrs, everything_else) = partition_source(s);
-
+    let mut line_offset = 0;
     let mut prog = String::new();
 
     if opts.attrs.is_empty() {
@@ -341,11 +345,13 @@ pub fn make_test(s: &str,
         // commonly used to make tests fail in case they trigger warnings, so having this there in
         // that case may cause some tests to pass when they shouldn't have.
         prog.push_str("#![allow(unused)]\n");
+        line_offset += 1;
     }
 
     // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
     for attr in &opts.attrs {
         prog.push_str(&format!("#![{}]\n", attr));
+        line_offset += 1;
     }
 
     // Now push any outer attributes from the example, assuming they
@@ -358,6 +364,7 @@ pub fn make_test(s: &str,
         if let Some(cratename) = cratename {
             if s.contains(cratename) {
                 prog.push_str(&format!("extern crate {};\n", cratename));
+                line_offset += 1;
             }
         }
     }
@@ -379,6 +386,7 @@ pub fn make_test(s: &str,
         prog.push_str(&everything_else);
     } else {
         prog.push_str("fn main() {\n");
+        line_offset += 1;
         prog.push_str(&everything_else);
         prog = prog.trim().into();
         prog.push_str("\n}");
@@ -386,7 +394,7 @@ pub fn make_test(s: &str,
 
     info!("final test program: {}", prog);
 
-    prog
+    (prog, line_offset)
 }
 
 // FIXME(aburka): use a real parser to deal with multiline attributes
@@ -543,6 +551,7 @@ impl Collector {
                         run_test(&test,
                                  &cratename,
                                  &filename,
+                                 line,
                                  cfgs,
                                  libs,
                                  externs,

@@ -103,6 +103,7 @@ pub trait CodeMapper {
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
     fn call_span_if_macro(&self, sp: Span) -> Span;
     fn ensure_filemap_source_present(&self, file_map: Rc<FileMap>) -> bool;
+    fn doctest_offset_line(&self, line: usize) -> usize;
 }
 
 impl CodeSuggestion {
