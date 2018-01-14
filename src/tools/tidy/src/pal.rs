@@ -168,8 +168,8 @@ fn find_test_mod(contents: &str) -> usize {
         let prev_newline_idx = contents[..prev_newline_idx].rfind('\n');
         if let Some(nl) = prev_newline_idx {
             let prev_line = &contents[nl + 1 .. mod_tests_idx];
-            let emcc_cfg = "cfg(all(test, not(target_os";
-            if prev_line.contains(emcc_cfg) {
+            if prev_line.contains("cfg(all(test, not(target_os")
+                || prev_line.contains("cfg(all(test, not(any(target_os") {
                 nl
             } else {
                 mod_tests_idx

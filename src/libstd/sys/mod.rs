@@ -39,6 +39,9 @@ cfg_if! {
     } else if #[cfg(windows)] {
         mod windows;
         pub use self::windows::*;
+    } else if #[cfg(target_os = "cloudabi")] {
+        mod cloudabi;
+        pub use self::cloudabi::*;
     } else if #[cfg(target_os = "redox")] {
         mod redox;
         pub use self::redox::*;
@@ -59,9 +62,10 @@ cfg_if! {
     if #[cfg(any(unix, target_os = "redox"))] {
         // On unix we'll document what's already available
         pub use self::ext as unix_ext;
-    } else if #[cfg(target_arch = "wasm32")] {
-        // On wasm right now the module below doesn't compile (missing things
-        // in `libc` which is empty) so just omit everything with an empty module
+    } else if #[cfg(any(target_os = "cloudabi", target_arch = "wasm32"))] {
+        // On CloudABI and wasm right now the module below doesn't compile
+        // (missing things in `libc` which is empty) so just omit everything
+        // with an empty module
         #[unstable(issue = "0", feature = "std_internals")]
         pub mod unix_ext {}
     } else {
@@ -77,8 +81,9 @@ cfg_if! {
     if #[cfg(windows)] {
         // On windows we'll just be documenting what's already available
         pub use self::ext as windows_ext;
-    } else if #[cfg(target_arch = "wasm32")] {
-        // On wasm right now the shim below doesn't compile, so just omit it
+    } else if #[cfg(any(target_os = "cloudabi", target_arch = "wasm32"))] {
+        // On CloudABI and wasm right now the shim below doesn't compile, so
+        // just omit it
         #[unstable(issue = "0", feature = "std_internals")]
         pub mod windows_ext {}
     } else {
