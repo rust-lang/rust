@@ -1142,7 +1142,7 @@ fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
 
         // Extract the names of the two arguments to the closure
         if let Some(first_arg_ident) = get_arg_name(&closure_body.arguments[0].pat);
-        if let Some(second_first_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
+        if let Some(second_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
 
         // Check if the closure body is of the form `acc || some_expr(x)`
         if let hir::ExprBinary(ref bin_op, ref left_expr, ref right_expr) = closure_expr.node;
@@ -1161,7 +1161,7 @@ fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
                 &format!(
                     ".fold(false, |{f}, {s}| {f} || {r})) is more succinctly expressed as .any(|{s}| {r})",
                     f = first_arg_ident,
-                    s = second_first_arg_ident,
+                    s = second_arg_ident,
                     r = right_source
                 ),
             );
