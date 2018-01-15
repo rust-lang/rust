@@ -12,7 +12,7 @@ pub(crate) fn use_path(p: &mut Parser) {
     node(p, PATH, |p| {
         path_segment(p, true);
     });
-    many(p, |p| {
+    repeat(p, |p| {
         let curr = p.mark();
         if p.current() == COLONCOLON && !items::is_use_tree_start(p.raw_lookahead(1)) {
             node(p, PATH, |p| {

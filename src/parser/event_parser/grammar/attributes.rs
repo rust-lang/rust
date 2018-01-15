@@ -5,11 +5,11 @@ enum AttrKind {
 }
 
 pub(super) fn inner_attributes(p: &mut Parser) {
-    many(p, |p| attribute(p, AttrKind::Inner))
+    repeat(p, |p| attribute(p, AttrKind::Inner))
 }
 
 pub(super) fn outer_attributes(p: &mut Parser) {
-    many(p, |p| attribute(p, AttrKind::Outer))
+    repeat(p, |p| attribute(p, AttrKind::Outer))
 }
 
 

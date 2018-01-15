@@ -2,7 +2,7 @@ use super::*;
 
 pub(super) fn mod_contents(p: &mut Parser) {
     attributes::inner_attributes(p);
-    many(p, |p| {
+    repeat(p, |p| {
         skip_to_first(
             p, item_first, mod_contents_item,
             "expected item",

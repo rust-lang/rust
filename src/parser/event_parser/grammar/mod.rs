@@ -59,7 +59,7 @@ fn node<F: FnOnce(&mut Parser)>(p: &mut Parser, node_kind: SyntaxKind, rest: F) 
     p.finish();
 }
 
-fn many<F: FnMut(&mut Parser) -> bool>(p: &mut Parser, mut f: F) {
+fn repeat<F: FnMut(&mut Parser) -> bool>(p: &mut Parser, mut f: F) {
     loop {
         let pos = p.pos();
         if !f(p) {
@@ -72,7 +72,7 @@ fn many<F: FnMut(&mut Parser) -> bool>(p: &mut Parser, mut f: F) {
 }
 
 fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, end: SyntaxKind, f: F) {
-    many(p, |p| {
+    repeat(p, |p| {
         if p.current() == end {
             return false
         }
