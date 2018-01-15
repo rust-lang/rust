@@ -529,10 +529,12 @@ Brace style for control flow constructs
 #### `"AlwaysSameLine"` (default):
 
 ```rust
-if lorem {
-    println!("ipsum!");
-} else {
-    println!("dolor!");
+fn main() {
+    if lorem {
+        println!("ipsum!");
+    } else {
+        println!("dolor!");
+    }
 }
 ```
 
