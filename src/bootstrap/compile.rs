@@ -108,7 +108,8 @@ impl Step for Std {
         std_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
                   &mut cargo,
-                  &libstd_stamp(build, compiler, target));
+                  &libstd_stamp(build, compiler, target),
+                  false);
 
         builder.ensure(StdLink {
             compiler: builder.compiler(compiler.stage, build.build),
@@ -360,7 +361,8 @@ impl Step for Test {
         test_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
                   &mut cargo,
-                  &libtest_stamp(build, compiler, target));
+                  &libtest_stamp(build, compiler, target),
+                  false);
 
         builder.ensure(TestLink {
             compiler: builder.compiler(compiler.stage, build.build),
@@ -488,7 +490,8 @@ impl Step for Rustc {
         rustc_cargo(build, target, &mut cargo);
         run_cargo(build,
                   &mut cargo,
-                  &librustc_stamp(build, compiler, target));
+                  &librustc_stamp(build, compiler, target),
+                  false);
 
         builder.ensure(RustcLink {
             compiler: builder.compiler(compiler.stage, build.build),
@@ -755,7 +758,7 @@ impl Step for Assemble {
 ///
 /// For a particular stage this will link the file listed in `stamp` into the
 /// `sysroot_dst` provided.
-fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
+pub fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
     t!(fs::create_dir_all(&sysroot_dst));
     for path in read_stamp_file(stamp) {
         copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
@@ -785,7 +788,7 @@ fn stderr_isatty() -> bool {
     }
 }
 
-fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
+pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: bool) {
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
     cargo.arg("--message-format").arg("json")
@@ -836,7 +839,8 @@ fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path) {
             // Skip files like executables
             if !filename.ends_with(".rlib") &&
                !filename.ends_with(".lib") &&
-               !is_dylib(&filename) {
+               !is_dylib(&filename) &&
+               !(is_check && filename.ends_with(".rmeta")) {
                 continue
             }
 
