@@ -954,7 +954,10 @@ Format string literals where necessary
 #### `false` (default):
 
 ```rust
-let lorem = "ipsum dolor sit amet consectetur adipiscing elit lorem ipsum dolor sit";
+fn main() {
+    let lorem =
+        "ipsum dolor sit amet consectetur adipiscing elit lorem ipsum dolor sit amet consectetur adipiscing";
+}
 ```
 
 #### `true`:
