@@ -13,7 +13,9 @@ enum X {
 }
 
 fn main() {
-    X::Entry(); //~ ERROR expected function, found `X::Entry` [E0618]
+    X::Entry();
+    //~^ ERROR expected function, found enum variant `X::Entry` [E0618]
     let x = 0i32;
-    x(); //~ ERROR expected function, found `i32` [E0618]
+    x();
+    //~^ ERROR expected function, found `i32` [E0618]
 }

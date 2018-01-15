@@ -9,14 +9,16 @@
 // except according to those terms.
 
 trait Foo {
-    fn foo(); //~ trait declared without `&self`
+    fn foo();
+    //~^ NOTE trait method declared without `&self`
 }
 
 struct Bar;
 
 impl Foo for Bar {
-    fn foo(&self) {} //~ ERROR E0185
-    //~^ `&self` used in impl
+    fn foo(&self) {}
+    //~^ ERROR E0185
+    //~| NOTE `&self` used in impl
 }
 
 fn main() {

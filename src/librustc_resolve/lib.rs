@@ -2726,22 +2726,26 @@ impl<'a> Resolver<'a> {
                         }
                         return (err, candidates);
                     }
-                    (Def::VariantCtor(_, CtorKind::Fictive), _) if ns == ValueNS => {
-                        let block = match ctor_kind {
-                            CtorKind::Fn => "(/* fields */)",
-                            CtorKind::Const => "",
-                            CtorKind::Fictive => " { /* fields */ }",
-                            def => bug!("found def `{:?}` when looking for a ctor",
-                                        def),
-                        };
-                        err.span_label(span, format!("did you mean `{}{}`?",
-                                                     path_str,
-                                                     block));
+                    (Def::VariantCtor(_, CtorKind::Const), _) => {
+                        err.span_label(span, format!("did you mean `{}`?", path_str));
                         return (err, candidates);
                     }
-                    (Def::SelfTy(..), _) if ns == ValueNS {
+                    (Def::VariantCtor(_, CtorKind::Fn), _) => {
+                        err.span_label(span, format!("did you mean `{}( /* fields */ )`?",
+                                                      path_str));
+                        return (err, candidates);
+                    }
+                    (Def::VariantCtor(_, CtorKind::Fictive), _) => {
+                        err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
+                                                      path_str));
+                        return (err, candidates);
+                    }
+                    (Def::SelfTy(..), _) if ns == ValueNS => {
                         err.note("can't use `Self` as a constructor, you must use the \
                                   implemented struct");
+                    }
+                    (Def::TyAlias(_def_id), _) => {
+                        err.note("can't use a type alias as a constructor");
                     }
                     _ => {}
                 }
@@ -3991,13 +3995,6 @@ impl<'a> Resolver<'a> {
                 }
             }
         }
-    }
-}
-
-fn is_struct_like(def: Def) -> bool {
-    match def {
-        Def::VariantCtor(_, CtorKind::Fictive) => true,
-        _ => PathSource::Struct.is_expected(def),
     }
 }
 

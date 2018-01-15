@@ -1,26 +1,18 @@
 error[E0618]: expected function, found `i32`
   --> $DIR/issue-10969.rs:12:5
    |
-12 |     i(); //~ERROR expected function, found `i32`
-   |     ^^^
-   |
-note: defined here
-  --> $DIR/issue-10969.rs:11:9
-   |
 11 | fn func(i: i32) {
-   |         ^
+   |         - `i32` defined here
+12 |     i(); //~ERROR expected function, found `i32`
+   |     ^^^ not a function
 
 error[E0618]: expected function, found `i32`
   --> $DIR/issue-10969.rs:16:5
    |
-16 |     i(); //~ERROR expected function, found `i32`
-   |     ^^^
-   |
-note: defined here
-  --> $DIR/issue-10969.rs:15:9
-   |
 15 |     let i = 0i32;
-   |         ^
+   |         - `i32` defined here
+16 |     i(); //~ERROR expected function, found `i32`
+   |     ^^^ not a function
 
 error: aborting due to 2 previous errors
 

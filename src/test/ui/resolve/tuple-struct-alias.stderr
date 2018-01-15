@@ -4,7 +4,7 @@ error[E0423]: expected function, found self type `Self`
 16 |         let s = Self(0, 1); //~ ERROR expected function
    |                 ^^^^ not a function
    |
-   = note: can't instantiate `Self`, you must use the implemented struct directly
+   = note: can't use `Self` as a constructor, you must use the implemented struct
 
 error[E0532]: expected tuple struct/variant, found self type `Self`
   --> $DIR/tuple-struct-alias.rs:18:13
@@ -12,19 +12,23 @@ error[E0532]: expected tuple struct/variant, found self type `Self`
 18 |             Self(..) => {} //~ ERROR expected tuple struct/variant
    |             ^^^^ not a tuple struct/variant
    |
-   = note: can't instantiate `Self`, you must use the implemented struct directly
+   = note: can't use `Self` as a constructor, you must use the implemented struct
 
 error[E0423]: expected function, found type alias `A`
   --> $DIR/tuple-struct-alias.rs:24:13
    |
 24 |     let s = A(0, 1); //~ ERROR expected function
    |             ^ did you mean `S`?
+   |
+   = note: can't use a type alias as a constructor
 
 error[E0532]: expected tuple struct/variant, found type alias `A`
   --> $DIR/tuple-struct-alias.rs:26:9
    |
 26 |         A(..) => {} //~ ERROR expected tuple struct/variant
    |         ^ did you mean `S`?
+   |
+   = note: can't use a type alias as a constructor
 
 error: aborting due to 4 previous errors
 
