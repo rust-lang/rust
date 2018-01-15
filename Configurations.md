@@ -783,7 +783,8 @@ struct Lorem {
 }
 
 struct Dolor<T>
-    where T: Eq
+where
+    T: Eq,
 {
     sit: T,
 }
