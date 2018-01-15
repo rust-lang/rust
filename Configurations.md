@@ -900,7 +900,7 @@ impl<T> Lorem for T
 where
     Option<T>: Ipsum,
 {
-    ...
+    // body
 }
 ```
 
