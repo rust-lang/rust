@@ -1029,7 +1029,7 @@ fn lint_clone_on_ref_ptr(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr) {
             expr.span,
             "using '.clone()' on a ref-counted pointer",
             "try this",
-            format!("{}<{}>::clone(&{})", caller_type, subst.type_at(0), snippet(cx, arg.span, "_")),
+            format!("{}::<{}>::clone(&{})", caller_type, subst.type_at(0), snippet(cx, arg.span, "_")),
         );
     }
 }

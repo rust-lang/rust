@@ -16,7 +16,7 @@ error: using '.clone()' on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:30:5
    |
 30 |     rc.clone();
-   |     ^^^^^^^^^^ help: try this: `Rc<bool>::clone(&rc)`
+   |     ^^^^^^^^^^ help: try this: `Rc::<bool>::clone(&rc)`
    |
    = note: `-D clone-on-ref-ptr` implied by `-D warnings`
 
@@ -24,25 +24,25 @@ error: using '.clone()' on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:33:5
    |
 33 |     arc.clone();
-   |     ^^^^^^^^^^^ help: try this: `Arc<bool>::clone(&arc)`
+   |     ^^^^^^^^^^^ help: try this: `Arc::<bool>::clone(&arc)`
 
 error: using '.clone()' on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:36:5
    |
 36 |     rcweak.clone();
-   |     ^^^^^^^^^^^^^^ help: try this: `Weak<bool>::clone(&rcweak)`
+   |     ^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&rcweak)`
 
 error: using '.clone()' on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:39:5
    |
 39 |     arc_weak.clone();
-   |     ^^^^^^^^^^^^^^^^ help: try this: `Weak<bool>::clone(&arc_weak)`
+   |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
 
 error: using '.clone()' on a ref-counted pointer
   --> $DIR/unnecessary_clone.rs:43:29
    |
 43 |     let _: Arc<SomeTrait> = x.clone(); 
-   |                             ^^^^^^^^^ help: try this: `Arc<SomeImpl>::clone(&x)`
+   |                             ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
 
 error: using `clone` on a `Copy` type
   --> $DIR/unnecessary_clone.rs:47:5
