@@ -466,8 +466,7 @@ impl<'test> TestCx<'test> {
         let mut rustc = Command::new(&self.config.rustc_path);
         rustc
             .arg("-")
-            .arg("-Zunstable-options")
-            .args(&["--unpretty", &pretty_type])
+            .args(&["-Z", &format!("unpretty={}", pretty_type)])
             .args(&["--target", &self.config.target])
             .arg("-L")
             .arg(&aux_dir)
