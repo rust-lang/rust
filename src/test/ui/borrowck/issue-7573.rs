@@ -29,8 +29,8 @@ pub fn remove_package_from_database() {
     let push_id = |installed_id: &CrateId| {
         //~^ NOTE borrowed data cannot outlive this closure
         lines_to_use.push(installed_id);
-        //~^ ERROR borrowed data cannot be moved outside of its closure
-        //~| NOTE cannot be moved outside of its closure
+        //~^ ERROR borrowed data cannot be stored outside of its closure
+        //~| NOTE cannot be stored outside of its closure
     };
     list_database(push_id);
 

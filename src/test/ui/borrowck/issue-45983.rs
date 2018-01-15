@@ -15,5 +15,5 @@ fn give_any<F: for<'r> FnOnce(&'r ())>(f: F) {
 fn main() {
     let x = None;
     give_any(|y| x = Some(y));
-    //~^ ERROR borrowed data cannot be moved outside of its closure
+    //~^ ERROR borrowed data cannot be stored outside of its closure
 }
