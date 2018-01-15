@@ -1002,7 +1002,7 @@ use foo::{aaa, bbb, ccc,
 
 #### `"Horizontal"`:
 
-**Note**: This option forces to put everything on one line and may exceeds `max_width`.
+**Note**: This option forces all imports onto one line and may exceed `max_width`.
 
 ```rust
 use foo::{xxx, yyy, zzz};
