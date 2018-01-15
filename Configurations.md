@@ -513,7 +513,9 @@ fn main() {
 #### `true`:
 
 ```rust
-let (lorem, ipsum, ..) = (1, 2, 3, 4);
+fn main() {
+    let (lorem, ipsum, ..) = (1, 2, 3, 4);
+}
 ```
 
 ## `control_brace_style`
