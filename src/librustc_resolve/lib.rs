@@ -2702,7 +2702,7 @@ impl<'a> Resolver<'a> {
                         }
                         return (err, candidates);
                     },
-                    (Def::Struct(def_id), _) if ns == ValueNS && is_struct_like(def) => {
+                    (Def::Struct(def_id), _) if ns == ValueNS => {
                         if let Some((ctor_def, ctor_vis))
                                 = this.struct_constructors.get(&def_id).cloned() {
                             let accessible_ctor = this.is_accessible(ctor_vis);
@@ -2711,14 +2711,10 @@ impl<'a> Resolver<'a> {
                                                               here due to private fields"));
                             } else if accessible_ctor {
                                 let block = match ctor_def {
-                                    Def::StructCtor(_, CtorKind::Fn) |
-                                    Def::VariantCtor(_, CtorKind::Fn) => "(/* fields */)",
-                                    Def::StructCtor(_, CtorKind::Fictive) |
-                                    Def::VariantCtor(_, CtorKind::Fictive) => {
-                                        " { /* fields */ }"
-                                    }
-                                    def => bug!("found def `{:?}` when looking for a ctor",
-                                                def),
+                                    Def::StructCtor(_, CtorKind::Fn) => "(/* fields */)",
+                                    Def::StructCtor(_, CtorKind::Const) => "",
+                                    Def::Struct(..) => " { /* fields */ }",
+                                    def => bug!("found def `{:?}` when looking for a ctor", def),
                                 };
                                 err.span_label(span, format!("did you mean `{}{}`?",
                                                              path_str,
@@ -2730,9 +2726,10 @@ impl<'a> Resolver<'a> {
                         }
                         return (err, candidates);
                     }
-                    (Def::VariantCtor(_, ctor_kind), _) if ns == ValueNS && is_struct_like(def) => {
+                    (Def::VariantCtor(_, CtorKind::Fictive), _) if ns == ValueNS => {
                         let block = match ctor_kind {
                             CtorKind::Fn => "(/* fields */)",
+                            CtorKind::Const => "",
                             CtorKind::Fictive => " { /* fields */ }",
                             def => bug!("found def `{:?}` when looking for a ctor",
                                         def),
@@ -2742,9 +2739,9 @@ impl<'a> Resolver<'a> {
                                                      block));
                         return (err, candidates);
                     }
-                    (Def::SelfTy(_, _), _) if ns == ValueNS && is_struct_like(def) => {
-                        err.note("can't instantiate `Self`, you must use the implemented struct \
-                                  directly");
+                    (Def::SelfTy(..), _) if ns == ValueNS {
+                        err.note("can't use `Self` as a constructor, you must use the \
+                                  implemented struct");
                     }
                     _ => {}
                 }
