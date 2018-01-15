@@ -2793,7 +2793,7 @@ mod tests {
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.dump_mir = Some(String::from("abc"));
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-        opts.debugging_opts.dump_mir_dir = Some(String::from("abc"));
+        opts.debugging_opts.dump_mir_dir = String::from("abc");
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         opts.debugging_opts.dump_mir_graphviz = true;
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
