@@ -1017,9 +1017,8 @@ use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
 
 ```rust
 use foo::{
-    xxx,
-    yyy,
-    zzz,
+    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+    zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz,
 };
 ```
 
