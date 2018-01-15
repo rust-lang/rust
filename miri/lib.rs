@@ -75,7 +75,14 @@ pub fn eval_main<'a, 'tcx: 'a>(
         }
 
         if let Some(start_id) = start_wrapper {
-            let start_instance = ty::Instance::mono(ecx.tcx, start_id);
+            let main_ret_ty = ecx.tcx.fn_sig(main_id).output();
+            let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
+            let start_instance = ty::Instance::resolve(
+                ecx.tcx,
+                ty::ParamEnv::empty(traits::Reveal::All),
+                start_id,
+                ecx.tcx.mk_substs(
+                    ::std::iter::once(ty::subst::Kind::from(main_ret_ty)))).unwrap();
             let start_mir = ecx.load_mir(start_instance.def)?;
 
             if start_mir.arg_count != 3 {
