@@ -963,9 +963,10 @@ fn main() {
 #### `true`:
 
 ```rust
-let lorem =
-    "ipsum dolor sit amet consectetur \
-     adipiscing elit lorem ipsum dolor sit";
+fn main() {
+    let lorem = "ipsum dolor sit amet consectetur adipiscing elit lorem ipsum dolor sit amet \
+                 consectetur adipiscing";
+}
 ```
 
 See also [`max_width`](#max_width).
