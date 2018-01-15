@@ -1,4 +1,4 @@
-error: the struct `#[repr(align(u16))]` attribute is experimental (see issue #33626)
+error[E0658]: the struct `#[repr(align(u16))]` attribute is experimental (see issue #33626)
   --> $DIR/feature-gate-repr_align.rs:12:1
    |
 12 | #[repr(align(64))] //~ error: the struct `#[repr(align(u16))]` attribute is experimental

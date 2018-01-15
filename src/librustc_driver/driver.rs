@@ -37,7 +37,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{self, ast_validation, no_asm, loops, consts, static_recursion, hir_stats};
+use rustc_passes::{self, ast_validation, loops, consts, static_recursion, hir_stats};
 use rustc_const_eval::{self, check_match};
 use super::Compilation;
 use ::DefaultTransCrate;
@@ -851,10 +851,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     if sess.opts.debugging_opts.ast_json {
         println!("{}", json::as_json(&krate));
     }
-
-    time(time_passes,
-         "checking for inline asm in case the target doesn't support it",
-         || no_asm::check_crate(sess, &krate));
 
     time(time_passes,
          "AST validation",

@@ -1,4 +1,4 @@
-error: non-reference pattern used to match a reference (see issue #42640)
+error[E0658]: non-reference pattern used to match a reference (see issue #42640)
   --> $DIR/feature-gate-match_default_bindings.rs:13:9
    |
 13 |         Some(n) => {},

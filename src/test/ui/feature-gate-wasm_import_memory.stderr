@@ -1,4 +1,4 @@
-error: wasm_import_memory attribute is currently unstable
+error[E0658]: wasm_import_memory attribute is currently unstable
   --> $DIR/feature-gate-wasm_import_memory.rs:11:1
    |
 11 | #![wasm_import_memory] //~ ERROR: currently unstable

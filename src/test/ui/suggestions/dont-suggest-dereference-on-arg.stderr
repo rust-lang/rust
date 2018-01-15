@@ -1,4 +1,4 @@
-error: non-reference pattern used to match a reference (see issue #42640)
+error[E0658]: non-reference pattern used to match a reference (see issue #42640)
   --> $DIR/dont-suggest-dereference-on-arg.rs:16:18
    |
 16 |         .filter(|&(ref a, _)| foo(a))

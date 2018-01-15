@@ -1,4 +1,4 @@
-error: allow_fail attribute is currently unstable (see issue #42219)
+error[E0658]: allow_fail attribute is currently unstable (see issue #42219)
   --> $DIR/feature-gate-allow_fail.rs:13:1
    |
 13 | #[allow_fail] //~ ERROR allow_fail attribute is currently unstable

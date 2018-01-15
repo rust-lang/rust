@@ -1,4 +1,4 @@
-error: #[doc(masked)] is experimental (see issue #44027)
+error[E0658]: #[doc(masked)] is experimental (see issue #44027)
   --> $DIR/feature-gate-doc_masked.rs:11:1
    |
 11 | #[doc(masked)] //~ ERROR: #[doc(masked)] is experimental

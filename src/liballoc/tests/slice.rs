@@ -946,6 +946,30 @@ fn test_chunksator_0() {
 }
 
 #[test]
+fn test_exact_chunksator() {
+    let v = &[1, 2, 3, 4, 5];
+
+    assert_eq!(v.exact_chunks(2).len(), 2);
+
+    let chunks: &[&[_]] = &[&[1, 2], &[3, 4]];
+    assert_eq!(v.exact_chunks(2).collect::<Vec<_>>(), chunks);
+    let chunks: &[&[_]] = &[&[1, 2, 3]];
+    assert_eq!(v.exact_chunks(3).collect::<Vec<_>>(), chunks);
+    let chunks: &[&[_]] = &[];
+    assert_eq!(v.exact_chunks(6).collect::<Vec<_>>(), chunks);
+
+    let chunks: &[&[_]] = &[&[3, 4], &[1, 2]];
+    assert_eq!(v.exact_chunks(2).rev().collect::<Vec<_>>(), chunks);
+}
+
+#[test]
+#[should_panic]
+fn test_exact_chunksator_0() {
+    let v = &[1, 2, 3, 4];
+    let _it = v.exact_chunks(0);
+}
+
+#[test]
 fn test_reverse_part() {
     let mut values = [1, 2, 3, 4, 5];
     values[1..4].reverse();
@@ -1159,7 +1183,7 @@ fn test_mut_chunks() {
         }
     }
     let result = [0, 0, 0, 1, 1, 1, 2];
-    assert!(v == result);
+    assert_eq!(v, result);
 }
 
 #[test]
@@ -1171,7 +1195,7 @@ fn test_mut_chunks_rev() {
         }
     }
     let result = [2, 2, 2, 1, 1, 1, 0];
-    assert!(v == result);
+    assert_eq!(v, result);
 }
 
 #[test]
@@ -1179,6 +1203,38 @@ fn test_mut_chunks_rev() {
 fn test_mut_chunks_0() {
     let mut v = [1, 2, 3, 4];
     let _it = v.chunks_mut(0);
+}
+
+#[test]
+fn test_mut_exact_chunks() {
+    let mut v = [0, 1, 2, 3, 4, 5, 6];
+    assert_eq!(v.exact_chunks_mut(2).len(), 3);
+    for (i, chunk) in v.exact_chunks_mut(3).enumerate() {
+        for x in chunk {
+            *x = i as u8;
+        }
+    }
+    let result = [0, 0, 0, 1, 1, 1, 6];
+    assert_eq!(v, result);
+}
+
+#[test]
+fn test_mut_exact_chunks_rev() {
+    let mut v = [0, 1, 2, 3, 4, 5, 6];
+    for (i, chunk) in v.exact_chunks_mut(3).rev().enumerate() {
+        for x in chunk {
+            *x = i as u8;
+        }
+    }
+    let result = [1, 1, 1, 0, 0, 0, 6];
+    assert_eq!(v, result);
+}
+
+#[test]
+#[should_panic]
+fn test_mut_exact_chunks_0() {
+    let mut v = [1, 2, 3, 4];
+    let _it = v.exact_chunks_mut(0);
 }
 
 #[test]

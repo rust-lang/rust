@@ -1,4 +1,4 @@
-error: `impl Trait` in argument position is experimental (see issue #34511)
+error[E0658]: `impl Trait` in argument position is experimental (see issue #34511)
   --> $DIR/feature-gate-universal.rs:13:11
    |
 13 | fn foo(x: impl std::fmt::Debug) { print!("{:?}", x); }
