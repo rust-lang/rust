@@ -49,9 +49,7 @@ fn item(p: &mut Parser) -> bool {
         || node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item)
         || node_if(p, FN_KW, FN_ITEM, fn_item);
 
-    if item_parsed && attrs_start != item_start {
-        p.forward_parent(attrs_start, item_start);
-    }
+    p.forward_parent(attrs_start, item_start);
     item_parsed
 }
 

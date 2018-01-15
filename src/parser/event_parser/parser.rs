@@ -55,6 +55,9 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn forward_parent(&mut self, child: Mark, parent: Mark) {
+        if child == parent || parent == self.mark() {
+            return
+        }
         assert!(child.0 < parent.0);
         let diff = parent.0 - child.0;
         match self.events[child.0 as usize] {
