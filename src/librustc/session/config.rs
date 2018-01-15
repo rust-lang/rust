@@ -1236,6 +1236,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          overriding the default for the current target"),
     human_readable_cgu_names: bool = (false, parse_bool, [TRACKED],
         "generate human-readable, predictable names for codegen units"),
+    dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
+        "in dep-info output, omit targets for tracking dependencies of the dep-info files \
+         themselves"),
 }
 
 pub fn default_lib_output() -> CrateType {
