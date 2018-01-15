@@ -124,6 +124,7 @@
 #![feature(unsize)]
 #![feature(allocator_internals)]
 #![feature(on_unimplemented)]
+#![feature(exact_chunks)]
 
 #![cfg_attr(not(test), feature(fused, fn_traits, placement_new_protocol, swap_with_slice, i128))]
 #![cfg_attr(test, feature(test, box_heap))]
