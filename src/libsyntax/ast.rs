@@ -15,17 +15,7 @@ pub use self::UnsafeSource::*;
 pub use self::PathParameters::*;
 pub use symbol::{Ident, Symbol as Name};
 pub use util::ThinVec;
-pub use util::parser::{
-    AssocOp,
-    PREC_RESET,
-    PREC_CLOSURE,
-    PREC_JUMP,
-    PREC_RANGE,
-    PREC_PREFIX,
-    PREC_POSTFIX,
-    PREC_PAREN,
-    PREC_FORCE_PAREN,
-};
+pub use util::parser::ExprPrecedence;
 
 use syntax_pos::{Span, DUMMY_SP};
 use codemap::{respan, Spanned};
@@ -39,7 +29,6 @@ use tokenstream::{ThinTokenStream, TokenStream};
 
 use serialize::{self, Encoder, Decoder};
 use std::collections::HashSet;
-use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
 use std::u32;
@@ -915,129 +904,6 @@ pub struct Expr {
     pub node: ExprKind,
     pub span: Span,
     pub attrs: ThinVec<Attribute>
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ExprPrecedence {
-    Closure,
-    Break,
-    Continue,
-    Ret,
-    Yield,
-
-    Range,
-
-    Binary(BinOpKind),
-
-    InPlace,
-    Cast,
-    Type,
-
-    Assign,
-    AssignOp,
-
-    Box,
-    AddrOf,
-    Unary,
-
-    Call,
-    MethodCall,
-    Field,
-    TupField,
-    Index,
-    Try,
-    InlineAsm,
-    Mac,
-
-    Array,
-    Repeat,
-    Tup,
-    Lit,
-    Path,
-    Paren,
-    If,
-    IfLet,
-    While,
-    WhileLet,
-    ForLoop,
-    Loop,
-    Match,
-    Block,
-    Catch,
-    Struct,
-}
-
-impl PartialOrd for ExprPrecedence {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.order().cmp(&other.order()))
-    }
-}
-
-impl Ord for ExprPrecedence {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.order().cmp(&other.order())
-    }
-}
-
-impl ExprPrecedence {
-    pub fn order(self) -> i8 {
-        match self {
-            ExprPrecedence::Closure => PREC_CLOSURE,
-
-            ExprPrecedence::Break |
-            ExprPrecedence::Continue |
-            ExprPrecedence::Ret |
-            ExprPrecedence::Yield => PREC_JUMP,
-
-            // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
-            // parse, instead of parsing as `(x .. x) = x`.  Giving `Range` a lower precedence
-            // ensures that `pprust` will add parentheses in the right places to get the desired
-            // parse.
-            ExprPrecedence::Range => PREC_RANGE,
-
-            // Binop-like expr kinds, handled by `AssocOp`.
-            ExprPrecedence::Binary(op) => AssocOp::from_ast_binop(op).precedence() as i8,
-            ExprPrecedence::InPlace => AssocOp::Inplace.precedence() as i8,
-            ExprPrecedence::Cast => AssocOp::As.precedence() as i8,
-            ExprPrecedence::Type => AssocOp::Colon.precedence() as i8,
-
-            ExprPrecedence::Assign |
-            ExprPrecedence::AssignOp => AssocOp::Assign.precedence() as i8,
-
-            // Unary, prefix
-            ExprPrecedence::Box |
-            ExprPrecedence::AddrOf |
-            ExprPrecedence::Unary => PREC_PREFIX,
-
-            // Unary, postfix
-            ExprPrecedence::Call |
-            ExprPrecedence::MethodCall |
-            ExprPrecedence::Field |
-            ExprPrecedence::TupField |
-            ExprPrecedence::Index |
-            ExprPrecedence::Try |
-            ExprPrecedence::InlineAsm |
-            ExprPrecedence::Mac => PREC_POSTFIX,
-
-            // Never need parens
-            ExprPrecedence::Array |
-            ExprPrecedence::Repeat |
-            ExprPrecedence::Tup |
-            ExprPrecedence::Lit |
-            ExprPrecedence::Path |
-            ExprPrecedence::Paren |
-            ExprPrecedence::If |
-            ExprPrecedence::IfLet |
-            ExprPrecedence::While |
-            ExprPrecedence::WhileLet |
-            ExprPrecedence::ForLoop |
-            ExprPrecedence::Loop |
-            ExprPrecedence::Match |
-            ExprPrecedence::Block |
-            ExprPrecedence::Catch |
-            ExprPrecedence::Struct => PREC_PAREN,
-        }
-    }
 }
 
 impl Expr {

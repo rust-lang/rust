@@ -41,7 +41,7 @@ use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
-use syntax::ast::ExprPrecedence;
+use syntax::util::parser::ExprPrecedence;
 use ty::AdtKind;
 
 use rustc_data_structures::indexed_vec;
