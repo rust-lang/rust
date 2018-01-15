@@ -361,9 +361,8 @@ declare_lint! {
 /// ```rust
 /// x.clone()
 /// ```
-declare_lint! {
+declare_restriction_lint! {
     pub CLONE_ON_REF_PTR,
-    Warn,
     "using 'clone' on a ref-counted pointer"
 }
 
@@ -1013,24 +1012,26 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
 fn lint_clone_on_ref_ptr(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(arg));
 
-    let caller_type = if match_type(cx, obj_ty, &paths::RC) {
-        "Rc"
-    } else if match_type(cx, obj_ty, &paths::ARC) {
-        "Arc"
-    } else if match_type(cx, obj_ty, &paths::WEAK_RC) || match_type(cx, obj_ty, &paths::WEAK_ARC) {
-        "Weak"
-    } else {
-        return;
-    };
+    if let ty::TyAdt(_, subst) = obj_ty.sty {
+        let caller_type = if match_type(cx, obj_ty, &paths::RC) {
+            "Rc"
+        } else if match_type(cx, obj_ty, &paths::ARC) {
+            "Arc"
+        } else if match_type(cx, obj_ty, &paths::WEAK_RC) || match_type(cx, obj_ty, &paths::WEAK_ARC) {
+            "Weak"
+        } else {
+            return;
+        };
 
-    span_lint_and_sugg(
-        cx,
-        CLONE_ON_REF_PTR,
-        expr.span,
-        "using '.clone()' on a ref-counted pointer",
-        "try this",
-        format!("{}::clone(&{})", caller_type, snippet(cx, arg.span, "_")),
-    );
+        span_lint_and_sugg(
+            cx,
+            CLONE_ON_REF_PTR,
+            expr.span,
+            "using '.clone()' on a ref-counted pointer",
+            "try this",
+            format!("{}<{}>::clone(&{})", caller_type, subst.type_at(0), snippet(cx, arg.span, "_")),
+        );
+    }
 }
 
 
