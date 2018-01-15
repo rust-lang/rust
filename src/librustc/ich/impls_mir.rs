@@ -20,7 +20,6 @@ use std::mem;
 impl_stable_hash_for!(struct mir::GeneratorLayout<'tcx> { fields });
 impl_stable_hash_for!(struct mir::SourceInfo { span, scope });
 impl_stable_hash_for!(enum mir::Mutability { Mut, Not });
-impl_stable_hash_for!(enum mir::BorrowKind { Shared, Unique, Mut });
 impl_stable_hash_for!(enum mir::LocalKind { Var, Temp, Arg, ReturnPointer });
 impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
     mutability,
@@ -35,6 +34,25 @@ impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, by_ref, mutability });
 impl_stable_hash_for!(struct mir::BasicBlockData<'tcx> { statements, terminator, is_cleanup });
 impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, kind });
 impl_stable_hash_for!(struct mir::UnsafetyCheckResult { violations, unsafe_blocks });
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
+for mir::BorrowKind {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            mir::BorrowKind::Shared |
+            mir::BorrowKind::Unique => {}
+            mir::BorrowKind::Mut { allow_two_phase_borrow } => {
+                allow_two_phase_borrow.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>>
 for mir::UnsafetyViolationKind {

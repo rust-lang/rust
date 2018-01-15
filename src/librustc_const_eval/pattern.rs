@@ -134,7 +134,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                     BindingMode::ByValue => mutability == Mutability::Mut,
                     BindingMode::ByRef(_, bk) => {
                         write!(f, "ref ")?;
-                        bk == BorrowKind::Mut
+                        match bk { BorrowKind::Mut { .. } => true, _ => false }
                     }
                 };
                 if is_mut {
@@ -429,7 +429,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         (Mutability::Not, BindingMode::ByValue),
                     ty::BindByReference(hir::MutMutable) =>
                         (Mutability::Not, BindingMode::ByRef(
-                            region.unwrap(), BorrowKind::Mut)),
+                            region.unwrap(), BorrowKind::Mut { allow_two_phase_borrow: false })),
                     ty::BindByReference(hir::MutImmutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             region.unwrap(), BorrowKind::Shared)),

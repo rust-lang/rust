@@ -951,9 +951,10 @@ impl<'tcx> PlaceContext<'tcx> {
     pub fn is_mutating_use(&self) -> bool {
         match *self {
             PlaceContext::Store | PlaceContext::AsmOutput | PlaceContext::Call |
-            PlaceContext::Borrow { kind: BorrowKind::Mut, .. } |
+            PlaceContext::Borrow { kind: BorrowKind::Mut { .. }, .. } |
             PlaceContext::Projection(Mutability::Mut) |
             PlaceContext::Drop => true,
+
             PlaceContext::Inspect |
             PlaceContext::Borrow { kind: BorrowKind::Shared, .. } |
             PlaceContext::Borrow { kind: BorrowKind::Unique, .. } |
@@ -971,7 +972,8 @@ impl<'tcx> PlaceContext<'tcx> {
             PlaceContext::Borrow { kind: BorrowKind::Unique, .. } |
             PlaceContext::Projection(Mutability::Not) |
             PlaceContext::Copy | PlaceContext::Move => true,
-            PlaceContext::Borrow { kind: BorrowKind::Mut, .. } | PlaceContext::Store |
+
+            PlaceContext::Borrow { kind: BorrowKind::Mut { .. }, .. } | PlaceContext::Store |
             PlaceContext::AsmOutput |
             PlaceContext::Call | PlaceContext::Projection(Mutability::Mut) |
             PlaceContext::Drop | PlaceContext::StorageLive | PlaceContext::StorageDead |

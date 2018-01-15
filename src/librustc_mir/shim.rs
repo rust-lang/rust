@@ -716,11 +716,14 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }),
                 span
             ));
+            let borrow_kind = BorrowKind::Mut {
+                allow_two_phase_borrow: false,
+            };
             statements.push(Statement {
                 source_info,
                 kind: StatementKind::Assign(
                     Place::Local(ref_rcvr),
-                    Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, rcvr_l)
+                    Rvalue::Ref(tcx.types.re_erased, borrow_kind, rcvr_l)
                 )
             });
             Operand::Move(Place::Local(ref_rcvr))
