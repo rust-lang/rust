@@ -1337,9 +1337,9 @@ impl<'a> State<'a> {
             hir::ExprIf(ref test, ref blk, ref elseopt) => {
                 self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e))?;
             }
-            hir::ExprWhile(ref test, ref blk, opt_sp_name) => {
-                if let Some(sp_name) = opt_sp_name {
-                    self.print_name(sp_name.node)?;
+            hir::ExprWhile(ref test, ref blk, opt_label) => {
+                if let Some(label) = opt_label {
+                    self.print_name(label.name)?;
                     self.word_space(":")?;
                 }
                 self.head("while")?;
@@ -1347,9 +1347,9 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.print_block(&blk)?;
             }
-            hir::ExprLoop(ref blk, opt_sp_name, _) => {
-                if let Some(sp_name) = opt_sp_name {
-                    self.print_name(sp_name.node)?;
+            hir::ExprLoop(ref blk, opt_label, _) => {
+                if let Some(label) = opt_label {
+                    self.print_name(label.name)?;
                     self.word_space(":")?;
                 }
                 self.head("loop")?;
@@ -1424,11 +1424,11 @@ impl<'a> State<'a> {
             hir::ExprPath(ref qpath) => {
                 self.print_qpath(qpath, true)?
             }
-            hir::ExprBreak(label, ref opt_expr) => {
+            hir::ExprBreak(destination, ref opt_expr) => {
                 self.s.word("break")?;
                 self.s.space()?;
-                if let Some(label_ident) = label.ident {
-                    self.print_name(label_ident.node.name)?;
+                if let Some(label) = destination.label {
+                    self.print_name(label.name)?;
                     self.s.space()?;
                 }
                 if let Some(ref expr) = *opt_expr {
@@ -1436,11 +1436,11 @@ impl<'a> State<'a> {
                     self.s.space()?;
                 }
             }
-            hir::ExprAgain(label) => {
+            hir::ExprAgain(destination) => {
                 self.s.word("continue")?;
                 self.s.space()?;
-                if let Some(label_ident) = label.ident {
-                    self.print_name(label_ident.node.name)?;
+                if let Some(label) = destination.label {
+                    self.print_name(label.name)?;
                     self.s.space()?
                 }
             }

@@ -141,14 +141,6 @@ impl<'a> AstValidator<'a> {
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr.node {
-            ExprKind::While(.., Some(ident)) |
-            ExprKind::Loop(_, Some(ident)) |
-            ExprKind::WhileLet(.., Some(ident)) |
-            ExprKind::ForLoop(.., Some(ident)) |
-            ExprKind::Break(Some(ident), _) |
-            ExprKind::Continue(Some(ident)) => {
-                self.check_label(ident.node, ident.span);
-            }
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
             }
@@ -209,6 +201,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         });
 
         visit::walk_use_tree(self, use_tree, id);
+    }
+
+    fn visit_label(&mut self, label: &'a Label) {
+        self.check_label(label.ident, label.span);
+        visit::walk_label(self, label);
     }
 
     fn visit_lifetime(&mut self, lifetime: &'a Lifetime) {

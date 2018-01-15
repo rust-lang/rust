@@ -34,6 +34,18 @@ use std::rc::Rc;
 use std::u32;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+pub struct Label {
+    pub ident: Ident,
+    pub span: Span,
+}
+
+impl fmt::Debug for Label {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "label({:?})", self.ident)
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
     pub span: Span,
@@ -1078,23 +1090,23 @@ pub enum ExprKind {
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
-    While(P<Expr>, P<Block>, Option<SpannedIdent>),
+    While(P<Expr>, P<Block>, Option<Label>),
     /// A while-let loop, with an optional label
     ///
     /// `'label: while let pat = expr { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    WhileLet(P<Pat>, P<Expr>, P<Block>, Option<SpannedIdent>),
+    WhileLet(P<Pat>, P<Expr>, P<Block>, Option<Label>),
     /// A for loop, with an optional label
     ///
     /// `'label: for pat in expr { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    ForLoop(P<Pat>, P<Expr>, P<Block>, Option<SpannedIdent>),
+    ForLoop(P<Pat>, P<Expr>, P<Block>, Option<Label>),
     /// Conditionless loop (can be exited with break, continue, or return)
     ///
     /// `'label: loop { block }`
-    Loop(P<Block>, Option<SpannedIdent>),
+    Loop(P<Block>, Option<Label>),
     /// A `match` block.
     Match(P<Expr>, Vec<Arm>),
     /// A closure (for example, `move |a, b, c| a + b + c`)
@@ -1133,9 +1145,9 @@ pub enum ExprKind {
     /// A referencing operation (`&a` or `&mut a`)
     AddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break, and an optional expression
-    Break(Option<SpannedIdent>, Option<P<Expr>>),
+    Break(Option<Label>, Option<P<Expr>>),
     /// A `continue`, with an optional label
-    Continue(Option<SpannedIdent>),
+    Continue(Option<Label>),
     /// A `return`, with an optional value to be returned
     Ret(Option<P<Expr>>),
 
