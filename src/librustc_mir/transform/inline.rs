@@ -369,8 +369,6 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
                 debug!("Inlined {:?} into {:?}", callsite.callee, self.source);
 
-                let is_box_free = Some(callsite.callee) == self.tcx.lang_items().box_free_fn();
-
                 let mut local_map = IndexVec::with_capacity(callee_mir.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_mir.visibility_scopes.len());
                 let mut promoted_map = IndexVec::with_capacity(callee_mir.promoted.len());
@@ -450,24 +448,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 let return_block = destination.1;
 
-                let args : Vec<_> = if is_box_free {
-                    assert!(args.len() == 1);
-                    // box_free takes a Box, but is defined with a *mut T, inlining
-                    // needs to generate the cast.
-                    // FIXME: we should probably just generate correct MIR in the first place...
-
-                    let arg = if let Operand::Move(ref place) = args[0] {
-                        place.clone()
-                    } else {
-                        bug!("Constant arg to \"box_free\"");
-                    };
-
-                    let ptr_ty = args[0].ty(caller_mir, self.tcx);
-                    vec![self.cast_box_free_arg(arg, ptr_ty, &callsite, caller_mir)]
-                } else {
-                    // Copy the arguments if needed.
-                    self.make_call_args(args, &callsite, caller_mir)
-                };
+                // Copy the arguments if needed.
+                let args: Vec<_> = self.make_call_args(args, &callsite, caller_mir);
 
                 let bb_len = caller_mir.basic_blocks().len();
                 let mut integrator = Integrator {
@@ -506,49 +488,6 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 false
             }
         }
-    }
-
-    fn cast_box_free_arg(&self, arg: Place<'tcx>, ptr_ty: Ty<'tcx>,
-                         callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Local {
-        let arg = Rvalue::Ref(
-            self.tcx.types.re_erased,
-            BorrowKind::Mut,
-            arg.deref());
-
-        let ty = arg.ty(caller_mir, self.tcx);
-        let ref_tmp = LocalDecl::new_temp(ty, callsite.location.span);
-        let ref_tmp = caller_mir.local_decls.push(ref_tmp);
-        let ref_tmp = Place::Local(ref_tmp);
-
-        let ref_stmt = Statement {
-            source_info: callsite.location,
-            kind: StatementKind::Assign(ref_tmp.clone(), arg)
-        };
-
-        caller_mir[callsite.bb]
-            .statements.push(ref_stmt);
-
-        let pointee_ty = match ptr_ty.sty {
-            ty::TyRawPtr(tm) | ty::TyRef(_, tm) => tm.ty,
-            _ if ptr_ty.is_box() => ptr_ty.boxed_ty(),
-            _ => bug!("Invalid type `{:?}` for call to box_free", ptr_ty)
-        };
-        let ptr_ty = self.tcx.mk_mut_ptr(pointee_ty);
-
-        let raw_ptr = Rvalue::Cast(CastKind::Misc, Operand::Move(ref_tmp), ptr_ty);
-
-        let cast_tmp = LocalDecl::new_temp(ptr_ty, callsite.location.span);
-        let cast_tmp = caller_mir.local_decls.push(cast_tmp);
-
-        let cast_stmt = Statement {
-            source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Local(cast_tmp), raw_ptr)
-        };
-
-        caller_mir[callsite.bb]
-            .statements.push(cast_stmt);
-
-        cast_tmp
     }
 
     fn make_call_args(

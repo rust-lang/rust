@@ -99,7 +99,16 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         }
     }
 
-    pub fn deref(self, ccx: &CrateContext<'a, 'tcx>) -> PlaceRef<'tcx> {
+    pub fn deref(mut self, bcx: &Builder<'a, 'tcx>) -> PlaceRef<'tcx> {
+        if let ty::TyAdt(def, _) = self.layout.ty.sty {
+            if def.is_box() {
+                // HACK(eddyb) Get the raw pointer, assuming it's always
+                // the first field of the first field of ... of `struct Box`.
+                while !self.layout.ty.is_unsafe_ptr() {
+                    self = self.extract_field(bcx, 0);
+                }
+            }
+        }
         let projected_ty = self.layout.ty.builtin_deref(true, ty::NoPreference)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {
@@ -107,7 +116,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             OperandValue::Pair(llptr, llextra) => (llptr, llextra),
             OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self)
         };
-        let layout = ccx.layout_of(projected_ty);
+        let layout = bcx.ccx.layout_of(projected_ty);
         PlaceRef {
             llval: llptr,
             llextra,
@@ -152,6 +161,12 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     }
 
     pub fn extract_field(&self, bcx: &Builder<'a, 'tcx>, i: usize) -> OperandRef<'tcx> {
+        // For indirect values, we can just go through `PlaceRef::project_field`.
+        if let OperandValue::Ref(ptr, align) = self.val {
+            let place = PlaceRef::new_sized(ptr, self.layout, align);
+            return place.project_field(bcx, i).load(bcx);
+        }
+
         let field = self.layout.field(bcx.ccx, i);
         let offset = self.layout.fields.offset(i);
 

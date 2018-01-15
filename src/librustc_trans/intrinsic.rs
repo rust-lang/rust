@@ -248,7 +248,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         },
         "volatile_store" => {
             let tp_ty = substs.type_at(0);
-            let dst = args[0].deref(bcx.ccx);
+            let dst = args[0].deref(bcx);
             if let OperandValue::Pair(a, b) = args[1].val {
                 bcx.volatile_store(a, dst.project_field(bcx, 0).llval);
                 bcx.volatile_store(b, dst.project_field(bcx, 1).llval);
@@ -394,7 +394,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         },
 
         "discriminant_value" => {
-            args[0].deref(bcx.ccx).trans_get_discr(bcx, ret_ty)
+            args[0].deref(bcx).trans_get_discr(bcx, ret_ty)
         }
 
         "align_offset" => {
@@ -542,7 +542,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
         "nontemporal_store" => {
             let tp_ty = substs.type_at(0);
-            let dst = args[0].deref(bcx.ccx);
+            let dst = args[0].deref(bcx);
             let val = if let OperandValue::Ref(ptr, align) = args[1].val {
                 bcx.load(ptr, align)
             } else {

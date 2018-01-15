@@ -31,7 +31,7 @@ use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
 use mir::{Mir, interpret};
-use ty::subst::{Kind, Substs};
+use ty::subst::{Kind, Substs, Subst};
 use ty::ReprOptions;
 use ty::Instance;
 use traits;
@@ -1957,7 +1957,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
         let adt_def = self.adt_def(def_id);
-        let substs = self.mk_substs(iter::once(Kind::from(ty)));
+        let substs = Substs::for_item(self, def_id, |_, _| bug!(), |def, substs| {
+            if def.index == 0 {
+                ty
+            } else {
+                assert!(def.has_default);
+                self.type_of(def.def_id).subst(self, substs)
+            }
+        });
         self.mk_ty(TyAdt(adt_def, substs))
     }
 

@@ -892,11 +892,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     ));
                 }
 
-                if self.is_box_free(func) {
-                    self.check_box_free_inputs(mir, term, &sig, args, term_location);
-                } else {
-                    self.check_call_inputs(mir, term, &sig, args, term_location);
-                }
+                self.check_call_inputs(mir, term, &sig, args, term_location);
             }
             TerminatorKind::Assert {
                 ref cond, ref msg, ..
@@ -997,76 +993,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     terr
                 );
             }
-        }
-    }
-
-    fn is_box_free(&self, operand: &Operand<'tcx>) -> bool {
-        match operand {
-            &Operand::Constant(box Constant {
-                literal:
-                    Literal::Value {
-                        value:
-                            &ty::Const {
-                                val: ConstVal::Function(def_id, _),
-                                ..
-                            },
-                        ..
-                    },
-                ..
-            }) => Some(def_id) == self.tcx().lang_items().box_free_fn(),
-            _ => false,
-        }
-    }
-
-    fn check_box_free_inputs(
-        &mut self,
-        mir: &Mir<'tcx>,
-        term: &Terminator<'tcx>,
-        sig: &ty::FnSig<'tcx>,
-        args: &[Operand<'tcx>],
-        term_location: Location,
-    ) {
-        debug!("check_box_free_inputs");
-
-        // box_free takes a Box as a pointer. Allow for that.
-
-        if sig.inputs().len() != 1 {
-            span_mirbug!(self, term, "box_free should take 1 argument");
-            return;
-        }
-
-        let pointee_ty = match sig.inputs()[0].sty {
-            ty::TyRawPtr(mt) => mt.ty,
-            _ => {
-                span_mirbug!(self, term, "box_free should take a raw ptr");
-                return;
-            }
-        };
-
-        if args.len() != 1 {
-            span_mirbug!(self, term, "box_free called with wrong # of args");
-            return;
-        }
-
-        let ty = args[0].ty(mir, self.tcx());
-        let arg_ty = match ty.sty {
-            ty::TyRawPtr(mt) => mt.ty,
-            ty::TyAdt(def, _) if def.is_box() => ty.boxed_ty(),
-            _ => {
-                span_mirbug!(self, term, "box_free called with bad arg ty");
-                return;
-            }
-        };
-
-        if let Err(terr) = self.sub_types(arg_ty, pointee_ty, term_location.at_self()) {
-            span_mirbug!(
-                self,
-                term,
-                "bad box_free arg ({:?} <- {:?}): {:?}",
-                pointee_ty,
-                arg_ty,
-                terr
-            );
         }
     }
 

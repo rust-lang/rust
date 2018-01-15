@@ -558,6 +558,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 Err(metadata) => return metadata,
             }
         }
+        // FIXME(eddyb) remove this Box special-case.
         ty::TyAdt(def, _) if def.is_box() => {
             match ptr_metadata(t.boxed_ty()) {
                 Ok(res) => res,

@@ -568,7 +568,8 @@ impl<T: ?Sized> Arc<T> {
 
     fn from_box(v: Box<T>) -> Arc<T> {
         unsafe {
-            let bptr = Box::into_raw(v);
+            let box_unique = Box::into_unique(v);
+            let bptr = box_unique.as_ptr();
 
             let value_size = size_of_val(&*bptr);
             let ptr = Self::allocate_for_ptr(bptr);
@@ -580,7 +581,7 @@ impl<T: ?Sized> Arc<T> {
                 value_size);
 
             // Free the allocation without dropping its contents
-            box_free(bptr);
+            box_free(box_unique);
 
             Arc { ptr: Shared::new_unchecked(ptr), phantom: PhantomData }
         }
