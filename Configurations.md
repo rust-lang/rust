@@ -908,8 +908,9 @@ where
 
 ```rust
 impl<T> Lorem for T
-where Option<T>: Ipsum {
-    ...
+where Option<T>: Ipsum
+{
+    // body
 }
 ```
 
