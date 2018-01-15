@@ -842,10 +842,32 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         if let mc::NoteClosureEnv(upvar_id) = err.cmt.note {
                             let node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_id);
                             let sp = self.tcx.hir.span(node_id);
-                            match self.tcx.sess.codemap().span_to_snippet(sp) {
-                                Ok(snippet) => {
+                            let fn_closure_msg = "`Fn` closures cannot capture their enclosing \
+                                                  environment for modifications";
+                            match (self.tcx.sess.codemap().span_to_snippet(sp), &err.cmt.cat) {
+                                (_, &Categorization::Upvar(mc::Upvar {
+                                    kind: ty::ClosureKind::Fn, ..
+                                })) => {
+                                    db.note(fn_closure_msg);
+                                    // we should point at the cause for this closure being
+                                    // identified as `Fn` (like in signature of method this
+                                    // closure was passed into)
+                                }
+                                (Ok(ref snippet), ref cat) => {
                                     let msg = &format!("consider making `{}` mutable", snippet);
-                                    db.span_suggestion(sp, msg, format!("mut {}", snippet));
+                                    let suggestion = format!("mut {}", snippet);
+
+                                    if let &Categorization::Deref(ref cmt, _) = cat {
+                                        if let Categorization::Upvar(mc::Upvar {
+                                            kind: ty::ClosureKind::Fn, ..
+                                        }) = cmt.cat {
+                                            db.note(fn_closure_msg);
+                                        } else {
+                                            db.span_suggestion(sp, msg, suggestion);
+                                        }
+                                    } else {
+                                        db.span_suggestion(sp, msg, suggestion);
+                                    }
                                 }
                                 _ => {
                                     db.span_help(sp, "consider making this binding mutable");
