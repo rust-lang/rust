@@ -1461,7 +1461,7 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1589,7 +1589,7 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1737,7 +1737,7 @@ impl<'a, T, P> SplitIter for Split<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T, P> FusedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over the subslices of the vector which are separated
@@ -1835,7 +1835,7 @@ impl<'a, T, P> DoubleEndedIterator for SplitMut<'a, T, P> where
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T, P> FusedIterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over subslices separated by elements that match a predicate
@@ -1892,7 +1892,7 @@ impl<'a, T, P> SplitIter for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-//#[unstable(feature = "fused", issue = "35602")]
+//#[stable(feature = "fused", since = "1.25.0")]
 #[unstable(feature = "slice_rsplit", issue = "41020")]
 impl<'a, T, P> FusedIterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {}
 
@@ -1951,7 +1951,7 @@ impl<'a, T, P> DoubleEndedIterator for RSplitMut<'a, T, P> where
     }
 }
 
-//#[unstable(feature = "fused", issue = "35602")]
+//#[stable(feature = "fused", since = "1.25.0")]
 #[unstable(feature = "slice_rsplit", issue = "41020")]
 impl<'a, T, P> FusedIterator for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {}
 
@@ -2088,7 +2088,7 @@ macro_rules! forward_iterator {
             }
         }
 
-        #[unstable(feature = "fused", issue = "35602")]
+        #[stable(feature = "fused", since = "1.25.0")]
         impl<'a, $elem, P> FusedIterator for $name<'a, $elem, P>
             where P: FnMut(&T) -> bool {}
     }
@@ -2194,7 +2194,7 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Windows<'a, T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for Windows<'a, T> {}
 
 #[doc(hidden)]
@@ -2313,7 +2313,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Chunks<'a, T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for Chunks<'a, T> {}
 
 #[doc(hidden)]
@@ -2429,7 +2429,7 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for ChunksMut<'a, T> {}
 
 #[doc(hidden)]
@@ -2539,7 +2539,7 @@ impl<'a, T> ExactSizeIterator for ExactChunks<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for ExactChunks<'a, T> {}
 
 #[doc(hidden)]
@@ -2636,7 +2636,7 @@ impl<'a, T> ExactSizeIterator for ExactChunksMut<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for ExactChunksMut<'a, T> {}
 
 #[doc(hidden)]

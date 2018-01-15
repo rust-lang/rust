@@ -171,7 +171,7 @@ impl<'a> Iterator for EncodeUtf16<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a> FusedIterator for EncodeUtf16<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]

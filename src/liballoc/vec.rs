@@ -2389,7 +2389,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -2495,7 +2495,7 @@ impl<'a, T> ExactSizeIterator for Drain<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for Drain<'a, T> {}
 
 /// A place for insertion at the back of a `Vec`.
