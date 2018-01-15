@@ -110,7 +110,7 @@ use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use std::collections::hash_map::{HashMap, Entry};
+use std::collections::hash_map::Entry;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use rustc::mir::mono::MonoItem;
@@ -225,12 +225,14 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut initial_partitioning = place_root_translation_items(tcx,
                                                                 trans_items);
 
+    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(&tcx));
+
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
     // If the partitioning should produce a fixed count of codegen units, merge
     // until that count is reached.
     if let PartitioningStrategy::FixedUnitCount(count) = strategy {
-        merge_codegen_units(tcx, &mut initial_partitioning, count, &tcx.crate_name.as_str());
+        merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name.as_str());
 
         debug_dump(tcx, "POST MERGING:", initial_partitioning.codegen_units.iter());
     }
@@ -241,6 +243,8 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // local functions the definition of which is marked with #[inline].
     let mut post_inlining = place_inlined_translation_items(initial_partitioning,
                                                             inlining_map);
+
+    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(&tcx));
 
     debug_dump(tcx, "POST INLINING:", post_inlining.codegen_units.iter());
 
@@ -405,8 +409,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn merge_codegen_units<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             initial_partitioning: &mut PreInliningPartitioning<'tcx>,
+fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<'tcx>,
                              target_cgu_count: usize,
                              crate_name: &str) {
     assert!(target_cgu_count >= 1);
@@ -423,51 +426,16 @@ fn merge_codegen_units<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // the stable sort below will keep everything nice and deterministic.
     codegen_units.sort_by_key(|cgu| cgu.name().clone());
 
-    // Estimate the size of a codegen unit as (approximately) the number of MIR
-    // statements it corresponds to.
-    fn codegen_unit_size_estimate<'a, 'tcx>(cgu: &CodegenUnit<'tcx>,
-                                            mono_item_sizes: &HashMap<MonoItem, usize>)
-                                            -> usize {
-        cgu.items().keys().map(|mi| mono_item_sizes.get(mi).unwrap()).sum()
-    }
-
-    fn mono_item_size_estimate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                         item: &MonoItem<'tcx>)
-                                         -> usize {
-        match item {
-            MonoItem::Fn(instance) => {
-                // Estimate the size of a function based on how many statements
-                // it contains.
-                let mir = tcx.instance_mir(instance.def);
-                mir.basic_blocks().iter().map(|bb| bb.statements.len()).sum()
-            },
-            // Conservatively estimate the size of a static declaration
-            // or assembly to be 1.
-            MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
-        }
-    }
-
-    // Since `sort_by_key` currently recomputes the keys for each comparison,
-    // we can save unnecessary recomputations by storing size estimates for
-    // each `MonoItem`. Storing estimates for `CodegenUnit` might be preferable,
-    // but its structure makes it awkward to use as a key and additionally their
-    // sizes change as the merging occurs, requiring the map to be updated.
-    let mut sizes: HashMap<MonoItem, usize> = HashMap::new();
-    for mis in codegen_units.iter().map(|cgu| cgu.items().keys()) {
-        mis.for_each(|mi| {
-            sizes.entry(*mi).or_insert_with(|| mono_item_size_estimate(tcx, mi));
-        });
-    }
-
     // Merge the two smallest codegen units until the target size is reached.
     // Note that "size" is estimated here rather inaccurately as the number of
     // translation items in a given unit. This could be improved on.
     while codegen_units.len() > target_cgu_count {
         // Sort small cgus to the back
-        codegen_units.sort_by_key(|cgu| usize::MAX - codegen_unit_size_estimate(cgu, &sizes));
+        codegen_units.sort_by_key(|cgu| usize::MAX - cgu.size_estimate());
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
 
+        second_smallest.modify_size_estimate(smallest.size_estimate());
         for (k, v) in smallest.items_mut().drain() {
             second_smallest.items_mut().insert(k, v);
         }

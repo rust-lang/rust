@@ -79,7 +79,7 @@ use std::ffi::CString;
 use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
-use std::i32;
+use std::{i32, usize};
 use std::iter;
 use std::sync::mpsc;
 use syntax_pos::Span;
@@ -829,7 +829,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // account the size of each TransItem.
     let codegen_units = {
         let mut codegen_units = codegen_units;
-        codegen_units.sort_by_key(|cgu| -(cgu.items().len() as isize));
+        codegen_units.sort_by_key(|cgu| usize::MAX - cgu.size_estimate());
         codegen_units
     };
 
