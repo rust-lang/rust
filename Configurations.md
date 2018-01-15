@@ -1009,9 +1009,8 @@ Indent style of imports
 #### `"Visual"` (default):
 
 ```rust
-use foo::{xxx,
-          yyy,
-          zzz};
+use foo::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+          zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz};
 ```
 
 #### `"Block"`:
