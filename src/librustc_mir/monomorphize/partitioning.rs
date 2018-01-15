@@ -427,8 +427,6 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     codegen_units.sort_by_key(|cgu| cgu.name().clone());
 
     // Merge the two smallest codegen units until the target size is reached.
-    // Note that "size" is estimated here rather inaccurately as the number of
-    // translation items in a given unit. This could be improved on.
     while codegen_units.len() > target_cgu_count {
         // Sort small cgus to the back
         codegen_units.sort_by_key(|cgu| usize::MAX - cgu.size_estimate());
