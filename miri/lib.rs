@@ -203,7 +203,7 @@ pub struct MemoryData<'tcx> {
     ///
     /// Only mutable (static mut, heap, stack) allocations have an entry in this map.
     /// The entry is created when allocating the memory and deleted after deallocation.
-    locks: HashMap<u64, RangeMap<LockInfo<'tcx>>>,
+    locks: HashMap<AllocId, RangeMap<LockInfo<'tcx>>>,
 }
 
 impl<'tcx> Machine<'tcx> for Evaluator<'tcx> {
@@ -324,7 +324,7 @@ impl<'tcx> Machine<'tcx> for Evaluator<'tcx> {
                 instance,
                 promoted: None,
             },
-            ptr.into(),
+            ptr.alloc_id,
         );
         Ok(())
     }
@@ -340,14 +340,14 @@ impl<'tcx> Machine<'tcx> for Evaluator<'tcx> {
 
     fn add_lock<'a>(
         mem: &mut Memory<'a, 'tcx, Self>,
-        id: u64,
+        id: AllocId,
     ) {
         mem.data.locks.insert(id, RangeMap::new());
     }
 
     fn free_lock<'a>(
         mem: &mut Memory<'a, 'tcx, Self>,
-        id: u64,
+        id: AllocId,
         len: u64,
     ) -> EvalResult<'tcx> {
         mem.data.locks

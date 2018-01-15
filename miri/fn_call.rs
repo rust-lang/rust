@@ -386,7 +386,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                         };
                         // compute global if not cached
                         let val = match self.tcx.interpret_interner.borrow().get_cached(cid) {
-                            Some(ptr) => ptr,
+                            Some(ptr) => MemoryPointer::new(ptr, 0).into(),
                             None => eval_body(self.tcx, instance, ty::ParamEnv::empty(traits::Reveal::All))?.0,
                         };
                         let val = self.value_to_primval(ValTy { value: Value::ByRef(val, name_align),
