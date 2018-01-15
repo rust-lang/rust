@@ -664,33 +664,41 @@ trait Lorem {
 
 ```rust
 trait Lorem {
-    fn lorem(ipsum: Ipsum,
-             dolor: Dolor,
-             sit: Sit,
-             amet: Amet);
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+    );
 
-    fn lorem(ipsum: Ipsum,
-             dolor: Dolor,
-             sit: Sit,
-             amet: Amet) {
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+    ) {
         // body
     }
 
-    fn lorem(ipsum: Ipsum,
-             dolor: Dolor,
-             sit: Sit,
-             amet: Amet,
-             consectetur: Consectetur,
-             adipiscing: Adipiscing,
-             elit: Elit);
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+        consectetur: Consectetur,
+        adipiscing: Adipiscing,
+        elit: Elit,
+    );
 
-    fn lorem(ipsum: Ipsum,
-             dolor: Dolor,
-             sit: Sit,
-             amet: Amet,
-             consectetur: Consectetur,
-             adipiscing: Adipiscing,
-             elit: Elit) {
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+        consectetur: Consectetur,
+        adipiscing: Adipiscing,
+        elit: Elit,
+    ) {
         // body
     }
 }
