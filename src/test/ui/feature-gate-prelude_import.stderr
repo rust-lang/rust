@@ -1,4 +1,4 @@
-error: `#[prelude_import]` is for use by rustc only
+error[E0658]: `#[prelude_import]` is for use by rustc only
   --> $DIR/feature-gate-prelude_import.rs:11:1
    |
 11 | #[prelude_import] //~ ERROR `#[prelude_import]` is for use by rustc only

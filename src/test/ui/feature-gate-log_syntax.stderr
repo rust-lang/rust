@@ -1,4 +1,4 @@
-error: `log_syntax!` is not stable enough for use and is subject to change (see issue #29598)
+error[E0658]: `log_syntax!` is not stable enough for use and is subject to change (see issue #29598)
   --> $DIR/feature-gate-log_syntax.rs:12:5
    |
 12 |     log_syntax!() //~ ERROR `log_syntax!` is not stable enough

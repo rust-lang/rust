@@ -1,4 +1,4 @@
-error: non-reference pattern used to match a reference (see issue #42640)
+error[E0658]: non-reference pattern used to match a reference (see issue #42640)
   --> $DIR/pat-slice-old-style.rs:19:9
    |
 19 |         [a, b..] => {},

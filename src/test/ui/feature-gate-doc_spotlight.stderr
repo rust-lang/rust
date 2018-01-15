@@ -1,4 +1,4 @@
-error: #[doc(spotlight)] is experimental (see issue #45040)
+error[E0658]: #[doc(spotlight)] is experimental (see issue #45040)
   --> $DIR/feature-gate-doc_spotlight.rs:11:1
    |
 11 | #[doc(spotlight)] //~ ERROR: #[doc(spotlight)] is experimental
