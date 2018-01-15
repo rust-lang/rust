@@ -28,7 +28,11 @@ error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
 25 |     try_trait_generic::<()>(); //~ ERROR the trait bound
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Try` is not implemented for `()`
    |
-   = note: required by `try_trait_generic`
+note: required by `try_trait_generic`
+  --> $DIR/try-operator-on-main.rs:30:1
+   |
+30 | fn try_trait_generic<T: Try>() -> T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be applied to values that implement `std::ops::Try`
   --> $DIR/try-operator-on-main.rs:32:5

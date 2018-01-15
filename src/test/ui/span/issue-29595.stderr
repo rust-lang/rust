@@ -4,7 +4,11 @@ error[E0277]: the trait bound `u8: Tr` is not satisfied
 17 |     let a: u8 = Tr::C; //~ ERROR the trait bound `u8: Tr` is not satisfied
    |                 ^^^^^ the trait `Tr` is not implemented for `u8`
    |
-   = note: required by `Tr::C`
+note: required by `Tr::C`
+  --> $DIR/issue-29595.rs:13:5
+   |
+13 |     const C: Self;
+   |     ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
