@@ -1990,7 +1990,7 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 
@@ -2083,7 +2083,7 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
 /// An owning iterator over the elements of a `VecDeque`.
@@ -2139,7 +2139,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
 /// A draining iterator over the elements of a `VecDeque`.
@@ -2246,7 +2246,7 @@ impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
 #[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.25.0")]
 impl<'a, T: 'a> FusedIterator for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
