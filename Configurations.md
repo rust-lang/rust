@@ -504,7 +504,10 @@ Replace strings of _ wildcards by a single .. in tuple patterns
 #### `false` (default):
 
 ```rust
-let (lorem, ipsum, _, _) = (1, 2, 3, 4);
+fn main() {
+    let (lorem, ipsum, _, _) = (1, 2, 3, 4);
+    let (lorem, ipsum, ..) = (1, 2, 3, 4);
+}
 ```
 
 #### `true`:
