@@ -2,9 +2,18 @@
 
 ## [Unreleased]
 
+## [0.3.5] 2018-01-15
+
 ### Changed
 
+- Format code block in comments when `wrap_comments` is set to `true`.
 - Remove `same_line_attributes` configuration option.
+- Rename `git-fmt` to `git-rustfmt`.
+
+### Fixed
+
+- Rustup to `rustc 1.25.0-nightly (e6072a7b3 2018-01-13)`.
+- Fix formatting bugs.
 
 ## [0.3.4] 2017-12-23
 

@@ -410,9 +410,6 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
                 self.visit_static(&StaticParts::from_item(item));
             }
-            ast::ItemKind::AutoImpl(..) => {
-                // FIXME(#78): format impl definitions.
-            }
             ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 self.visit_fn(
                     visit::FnKind::ItemFn(item.ident, unsafety, constness, abi, &item.vis, body),
