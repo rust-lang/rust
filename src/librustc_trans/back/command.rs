@@ -16,6 +16,7 @@ use std::fmt;
 use std::io;
 use std::process::{self, Output, Child};
 
+#[derive(Clone)]
 pub struct Command {
     program: OsString,
     args: Vec<OsString>,
