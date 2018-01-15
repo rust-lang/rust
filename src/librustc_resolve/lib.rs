@@ -2709,16 +2709,6 @@ impl<'a> Resolver<'a> {
                             if is_expected(ctor_def) && !accessible_ctor {
                                 err.span_label(span, format!("constructor is not visible \
                                                               here due to private fields"));
-                            } else if accessible_ctor {
-                                let block = match ctor_def {
-                                    Def::StructCtor(_, CtorKind::Fn) => "(/* fields */)",
-                                    Def::StructCtor(_, CtorKind::Const) => "",
-                                    Def::Struct(..) => " { /* fields */ }",
-                                    def => bug!("found def `{:?}` when looking for a ctor", def),
-                                };
-                                err.span_label(span, format!("did you mean `{}{}`?",
-                                                             path_str,
-                                                             block));
                             }
                         } else {
                             err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
@@ -2726,26 +2716,14 @@ impl<'a> Resolver<'a> {
                         }
                         return (err, candidates);
                     }
-                    (Def::VariantCtor(_, CtorKind::Const), _) => {
-                        err.span_label(span, format!("did you mean `{}`?", path_str));
-                        return (err, candidates);
-                    }
-                    (Def::VariantCtor(_, CtorKind::Fn), _) => {
-                        err.span_label(span, format!("did you mean `{}( /* fields */ )`?",
-                                                      path_str));
-                        return (err, candidates);
-                    }
-                    (Def::VariantCtor(_, CtorKind::Fictive), _) => {
-                        err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
-                                                      path_str));
-                        return (err, candidates);
-                    }
                     (Def::SelfTy(..), _) if ns == ValueNS => {
                         err.note("can't use `Self` as a constructor, you must use the \
                                   implemented struct");
+                        return (err, candidates);
                     }
-                    (Def::TyAlias(_def_id), _) => {
+                    (Def::TyAlias(_), _) if ns == ValueNS => {
                         err.note("can't use a type alias as a constructor");
+                        return (err, candidates);
                     }
                     _ => {}
                 }
