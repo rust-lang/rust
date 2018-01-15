@@ -49,7 +49,7 @@ pub fn collect_unstable_feature_names(features: &Features) -> BTreeSet<String> {
     features
         .iter()
         .filter(|&(_, ref f)| f.level == Status::Unstable)
-        .map(|(name, _)| name.to_owned())
+        .map(|(name, _)| name.replace('_', "-"))
         .collect()
 }
 
@@ -60,7 +60,7 @@ pub fn collect_unstable_book_section_file_names(dir: &path::Path) -> BTreeSet<St
         .map(|entry| entry.expect("could not read directory entry"))
         .filter(dir_entry_is_file)
         .map(|entry| entry.file_name().into_string().unwrap())
-        .map(|n| n.trim_right_matches(".md").replace('-', "_"))
+        .map(|n| n.trim_right_matches(".md").to_owned())
         .collect()
 }
 

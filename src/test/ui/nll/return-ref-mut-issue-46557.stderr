@@ -1,0 +1,13 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/return-ref-mut-issue-46557.rs:17:21
+   |
+17 |     let ref mut x = 1234543; //~ ERROR borrowed value does not live long enough [E0597]
+   |                     ^^^^^^^ temporary value does not live long enough
+18 |     x
+19 | }
+   |  - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for lifetime '_#2r...
+
+error: aborting due to previous error
+

@@ -149,6 +149,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ExprKind::Continue(Some(ident)) => {
                 self.check_label(ident.node, ident.span);
             }
+            ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
+                span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
+            }
             _ => {}
         }
 
