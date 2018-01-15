@@ -541,13 +541,15 @@ fn main() {
 #### `"AlwaysNextLine"`:
 
 ```rust
-if lorem
-{
-    println!("ipsum!");
-}
-else
-{
-    println!("dolor!");
+fn main() {
+    if lorem
+    {
+        println!("ipsum!");
+    }
+    else
+    {
+        println!("dolor!");
+    }
 }
 ```
 
