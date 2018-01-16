@@ -8,6 +8,51 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Drop elaboration is an important "lowering" step for MIR. When MIR
+//! is first generated, if often contains "unnecessary" drops. For example,
+//! in code like
+//!
+//! ```
+//! fn foo(x: Vec<u32>) {
+//!     mem::drop(x);
+//! }
+//! ```
+//!
+//! the call to `mem::drop` is (from MIR's perspective) a move. But we
+//! will still create a DROP terminator at the end of the function
+//! that drops `x`.  This DROP terminator is a no-op, because `x` has
+//! been moved.
+//!
+//! The official semantics of MIR (at least when it is first
+//! generated) is "as if" there is an extra "uninitialized" value for
+//! each variable.  When a value is moved (or partially moved), the
+//! moved portion of it is overwritten with "uninitialized". When the
+//! DROP terminator executes, uninitialized values are ignored.
+//!
+//! Drop elaboration implements those semantics by computing, at each
+//! point in the code, what has been dropped and what has not (i.e.,
+//! what is "initialized"). If we can see that a value is definitely
+//! not initialized, we can remove the DROP terminator altogether
+//! (e.g., in the example above).
+//!
+//! In some cases, we have to add extra flags to track the initialization state.
+//! For example:
+//!
+//! ```
+//! fn foo(x: Vec<u32>) {
+//!     if rand() {
+//!         mem::drop(x);
+//!     }
+//! }
+//! ```
+//!
+//! here, the DROP may or may not have an effect. To handle this, we
+//! introduce a boolean flag that tracks whether `x` is initialized
+//! (and hence whether DROP should have an effect).
+//!
+//! The net result is that, when we are done, the DROP terminator can be relied
+//! upon to only see initialized values.
+
 use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
 use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use dataflow::{DataflowResults};
@@ -142,6 +187,10 @@ fn find_dead_unwinds<'a, 'tcx>(
     dead_unwinds
 }
 
+/// The set of paths that are "maybe live" (possibly initialized) and
+/// "maybe data" (possibly uninitialized) at a given point in the
+/// flow-graph (typically right before a DROP terminator
+/// executes). Note that a single path may be contained in both sets.
 struct InitializationData {
     live: IdxSetBuf<MovePathIndex>,
     dead: IdxSetBuf<MovePathIndex>
@@ -209,6 +258,8 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         let ((maybe_live, maybe_dead), multipart) = match mode {
             DropFlagMode::Shallow => (self.init_data.state(path), false),
             DropFlagMode::Deep => {
+                // Check if we have multiple children, and -- if so --
+                // if they are **all** live or **all** dead.
                 let mut some_live = false;
                 let mut some_dead = false;
                 let mut children_count = 0;
@@ -227,7 +278,12 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         match (maybe_live, maybe_dead, multipart) {
             (false, _, _) => DropStyle::Dead,
             (true, false, _) => DropStyle::Static,
+
+            // If this is maybe live, maybe dead, but there are no subparts,
+            // we can just make the DROP conditional...
             (true, true, false) => DropStyle::Conditional,
+
+            // ...but otherwise we have to expand into many drops.
             (true, true, true) => DropStyle::Open,
         }
     }
@@ -313,6 +369,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.env.param_env
     }
 
+    /// Computes and returns the "initialization data" (which paths
+    /// are live or dead) at entry to the given location.
     fn initialization_data_at(&self, loc: Location) -> InitializationData {
         let mut data = InitializationData {
             live: self.flow_inits.sets().on_entry_set_for(loc.block.index())
@@ -327,6 +385,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         data
     }
 
+    /// Create a drop flag corresponding to the move path `index`, if
+    /// one does not already exist.
     fn create_drop_flag(&mut self, index: MovePathIndex, span: Span) {
         let tcx = self.tcx;
         let patch = &mut self.patch;
@@ -356,16 +416,23 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.patch
     }
 
-    fn collect_drop_flags(&mut self)
-    {
+    /// Creates drop flags for all paths that (a) get dropped and (b) may or may be
+    /// initialized at the point of that drop.
+    ///
+    /// c.f. `create_drop_flag`
+    fn collect_drop_flags(&mut self) {
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
             let terminator = data.terminator();
-            let location = match terminator.kind {
+
+            // Extract the path being dropped (`location`). Continue
+            // if not a terminator.
+            let place_to_be_dropped = match terminator.kind {
                 TerminatorKind::Drop { ref location, .. } |
                 TerminatorKind::DropAndReplace { ref location, .. } => location,
                 _ => continue
             };
 
+            // Compute the live/dead paths on entry to the terminator.
             let init_data = self.initialization_data_at(Location {
                 block: bb,
                 statement_index: data.statements.len()
@@ -375,7 +442,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             debug!("collect_drop_flags: {:?}, place {:?} ({:?})",
                    bb, location, path);
 
-            let path = match path {
+            // Look up the `MovePathIndex` for the place we are
+            // dropping. In practice, this should always be an exact
+            // match (unless path is not moved).
+            let path_to_be_dropped = match path_to_be_dropped {
                 LookupResult::Exact(e) => e,
                 LookupResult::Parent(None) => continue,
                 LookupResult::Parent(Some(parent)) => {
@@ -389,10 +459,30 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 }
             };
 
-            on_all_drop_children_bits(self.tcx, self.mir, self.env, path, |child| {
+            // Create drop flags for each child path P of the thing we
+            // are dropping, if that path P may or may not be live
+            // (this is the case where we need runtime state to tell). So for example:
+            //
+            // ```
+            // fn foo(x: (Vec<u32>, u32) {
+            //     if rand() {
+            //         mem::drop(x.0);
+            //         mem::drop(x.1);
+            //     }
+            // }
+            // ```
+            //
+            // Here, `x` would be dropped, and there are two child
+            // paths of `x` (`x.0`, `x.1`).  `x.1` has a `Copy` type
+            // so we would ignore that. `x.0` may be live and may be
+            // dead, so we would add a drop flag for that.
+            //
+            // NDM -- if there was e.g. a move of `x.0` and also
+            // `x.0.0`, would we create flags for both?
+            on_all_drop_children_bits(self.tcx, self.mir, self.env, path_to_be_dropped, |child| {
                 let (maybe_live, maybe_dead) = init_data.state(child);
                 debug!("collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
-                       child, location, path, (maybe_live, maybe_dead));
+                       child, place_to_be_dropped, path_to_be_dropped, (maybe_live, maybe_dead));
                 if maybe_live && maybe_dead {
                     self.create_drop_flag(child, terminator.source_info.span)
                 }

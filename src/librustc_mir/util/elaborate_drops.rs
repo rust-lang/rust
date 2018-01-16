@@ -36,17 +36,33 @@ impl DropFlagState {
     }
 }
 
+/// What kind of code is needed for a given drop terminator?
+///
+/// Imagine that the drop is dropping the `Place` P.
 #[derive(Debug)]
 pub enum DropStyle {
+    /// The drop terminator is a noop.
     Dead,
+
+    /// The drop terminator is unconditionally needed.
     Static,
+
+    /// The drop terminator is needed if the drop flag for P is true.
     Conditional,
+
+    /// Some subpaths of P (e.g., `P.x`) are conditionally needed. We
+    /// need to expand this drop into its component paths.
     Open,
 }
 
+/// When dropping a value, we can either drop deep or shallow.
 #[derive(Debug)]
 pub enum DropFlagMode {
+    /// Drops the outermost layer (because the inner layers have
+    /// already been dropped).
     Shallow,
+
+    /// Drops the value and all of its owned content.
     Deep
 }
 
@@ -87,6 +103,9 @@ pub trait DropElaborator<'a, 'tcx: 'a> : fmt::Debug {
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
+    /// Determines how to expand a drop of `path`. The `mode` controls
+    /// whether we are dropping *just* the `path` or also dropping its
+    /// subpaths.
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle;
     fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>>;
     fn clear_drop_flag(&mut self, location: Location, path: Self::Path, mode: DropFlagMode);
