@@ -15,7 +15,7 @@ use locator::{self, CratePaths};
 use native_libs::relevant_lib;
 use schema::CrateRoot;
 
-use rustc::hir::def_id::{CrateNum, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX};
 use rustc::hir::svh::Svh;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::DepKind;
@@ -532,8 +532,7 @@ impl<'a> CrateLoader<'a> {
             Err(err) => self.sess.span_fatal(span, &err),
         };
 
-        let sym = self.sess.generate_derive_registrar_symbol(root.disambiguator,
-                                                             root.macro_derive_registrar.unwrap());
+        let sym = self.sess.generate_derive_registrar_symbol(root.disambiguator);
         let registrar = unsafe {
             let sym = match lib.symbol(&sym) {
                 Ok(f) => f,
@@ -588,7 +587,7 @@ impl<'a> CrateLoader<'a> {
     pub fn find_plugin_registrar(&mut self,
                                  span: Span,
                                  name: &str)
-                                 -> Option<(PathBuf, CrateDisambiguator, DefIndex)> {
+                                 -> Option<(PathBuf, CrateDisambiguator)> {
         let name = Symbol::intern(name);
         let ekrate = self.read_extension_crate(span, name, name);
 
@@ -603,11 +602,11 @@ impl<'a> CrateLoader<'a> {
         }
 
         let root = ekrate.metadata.get_root();
-        match (ekrate.dylib.as_ref(), root.plugin_registrar_fn) {
-            (Some(dylib), Some(reg)) => {
-                Some((dylib.to_path_buf(), root.disambiguator, reg))
+        match ekrate.dylib.as_ref() {
+            Some(dylib) => {
+                Some((dylib.to_path_buf(), root.disambiguator))
             }
-            (None, Some(_)) => {
+            None => {
                 span_err!(self.sess, span, E0457,
                           "plugin `{}` only found in rlib format, but must be available \
                            in dylib format",
@@ -616,7 +615,6 @@ impl<'a> CrateLoader<'a> {
                 // empty dylib.
                 None
             }
-            _ => None,
         }
     }
 

@@ -11,7 +11,7 @@
 pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
 pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 
-use hir::def_id::{CrateNum, DefIndex};
+use hir::def_id::CrateNum;
 use ich::Fingerprint;
 
 use lint;
@@ -558,18 +558,16 @@ impl Session {
 
     /// Returns the symbol name for the registrar function,
     /// given the crate Svh and the function DefIndex.
-    pub fn generate_plugin_registrar_symbol(&self, disambiguator: CrateDisambiguator,
-                                            index: DefIndex)
+    pub fn generate_plugin_registrar_symbol(&self,
+                                            disambiguator: CrateDisambiguator)
                                             -> String {
-        format!("__rustc_plugin_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
-                                                   index.to_proc_macro_index())
+        format!("__rustc_plugin_registrar_{}__", disambiguator.to_fingerprint().to_hex())
     }
 
-    pub fn generate_derive_registrar_symbol(&self, disambiguator: CrateDisambiguator,
-                                            index: DefIndex)
+    pub fn generate_derive_registrar_symbol(&self,
+                                            disambiguator: CrateDisambiguator)
                                             -> String {
-        format!("__rustc_derive_registrar__{}_{}", disambiguator.to_fingerprint().to_hex(),
-                                                   index.to_proc_macro_index())
+        format!("__rustc_derive_registrar_{}__", disambiguator.to_fingerprint().to_hex())
     }
 
     pub fn sysroot<'a>(&'a self) -> &'a Path {
