@@ -22,7 +22,7 @@ fn foo(s: &mut (i32,)) -> i32 {
 
 fn bar(s: &Box<(i32,)>) -> &'static i32 {
     // FIXME(#46983): error message should be better
-    &s.0 //~ ERROR free region `` does not outlive free region `'static`
+    &s.0 //~ ERROR explicit lifetime required in the type of `s` [E0621]
 }
 
 fn main() {

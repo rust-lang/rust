@@ -67,16 +67,15 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                     }
                 }
 
-                // In addition to the above rules, we restrict impls of defaulted traits
+                // In addition to the above rules, we restrict impls of auto traits
                 // so that they can only be implemented on nominal types, such as structs,
                 // enums or foreign types. To see why this restriction exists, consider the
-                // following example (#22978). Imagine that crate A defines a defaulted trait
+                // following example (#22978). Imagine that crate A defines an auto trait
                 // `Foo` and a fn that operates on pairs of types:
                 //
                 // ```
                 // // Crate A
-                // trait Foo { }
-                // impl Foo for .. { }
+                // auto trait Foo { }
                 // fn two_foos<A:Foo,B:Foo>(..) {
                 //     one_foo::<(A,B)>(..)
                 // }

@@ -20,18 +20,18 @@ use rustc::mir::traversal;
 use rustc::ty;
 use rustc::ty::layout::LayoutOf;
 use type_of::LayoutLlvmExt;
-use super::MirContext;
+use super::FunctionCx;
 
-pub fn memory_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
-    let mir = mircx.mir;
-    let mut analyzer = LocalAnalyzer::new(mircx);
+pub fn memory_locals<'a, 'tcx>(fx: &FunctionCx<'a, 'tcx>) -> BitVector {
+    let mir = fx.mir;
+    let mut analyzer = LocalAnalyzer::new(fx);
 
     analyzer.visit_mir(mir);
 
     for (index, ty) in mir.local_decls.iter().map(|l| l.ty).enumerate() {
-        let ty = mircx.monomorphize(&ty);
+        let ty = fx.monomorphize(&ty);
         debug!("local {} has type {:?}", index, ty);
-        let layout = mircx.ccx.layout_of(ty);
+        let layout = fx.cx.layout_of(ty);
         if layout.is_llvm_immediate() {
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.
@@ -52,21 +52,21 @@ pub fn memory_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
 }
 
 struct LocalAnalyzer<'mir, 'a: 'mir, 'tcx: 'a> {
-    cx: &'mir MirContext<'a, 'tcx>,
+    fx: &'mir FunctionCx<'a, 'tcx>,
     memory_locals: BitVector,
     seen_assigned: BitVector
 }
 
 impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
-    fn new(mircx: &'mir MirContext<'a, 'tcx>) -> LocalAnalyzer<'mir, 'a, 'tcx> {
+    fn new(fx: &'mir FunctionCx<'a, 'tcx>) -> LocalAnalyzer<'mir, 'a, 'tcx> {
         let mut analyzer = LocalAnalyzer {
-            cx: mircx,
-            memory_locals: BitVector::new(mircx.mir.local_decls.len()),
-            seen_assigned: BitVector::new(mircx.mir.local_decls.len())
+            fx,
+            memory_locals: BitVector::new(fx.mir.local_decls.len()),
+            seen_assigned: BitVector::new(fx.mir.local_decls.len())
         };
 
         // Arguments get assigned to by means of the function being called
-        for idx in 0..mircx.mir.arg_count {
+        for idx in 0..fx.mir.arg_count {
             analyzer.seen_assigned.insert(idx + 1);
         }
 
@@ -95,7 +95,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
         if let mir::Place::Local(index) = *place {
             self.mark_assigned(index);
-            if !self.cx.rvalue_creates_operand(rvalue) {
+            if !self.fx.rvalue_creates_operand(rvalue) {
                 self.mark_as_memory(index);
             }
         } else {
@@ -117,7 +117,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     }, ..
                 }),
                 ref args, ..
-            } if Some(def_id) == self.cx.ccx.tcx().lang_items().box_free_fn() => {
+            } if Some(def_id) == self.fx.cx.tcx.lang_items().box_free_fn() => {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
@@ -136,7 +136,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     context: PlaceContext<'tcx>,
                     location: Location) {
         debug!("visit_place(place={:?}, context={:?})", place, context);
-        let ccx = self.cx.ccx;
+        let cx = self.fx.cx;
 
         if let mir::Place::Projection(ref proj) = *place {
             // Allow uses of projections that are ZSTs or from scalar fields.
@@ -145,18 +145,18 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 _ => false
             };
             if is_consume {
-                let base_ty = proj.base.ty(self.cx.mir, ccx.tcx());
-                let base_ty = self.cx.monomorphize(&base_ty);
+                let base_ty = proj.base.ty(self.fx.mir, cx.tcx);
+                let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(ccx.tcx(), &proj.elem).to_ty(ccx.tcx());
-                let elem_ty = self.cx.monomorphize(&elem_ty);
-                if ccx.layout_of(elem_ty).is_zst() {
+                let elem_ty = base_ty.projection_ty(cx.tcx, &proj.elem).to_ty(cx.tcx);
+                let elem_ty = self.fx.monomorphize(&elem_ty);
+                if cx.layout_of(elem_ty).is_zst() {
                     return;
                 }
 
                 if let mir::ProjectionElem::Field(..) = proj.elem {
-                    let layout = ccx.layout_of(base_ty.to_ty(ccx.tcx()));
+                    let layout = cx.layout_of(base_ty.to_ty(cx.tcx));
                     if layout.is_llvm_immediate() || layout.is_llvm_scalar_pair() {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
@@ -200,11 +200,11 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
             }
 
             PlaceContext::Drop => {
-                let ty = mir::Place::Local(index).ty(self.cx.mir, self.cx.ccx.tcx());
-                let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
+                let ty = mir::Place::Local(index).ty(self.fx.mir, self.fx.cx.tcx);
+                let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx));
 
                 // Only need the place if we're actually dropping it.
-                if self.cx.ccx.shared().type_needs_drop(ty) {
+                if self.fx.cx.type_needs_drop(ty) {
                     self.mark_as_memory(index);
                 }
             }

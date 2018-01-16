@@ -12,7 +12,7 @@
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
 use abi::{ArgType, CastTarget, FnType, LayoutExt, Reg, RegKind};
-use context::CrateContext;
+use context::CodegenCx;
 
 use rustc::ty::layout::{self, TyLayout, Size};
 
@@ -31,7 +31,7 @@ struct Memory;
 const LARGEST_VECTOR_SIZE: usize = 512;
 const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
-fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
+fn classify_arg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &ArgType<'tcx>)
                           -> Result<[Class; MAX_EIGHTBYTES], Memory> {
     fn unify(cls: &mut [Class],
              off: Size,
@@ -52,7 +52,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
         cls[i] = to_write;
     }
 
-    fn classify<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+    fn classify<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                           layout: TyLayout<'tcx>,
                           cls: &mut [Class],
                           off: Size)
@@ -82,7 +82,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
 
                 // everything after the first one is the upper
                 // half of a register.
-                let stride = element.value.size(ccx);
+                let stride = element.value.size(cx);
                 for i in 1..count {
                     let field_off = off + stride * i;
                     unify(cls, field_off, Class::SseUp);
@@ -95,7 +95,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                     layout::Variants::Single { .. } => {
                         for i in 0..layout.fields.count() {
                             let field_off = off + layout.fields.offset(i);
-                            classify(ccx, layout.field(ccx, i), cls, field_off)?;
+                            classify(cx, layout.field(cx, i), cls, field_off)?;
                         }
                     }
                     layout::Variants::Tagged { .. } |
@@ -114,7 +114,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
     }
 
     let mut cls = [Class::None; MAX_EIGHTBYTES];
-    classify(ccx, arg.layout, &mut cls, Size::from_bytes(0))?;
+    classify(cx, arg.layout, &mut cls, Size::from_bytes(0))?;
     if n > 2 {
         if cls[0] != Class::Sse {
             return Err(Memory);
@@ -189,12 +189,12 @@ fn cast_target(cls: &[Class], size: Size) -> CastTarget {
     target
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     let mut int_regs = 6; // RDI, RSI, RDX, RCX, R8, R9
     let mut sse_regs = 8; // XMM0-7
 
     let mut x86_64_ty = |arg: &mut ArgType<'tcx>, is_arg: bool| {
-        let cls = classify_arg(ccx, arg);
+        let cls = classify_arg(cx, arg);
 
         let mut needed_int = 0;
         let mut needed_sse = 0;

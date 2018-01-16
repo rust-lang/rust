@@ -1,4 +1,4 @@
-error: the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate which contains compiler-rt intrinsics and will never be stable
+error[E0658]: the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate which contains compiler-rt intrinsics and will never be stable
   --> $DIR/feature-gate-compiler-builtins.rs:11:1
    |
 11 | #![compiler_builtins] //~ ERROR the `#[compiler_builtins]` attribute is

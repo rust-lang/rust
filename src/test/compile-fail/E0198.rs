@@ -12,7 +12,7 @@
 
 struct Foo;
 
-unsafe impl !Clone for Foo { } //~ ERROR negative implementations are not unsafe [E0198]
+unsafe impl !Send for Foo { } //~ ERROR E0198
 
 fn main() {
 }

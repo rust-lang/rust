@@ -48,3 +48,6 @@
 [submodule "src/binaryen"]
 	path = src/binaryen
 	url = https://github.com/alexcrichton/binaryen.git
+[submodule "src/doc/rust-by-example"]
+	path = src/doc/rust-by-example
+	url = https://github.com/rust-lang/rust-by-example

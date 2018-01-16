@@ -10,7 +10,7 @@
 
 use syntax_pos::Span;
 use rustc::middle::region::ScopeTree;
-use rustc::mir::{BorrowKind, Field, Local, Location, Operand};
+use rustc::mir::{BorrowKind, Field, Local, LocalKind, Location, Operand};
 use rustc::mir::{Place, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::ty::{self, RegionKind};
 use rustc_data_structures::indexed_vec::Idx;
@@ -568,19 +568,39 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         (place, span): (&Place<'tcx>, Span),
         assigned_span: Span,
     ) {
+        let is_arg = if let Place::Local(local) = place {
+            if let LocalKind::Arg = self.mir.local_kind(*local) {
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
         let mut err = self.tcx.cannot_reassign_immutable(
             span,
             &self.describe_place(place).unwrap_or("_".to_owned()),
+            is_arg,
             Origin::Mir,
         );
-        err.span_label(span, "cannot assign twice to immutable variable");
+        let msg = if is_arg {
+            "cannot assign to immutable argument"
+        } else {
+            "cannot assign twice to immutable variable"
+        };
         if span != assigned_span {
-            let value_msg = match self.describe_place(place) {
-                Some(name) => format!("`{}`", name),
-                None => "value".to_owned(),
-            };
-            err.span_label(assigned_span, format!("first assignment to {}", value_msg));
+            if is_arg {
+                err.span_label(assigned_span, "argument not declared as `mut`");
+            } else {
+                let value_msg = match self.describe_place(place) {
+                    Some(name) => format!("`{}`", name),
+                    None => "value".to_owned(),
+                };
+                err.span_label(assigned_span, format!("first assignment to {}", value_msg));
+            }
         }
+        err.span_label(span, msg);
         err.emit();
     }
 }

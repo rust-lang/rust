@@ -14,7 +14,7 @@ use super::utils::{DIB, span_start};
 
 use llvm;
 use llvm::debuginfo::DIScope;
-use common::CrateContext;
+use common::CodegenCx;
 use rustc::mir::{Mir, VisibilityScope};
 
 use libc::c_uint;
@@ -44,7 +44,7 @@ impl MirDebugScope {
 
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
-pub fn create_mir_scopes(ccx: &CrateContext, mir: &Mir, debug_context: &FunctionDebugContext)
+pub fn create_mir_scopes(cx: &CodegenCx, mir: &Mir, debug_context: &FunctionDebugContext)
     -> IndexVec<VisibilityScope, MirDebugScope> {
     let null_scope = MirDebugScope {
         scope_metadata: ptr::null_mut(),
@@ -71,13 +71,13 @@ pub fn create_mir_scopes(ccx: &CrateContext, mir: &Mir, debug_context: &Function
     // Instantiate all scopes.
     for idx in 0..mir.visibility_scopes.len() {
         let scope = VisibilityScope::new(idx);
-        make_mir_scope(ccx, &mir, &has_variables, debug_context, scope, &mut scopes);
+        make_mir_scope(cx, &mir, &has_variables, debug_context, scope, &mut scopes);
     }
 
     scopes
 }
 
-fn make_mir_scope(ccx: &CrateContext,
+fn make_mir_scope(cx: &CodegenCx,
                   mir: &Mir,
                   has_variables: &BitVector,
                   debug_context: &FunctionDebugContextData,
@@ -89,11 +89,11 @@ fn make_mir_scope(ccx: &CrateContext,
 
     let scope_data = &mir.visibility_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
-        make_mir_scope(ccx, mir, has_variables, debug_context, parent, scopes);
+        make_mir_scope(cx, mir, has_variables, debug_context, parent, scopes);
         scopes[parent]
     } else {
         // The root is the function itself.
-        let loc = span_start(ccx, mir.span);
+        let loc = span_start(cx, mir.span);
         scopes[scope] = MirDebugScope {
             scope_metadata: debug_context.fn_metadata,
             file_start_pos: loc.file.start_pos,
@@ -115,14 +115,14 @@ fn make_mir_scope(ccx: &CrateContext,
         }
     }
 
-    let loc = span_start(ccx, scope_data.span);
-    let file_metadata = file_metadata(ccx,
+    let loc = span_start(cx, scope_data.span);
+    let file_metadata = file_metadata(cx,
                                       &loc.file.name,
                                       debug_context.defining_crate);
 
     let scope_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateLexicalBlock(
-            DIB(ccx),
+            DIB(cx),
             parent_scope.scope_metadata,
             file_metadata,
             loc.line as c_uint,

@@ -1,4 +1,4 @@
-error: allow_internal_unstable side-steps feature gating and stability checks
+error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
   --> $DIR/feature-gate-allow-internal-unstable-nested-macro.rs:18:9
    |
 18 |         #[allow_internal_unstable] //~ ERROR allow_internal_unstable side-steps

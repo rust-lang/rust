@@ -1,0 +1,11 @@
+error[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowed-referent-issue-38899.rs:24:21
+   |
+22 |     let x = &mut block;
+   |             ---------- mutable borrow occurs here
+23 |     println!("{}", x.current);
+24 |     let p: &'a u8 = &*block.current;
+   |                     ^^^^^^^^^^^^^^^ immutable borrow occurs here
+
+error: aborting due to previous error
+

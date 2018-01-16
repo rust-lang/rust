@@ -13,28 +13,28 @@ use rustc::mir;
 use asm;
 use builder::Builder;
 
-use super::MirContext;
+use super::FunctionCx;
 use super::LocalRef;
 
-impl<'a, 'tcx> MirContext<'a, 'tcx> {
+impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn trans_statement(&mut self,
-                           bcx: Builder<'a, 'tcx>,
+                           bx: Builder<'a, 'tcx>,
                            statement: &mir::Statement<'tcx>)
                            -> Builder<'a, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
-        self.set_debug_loc(&bcx, statement.source_info);
+        self.set_debug_loc(&bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(ref place, ref rvalue) => {
                 if let mir::Place::Local(index) = *place {
                     match self.locals[index] {
                         LocalRef::Place(tr_dest) => {
-                            self.trans_rvalue(bcx, tr_dest, rvalue)
+                            self.trans_rvalue(bx, tr_dest, rvalue)
                         }
                         LocalRef::Operand(None) => {
-                            let (bcx, operand) = self.trans_rvalue_operand(bcx, rvalue);
+                            let (bx, operand) = self.trans_rvalue_operand(bx, rvalue);
                             self.locals[index] = LocalRef::Operand(Some(operand));
-                            bcx
+                            bx
                         }
                         LocalRef::Operand(Some(op)) => {
                             if !op.layout.is_zst() {
@@ -45,46 +45,46 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                             // If the type is zero-sized, it's already been set here,
                             // but we still need to make sure we translate the operand
-                            self.trans_rvalue_operand(bcx, rvalue).0
+                            self.trans_rvalue_operand(bx, rvalue).0
                         }
                     }
                 } else {
-                    let tr_dest = self.trans_place(&bcx, place);
-                    self.trans_rvalue(bcx, tr_dest, rvalue)
+                    let tr_dest = self.trans_place(&bx, place);
+                    self.trans_rvalue(bx, tr_dest, rvalue)
                 }
             }
             mir::StatementKind::SetDiscriminant{ref place, variant_index} => {
-                self.trans_place(&bcx, place)
-                    .trans_set_discr(&bcx, variant_index);
-                bcx
+                self.trans_place(&bx, place)
+                    .trans_set_discr(&bx, variant_index);
+                bx
             }
             mir::StatementKind::StorageLive(local) => {
                 if let LocalRef::Place(tr_place) = self.locals[local] {
-                    tr_place.storage_live(&bcx);
+                    tr_place.storage_live(&bx);
                 }
-                bcx
+                bx
             }
             mir::StatementKind::StorageDead(local) => {
                 if let LocalRef::Place(tr_place) = self.locals[local] {
-                    tr_place.storage_dead(&bcx);
+                    tr_place.storage_dead(&bx);
                 }
-                bcx
+                bx
             }
             mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
                 let outputs = outputs.iter().map(|output| {
-                    self.trans_place(&bcx, output)
+                    self.trans_place(&bx, output)
                 }).collect();
 
                 let input_vals = inputs.iter().map(|input| {
-                    self.trans_operand(&bcx, input).immediate()
+                    self.trans_operand(&bx, input).immediate()
                 }).collect();
 
-                asm::trans_inline_asm(&bcx, asm, outputs, input_vals);
-                bcx
+                asm::trans_inline_asm(&bx, asm, outputs, input_vals);
+                bx
             }
             mir::StatementKind::EndRegion(_) |
             mir::StatementKind::Validate(..) |
-            mir::StatementKind::Nop => bcx,
+            mir::StatementKind::Nop => bx,
         }
     }
 }

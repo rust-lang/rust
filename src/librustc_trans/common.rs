@@ -38,7 +38,7 @@ use syntax::abi::Abi;
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 
-pub use context::{CrateContext, SharedCrateContext};
+pub use context::CodegenCx;
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All))
@@ -152,46 +152,46 @@ pub fn C_uint_big(t: Type, u: u128) -> ValueRef {
     }
 }
 
-pub fn C_bool(ccx: &CrateContext, val: bool) -> ValueRef {
-    C_uint(Type::i1(ccx), val as u64)
+pub fn C_bool(cx: &CodegenCx, val: bool) -> ValueRef {
+    C_uint(Type::i1(cx), val as u64)
 }
 
-pub fn C_i32(ccx: &CrateContext, i: i32) -> ValueRef {
-    C_int(Type::i32(ccx), i as i64)
+pub fn C_i32(cx: &CodegenCx, i: i32) -> ValueRef {
+    C_int(Type::i32(cx), i as i64)
 }
 
-pub fn C_u32(ccx: &CrateContext, i: u32) -> ValueRef {
-    C_uint(Type::i32(ccx), i as u64)
+pub fn C_u32(cx: &CodegenCx, i: u32) -> ValueRef {
+    C_uint(Type::i32(cx), i as u64)
 }
 
-pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
-    C_uint(Type::i64(ccx), i)
+pub fn C_u64(cx: &CodegenCx, i: u64) -> ValueRef {
+    C_uint(Type::i64(cx), i)
 }
 
-pub fn C_usize(ccx: &CrateContext, i: u64) -> ValueRef {
-    let bit_size = ccx.data_layout().pointer_size.bits();
+pub fn C_usize(cx: &CodegenCx, i: u64) -> ValueRef {
+    let bit_size = cx.data_layout().pointer_size.bits();
     if bit_size < 64 {
         // make sure it doesn't overflow
         assert!(i < (1<<bit_size));
     }
 
-    C_uint(ccx.isize_ty(), i)
+    C_uint(cx.isize_ty, i)
 }
 
-pub fn C_u8(ccx: &CrateContext, i: u8) -> ValueRef {
-    C_uint(Type::i8(ccx), i as u64)
+pub fn C_u8(cx: &CodegenCx, i: u8) -> ValueRef {
+    C_uint(Type::i8(cx), i as u64)
 }
 
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> ValueRef {
+pub fn C_cstr(cx: &CodegenCx, s: InternedString, null_terminated: bool) -> ValueRef {
     unsafe {
-        if let Some(&llval) = cx.const_cstr_cache().borrow().get(&s) {
+        if let Some(&llval) = cx.const_cstr_cache.borrow().get(&s) {
             return llval;
         }
 
-        let sc = llvm::LLVMConstStringInContext(cx.llcx(),
+        let sc = llvm::LLVMConstStringInContext(cx.llcx,
                                                 s.as_ptr() as *const c_char,
                                                 s.len() as c_uint,
                                                 !null_terminated as Bool);
@@ -203,28 +203,28 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         llvm::LLVMSetGlobalConstant(g, True);
         llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
 
-        cx.const_cstr_cache().borrow_mut().insert(s, g);
+        cx.const_cstr_cache.borrow_mut().insert(s, g);
         g
     }
 }
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
+pub fn C_str_slice(cx: &CodegenCx, s: InternedString) -> ValueRef {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false),
-        cx.layout_of(cx.tcx().mk_str()).llvm_type(cx).ptr_to());
+        cx.layout_of(cx.tcx.mk_str()).llvm_type(cx).ptr_to());
     C_fat_ptr(cx, cs, C_usize(cx, len as u64))
 }
 
-pub fn C_fat_ptr(cx: &CrateContext, ptr: ValueRef, meta: ValueRef) -> ValueRef {
+pub fn C_fat_ptr(cx: &CodegenCx, ptr: ValueRef, meta: ValueRef) -> ValueRef {
     assert_eq!(abi::FAT_PTR_ADDR, 0);
     assert_eq!(abi::FAT_PTR_EXTRA, 1);
     C_struct(cx, &[ptr, meta], false)
 }
 
-pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
-    C_struct_in_context(cx.llcx(), elts, packed)
+pub fn C_struct(cx: &CodegenCx, elts: &[ValueRef], packed: bool) -> ValueRef {
+    C_struct_in_context(cx.llcx, elts, packed)
 }
 
 pub fn C_struct_in_context(llcx: ContextRef, elts: &[ValueRef], packed: bool) -> ValueRef {
@@ -247,8 +247,8 @@ pub fn C_vector(elts: &[ValueRef]) -> ValueRef {
     }
 }
 
-pub fn C_bytes(cx: &CrateContext, bytes: &[u8]) -> ValueRef {
-    C_bytes_in_context(cx.llcx(), bytes)
+pub fn C_bytes(cx: &CodegenCx, bytes: &[u8]) -> ValueRef {
+    C_bytes_in_context(cx.llcx, bytes)
 }
 
 pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
@@ -328,37 +328,37 @@ pub fn langcall(tcx: TyCtxt,
 // of Java. (See related discussion on #1877 and #10183.)
 
 pub fn build_unchecked_lshift<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     lhs: ValueRef,
     rhs: ValueRef
 ) -> ValueRef {
-    let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShl, lhs, rhs);
+    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOp_::BiShl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bcx, rhs);
-    bcx.shl(lhs, rhs)
+    let rhs = shift_mask_rhs(bx, rhs);
+    bx.shl(lhs, rhs)
 }
 
 pub fn build_unchecked_rshift<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
+    bx: &Builder<'a, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
-    let rhs = base::cast_shift_expr_rhs(bcx, hir::BinOp_::BiShr, lhs, rhs);
+    let rhs = base::cast_shift_expr_rhs(bx, hir::BinOp_::BiShr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
-    let rhs = shift_mask_rhs(bcx, rhs);
+    let rhs = shift_mask_rhs(bx, rhs);
     let is_signed = lhs_t.is_signed();
     if is_signed {
-        bcx.ashr(lhs, rhs)
+        bx.ashr(lhs, rhs)
     } else {
-        bcx.lshr(lhs, rhs)
+        bx.lshr(lhs, rhs)
     }
 }
 
-fn shift_mask_rhs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, rhs: ValueRef) -> ValueRef {
+fn shift_mask_rhs<'a, 'tcx>(bx: &Builder<'a, 'tcx>, rhs: ValueRef) -> ValueRef {
     let rhs_llty = val_ty(rhs);
-    bcx.and(rhs, shift_mask_val(bcx, rhs_llty, rhs_llty, false))
+    bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
 }
 
 pub fn shift_mask_val<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     llty: Type,
     mask_llty: Type,
     invert: bool
@@ -375,23 +375,23 @@ pub fn shift_mask_val<'a, 'tcx>(
             }
         },
         TypeKind::Vector => {
-            let mask = shift_mask_val(bcx, llty.element_type(), mask_llty.element_type(), invert);
-            bcx.vector_splat(mask_llty.vector_length(), mask)
+            let mask = shift_mask_val(bx, llty.element_type(), mask_llty.element_type(), invert);
+            bx.vector_splat(mask_llty.vector_length(), mask)
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }
 }
 
-pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                            ty: Ty<'tcx>)
                            -> ty::PolyFnSig<'tcx>
 {
     match ty.sty {
         ty::TyFnDef(..) |
         // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::TyFnPtr(_) => ty.fn_sig(ccx.tcx()),
+        ty::TyFnPtr(_) => ty.fn_sig(cx.tcx),
         ty::TyClosure(def_id, substs) => {
-            let tcx = ccx.tcx();
+            let tcx = cx.tcx;
             let sig = substs.closure_sig(def_id, tcx);
 
             let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
@@ -404,8 +404,8 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ))
         }
         ty::TyGenerator(def_id, substs, _) => {
-            let tcx = ccx.tcx();
-            let sig = substs.generator_poly_sig(def_id, ccx.tcx());
+            let tcx = cx.tcx;
+            let sig = substs.generator_poly_sig(def_id, cx.tcx);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);

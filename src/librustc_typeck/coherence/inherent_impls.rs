@@ -93,22 +93,10 @@ struct InherentCollect<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let (unsafety, ty) = match item.node {
-            hir::ItemImpl(unsafety, .., None, ref ty, _) => (unsafety, ty),
+        let ty = match item.node {
+            hir::ItemImpl(.., None, ref ty, _) => ty,
             _ => return
         };
-
-        match unsafety {
-            hir::Unsafety::Normal => {
-                // OK
-            }
-            hir::Unsafety::Unsafe => {
-                span_err!(self.tcx.sess,
-                          item.span,
-                          E0197,
-                          "inherent impls cannot be declared as unsafe");
-            }
-        }
 
         let def_id = self.tcx.hir.local_def_id(item.id);
         let self_ty = self.tcx.type_of(def_id);

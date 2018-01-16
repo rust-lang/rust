@@ -71,7 +71,7 @@ bitflags! {
     }
 }
 
-type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute> >);
+type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute>>);
 
 /// How to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -151,10 +151,9 @@ macro_rules! maybe_whole {
     };
 }
 
-fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
-                -> Vec<Attribute> {
-    if let Some(ref attrs) = rhs {
-        lhs.extend(attrs.iter().cloned())
+fn maybe_append(mut lhs: Vec<Attribute>, mut rhs: Option<Vec<Attribute>>) -> Vec<Attribute> {
+    if let Some(ref mut rhs) = rhs {
+        lhs.append(rhs);
     }
     lhs
 }
@@ -1347,7 +1346,7 @@ impl<'a> Parser<'a> {
         Function Style
         */
 
-        let unsafety = self.parse_unsafety()?;
+        let unsafety = self.parse_unsafety();
         let abi = if self.eat_keyword(keywords::Extern) {
             self.parse_opt_abi()?.unwrap_or(Abi::C)
         } else {
@@ -1370,11 +1369,12 @@ impl<'a> Parser<'a> {
         })))
     }
 
-    pub fn parse_unsafety(&mut self) -> PResult<'a, Unsafety> {
+    /// Parse unsafety: `unsafe` or nothing.
+    fn parse_unsafety(&mut self) -> Unsafety {
         if self.eat_keyword(keywords::Unsafe) {
-            return Ok(Unsafety::Unsafe);
+            Unsafety::Unsafe
         } else {
-            return Ok(Unsafety::Normal);
+            Unsafety::Normal
         }
     }
 
@@ -4094,28 +4094,6 @@ impl<'a> Parser<'a> {
          self.look_ahead(2, |t| t.is_keyword(keywords::Trait)))
     }
 
-    fn is_defaultness(&self) -> bool {
-        // `pub` is included for better error messages
-        self.token.is_keyword(keywords::Default) &&
-        self.look_ahead(1, |t| t.is_keyword(keywords::Impl) ||
-                        t.is_keyword(keywords::Const) ||
-                        t.is_keyword(keywords::Fn) ||
-                        t.is_keyword(keywords::Unsafe) ||
-                        t.is_keyword(keywords::Extern) ||
-                        t.is_keyword(keywords::Type) ||
-                        t.is_keyword(keywords::Pub))
-    }
-
-    fn eat_defaultness(&mut self) -> bool {
-        let is_defaultness = self.is_defaultness();
-        if is_defaultness {
-            self.bump()
-        } else {
-            self.expected_tokens.push(TokenType::Keyword(keywords::Default));
-        }
-        is_defaultness
-    }
-
     fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility, lo: Span)
                      -> PResult<'a, Option<P<Item>>> {
         let token_lo = self.span;
@@ -4794,21 +4772,13 @@ impl<'a> Parser<'a> {
         }
         let lo = self.prev_span;
 
-        // This is a temporary future proofing.
-        //
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
         // parameter syntax (as in `where<'a>` or `where<T>`. To avoid that being a breaking
-        // change, for now we refuse to parse `where < (ident | lifetime) (> | , | :)`.
-        if token::Lt == self.token {
-            let ident_or_lifetime = self.look_ahead(1, |t| t.is_ident() || t.is_lifetime());
-            if ident_or_lifetime {
-                let gt_comma_or_colon = self.look_ahead(2, |t| {
-                    *t == token::Gt || *t == token::Comma || *t == token::Colon
-                });
-                if gt_comma_or_colon {
-                    self.span_err(self.span, "syntax `where<T>` is reserved for future use");
-                }
-            }
+        // change we parse those generics now, but report an error.
+        if self.choose_generics_over_qpath() {
+            let generics = self.parse_generics()?;
+            self.span_err(generics.span,
+                          "generic parameters on `where` clauses are reserved for future use");
         }
 
         loop {
@@ -5126,7 +5096,7 @@ impl<'a> Parser<'a> {
     fn parse_item_fn(&mut self,
                      unsafety: Unsafety,
                      constness: Spanned<Constness>,
-                     abi: abi::Abi)
+                     abi: Abi)
                      -> PResult<'a, ItemInfo> {
         let (ident, mut generics) = self.parse_fn_header()?;
         let decl = self.parse_fn_decl(false)?;
@@ -5150,13 +5120,10 @@ impl<'a> Parser<'a> {
     /// - `const unsafe fn`
     /// - `extern fn`
     /// - etc
-    pub fn parse_fn_front_matter(&mut self)
-                                 -> PResult<'a, (Spanned<ast::Constness>,
-                                                ast::Unsafety,
-                                                abi::Abi)> {
+    pub fn parse_fn_front_matter(&mut self) -> PResult<'a, (Spanned<Constness>, Unsafety, Abi)> {
         let is_const_fn = self.eat_keyword(keywords::Const);
         let const_span = self.prev_span;
-        let unsafety = self.parse_unsafety()?;
+        let unsafety = self.parse_unsafety();
         let (constness, unsafety, abi) = if is_const_fn {
             (respan(const_span, Constness::Const), unsafety, Abi::Rust)
         } else {
@@ -5191,7 +5158,7 @@ impl<'a> Parser<'a> {
                         mut attrs: Vec<Attribute>) -> PResult<'a, ImplItem> {
         let lo = self.span;
         let vis = self.parse_visibility(false)?;
-        let defaultness = self.parse_defaultness()?;
+        let defaultness = self.parse_defaultness();
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
             // This parses the grammar:
             //     ImplItemAssocTy = Ident ["<"...">"] ["where" ...] "=" Ty ";"
@@ -5284,7 +5251,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a method or a macro invocation in a trait impl.
     fn parse_impl_method(&mut self, vis: &Visibility, at_end: &mut bool)
-                         -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::Generics,
+                         -> PResult<'a, (Ident, Vec<Attribute>, ast::Generics,
                              ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if self.token.is_path_start() && !self.is_extern_non_path() {
@@ -5373,83 +5340,123 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses items implementations variants
-    ///    impl<T> Foo { ... }
-    ///    impl<T> ToString for &'static T { ... }
-    fn parse_item_impl(&mut self,
-                       unsafety: ast::Unsafety,
-                       defaultness: Defaultness) -> PResult<'a, ItemInfo> {
+    fn choose_generics_over_qpath(&self) -> bool {
+        // There's an ambiguity between generic parameters and qualified paths in impls.
+        // If we see `<` it may start both, so we have to inspect some following tokens.
+        // The following combinations can only start generics,
+        // but not qualified paths (with one exception):
+        //     `<` `>` - empty generic parameters
+        //     `<` `#` - generic parameters with attributes
+        //     `<` (LIFETIME|IDENT) `>` - single generic parameter
+        //     `<` (LIFETIME|IDENT) `,` - first generic parameter in a list
+        //     `<` (LIFETIME|IDENT) `:` - generic parameter with bounds
+        //     `<` (LIFETIME|IDENT) `=` - generic parameter with a default
+        // The only truly ambiguous case is
+        //     `<` IDENT `>` `::` IDENT ...
+        // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
+        // because this is what almost always expected in practice, qualified paths in impls
+        // (`impl <Type>::AssocTy { ... }`) aren't even allowed by type checker at the moment.
+        self.token == token::Lt &&
+            (self.look_ahead(1, |t| t == &token::Pound || t == &token::Gt) ||
+             self.look_ahead(1, |t| t.is_lifetime() || t.is_ident()) &&
+                self.look_ahead(2, |t| t == &token::Gt || t == &token::Comma ||
+                                       t == &token::Colon || t == &token::Eq))
+    }
 
-        // First, parse type parameters if necessary.
-        let mut generics = self.parse_generics()?;
-
-        // Special case: if the next identifier that follows is '(', don't
-        // allow this to be parsed as a trait.
-        let could_be_trait = self.token != token::OpenDelim(token::Paren);
-
-        let neg_span = self.span;
-        let polarity = if self.eat(&token::Not) {
-            ast::ImplPolarity::Negative
-        } else {
-            ast::ImplPolarity::Positive
-        };
-
-        // Parse the trait.
-        let mut ty = self.parse_ty()?;
-
-        // Parse traits, if necessary.
-        let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
-            // New-style trait. Reinterpret the type as a trait.
-            match ty.node {
-                TyKind::Path(None, ref path) => {
-                    Some(TraitRef {
-                        path: (*path).clone(),
-                        ref_id: ty.id,
-                    })
-                }
-                _ => {
-                    self.span_err(ty.span, "not a trait");
-                    None
-                }
-            }
-        } else {
-            if polarity == ast::ImplPolarity::Negative {
-                // This is a negated type implementation
-                // `impl !MyType {}`, which is not allowed.
-                self.span_err(neg_span, "inherent implementation can't be negated");
-            }
-            None
-        };
-
-        if opt_trait.is_some() {
-            ty = if self.eat(&token::DotDot) {
-                P(Ty { node: TyKind::Err, span: self.prev_span, id: ast::DUMMY_NODE_ID })
-            } else {
-                self.parse_ty()?
-            }
-        }
-        generics.where_clause = self.parse_where_clause()?;
-
+    fn parse_impl_body(&mut self) -> PResult<'a, (Vec<ImplItem>, Vec<Attribute>)> {
         self.expect(&token::OpenDelim(token::Brace))?;
         let attrs = self.parse_inner_attributes()?;
 
-        let mut impl_items = vec![];
+        let mut impl_items = Vec::new();
         while !self.eat(&token::CloseDelim(token::Brace)) {
             let mut at_end = false;
             match self.parse_impl_item(&mut at_end) {
-                Ok(item) => impl_items.push(item),
-                Err(mut e) => {
-                    e.emit();
+                Ok(impl_item) => impl_items.push(impl_item),
+                Err(mut err) => {
+                    err.emit();
                     if !at_end {
                         self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
                     }
                 }
             }
         }
+        Ok((impl_items, attrs))
+    }
 
-        Ok((keywords::Invalid.ident(),
-            ItemKind::Impl(unsafety, polarity, defaultness, generics, opt_trait, ty, impl_items),
-            Some(attrs)))
+    /// Parses an implementation item, `impl` keyword is already parsed.
+    ///    impl<'a, T> TYPE { /* impl items */ }
+    ///    impl<'a, T> TRAIT for TYPE { /* impl items */ }
+    ///    impl<'a, T> !TRAIT for TYPE { /* impl items */ }
+    /// We actually parse slightly more relaxed grammar for better error reporting and recovery.
+    ///     `impl` GENERICS `!`? TYPE `for`? (TYPE | `..`) (`where` PREDICATES)? `{` BODY `}`
+    ///     `impl` GENERICS `!`? TYPE (`where` PREDICATES)? `{` BODY `}`
+    fn parse_item_impl(&mut self, unsafety: Unsafety, defaultness: Defaultness)
+                       -> PResult<'a, ItemInfo> {
+        // First, parse generic parameters if necessary.
+        let mut generics = if self.choose_generics_over_qpath() {
+            self.parse_generics()?
+        } else {
+            ast::Generics::default()
+        };
+
+        // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
+        let polarity = if self.check(&token::Not) && self.look_ahead(1, |t| t.can_begin_type()) {
+            self.bump(); // `!`
+            ast::ImplPolarity::Negative
+        } else {
+            ast::ImplPolarity::Positive
+        };
+
+        // Parse both types and traits as a type, then reinterpret if necessary.
+        let ty_first = self.parse_ty()?;
+
+        // If `for` is missing we try to recover.
+        let has_for = self.eat_keyword(keywords::For);
+        let missing_for_span = self.prev_span.between(self.span);
+
+        let ty_second = if self.token == token::DotDot {
+            // We need to report this error after `cfg` expansion for compatibility reasons
+            self.bump(); // `..`, do not add it to expected tokens
+            Some(P(Ty { node: TyKind::Err, span: self.prev_span, id: ast::DUMMY_NODE_ID }))
+        } else if has_for || self.token.can_begin_type() {
+            Some(self.parse_ty()?)
+        } else {
+            None
+        };
+
+        generics.where_clause = self.parse_where_clause()?;
+
+        let (impl_items, attrs) = self.parse_impl_body()?;
+
+        let item_kind = match ty_second {
+            Some(ty_second) => {
+                // impl Trait for Type
+                if !has_for {
+                    self.span_err(missing_for_span, "missing `for` in a trait impl");
+                }
+
+                let ty_first = ty_first.into_inner();
+                let path = match ty_first.node {
+                    // This notably includes paths passed through `ty` macro fragments (#46438).
+                    TyKind::Path(None, path) => path,
+                    _ => {
+                        self.span_err(ty_first.span, "expected a trait, found type");
+                        ast::Path::from_ident(ty_first.span, keywords::Invalid.ident())
+                    }
+                };
+                let trait_ref = TraitRef { path, ref_id: ty_first.id };
+
+                ItemKind::Impl(unsafety, polarity, defaultness,
+                               generics, Some(trait_ref), ty_second, impl_items)
+            }
+            None => {
+                // impl Type
+                ItemKind::Impl(unsafety, polarity, defaultness,
+                               generics, None, ty_first, impl_items)
+            }
+        };
+
+        Ok((keywords::Invalid.ident(), item_kind, Some(attrs)))
     }
 
     fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
@@ -5722,12 +5729,21 @@ impl<'a> Parser<'a> {
         Ok(Visibility::Public)
     }
 
-    /// Parse defaultness: DEFAULT or nothing
-    fn parse_defaultness(&mut self) -> PResult<'a, Defaultness> {
-        if self.eat_defaultness() {
-            Ok(Defaultness::Default)
+    /// Parse defaultness: `default` or nothing.
+    fn parse_defaultness(&mut self) -> Defaultness {
+        // `pub` is included for better error messages
+        if self.check_keyword(keywords::Default) &&
+           self.look_ahead(1, |t| t.is_keyword(keywords::Impl) ||
+                                  t.is_keyword(keywords::Const) ||
+                                  t.is_keyword(keywords::Fn) ||
+                                  t.is_keyword(keywords::Unsafe) ||
+                                  t.is_keyword(keywords::Extern) ||
+                                  t.is_keyword(keywords::Type) ||
+                                  t.is_keyword(keywords::Pub)) {
+            self.bump(); // `default`
+            Defaultness::Default
         } else {
-            Ok(Defaultness::Final)
+            Defaultness::Final
         }
     }
 
@@ -5797,7 +5813,7 @@ impl<'a> Parser<'a> {
                 let (module, mut attrs) =
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
                 if warn {
-                    let attr = ast::Attribute {
+                    let attr = Attribute {
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
                         path: ast::Path::from_ident(syntax_pos::DUMMY_SP,
@@ -5837,7 +5853,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn submod_path_from_attr(attrs: &[ast::Attribute], dir_path: &Path) -> Option<PathBuf> {
+    pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
         attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&d.as_str()))
     }
 
@@ -5906,7 +5922,7 @@ impl<'a> Parser<'a> {
 
     fn submod_path(&mut self,
                    id: ast::Ident,
-                   outer_attrs: &[ast::Attribute],
+                   outer_attrs: &[Attribute],
                    id_sp: Span)
                    -> PResult<'a, ModulePathSuccess> {
         if let Some(path) = Parser::submod_path_from_attr(outer_attrs, &self.directory.path) {
@@ -5999,7 +6015,7 @@ impl<'a> Parser<'a> {
                     directory_ownership: DirectoryOwnership,
                     name: String,
                     id_sp: Span)
-                    -> PResult<'a, (ast::ItemKind, Vec<ast::Attribute> )> {
+                    -> PResult<'a, (ast::ItemKind, Vec<Attribute> )> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         if let Some(i) = included_mod_stack.iter().position(|p| *p == path) {
             let mut err = String::from("circular modules: ");
@@ -6122,7 +6138,7 @@ impl<'a> Parser<'a> {
     /// extern {}
     fn parse_item_foreign_mod(&mut self,
                               lo: Span,
-                              opt_abi: Option<abi::Abi>,
+                              opt_abi: Option<Abi>,
                               visibility: Visibility,
                               mut attrs: Vec<Attribute>)
                               -> PResult<'a, P<Item>> {
@@ -6225,7 +6241,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a string as an ABI spec on an extern type or module. Consumes
     /// the `extern` keyword, if one is found.
-    fn parse_opt_abi(&mut self) -> PResult<'a, Option<abi::Abi>> {
+    fn parse_opt_abi(&mut self) -> PResult<'a, Option<Abi>> {
         match self.token {
             token::Literal(token::Str_(s), suf) | token::Literal(token::StrRaw(s, _), suf) => {
                 let sp = self.span;
@@ -6330,11 +6346,7 @@ impl<'a> Parser<'a> {
                 || (self.check_keyword(keywords::Unsafe)
                     && self.look_ahead(1, |t| t.is_keyword(keywords::Fn))) {
                 // CONST FUNCTION ITEM
-                let unsafety = if self.eat_keyword(keywords::Unsafe) {
-                    Unsafety::Unsafe
-                } else {
-                    Unsafety::Normal
-                };
+                let unsafety = self.parse_unsafety();
                 self.bump();
                 let (ident, item_, extra_attrs) =
                     self.parse_item_fn(unsafety,
@@ -6370,7 +6382,7 @@ impl<'a> Parser<'a> {
             self.look_ahead(1, |t| t.is_keyword(keywords::Auto)))
         {
             // UNSAFE TRAIT ITEM
-            self.expect_keyword(keywords::Unsafe)?;
+            self.bump(); // `unsafe`
             let is_auto = if self.eat_keyword(keywords::Trait) {
                 IsAuto::No
             } else {
@@ -6379,7 +6391,7 @@ impl<'a> Parser<'a> {
                 IsAuto::Yes
             };
             let (ident, item_, extra_attrs) =
-                self.parse_item_trait(is_auto, ast::Unsafety::Unsafe)?;
+                self.parse_item_trait(is_auto, Unsafety::Unsafe)?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,
@@ -6388,26 +6400,21 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if (self.check_keyword(keywords::Unsafe) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Impl))) ||
-           (self.check_keyword(keywords::Default) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Unsafe)) &&
-            self.look_ahead(2, |t| t.is_keyword(keywords::Impl)))
-        {
+        if self.check_keyword(keywords::Impl) ||
+           self.check_keyword(keywords::Unsafe) &&
+                self.look_ahead(1, |t| t.is_keyword(keywords::Impl)) ||
+           self.check_keyword(keywords::Default) &&
+                self.look_ahead(1, |t| t.is_keyword(keywords::Impl)) ||
+           self.check_keyword(keywords::Default) &&
+                self.look_ahead(1, |t| t.is_keyword(keywords::Unsafe)) {
             // IMPL ITEM
-            let defaultness = self.parse_defaultness()?;
-            self.expect_keyword(keywords::Unsafe)?;
+            let defaultness = self.parse_defaultness();
+            let unsafety = self.parse_unsafety();
             self.expect_keyword(keywords::Impl)?;
-            let (ident,
-                 item_,
-                 extra_attrs) = self.parse_item_impl(ast::Unsafety::Unsafe, defaultness)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
+            let (ident, item, extra_attrs) = self.parse_item_impl(unsafety, defaultness)?;
+            let span = lo.to(self.prev_span);
+            return Ok(Some(self.mk_item(span, ident, item, visibility,
+                                        maybe_append(attrs, extra_attrs))));
         }
         if self.check_keyword(keywords::Fn) {
             // FUNCTION ITEM
@@ -6428,7 +6435,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(keywords::Unsafe)
             && self.look_ahead(1, |t| *t != token::OpenDelim(token::Brace)) {
             // UNSAFE FUNCTION ITEM
-            self.bump();
+            self.bump(); // `unsafe`
             let abi = if self.eat_keyword(keywords::Extern) {
                 self.parse_opt_abi()?.unwrap_or(Abi::C)
             } else {
@@ -6495,25 +6502,7 @@ impl<'a> Parser<'a> {
             };
             // TRAIT ITEM
             let (ident, item_, extra_attrs) =
-                self.parse_item_trait(is_auto, ast::Unsafety::Normal)?;
-            let prev_span = self.prev_span;
-            let item = self.mk_item(lo.to(prev_span),
-                                    ident,
-                                    item_,
-                                    visibility,
-                                    maybe_append(attrs, extra_attrs));
-            return Ok(Some(item));
-        }
-        if (self.check_keyword(keywords::Impl)) ||
-           (self.check_keyword(keywords::Default) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Impl)))
-        {
-            // IMPL ITEM
-            let defaultness = self.parse_defaultness()?;
-            self.expect_keyword(keywords::Impl)?;
-            let (ident,
-                 item_,
-                 extra_attrs) = self.parse_item_impl(ast::Unsafety::Normal, defaultness)?;
+                self.parse_item_trait(is_auto, Unsafety::Normal)?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,

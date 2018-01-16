@@ -1,4 +1,4 @@
-error: Use of a '|' at the beginning of a match arm is experimental (see issue #44101)
+error[E0658]: Use of a '|' at the beginning of a match arm is experimental (see issue #44101)
   --> $DIR/feature-gate-match_beginning_vert.rs:24:9
    |
 24 |         | A => println!("A"),
@@ -6,7 +6,7 @@ error: Use of a '|' at the beginning of a match arm is experimental (see issue #
    |
    = help: add #![feature(match_beginning_vert)] to the crate attributes to enable
 
-error: Use of a '|' at the beginning of a match arm is experimental (see issue #44101)
+error[E0658]: Use of a '|' at the beginning of a match arm is experimental (see issue #44101)
   --> $DIR/feature-gate-match_beginning_vert.rs:26:9
    |
 26 |         | B | C => println!("BC!"),
@@ -14,7 +14,7 @@ error: Use of a '|' at the beginning of a match arm is experimental (see issue #
    |
    = help: add #![feature(match_beginning_vert)] to the crate attributes to enable
 
-error: Use of a '|' at the beginning of a match arm is experimental (see issue #44101)
+error[E0658]: Use of a '|' at the beginning of a match arm is experimental (see issue #44101)
   --> $DIR/feature-gate-match_beginning_vert.rs:28:9
    |
 28 |         | _ => {},

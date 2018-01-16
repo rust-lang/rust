@@ -13,7 +13,7 @@
 // need to be fixed when PowerPC vector support is added.
 
 use abi::{FnType, ArgType, LayoutExt, Reg, RegKind, Uniform};
-use context::CrateContext;
+use context::CodegenCx;
 use rustc::ty::layout;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -23,15 +23,15 @@ enum ABI {
 }
 use self::ABI::*;
 
-fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                       arg: &mut ArgType<'tcx>,
                                       abi: ABI)
                                      -> Option<Uniform> {
-    arg.layout.homogeneous_aggregate(ccx).and_then(|unit| {
+    arg.layout.homogeneous_aggregate(cx).and_then(|unit| {
         // ELFv1 only passes one-member aggregates transparently.
         // ELFv2 passes up to eight uniquely addressable members.
         if (abi == ELFv1 && arg.layout.size > unit.size)
-                || arg.layout.size > unit.size.checked_mul(8, ccx).unwrap() {
+                || arg.layout.size > unit.size.checked_mul(8, cx).unwrap() {
             return None;
         }
 
@@ -52,7 +52,7 @@ fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     })
 }
 
-fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>, abi: ABI) {
+fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>, abi: ABI) {
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(64);
         return;
@@ -64,7 +64,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
         return;
     }
 
-    if let Some(uniform) = is_homogeneous_aggregate(ccx, ret, abi) {
+    if let Some(uniform) = is_homogeneous_aggregate(cx, ret, abi) {
         ret.cast_to(uniform);
         return;
     }
@@ -92,13 +92,13 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
     ret.make_indirect();
 }
 
-fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>, abi: ABI) {
+fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>, abi: ABI) {
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
         return;
     }
 
-    if let Some(uniform) = is_homogeneous_aggregate(ccx, arg, abi) {
+    if let Some(uniform) = is_homogeneous_aggregate(cx, arg, abi) {
         arg.cast_to(uniform);
         return;
     }
@@ -128,19 +128,19 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
     });
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
-    let abi = match ccx.sess().target.target.target_endian.as_str() {
+pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+    let abi = match cx.sess().target.target.target_endian.as_str() {
         "big" => ELFv1,
         "little" => ELFv2,
         _ => unimplemented!(),
     };
 
     if !fty.ret.is_ignore() {
-        classify_ret_ty(ccx, &mut fty.ret, abi);
+        classify_ret_ty(cx, &mut fty.ret, abi);
     }
 
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(ccx, arg, abi);
+        classify_arg_ty(cx, arg, abi);
     }
 }

@@ -11,13 +11,13 @@
 // FIXME: This needs an audit for correctness and completeness.
 
 use abi::{FnType, ArgType, LayoutExt, Reg, RegKind, Uniform};
-use context::CrateContext;
+use context::CodegenCx;
 
-fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>)
+fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>)
                                      -> Option<Uniform> {
-    arg.layout.homogeneous_aggregate(ccx).and_then(|unit| {
+    arg.layout.homogeneous_aggregate(cx).and_then(|unit| {
         // Ensure we have at most eight uniquely addressable members.
-        if arg.layout.size > unit.size.checked_mul(8, ccx).unwrap() {
+        if arg.layout.size > unit.size.checked_mul(8, cx).unwrap() {
             return None;
         }
 
@@ -38,13 +38,13 @@ fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut Ar
     })
 }
 
-fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(64);
         return;
     }
 
-    if let Some(uniform) = is_homogeneous_aggregate(ccx, ret) {
+    if let Some(uniform) = is_homogeneous_aggregate(cx, ret) {
         ret.cast_to(uniform);
         return;
     }
@@ -72,13 +72,13 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
     ret.make_indirect();
 }
 
-fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
         return;
     }
 
-    if let Some(uniform) = is_homogeneous_aggregate(ccx, arg) {
+    if let Some(uniform) = is_homogeneous_aggregate(cx, arg) {
         arg.cast_to(uniform);
         return;
     }
@@ -90,13 +90,13 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
     });
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
-        classify_ret_ty(ccx, &mut fty.ret);
+        classify_ret_ty(cx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(ccx, arg);
+        classify_arg_ty(cx, arg);
     }
 }

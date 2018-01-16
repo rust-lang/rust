@@ -32,7 +32,7 @@ use syntax_pos::Span;
 #[must_use]
 pub struct Builder<'a, 'tcx: 'a> {
     pub llbuilder: BuilderRef,
-    pub ccx: &'a CrateContext<'a, 'tcx>,
+    pub cx: &'a CodegenCx<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> Drop for Builder<'a, 'tcx> {
@@ -51,41 +51,41 @@ fn noname() -> *const c_char {
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn new_block<'b>(ccx: &'a CrateContext<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
-        let builder = Builder::with_ccx(ccx);
+    pub fn new_block<'b>(cx: &'a CodegenCx<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
+        let bx = Builder::with_cx(cx);
         let llbb = unsafe {
             let name = CString::new(name).unwrap();
             llvm::LLVMAppendBasicBlockInContext(
-                ccx.llcx(),
+                cx.llcx,
                 llfn,
                 name.as_ptr()
             )
         };
-        builder.position_at_end(llbb);
-        builder
+        bx.position_at_end(llbb);
+        bx
     }
 
-    pub fn with_ccx(ccx: &'a CrateContext<'a, 'tcx>) -> Self {
+    pub fn with_cx(cx: &'a CodegenCx<'a, 'tcx>) -> Self {
         // Create a fresh builder from the crate context.
         let llbuilder = unsafe {
-            llvm::LLVMCreateBuilderInContext(ccx.llcx())
+            llvm::LLVMCreateBuilderInContext(cx.llcx)
         };
         Builder {
             llbuilder,
-            ccx,
+            cx,
         }
     }
 
     pub fn build_sibling_block<'b>(&self, name: &'b str) -> Builder<'a, 'tcx> {
-        Builder::new_block(self.ccx, self.llfn(), name)
+        Builder::new_block(self.cx, self.llfn(), name)
     }
 
     pub fn sess(&self) -> &Session {
-        self.ccx.sess()
+        self.cx.sess()
     }
 
     pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
-        self.ccx.tcx()
+        self.cx.tcx
     }
 
     pub fn llfn(&self) -> ValueRef {
@@ -101,11 +101,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn count_insn(&self, category: &str) {
-        if self.ccx.sess().trans_stats() {
-            self.ccx.stats().borrow_mut().n_llvm_insns += 1;
+        if self.cx.sess().trans_stats() {
+            self.cx.stats.borrow_mut().n_llvm_insns += 1;
         }
-        if self.ccx.sess().count_llvm_insns() {
-            *self.ccx.stats()
+        if self.cx.sess().count_llvm_insns() {
+            *self.cx.stats
                 .borrow_mut()
                 .llvm_insns
                 .entry(category.to_string())
@@ -489,11 +489,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn alloca(&self, ty: Type, name: &str, align: Align) -> ValueRef {
-        let builder = Builder::with_ccx(self.ccx);
-        builder.position_at_start(unsafe {
+        let bx = Builder::with_cx(self.cx);
+        bx.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
         });
-        builder.dynamic_alloca(ty, name, align)
+        bx.dynamic_alloca(ty, name, align)
     }
 
     pub fn dynamic_alloca(&self, ty: Type, name: &str, align: Align) -> ValueRef {
@@ -558,7 +558,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ];
 
             llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(),
+                                  llvm::LLVMMDNodeInContext(self.cx.llcx,
                                                             v.as_ptr(),
                                                             v.len() as c_uint));
         }
@@ -567,7 +567,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn nonnull_metadata(&self, load: ValueRef) {
         unsafe {
             llvm::LLVMSetMetadata(load, llvm::MD_nonnull as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null(), 0));
+                                  llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0));
         }
     }
 
@@ -620,8 +620,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // point to a metadata value of the integer 1. Who knew?
             //
             // [1]: http://llvm.org/docs/LangRef.html#store-instruction
-            let one = C_i32(self.ccx, 1);
-            let node = llvm::LLVMMDNodeInContext(self.ccx.llcx(),
+            let one = C_i32(self.cx, 1);
+            let node = llvm::LLVMMDNodeInContext(self.cx.llcx,
                                                  &one,
                                                  1);
             llvm::LLVMSetMetadata(insn,
@@ -840,24 +840,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn add_span_comment(&self, sp: Span, text: &str) {
-        if self.ccx.sess().asm_comments() {
+        if self.cx.sess().asm_comments() {
             let s = format!("{} ({})",
                             text,
-                            self.ccx.sess().codemap().span_to_string(sp));
+                            self.cx.sess().codemap().span_to_string(sp));
             debug!("{}", s);
             self.add_comment(&s);
         }
     }
 
     pub fn add_comment(&self, text: &str) {
-        if self.ccx.sess().asm_comments() {
+        if self.cx.sess().asm_comments() {
             let sanitized = text.replace("$", "");
             let comment_text = format!("{} {}", "#",
                                        sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
             let comment_text = CString::new(comment_text).unwrap();
             let asm = unsafe {
-                llvm::LLVMConstInlineAsm(Type::func(&[], &Type::void(self.ccx)).to_ref(),
+                llvm::LLVMConstInlineAsm(Type::func(&[], &Type::void(self.cx)).to_ref(),
                                          comment_text.as_ptr(), noname(), False,
                                          False)
             };
@@ -949,8 +949,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         unsafe {
             let elt_ty = val_ty(elt);
             let undef = llvm::LLVMGetUndef(Type::vector(&elt_ty, num_elts as u64).to_ref());
-            let vec = self.insert_element(undef, elt, C_i32(self.ccx, 0));
-            let vec_i32_ty = Type::vector(&Type::i32(self.ccx), num_elts as u64);
+            let vec = self.insert_element(undef, elt, C_i32(self.cx, 0));
+            let vec_i32_ty = Type::vector(&Type::i32(self.cx), num_elts as u64);
             self.shuffle_vector(vec, undef, C_null(vec_i32_ty))
         }
     }
@@ -1160,7 +1160,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn set_invariant_load(&self, load: ValueRef) {
         unsafe {
             llvm::LLVMSetMetadata(load, llvm::MD_invariant_load as c_uint,
-                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null(), 0));
+                                  llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0));
         }
     }
 
@@ -1245,7 +1245,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
     /// off) or `ptr` is zero-sized, then no-op (does not call `emit`).
     fn call_lifetime_intrinsic(&self, intrinsic: &str, ptr: ValueRef, size: Size) {
-        if self.ccx.sess().opts.optimize == config::OptLevel::No {
+        if self.cx.sess().opts.optimize == config::OptLevel::No {
             return;
         }
 
@@ -1254,9 +1254,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return;
         }
 
-        let lifetime_intrinsic = self.ccx.get_intrinsic(intrinsic);
+        let lifetime_intrinsic = self.cx.get_intrinsic(intrinsic);
 
-        let ptr = self.pointercast(ptr, Type::i8p(self.ccx));
-        self.call(lifetime_intrinsic, &[C_u64(self.ccx, size), ptr], None);
+        let ptr = self.pointercast(ptr, Type::i8p(self.cx));
+        self.call(lifetime_intrinsic, &[C_u64(self.cx, size), ptr], None);
     }
 }

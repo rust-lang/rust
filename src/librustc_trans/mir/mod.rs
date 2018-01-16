@@ -19,7 +19,7 @@ use rustc::infer::TransNormalize;
 use rustc::session::config::FullDebugInfo;
 use base;
 use builder::Builder;
-use common::{CrateContext, Funclet};
+use common::{CodegenCx, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
 use abi::{ArgAttribute, FnType, PassMode};
@@ -41,14 +41,14 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for translating MIR.
-pub struct MirContext<'a, 'tcx:'a> {
+pub struct FunctionCx<'a, 'tcx:'a> {
     mir: &'a mir::Mir<'tcx>,
 
     debug_context: debuginfo::FunctionDebugContext,
 
     llfn: ValueRef,
 
-    ccx: &'a CrateContext<'a, 'tcx>,
+    cx: &'a CodegenCx<'a, 'tcx>,
 
     fn_ty: FnType<'tcx>,
 
@@ -102,16 +102,16 @@ pub struct MirContext<'a, 'tcx:'a> {
     param_substs: &'tcx Substs<'tcx>,
 }
 
-impl<'a, 'tcx> MirContext<'a, 'tcx> {
+impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        self.ccx.tcx().trans_apply_param_substs(self.param_substs, value)
+        self.cx.tcx.trans_apply_param_substs(self.param_substs, value)
     }
 
-    pub fn set_debug_loc(&mut self, bcx: &Builder, source_info: mir::SourceInfo) {
+    pub fn set_debug_loc(&mut self, bx: &Builder, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
-        debuginfo::set_source_location(&self.debug_context, bcx, scope, span);
+        debuginfo::set_source_location(&self.debug_context, bx, scope, span);
     }
 
     pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (DIScope, Span) {
@@ -128,7 +128,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
         if source_info.span.ctxt() == NO_EXPANSION ||
-           self.ccx.sess().opts.debugging_opts.debug_macros {
+           self.cx.sess().opts.debugging_opts.debug_macros {
             let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo());
             (scope, source_info.span)
         } else {
@@ -158,9 +158,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let scope_metadata = self.scopes[scope_id].scope_metadata;
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
-            let cm = self.ccx.sess().codemap();
+            let cm = self.cx.sess().codemap();
             let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
-            debuginfo::extend_scope_to_file(self.ccx,
+            debuginfo::extend_scope_to_file(self.cx,
                                             scope_metadata,
                                             &cm.lookup_char_pos(pos).file,
                                             defining_crate)
@@ -176,12 +176,12 @@ enum LocalRef<'tcx> {
 }
 
 impl<'a, 'tcx> LocalRef<'tcx> {
-    fn new_operand(ccx: &CrateContext<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
+    fn new_operand(cx: &CodegenCx<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            LocalRef::Operand(Some(OperandRef::new_zst(ccx, layout)))
+            LocalRef::Operand(Some(OperandRef::new_zst(cx, layout)))
         } else {
             LocalRef::Operand(None)
         }
@@ -191,46 +191,46 @@ impl<'a, 'tcx> LocalRef<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn trans_mir<'a, 'tcx: 'a>(
-    ccx: &'a CrateContext<'a, 'tcx>,
+    cx: &'a CodegenCx<'a, 'tcx>,
     llfn: ValueRef,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
 ) {
-    let fn_ty = FnType::new(ccx, sig, &[]);
+    let fn_ty = FnType::new(cx, sig, &[]);
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
-        debuginfo::create_function_debug_context(ccx, instance, sig, llfn, mir);
-    let bcx = Builder::new_block(ccx, llfn, "start");
+        debuginfo::create_function_debug_context(cx, instance, sig, llfn, mir);
+    let bx = Builder::new_block(cx, llfn, "start");
 
     if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
-        bcx.set_personality_fn(ccx.eh_personality());
+        bx.set_personality_fn(cx.eh_personality());
     }
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
     let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
-    let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
+    let block_bxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK && !reentrant_start_block {
-                bcx.llbb()
+                bx.llbb()
             } else {
-                bcx.build_sibling_block(&format!("{:?}", bb)).llbb()
+                bx.build_sibling_block(&format!("{:?}", bb)).llbb()
             }
         }).collect();
 
     // Compute debuginfo scopes from MIR scopes.
-    let scopes = debuginfo::create_mir_scopes(ccx, mir, &debug_context);
-    let (landing_pads, funclets) = create_funclets(&bcx, &cleanup_kinds, &block_bcxs);
+    let scopes = debuginfo::create_mir_scopes(cx, mir, &debug_context);
+    let (landing_pads, funclets) = create_funclets(&bx, &cleanup_kinds, &block_bxs);
 
-    let mut mircx = MirContext {
+    let mut fx = FunctionCx {
         mir,
         llfn,
         fn_ty,
-        ccx,
+        cx,
         personality_slot: None,
-        blocks: block_bcxs,
+        blocks: block_bxs,
         unreachable_block: None,
         cleanup_kinds,
         landing_pads,
@@ -244,51 +244,51 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         },
     };
 
-    let memory_locals = analyze::memory_locals(&mircx);
+    let memory_locals = analyze::memory_locals(&fx);
 
     // Allocate variable and temp allocas
-    mircx.locals = {
-        let args = arg_local_refs(&bcx, &mircx, &mircx.scopes, &memory_locals);
+    fx.locals = {
+        let args = arg_local_refs(&bx, &fx, &fx.scopes, &memory_locals);
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
-            let layout = bcx.ccx.layout_of(mircx.monomorphize(&decl.ty));
+            let layout = bx.cx.layout_of(fx.monomorphize(&decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
             if let Some(name) = decl.name {
                 // User variable
-                let debug_scope = mircx.scopes[decl.source_info.scope];
-                let dbg = debug_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo;
+                let debug_scope = fx.scopes[decl.source_info.scope];
+                let dbg = debug_scope.is_valid() && bx.sess().opts.debuginfo == FullDebugInfo;
 
                 if !memory_locals.contains(local.index()) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
-                    return LocalRef::new_operand(bcx.ccx, layout);
+                    return LocalRef::new_operand(bx.cx, layout);
                 }
 
                 debug!("alloc: {:?} ({}) -> place", local, name);
-                let place = PlaceRef::alloca(&bcx, layout, &name.as_str());
+                let place = PlaceRef::alloca(&bx, layout, &name.as_str());
                 if dbg {
-                    let (scope, span) = mircx.debug_loc(decl.source_info);
-                    declare_local(&bcx, &mircx.debug_context, name, layout.ty, scope,
+                    let (scope, span) = fx.debug_loc(decl.source_info);
+                    declare_local(&bx, &fx.debug_context, name, layout.ty, scope,
                         VariableAccess::DirectVariable { alloca: place.llval },
                         VariableKind::LocalVariable, span);
                 }
                 LocalRef::Place(place)
             } else {
                 // Temporary or return place
-                if local == mir::RETURN_PLACE && mircx.fn_ty.ret.is_indirect() {
+                if local == mir::RETURN_PLACE && fx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return place) -> place", local);
                     let llretptr = llvm::get_param(llfn, 0);
                     LocalRef::Place(PlaceRef::new_sized(llretptr, layout, layout.align))
                 } else if memory_locals.contains(local.index()) {
                     debug!("alloc: {:?} -> place", local);
-                    LocalRef::Place(PlaceRef::alloca(&bcx, layout, &format!("{:?}", local)))
+                    LocalRef::Place(PlaceRef::alloca(&bx, layout, &format!("{:?}", local)))
                 } else {
                     // If this is an immediate local, we do not create an
                     // alloca in advance. Instead we wait until we see the
                     // definition and update the operand there.
                     debug!("alloc: {:?} -> operand", local);
-                    LocalRef::new_operand(bcx.ccx, layout)
+                    LocalRef::new_operand(bx.cx, layout)
                 }
             }
         };
@@ -302,13 +302,13 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
     // Branch to the START block, if it's not the entry block.
     if reentrant_start_block {
-        bcx.br(mircx.blocks[mir::START_BLOCK]);
+        bx.br(fx.blocks[mir::START_BLOCK]);
     }
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
     // emitting should be enabled.
-    debuginfo::start_emitting_source_locations(&mircx.debug_context);
+    debuginfo::start_emitting_source_locations(&fx.debug_context);
 
     let rpo = traversal::reverse_postorder(&mir);
     let mut visited = BitVector::new(mir.basic_blocks().len());
@@ -316,7 +316,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     // Translate the body of each block using reverse postorder
     for (bb, _) in rpo {
         visited.insert(bb.index());
-        mircx.trans_block(bb);
+        fx.trans_block(bb);
     }
 
     // Remove blocks that haven't been visited, or have no
@@ -326,26 +326,26 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         if !visited.contains(bb.index()) {
             debug!("trans_mir: block {:?} was not visited", bb);
             unsafe {
-                llvm::LLVMDeleteBasicBlock(mircx.blocks[bb]);
+                llvm::LLVMDeleteBasicBlock(fx.blocks[bb]);
             }
         }
     }
 }
 
 fn create_funclets<'a, 'tcx>(
-    bcx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'tcx>,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bcxs: &IndexVec<mir::BasicBlock, BasicBlockRef>)
+    block_bxs: &IndexVec<mir::BasicBlock, BasicBlockRef>)
     -> (IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
         IndexVec<mir::BasicBlock, Option<Funclet>>)
 {
-    block_bcxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
+    block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
-            CleanupKind::Funclet if base::wants_msvc_seh(bcx.sess()) => {
-                let cleanup_bcx = bcx.build_sibling_block(&format!("funclet_{:?}", bb));
-                let cleanup = cleanup_bcx.cleanup_pad(None, &[]);
-                cleanup_bcx.br(llbb);
-                (Some(cleanup_bcx.llbb()), Some(Funclet::new(cleanup)))
+            CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {
+                let cleanup_bx = bx.build_sibling_block(&format!("funclet_{:?}", bb));
+                let cleanup = cleanup_bx.cleanup_pad(None, &[]);
+                cleanup_bx.br(llbb);
+                (Some(cleanup_bx.llbb()), Some(Funclet::new(cleanup)))
             }
             _ => (None, None)
         }
@@ -355,19 +355,19 @@ fn create_funclets<'a, 'tcx>(
 /// Produce, for each argument, a `ValueRef` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                            mircx: &MirContext<'a, 'tcx>,
+fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
+                            fx: &FunctionCx<'a, 'tcx>,
                             scopes: &IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
                             memory_locals: &BitVector)
                             -> Vec<LocalRef<'tcx>> {
-    let mir = mircx.mir;
-    let tcx = bcx.tcx();
+    let mir = fx.mir;
+    let tcx = bx.tcx();
     let mut idx = 0;
-    let mut llarg_idx = mircx.fn_ty.ret.is_indirect() as usize;
+    let mut llarg_idx = fx.fn_ty.ret.is_indirect() as usize;
 
     // Get the argument scope, if it exists and if we need it.
     let arg_scope = scopes[mir::ARGUMENT_VISIBILITY_SCOPE];
-    let arg_scope = if arg_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo {
+    let arg_scope = if arg_scope.is_valid() && bx.sess().opts.debuginfo == FullDebugInfo {
         Some(arg_scope.scope_metadata)
     } else {
         None
@@ -392,17 +392,17 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // to reconstruct it into a tuple local variable, from multiple
             // individual LLVM function arguments.
 
-            let arg_ty = mircx.monomorphize(&arg_decl.ty);
+            let arg_ty = fx.monomorphize(&arg_decl.ty);
             let tupled_arg_tys = match arg_ty.sty {
                 ty::TyTuple(ref tys, _) => tys,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let place = PlaceRef::alloca(bcx, bcx.ccx.layout_of(arg_ty), &name);
+            let place = PlaceRef::alloca(bx, bx.cx.layout_of(arg_ty), &name);
             for i in 0..tupled_arg_tys.len() {
-                let arg = &mircx.fn_ty.args[idx];
+                let arg = &fx.fn_ty.args[idx];
                 idx += 1;
-                arg.store_fn_arg(bcx, &mut llarg_idx, place.project_field(bcx, i));
+                arg.store_fn_arg(bx, &mut llarg_idx, place.project_field(bx, i));
             }
 
             // Now that we have one alloca that contains the aggregate value,
@@ -412,8 +412,8 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     alloca: place.llval
                 };
                 declare_local(
-                    bcx,
-                    &mircx.debug_context,
+                    bx,
+                    &fx.debug_context,
                     arg_decl.name.unwrap_or(keywords::Invalid.name()),
                     arg_ty, scope,
                     variable_access,
@@ -425,7 +425,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             return LocalRef::Place(place);
         }
 
-        let arg = &mircx.fn_ty.args[idx];
+        let arg = &fx.fn_ty.args[idx];
         idx += 1;
         if arg.pad.is_some() {
             llarg_idx += 1;
@@ -438,22 +438,22 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let local = |op| LocalRef::Operand(Some(op));
             match arg.mode {
                 PassMode::Ignore => {
-                    return local(OperandRef::new_zst(bcx.ccx, arg.layout));
+                    return local(OperandRef::new_zst(bx.cx, arg.layout));
                 }
                 PassMode::Direct(_) => {
-                    let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
-                    bcx.set_value_name(llarg, &name);
+                    let llarg = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+                    bx.set_value_name(llarg, &name);
                     llarg_idx += 1;
                     return local(
-                        OperandRef::from_immediate_or_packed_pair(bcx, llarg, arg.layout));
+                        OperandRef::from_immediate_or_packed_pair(bx, llarg, arg.layout));
                 }
                 PassMode::Pair(..) => {
-                    let a = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
-                    bcx.set_value_name(a, &(name.clone() + ".0"));
+                    let a = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+                    bx.set_value_name(a, &(name.clone() + ".0"));
                     llarg_idx += 1;
 
-                    let b = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
-                    bcx.set_value_name(b, &(name + ".1"));
+                    let b = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+                    bx.set_value_name(b, &(name + ".1"));
                     llarg_idx += 1;
 
                     return local(OperandRef {
@@ -469,13 +469,13 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // Don't copy an indirect argument to an alloca, the caller
             // already put it in a temporary alloca and gave it up.
             // FIXME: lifetimes
-            let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
-            bcx.set_value_name(llarg, &name);
+            let llarg = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+            bx.set_value_name(llarg, &name);
             llarg_idx += 1;
             PlaceRef::new_sized(llarg, arg.layout, arg.layout.align)
         } else {
-            let tmp = PlaceRef::alloca(bcx, arg.layout, &name);
-            arg.store_fn_arg(bcx, &mut llarg_idx, tmp);
+            let tmp = PlaceRef::alloca(bx, arg.layout, &name);
+            arg.store_fn_arg(bx, &mut llarg_idx, tmp);
             tmp
         };
         arg_scope.map(|scope| {
@@ -498,8 +498,8 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 }
 
                 declare_local(
-                    bcx,
-                    &mircx.debug_context,
+                    bx,
+                    &fx.debug_context,
                     arg_decl.name.unwrap_or(keywords::Invalid.name()),
                     arg.layout.ty,
                     scope,
@@ -512,7 +512,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
             // Or is it the closure environment?
             let (closure_layout, env_ref) = match arg.layout.ty.sty {
-                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (bcx.ccx.layout_of(mt.ty), true),
+                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (bx.cx.layout_of(mt.ty), true),
                 _ => (arg.layout, false)
             };
 
@@ -530,10 +530,10 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             let env_ptr = if !env_ref {
-                let scratch = PlaceRef::alloca(bcx,
-                    bcx.ccx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
+                let scratch = PlaceRef::alloca(bx,
+                    bx.cx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
                     "__debuginfo_env_ptr");
-                bcx.store(place.llval, scratch.llval, scratch.align);
+                bx.store(place.llval, scratch.llval, scratch.align);
                 scratch.llval
             } else {
                 place.llval
@@ -567,8 +567,8 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     address_operations: &ops
                 };
                 declare_local(
-                    bcx,
-                    &mircx.debug_context,
+                    bx,
+                    &fx.debug_context,
                     decl.debug_name,
                     ty,
                     scope,

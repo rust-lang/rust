@@ -26,25 +26,25 @@ use syntax_pos::{Span, Pos};
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
 pub fn set_source_location(
-    debug_context: &FunctionDebugContext, builder: &Builder, scope: DIScope, span: Span
+    debug_context: &FunctionDebugContext, bx: &Builder, scope: DIScope, span: Span
 ) {
     let function_debug_context = match *debug_context {
         FunctionDebugContext::DebugInfoDisabled => return,
         FunctionDebugContext::FunctionWithoutDebugInfo => {
-            set_debug_location(builder, UnknownLocation);
+            set_debug_location(bx, UnknownLocation);
             return;
         }
         FunctionDebugContext::RegularContext(ref data) => data
     };
 
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
-        debug!("set_source_location: {}", builder.sess().codemap().span_to_string(span));
-        let loc = span_start(builder.ccx, span);
+        debug!("set_source_location: {}", bx.sess().codemap().span_to_string(span));
+        let loc = span_start(bx.cx, span);
         InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
     } else {
         UnknownLocation
     };
-    set_debug_location(builder, dbg_loc);
+    set_debug_location(bx, dbg_loc);
 }
 
 /// Enables emitting source locations for the given functions.
@@ -79,7 +79,7 @@ impl InternalDebugLocation {
     }
 }
 
-pub fn set_debug_location(builder: &Builder, debug_location: InternalDebugLocation) {
+pub fn set_debug_location(bx: &Builder, debug_location: InternalDebugLocation) {
     let metadata_node = match debug_location {
         KnownLocation { scope, line, .. } => {
             // Always set the column to zero like Clang and GCC
@@ -88,7 +88,7 @@ pub fn set_debug_location(builder: &Builder, debug_location: InternalDebugLocati
 
             unsafe {
                 llvm::LLVMRustDIBuilderCreateDebugLocation(
-                    debug_context(builder.ccx).llcontext,
+                    debug_context(bx.cx).llcontext,
                     line as c_uint,
                     col as c_uint,
                     scope,
@@ -102,6 +102,6 @@ pub fn set_debug_location(builder: &Builder, debug_location: InternalDebugLocati
     };
 
     unsafe {
-        llvm::LLVMSetCurrentDebugLocation(builder.llbuilder, metadata_node);
+        llvm::LLVMSetCurrentDebugLocation(bx.llbuilder, metadata_node);
     }
 }

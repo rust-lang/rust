@@ -19,7 +19,7 @@ use type_::Type;
 
 use std::fmt::Write;
 
-fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                 layout: TyLayout<'tcx>,
                                 defer: &mut Option<(Type, TyLayout<'tcx>)>)
                                 -> Type {
@@ -34,19 +34,19 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // one-element SIMD vectors, so it's assumed this won't clash with
             // much else.
             let use_x86_mmx = count == 1 && layout.size.bits() == 64 &&
-                (ccx.sess().target.target.arch == "x86" ||
-                 ccx.sess().target.target.arch == "x86_64");
+                (cx.sess().target.target.arch == "x86" ||
+                 cx.sess().target.target.arch == "x86_64");
             if use_x86_mmx {
-                return Type::x86_mmx(ccx)
+                return Type::x86_mmx(cx)
             } else {
-                let element = layout.scalar_llvm_type_at(ccx, element, Size::from_bytes(0));
+                let element = layout.scalar_llvm_type_at(cx, element, Size::from_bytes(0));
                 return Type::vector(&element, count);
             }
         }
         layout::Abi::ScalarPair(..) => {
-            return Type::struct_(ccx, &[
-                layout.scalar_pair_element_llvm_type(ccx, 0),
-                layout.scalar_pair_element_llvm_type(ccx, 1),
+            return Type::struct_(cx, &[
+                layout.scalar_pair_element_llvm_type(cx, 0),
+                layout.scalar_pair_element_llvm_type(cx, 1),
             ], false);
         }
         layout::Abi::Uninhabited |
@@ -61,7 +61,7 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::TyForeign(..) |
         ty::TyStr => {
             let mut name = String::with_capacity(32);
-            let printer = DefPathBasedNames::new(ccx.tcx(), true, true);
+            let printer = DefPathBasedNames::new(cx.tcx, true, true);
             printer.push_type_name(layout.ty, &mut name);
             match (&layout.ty.sty, &layout.variants) {
                 (&ty::TyAdt(def, _), &layout::Variants::Single { index }) => {
@@ -78,30 +78,30 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match layout.fields {
         layout::FieldPlacement::Union(_) => {
-            let fill = Type::padding_filler(ccx, layout.size, layout.align);
+            let fill = Type::padding_filler(cx, layout.size, layout.align);
             let packed = false;
             match name {
                 None => {
-                    Type::struct_(ccx, &[fill], packed)
+                    Type::struct_(cx, &[fill], packed)
                 }
                 Some(ref name) => {
-                    let mut llty = Type::named_struct(ccx, name);
+                    let mut llty = Type::named_struct(cx, name);
                     llty.set_struct_body(&[fill], packed);
                     llty
                 }
             }
         }
         layout::FieldPlacement::Array { count, .. } => {
-            Type::array(&layout.field(ccx, 0).llvm_type(ccx), count)
+            Type::array(&layout.field(cx, 0).llvm_type(cx), count)
         }
         layout::FieldPlacement::Arbitrary { .. } => {
             match name {
                 None => {
-                    let (llfields, packed) = struct_llfields(ccx, layout);
-                    Type::struct_(ccx, &llfields, packed)
+                    let (llfields, packed) = struct_llfields(cx, layout);
+                    Type::struct_(cx, &llfields, packed)
                 }
                 Some(ref name) => {
-                    let llty = Type::named_struct(ccx, name);
+                    let llty = Type::named_struct(cx, name);
                     *defer = Some((llty, layout));
                     llty
                 }
@@ -110,7 +110,7 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                              layout: TyLayout<'tcx>)
                              -> (Vec<Type>, bool) {
     debug!("struct_llfields: {:#?}", layout);
@@ -121,7 +121,7 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let mut prev_align = layout.align;
     let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
-        let field = layout.field(ccx, i);
+        let field = layout.field(cx, i);
         packed |= layout.align.abi() < field.align.abi();
 
         let target_offset = layout.fields.offset(i as usize);
@@ -131,10 +131,10 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let padding = target_offset - offset;
         let padding_align = layout.align.min(prev_align).min(field.align);
         assert_eq!(offset.abi_align(padding_align) + padding, target_offset);
-        result.push(Type::padding_filler(ccx, padding, padding_align));
+        result.push(Type::padding_filler(cx, padding, padding_align));
         debug!("    padding before: {:?}", padding);
 
-        result.push(field.llvm_type(ccx));
+        result.push(field.llvm_type(cx));
         offset = target_offset + field.size;
         prev_align = field.align;
     }
@@ -148,7 +148,7 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         assert_eq!(offset.abi_align(padding_align) + padding, layout.size);
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
                padding, offset, layout.size);
-        result.push(Type::padding_filler(ccx, padding, padding_align));
+        result.push(Type::padding_filler(cx, padding, padding_align));
         assert!(result.len() == 1 + field_count * 2);
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}",
@@ -158,7 +158,7 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     (result, packed)
 }
 
-impl<'a, 'tcx> CrateContext<'a, 'tcx> {
+impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
         self.layout_of(ty).align
     }
@@ -197,14 +197,14 @@ pub struct PointeeInfo {
 pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_immediate(&self) -> bool;
     fn is_llvm_scalar_pair<'a>(&self) -> bool;
-    fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
-    fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
-    fn scalar_llvm_type_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type;
+    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type;
+    fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
                                scalar: &layout::Scalar, offset: Size) -> Type;
-    fn scalar_pair_element_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+    fn scalar_pair_element_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
                                          index: usize) -> Type;
     fn llvm_field_index(&self, index: usize) -> u64;
-    fn pointee_info_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>, offset: Size)
+    fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size)
                            -> Option<PointeeInfo>;
 }
 
@@ -240,28 +240,28 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     /// with the inner-most trailing unsized field using the "minimal unit"
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
-    fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
         if let layout::Abi::Scalar(ref scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
-            if let Some(&llty) = ccx.scalar_lltypes().borrow().get(&self.ty) {
+            if let Some(&llty) = cx.scalar_lltypes.borrow().get(&self.ty) {
                 return llty;
             }
             let llty = match self.ty.sty {
                 ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
                 ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
-                    ccx.layout_of(ty).llvm_type(ccx).ptr_to()
+                    cx.layout_of(ty).llvm_type(cx).ptr_to()
                 }
                 ty::TyAdt(def, _) if def.is_box() => {
-                    ccx.layout_of(self.ty.boxed_ty()).llvm_type(ccx).ptr_to()
+                    cx.layout_of(self.ty.boxed_ty()).llvm_type(cx).ptr_to()
                 }
                 ty::TyFnPtr(sig) => {
-                    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
-                    FnType::new(ccx, sig, &[]).llvm_type(ccx).ptr_to()
+                    let sig = cx.tcx.erase_late_bound_regions_and_normalize(&sig);
+                    FnType::new(cx, sig, &[]).llvm_type(cx).ptr_to()
                 }
-                _ => self.scalar_llvm_type_at(ccx, scalar, Size::from_bytes(0))
+                _ => self.scalar_llvm_type_at(cx, scalar, Size::from_bytes(0))
             };
-            ccx.scalar_lltypes().borrow_mut().insert(self.ty, llty);
+            cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
             return llty;
         }
 
@@ -271,7 +271,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             layout::Variants::Single { index } => Some(index),
             _ => None
         };
-        if let Some(&llty) = ccx.lltypes().borrow().get(&(self.ty, variant_index)) {
+        if let Some(&llty) = cx.lltypes.borrow().get(&(self.ty, variant_index)) {
             return llty;
         }
 
@@ -281,69 +281,69 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
         // Make sure lifetimes are erased, to avoid generating distinct LLVM
         // types for Rust types that only differ in the choice of lifetimes.
-        let normal_ty = ccx.tcx().erase_regions(&self.ty);
+        let normal_ty = cx.tcx.erase_regions(&self.ty);
 
         let mut defer = None;
         let llty = if self.ty != normal_ty {
-            let mut layout = ccx.layout_of(normal_ty);
+            let mut layout = cx.layout_of(normal_ty);
             if let Some(v) = variant_index {
-                layout = layout.for_variant(ccx, v);
+                layout = layout.for_variant(cx, v);
             }
-            layout.llvm_type(ccx)
+            layout.llvm_type(cx)
         } else {
-            uncached_llvm_type(ccx, *self, &mut defer)
+            uncached_llvm_type(cx, *self, &mut defer)
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        ccx.lltypes().borrow_mut().insert((self.ty, variant_index), llty);
+        cx.lltypes.borrow_mut().insert((self.ty, variant_index), llty);
 
         if let Some((mut llty, layout)) = defer {
-            let (llfields, packed) = struct_llfields(ccx, layout);
+            let (llfields, packed) = struct_llfields(cx, layout);
             llty.set_struct_body(&llfields, packed)
         }
 
         llty
     }
 
-    fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
         if let layout::Abi::Scalar(ref scalar) = self.abi {
             if scalar.is_bool() {
-                return Type::i1(ccx);
+                return Type::i1(cx);
             }
         }
-        self.llvm_type(ccx)
+        self.llvm_type(cx)
     }
 
-    fn scalar_llvm_type_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+    fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
                                scalar: &layout::Scalar, offset: Size) -> Type {
         match scalar.value {
-            layout::Int(i, _) => Type::from_integer(ccx, i),
-            layout::F32 => Type::f32(ccx),
-            layout::F64 => Type::f64(ccx),
+            layout::Int(i, _) => Type::from_integer(cx, i),
+            layout::F32 => Type::f32(cx),
+            layout::F64 => Type::f64(cx),
             layout::Pointer => {
                 // If we know the alignment, pick something better than i8.
-                let pointee = if let Some(pointee) = self.pointee_info_at(ccx, offset) {
-                    Type::pointee_for_abi_align(ccx, pointee.align)
+                let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
+                    Type::pointee_for_abi_align(cx, pointee.align)
                 } else {
-                    Type::i8(ccx)
+                    Type::i8(cx)
                 };
                 pointee.ptr_to()
             }
         }
     }
 
-    fn scalar_pair_element_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+    fn scalar_pair_element_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
                                          index: usize) -> Type {
         // HACK(eddyb) special-case fat pointers until LLVM removes
         // pointee types, to avoid bitcasting every `OperandRef::deref`.
         match self.ty.sty {
             ty::TyRef(..) |
             ty::TyRawPtr(_) => {
-                return self.field(ccx, index).llvm_type(ccx);
+                return self.field(cx, index).llvm_type(cx);
             }
             ty::TyAdt(def, _) if def.is_box() => {
-                let ptr_ty = ccx.tcx().mk_mut_ptr(self.ty.boxed_ty());
-                return ccx.layout_of(ptr_ty).scalar_pair_element_llvm_type(ccx, index);
+                let ptr_ty = cx.tcx.mk_mut_ptr(self.ty.boxed_ty());
+                return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index);
             }
             _ => {}
         }
@@ -362,15 +362,15 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         // load/store `bool` as `i8` to avoid crippling LLVM optimizations,
         // `i1` in a LLVM aggregate is valid and mostly equivalent to `i8`.
         if scalar.is_bool() {
-            return Type::i1(ccx);
+            return Type::i1(cx);
         }
 
         let offset = if index == 0 {
             Size::from_bytes(0)
         } else {
-            a.value.size(ccx).abi_align(b.value.align(ccx))
+            a.value.size(cx).abi_align(b.value.align(cx))
         };
-        self.scalar_llvm_type_at(ccx, scalar, offset)
+        self.scalar_llvm_type_at(cx, scalar, offset)
     }
 
     fn llvm_field_index(&self, index: usize) -> u64 {
@@ -396,16 +396,16 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         }
     }
 
-    fn pointee_info_at<'a>(&self, ccx: &CrateContext<'a, 'tcx>, offset: Size)
+    fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size)
                            -> Option<PointeeInfo> {
-        if let Some(&pointee) = ccx.pointee_infos().borrow().get(&(self.ty, offset)) {
+        if let Some(&pointee) = cx.pointee_infos.borrow().get(&(self.ty, offset)) {
             return pointee;
         }
 
         let mut result = None;
         match self.ty.sty {
             ty::TyRawPtr(mt) if offset.bytes() == 0 => {
-                let (size, align) = ccx.size_and_align_of(mt.ty);
+                let (size, align) = cx.size_and_align_of(mt.ty);
                 result = Some(PointeeInfo {
                     size,
                     align,
@@ -414,17 +414,17 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             }
 
             ty::TyRef(_, mt) if offset.bytes() == 0 => {
-                let (size, align) = ccx.size_and_align_of(mt.ty);
+                let (size, align) = cx.size_and_align_of(mt.ty);
 
                 let kind = match mt.mutbl {
-                    hir::MutImmutable => if ccx.shared().type_is_freeze(mt.ty) {
+                    hir::MutImmutable => if cx.type_is_freeze(mt.ty) {
                         PointerKind::Frozen
                     } else {
                         PointerKind::Shared
                     },
                     hir::MutMutable => {
-                        if ccx.shared().tcx().sess.opts.debugging_opts.mutable_noalias ||
-                           ccx.shared().tcx().sess.panic_strategy() == PanicStrategy::Abort {
+                        if cx.tcx.sess.opts.debugging_opts.mutable_noalias ||
+                           cx.tcx.sess.panic_strategy() == PanicStrategy::Abort {
                             PointerKind::UniqueBorrowed
                         } else {
                             PointerKind::Shared
@@ -454,7 +454,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         // niches than just null (e.g. the first page
                         // of the address space, or unaligned pointers).
                         if self.fields.offset(0) == offset {
-                            Some(self.for_variant(ccx, dataful_variant))
+                            Some(self.for_variant(cx, dataful_variant))
                         } else {
                             None
                         }
@@ -470,14 +470,14 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 }
 
                 if let Some(variant) = data_variant {
-                    let ptr_end = offset + layout::Pointer.size(ccx);
+                    let ptr_end = offset + layout::Pointer.size(cx);
                     for i in 0..variant.fields.count() {
                         let field_start = variant.fields.offset(i);
                         if field_start <= offset {
-                            let field = variant.field(ccx, i);
+                            let field = variant.field(cx, i);
                             if ptr_end <= field_start + field.size {
                                 // We found the right field, look inside it.
-                                result = field.pointee_info_at(ccx, offset - field_start);
+                                result = field.pointee_info_at(cx, offset - field_start);
                                 break;
                             }
                         }
@@ -495,7 +495,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             }
         }
 
-        ccx.pointee_infos().borrow_mut().insert((self.ty, offset), result);
+        cx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
         result
     }
 }

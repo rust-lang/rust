@@ -1,4 +1,4 @@
-error: specialization is unstable (see issue #31844)
+error[E0658]: specialization is unstable (see issue #31844)
   --> $DIR/specialization-feature-gate-default.rs:20:5
    |
 20 |     default fn foo(&self) {} //~ ERROR specialization is unstable

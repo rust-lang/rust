@@ -131,6 +131,9 @@ pub struct CodeMap {
     // -Zremap-path-prefix to all FileMaps allocated within this CodeMap.
     path_mapping: FilePathMapping,
     stable_id_to_filemap: RefCell<FxHashMap<StableFilemapId, Rc<FileMap>>>,
+    /// In case we are in a doctest, replace all file names with the PathBuf,
+    /// and add the given offsets to the line info
+    doctest_offset: Option<(FileName, isize)>,
 }
 
 impl CodeMap {
@@ -140,7 +143,17 @@ impl CodeMap {
             file_loader: Box::new(RealFileLoader),
             path_mapping,
             stable_id_to_filemap: RefCell::new(FxHashMap()),
+            doctest_offset: None,
         }
+    }
+
+    pub fn new_doctest(path_mapping: FilePathMapping,
+                       file: FileName, line: isize) -> CodeMap {
+        CodeMap {
+            doctest_offset: Some((file, line)),
+            ..CodeMap::new(path_mapping)
+        }
+
     }
 
     pub fn with_file_loader(file_loader: Box<FileLoader>,
@@ -151,6 +164,7 @@ impl CodeMap {
             file_loader,
             path_mapping,
             stable_id_to_filemap: RefCell::new(FxHashMap()),
+            doctest_offset: None,
         }
     }
 
@@ -164,7 +178,12 @@ impl CodeMap {
 
     pub fn load_file(&self, path: &Path) -> io::Result<Rc<FileMap>> {
         let src = self.file_loader.read_file(path)?;
-        Ok(self.new_filemap(path.to_owned().into(), src))
+        let filename = if let Some((ref name, _)) = self.doctest_offset {
+            name.clone()
+        } else {
+            path.to_owned().into()
+        };
+        Ok(self.new_filemap(filename, src))
     }
 
     pub fn files(&self) -> Ref<Vec<Rc<FileMap>>> {
@@ -301,6 +320,18 @@ impl CodeMap {
                  pos.file.name,
                  pos.line,
                  pos.col.to_usize() + 1)).to_string()
+    }
+
+    // If there is a doctest_offset, apply it to the line
+    pub fn doctest_offset_line(&self, mut orig: usize) -> usize {
+        if let Some((_, line)) = self.doctest_offset {
+            if line >= 0 {
+                orig = orig + line as usize;
+            } else {
+                orig = orig - (-line) as usize;
+            }
+        }
+        orig
     }
 
     /// Lookup source information about a BytePos
@@ -680,6 +711,9 @@ impl CodeMapper for CodeMap {
                 _ => None,
             }
         )
+    }
+    fn doctest_offset_line(&self, line: usize) -> usize {
+        self.doctest_offset_line(line)
     }
 }
 

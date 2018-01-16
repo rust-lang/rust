@@ -198,16 +198,4 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         }
         false
     }
-
-    // This method returns whether the given Region is Named
-    pub(super) fn is_named_region(&self, region: Region<'tcx>) -> bool {
-        match *region {
-            ty::ReFree(ref free_region) => match free_region.bound_region {
-                ty::BrNamed(..) => true,
-                _ => false,
-            },
-            ty::ReEarlyBound(_) => true,
-            _ => false,
-        }
-    }
 }

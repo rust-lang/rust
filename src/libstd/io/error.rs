@@ -62,10 +62,16 @@ pub type Result<T> = result::Result<T, Error>;
 /// [`Write`]: ../io/trait.Write.html
 /// [`Seek`]: ../io/trait.Seek.html
 /// [`ErrorKind`]: enum.ErrorKind.html
-#[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Error {
     repr: Repr,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.repr, f)
+    }
 }
 
 enum Repr {
@@ -511,10 +517,12 @@ impl Error {
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Repr::Os(ref code) =>
-                fmt.debug_struct("Os").field("code", code)
-                   .field("message", &sys::os::error_string(*code)).finish(),
-            Repr::Custom(ref c) => fmt.debug_tuple("Custom").field(c).finish(),
+            Repr::Os(code) =>
+                fmt.debug_struct("Os")
+                    .field("code", &code)
+                    .field("kind", &sys::decode_error_kind(code))
+                    .field("message", &sys::os::error_string(code)).finish(),
+            Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
             Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
         }
     }
@@ -559,17 +567,36 @@ fn _assert_error_is_sync_send() {
 
 #[cfg(test)]
 mod test {
-    use super::{Error, ErrorKind};
+    use super::{Error, ErrorKind, Repr, Custom};
     use error;
     use fmt;
     use sys::os::error_string;
+    use sys::decode_error_kind;
 
     #[test]
     fn test_debug_error() {
         let code = 6;
         let msg = error_string(code);
-        let err = Error { repr: super::Repr::Os(code) };
-        let expected = format!("Error {{ repr: Os {{ code: {:?}, message: {:?} }} }}", code, msg);
+        let kind = decode_error_kind(code);
+        let err = Error {
+            repr: Repr::Custom(box Custom {
+                kind: ErrorKind::InvalidInput,
+                error: box Error {
+                    repr: super::Repr::Os(code)
+                },
+            })
+        };
+        let expected = format!(
+            "Custom {{ \
+                kind: InvalidInput, \
+                error: Os {{ \
+                    code: {:?}, \
+                    kind: {:?}, \
+                    message: {:?} \
+                }} \
+            }}",
+            code, kind, msg
+        );
         assert_eq!(format!("{:?}", err), expected);
     }
 

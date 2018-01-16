@@ -990,7 +990,7 @@ impl EmitterWriter {
                     buffer.append(buffer_msg_line_offset,
                                   &format!("{}:{}:{}",
                                            loc.file.name,
-                                           loc.line,
+                                           cm.doctest_offset_line(loc.line),
                                            loc.col.0 + 1),
                                   Style::LineAndColumn);
                     for _ in 0..max_line_num_len {
@@ -1000,7 +1000,7 @@ impl EmitterWriter {
                     buffer.prepend(0,
                                    &format!("{}:{}:{} - ",
                                             loc.file.name,
-                                            loc.line,
+                                            cm.doctest_offset_line(loc.line),
                                             loc.col.0 + 1),
                                    Style::LineAndColumn);
                 }

@@ -33,30 +33,30 @@ impl<'a, 'tcx> VirtualIndex {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn(self, bcx: &Builder<'a, 'tcx>,
+    pub fn get_fn(self, bx: &Builder<'a, 'tcx>,
                   llvtable: ValueRef,
                   fn_ty: &FnType<'tcx>) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", Value(llvtable), self);
 
-        let llvtable = bcx.pointercast(llvtable, fn_ty.llvm_type(bcx.ccx).ptr_to().ptr_to());
-        let ptr_align = bcx.tcx().data_layout.pointer_align;
-        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), ptr_align);
-        bcx.nonnull_metadata(ptr);
+        let llvtable = bx.pointercast(llvtable, fn_ty.llvm_type(bx.cx).ptr_to().ptr_to());
+        let ptr_align = bx.tcx().data_layout.pointer_align;
+        let ptr = bx.load(bx.inbounds_gep(llvtable, &[C_usize(bx.cx, self.0)]), ptr_align);
+        bx.nonnull_metadata(ptr);
         // Vtable loads are invariant
-        bcx.set_invariant_load(ptr);
+        bx.set_invariant_load(ptr);
         ptr
     }
 
-    pub fn get_usize(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
+    pub fn get_usize(self, bx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", Value(llvtable), self);
 
-        let llvtable = bcx.pointercast(llvtable, Type::isize(bcx.ccx).ptr_to());
-        let usize_align = bcx.tcx().data_layout.pointer_align;
-        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), usize_align);
+        let llvtable = bx.pointercast(llvtable, Type::isize(bx.cx).ptr_to());
+        let usize_align = bx.tcx().data_layout.pointer_align;
+        let ptr = bx.load(bx.inbounds_gep(llvtable, &[C_usize(bx.cx, self.0)]), usize_align);
         // Vtable loads are invariant
-        bcx.set_invariant_load(ptr);
+        bx.set_invariant_load(ptr);
         ptr
     }
 }
@@ -69,28 +69,28 @@ impl<'a, 'tcx> VirtualIndex {
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
-pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn get_vtable<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                             ty: Ty<'tcx>,
                             trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
                             -> ValueRef
 {
-    let tcx = ccx.tcx();
+    let tcx = cx.tcx;
 
     debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 
     // Check the cache.
-    if let Some(&val) = ccx.vtables().borrow().get(&(ty, trait_ref)) {
+    if let Some(&val) = cx.vtables.borrow().get(&(ty, trait_ref)) {
         return val;
     }
 
     // Not in the cache. Build it.
-    let nullptr = C_null(Type::i8p(ccx));
+    let nullptr = C_null(Type::i8p(cx));
 
-    let (size, align) = ccx.size_and_align_of(ty);
+    let (size, align) = cx.size_and_align_of(ty);
     let mut components: Vec<_> = [
-        callee::get_fn(ccx, monomorphize::resolve_drop_in_place(ccx.tcx(), ty)),
-        C_usize(ccx, size.bytes()),
-        C_usize(ccx, align.abi())
+        callee::get_fn(cx, monomorphize::resolve_drop_in_place(cx.tcx, ty)),
+        C_usize(cx, size.bytes()),
+        C_usize(cx, align.abi())
     ].iter().cloned().collect();
 
     if let Some(trait_ref) = trait_ref {
@@ -98,18 +98,18 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let methods = tcx.vtable_methods(trait_ref);
         let methods = methods.iter().cloned().map(|opt_mth| {
             opt_mth.map_or(nullptr, |(def_id, substs)| {
-                callee::resolve_and_get_fn(ccx, def_id, substs)
+                callee::resolve_and_get_fn(cx, def_id, substs)
             })
         });
         components.extend(methods);
     }
 
-    let vtable_const = C_struct(ccx, &components, false);
-    let align = ccx.data_layout().pointer_align;
-    let vtable = consts::addr_of(ccx, vtable_const, align, "vtable");
+    let vtable_const = C_struct(cx, &components, false);
+    let align = cx.data_layout().pointer_align;
+    let vtable = consts::addr_of(cx, vtable_const, align, "vtable");
 
-    debuginfo::create_vtable_metadata(ccx, ty, vtable);
+    debuginfo::create_vtable_metadata(cx, ty, vtable);
 
-    ccx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
+    cx.vtables.borrow_mut().insert((ty, trait_ref), vtable);
     vtable
 }

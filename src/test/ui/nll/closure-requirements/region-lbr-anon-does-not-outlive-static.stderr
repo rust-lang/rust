@@ -4,11 +4,13 @@ warning: not reporting region error due to -Znll
 19 |     &*x
    |     ^^^
 
-error: free region `ReFree(DefId(0/0:3 ~ region_lbr_anon_does_not_outlive_static[317d]::foo[0]), BrAnon(0))` does not outlive free region `ReStatic`
+error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
    |
+18 | fn foo(x: &u32) -> &'static u32 {
+   |        - consider changing the type of `x` to `&ReStatic u32`
 19 |     &*x
-   |     ^^^
+   |     ^^^ lifetime `ReStatic` required
 
 error: aborting due to previous error
 

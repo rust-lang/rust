@@ -1,4 +1,4 @@
-error: intrinsics are subject to change
+error[E0658]: intrinsics are subject to change
   --> $DIR/feature-gate-intrinsics.rs:11:1
    |
 11 | / extern "rust-intrinsic" {   //~ ERROR intrinsics are subject to change
@@ -8,7 +8,7 @@ error: intrinsics are subject to change
    |
    = help: add #![feature(intrinsics)] to the crate attributes to enable
 
-error: intrinsics are subject to change
+error[E0658]: intrinsics are subject to change
   --> $DIR/feature-gate-intrinsics.rs:15:1
    |
 15 | / extern "rust-intrinsic" fn baz() {  //~ ERROR intrinsics are subject to change

@@ -18,12 +18,12 @@ use rustc::ty::DefIdTree;
 
 use llvm;
 use llvm::debuginfo::{DIScope, DIBuilderRef, DIDescriptor, DIArray};
-use common::{CrateContext};
+use common::{CodegenCx};
 
 use syntax_pos::{self, Span};
 use syntax::ast;
 
-pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
+pub fn is_node_local_to_unit(cx: &CodegenCx, node_id: ast::NodeId) -> bool
 {
     // The is_local_to_unit flag indicates whether a function is local to the
     // current compilation unit (i.e. if it is *static* in the C-sense). The
@@ -33,8 +33,8 @@ pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
     // visible). It might better to use the `exported_items` set from
     // `driver::CrateAnalysis` in the future, but (atm) this set is not
     // available in the translation pass.
-    let def_id = cx.tcx().hir.local_def_id(node_id);
-    !cx.tcx().is_exported_symbol(def_id)
+    let def_id = cx.tcx.hir.local_def_id(node_id);
+    !cx.tcx.is_exported_symbol(def_id)
 }
 
 #[allow(non_snake_case)]
@@ -45,23 +45,23 @@ pub fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
 }
 
 /// Return syntax_pos::Loc corresponding to the beginning of the span
-pub fn span_start(cx: &CrateContext, span: Span) -> syntax_pos::Loc {
+pub fn span_start(cx: &CodegenCx, span: Span) -> syntax_pos::Loc {
     cx.sess().codemap().lookup_char_pos(span.lo())
 }
 
 #[inline]
-pub fn debug_context<'a, 'tcx>(cx: &'a CrateContext<'a, 'tcx>)
+pub fn debug_context<'a, 'tcx>(cx: &'a CodegenCx<'a, 'tcx>)
                            -> &'a CrateDebugContext<'tcx> {
-    cx.dbg_cx().as_ref().unwrap()
+    cx.dbg_cx.as_ref().unwrap()
 }
 
 #[inline]
 #[allow(non_snake_case)]
-pub fn DIB(cx: &CrateContext) -> DIBuilderRef {
-    cx.dbg_cx().as_ref().unwrap().builder
+pub fn DIB(cx: &CodegenCx) -> DIBuilderRef {
+    cx.dbg_cx.as_ref().unwrap().builder
 }
 
-pub fn get_namespace_for_item(cx: &CrateContext, def_id: DefId) -> DIScope {
-    item_namespace(cx, cx.tcx().parent(def_id)
+pub fn get_namespace_for_item(cx: &CodegenCx, def_id: DefId) -> DIScope {
+    item_namespace(cx, cx.tcx.parent(def_id)
         .expect("get_namespace_for_item: missing parent?"))
 }

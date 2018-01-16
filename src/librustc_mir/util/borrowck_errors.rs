@@ -269,12 +269,17 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_reassign_immutable(&self, span: Span, desc: &str, o: Origin)
+    fn cannot_reassign_immutable(&self, span: Span, desc: &str, is_arg: bool, o: Origin)
                                  -> DiagnosticBuilder
     {
+        let msg = if is_arg {
+            "to immutable argument"
+        } else {
+            "twice to immutable variable"
+        };
         let err = struct_span_err!(self, span, E0384,
-                                   "cannot assign twice to immutable variable `{}`{OGN}",
-                                   desc, OGN=o);
+                                   "cannot assign {} `{}`{OGN}",
+                                   msg, desc, OGN=o);
 
         self.cancel_if_wrong_origin(err, o)
     }
