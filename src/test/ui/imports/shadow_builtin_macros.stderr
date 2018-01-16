@@ -9,7 +9,7 @@ error: `panic` is already in scope
    |
    = note: macro-expanded `macro_rules!`s may not shadow existing macros (see RFC 1560)
 
-error: `panic` is ambiguous
+error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:27:14
    |
 27 |     fn f() { panic!(); } //~ ERROR ambiguous
@@ -23,7 +23,7 @@ note: `panic` could refer to the name imported here
    = note: `panic` is also a builtin macro
    = note: consider adding an explicit import of `panic` to disambiguate
 
-error: `panic` is ambiguous
+error[E0659]: `panic` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:32:14
    |
 32 |     fn f() { panic!(); } //~ ERROR ambiguous
@@ -37,7 +37,7 @@ note: `panic` could refer to the name imported here
    = note: `panic` is also a builtin macro
    = note: macro-expanded macro imports do not shadow
 
-error: `n` is ambiguous
+error[E0659]: `n` is ambiguous
   --> $DIR/shadow_builtin_macros.rs:61:5
    |
 61 |     n!(); //~ ERROR ambiguous
