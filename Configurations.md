@@ -335,7 +335,7 @@ let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 ```rust
 fn main() {
-    r = foofoofoofoofoofoofoofoofoofoofoofoofoofoofoofoo ||
+    let or = foofoofoofoofoofoofoofoofoofoofoofoofoofoofoofoo ||
         barbarbarbarbarbarbarbarbarbarbarbarbarbarbarbar;
 
     let sum = 123456789012345678901234567890 + 123456789012345678901234567890 +
