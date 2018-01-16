@@ -242,8 +242,8 @@ pub fn opts() -> Vec<RustcOptGroup> {
                       or `#![doc(html_playground_url=...)]`",
                      "URL")
         }),
-        unstable("enable-commonmark", |o| {
-            o.optflag("", "enable-commonmark", "to enable commonmark doc rendering/testing")
+        unstable("disable-commonmark", |o| {
+            o.optflag("", "disable-commonmark", "to disable commonmark doc rendering/testing")
         }),
         unstable("display-warnings", |o| {
             o.optflag("", "display-warnings", "to print code warnings when testing doc")
@@ -347,10 +347,10 @@ pub fn main_args(args: &[String]) -> isize {
     let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
     let cfgs = matches.opt_strs("cfg");
 
-    let render_type = if matches.opt_present("enable-commonmark") {
-        RenderType::Pulldown
-    } else {
+    let render_type = if matches.opt_present("disable-commonmark") {
         RenderType::Hoedown
+    } else {
+        RenderType::Pulldown
     };
 
     if let Some(ref p) = css_file_extension {
