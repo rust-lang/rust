@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use abi::{ArgAttribute, FnType, LayoutExt, PassMode, Reg, RegKind};
-use common::CrateContext;
+use common::CodegenCx;
 
 use rustc::ty::layout::{self, TyLayout};
 
@@ -19,7 +19,7 @@ pub enum Flavor {
     Fastcall
 }
 
-fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn is_single_fp_element<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                   layout: TyLayout<'tcx>) -> bool {
     match layout.abi {
         layout::Abi::Scalar(ref scalar) => {
@@ -30,7 +30,7 @@ fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         layout::Abi::Aggregate { .. } => {
             if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
-                is_single_fp_element(ccx, layout.field(ccx, 0))
+                is_single_fp_element(cx, layout.field(cx, 0))
             } else {
                 false
             }
@@ -39,7 +39,7 @@ fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                   fty: &mut FnType<'tcx>,
                                   flavor: Flavor) {
     if !fty.ret.is_ignore() {
@@ -51,12 +51,12 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // Some links:
             // http://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
-            let t = &ccx.sess().target.target;
+            let t = &cx.sess().target.target;
             if t.options.is_like_osx || t.options.is_like_windows
                 || t.options.is_like_openbsd {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
-                if !t.options.is_like_msvc && is_single_fp_element(ccx, fty.ret.layout) {
+                if !t.options.is_like_msvc && is_single_fp_element(cx, fty.ret.layout) {
                     match fty.ret.layout.size.bytes() {
                         4 => fty.ret.cast_to(Reg::f32()),
                         8 => fty.ret.cast_to(Reg::f64()),
@@ -112,7 +112,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             };
 
             // At this point we know this must be a primitive of sorts.
-            let unit = arg.layout.homogeneous_aggregate(ccx).unwrap();
+            let unit = arg.layout.homogeneous_aggregate(cx).unwrap();
             assert_eq!(unit.size, arg.layout.size);
             if unit.kind == RegKind::Float {
                 continue;

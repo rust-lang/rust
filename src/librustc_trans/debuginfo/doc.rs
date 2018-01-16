@@ -32,7 +32,7 @@
 //! The public API of the module is a set of functions that will insert the
 //! correct metadata into the LLVM IR when called with the right parameters.
 //! The module is thus driven from an outside client with functions like
-//! `debuginfo::create_local_var_metadata(bcx: block, local: &ast::local)`.
+//! `debuginfo::create_local_var_metadata(bx: block, local: &ast::local)`.
 //!
 //! Internally the module will try to reuse already created metadata by
 //! utilizing a cache. The way to get a shared metadata node when needed is
@@ -44,8 +44,8 @@
 //! that exact file path.
 //!
 //! All private state used by the module is stored within either the
-//! CrateDebugContext struct (owned by the CrateContext) or the
-//! FunctionDebugContext (owned by the MirContext).
+//! CrateDebugContext struct (owned by the CodegenCx) or the
+//! FunctionDebugContext (owned by the FunctionCx).
 //!
 //! This file consists of three conceptual sections:
 //! 1. The public interface of the module

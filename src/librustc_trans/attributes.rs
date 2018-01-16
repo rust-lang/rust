@@ -24,7 +24,7 @@ use llvm::AttributePlace::Function;
 use llvm_util;
 pub use syntax::attr::{self, InlineAttr};
 use syntax::ast;
-use context::CrateContext;
+use context::CodegenCx;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
@@ -67,27 +67,27 @@ pub fn naked(val: ValueRef, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
 }
 
-pub fn set_frame_pointer_elimination(ccx: &CrateContext, llfn: ValueRef) {
+pub fn set_frame_pointer_elimination(cx: &CodegenCx, llfn: ValueRef) {
     // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
     // parameter.
-    if ccx.sess().must_not_eliminate_frame_pointers() {
+    if cx.sess().must_not_eliminate_frame_pointers() {
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
             cstr("no-frame-pointer-elim\0"), cstr("true\0"));
     }
 }
 
-pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
+pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
-    if !ccx.sess().target.target.options.stack_probes {
+    if !cx.sess().target.target.options.stack_probes {
         return
     }
 
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer. With asan we're already protected from stack overflow anyway
     // so we don't really need stack probes regardless.
-    match ccx.sess().opts.debugging_opts.sanitizer {
+    match cx.sess().opts.debugging_opts.sanitizer {
         Some(Sanitizer::Address) => return,
         _ => {}
     }
@@ -101,13 +101,13 @@ pub fn set_probestack(ccx: &CrateContext, llfn: ValueRef) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
-pub fn from_fn_attrs(ccx: &CrateContext, llfn: ValueRef, id: DefId) {
+pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
     use syntax::attr::*;
-    let attrs = ccx.tcx().get_attrs(id);
-    inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), &attrs));
+    let attrs = cx.tcx.get_attrs(id);
+    inline(llfn, find_inline_attr(Some(cx.sess().diagnostic()), &attrs));
 
-    set_frame_pointer_elimination(ccx, llfn);
-    set_probestack(ccx, llfn);
+    set_frame_pointer_elimination(cx, llfn);
+    set_probestack(cx, llfn);
 
     for attr in attrs.iter() {
         if attr.check_name("cold") {
@@ -124,7 +124,7 @@ pub fn from_fn_attrs(ccx: &CrateContext, llfn: ValueRef, id: DefId) {
         }
     }
 
-    let target_features = ccx.tcx().target_features_enabled(id);
+    let target_features = cx.tcx.target_features_enabled(id);
     if !target_features.is_empty() {
         let val = CString::new(target_features.join(",")).unwrap();
         llvm::AddFunctionAttrStringValue(

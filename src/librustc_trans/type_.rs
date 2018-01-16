@@ -14,7 +14,7 @@ use llvm;
 use llvm::{ContextRef, TypeRef, Bool, False, True, TypeKind};
 use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
-use context::CrateContext;
+use context::CodegenCx;
 
 use syntax::ast;
 use rustc::ty::layout::{self, Align, Size};
@@ -62,115 +62,115 @@ impl Type {
         unsafe { mem::transmute(slice) }
     }
 
-    pub fn void(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMVoidTypeInContext(ccx.llcx()))
+    pub fn void(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMVoidTypeInContext(cx.llcx))
     }
 
-    pub fn metadata(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMRustMetadataTypeInContext(ccx.llcx()))
+    pub fn metadata(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMRustMetadataTypeInContext(cx.llcx))
     }
 
-    pub fn i1(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt1TypeInContext(ccx.llcx()))
+    pub fn i1(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMInt1TypeInContext(cx.llcx))
     }
 
-    pub fn i8(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt8TypeInContext(ccx.llcx()))
+    pub fn i8(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMInt8TypeInContext(cx.llcx))
     }
 
     pub fn i8_llcx(llcx: ContextRef) -> Type {
         ty!(llvm::LLVMInt8TypeInContext(llcx))
     }
 
-    pub fn i16(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt16TypeInContext(ccx.llcx()))
+    pub fn i16(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMInt16TypeInContext(cx.llcx))
     }
 
-    pub fn i32(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt32TypeInContext(ccx.llcx()))
+    pub fn i32(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMInt32TypeInContext(cx.llcx))
     }
 
-    pub fn i64(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMInt64TypeInContext(ccx.llcx()))
+    pub fn i64(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMInt64TypeInContext(cx.llcx))
     }
 
-    pub fn i128(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMIntTypeInContext(ccx.llcx(), 128))
+    pub fn i128(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMIntTypeInContext(cx.llcx, 128))
     }
 
     // Creates an integer type with the given number of bits, e.g. i24
-    pub fn ix(ccx: &CrateContext, num_bits: u64) -> Type {
-        ty!(llvm::LLVMIntTypeInContext(ccx.llcx(), num_bits as c_uint))
+    pub fn ix(cx: &CodegenCx, num_bits: u64) -> Type {
+        ty!(llvm::LLVMIntTypeInContext(cx.llcx, num_bits as c_uint))
     }
 
-    pub fn f32(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMFloatTypeInContext(ccx.llcx()))
+    pub fn f32(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMFloatTypeInContext(cx.llcx))
     }
 
-    pub fn f64(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMDoubleTypeInContext(ccx.llcx()))
+    pub fn f64(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMDoubleTypeInContext(cx.llcx))
     }
 
-    pub fn bool(ccx: &CrateContext) -> Type {
-        Type::i8(ccx)
+    pub fn bool(cx: &CodegenCx) -> Type {
+        Type::i8(cx)
     }
 
-    pub fn char(ccx: &CrateContext) -> Type {
-        Type::i32(ccx)
+    pub fn char(cx: &CodegenCx) -> Type {
+        Type::i32(cx)
     }
 
-    pub fn i8p(ccx: &CrateContext) -> Type {
-        Type::i8(ccx).ptr_to()
+    pub fn i8p(cx: &CodegenCx) -> Type {
+        Type::i8(cx).ptr_to()
     }
 
     pub fn i8p_llcx(llcx: ContextRef) -> Type {
         Type::i8_llcx(llcx).ptr_to()
     }
 
-    pub fn isize(ccx: &CrateContext) -> Type {
-        match &ccx.tcx().sess.target.target.target_pointer_width[..] {
-            "16" => Type::i16(ccx),
-            "32" => Type::i32(ccx),
-            "64" => Type::i64(ccx),
+    pub fn isize(cx: &CodegenCx) -> Type {
+        match &cx.tcx.sess.target.target.target_pointer_width[..] {
+            "16" => Type::i16(cx),
+            "32" => Type::i32(cx),
+            "64" => Type::i64(cx),
             tws => bug!("Unsupported target word size for int: {}", tws),
         }
     }
 
-    pub fn c_int(ccx: &CrateContext) -> Type {
-        match &ccx.tcx().sess.target.target.target_c_int_width[..] {
-            "16" => Type::i16(ccx),
-            "32" => Type::i32(ccx),
-            "64" => Type::i64(ccx),
+    pub fn c_int(cx: &CodegenCx) -> Type {
+        match &cx.tcx.sess.target.target.target_c_int_width[..] {
+            "16" => Type::i16(cx),
+            "32" => Type::i32(cx),
+            "64" => Type::i64(cx),
             width => bug!("Unsupported target_c_int_width: {}", width),
         }
     }
 
-    pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
+    pub fn int_from_ty(cx: &CodegenCx, t: ast::IntTy) -> Type {
         match t {
-            ast::IntTy::Isize => ccx.isize_ty(),
-            ast::IntTy::I8 => Type::i8(ccx),
-            ast::IntTy::I16 => Type::i16(ccx),
-            ast::IntTy::I32 => Type::i32(ccx),
-            ast::IntTy::I64 => Type::i64(ccx),
-            ast::IntTy::I128 => Type::i128(ccx),
+            ast::IntTy::Isize => cx.isize_ty,
+            ast::IntTy::I8 => Type::i8(cx),
+            ast::IntTy::I16 => Type::i16(cx),
+            ast::IntTy::I32 => Type::i32(cx),
+            ast::IntTy::I64 => Type::i64(cx),
+            ast::IntTy::I128 => Type::i128(cx),
         }
     }
 
-    pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
+    pub fn uint_from_ty(cx: &CodegenCx, t: ast::UintTy) -> Type {
         match t {
-            ast::UintTy::Usize => ccx.isize_ty(),
-            ast::UintTy::U8 => Type::i8(ccx),
-            ast::UintTy::U16 => Type::i16(ccx),
-            ast::UintTy::U32 => Type::i32(ccx),
-            ast::UintTy::U64 => Type::i64(ccx),
-            ast::UintTy::U128 => Type::i128(ccx),
+            ast::UintTy::Usize => cx.isize_ty,
+            ast::UintTy::U8 => Type::i8(cx),
+            ast::UintTy::U16 => Type::i16(cx),
+            ast::UintTy::U32 => Type::i32(cx),
+            ast::UintTy::U64 => Type::i64(cx),
+            ast::UintTy::U128 => Type::i128(cx),
         }
     }
 
-    pub fn float_from_ty(ccx: &CrateContext, t: ast::FloatTy) -> Type {
+    pub fn float_from_ty(cx: &CodegenCx, t: ast::FloatTy) -> Type {
         match t {
-            ast::FloatTy::F32 => Type::f32(ccx),
-            ast::FloatTy::F64 => Type::f64(ccx),
+            ast::FloatTy::F32 => Type::f32(cx),
+            ast::FloatTy::F64 => Type::f64(cx),
         }
     }
 
@@ -186,16 +186,16 @@ impl Type {
                                    args.len() as c_uint, True))
     }
 
-    pub fn struct_(ccx: &CrateContext, els: &[Type], packed: bool) -> Type {
+    pub fn struct_(cx: &CodegenCx, els: &[Type], packed: bool) -> Type {
         let els: &[TypeRef] = Type::to_ref_slice(els);
-        ty!(llvm::LLVMStructTypeInContext(ccx.llcx(), els.as_ptr(),
+        ty!(llvm::LLVMStructTypeInContext(cx.llcx, els.as_ptr(),
                                           els.len() as c_uint,
                                           packed as Bool))
     }
 
-    pub fn named_struct(ccx: &CrateContext, name: &str) -> Type {
+    pub fn named_struct(cx: &CodegenCx, name: &str) -> Type {
         let name = CString::new(name).unwrap();
-        ty!(llvm::LLVMStructCreateNamed(ccx.llcx(), name.as_ptr()))
+        ty!(llvm::LLVMStructCreateNamed(cx.llcx, name.as_ptr()))
     }
 
 
@@ -265,7 +265,7 @@ impl Type {
         }
     }
 
-    pub fn from_integer(cx: &CrateContext, i: layout::Integer) -> Type {
+    pub fn from_integer(cx: &CodegenCx, i: layout::Integer) -> Type {
         use rustc::ty::layout::Integer::*;
         match i {
             I8 => Type::i8(cx),
@@ -278,23 +278,23 @@ impl Type {
 
     /// Return a LLVM type that has at most the required alignment,
     /// as a conservative approximation for unknown pointee types.
-    pub fn pointee_for_abi_align(ccx: &CrateContext, align: Align) -> Type {
+    pub fn pointee_for_abi_align(cx: &CodegenCx, align: Align) -> Type {
         // FIXME(eddyb) We could find a better approximation if ity.align < align.
-        let ity = layout::Integer::approximate_abi_align(ccx, align);
-        Type::from_integer(ccx, ity)
+        let ity = layout::Integer::approximate_abi_align(cx, align);
+        Type::from_integer(cx, ity)
     }
 
     /// Return a LLVM type that has at most the required alignment,
     /// and exactly the required size, as a best-effort padding array.
-    pub fn padding_filler(ccx: &CrateContext, size: Size, align: Align) -> Type {
-        let unit = layout::Integer::approximate_abi_align(ccx, align);
+    pub fn padding_filler(cx: &CodegenCx, size: Size, align: Align) -> Type {
+        let unit = layout::Integer::approximate_abi_align(cx, align);
         let size = size.bytes();
         let unit_size = unit.size().bytes();
         assert_eq!(size % unit_size, 0);
-        Type::array(&Type::from_integer(ccx, unit), size / unit_size)
+        Type::array(&Type::from_integer(cx, unit), size / unit_size)
     }
 
-    pub fn x86_mmx(ccx: &CrateContext) -> Type {
-        ty!(llvm::LLVMX86MMXTypeInContext(ccx.llcx()))
+    pub fn x86_mmx(cx: &CodegenCx) -> Type {
+        ty!(llvm::LLVMX86MMXTypeInContext(cx.llcx))
     }
 }

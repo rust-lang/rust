@@ -11,10 +11,9 @@
 use common;
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
-use rustc::dep_graph::{DepGraph, DepGraphSafe};
+use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::ich::StableHashingContext;
 use rustc::traits;
 use debuginfo;
 use callee;
@@ -28,7 +27,6 @@ use type_of::PointeeInfo;
 
 use rustc_data_structures::base_n;
 use rustc::mir::mono::Stats;
-use rustc_data_structures::stable_hasher::StableHashingContextProvider;
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout};
@@ -41,38 +39,30 @@ use std::ptr;
 use std::iter;
 use std::str;
 use std::sync::Arc;
-use std::marker::PhantomData;
 use syntax::symbol::InternedString;
 use abi::Abi;
 
-/// The shared portion of a `CrateContext`.  There is one `SharedCrateContext`
-/// per crate.  The data here is shared between all compilation units of the
-/// crate, so it must not contain references to any LLVM data structures
-/// (aside from metadata-related ones).
-pub struct SharedCrateContext<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    check_overflow: bool,
-    use_dll_storage_attrs: bool,
-    tls_model: llvm::ThreadLocalMode,
-}
+/// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
+/// `ContextRef` so that several compilation units may be optimized in parallel.
+/// All other LLVM data structures in the `CodegenCx` are tied to that `ContextRef`.
+pub struct CodegenCx<'a, 'tcx: 'a> {
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub check_overflow: bool,
+    pub use_dll_storage_attrs: bool,
+    pub tls_model: llvm::ThreadLocalMode,
 
-/// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
-/// per compilation unit.  Each one has its own LLVM `ContextRef` so that
-/// several compilation units may be optimized in parallel.  All other LLVM
-/// data structures in the `LocalCrateContext` are tied to that `ContextRef`.
-pub struct LocalCrateContext<'a, 'tcx: 'a> {
-    llmod: ModuleRef,
-    llcx: ContextRef,
-    stats: RefCell<Stats>,
-    codegen_unit: Arc<CodegenUnit<'tcx>>,
+    pub llmod: ModuleRef,
+    pub llcx: ContextRef,
+    pub stats: RefCell<Stats>,
+    pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
-    instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
+    pub instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
     /// Cache generated vtables
-    vtables: RefCell<FxHashMap<(Ty<'tcx>,
+    pub vtables: RefCell<FxHashMap<(Ty<'tcx>,
                                 Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>>,
     /// Cache of constant strings,
-    const_cstr_cache: RefCell<FxHashMap<InternedString, ValueRef>>,
+    pub const_cstr_cache: RefCell<FxHashMap<InternedString, ValueRef>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     /// Key is a ValueRef holding a *T,
@@ -82,72 +72,42 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     /// when we ptrcast, and we have to ptrcast during translation
     /// of a [T] const because we form a slice, a (*T,usize) pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
-    const_unsized: RefCell<FxHashMap<ValueRef, ValueRef>>,
+    pub const_unsized: RefCell<FxHashMap<ValueRef, ValueRef>>,
 
     /// Cache of emitted const globals (value -> global)
-    const_globals: RefCell<FxHashMap<ValueRef, ValueRef>>,
+    pub const_globals: RefCell<FxHashMap<ValueRef, ValueRef>>,
 
     /// Mapping from static definitions to their DefId's.
-    statics: RefCell<FxHashMap<ValueRef, DefId>>,
+    pub statics: RefCell<FxHashMap<ValueRef, DefId>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when translation is complete.
     /// (We have to make sure we don't invalidate any ValueRefs referring
     /// to constants.)
-    statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
+    pub statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
 
     /// Statics that will be placed in the llvm.used variable
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
-    used_statics: RefCell<Vec<ValueRef>>,
+    pub used_statics: RefCell<Vec<ValueRef>>,
 
-    lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>>,
-    scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
-    pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
-    isize_ty: Type,
+    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>>,
+    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
+    pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
+    pub isize_ty: Type,
 
-    dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
+    pub dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
 
     eh_personality: Cell<Option<ValueRef>>,
     eh_unwind_resume: Cell<Option<ValueRef>>,
-    rust_try_fn: Cell<Option<ValueRef>>,
+    pub rust_try_fn: Cell<Option<ValueRef>>,
 
     intrinsics: RefCell<FxHashMap<&'static str, ValueRef>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
-
-    /// A placeholder so we can add lifetimes
-    placeholder: PhantomData<&'a ()>,
 }
 
-/// A CrateContext value binds together one LocalCrateContext with the
-/// SharedCrateContext. It exists as a convenience wrapper, so we don't have to
-/// pass around (SharedCrateContext, LocalCrateContext) tuples all over trans.
-pub struct CrateContext<'a, 'tcx: 'a> {
-    shared: &'a SharedCrateContext<'a, 'tcx>,
-    local_ccx: &'a LocalCrateContext<'a, 'tcx>,
-}
-
-impl<'a, 'tcx> CrateContext<'a, 'tcx> {
-    pub fn new(shared: &'a SharedCrateContext<'a, 'tcx>,
-               local_ccx: &'a LocalCrateContext<'a, 'tcx>)
-               -> Self {
-        CrateContext { shared, local_ccx }
-    }
-}
-
-impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
-}
-
-impl<'a, 'tcx> DepGraphSafe for SharedCrateContext<'a, 'tcx> {
-}
-
-impl<'a, 'tcx> StableHashingContextProvider for SharedCrateContext<'a, 'tcx> {
-    type ContextType = StableHashingContext<'tcx>;
-
-    fn create_stable_hashing_context(&self) -> Self::ContextType {
-        self.tcx.create_stable_hashing_context()
-    }
+impl<'a, 'tcx> DepGraphSafe for CodegenCx<'a, 'tcx> {
 }
 
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
@@ -252,8 +212,11 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
     (llcx, llmod)
 }
 
-impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
-    pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> SharedCrateContext<'b, 'tcx> {
+impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               codegen_unit: Arc<CodegenUnit<'tcx>>,
+               llmod_id: &str)
+               -> CodegenCx<'a, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -303,78 +266,25 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
         let tls_model = get_tls_model(&tcx.sess);
 
-        SharedCrateContext {
-            tcx,
-            check_overflow,
-            use_dll_storage_attrs,
-            tls_model,
-        }
-    }
-
-    pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        common::type_needs_drop(self.tcx, ty)
-    }
-
-    pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        common::type_is_sized(self.tcx, ty)
-    }
-
-    pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        common::type_is_freeze(self.tcx, ty)
-    }
-
-    pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        use syntax_pos::DUMMY_SP;
-        if ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
-            return false;
-        }
-
-        let tail = self.tcx.struct_tail(ty);
-        match tail.sty {
-            ty::TyForeign(..) => false,
-            ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
-            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
-        }
-    }
-
-    pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.tcx
-    }
-
-    pub fn sess<'a>(&'a self) -> &'a Session {
-        &self.tcx.sess
-    }
-
-    pub fn dep_graph<'a>(&'a self) -> &'a DepGraph {
-        &self.tcx.dep_graph
-    }
-
-    pub fn use_dll_storage_attrs(&self) -> bool {
-        self.use_dll_storage_attrs
-    }
-}
-
-impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
-    pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: Arc<CodegenUnit<'tcx>>,
-               llmod_id: &str)
-               -> LocalCrateContext<'a, 'tcx> {
         unsafe {
-            let (llcx, llmod) = create_context_and_module(&shared.tcx.sess,
+            let (llcx, llmod) = create_context_and_module(&tcx.sess,
                                                           &llmod_id[..]);
 
-            let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
+            let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
                 let dctx = debuginfo::CrateDebugContext::new(llmod);
-                debuginfo::metadata::compile_unit_metadata(shared,
+                debuginfo::metadata::compile_unit_metadata(tcx,
                                                            codegen_unit.name(),
-                                                           &dctx,
-                                                           shared.tcx.sess);
+                                                           &dctx);
                 Some(dctx)
             } else {
                 None
             };
 
-            let local_ccx = LocalCrateContext {
+            let mut cx = CodegenCx {
+                tcx,
+                check_overflow,
+                use_dll_storage_attrs,
+                tls_model,
                 llmod,
                 llcx,
                 stats: RefCell::new(Stats::default()),
@@ -397,41 +307,9 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FxHashMap()),
                 local_gen_sym_counter: Cell::new(0),
-                placeholder: PhantomData,
             };
-
-            let (isize_ty, mut local_ccx) = {
-                // Do a little dance to create a dummy CrateContext, so we can
-                // create some things in the LLVM module of this codegen unit
-                let mut local_ccxs = vec![local_ccx];
-                let isize_ty = {
-                    let dummy_ccx = LocalCrateContext::dummy_ccx(shared,
-                                                                 local_ccxs.as_mut_slice());
-                    Type::isize(&dummy_ccx)
-                };
-                (isize_ty, local_ccxs.pop().unwrap())
-            };
-
-            local_ccx.isize_ty = isize_ty;
-
-            local_ccx
-        }
-    }
-
-    /// Create a dummy `CrateContext` from `self` and  the provided
-    /// `SharedCrateContext`.  This is somewhat dangerous because `self` may
-    /// not be fully initialized.
-    ///
-    /// This is used in the `LocalCrateContext` constructor to allow calling
-    /// functions that expect a complete `CrateContext`, even before the local
-    /// portion is fully initialized and attached to the `SharedCrateContext`.
-    fn dummy_ccx(shared: &'a SharedCrateContext<'a, 'tcx>,
-                 local_ccxs: &'a [LocalCrateContext<'a, 'tcx>])
-                 -> CrateContext<'a, 'tcx> {
-        assert!(local_ccxs.len() == 1);
-        CrateContext {
-            shared,
-            local_ccx: &local_ccxs[0]
+            cx.isize_ty = Type::isize(&cx);
+            cx
         }
     }
 
@@ -440,25 +318,13 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     }
 }
 
-impl<'b, 'tcx> CrateContext<'b, 'tcx> {
-    pub fn shared(&self) -> &'b SharedCrateContext<'b, 'tcx> {
-        self.shared
-    }
-
-    fn local(&self) -> &'b LocalCrateContext<'b, 'tcx> {
-        self.local_ccx
-    }
-
-    pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.shared.tcx
-    }
-
+impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     pub fn sess<'a>(&'a self) -> &'a Session {
-        &self.shared.tcx.sess
+        &self.tcx.sess
     }
 
     pub fn get_intrinsic(&self, key: &str) -> ValueRef {
-        if let Some(v) = self.intrinsics().borrow().get(key).cloned() {
+        if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }
         match declare_intrinsic(self, key) {
@@ -467,106 +333,11 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
     }
 
-    pub fn llmod(&self) -> ModuleRef {
-        self.local().llmod
-    }
-
-    pub fn llcx(&self) -> ContextRef {
-        self.local().llcx
-    }
-
-    pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
-        &self.local().codegen_unit
-    }
-
-    pub fn td(&self) -> llvm::TargetDataRef {
-        unsafe { llvm::LLVMRustGetModuleDataLayout(self.llmod()) }
-    }
-
-    pub fn instances<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {
-        &self.local().instances
-    }
-
-    pub fn vtables<'a>(&'a self)
-        -> &'a RefCell<FxHashMap<(Ty<'tcx>,
-                                  Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>> {
-        &self.local().vtables
-    }
-
-    pub fn const_cstr_cache<'a>(&'a self) -> &'a RefCell<FxHashMap<InternedString, ValueRef>> {
-        &self.local().const_cstr_cache
-    }
-
-    pub fn const_unsized<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, ValueRef>> {
-        &self.local().const_unsized
-    }
-
-    pub fn const_globals<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, ValueRef>> {
-        &self.local().const_globals
-    }
-
-    pub fn statics<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, DefId>> {
-        &self.local().statics
-    }
-
-    pub fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
-        &self.local().statics_to_rauw
-    }
-
-    pub fn used_statics<'a>(&'a self) -> &'a RefCell<Vec<ValueRef>> {
-        &self.local().used_statics
-    }
-
-    pub fn lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>> {
-        &self.local().lltypes
-    }
-
-    pub fn scalar_lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {
-        &self.local().scalar_lltypes
-    }
-
-    pub fn pointee_infos<'a>(&'a self)
-                             -> &'a RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>> {
-        &self.local().pointee_infos
-    }
-
-    pub fn stats<'a>(&'a self) -> &'a RefCell<Stats> {
-        &self.local().stats
-    }
-
-    pub fn isize_ty(&self) -> Type {
-        self.local().isize_ty
-    }
-
-    pub fn dbg_cx<'a>(&'a self) -> &'a Option<debuginfo::CrateDebugContext<'tcx>> {
-        &self.local().dbg_cx
-    }
-
-    pub fn rust_try_fn<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
-        &self.local().rust_try_fn
-    }
-
-    fn intrinsics<'a>(&'a self) -> &'a RefCell<FxHashMap<&'static str, ValueRef>> {
-        &self.local().intrinsics
-    }
-
-    pub fn check_overflow(&self) -> bool {
-        self.shared.check_overflow
-    }
-
-    pub fn use_dll_storage_attrs(&self) -> bool {
-        self.shared.use_dll_storage_attrs()
-    }
-
-    pub fn tls_model(&self) -> llvm::ThreadLocalMode {
-        self.shared.tls_model
-    }
-
     /// Generate a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
     pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
-        let idx = self.local().local_gen_sym_counter.get();
-        self.local().local_gen_sym_counter.set(idx + 1);
+        let idx = self.local_gen_sym_counter.get();
+        self.local_gen_sym_counter.set(idx + 1);
         // Include a '.' character, so there can be no accidental conflicts with
         // user defined names
         let mut name = String::with_capacity(prefix.len() + 6);
@@ -597,10 +368,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         // `rust_eh_personality` function, but rather we wired it up to the
         // CRT's custom personality function, which forces LLVM to consider
         // landing pads as "landing pads for SEH".
-        if let Some(llpersonality) = self.local().eh_personality.get() {
+        if let Some(llpersonality) = self.eh_personality.get() {
             return llpersonality
         }
-        let tcx = self.tcx();
+        let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
                 callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
@@ -615,7 +386,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
                 declare::declare_cfn(self, name, fty)
             }
         };
-        self.local().eh_personality.set(Some(llfn));
+        self.eh_personality.set(Some(llfn));
         llfn
     }
 
@@ -623,12 +394,12 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     // otherwise declares it as an external function.
     pub fn eh_unwind_resume(&self) -> ValueRef {
         use attributes;
-        let unwresume = &self.local().eh_unwind_resume;
+        let unwresume = &self.eh_unwind_resume;
         if let Some(llfn) = unwresume.get() {
             return llfn;
         }
 
-        let tcx = self.tcx();
+        let tcx = self.tcx;
         assert!(self.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
             let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
@@ -649,33 +420,47 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         unwresume.set(Some(llfn));
         llfn
     }
+
+    pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
+        common::type_needs_drop(self.tcx, ty)
+    }
+
+    pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
+        common::type_is_sized(self.tcx, ty)
+    }
+
+    pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
+        common::type_is_freeze(self.tcx, ty)
+    }
+
+    pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
+        use syntax_pos::DUMMY_SP;
+        if ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+            return false;
+        }
+
+        let tail = self.tcx.struct_tail(ty);
+        match tail.sty {
+            ty::TyForeign(..) => false,
+            ty::TyStr | ty::TySlice(..) | ty::TyDynamic(..) => true,
+            _ => bug!("unexpected unsized tail: {:?}", tail.sty),
+        }
+    }
 }
 
-impl<'a, 'tcx> ty::layout::HasDataLayout for &'a SharedCrateContext<'a, 'tcx> {
+impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CodegenCx<'a, 'tcx> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CrateContext<'a, 'tcx> {
-    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
-        &self.shared.tcx.data_layout
-    }
-}
-
-impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CrateContext<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.shared.tcx
-    }
-}
-
-impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a SharedCrateContext<'a, 'tcx> {
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CodegenCx<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
@@ -688,57 +473,48 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a SharedCrateContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CrateContext<'a, 'tcx> {
-    type TyLayout = TyLayout<'tcx>;
-
-
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        self.shared.layout_of(ty)
-    }
-}
-
 /// Declare any llvm intrinsics that you might need
-fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
+fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::func(&[], &$ret));
                 llvm::SetUnnamedAddr(f, false);
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
         ($name:expr, fn(...) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::variadic_func(&[], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::variadic_func(&[], &$ret));
                 llvm::SetUnnamedAddr(f, false);
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::func(&[$($arg),*], &$ret));
                 llvm::SetUnnamedAddr(f, false);
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
     }
     macro_rules! mk_struct {
-        ($($field_ty:expr),*) => (Type::struct_(ccx, &[$($field_ty),*], false))
+        ($($field_ty:expr),*) => (Type::struct_(cx, &[$($field_ty),*], false))
     }
 
-    let i8p = Type::i8p(ccx);
-    let void = Type::void(ccx);
-    let i1 = Type::i1(ccx);
-    let t_i8 = Type::i8(ccx);
-    let t_i16 = Type::i16(ccx);
-    let t_i32 = Type::i32(ccx);
-    let t_i64 = Type::i64(ccx);
-    let t_i128 = Type::i128(ccx);
-    let t_f32 = Type::f32(ccx);
-    let t_f64 = Type::f64(ccx);
+    let i8p = Type::i8p(cx);
+    let void = Type::void(cx);
+    let i1 = Type::i1(cx);
+    let t_i8 = Type::i8(cx);
+    let t_i16 = Type::i16(cx);
+    let t_i32 = Type::i32(cx);
+    let t_i64 = Type::i64(cx);
+    let t_i128 = Type::i128(cx);
+    let t_f32 = Type::f32(cx);
+    let t_f64 = Type::f64(cx);
 
     ifn!("llvm.memcpy.p0i8.p0i8.i16", fn(i8p, i8p, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memcpy.p0i8.p0i8.i32", fn(i8p, i8p, t_i32, t_i32, i1) -> void);
@@ -870,9 +646,9 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
     ifn!("llvm.assume", fn(i1) -> void);
     ifn!("llvm.prefetch", fn(i8p, t_i32, t_i32, t_i32) -> void);
 
-    if ccx.sess().opts.debuginfo != NoDebugInfo {
-        ifn!("llvm.dbg.declare", fn(Type::metadata(ccx), Type::metadata(ccx)) -> void);
-        ifn!("llvm.dbg.value", fn(Type::metadata(ccx), t_i64, Type::metadata(ccx)) -> void);
+    if cx.sess().opts.debuginfo != NoDebugInfo {
+        ifn!("llvm.dbg.declare", fn(Type::metadata(cx), Type::metadata(cx)) -> void);
+        ifn!("llvm.dbg.value", fn(Type::metadata(cx), t_i64, Type::metadata(cx)) -> void);
     }
     return None;
 }
