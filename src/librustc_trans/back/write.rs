@@ -1360,15 +1360,10 @@ fn start_executing_work(tcx: TyCtxt,
     let sess = tcx.sess;
 
     // First up, convert our jobserver into a helper thread so we can use normal
-    // mpsc channels to manage our messages and such. Once we've got the helper
-    // thread then request `n-1` tokens because all of our work items are ready
-    // to go.
-    //
-    // Note that the `n-1` is here because we ourselves have a token (our
-    // process) and we'll use that token to execute at least one unit of work.
-    //
-    // After we've requested all these tokens then we'll, when we can, get
-    // tokens on `rx` above which will get managed in the main loop below.
+    // mpsc channels to manage our messages and such.
+    // After we've requested tokens then we'll, when we can,
+    // get tokens on `coordinator_receive` which will
+    // get managed in the main loop below.
     let coordinator_send2 = coordinator_send.clone();
     let helper = jobserver.into_helper_thread(move |token| {
         drop(coordinator_send2.send(Box::new(Message::Token(token))));
