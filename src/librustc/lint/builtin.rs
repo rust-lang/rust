@@ -246,6 +246,12 @@ declare_lint! {
     "raw pointer to an inference variable"
 }
 
+declare_lint! {
+    pub INLINE_ATTRS_IN_FNS_WITHOUT_BODY,
+    Warn,
+    "detects use of inline attributes on methods without bodies"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -291,7 +297,8 @@ impl LintPass for HardwiredLints {
             UNUSED_MUT,
             COERCE_NEVER,
             SINGLE_USE_LIFETIME,
-            TYVAR_BEHIND_RAW_POINTER
+            TYVAR_BEHIND_RAW_POINTER,
+            INLINE_ATTRS_IN_FNS_WITHOUT_BODY
         )
     }
 }
