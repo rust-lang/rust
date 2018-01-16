@@ -69,13 +69,14 @@ pub fn get_linker(sess: &Session) -> (PathBuf, Command, Vec<(OsString, OsString)
     // was tagged as #42791) and some more info can be found on #44443 for
     // emscripten itself.
     let cmd = |linker: &Path| {
-        if cfg!(windows) && linker.ends_with(".bat") {
-            let mut cmd = Command::new("cmd");
-            cmd.arg("/c").arg(linker);
-            cmd
-        } else {
-            Command::new(linker)
+        if let Some(linker) = linker.to_str() {
+            if cfg!(windows) && linker.ends_with(".bat") {
+                let mut cmd = Command::new("cmd");
+                cmd.arg("/c").arg(linker);
+                return cmd
+            }
         }
+        Command::new(linker)
     };
 
     if let Some(ref linker) = sess.opts.cg.linker {
