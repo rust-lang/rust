@@ -610,38 +610,74 @@ impl CodeMap {
 
     /// Returns a new span representing just the end-point of this span
     pub fn end_point(&self, sp: Span) -> Span {
-        let hi = sp.hi().0.checked_sub(1).unwrap_or(sp.hi().0);
-        let hi = self.get_start_of_char_bytepos(BytePos(hi));
-        let lo = cmp::max(hi.0, sp.lo().0);
-        sp.with_lo(BytePos(lo))
+        let pos = sp.hi().0;
+
+        let width = self.find_width_of_character_at_span(sp, false);
+        let corrected_end_position = pos.checked_sub(width).unwrap_or(pos);
+
+        let end_point = BytePos(cmp::max(corrected_end_position, sp.lo().0));
+        sp.with_lo(end_point)
     }
 
     /// Returns a new span representing the next character after the end-point of this span
     pub fn next_point(&self, sp: Span) -> Span {
-        let hi = sp.lo().0.checked_add(1).unwrap_or(sp.lo().0);
-        let hi = self.get_start_of_char_bytepos(BytePos(hi));
-        let lo = cmp::max(sp.hi().0, hi.0);
-        Span::new(BytePos(lo), BytePos(lo), sp.ctxt())
+        let pos = sp.lo().0;
+
+        let width = self.find_width_of_character_at_span(sp, true);
+        let corrected_next_position = pos.checked_add(width).unwrap_or(pos);
+
+        let next_point = BytePos(cmp::max(sp.hi().0, corrected_next_position));
+        Span::new(next_point, next_point, sp.ctxt())
     }
 
-    fn get_start_of_char_bytepos(&self, bpos: BytePos) -> BytePos {
-        let idx = self.lookup_filemap_idx(bpos);
-        let files = self.files.borrow();
-        let map = &(*files)[idx];
-
-        for mbc in map.multibyte_chars.borrow().iter() {
-            if mbc.pos < bpos {
-                if bpos.to_usize() >= mbc.pos.to_usize() + mbc.bytes {
-                    // If we do, then return the start of the character.
-                    return mbc.pos;
-                }
-            } else {
-                break;
-            }
+    /// Finds the width of a character, either before or after the provided span.
+    fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
+        // Disregard malformed spans and assume a one-byte wide character.
+        if sp.lo() > sp.hi() {
+            return 1;
         }
 
-        // If this isn't a multibyte character, return the original position.
-        return bpos;
+        let local_begin = self.lookup_byte_offset(sp.lo());
+        let local_end = self.lookup_byte_offset(sp.hi());
+
+        let start_index = local_begin.pos.to_usize();
+        let end_index = local_end.pos.to_usize();
+
+        // Disregard indexes that are at the start or end of their spans, they can't fit bigger
+        // characters.
+        if (!forwards && end_index == usize::min_value()) ||
+            (forwards && start_index == usize::max_value()) {
+            return 1;
+        }
+
+        let source_len = (local_begin.fm.end_pos - local_begin.fm.start_pos).to_usize();
+        // Ensure indexes are also not malformed.
+        if start_index > end_index || end_index > source_len {
+            return 1;
+        }
+
+        // We need to extend the snippet to the end of the src rather than to end_index so when
+        // searching forwards for boundaries we've got somewhere to search.
+        let snippet = if let Some(ref src) = local_begin.fm.src {
+            let len = src.len();
+            (&src[start_index..len]).to_string()
+        } else if let Some(src) = local_begin.fm.external_src.borrow().get_source() {
+            let len = src.len();
+            (&src[start_index..len]).to_string()
+        } else {
+            return 1;
+        };
+
+        let mut target = if forwards { end_index + 1 } else { end_index - 1 };
+        while !snippet.is_char_boundary(target - start_index) {
+            target = if forwards { target + 1 } else { target - 1 };
+        }
+
+        if forwards {
+            (target - end_index) as u32
+        } else {
+            (end_index - target) as u32
+        }
     }
 
     pub fn get_filemap(&self, filename: &FileName) -> Option<Rc<FileMap>> {
