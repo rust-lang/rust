@@ -7,8 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
+// ignore-tidy-tab
 fn main(){
     let b = "hello";
-        println!("🦀🦀🦀🦀🦀"); let _a = b + ", World!"; //~ERROR 13:37: 13:51: binary operation `+` cannot be applied to type `&str` [E0369]
+    println!("🦀🦀🦀🦀🦀"); let _a = b + ", World!";
+    //~^ ERROR E0369
 }
