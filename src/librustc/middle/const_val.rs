@@ -14,6 +14,7 @@ use hir::def_id::DefId;
 use ty::{self, TyCtxt, layout};
 use ty::subst::Substs;
 use rustc_const_math::*;
+use mir::interpret::Value;
 
 use graphviz::IntoCow;
 use errors::DiagnosticBuilder;
@@ -38,6 +39,8 @@ pub enum ConstVal<'tcx> {
     Function(DefId, &'tcx Substs<'tcx>),
     Aggregate(ConstAggregate<'tcx>),
     Unevaluated(DefId, &'tcx Substs<'tcx>),
+    /// A miri value, currently only produced if old ctfe fails, but miri succeeds
+    Value(Value),
 }
 
 #[derive(Copy, Clone, Debug, Hash, RustcEncodable, Eq, PartialEq)]

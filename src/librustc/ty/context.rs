@@ -905,6 +905,11 @@ pub struct InterpretInterner<'tcx> {
     /// Allows obtaining const allocs via a unique identifier
     alloc_by_id: FxHashMap<interpret::AllocId, &'tcx interpret::Allocation>,
 
+    /// Reverse map of `alloc_cache`
+    ///
+    /// Multiple globals may share the same memory
+    global_cache: FxHashMap<interpret::Pointer, Vec<interpret::GlobalId<'tcx>>>,
+
     /// The AllocId to assign to the next new regular allocation.
     /// Always incremented, never gets smaller.
     next_id: interpret::AllocId,
@@ -955,8 +960,22 @@ impl<'tcx> InterpretInterner<'tcx> {
         global_id: interpret::GlobalId<'tcx>,
         ptr: interpret::AllocId,
     ) {
+        if let interpret::PrimVal::Ptr(ptr) = ptr.primval {
+            assert!(ptr.offset == 0);
+        }
+        self.global_cache.entry(ptr).or_default().push(global_id);
         if let Some(old) = self.alloc_cache.insert(global_id, ptr) {
             bug!("tried to cache {:?}, but was already existing as {:#?}", global_id, old);
+        }
+    }
+
+    pub fn get_globals(
+        &self,
+        ptr: interpret::Pointer,
+    ) -> &[interpret::GlobalId<'tcx>] {
+        match self.global_cache.get(&ptr) {
+            Some(v) => v,
+            None => &[],
         }
     }
 

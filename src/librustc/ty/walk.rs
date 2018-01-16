@@ -146,6 +146,7 @@ fn push_const<'tcx>(stack: &mut TypeWalkerStack<'tcx>, constant: &'tcx ty::Const
         ConstVal::ByteStr(_) |
         ConstVal::Bool(_) |
         ConstVal::Char(_) |
+        ConstVal::Value(_) |
         ConstVal::Variant(_) => {}
         ConstVal::Function(_, substs) => {
             stack.extend(substs.types().rev());

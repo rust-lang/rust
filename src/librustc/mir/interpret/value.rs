@@ -29,7 +29,7 @@ pub fn bytes_to_f64(bits: u128) -> ConstFloat {
 /// For optimization of a few very common cases, there is also a representation for a pair of
 /// primitive values (`ByValPair`). It allows Miri to avoid making allocations for checked binary
 /// operations and fat pointers. This idea was taken from rustc's trans.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub enum Value {
     ByRef(Pointer, Align),
     ByVal(PrimVal),
@@ -43,9 +43,9 @@ pub enum Value {
 /// I (@oli-obk) believe it is less easy to mix up generic primvals and primvals that are just
 /// the representation of pointers. Also all the sites that convert between primvals and pointers
 /// are explicit now (and rare!)
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Pointer {
-    primval: PrimVal,
+    pub primval: PrimVal,
 }
 
 impl<'tcx> Pointer {
@@ -138,7 +138,7 @@ impl ::std::convert::From<MemoryPointer> for Pointer {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `PrimVal` can either represent the raw bytes
 /// of a simple value, a pointer into another `Allocation`, or be undefined.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub enum PrimVal {
     /// The raw bytes of a simple value.
     Bytes(u128),

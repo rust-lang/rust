@@ -108,6 +108,7 @@ impl<'a, 'tcx> Const<'tcx> {
             ConstVal::Unevaluated(..) => {
                 bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
             }
+            ConstVal::Value(_) => unimplemented!(),
         };
 
         assert!(!ty.has_erasable_regions());

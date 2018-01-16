@@ -224,6 +224,7 @@ impl FlagComputation {
             ConstVal::ByteStr(_) |
             ConstVal::Bool(_) |
             ConstVal::Char(_) |
+            ConstVal::Value(_) |
             ConstVal::Variant(_) => {}
             ConstVal::Function(_, substs) => {
                 self.add_substs(substs);

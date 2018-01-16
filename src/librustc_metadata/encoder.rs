@@ -23,7 +23,7 @@ use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
                                       metadata_symbol_name};
 use rustc::middle::lang_items;
-use rustc::mir;
+use rustc::mir::{self, interpret};
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
@@ -59,6 +59,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
+    interpret_alloc_shorthands: FxHashMap<interpret::AllocId, usize>,
 
     // This is used to speed up Span encoding.
     filemap_cache: Lrc<FileMap>,
@@ -183,6 +184,41 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
         ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
+        if let Some(shorthand) = self.interpret_alloc_shorthands.get(alloc_id).cloned() {
+            return self.emit_usize(shorthand);
+        }
+        let start = self.position();
+        let interpret_interner = self.tcx.interpret_interner.borrow();
+        if let Some(alloc) = interpret_interner.get_alloc(alloc_id.0) {
+            usize::max_value().encode(self)?;
+            alloc.encode(self)?;
+            let globals = interpret_interner.get_globals(interpret::Pointer {
+                primval: interpret::PrimVal::Ptr(interpret::MemoryPointer {
+                    alloc_id: *alloc_id,
+                    offset: 0,
+                }),
+            });
+            globals.len().encode(self)?;
+            for glob in globals {
+                glob.encode(self)?;
+            }
+        } else if let Some(fn_instance) = interpret_interner.get_fn(alloc_id.0) {
+            (usize::max_value() - 1).encode(self)?;
+            fn_instance.encode(self)?;
+        } else {
+            bug!("alloc id without corresponding allocation: {}", alloc_id.0);
+        }
+        let len = self.position() - start * 7;
+        // Check that the shorthand is a not longer than the
+        // full encoding itself, i.e. it's an obvious win.
+        assert!(len >= 64 || (start as u64) < (1 << len));
+        self.interpret_alloc_shorthands.insert(*alloc_id, start);
+        Ok(())
     }
 }
 
@@ -1699,6 +1735,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
             filemap_cache: tcx.sess.codemap().files()[0].clone(),
+            interpret_alloc_shorthands: Default::default(),
         };
 
         // Encode the rustc version string in a predictable location.

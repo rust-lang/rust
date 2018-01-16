@@ -21,6 +21,7 @@ use std::mem;
 use middle::region;
 use traits;
 use ty;
+use mir;
 
 impl<'gcx, T> HashStable<StableHashingContext<'gcx>>
 for &'gcx ty::Slice<T>
@@ -388,12 +389,35 @@ for ::middle::const_val::ConstVal<'gcx> {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
+            Value(ref value) => {
+                value.hash_stable(hcx, hasher);
+            }
         }
     }
 }
 
 impl_stable_hash_for!(struct ::middle::const_val::ByteArray<'tcx> {
     data
+});
+
+impl_stable_hash_for!(enum mir::interpret::Value {
+    ByVal(v),
+    ByValPair(a, b),
+    ByRef(ptr, align)
+});
+
+impl_stable_hash_for!(struct mir::interpret::MemoryPointer {
+    alloc_id,
+    offset
+});
+
+impl_stable_hash_for!(tuple_struct mir::interpret::AllocId{id});
+impl_stable_hash_for!(struct mir::interpret::Pointer{primval});
+
+impl_stable_hash_for!(enum mir::interpret::PrimVal {
+    Bytes(b),
+    Ptr(p),
+    Undef
 });
 
 impl_stable_hash_for!(struct ty::Const<'tcx> {

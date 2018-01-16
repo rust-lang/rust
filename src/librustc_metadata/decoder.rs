@@ -24,11 +24,12 @@ use rustc::hir::def_id::{CrateNum, DefId, DefIndex,
                          CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::ich::Fingerprint;
 use rustc::middle::lang_items;
-use rustc::mir;
+use rustc::mir::{self, interpret};
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
 use rustc::mir::Mir;
+use rustc::util::nodemap::FxHashMap;
 
 use std::cell::Ref;
 use std::collections::BTreeMap;
@@ -54,6 +55,9 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     last_filemap_index: usize,
 
     lazy_state: LazyState,
+
+    // interpreter allocation cache
+    interpret_alloc_cache: FxHashMap<usize, interpret::AllocId>,
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -72,6 +76,7 @@ pub trait Metadata<'a, 'tcx>: Copy {
             tcx,
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
+            interpret_alloc_cache: FxHashMap::default(),
         }
     }
 }
@@ -265,6 +270,45 @@ impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<DefIndex, Self::Error> {
         Ok(DefIndex::from_raw_u32(self.read_u32()?))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
+        const MAX1: usize = usize::max_value() - 1;
+        let mut interpret_interner = self.tcx.unwrap().interpret_interner.borrow_mut();
+        let pos = self.position();
+        match self.read_usize()? {
+            ::std::usize::MAX => {
+                let allocation = interpret::Allocation::decode(self)?;
+                let id = interpret_interner.reserve();
+                let allocation = self.tcx.unwrap().intern_const_alloc(allocation);
+                interpret_interner.intern_at_reserved(id, allocation);
+                let id = interpret::AllocId(id);
+                self.interpret_alloc_cache.insert(pos, id);
+
+                let num = usize::decode(self)?;
+                let ptr = interpret::Pointer {
+                    primval: interpret::PrimVal::Ptr(interpret::MemoryPointer {
+                        alloc_id: id,
+                        offset: 0,
+                    }),
+                };
+                for _ in 0..num {
+                    let glob = interpret::GlobalId::decode(self)?;
+                    interpret_interner.cache(glob, ptr);
+                }
+
+                Ok(id)
+            },
+            MAX1 => {
+                let instance = ty::Instance::decode(self)?;
+                let id = interpret::AllocId(interpret_interner.create_fn_alloc(instance));
+                self.interpret_alloc_cache.insert(pos, id);
+                Ok(id)
+            },
+            shorthand => Ok(self.interpret_alloc_cache[&shorthand]),
+        }
     }
 }
 

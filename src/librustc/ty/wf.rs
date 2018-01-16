@@ -224,6 +224,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
             ConstVal::Bool(_) |
             ConstVal::Char(_) |
             ConstVal::Variant(_) |
+            ConstVal::Value(_) |
             ConstVal::Function(..) => {}
             ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
                 for &(_, v) in fields {

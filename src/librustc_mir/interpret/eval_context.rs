@@ -241,24 +241,24 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        use rustc::middle::const_val::ConstVal::*;
+        use rustc::middle::const_val::ConstVal;
 
         let primval = match *const_val {
-            Integral(const_int) => PrimVal::Bytes(const_int.to_u128_unchecked()),
+            ConstVal::Integral(const_int) => PrimVal::Bytes(const_int.to_u128_unchecked()),
 
-            Float(val) => PrimVal::Bytes(val.bits),
+            ConstVal::Float(val) => PrimVal::Bytes(val.bits),
 
-            Bool(b) => PrimVal::from_bool(b),
-            Char(c) => PrimVal::from_char(c),
+            ConstVal::Bool(b) => PrimVal::from_bool(b),
+            ConstVal::Char(c) => PrimVal::from_char(c),
 
-            Str(ref s) => return self.str_to_value(s),
+            ConstVal::Str(ref s) => return self.str_to_value(s),
 
-            ByteStr(ref bs) => {
+            ConstVal::ByteStr(ref bs) => {
                 let ptr = self.memory.allocate_cached(bs.data);
                 PrimVal::Ptr(ptr)
             }
 
-            Unevaluated(def_id, substs) => {
+            ConstVal::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(self.read_global_as_value(GlobalId {
                     instance,
@@ -266,10 +266,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }, self.layout_of(ty)?));
             }
 
-            Aggregate(..) |
-            Variant(_) => bug!("should not have aggregate or variant constants in MIR"),
+            ConstVal::Aggregate(..) |
+            ConstVal::Variant(_) => bug!("should not have aggregate or variant constants in MIR"),
             // function items are zero sized and thus have no readable value
-            Function(..) => PrimVal::Undef,
+            ConstVal::Function(..) => PrimVal::Undef,
+            ConstVal::Value(val) => return Ok(val),
         };
 
         Ok(Value::ByVal(primval))

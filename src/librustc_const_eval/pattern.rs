@@ -121,6 +121,7 @@ fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
         ConstVal::Variant(_) |
         ConstVal::Function(..) |
         ConstVal::Aggregate(_) |
+        ConstVal::Value(_) |
         ConstVal::Unevaluated(..) => bug!("{:?} not printable in a pattern", value)
     }
 }

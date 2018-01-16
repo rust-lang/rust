@@ -49,6 +49,7 @@
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![feature(dyn_trait)]
+#![feature(entry_or_default)]
 #![feature(from_ref)]
 #![feature(fs_read_write)]
 #![feature(i128)]
