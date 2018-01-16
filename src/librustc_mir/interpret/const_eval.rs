@@ -13,7 +13,7 @@ use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
 use rustc::mir::interpret::{EvalResult, EvalError, EvalErrorKind, GlobalId, Value, MemoryPointer, Pointer, PrimVal};
-use super::{Place, EvalContext, StackPopCleanup, ValTy, HasMemory};
+use super::{Place, EvalContext, StackPopCleanup, ValTy, HasMemory, PlaceExtra};
 
 use rustc_const_math::ConstInt;
 
@@ -308,11 +308,12 @@ pub fn const_val_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
+    variant: Option<usize>,
     field: mir::Field,
     val: Value,
     ty: Ty<'tcx>,
 ) -> ::rustc::middle::const_val::EvalResult<'tcx> {
-    match const_val_field_inner(tcx, param_env, instance, field, val, ty) {
+    match const_val_field_inner(tcx, param_env, instance, variant, field, val, ty) {
         Ok((field, ty)) => Ok(tcx.mk_const(ty::Const {
             val: ConstVal::Value(field),
             ty,
@@ -328,6 +329,7 @@ fn const_val_field_inner<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
+    variant: Option<usize>,
     field: mir::Field,
     value: Value,
     ty: Ty<'tcx>,
@@ -337,7 +339,11 @@ fn const_val_field_inner<'a, 'tcx>(
     let (mut field, ty) = match value {
         Value::ByValPair(..) | Value::ByVal(_) => ecx.read_field(value, field, ty)?.expect("const_val_field on non-field"),
         Value::ByRef(ptr, align) => {
-            let place = Place::from_primval_ptr(ptr, align);
+            let place = Place::Ptr {
+                ptr,
+                align,
+                extra: variant.map_or(PlaceExtra::None, PlaceExtra::DowncastVariant),
+            };
             let layout = ecx.layout_of(ty)?;
             let (place, layout) = ecx.place_field(place, field, layout)?;
             let (ptr, align) = place.to_ptr_align();
