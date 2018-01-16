@@ -870,6 +870,17 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         result.push_str(&val.as_str());
                     }
                     result.push('\n');
+                } else if let Some(meta_list) = attr.meta_item_list() {
+                    meta_list.into_iter()
+                             .filter(|it| it.check_name("include"))
+                             .filter_map(|it| it.meta_item_list().map(|l| l.to_owned()))
+                             .flat_map(|it| it)
+                             .filter(|meta| meta.check_name("contents"))
+                             .filter_map(|meta| meta.value_str())
+                             .for_each(|val| {
+                                 result.push_str(&val.as_str());
+                                 result.push('\n');
+                             });
                 }
             }
         }
