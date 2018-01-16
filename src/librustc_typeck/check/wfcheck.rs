@@ -277,7 +277,6 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
     fn check_trait(&mut self, item: &hir::Item) {
         let trait_def_id = self.tcx.hir.local_def_id(item.id);
-        
         self.for_item(item).with_fcx(|fcx, _| {
             self.check_trait_where_clauses(fcx, item.span, trait_def_id);
             vec![]
@@ -421,14 +420,13 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 if skip { continue; }
                 substituted_predicates.push(match pred {
                     // In trait predicates, substitute defaults only for the LHS.
-                    ty::Predicate::Trait(trait_pred) => {
-                        let t_pred = trait_pred.skip_binder();
-                        let self_ty = t_pred.self_ty().subst(fcx.tcx, substs);
-                        let mut trait_substs = t_pred.trait_ref.substs.to_vec();
-                        trait_substs[0] = self_ty.into();
-                        let trait_ref = ty::TraitRef::new(t_pred.def_id(),
-                                                          fcx.tcx.intern_substs(&trait_substs));
-                        ty::Predicate::Trait(ty::Binder(trait_ref).to_poly_trait_predicate())
+                    ty::Predicate::Trait(t_pred) => {
+                        let trait_ref = t_pred.map_bound(|t_pred| {
+                            let mut trait_subs = t_pred.trait_ref.substs.to_vec();
+                            trait_subs[0] = t_pred.self_ty().subst(fcx.tcx, substs).into();
+                            ty::TraitRef::new(t_pred.def_id(), fcx.tcx.intern_substs(&trait_subs))
+                        });
+                        ty::Predicate::Trait(trait_ref.to_poly_trait_predicate())
                     }
                     _ => pred.subst(fcx.tcx, substs)
                 });
