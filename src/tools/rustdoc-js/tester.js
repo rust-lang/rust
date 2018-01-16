@@ -115,7 +115,7 @@ function lookForEntry(entry, data) {
             if (!entry.hasOwnProperty(key)) {
                 continue;
             }
-            let value = data[i][key];
+            var value = data[i][key];
             // To make our life easier, if there is a "parent" type, we add it to the path.
             if (key === 'path' && data[i]['parent'] !== undefined) {
                 if (value.length > 0) {
