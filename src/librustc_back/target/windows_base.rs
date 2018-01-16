@@ -59,6 +59,7 @@ pub fn opts() -> TargetOptions {
         "-lmingw32".to_string(),
         "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
         "-lmsvcrt".to_string(),
+        "-lmsvcrt".to_string(), // mingw is insane...?
         "-luser32".to_string(),
         "-lkernel32".to_string(),
     ]);
