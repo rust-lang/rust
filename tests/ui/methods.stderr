@@ -494,17 +494,23 @@ error: called `skip(x).next()` on an iterator. This is more succinctly expressed
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `.fold` can more succintly be expressed as `.any`
-   --> $DIR/methods.rs:390:13
+   --> $DIR/methods.rs:390:19
     |
 390 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
-    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
     |
     = note: `-D fold-any` implied by `-D warnings`
 
-error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:406:13
+error: this `.fold` can more succintly be expressed as `.any`
+   --> $DIR/methods.rs:405:34
     |
-406 |     let _ = opt.unwrap();
+405 |     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
+
+error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
+   --> $DIR/methods.rs:411:13
+    |
+411 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`

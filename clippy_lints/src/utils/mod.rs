@@ -606,7 +606,7 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
 /// --> $DIR/methods.rs:390:13
 ///     |
 /// 390 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
-///     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
+///     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
 ///     |
 ///     = note: `-D fold-any` implied by `-D warnings`
 /// </pre>

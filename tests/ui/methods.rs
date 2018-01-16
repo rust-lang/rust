@@ -400,6 +400,11 @@ fn fold_any_ignores_non_boolean_accumalator() {
     let _ = (0..3).fold(0, |acc, x| acc + if x > 2 { 1 } else { 0 });
 }
 
+/// Should trigger the `FOLD_ANY` lint, with the error span including exactly `.fold(...)`
+fn fold_any_span_for_multi_element_chain() {
+    let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
+}
+
 #[allow(similar_names)]
 fn main() {
     let opt = Some(0);

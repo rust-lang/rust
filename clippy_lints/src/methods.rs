@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::iter;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, BytePos};
 use utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_self, is_self_ty,
             iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
             match_type, method_chain_args, return_ty, remove_blocks, same_tys, single_segment_path, snippet, span_lint,
@@ -1157,10 +1157,13 @@ fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
         then {
             let right_source = snippet(cx, right_expr.span, "EXPR");
 
+            // Span containing `.fold(...)`
+            let fold_span = fold_args[0].span.next_point().with_hi(fold_args[2].span.hi() + BytePos(1));
+
             span_lint_and_sugg(
                 cx,
                 FOLD_ANY,
-                expr.span,
+                fold_span,
                 // TODO: don't suggest .any(|x| f(x)) if we can suggest .any(f)
                 "this `.fold` can more succintly be expressed as `.any`",
                 "try",
