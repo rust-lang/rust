@@ -1088,6 +1088,13 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
             stability::check_unused_or_stable_features(tcx)
         });
 
+
+        time(time_passes,
+             "MIR linting",
+             || for def_id in tcx.body_owners() {
+                 mir::const_eval::check::check(tcx, def_id)
+             });
+
         time(time_passes, "lint checking", || lint::check_crate(tcx));
 
         return Ok(f(tcx, analysis, rx, tcx.sess.compile_status()));

@@ -338,53 +338,10 @@ for ::middle::const_val::ConstVal<'gcx> {
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         use middle::const_val::ConstVal::*;
-        use middle::const_val::ConstAggregate::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            Integral(ref value) => {
-                value.hash_stable(hcx, hasher);
-            }
-            Float(ref value) => {
-                value.hash_stable(hcx, hasher);
-            }
-            Str(ref value) => {
-                value.hash_stable(hcx, hasher);
-            }
-            ByteStr(ref value) => {
-                value.hash_stable(hcx, hasher);
-            }
-            Bool(value) => {
-                value.hash_stable(hcx, hasher);
-            }
-            Char(value) => {
-                value.hash_stable(hcx, hasher);
-            }
-            Variant(def_id) => {
-                def_id.hash_stable(hcx, hasher);
-            }
-            Function(def_id, substs) => {
-                def_id.hash_stable(hcx, hasher);
-                hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                    substs.hash_stable(hcx, hasher);
-                });
-            }
-            Aggregate(Struct(ref name_values)) => {
-                let mut values = name_values.to_vec();
-                values.sort_unstable_by_key(|&(ref name, _)| name.clone());
-                values.hash_stable(hcx, hasher);
-            }
-            Aggregate(Tuple(ref value)) => {
-                value.hash_stable(hcx, hasher);
-            }
-            Aggregate(Array(ref value)) => {
-                value.hash_stable(hcx, hasher);
-            }
-            Aggregate(Repeat(ref value, times)) => {
-                value.hash_stable(hcx, hasher);
-                times.hash_stable(hcx, hasher);
-            }
             Unevaluated(def_id, substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);

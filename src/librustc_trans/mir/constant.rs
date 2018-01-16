@@ -10,7 +10,6 @@
 
 use llvm::{self, ValueRef};
 use rustc::middle::const_val::{ConstEvalErr, ConstVal, ErrKind};
-use rustc_const_math::ConstInt::*;
 use rustc_const_math::{ConstInt, ConstMathErr, MAX_F32_PLUS_HALF_ULP};
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
@@ -64,25 +63,6 @@ impl<'a, 'tcx> Const<'tcx> {
         }
     }
 
-    pub fn from_constint(cx: &CodegenCx<'a, 'tcx>, ci: &ConstInt) -> Const<'tcx> {
-        let tcx = cx.tcx;
-        let (llval, ty) = match *ci {
-            I8(v) => (C_int(Type::i8(cx), v as i64), tcx.types.i8),
-            I16(v) => (C_int(Type::i16(cx), v as i64), tcx.types.i16),
-            I32(v) => (C_int(Type::i32(cx), v as i64), tcx.types.i32),
-            I64(v) => (C_int(Type::i64(cx), v as i64), tcx.types.i64),
-            I128(v) => (C_uint_big(Type::i128(cx), v as u128), tcx.types.i128),
-            Isize(v) => (C_int(Type::isize(cx), v.as_i64()), tcx.types.isize),
-            U8(v) => (C_uint(Type::i8(cx), v as u64), tcx.types.u8),
-            U16(v) => (C_uint(Type::i16(cx), v as u64), tcx.types.u16),
-            U32(v) => (C_uint(Type::i32(cx), v as u64), tcx.types.u32),
-            U64(v) => (C_uint(Type::i64(cx), v), tcx.types.u64),
-            U128(v) => (C_uint_big(Type::i128(cx), v), tcx.types.u128),
-            Usize(v) => (C_uint(Type::isize(cx), v.as_u64()), tcx.types.usize),
-        };
-        Const { llval: llval, ty: ty }
-    }
-
     pub fn from_bytes(ccx: &CrateContext<'a, 'tcx>, b: u128, ty: Ty<'tcx>) -> Const<'tcx> {
         let llval = match ty.sty {
             ty::TyInt(ast::IntTy::I128) |
@@ -124,26 +104,7 @@ impl<'a, 'tcx> Const<'tcx> {
         let llty = cx.layout_of(ty).llvm_type(cx);
         trace!("from_constval: {:#?}: {}", cv, ty);
         let val = match *cv {
-            ConstVal::Float(v) => {
-                let bits = match v.ty {
-                    ast::FloatTy::F32 => C_u32(cx, v.bits as u32),
-                    ast::FloatTy::F64 => C_u64(cx, v.bits as u64)
-                };
-                consts::bitcast(bits, llty)
-            }
-            ConstVal::Bool(v) => C_bool(cx, v),
-            ConstVal::Integral(ref i) => return Const::from_constint(cx, i),
-            ConstVal::Str(ref v) => C_str_slice(cx, v.clone()),
-            ConstVal::ByteStr(v) => {
-                consts::addr_of(cx, C_bytes(cx, v.data), cx.align_of(ty), "byte_str")
-            }
-            ConstVal::Char(c) => C_uint(Type::char(cx), c as u64),
-            ConstVal::Function(..) => C_undef(llty),
-            ConstVal::Variant(_) |
-            ConstVal::Aggregate(..) |
-            ConstVal::Unevaluated(..) => {
-                bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
-            }
+            ConstVal::Unevaluated(..) => unimplemented!("const val `{:?}`", cv),
             ConstVal::Value(MiriValue::ByRef(..)) => unimplemented!("{:#?}:{}", cv, ty),
             ConstVal::Value(MiriValue::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len))) => {
                 match ty.sty {
@@ -157,7 +118,7 @@ impl<'a, 'tcx> Const<'tcx> {
                     .tcx()
                     .interpret_interner
                     .borrow()
-                    .get_alloc(ptr.alloc_id.0)
+                    .get_alloc(ptr.alloc_id)
                     .expect("miri alloc not found");
                 assert_eq!(len as usize as u128, len);
                 let slice = &alloc.bytes[(ptr.offset as usize)..][..(len as usize)];
@@ -174,7 +135,7 @@ impl<'a, 'tcx> Const<'tcx> {
                     .tcx()
                     .interpret_interner
                     .borrow()
-                    .get_alloc(ptr.alloc_id.0)
+                    .get_alloc(ptr.alloc_id)
                     .expect("miri alloc not found");
                 let data = &alloc.bytes[(ptr.offset as usize)..];
                 consts::addr_of(ccx, C_bytes(ccx, data), ccx.align_of(ty), "byte_str")

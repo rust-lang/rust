@@ -533,7 +533,6 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             match result {
-                Ok(&ty::Const { val: ConstVal::Integral(x), .. }) => Some(x),
                 Ok(&ty::Const {
                     val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
                     ..

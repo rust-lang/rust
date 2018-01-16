@@ -33,7 +33,6 @@ use ty::TypeAndMut;
 use util::ppaux;
 use std::slice;
 use hir::{self, InlineAsm};
-use std::ascii;
 use std::borrow::{Cow};
 use std::cell::Ref;
 use std::fmt::{self, Debug, Formatter, Write};
@@ -1539,12 +1538,8 @@ impl<'tcx> Operand<'tcx> {
             ty,
             literal: Literal::Value {
                 value: tcx.mk_const(ty::Const {
-                    val: if tcx.sess.opts.debugging_opts.miri {
-                        // ZST function type
-                        ConstVal::Value(Value::ByVal(PrimVal::Undef))
-                    } else {
-                        ConstVal::Function(def_id, substs)
-                    },
+                    // ZST function type
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                     ty
                 })
             },
@@ -1877,21 +1872,6 @@ impl<'tcx> Debug for Literal<'tcx> {
 fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Result {
     use middle::const_val::ConstVal::*;
     match const_val.val {
-        Float(f) => write!(fmt, "{:?}", f),
-        Integral(n) => write!(fmt, "{}", n),
-        Str(s) => write!(fmt, "{:?}", s),
-        ByteStr(bytes) => {
-            let escaped: String = bytes.data
-                .iter()
-                .flat_map(|&ch| ascii::escape_default(ch).map(|c| c as char))
-                .collect();
-            write!(fmt, "b\"{}\"", escaped)
-        }
-        Bool(b) => write!(fmt, "{:?}", b),
-        Char(c) => write!(fmt, "{:?}", c),
-        Variant(def_id) |
-        Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
-        Aggregate(_) => bug!("`ConstVal::{:?}` should not be in MIR", const_val),
         Unevaluated(..) => write!(fmt, "{:?}", const_val),
         Value(val) => print_miri_value(val, const_val.ty, fmt),
     }
@@ -1918,7 +1898,7 @@ fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
                 let alloc = tcx
                     .interpret_interner
                     .borrow()
-                    .get_alloc(ptr.alloc_id.0)
+                    .get_alloc(ptr.alloc_id)
                     .expect("miri alloc not found");
                 assert_eq!(len as usize as u128, len);
                 let slice = &alloc.bytes[(ptr.offset as usize)..][..(len as usize)];

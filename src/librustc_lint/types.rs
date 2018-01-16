@@ -14,9 +14,6 @@ use rustc::hir::map as hir_map;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::ty::layout::{self, LayoutOf};
-use middle::const_val::ConstVal;
-use rustc_mir::const_eval::ConstContext;
-use rustc::mir::interpret::{Value, PrimVal};
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -44,12 +41,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    EXCEEDING_BITSHIFTS,
-    Deny,
-    "shift exceeds the type's number of bits"
-}
-
-declare_lint! {
     VARIANT_SIZE_DIFFERENCES,
     Allow,
     "detects enums with widely varying variant sizes"
@@ -70,8 +61,7 @@ impl TypeLimits {
 impl LintPass for TypeLimits {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_COMPARISONS,
-                    OVERFLOWING_LITERALS,
-                    EXCEEDING_BITSHIFTS)
+                    OVERFLOWING_LITERALS)
     }
 }
 
@@ -89,59 +79,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                     cx.span_lint(UNUSED_COMPARISONS,
                                  e.span,
                                  "comparison is useless due to type limits");
-                }
-
-                if binop.node.is_shift() {
-                    let opt_ty_bits = match cx.tables.node_id_to_type(l.hir_id).sty {
-                        ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.isize_ty)),
-                        ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.usize_ty)),
-                        _ => None,
-                    };
-
-                    if let Some(bits) = opt_ty_bits {
-                        let exceeding = if let hir::ExprLit(ref lit) = r.node {
-                            if let ast::LitKind::Int(shift, _) = lit.node {
-                                shift as u64 >= bits
-                            } else {
-                                false
-                            }
-                        } else {
-                            // HACK(eddyb) This might be quite inefficient.
-                            // This would be better left to MIR constant propagation,
-                            // perhaps even at trans time (like is the case already
-                            // when the value being shifted is *also* constant).
-                            let parent_item = cx.tcx.hir.get_parent(e.id);
-                            let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
-                            let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
-                            let const_cx = ConstContext::new(cx.tcx,
-                                                             cx.param_env.and(substs),
-                                                             cx.tables);
-                            match const_cx.eval(&r) {
-                                Ok(&ty::Const { val: ConstVal::Integral(i), .. }) => {
-                                    i.is_negative() ||
-                                    i.to_u64()
-                                        .map(|i| i >= bits)
-                                        .unwrap_or(true)
-                                }
-                                Ok(&ty::Const {
-                                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
-                                    ty,
-                                }) => {
-                                    if ty.is_signed() {
-                                        (b as i128) < 0
-                                    } else {
-                                        b >= bits as u128
-                                    }
-                                }
-                                _ => false,
-                            }
-                        };
-                        if exceeding {
-                            cx.span_lint(EXCEEDING_BITSHIFTS,
-                                         e.span,
-                                         "bitshift exceeds the type's number of bits");
-                        }
-                    };
                 }
             }
             hir::ExprLit(ref lit) => {
@@ -298,28 +235,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 ast::UintTy::U32 => (u32::min_value() as u128, u32::max_value() as u128),
                 ast::UintTy::U64 => (u64::min_value() as u128, u64::max_value() as u128),
                 ast::UintTy::U128 => (u128::min_value(), u128::max_value()),
-            }
-        }
-
-        fn int_ty_bits(int_ty: ast::IntTy, isize_ty: ast::IntTy) -> u64 {
-            match int_ty {
-                ast::IntTy::Isize => int_ty_bits(isize_ty, isize_ty),
-                ast::IntTy::I8 => 8,
-                ast::IntTy::I16 => 16 as u64,
-                ast::IntTy::I32 => 32,
-                ast::IntTy::I64 => 64,
-                ast::IntTy::I128 => 128,
-            }
-        }
-
-        fn uint_ty_bits(uint_ty: ast::UintTy, usize_ty: ast::UintTy) -> u64 {
-            match uint_ty {
-                ast::UintTy::Usize => uint_ty_bits(usize_ty, usize_ty),
-                ast::UintTy::U8 => 8,
-                ast::UintTy::U16 => 16,
-                ast::UintTy::U32 => 32,
-                ast::UintTy::U64 => 64,
-                ast::UintTy::U128 => 128,
             }
         }
 

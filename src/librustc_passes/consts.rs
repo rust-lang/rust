@@ -25,12 +25,6 @@
 // by borrowck::gather_loans
 
 use rustc::ty::cast::CastKind;
-use rustc_mir::const_eval::ConstContext;
-use rustc::middle::const_val::ConstEvalErr;
-use rustc::middle::const_val::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll};
-use rustc::middle::const_val::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
-use rustc::middle::const_val::ErrKind::{TypeckError, Math, LayoutError};
-use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::blocks::FnLikeNode;
@@ -41,16 +35,12 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::{queries, Providers};
 use rustc::ty::subst::Substs;
 use rustc::traits::Reveal;
-use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::{ItemLocalSet, NodeSet};
-use rustc::lint::builtin::CONST_ERR;
-use rustc::hir::{self, PatKind, RangeEnd};
+use rustc::hir;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-
-use std::cmp::Ordering;
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -124,32 +114,6 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
-    fn const_cx(&self) -> ConstContext<'a, 'gcx> {
-        ConstContext::new(self.tcx, self.param_env.and(self.identity_substs), self.tables)
-    }
-
-    fn check_const_eval(&self, expr: &'gcx hir::Expr) {
-        if self.tcx.sess.opts.debugging_opts.miri {
-            return;
-        }
-        if let Err(err) = self.const_cx().eval(expr) {
-            match err.kind {
-                UnimplementedConstVal(_) => {}
-                IndexOpFeatureGated => {}
-                ErroneousReferencedConstant(_) => {}
-                TypeckError => {}
-                MiscCatchAll => {}
-                _ => {
-                    self.tcx.lint_node(CONST_ERR,
-                                       expr.id,
-                                       expr.span,
-                                       &format!("constant evaluation error: {}",
-                                                err.description().into_oneline()));
-                }
-            }
-        }
-    }
-
     // Returns true iff all the values of the type are promotable.
     fn type_has_only_promotable_values(&mut self, ty: Ty<'gcx>) -> bool {
         ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) &&
@@ -199,9 +163,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         self.identity_substs = Substs::identity_for_item(self.tcx, item_def_id);
 
         let body = self.tcx.hir.body(body_id);
-        if !self.in_fn {
-            self.check_const_eval(&body.value);
-        }
 
         let tcx = self.tcx;
         let param_env = self.param_env;
@@ -215,54 +176,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         self.tables = outer_tables;
         self.param_env = outer_param_env;
         self.identity_substs = outer_identity_substs;
-    }
-
-    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
-        match p.node {
-            PatKind::Lit(ref lit) => {
-                self.check_const_eval(lit);
-            }
-            PatKind::Range(ref start, ref end, RangeEnd::Excluded) => {
-                match self.const_cx().compare_lit_exprs(start, end) {
-                    Ok(Some(Ordering::Less)) => {}
-                    Ok(Some(Ordering::Equal)) |
-                    Ok(Some(Ordering::Greater)) => {
-                        span_err!(self.tcx.sess,
-                                  start.span,
-                                  E0579,
-                                  "lower range bound must be less than upper");
-                    }
-                    Ok(None) => bug!("ranges must be char or int"),
-                    Err(ErrorReported) => {}
-                }
-            }
-            PatKind::Range(ref start, ref end, RangeEnd::Included) => {
-                match self.const_cx().compare_lit_exprs(start, end) {
-                    Ok(Some(Ordering::Less)) |
-                    Ok(Some(Ordering::Equal)) => {}
-                    Ok(Some(Ordering::Greater)) => {
-                        let mut err = struct_span_err!(
-                            self.tcx.sess,
-                            start.span,
-                            E0030,
-                            "lower range bound must be less than or equal to upper"
-                        );
-                        err.span_label(start.span, "lower bound larger than upper bound");
-                        if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                            err.note("When matching against a range, the compiler verifies that \
-                                      the range is non-empty. Range patterns include both \
-                                      end-points, so this is equivalent to requiring the start of \
-                                      the range to be less than or equal to the end of the range.");
-                        }
-                        err.emit();
-                    }
-                    Ok(None) => bug!("ranges must be char or int"),
-                    Err(ErrorReported) => {}
-                }
-            }
-            _ => {}
-        }
-        intravisit::walk_pat(self, p);
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {
@@ -311,30 +224,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         // Handle borrows on (or inside the autorefs of) this expression.
         if self.mut_rvalue_borrows.remove(&ex.id) {
             self.promotable = false;
-        }
-
-        if self.in_fn && self.promotable && !self.tcx.sess.opts.debugging_opts.miri {
-            match self.const_cx().eval(ex) {
-                Ok(_) => {}
-                Err(ConstEvalErr { kind: UnimplementedConstVal(_), .. }) |
-                Err(ConstEvalErr { kind: MiscCatchAll, .. }) |
-                Err(ConstEvalErr { kind: MiscBinaryOp, .. }) |
-                Err(ConstEvalErr { kind: NonConstPath, .. }) |
-                Err(ConstEvalErr { kind: ErroneousReferencedConstant(_), .. }) |
-                Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shr)), .. }) |
-                Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shl)), .. }) |
-                Err(ConstEvalErr { kind: IndexOpFeatureGated, .. }) => {}
-                Err(ConstEvalErr { kind: TypeckError, .. }) => {}
-                Err(ConstEvalErr {
-                    kind: LayoutError(ty::layout::LayoutError::Unknown(_)), ..
-                }) => {}
-                Err(msg) => {
-                    self.tcx.lint_node(CONST_ERR,
-                                       ex.id,
-                                       msg.span,
-                                       &msg.description().into_oneline().into_owned());
-                }
-            }
         }
 
         if self.promotable {

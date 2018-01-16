@@ -299,7 +299,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let mut val = Operand::Copy(place.clone());
 
                 let bytes = match value.val {
-                    ConstVal::ByteStr(bytes) => Some(bytes.data),
                     ConstVal::Value(Value::ByVal(PrimVal::Ptr(p))) => {
                         let is_array_ptr = ty
                             .builtin_deref(true, ty::NoPreference)
@@ -310,7 +309,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 .tcx()
                                 .interpret_interner
                                 .borrow()
-                                .get_alloc(p.alloc_id.0)
+                                .get_alloc(p.alloc_id)
                                 .map(|alloc| &alloc.bytes[..])
                         } else {
                             None

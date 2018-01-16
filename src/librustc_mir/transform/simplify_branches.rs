@@ -13,6 +13,7 @@
 use rustc::ty::{self, TyCtxt};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
+use rustc::mir::interpret::{Value, PrimVal};
 use transform::{MirPass, MirSource};
 
 use std::borrow::Cow;
@@ -56,9 +57,12 @@ impl MirPass for SimplifyBranches {
                 },
                 TerminatorKind::Assert { target, cond: Operand::Constant(box Constant {
                     literal: Literal::Value {
-                        value: &ty::Const { val: ConstVal::Bool(cond), .. }
+                        value: &ty::Const {
+                            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(cond))),
+                        .. }
                     }, ..
-                }), expected, .. } if cond == expected => {
+                }), expected, .. } if (cond == 1) == expected => {
+                    assert!(cond <= 1);
                     TerminatorKind::Goto { target: target }
                 },
                 TerminatorKind::FalseEdges { real_target, .. } => {

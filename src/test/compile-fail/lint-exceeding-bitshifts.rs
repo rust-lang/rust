@@ -53,7 +53,7 @@ fn main() {
       let n = n << 8; //~ ERROR: bitshift exceeds the type's number of bits
 
       let n = 1u8 << -8; //~ ERROR: bitshift exceeds the type's number of bits
-      //~^ WARN: attempt to shift by a negative amount
+
 
       let n = 1u8 << (4+3);
       let n = 1u8 << (4+4); //~ ERROR: bitshift exceeds the type's number of bits

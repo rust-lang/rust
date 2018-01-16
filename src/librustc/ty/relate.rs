@@ -483,7 +483,6 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             assert_eq!(sz_b.ty, tcx.types.usize);
             let to_u64 = |x: &'tcx ty::Const<'tcx>| -> Result<u64, ErrorReported> {
                 match x.val {
-                    ConstVal::Integral(x) => Ok(x.to_u64().unwrap()),
                     ConstVal::Value(Value::ByVal(prim)) => Ok(prim.to_u64().unwrap()),
                     ConstVal::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
@@ -491,9 +490,6 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                         match tcx.lift_to_global(&substs) {
                             Some(substs) => {
                                 match tcx.const_eval(param_env.and((def_id, substs))) {
-                                    Ok(&ty::Const { val: ConstVal::Integral(x), .. }) => {
-                                        return Ok(x.to_u64().unwrap());
-                                    }
                                     Ok(&ty::Const {
                                         val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
                                         ..

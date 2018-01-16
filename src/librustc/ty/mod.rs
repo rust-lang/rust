@@ -1836,9 +1836,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             if let VariantDiscr::Explicit(expr_did) = v.discr {
                 let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                 match tcx.const_eval(param_env.and((expr_did, substs))) {
-                    Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
-                        discr = v;
-                    }
                     Ok(&ty::Const {
                         val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
                         ..
@@ -1889,10 +1886,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 ty::VariantDiscr::Explicit(expr_did) => {
                     let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                     match tcx.const_eval(param_env.and((expr_did, substs))) {
-                        Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
-                            explicit_value = v;
-                            break;
-                        }
                         Ok(&ty::Const {
                             val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
                             ..

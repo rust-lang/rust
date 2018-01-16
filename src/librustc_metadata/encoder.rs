@@ -199,26 +199,21 @@ impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx
         // point to itself.
         self.interpret_alloc_shorthands.insert(*alloc_id, start);
         let interpret_interner = self.tcx.interpret_interner.borrow();
-        if let Some(alloc) = interpret_interner.get_alloc(alloc_id.0) {
+        if let Some(alloc) = interpret_interner.get_alloc(*alloc_id) {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             usize::max_value().encode(self)?;
             alloc.encode(self)?;
-            let globals = interpret_interner.get_globals(interpret::Pointer {
-                primval: interpret::PrimVal::Ptr(interpret::MemoryPointer {
-                    alloc_id: *alloc_id,
-                    offset: 0,
-                }),
-            });
+            let globals = interpret_interner.get_globals(*alloc_id);
             globals.len().encode(self)?;
             for glob in globals {
                 glob.encode(self)?;
             }
-        } else if let Some(fn_instance) = interpret_interner.get_fn(alloc_id.0) {
+        } else if let Some(fn_instance) = interpret_interner.get_fn(*alloc_id) {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
             (usize::max_value() - 1).encode(self)?;
             fn_instance.encode(self)?;
         } else {
-            bug!("alloc id without corresponding allocation: {}", alloc_id.0);
+            bug!("alloc id without corresponding allocation: {}", alloc_id);
         }
         Ok(())
     }

@@ -204,11 +204,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ty: this.hir.tcx().types.u32,
                         literal: Literal::Value {
                             value: this.hir.tcx().mk_const(ty::Const {
-                                val: if this.hir.tcx().sess.opts.debugging_opts.miri {
-                                    ConstVal::Value(Value::ByVal(PrimVal::Bytes(0)))
-                                } else {
-                                    ConstVal::Integral(ConstInt::U32(0))
-                                },
+                                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
                                 ty: this.hir.tcx().types.u32
                             }),
                         },
@@ -406,11 +402,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
-                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.to_u128_unchecked())))
-                        } else {
-                            ConstVal::Integral(val)
-                        },
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.to_u128_unchecked()))),
                         ty
                     })
                 }
@@ -448,13 +440,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
-                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(
-                                val.to_u128_unchecked()
-                            )))
-                        } else {
-                            ConstVal::Integral(val)
-                        },
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(
+                            val.to_u128_unchecked()
+                        ))),
                         ty
                     })
                 }

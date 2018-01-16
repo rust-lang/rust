@@ -950,11 +950,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             ty: self.tcx().types.usize,
             literal: Literal::Value {
                 value: self.tcx().mk_const(ty::Const {
-                    val: if self.tcx().sess.opts.debugging_opts.miri {
-                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.into())))
-                    } else {
-                        ConstVal::Integral(self.tcx().const_usize(val))
-                    },
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.into()))),
                     ty: self.tcx().types.usize
                 })
             }

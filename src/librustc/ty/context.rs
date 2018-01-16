@@ -54,7 +54,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
 use arena::{TypedArena, DroplessArena};
-use rustc_const_math::{ConstInt, ConstUsize};
+use rustc_const_math::ConstUsize;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use std::any::Any;
@@ -909,7 +909,7 @@ pub struct InterpretInterner<'tcx> {
     /// Reverse map of `alloc_cache`
     ///
     /// Multiple globals may share the same memory
-    global_cache: FxHashMap<interpret::Pointer, Vec<interpret::GlobalId<'tcx>>>,
+    global_cache: FxHashMap<interpret::AllocId, Vec<interpret::GlobalId<'tcx>>>,
 
     /// The AllocId to assign to the next new regular allocation.
     /// Always incremented, never gets smaller.
@@ -959,20 +959,17 @@ impl<'tcx> InterpretInterner<'tcx> {
     pub fn cache(
         &mut self,
         global_id: interpret::GlobalId<'tcx>,
-        ptr: interpret::AllocId,
+        alloc_id: interpret::AllocId,
     ) {
-        if let interpret::PrimVal::Ptr(ptr) = ptr.primval {
-            assert!(ptr.offset == 0);
-        }
-        self.global_cache.entry(ptr).or_default().push(global_id);
-        if let Some(old) = self.alloc_cache.insert(global_id, ptr) {
+        self.global_cache.entry(alloc_id).or_default().push(global_id);
+        if let Some(old) = self.alloc_cache.insert(global_id, alloc_id) {
             bug!("tried to cache {:?}, but was already existing as {:#?}", global_id, old);
         }
     }
 
     pub fn get_globals(
         &self,
-        ptr: interpret::Pointer,
+        ptr: interpret::AllocId,
     ) -> &[interpret::GlobalId<'tcx>] {
         match self.global_cache.get(&ptr) {
             Some(v) => v,
@@ -2099,11 +2096,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_array_const_usize(self, ty: Ty<'tcx>, n: ConstUsize) -> Ty<'tcx> {
         self.mk_ty(TyArray(ty, self.mk_const(ty::Const {
-            val: if self.sess.opts.debugging_opts.miri {
-                ConstVal::Value(Value::ByVal(PrimVal::Bytes(n.as_u64().into())))
-            } else {
-                ConstVal::Integral(ConstInt::Usize(n))
-            },
+            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(n.as_u64().into()))),
             ty: self.types.usize
         })))
     }

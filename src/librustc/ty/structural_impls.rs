@@ -13,7 +13,7 @@
 //! hand, though we've recently added some macros (e.g.,
 //! `BraceStructLiftImpl!`) to help with the tedium.
 
-use middle::const_val::{self, ConstVal, ConstAggregate, ConstEvalErr};
+use middle::const_val::{self, ConstVal, ConstEvalErr};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -1410,54 +1410,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ConstVal<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ConstVal::Integral(i) => ConstVal::Integral(i),
-            ConstVal::Float(f) => ConstVal::Float(f),
-            ConstVal::Str(s) => ConstVal::Str(s),
-            ConstVal::ByteStr(b) => ConstVal::ByteStr(b),
-            ConstVal::Bool(b) => ConstVal::Bool(b),
-            ConstVal::Char(c) => ConstVal::Char(c),
             ConstVal::Value(v) => ConstVal::Value(v),
-            ConstVal::Variant(def_id) => ConstVal::Variant(def_id),
-            ConstVal::Function(def_id, substs) => {
-                ConstVal::Function(def_id, substs.fold_with(folder))
-            }
-            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-                let new_fields: Vec<_> = fields.iter().map(|&(name, v)| {
-                    (name, v.fold_with(folder))
-                }).collect();
-                let fields = if new_fields == fields {
-                    fields
-                } else {
-                    folder.tcx().alloc_name_const_slice(&new_fields)
-                };
-                ConstVal::Aggregate(ConstAggregate::Struct(fields))
-            }
-            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) => {
-                let new_fields: Vec<_> = fields.iter().map(|v| {
-                    v.fold_with(folder)
-                }).collect();
-                let fields = if new_fields == fields {
-                    fields
-                } else {
-                    folder.tcx().alloc_const_slice(&new_fields)
-                };
-                ConstVal::Aggregate(ConstAggregate::Tuple(fields))
-            }
-            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-                let new_fields: Vec<_> = fields.iter().map(|v| {
-                    v.fold_with(folder)
-                }).collect();
-                let fields = if new_fields == fields {
-                    fields
-                } else {
-                    folder.tcx().alloc_const_slice(&new_fields)
-                };
-                ConstVal::Aggregate(ConstAggregate::Array(fields))
-            }
-            ConstVal::Aggregate(ConstAggregate::Repeat(v, count)) => {
-                let v = v.fold_with(folder);
-                ConstVal::Aggregate(ConstAggregate::Repeat(v, count))
-            }
             ConstVal::Unevaluated(def_id, substs) => {
                 ConstVal::Unevaluated(def_id, substs.fold_with(folder))
             }
@@ -1466,25 +1419,7 @@ impl<'tcx> TypeFoldable<'tcx> for ConstVal<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstVal::Integral(_) |
-            ConstVal::Float(_) |
-            ConstVal::Str(_) |
-            ConstVal::ByteStr(_) |
-            ConstVal::Bool(_) |
-            ConstVal::Char(_) |
-            ConstVal::Value(_) |
-            ConstVal::Variant(_) => false,
-            ConstVal::Function(_, substs) => substs.visit_with(visitor),
-            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-                fields.iter().any(|&(_, v)| v.visit_with(visitor))
-            }
-            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
-            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-                fields.iter().any(|v| v.visit_with(visitor))
-            }
-            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
-                v.visit_with(visitor)
-            }
+            ConstVal::Value(_) => false,
             ConstVal::Unevaluated(_, substs) => substs.visit_with(visitor),
         }
     }

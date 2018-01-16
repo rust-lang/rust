@@ -765,7 +765,6 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyArray(_, n) => {
                 self.hash_discriminant_u8(&n.val);
                 match n.val {
-                    ConstVal::Integral(x) => self.hash(x.to_u64().unwrap()),
                     ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => self.hash(b),
                     ConstVal::Unevaluated(def_id, _) => self.def_id(def_id),
                     _ => bug!("arrays should not have {:?} as length", n)

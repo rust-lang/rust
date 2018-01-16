@@ -241,39 +241,16 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        use rustc::middle::const_val::ConstVal;
-
-        let primval = match *const_val {
-            ConstVal::Integral(const_int) => PrimVal::Bytes(const_int.to_u128_unchecked()),
-
-            ConstVal::Float(val) => PrimVal::Bytes(val.bits),
-
-            ConstVal::Bool(b) => PrimVal::from_bool(b),
-            ConstVal::Char(c) => PrimVal::from_char(c),
-
-            ConstVal::Str(ref s) => return self.str_to_value(s),
-
-            ConstVal::ByteStr(ref bs) => {
-                let ptr = self.memory.allocate_cached(bs.data);
-                PrimVal::Ptr(ptr)
-            }
-
+        match *const_val {
             ConstVal::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                return Ok(self.read_global_as_value(GlobalId {
+                Ok(self.read_global_as_value(GlobalId {
                     instance,
                     promoted: None,
-                }, self.layout_of(ty)?));
+                }, self.layout_of(ty)?))
             }
-
-            ConstVal::Aggregate(..) |
-            ConstVal::Variant(_) => bug!("should not have aggregate or variant constants in MIR"),
-            // function items are zero sized and thus have no readable value
-            ConstVal::Function(..) => PrimVal::Undef,
-            ConstVal::Value(val) => return Ok(val),
-        };
-
-        Ok(Value::ByVal(primval))
+            ConstVal::Value(val) => Ok(val),
+        }
     }
 
     pub(super) fn resolve(&self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, ty::Instance<'tcx>> {

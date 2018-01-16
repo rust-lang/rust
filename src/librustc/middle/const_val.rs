@@ -18,9 +18,7 @@ use mir::interpret::{Value, PrimVal};
 
 use graphviz::IntoCow;
 use errors::DiagnosticBuilder;
-use serialize::{self, Encodable, Encoder, Decodable, Decoder};
-use syntax::symbol::InternedString;
-use syntax::ast;
+use serialize;
 use syntax_pos::Span;
 
 use std::borrow::Cow;
@@ -29,17 +27,7 @@ pub type EvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ConstEvalErr<'tcx>>;
 
 #[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
 pub enum ConstVal<'tcx> {
-    Integral(ConstInt),
-    Float(ConstFloat),
-    Str(InternedString),
-    ByteStr(ByteArray<'tcx>),
-    Bool(bool),
-    Char(char),
-    Variant(DefId),
-    Function(DefId, &'tcx Substs<'tcx>),
-    Aggregate(ConstAggregate<'tcx>),
     Unevaluated(DefId, &'tcx Substs<'tcx>),
-    /// A miri value, currently only produced if --miri is enabled
     Value(Value),
 }
 
@@ -50,32 +38,9 @@ pub struct ByteArray<'tcx> {
 
 impl<'tcx> serialize::UseSpecializedDecodable for ByteArray<'tcx> {}
 
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
-pub enum ConstAggregate<'tcx> {
-    Struct(&'tcx [(ast::Name, &'tcx ty::Const<'tcx>)]),
-    Tuple(&'tcx [&'tcx ty::Const<'tcx>]),
-    Array(&'tcx [&'tcx ty::Const<'tcx>]),
-    Repeat(&'tcx ty::Const<'tcx>, u64),
-}
-
-impl<'tcx> Encodable for ConstAggregate<'tcx> {
-    fn encode<S: Encoder>(&self, _: &mut S) -> Result<(), S::Error> {
-        bug!("should never encode ConstAggregate::{:?}", self)
-    }
-}
-
-impl<'tcx> Decodable for ConstAggregate<'tcx> {
-    fn decode<D: Decoder>(_: &mut D) -> Result<Self, D::Error> {
-        bug!("should never decode ConstAggregate")
-    }
-}
-
 impl<'tcx> ConstVal<'tcx> {
     pub fn to_u128(&self) -> Option<u128> {
         match *self {
-            ConstVal::Integral(i) => i.to_u128(),
-            ConstVal::Bool(b) => Some(b as u128),
-            ConstVal::Char(ch) => Some(ch as u32 as u128),
             ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => {
                 Some(b)
             },
@@ -93,7 +58,6 @@ impl<'tcx> ConstVal<'tcx> {
     }
     pub fn unwrap_usize<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> ConstUsize {
         match *self {
-            ConstVal::Integral(ConstInt::Usize(i)) => i,
             ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => {
                 assert_eq!(b as u64 as u128, b);
                 match ConstUsize::new(b as u64, tcx.sess.target.usize_ty) {

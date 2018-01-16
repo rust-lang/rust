@@ -16,7 +16,7 @@ use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
-use rustc_const_math::{ConstInt, ConstUsize};
+use rustc_const_math::ConstUsize;
 use rustc::mir::interpret::{Value, PrimVal};
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -444,12 +444,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             ty: func_ty,
             literal: Literal::Value {
                 value: tcx.mk_const(ty::Const {
-                    val: if tcx.sess.opts.debugging_opts.miri {
-                        // ZST function type
-                        ConstVal::Value(Value::ByVal(PrimVal::Undef))
-                    } else {
-                        ConstVal::Function(self.def_id, substs)
-                    },
+                    // ZST function type
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                     ty: func_ty
                 }),
             },
@@ -512,14 +508,12 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             ty: self.tcx.types.usize,
             literal: Literal::Value {
                 value: self.tcx.mk_const(ty::Const {
-                    val: if self.tcx.sess.opts.debugging_opts.miri {
-                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(value.into())))
-                    } else {
+                    val: {
                         let value = ConstUsize::new(
                             value,
                             self.tcx.sess.target.usize_ty,
-                        ).unwrap();
-                        ConstVal::Integral(ConstInt::Usize(value))
+                        ).unwrap().as_u64();
+                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(value.into())))
                     },
                     ty: self.tcx.types.usize,
                 })
@@ -752,12 +746,8 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ty,
                 literal: Literal::Value {
                     value: tcx.mk_const(ty::Const {
-                        val: if tcx.sess.opts.debugging_opts.miri {
-                            // ZST function type
-                            ConstVal::Value(Value::ByVal(PrimVal::Undef))
-                        } else {
-                            ConstVal::Function(def_id, Substs::identity_for_item(tcx, def_id))
-                        },
+                        // ZST function type
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                         ty
                     }),
                 },

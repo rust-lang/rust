@@ -14,5 +14,6 @@ mod eval;
 mod _match;
 pub mod check_match;
 pub mod pattern;
+pub mod check;
 
 pub use self::eval::*;

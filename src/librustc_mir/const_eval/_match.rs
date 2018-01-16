@@ -15,8 +15,6 @@ use self::WitnessPreference::*;
 use rustc::middle::const_val::ConstVal;
 use const_eval::eval::{compare_const_vals};
 
-use rustc_const_math::ConstInt;
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -183,20 +181,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         self.byte_array_map.entry(pat).or_insert_with(|| {
             match pat.kind {
                 box PatternKind::Constant {
-                    value: &ty::Const { val: ConstVal::ByteStr(b), .. }
-                } => {
-                    b.data.iter().map(|&b| &*pattern_arena.alloc(Pattern {
-                        ty: tcx.types.u8,
-                        span: pat.span,
-                        kind: box PatternKind::Constant {
-                            value: tcx.mk_const(ty::Const {
-                                val: ConstVal::Integral(ConstInt::U8(b)),
-                                ty: tcx.types.u8
-                            })
-                        }
-                    })).collect()
-                }
-                box PatternKind::Constant {
                     value: &ty::Const { val: ConstVal::Value(b), ty }
                 } => {
                     match b {
@@ -209,7 +193,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                             let alloc = tcx
                                 .interpret_interner
                                 .borrow()
-                                .get_alloc(ptr.alloc_id.0)
+                                .get_alloc(ptr.alloc_id)
                                 .unwrap();
                             assert_eq!(ptr.offset, 0);
                             // FIXME: check length
@@ -458,11 +442,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ty::TyBool => {
             [true, false].iter().map(|&b| {
                 ConstantValue(cx.tcx.mk_const(ty::Const {
-                    val: if cx.tcx.sess.opts.debugging_opts.miri {
-                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(b as u128)))
-                    } else {
-                        ConstVal::Bool(b)
-                    },
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b as u128))),
                     ty: cx.tcx.types.bool
                 }))
             }).collect()
@@ -575,9 +555,6 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 
     for row in patterns {
         match *row.kind {
-            PatternKind::Constant { value: &ty::Const { val: ConstVal::ByteStr(b), .. } } => {
-                max_fixed_len = cmp::max(max_fixed_len, b.data.len() as u64);
-            }
             PatternKind::Constant {
                 value: &ty::Const {
                     val: ConstVal::Value(Value::ByVal(PrimVal::Ptr(ptr))),
@@ -592,7 +569,7 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
                     let alloc = cx.tcx
                         .interpret_interner
                         .borrow()
-                        .get_alloc(ptr.alloc_id.0)
+                        .get_alloc(ptr.alloc_id)
                         .unwrap();
                     max_fixed_len = cmp::max(max_fixed_len, alloc.bytes.len() as u64);
                 }
@@ -971,7 +948,6 @@ fn slice_pat_covered_by_constructor(tcx: TyCtxt, _span: Span,
                                     suffix: &[Pattern])
                                     -> Result<bool, ErrorReported> {
     let data: &[u8] = match *ctor {
-        ConstantValue(&ty::Const { val: ConstVal::ByteStr(b), .. }) => b.data,
         ConstantValue(&ty::Const { val: ConstVal::Value(
             Value::ByVal(PrimVal::Ptr(ptr))
         ), ty }) => {
@@ -983,7 +959,7 @@ fn slice_pat_covered_by_constructor(tcx: TyCtxt, _span: Span,
             tcx
                 .interpret_interner
                 .borrow()
-                .get_alloc(ptr.alloc_id.0)
+                .get_alloc(ptr.alloc_id)
                 .unwrap()
                 .bytes
                 .as_ref()
@@ -1002,11 +978,6 @@ fn slice_pat_covered_by_constructor(tcx: TyCtxt, _span: Span,
     {
         match pat.kind {
             box PatternKind::Constant { value } => match value.val {
-                ConstVal::Integral(ConstInt::U8(u)) => {
-                    if u != *ch {
-                        return Ok(false);
-                    }
-                },
                 ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => {
                     assert_eq!(b as u8 as u128, b);
                     if b as u8 != *ch {
@@ -1120,13 +1091,6 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
         PatternKind::Constant { value } => {
             match *constructor {
                 Slice(..) => match value.val {
-                    ConstVal::ByteStr(b) => {
-                        if wild_patterns.len() == b.data.len() {
-                            Some(cx.lower_byte_str_pattern(pat))
-                        } else {
-                            None
-                        }
-                    }
                     ConstVal::Value(Value::ByVal(PrimVal::Ptr(ptr))) => {
                         let is_array_ptr = value.ty
                             .builtin_deref(true, ty::NoPreference)
@@ -1136,7 +1100,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                         let data_len = cx.tcx
                             .interpret_interner
                             .borrow()
-                            .get_alloc(ptr.alloc_id.0)
+                            .get_alloc(ptr.alloc_id)
                             .unwrap()
                             .bytes
                             .len();

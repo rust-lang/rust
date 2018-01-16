@@ -13,13 +13,11 @@
 
 use build::Builder;
 
-use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::mir::interpret::{Value, PrimVal};
 
 use rustc::mir::*;
-use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -63,61 +61,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ty::TyChar => {
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
-                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(0)))
-                        } else {
-                            ConstVal::Char('\0')
-                        },
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
                         ty
                     })
                 }
             }
-            ty::TyUint(ity) => {
-                let val = match ity {
-                    ast::UintTy::U8  => ConstInt::U8(0),
-                    ast::UintTy::U16 => ConstInt::U16(0),
-                    ast::UintTy::U32 => ConstInt::U32(0),
-                    ast::UintTy::U64 => ConstInt::U64(0),
-                    ast::UintTy::U128 => ConstInt::U128(0),
-                    ast::UintTy::Usize => {
-                        let uint_ty = self.hir.tcx().sess.target.usize_ty;
-                        let val = ConstUsize::new(0, uint_ty).unwrap();
-                        ConstInt::Usize(val)
-                    }
-                };
-
+            ty::TyUint(_) |
+            ty::TyInt(_) => {
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
-                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(0)))
-                        } else {
-                            ConstVal::Integral(val)
-                        },
-                        ty
-                    })
-                }
-            }
-            ty::TyInt(ity) => {
-                let val = match ity {
-                    ast::IntTy::I8  => ConstInt::I8(0),
-                    ast::IntTy::I16 => ConstInt::I16(0),
-                    ast::IntTy::I32 => ConstInt::I32(0),
-                    ast::IntTy::I64 => ConstInt::I64(0),
-                    ast::IntTy::I128 => ConstInt::I128(0),
-                    ast::IntTy::Isize => {
-                        let int_ty = self.hir.tcx().sess.target.isize_ty;
-                        let val = ConstIsize::new(0, int_ty).unwrap();
-                        ConstInt::Isize(val)
-                    }
-                };
-
-                Literal::Value {
-                    value: self.hir.tcx().mk_const(ty::Const {
-                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
-                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(0)))
-                        } else {
-                            ConstVal::Integral(val)
-                        },
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
                         ty
                     })
                 }

@@ -119,7 +119,6 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                 }),
                 ref args, ..
             } => match val {
-                ConstVal::Function(def_id, _) => Some((def_id, args)),
                 ConstVal::Value(Value::ByVal(PrimVal::Undef)) => match ty.sty {
                     ty::TyFnDef(did, _) => Some((did, args)),
                     _ => None,

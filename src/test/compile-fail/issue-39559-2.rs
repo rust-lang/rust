@@ -22,7 +22,9 @@ impl Dim for Dim3 {
 
 fn main() {
     let array: [usize; Dim3::dim()]
-    //~^ ERROR calls in constants are limited to constant functions
+    //~^ ERROR E0015
+    //~| ERROR E0080
         = [0; Dim3::dim()];
-        //~^ ERROR calls in constants are limited to constant functions
+        //~^ ERROR E0015
+        //~| ERROR E0080
 }

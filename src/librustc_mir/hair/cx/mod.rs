@@ -25,7 +25,7 @@ use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
-use syntax::ast;
+use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
@@ -119,11 +119,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             Ok(val) => {
                 Literal::Value {
                     value: self.tcx.mk_const(ty::Const {
-                        val: if self.tcx.sess.opts.debugging_opts.miri {
-                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(value as u128)))
-                        } else {
-                            ConstVal::Integral(ConstInt::Usize(val))
-                        },
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.as_u64() as u128))),
                         ty: self.tcx.types.usize
                     })
                 }
@@ -143,11 +139,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn true_literal(&mut self) -> Literal<'tcx> {
         Literal::Value {
             value: self.tcx.mk_const(ty::Const {
-                val: if self.tcx.sess.opts.debugging_opts.miri {
-                    ConstVal::Value(Value::ByVal(PrimVal::Bytes(1)))
-                } else {
-                    ConstVal::Bool(true)
-                },
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(1))),
                 ty: self.tcx.types.bool
             })
         }
@@ -156,11 +148,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     pub fn false_literal(&mut self) -> Literal<'tcx> {
         Literal::Value {
             value: self.tcx.mk_const(ty::Const {
-                val: if self.tcx.sess.opts.debugging_opts.miri {
-                    ConstVal::Value(Value::ByVal(PrimVal::Bytes(0)))
-                } else {
-                    ConstVal::Bool(false)
-                },
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
                 ty: self.tcx.types.bool
             })
         }
@@ -175,13 +163,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     ) -> Literal<'tcx> {
         let tcx = self.tcx.global_tcx();
 
-        let mut repr_ty = ty;
-        if let ty::TyAdt(adt, _) = ty.sty {
-            if adt.is_enum() {
-                repr_ty = adt.repr.discr_type().to_ty(tcx)
-            }
-        }
-
         let parse_float = |num: &str, fty| -> ConstFloat {
             ConstFloat::from_str(num, fty).unwrap_or_else(|_| {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
@@ -189,128 +170,59 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             })
         };
 
-        if tcx.sess.opts.debugging_opts.miri {
-            use rustc::mir::interpret::*;
-            let lit = match *lit {
-                LitKind::Str(ref s, _) => {
-                    let s = s.as_str();
-                    let id = self.tcx.allocate_cached(s.as_bytes());
-                    let ptr = MemoryPointer::new(AllocId(id), 0);
-                    Value::ByValPair(
-                        PrimVal::Ptr(ptr),
-                        PrimVal::from_u128(s.len() as u128),
-                    )
-                },
-                LitKind::ByteStr(ref data) => {
-                    let id = self.tcx.allocate_cached(data);
-                    let ptr = MemoryPointer::new(AllocId(id), 0);
-                    Value::ByVal(PrimVal::Ptr(ptr))
-                },
-                LitKind::Byte(n) => Value::ByVal(PrimVal::Bytes(n as u128)),
-                LitKind::Int(n, _) if neg => {
-                    let n = n as i128;
-                    let n = n.overflowing_neg().0;
-                    Value::ByVal(PrimVal::Bytes(n as u128))
-                },
-                LitKind::Int(n, _) => Value::ByVal(PrimVal::Bytes(n)),
-                LitKind::Float(n, fty) => {
-                    let n = n.as_str();
-                    let mut f = parse_float(&n, fty);
-                    if neg {
-                        f = -f;
-                    }
-                    let bits = f.bits;
-                    Value::ByVal(PrimVal::Bytes(bits))
-                }
-                LitKind::FloatUnsuffixed(n) => {
-                    let fty = match ty.sty {
-                        ty::TyFloat(fty) => fty,
-                        _ => bug!()
-                    };
-                    let n = n.as_str();
-                    let mut f = parse_float(&n, fty);
-                    if neg {
-                        f = -f;
-                    }
-                    let bits = f.bits;
-                    Value::ByVal(PrimVal::Bytes(bits))
-                }
-                LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
-                LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
-            };
-            return Literal::Value {
-                value: self.tcx.mk_const(ty::Const {
-                    val: Value(lit),
-                    ty,
-                }),
-            };
-        }
-
-        use syntax::ast::*;
-        use syntax::ast::LitIntType::*;
-        use rustc::middle::const_val::ConstVal::*;
-        use rustc_const_math::ConstInt::*;
-        use rustc::ty::util::IntTypeExt;
-        use rustc::middle::const_val::ByteArray;
-        use rustc_const_math::ConstFloat;
-
+        use rustc::mir::interpret::*;
         let lit = match *lit {
-            LitKind::Str(ref s, _) => Ok(Str(s.as_str())),
-            LitKind::ByteStr(ref data) => {
-                let data: &'tcx [u8] = data;
-                Ok(ByteStr(ByteArray { data }))
+            LitKind::Str(ref s, _) => {
+                let s = s.as_str();
+                let id = self.tcx.allocate_cached(s.as_bytes());
+                let ptr = MemoryPointer::new(id, 0);
+                Value::ByValPair(
+                    PrimVal::Ptr(ptr),
+                    PrimVal::from_u128(s.len() as u128),
+                )
             },
-            LitKind::Byte(n) => Ok(Integral(U8(n))),
-            LitKind::Int(n, hint) => {
-                match (&repr_ty.sty, hint) {
-                    (&ty::TyInt(ity), _) |
-                    (_, Signed(ity)) => {
-                        let mut n = n as i128;
-                        if neg {
-                            n = n.overflowing_neg().0;
-                        }
-                        Ok(Integral(ConstInt::new_signed_truncating(n,
-                            ity, tcx.sess.target.isize_ty)))
-                    }
-                    (&ty::TyUint(uty), _) |
-                    (_, Unsigned(uty)) => {
-                        Ok(Integral(ConstInt::new_unsigned_truncating(n,
-                            uty, tcx.sess.target.usize_ty)))
-                    }
-                    _ => bug!()
-                }
-            }
+            LitKind::ByteStr(ref data) => {
+                let id = self.tcx.allocate_cached(data);
+                let ptr = MemoryPointer::new(id, 0);
+                Value::ByVal(PrimVal::Ptr(ptr))
+            },
+            LitKind::Byte(n) => Value::ByVal(PrimVal::Bytes(n as u128)),
+            LitKind::Int(n, _) if neg => {
+                let n = n as i128;
+                let n = n.overflowing_neg().0;
+                Value::ByVal(PrimVal::Bytes(n as u128))
+            },
+            LitKind::Int(n, _) => Value::ByVal(PrimVal::Bytes(n)),
             LitKind::Float(n, fty) => {
-                let mut f = parse_float(&n.as_str(), fty);
+                let n = n.as_str();
+                let mut f = parse_float(&n, fty);
                 if neg {
                     f = -f;
                 }
-                Ok(ConstVal::Float(f))
+                let bits = f.bits;
+                Value::ByVal(PrimVal::Bytes(bits))
             }
             LitKind::FloatUnsuffixed(n) => {
                 let fty = match ty.sty {
                     ty::TyFloat(fty) => fty,
                     _ => bug!()
                 };
-                let mut f = parse_float(&n.as_str(), fty);
+                let n = n.as_str();
+                let mut f = parse_float(&n, fty);
                 if neg {
                     f = -f;
                 }
-                Ok(ConstVal::Float(f))
+                let bits = f.bits;
+                Value::ByVal(PrimVal::Bytes(bits))
             }
-            LitKind::Bool(b) => Ok(Bool(b)),
-            LitKind::Char(c) => Ok(Char(c)),
+            LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
+            LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
         };
-
-        match lit {
-            Ok(value) => Literal::Value { value: self.tcx.mk_const(ty::Const {
-                val: value,
+        Literal::Value {
+            value: self.tcx.mk_const(ty::Const {
+                val: ConstVal::Value(lit),
                 ty,
-            }) },
-            Err(kind) => self.fatal_const_eval_err(&ConstEvalErr {
-                span: sp,
-                kind,
-            }, sp, "expression")
+            }),
         }
     }
 
@@ -352,12 +264,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 return (method_ty,
                         Literal::Value {
                             value: self.tcx.mk_const(ty::Const {
-                                val: if self.tcx.sess.opts.debugging_opts.miri {
-                                    // ZST function type
-                                    ConstVal::Value(Value::ByVal(PrimVal::Undef))
-                                } else {
-                                    ConstVal::Function(item.def_id, substs)
-                                },
+                                // ZST function type
+                                val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                                 ty: method_ty
                             }),
                         });

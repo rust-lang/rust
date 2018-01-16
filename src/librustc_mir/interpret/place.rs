@@ -118,10 +118,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn read_field(
         &self,
         base: Value,
+        variant: Option<usize>,
         field: mir::Field,
         base_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(Value, Ty<'tcx>)>> {
-        let base_layout = self.layout_of(base_ty)?;
+        let mut base_layout = self.layout_of(base_ty)?;
+        if let Some(variant_index) = variant {
+            base_layout = base_layout.for_variant(self, variant_index);
+        }
         let field_index = field.index();
         let field = base_layout.field(self, field_index)?;
         let offset = base_layout.fields.offset(field_index);
@@ -149,7 +153,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         };
         let base_ty = self.place_ty(&proj.base);
         match proj.elem {
-            Field(field, _) => Ok(self.read_field(base, field, base_ty)?.map(|(f, _)| f)),
+            Field(field, _) => Ok(self.read_field(base, None, field, base_ty)?.map(|(f, _)| f)),
             // The NullablePointer cases should work fine, need to take care for normal enums
             Downcast(..) |
             Subslice { .. } |

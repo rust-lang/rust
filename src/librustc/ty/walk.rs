@@ -11,7 +11,7 @@
 //! An iterator over the type substructure.
 //! WARNING: this does not keep track of the region depth.
 
-use middle::const_val::{ConstVal, ConstAggregate};
+use middle::const_val::ConstVal;
 use ty::{self, Ty};
 use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
@@ -140,31 +140,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
 
 fn push_const<'tcx>(stack: &mut TypeWalkerStack<'tcx>, constant: &'tcx ty::Const<'tcx>) {
     match constant.val {
-        ConstVal::Integral(_) |
-        ConstVal::Float(_) |
-        ConstVal::Str(_) |
-        ConstVal::ByteStr(_) |
-        ConstVal::Bool(_) |
-        ConstVal::Char(_) |
-        ConstVal::Value(_) |
-        ConstVal::Variant(_) => {}
-        ConstVal::Function(_, substs) => {
-            stack.extend(substs.types().rev());
-        }
-        ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-            for &(_, v) in fields.iter().rev() {
-                push_const(stack, v);
-            }
-        }
-        ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
-        ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-            for v in fields.iter().rev() {
-                push_const(stack, v);
-            }
-        }
-        ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
-            push_const(stack, v);
-        }
+        ConstVal::Value(_) => {}
         ConstVal::Unevaluated(_, substs) => {
             stack.extend(substs.types().rev());
         }

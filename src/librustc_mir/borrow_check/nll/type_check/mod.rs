@@ -260,12 +260,11 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 // would be lost if we just look at the normalized
                 // value.
                 let did = match value.val {
-                    ConstVal::Function(def_id, ..) => Some(def_id),
                     ConstVal::Value(Value::ByVal(PrimVal::Ptr(p))) => {
                         self.tcx()
                             .interpret_interner
                             .borrow()
-                            .get_fn(p.alloc_id.0)
+                            .get_fn(p.alloc_id)
                             .map(|instance| instance.def_id())
                     },
                     ConstVal::Value(Value::ByVal(PrimVal::Undef)) => {
@@ -1044,11 +1043,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     },
                 ..
             }) => match val {
-                ConstVal::Function(def_id, _) => {
-                    Some(def_id) == self.tcx().lang_items().box_free_fn()
-                },
                 ConstVal::Value(Value::ByVal(PrimVal::Ptr(p))) => {
-                    let inst = self.tcx().interpret_interner.borrow().get_fn(p.alloc_id.0);
+                    let inst = self.tcx().interpret_interner.borrow().get_fn(p.alloc_id);
                     inst.map_or(false, |inst| {
                         Some(inst.def_id()) == self.tcx().lang_items().box_free_fn()
                     })

@@ -281,8 +281,7 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
         let pos = self.position();
         match usize::decode(self)? {
             ::std::usize::MAX => {
-                let id = interpret_interner().reserve();
-                let alloc_id = interpret::AllocId(id);
+                let alloc_id = interpret_interner().reserve();
                 trace!("creating alloc id {:?} at {}", alloc_id, pos);
                 // insert early to allow recursive allocs
                 self.interpret_alloc_cache.insert(pos, alloc_id);
@@ -290,18 +289,12 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
                 let allocation = interpret::Allocation::decode(self)?;
                 trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
                 let allocation = self.tcx.unwrap().intern_const_alloc(allocation);
-                interpret_interner().intern_at_reserved(id, allocation);
+                interpret_interner().intern_at_reserved(alloc_id, allocation);
 
                 let num = usize::decode(self)?;
-                let ptr = interpret::Pointer {
-                    primval: interpret::PrimVal::Ptr(interpret::MemoryPointer {
-                        alloc_id,
-                        offset: 0,
-                    }),
-                };
                 for _ in 0..num {
                     let glob = interpret::GlobalId::decode(self)?;
-                    interpret_interner().cache(glob, ptr);
+                    interpret_interner().cache(glob, alloc_id);
                 }
 
                 Ok(alloc_id)
@@ -310,7 +303,7 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
                 trace!("creating fn alloc id at {}", pos);
                 let instance = ty::Instance::decode(self)?;
                 trace!("decoded fn alloc instance: {:?}", instance);
-                let id = interpret::AllocId(interpret_interner().create_fn_alloc(instance));
+                let id = interpret_interner().create_fn_alloc(instance);
                 trace!("created fn alloc id: {:?}", id);
                 self.interpret_alloc_cache.insert(pos, id);
                 Ok(id)

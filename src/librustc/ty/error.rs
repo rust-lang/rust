@@ -19,8 +19,6 @@ use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
-use rustc_const_math::ConstInt;
-
 use hir;
 
 #[derive(Clone, Copy, Debug)]
@@ -188,8 +186,6 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyForeign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)),
             ty::TyArray(_, n) => {
                 match n.val {
-                    ConstVal::Integral(ConstInt::Usize(n)) =>
-                        format!("array of {} elements", n),
                     ConstVal::Value(Value::ByVal(PrimVal::Bytes(n))) =>
                         format!("array of {} elements", n),
                     _ => "array".to_string(),
