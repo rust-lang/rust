@@ -257,14 +257,12 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     if let Some(id) = node_id {
         if tcx.sess.plugin_registrar_fn.get() == Some(id) {
-            let idx = def_id.index;
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return tcx.sess.generate_plugin_registrar_symbol(disambiguator, idx);
+            return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
         if tcx.sess.derive_registrar_fn.get() == Some(id) {
-            let idx = def_id.index;
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return tcx.sess.generate_derive_registrar_symbol(disambiguator, idx);
+            return tcx.sess.generate_derive_registrar_symbol(disambiguator);
         }
     }
 
