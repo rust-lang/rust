@@ -1,6 +1,6 @@
 use syntax::ast::{Item, ItemKind, Ty, TyKind};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use utils::{in_macro, span_lint_and_then};
+use utils::{in_macro, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for constants with an explicit `'static` lifetime.
 ///
@@ -51,14 +51,15 @@ impl StaticConst {
                         TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) |
                         TyKind::Tup(..) => {
                             if lifetime.ident.name == "'static" {
-                                let mut sug: String = String::new();
+                                let snip = snippet(cx, borrow_type.ty.span, "<type>");
+                                let sugg = format!("&{}", snip);
                                 span_lint_and_then(
                                     cx,
                                     CONST_STATIC_LIFETIME,
                                     lifetime.span,
                                     "Constants have by default a `'static` lifetime",
                                     |db| {
-                                        db.span_suggestion(lifetime.span, "consider removing `'static`", sug);
+                                        db.span_suggestion(ty.span, "consider removing `'static`", sugg);
                                     },
                                 );
                             }
