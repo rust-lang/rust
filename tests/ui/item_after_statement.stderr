@@ -12,3 +12,5 @@ error: adding items after statements is confusing, since items exist from the st
 17 |     fn foo() { println!("foo"); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 2 previous errors
+

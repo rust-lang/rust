@@ -60,3 +60,5 @@ error: casting u32 to f64 may become silently lossy if types change
 14 |     1u32 as f64;
    |     ^^^^^^^^^^^ help: try: `f64::from(1u32)`
 
+error: aborting due to 10 previous errors
+

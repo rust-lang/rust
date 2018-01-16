@@ -6,3 +6,5 @@ error[E0658]: compiler plugins are experimental and possibly buggy (see issue #2
   |
   = help: add #![feature(plugin)] to the crate attributes to enable
 
+error: aborting due to previous error
+

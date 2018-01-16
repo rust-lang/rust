@@ -30,3 +30,5 @@ error: item name starts with its containing module's name
 12 |     pub struct Foo7Bar;
    |     ^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 5 previous errors
+

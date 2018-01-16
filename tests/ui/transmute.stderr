@@ -204,3 +204,5 @@ error: transmute from a `&mut [u8]` to a `&mut str`
 140 |     let _: &mut str = unsafe { std::mem::transmute(mb) };
     |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_mut(mb).unwrap()`
 
+error: aborting due to 32 previous errors
+

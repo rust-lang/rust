@@ -48,3 +48,5 @@ error: the operation is ineffective. Consider reducing it to `u`
 32 |     u & 255;
    |     ^^^^^^^
 
+error: aborting due to 8 previous errors
+

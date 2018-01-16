@@ -12,3 +12,5 @@ help: assign the `CString` to a variable to extend its lifetime
 7 |     CString::new("foo").unwrap().as_ptr();
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to previous error
+

@@ -83,3 +83,5 @@ note: std::f32::EPSILON and std::f64::EPSILON are available.
 25 |     v != ONE;
    |     ^^^^^^^^
 
+error: aborting due to 7 previous errors
+

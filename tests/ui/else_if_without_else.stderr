@@ -18,3 +18,5 @@ error: if expression with an `else if`, but without a final `else`
 49 | |     }
    | |_____^ help: add an `else` block here
 
+error: aborting due to 2 previous errors
+

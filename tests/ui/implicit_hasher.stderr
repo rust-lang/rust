@@ -133,3 +133,5 @@ help: consider adding a type parameter
 78 |         pub fn $name<S: ::std::hash::BuildHasher>(_map: &mut HashMap<i32, i32>, _set: &mut HashSet<i32, S>) {
    |
 
+error: aborting due to 10 previous errors
+

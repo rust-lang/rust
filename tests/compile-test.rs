@@ -46,7 +46,9 @@ fn config(dir: &'static str, mode: &'static str) -> compiletest::Config {
     config.target_rustcflags = Some(format!("-L {0} -L {0}/deps -Dwarnings", host_libs().display()));
 
     config.mode = cfg_mode;
-    config.build_base = {
+    config.build_base = if rustc_test_suite().is_some() {
+        PathBuf::from("/tmp/clippy_test_build_base")
+    } else {
         let mut path = std::env::current_dir().unwrap();
         path.push("target/debug/test_build_base");
         path
