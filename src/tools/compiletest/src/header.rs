@@ -44,7 +44,7 @@ impl EarlyProps {
             props.ignore =
                 props.ignore ||
                 config.parse_cfg_name_directive(ln, "ignore") ||
-                (config.parse_cfg_prefix(ln, "only") &&
+                (config.has_cfg_prefix(ln, "only") &&
                 !config.parse_cfg_name_directive(ln, "only")) ||
                 ignore_gdb(config, ln) ||
                 ignore_lldb(config, ln) ||
@@ -566,7 +566,7 @@ impl Config {
         }
     }
 
-    fn parse_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
+    fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
         // returns whether this line contains this prefix or not. For prefix
         // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
         // "ignore-andorid" etc.
