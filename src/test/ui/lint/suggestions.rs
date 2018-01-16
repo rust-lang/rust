@@ -24,6 +24,16 @@ pub fn defiant<T>(_t: T) {}
 fn rio_grande() {} // should suggest `pub`
 //~^ WARN function is marked
 
+mod badlands {
+    // The private-no-mangle lints shouldn't suggest inserting `pub` when the
+    // item is already `pub` (but triggered the lint because, e.g., it's in a
+    // private module). (Issue #47383)
+    #[no_mangle] pub static DAUNTLESS: bool = true;
+    //~^ WARN static is marked
+    #[no_mangle] pub fn val_jean() {}
+    //~^ WARN function is marked
+}
+
 struct Equinox {
     warp_factor: f32,
 }
