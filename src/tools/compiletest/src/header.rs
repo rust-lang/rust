@@ -41,6 +41,8 @@ impl EarlyProps {
         iter_header(testfile,
                     None,
                     &mut |ln| {
+            // we should check if any only-<platform> exists and if it exists
+            // and does not matches the current platform, skip the test
             props.ignore =
                 props.ignore ||
                 config.parse_cfg_name_directive(ln, "ignore") ||
