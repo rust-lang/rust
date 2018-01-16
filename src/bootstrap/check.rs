@@ -424,6 +424,43 @@ fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
     env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocJS {
+    pub host: Interned<String>,
+    pub target: Interned<String>,
+}
+
+impl Step for RustdocJS {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/test/rustdoc-js")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(RustdocJS {
+            host: run.host,
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        if let Some(ref nodejs) = builder.config.nodejs {
+            let mut command = Command::new(nodejs);
+            command.args(&["src/tools/rustdoc-js/tester.js", &*self.host]);
+            builder.ensure(::doc::Std {
+                target: self.target,
+                stage: builder.top_stage,
+            });
+            builder.run(&mut command);
+        } else {
+            println!("No nodejs found, skipping \"src/test/rustdoc-js\" tests");
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy {
     host: Interned<String>,
