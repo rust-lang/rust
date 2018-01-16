@@ -1104,11 +1104,13 @@ fn main() {
 #### `true`:
 
 ```rust
-match lorem {
-    Lorem::Ipsum => {
-        println!("ipsum");
-    },
-    Lorem::Dolor => println!("dolor"),
+fn main() {
+    match lorem {
+        Lorem::Ipsum => {
+            println!("ipsum");
+        },
+        Lorem::Dolor => println!("dolor"),
+    }
 }
 ```
 
