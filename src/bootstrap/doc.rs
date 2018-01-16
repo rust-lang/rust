@@ -419,8 +419,8 @@ impl Step for Standalone {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
-    stage: u32,
-    target: Interned<String>,
+    pub stage: u32,
+    pub target: Interned<String>,
 }
 
 impl Step for Std {
