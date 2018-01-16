@@ -12,7 +12,7 @@ doctest = false
 
 [dependencies]
 pulldown-cmark = { version = "0.1.0", default-features = false }
-html-diff = "0.0.5"
+html-diff = "0.0.6"
 tempdir = "0.3"
 
 [build-dependencies]
