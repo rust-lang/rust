@@ -570,11 +570,7 @@ impl Config {
         // returns whether this line contains this prefix or not. For prefix
         // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
         // "ignore-andorid" etc.
-        if line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-') {
-            true
-        } else {
-            false
-        }
+        line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-')
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
