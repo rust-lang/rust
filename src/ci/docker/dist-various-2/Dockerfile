@@ -23,8 +23,6 @@ RUN add-apt-repository -y 'deb http://apt.dilos.org/dilos dilos2-testing main'
 WORKDIR /tmp
 COPY dist-various-2/shared.sh /tmp/
 COPY dist-various-2/build-cloudabi-toolchain.sh /tmp/
-RUN /tmp/build-cloudabi-toolchain.sh aarch64-unknown-cloudabi
-RUN /tmp/build-cloudabi-toolchain.sh i686-unknown-cloudabi
 RUN /tmp/build-cloudabi-toolchain.sh x86_64-unknown-cloudabi
 COPY dist-various-2/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
@@ -52,12 +50,6 @@ ENV \
 # FIXME(EdSchouten): Remove this once cc ≥1.0.4 has been merged. It can
 # automatically pick the right compiler path.
 ENV \
-    AR_aarch64_unknown_cloudabi=aarch64-unknown-cloudabi-ar \
-    CC_aarch64_unknown_cloudabi=aarch64-unknown-cloudabi-clang \
-    CXX_aarch64_unknown_cloudabi=aarch64-unknown-cloudabi-clang++ \
-    AR_i686_unknown_cloudabi=i686-unknown-cloudabi-ar \
-    CC_i686_unknown_cloudabi=i686-unknown-cloudabi-clang \
-    CXX_i686_unknown_cloudabi=i686-unknown-cloudabi-clang++ \
     AR_x86_64_unknown_cloudabi=x86_64-unknown-cloudabi-ar \
     CC_x86_64_unknown_cloudabi=x86_64-unknown-cloudabi-clang \
     CXX_x86_64_unknown_cloudabi=x86_64-unknown-cloudabi-clang++
@@ -68,10 +60,6 @@ ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,x86_64-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
-ENV TARGETS=$TARGETS,aarch64-unknown-cloudabi
-# FIXME(EdSchouten): Enable ARMv7 support once libc ≥0.2.37 has been merged.
-# ENV TARGETS=$TARGETS,armv7-unknown-cloudabi-eabihf
-ENV TARGETS=$TARGETS,i686-unknown-cloudabi
 ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
 
 ENV RUST_CONFIGURE_ARGS --target=$TARGETS --enable-extended
