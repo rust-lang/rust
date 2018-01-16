@@ -98,6 +98,15 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    fn check_trait_fn_not_inline(&self, trait_item: &TraitItem) {
+        if let Some(attr) = trait_item.attrs.iter().find(|a| a.path == "inline") {
+            self.session.buffer_lint(
+                lint::builtin::INLINE_ATTRS_IN_FNS_WITHOUT_BODY,
+                trait_item.id, attr.span,
+                "inline attributes have no effect on methods without bodies");
+        }
+    }
+
     fn no_questions_in_bounds(&self, bounds: &TyParamBounds, where_: &str, is_trait: bool) {
         for bound in bounds {
             if let TraitTyParamBound(ref poly, TraitBoundModifier::Maybe) = *bound {
@@ -284,6 +293,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
                         self.check_trait_fn_not_const(sig.constness);
                         if block.is_none() {
+                            self.check_trait_fn_not_inline(trait_item);
+
                             self.check_decl_no_pat(&sig.decl, |span, mut_ident| {
                                 if mut_ident {
                                     self.session.buffer_lint(
