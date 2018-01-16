@@ -584,13 +584,9 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
 
             DefiningTy::FnDef(_, substs) => substs,
 
-            // When we encounter other sorts of constant
-            // expressions, such as the `22` in `[foo; 22]`, we can
-            // get the type `usize` here. For now, just return an
-            // empty vector of substs in this case, since there are no
-            // generics in scope in such expressions right now.
+            // When we encounter a constant body, just return whatever
+            // substitutions are in scope for that constant.
             DefiningTy::Const(_) => {
-                assert!(identity_substs.is_empty());
                 identity_substs
             }
         };
@@ -654,9 +650,8 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 sig.inputs_and_output()
             }
 
-            // This happens on things like `[foo; 22]`. Hence, no
-            // inputs, one output, but it seems like we need a more
-            // general way to handle this category of MIR.
+            // For a constant body, there are no inputs, and one
+            // "output" (the type of the constant).
             DefiningTy::Const(ty) => ty::Binder::dummy(tcx.mk_type_list(iter::once(ty))),
         }
     }
