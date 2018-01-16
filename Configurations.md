@@ -1035,10 +1035,10 @@ Item layout inside a imports block
 #### `"Mixed"` (default):
 
 ```rust
-use foo::{xxx, yyy, zzz};
+use foo::{xxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzzzz};
 
-use foo::{aaa, bbb, ccc,
-          ddd, eee, fff};
+use foo::{aaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbb, cccccccccccccccccc, dddddddddddddddddd,
+          eeeeeeeeeeeeeeeeee, ffffffffffffffffff};
 ```
 
 #### `"Horizontal"`:
