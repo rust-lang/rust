@@ -4181,6 +4181,7 @@ mod tests {
         }
     }
 
+    #[test]
     fn into_rc() {
         let orig = "hello/world";
         let path = Path::new(orig);
