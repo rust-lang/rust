@@ -250,7 +250,7 @@ pub fn format_expr(
                         PairParts::new("", &sp_delim, ""),
                         context,
                         shape,
-                        SeparatorPlace::Front,
+                        context.config.binop_separator(),
                     )
                 }
                 (None, Some(rhs)) => {
