@@ -2,12 +2,12 @@ environment:
     global:
         PROJECT_NAME: rust-clippy
     matrix:
-        - TARGET: i686-pc-windows-gnu
-          MSYS2_BITS: 32
+        #- TARGET: i686-pc-windows-gnu
+        #  MSYS2_BITS: 32
         - TARGET: i686-pc-windows-msvc
           MSYS2_BITS: 32
-        - TARGET: x86_64-pc-windows-gnu
-          MSYS2_BITS: 64
+        #- TARGET: x86_64-pc-windows-gnu
+        #  MSYS2_BITS: 64
         - TARGET: x86_64-pc-windows-msvc
           MSYS2_BITS: 64
 
