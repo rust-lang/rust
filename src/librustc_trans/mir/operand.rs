@@ -92,14 +92,14 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         }
     }
 
-    pub fn from_const(bcx: &Builder<'a, 'tcx>,
+    pub fn from_const(bx: &Builder<'a, 'tcx>,
                       miri_val: MiriValue,
                       ty: ty::Ty<'tcx>)
                       -> Result<OperandRef<'tcx>, ConstEvalErr<'tcx>> {
-        let layout = bcx.ccx.layout_of(ty);
+        let layout = bx.cx.layout_of(ty);
 
         if layout.is_zst() {
-            return Ok(OperandRef::new_zst(bcx.ccx, layout));
+            return Ok(OperandRef::new_zst(bx.cx, layout));
         }
 
         let val = match miri_val {
@@ -109,10 +109,10 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                     _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
                 };
                 let llval = primval_to_llvm(
-                    bcx.ccx,
+                    bx.cx,
                     x,
                     scalar,
-                    layout.immediate_llvm_type(bcx.ccx),
+                    layout.immediate_llvm_type(bx.cx),
                 );
                 OperandValue::Immediate(llval)
             },
@@ -122,16 +122,16 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                     _ => bug!("from_const: invalid ByValPair layout: {:#?}", layout)
                 };
                 let a_llval = primval_to_llvm(
-                    bcx.ccx,
+                    bx.cx,
                     a,
                     a_scalar,
-                    layout.scalar_pair_element_llvm_type(bcx.ccx, 0),
+                    layout.scalar_pair_element_llvm_type(bx.cx, 0),
                 );
                 let b_llval = primval_to_llvm(
-                    bcx.ccx,
+                    bx.cx,
                     b,
                     b_scalar,
-                    layout.scalar_pair_element_llvm_type(bcx.ccx, 1),
+                    layout.scalar_pair_element_llvm_type(bx.cx, 1),
                 );
                 OperandValue::Pair(a_llval, b_llval)
             },
@@ -141,12 +141,12 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                     valid_range: 0..=!0
                 };
                 let ptr = primval_to_llvm(
-                    bcx.ccx,
+                    bx.cx,
                     ptr.into_inner_primval(),
                     &scalar,
-                    layout.llvm_type(bcx.ccx).ptr_to(),
+                    layout.llvm_type(bx.cx).ptr_to(),
                 );
-                return Ok(PlaceRef::new_sized(ptr, layout, align).load(bcx));
+                return Ok(PlaceRef::new_sized(ptr, layout, align).load(bx));
             },
         };
 

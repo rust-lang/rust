@@ -10,7 +10,7 @@ use rustc::ty::layout::{self, Size, Align, HasDataLayout, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
-use syntax::codemap::{self, DUMMY_SP};
+use syntax::codemap::{self, DUMMY_SP, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
     GlobalId, Value, Pointer, PrimVal, PrimValKind,
@@ -464,7 +464,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             StackPopCleanup::MarkStatic(mutable) => {
                 if let Place::Ptr { ptr, .. } = frame.return_place {
                     // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
-                    self.memory.mark_static_initalized(
+                    self.memory.mark_static_initialized(
                         ptr.to_ptr()?.alloc_id,
                         mutable,
                     )?
@@ -1572,7 +1572,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(())
     }
 
-    pub fn report(&self, e: &mut EvalError, as_err: bool) {
+    pub fn report(&self, e: &mut EvalError, as_err: bool, explicit_span: Option<Span>) {
         if let EvalErrorKind::TypeckError = e.kind {
             return;
         }
@@ -1608,11 +1608,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
         if let Some(frame) = self.stack().last() {
             let block = &frame.mir.basic_blocks()[frame.block];
-            let span = if frame.stmt < block.statements.len() {
+            let span = explicit_span.unwrap_or_else(|| if frame.stmt < block.statements.len() {
                 block.statements[frame.stmt].source_info.span
             } else {
                 block.terminator().source_info.span
-            };
+            });
+            trace!("reporting const eval failure at {:?}", span);
             let node_id = self
                 .stack()
                 .iter()
@@ -1634,6 +1635,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             let mut last_span = None;
             for &Frame { instance, span, .. } in self.stack().iter().rev() {
                 // make sure we don't emit frames that are duplicates of the previous
+                if explicit_span == Some(span) {
+                    continue;
+                }
                 if let Some(last) = last_span {
                     if last == span {
                         continue;

@@ -204,7 +204,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     let (otherwise, targets) = targets.split_last().unwrap();
                     let switch = bx.switch(discr.immediate(),
                                             llblock(self, *otherwise), values.len());
-                    let switch_llty = bcx.ccx.layout_of(switch_ty).immediate_llvm_type(bcx.ccx);
+                    let switch_llty = bx.cx.layout_of(switch_ty).immediate_llvm_type(bx.cx);
                     for (&value, target) in values.iter().zip(targets) {
                         let llval = C_uint_big(switch_llty, value);
                         let llbb = llblock(self, *target);

@@ -128,7 +128,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
             _ => None,
         };
         if let Some((def_id, args)) = check {
-            if Some(def_id) == self.cx.ccx.tcx().lang_items().box_free_fn() {
+            if Some(def_id) == self.fx.cx.tcx.lang_items().box_free_fn() {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.

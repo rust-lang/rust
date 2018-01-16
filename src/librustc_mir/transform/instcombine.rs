@@ -23,7 +23,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use std::mem;
 use std::collections::VecDeque;
 use transform::{MirPass, MirSource};
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::codemap::Span;
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use rustc::ty::subst::Substs;
 
@@ -147,7 +147,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for InstCombineVisitor<'a, 'tcx> {
             TerminatorKind::SwitchInt { discr: value, .. } |
             TerminatorKind::Yield { value, .. } |
             TerminatorKind::Assert { cond: value, .. } => {
-                if let Some((new, ty, span)) = self.optimizations.const_prop.remove(&location) {
+                if let Some((new, ty, span)) = self.optimizations.terminators.remove(&block) {
                     let new = self.tcx.mk_const(ty::Const {
                         val: ConstVal::Value(new),
                         ty,
@@ -190,13 +190,13 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
         }
     }
 
-    fn eval_constant(&mut self, c: &Constant<'tcx>, span: Span) -> Option<Const<'tcx>> {
+    fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<Const<'tcx>> {
         if let Some(&val) = self.optimizations.constants.get(c) {
             return Some(val);
         }
         match c.literal {
             Literal::Value { value } => match value.val {
-                ConstVal::Value(v) => Some((v, value.ty, span)),
+                ConstVal::Value(v) => Some((v, value.ty, c.span)),
                 ConstVal::Unevaluated(did, substs) => {
                     let param_env = self.tcx.param_env(self.source.def_id);
                     let span = self.tcx.def_span(did);
@@ -230,10 +230,9 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                     instance,
                     promoted: Some(index),
                 };
-                let span = self.tcx.def_span(self.source.def_id);
                 let param_env = self.tcx.param_env(self.source.def_id);
                 let (value, _, ty) = eval_body_with_mir(self.tcx, cid, self.mir, param_env)?;
-                let val = (value, ty, span);
+                let val = (value, ty, c.span);
                 trace!("evaluated {:?} to {:?}", c, val);
                 self.optimizations.constants.insert(c.clone(), val);
                 Some(val)
@@ -241,9 +240,9 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
         }
     }
 
-    fn eval_operand(&mut self, op: &Operand<'tcx>, span: Span) -> Option<Const<'tcx>> {
+    fn eval_operand(&mut self, op: &Operand<'tcx>) -> Option<Const<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c, span),
+            Operand::Constant(ref c) => self.eval_constant(c),
             Operand::Move(ref place) | Operand::Copy(ref place) => match *place {
                 Place::Local(loc) => self.optimizations.places.get(&loc).cloned(),
                 // FIXME(oli-obk): field and index projections
@@ -253,13 +252,13 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
         }
     }
 
-    fn simplify_operand(&mut self, op: &Operand<'tcx>, span: Span) -> Option<Const<'tcx>> {
+    fn simplify_operand(&mut self, op: &Operand<'tcx>) -> Option<Const<'tcx>> {
         match *op {
             Operand::Constant(ref c) => match c.literal {
                 Literal::Value { .. } => None,
-                _ => self.eval_operand(op, span),
+                _ => self.eval_operand(op),
             },
-            _ => self.eval_operand(op, span),
+            _ => self.eval_operand(op),
         }
     }
 
@@ -270,7 +269,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
         span: Span,
     ) -> Option<Const<'tcx>> {
         match *rvalue {
-            Rvalue::Use(ref op) => self.simplify_operand(op, span),
+            Rvalue::Use(ref op) => self.simplify_operand(op),
             Rvalue::Repeat(..) |
             Rvalue::Ref(..) |
             Rvalue::Cast(..) |
@@ -300,15 +299,15 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                 }
                 let substs = Substs::identity_for_item(self.tcx, self.source.def_id);
                 let instance = Instance::new(self.source.def_id, substs);
-                let ecx = mk_borrowck_eval_cx(self.tcx, instance, self.mir).unwrap();
+                let ecx = mk_borrowck_eval_cx(self.tcx, instance, self.mir, span).unwrap();
 
-                let val = self.eval_operand(arg, span)?;
+                let val = self.eval_operand(arg)?;
                 let prim = ecx.value_to_primval(ValTy { value: val.0, ty: val.1 }).ok()?;
                 let kind = ecx.ty_to_primval_kind(val.1).ok()?;
                 match unary_op(op, prim, kind) {
                     Ok(val) => Some((Value::ByVal(val), place_ty, span)),
                     Err(mut err) => {
-                        ecx.report(&mut err, false);
+                        ecx.report(&mut err, false, Some(span));
                         None
                     },
                 }
@@ -316,8 +315,8 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
                 trace!("rvalue binop {:?} for {:?} and {:?}", op, left, right);
-                let left = self.eval_operand(left, span)?;
-                let right = self.eval_operand(right, span)?;
+                let left = self.eval_operand(left)?;
+                let right = self.eval_operand(right)?;
                 let def_id = if self.tcx.is_closure(self.source.def_id) {
                     self.tcx.closure_base_def_id(self.source.def_id)
                 } else {
@@ -331,7 +330,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                 }
                 let substs = Substs::identity_for_item(self.tcx, self.source.def_id);
                 let instance = Instance::new(self.source.def_id, substs);
-                let ecx = mk_borrowck_eval_cx(self.tcx, instance, self.mir).unwrap();
+                let ecx = mk_borrowck_eval_cx(self.tcx, instance, self.mir, span).unwrap();
 
                 let l = ecx.value_to_primval(ValTy { value: left.0, ty: left.1 }).ok()?;
                 let r = ecx.value_to_primval(ValTy { value: right.0, ty: right.1 }).ok()?;
@@ -351,7 +350,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                                     kind: EvalErrorKind::OverflowingMath,
                                     backtrace: None,
                                 };
-                                ecx.report(&mut err, false);
+                                ecx.report(&mut err, false, Some(span));
                                 return None;
                             }
                             Value::ByVal(val)
@@ -359,7 +358,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                         Some((val, place_ty, span))
                     },
                     Err(mut err) => {
-                        ecx.report(&mut err, false);
+                        ecx.report(&mut err, false, Some(span));
                         None
                     },
                 }
@@ -500,7 +499,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
     ) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
-        self.eval_constant(constant, DUMMY_SP);
+        self.eval_constant(constant);
     }
 
     fn visit_statement(
@@ -514,7 +513,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
             let place_ty = place
                 .ty(&self.mir.local_decls, self.tcx)
                 .to_ty(self.tcx);
-            let span = self.mir.source_info(location).span;
+            let span = statement.source_info.span;
             if let Some(value) = self.const_prop(rval, place_ty, span) {
                 self.optimizations.const_prop.insert(location, value);
                 if let Place::Local(local) = *place {
@@ -554,17 +553,16 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
 
     fn visit_terminator_kind(
         &mut self,
-        _block: BasicBlock,
+        block: BasicBlock,
         kind: &TerminatorKind<'tcx>,
-        location: Location,
+        _location: Location,
     ) {
-        let span = self.mir.source_info(location).span;
         match kind {
             TerminatorKind::SwitchInt { discr: value, .. } |
             TerminatorKind::Yield { value, .. } |
             TerminatorKind::Assert { cond: value, .. } => {
-                if let Some(value) = self.simplify_operand(value, span) {
-                    self.optimizations.const_prop.insert(location, value);
+                if let Some(value) = self.simplify_operand(value) {
+                    self.optimizations.terminators.insert(block, value);
                 }
             }
             // FIXME: do this optimization for function calls
@@ -578,6 +576,8 @@ struct OptimizationList<'tcx> {
     and_stars: FxHashSet<Location>,
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
     const_prop: FxHashMap<Location, Const<'tcx>>,
+    /// Terminators that get their Operand(s) turned into constants.
+    terminators: FxHashMap<BasicBlock, Const<'tcx>>,
     places: FxHashMap<Local, Const<'tcx>>,
     constants: FxHashMap<Constant<'tcx>, Const<'tcx>>,
 }

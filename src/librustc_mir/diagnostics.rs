@@ -72,36 +72,6 @@ fn foo(x: Option<String>) {
 ```
 "##,
 
-E0003: r##"
-#### Note: this error code is no longer emitted by the compiler.
-
-Not-a-Number (NaN) values cannot be compared for equality and hence can never
-match the input to a match expression. So, the following will not compile:
-
-```compile_fail
-const NAN: f32 = 0.0 / 0.0;
-
-let number = 0.1f32;
-
-match number {
-    NAN => { /* ... */ },
-    _ => {}
-}
-```
-
-To match against NaN values, you should instead use the `is_nan()` method in a
-guard, like so:
-
-```
-let number = 0.1f32;
-
-match number {
-    x if x.is_nan() => { /* ... */ }
-    _ => {}
-}
-```
-"##,
-
 E0004: r##"
 This error indicates that the compiler cannot guarantee a matching pattern for
 one or more possible inputs to a match expression. Guaranteed matches are

@@ -52,7 +52,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         }
 
-        self.memory.mark_static_initalized(
+        self.memory.mark_static_initialized(
             vtable.alloc_id,
             Mutability::Immutable,
         )?;

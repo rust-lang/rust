@@ -1877,7 +1877,7 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Result {
     }
 }
 
-fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
+pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
     use ty::TypeVariants::*;
     use rustc_const_math::ConstFloat;
     match (value, &ty.sty) {

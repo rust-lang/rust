@@ -200,6 +200,8 @@ pub struct UndefMask {
     len: u64,
 }
 
+impl_stable_hash_for!(struct mir::interpret::UndefMask{blocks, len});
+
 impl UndefMask {
     pub fn new(size: u64) -> Self {
         let mut m = UndefMask {

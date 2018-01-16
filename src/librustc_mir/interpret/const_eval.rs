@@ -19,6 +19,7 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
+    span: Span,
 ) -> EvalResult<'tcx, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>> {
     debug!("mk_borrowck_eval_cx: {:?}", instance);
     let param_env = tcx.param_env(instance.def_id());
@@ -27,7 +28,7 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     // insert a stack frame so any queries have the correct substs
     ecx.push_stack_frame(
         instance,
-        mir.span,
+        span,
         mir,
         Place::undef(),
         StackPopCleanup::None,
@@ -65,7 +66,7 @@ pub fn eval_body_with_mir<'a, 'mir, 'tcx>(
     match res {
         Ok(val) => Some(val),
         Err(mut err) => {
-            ecx.report(&mut err, true);
+            ecx.report(&mut err, true, None);
             None
         }
     }
@@ -80,7 +81,7 @@ pub fn eval_body<'a, 'tcx>(
     match res {
         Ok(val) => Some(val),
         Err(mut err) => {
-            ecx.report(&mut err, true);
+            ecx.report(&mut err, true, None);
             None
         }
     }
@@ -483,7 +484,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         })
     }).map_err(|mut err| {
         if tcx.is_static(def_id).is_some() {
-            ecx.report(&mut err, true);
+            ecx.report(&mut err, true, None);
         }
         ConstEvalErr {
             kind: err.into(),

@@ -520,18 +520,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             // do not go into statics
             None  => Ok(()),
             // just locals and machine allocs
-            Some(_) => self.mark_static_initalized(alloc, mutability),
+            Some(_) => self.mark_static_initialized(alloc, mutability),
         }
     }
 
     /// mark an allocation as static and initialized, either mutable or not
-    pub fn mark_static_initalized(
+    pub fn mark_static_initialized(
         &mut self,
         alloc_id: AllocId,
         mutability: Mutability,
     ) -> EvalResult<'tcx> {
         trace!(
-            "mark_static_initalized {:?}, mutability: {:?}",
+            "mark_static_initialized {:?}, mutability: {:?}",
             alloc_id,
             mutability
         );
