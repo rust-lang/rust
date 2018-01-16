@@ -298,9 +298,7 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
                 let allocation = self.tcx.unwrap().intern_const_alloc(allocation);
                 interpret_interner().intern_at_reserved(alloc_id, allocation);
 
-                let num = usize::decode(self)?;
-                for _ in 0..num {
-                    let glob = interpret::GlobalId::decode(self)?;
+                if let Some(glob) = Option::<DefId>::decode(self)? {
                     interpret_interner().cache(glob, alloc_id);
                 }
 

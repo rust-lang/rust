@@ -691,22 +691,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Check if the node pointed to by def_id is a mutable static item
-    pub fn is_static_mut(&self, def_id: DefId) -> bool {
+    /// Return whether the node pointed to by def_id is a static item, and its mutability
+    pub fn is_static(&self, def_id: DefId) -> Option<hir::Mutability> {
         if let Some(node) = self.hir.get_if_local(def_id) {
             match node {
                 Node::NodeItem(&hir::Item {
-                    node: hir::ItemStatic(_, hir::MutMutable, _), ..
-                }) => true,
+                    node: hir::ItemStatic(_, mutbl, _), ..
+                }) => Some(mutbl),
                 Node::NodeForeignItem(&hir::ForeignItem {
-                    node: hir::ForeignItemStatic(_, mutbl), ..
-                }) => mutbl,
-                _ => false
+                    node: hir::ForeignItemStatic(_, is_mutbl), ..
+                }) =>
+                    Some(if is_mutbl {
+                        hir::Mutability::MutMutable
+                    } else {
+                        hir::Mutability::MutImmutable
+                    }),
+                _ => None
             }
         } else {
             match self.describe_def(def_id) {
-                Some(Def::Static(_, mutbl)) => mutbl,
-                _ => false
+                Some(Def::Static(_, is_mutbl)) =>
+                    Some(if is_mutbl {
+                        hir::Mutability::MutMutable
+                    } else {
+                        hir::Mutability::MutImmutable
+                    }),
+                _ => None
             }
         }
     }

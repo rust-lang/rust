@@ -16,7 +16,7 @@
 
 use hair::*;
 
-use rustc::middle::const_val::{ConstEvalErr, ConstVal};
+use rustc::middle::const_val::ConstVal;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
@@ -236,17 +236,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                           self.param_env.and(self.identity_substs),
                           self.tables(),
                           p)
-    }
-
-    pub fn fatal_const_eval_err(&mut self,
-        err: &ConstEvalErr<'tcx>,
-        primary_span: Span,
-        primary_kind: &str)
-        -> !
-    {
-        err.report(self.tcx, primary_span, primary_kind);
-        self.tcx.sess.abort_if_errors();
-        unreachable!()
     }
 
     pub fn trait_method(&mut self,

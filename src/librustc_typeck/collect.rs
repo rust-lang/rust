@@ -535,7 +535,7 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // so we need to report the real error
             if let Err(ref err) = result {
                 err.report(tcx, variant.span, "enum discriminant");
-            }
+}
 
             match result {
                 Ok(&ty::Const {

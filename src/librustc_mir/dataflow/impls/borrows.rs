@@ -783,7 +783,7 @@ fn is_unsafe_place<'a, 'gcx: 'tcx, 'tcx: 'a>(
 
     match *place {
         Local(_) => false,
-        Static(ref static_) => tcx.is_static_mut(static_.def_id),
+        Static(ref static_) => tcx.is_static(static_.def_id) == Some(hir::Mutability::MutMutable),
         Projection(ref proj) => {
             match proj.elem {
                 ProjectionElem::Field(..) |

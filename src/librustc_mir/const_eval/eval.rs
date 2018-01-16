@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use rustc::middle::const_val::ConstVal::*;
-use rustc::middle::const_val::ErrKind::*;
-use rustc::middle::const_val::{ConstVal, ErrKind};
+use rustc::middle::const_val::ConstVal;
 
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -39,7 +38,7 @@ pub fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           ty: Ty<'tcx>,
                           neg: bool)
-                          -> Result<ConstVal<'tcx>, ErrKind<'tcx>> {
+                          -> Result<ConstVal<'tcx>, ()> {
     use syntax::ast::*;
 
     use rustc::mir::interpret::*;
@@ -126,11 +125,8 @@ pub fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
 }
 
 fn parse_float<'tcx>(num: &str, fty: ast::FloatTy)
-                     -> Result<ConstFloat, ErrKind<'tcx>> {
-    ConstFloat::from_str(num, fty).map_err(|_| {
-        // FIXME(#31407) this is only necessary because float parsing is buggy
-        UnimplementedConstVal("could not evaluate float literal (see issue #31407)")
-    })
+                     -> Result<ConstFloat, ()> {
+    ConstFloat::from_str(num, fty).map_err(|_| ())
 }
 
 pub fn compare_const_vals(a: &ConstVal, b: &ConstVal, ty: Ty) -> Option<Ordering> {

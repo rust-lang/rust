@@ -15,9 +15,9 @@ use ty::{self, TyCtxt, layout};
 use ty::subst::Substs;
 use rustc_const_math::*;
 use mir::interpret::{Value, PrimVal};
+use errors::DiagnosticBuilder;
 
 use graphviz::IntoCow;
-use errors::DiagnosticBuilder;
 use serialize;
 use syntax_pos::Span;
 
@@ -169,6 +169,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
 
             TypeckError => simple!("type-checking failed"),
             CheckMatchError => simple!("match-checking failed"),
+            // FIXME: report a full backtrace
             Miri(ref err) => simple!("miri failed: {}", err),
         }
     }
@@ -186,7 +187,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             err = i_err;
         }
 
-        let mut diag = struct_span_err!(tcx.sess, err.span, E0080, "constant evaluation error");
+        let mut diag = struct_error(tcx, err.span, "constant evaluation error");
         err.note(tcx, primary_span, primary_kind, &mut diag);
         diag
     }
@@ -220,4 +221,12 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         }
         self.struct_error(tcx, primary_span, primary_kind).emit();
     }
+}
+
+pub fn struct_error<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    span: Span,
+    msg: &str,
+) -> DiagnosticBuilder<'gcx> {
+    struct_span_err!(tcx.sess, span, E0080, "{}", msg)
 }

@@ -210,11 +210,9 @@ impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             usize::max_value().encode(self)?;
             alloc.encode(self)?;
-            let globals = interpret_interner.get_globals(*alloc_id);
-            globals.len().encode(self)?;
-            for glob in globals {
-                glob.encode(self)?;
-            }
+            interpret_interner
+                .get_corresponding_static_def_id(*alloc_id)
+                .encode(self)?;
         } else if let Some(fn_instance) = interpret_interner.get_fn(*alloc_id) {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
             (usize::max_value() - 1).encode(self)?;

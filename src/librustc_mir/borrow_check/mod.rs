@@ -1635,11 +1635,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Mutability::Mut => Ok(()),
                 }
             }
-            Place::Static(ref static_) => if !self.tcx.is_static_mut(static_.def_id) {
-                Err(place)
-            } else {
-                Ok(())
-            },
+            Place::Static(ref static_) =>
+                if self.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
+                    Err(place)
+                } else {
+                    Ok(())
+                },
             Place::Projection(ref proj) => {
                 match proj.elem {
                     ProjectionElem::Deref => {
@@ -1792,7 +1793,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 if static1.def_id != static2.def_id {
                     debug!("place_element_conflict: DISJOINT-STATIC");
                     Overlap::Disjoint
-                } else if self.tcx.is_static_mut(static1.def_id) {
+                } else if self.tcx.is_static(static1.def_id) == Some(hir::Mutability::MutMutable) {
                     // We ignore mutable statics - they can only be unsafe code.
                     debug!("place_element_conflict: IGNORE-STATIC-MUT");
                     Overlap::Disjoint

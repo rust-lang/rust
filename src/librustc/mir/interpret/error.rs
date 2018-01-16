@@ -286,8 +286,8 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "tried to reallocate memory from {} to {}", old, new),
             DeallocatedWrongMemoryKind(ref old, ref new) =>
                 write!(f, "tried to deallocate {} memory but gave {} as the kind", old, new),
-            Math(span, ref err) =>
-                write!(f, "{:?} at {:?}", err, span),
+            Math(_, ref err) =>
+                write!(f, "{}", err.description()),
             Intrinsic(ref err) =>
                 write!(f, "{}", err),
             InvalidChar(c) =>

@@ -10,7 +10,7 @@
 
 #![deny(exceeding_bitshifts)]
 #![allow(unused_variables)]
-#![allow(dead_code)]
+#![allow(dead_code, const_err)]
 #![feature(const_indexing)]
 
 fn main() {
@@ -54,21 +54,5 @@ fn main() {
 
       let n = 1u8 << -8; //~ ERROR: bitshift exceeds the type's number of bits
 
-
-      let n = 1u8 << (4+3);
-      let n = 1u8 << (4+4); //~ ERROR: bitshift exceeds the type's number of bits
-
-      #[cfg(target_pointer_width = "32")]
-      const BITS: usize = 32;
-      #[cfg(target_pointer_width = "64")]
-      const BITS: usize = 64;
-
-      let n = 1_isize << BITS; //~ ERROR: bitshift exceeds the type's number of bits
-      let n = 1_usize << BITS; //~ ERROR: bitshift exceeds the type's number of bits
-
-
       let n = 1i8<<(1isize+-1);
-
-      let n = 1i64 >> [63][0];
-      let n = 1i64 >> [64][0]; //~ ERROR: bitshift exceeds the type's number of bits
 }

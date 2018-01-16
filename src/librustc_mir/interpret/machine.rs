@@ -12,7 +12,7 @@ use syntax::ast::Mutability;
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
-pub trait Machine<'tcx>: Sized {
+pub trait Machine<'mir, 'tcx>: Sized {
     /// Additional data that can be accessed via the Memory
     type MemoryData;
 
@@ -26,7 +26,7 @@ pub trait Machine<'tcx>: Sized {
     ///
     /// Returns Ok(false) if a new stack frame was pushed
     fn eval_fn_call<'a>(
-        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Place, mir::BasicBlock)>,
         args: &[ValTy<'tcx>],
@@ -36,7 +36,7 @@ pub trait Machine<'tcx>: Sized {
 
     /// directly process an intrinsic without pushing a stack frame.
     fn call_intrinsic<'a>(
-        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[ValTy<'tcx>],
         dest: Place,
@@ -51,7 +51,7 @@ pub trait Machine<'tcx>: Sized {
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
     fn try_ptr_op<'a>(
-        ecx: &EvalContext<'a, 'tcx, Self>,
+        ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: PrimVal,
         left_ty: Ty<'tcx>,
@@ -60,26 +60,30 @@ pub trait Machine<'tcx>: Sized {
     ) -> EvalResult<'tcx, Option<(PrimVal, bool)>>;
 
     /// Called when trying to mark machine defined `MemoryKinds` as static
-    fn mark_static_initialized(m: Self::MemoryKinds) -> EvalResult<'tcx>;
+    fn mark_static_initialized<'a>(
+        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
+        _id: AllocId,
+        _mutability: Mutability,
+    ) -> EvalResult<'tcx, bool>;
 
     /// Heap allocations via the `box` keyword
     ///
     /// Returns a pointer to the allocated memory
     fn box_alloc<'a>(
-        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         ty: Ty<'tcx>,
         dest: Place,
     ) -> EvalResult<'tcx>;
 
     /// Called when trying to access a global declared with a `linkage` attribute
     fn global_item_with_linkage<'a>(
-        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         mutability: Mutability,
     ) -> EvalResult<'tcx>;
 
     fn check_locks<'a>(
-        _mem: &Memory<'a, 'tcx, Self>,
+        _mem: &Memory<'a, 'mir, 'tcx, Self>,
         _ptr: MemoryPointer,
         _size: u64,
         _access: AccessKind,
@@ -88,12 +92,12 @@ pub trait Machine<'tcx>: Sized {
     }
 
     fn add_lock<'a>(
-        _mem: &mut Memory<'a, 'tcx, Self>,
+        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
         _id: AllocId,
     ) {}
 
     fn free_lock<'a>(
-        _mem: &mut Memory<'a, 'tcx, Self>,
+        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
         _id: AllocId,
         _len: u64,
     ) -> EvalResult<'tcx> {
@@ -101,14 +105,14 @@ pub trait Machine<'tcx>: Sized {
     }
 
     fn end_region<'a>(
-        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _reg: Option<::rustc::middle::region::Scope>,
     ) -> EvalResult<'tcx> {
         Ok(())
     }
 
     fn validation_op<'a>(
-        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _op: ::rustc::mir::ValidationOp,
         _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
     ) -> EvalResult<'tcx> {

@@ -1898,13 +1898,16 @@ fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
                 let alloc = tcx
                     .interpret_interner
                     .borrow()
-                    .get_alloc(ptr.alloc_id)
-                    .expect("miri alloc not found");
-                assert_eq!(len as usize as u128, len);
-                let slice = &alloc.bytes[(ptr.offset as usize)..][..(len as usize)];
-                let s = ::std::str::from_utf8(slice)
-                    .expect("non utf8 str from miri");
-                write!(f, "{:?}", s)
+                    .get_alloc(ptr.alloc_id);
+                if let Some(alloc) = alloc {
+                    assert_eq!(len as usize as u128, len);
+                    let slice = &alloc.bytes[(ptr.offset as usize)..][..(len as usize)];
+                    let s = ::std::str::from_utf8(slice)
+                        .expect("non utf8 str from miri");
+                    write!(f, "{:?}", s)
+                } else {
+                    write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
+                }
             })
         },
         _ => write!(f, "{:?}:{}", value, ty),

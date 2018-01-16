@@ -9,8 +9,7 @@
 // except according to those terms.
 
 const ARR: [usize; 1] = [2];
-const ARR2: [i32; ARR[0]] = [5, 6]; //~ ERROR E0080
-                                    //~| unstable
+const ARR2: [i32; ARR[0]] = [5, 6];
 
 fn main() {
 }

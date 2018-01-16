@@ -17,6 +17,7 @@
 #[rustc_error]
 fn main() { //~ ERROR: compilation successful
     let x2: i8 = --128; //~ warn: literal out of range for i8
+    //~^ WARN constant evaluation error
 
     let x = -3.40282357e+38_f32; //~ warn: literal out of range for f32
     let x =  3.40282357e+38_f32; //~ warn: literal out of range for f32

@@ -213,7 +213,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 // locals are safe
             }
             &Place::Static(box Static { def_id, ty: _ }) => {
-                if self.tcx.is_static_mut(def_id) {
+                if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
                     self.require_unsafe("use of mutable static");
                 } else if self.tcx.is_foreign_item(def_id) {
                     let source_info = self.source_info;

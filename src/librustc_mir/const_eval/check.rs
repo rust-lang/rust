@@ -11,47 +11,77 @@
 //! Lints statically known runtime failures
 
 use rustc::mir::*;
+use rustc::hir;
+use rustc::hir::map::Node;
 use rustc::mir::visit::Visitor;
 use rustc::mir::interpret::{Value, PrimVal, GlobalId};
 use rustc::middle::const_val::{ConstVal, ConstEvalErr, ErrKind};
+use rustc::hir::def::Def;
 use rustc::traits;
-use interpret::{eval_body_as_integer, check_body};
-use rustc::ty::{TyCtxt, ParamEnv, self};
+use interpret::eval_body_with_mir;
+use rustc::ty::{TyCtxt, ParamEnv};
 use rustc::ty::Instance;
 use rustc::ty::layout::LayoutOf;
 use rustc::hir::def_id::DefId;
+use rustc::ty::subst::Substs;
+
+fn is_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    if let Some(node) = tcx.hir.get_if_local(def_id) {
+        match node {
+            Node::NodeItem(&hir::Item {
+                node: hir::ItemConst(..), ..
+            }) => true,
+            _ => false
+        }
+    } else {
+        match tcx.describe_def(def_id) {
+            Some(Def::Const(_)) => true,
+            _ => false
+        }
+    }
+}
 
 pub fn check<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
-    if tcx.is_closure(def_id) {
-        return;
+    let mir = &tcx.optimized_mir(def_id);
+    let substs = Substs::identity_for_item(tcx, def_id);
+    let instance = Instance::new(def_id, substs);
+    let param_env = tcx.param_env(def_id);
+
+    if is_const(tcx, def_id) {
+        let cid = GlobalId {
+            instance,
+            promoted: None,
+        };
+        eval_body_with_mir(tcx, cid, mir, param_env);
     }
-    let generics = tcx.generics_of(def_id);
+
+    ConstErrVisitor {
+        tcx,
+        mir,
+    }.visit_mir(mir);
+    let outer_def_id = if tcx.is_closure(def_id) {
+        tcx.closure_base_def_id(def_id)
+    } else {
+        def_id
+    };
+    let generics = tcx.generics_of(outer_def_id);
     // FIXME: miri should be able to eval stuff that doesn't need info
     // from the generics
     if generics.parent_types as usize + generics.types.len() > 0 {
         return;
     }
-    let mir = &tcx.optimized_mir(def_id);
-    ConstErrVisitor {
-        tcx,
-        def_id,
-        mir,
-    }.visit_mir(mir);
-    let param_env = ParamEnv::empty(traits::Reveal::All);
-    let instance = Instance::mono(tcx, def_id);
     for i in 0.. mir.promoted.len() {
         use rustc_data_structures::indexed_vec::Idx;
         let cid = GlobalId {
             instance,
             promoted: Some(Promoted::new(i)),
         };
-        check_body(tcx, cid, param_env);
+        eval_body_with_mir(tcx, cid, mir, param_env);
     }
 }
 
 struct ConstErrVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_id: DefId,
     mir: &'a Mir<'tcx>,
 }
 
@@ -61,22 +91,13 @@ impl<'a, 'tcx> ConstErrVisitor<'a, 'tcx> {
             Operand::Constant(ref c) => c,
             _ => return None,
         };
-        let param_env = ParamEnv::empty(traits::Reveal::All);
-        let val = match op.literal {
+        match op.literal {
             Literal::Value { value } => match value.val {
-                ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => b,
+                ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => Some(b),
                 _ => return None,
             },
-            Literal::Promoted { index } => {
-                let instance = Instance::mono(self.tcx, self.def_id);
-                let cid = GlobalId {
-                    instance,
-                    promoted: Some(index),
-                };
-                eval_body_as_integer(self.tcx, cid, param_env).unwrap()
-            }
-        };
-        Some(val)
+            _ => None,
+        }
     }
 }
 
@@ -87,13 +108,14 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstErrVisitor<'a, 'tcx> {
                         location: Location) {
         self.super_terminator(block, terminator, location);
         match terminator.kind {
-            TerminatorKind::Assert { cond: Operand::Constant(box Constant {
-                literal: Literal::Value {
-                    value: &ty::Const {
-                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(cond))),
-                    .. }
-                }, ..
-            }), expected, ref msg, .. } if (cond == 1) != expected => {
+            TerminatorKind::Assert { ref cond, expected, ref msg, .. } => {
+                let cond = match self.eval_op(cond) {
+                    Some(val) => val,
+                    None => return,
+                };
+                if (cond == 1) == expected {
+                    return;
+                }
                 assert!(cond <= 1);
                 // If we know we always panic, and the error message
                 // is also constant, then we can produce a warning.

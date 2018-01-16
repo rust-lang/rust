@@ -3,7 +3,7 @@ use std::fmt::Write;
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
-use rustc::middle::const_val::ConstVal;
+use rustc::middle::const_val::{ConstVal, ErrKind};
 use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Size, Align, HasDataLayout, LayoutOf, TyLayout};
@@ -21,7 +21,7 @@ use super::{Place, PlaceExtra, Memory,
             HasMemory, MemoryKind, operator,
             Machine};
 
-pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
+pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
     pub machine: M,
 
@@ -32,10 +32,10 @@ pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
     pub param_env: ty::ParamEnv<'tcx>,
 
     /// The virtual memory system.
-    pub memory: Memory<'a, 'tcx, M>,
+    pub memory: Memory<'a, 'mir, 'tcx, M>,
 
     /// The virtual call stack.
-    pub(crate) stack: Vec<Frame<'tcx>>,
+    pub(crate) stack: Vec<Frame<'mir, 'tcx>>,
 
     /// The maximum number of stack frames allowed
     pub(crate) stack_limit: usize,
@@ -47,12 +47,12 @@ pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
 }
 
 /// A stack frame.
-pub struct Frame<'tcx> {
+pub struct Frame<'mir, 'tcx: 'mir> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
     /// The MIR for the function called on this frame.
-    pub mir: &'tcx mir::Mir<'tcx>,
+    pub mir: &'mir mir::Mir<'tcx>,
 
     /// The def_id and substs of the current function
     pub instance: ty::Instance<'tcx>,
@@ -131,6 +131,15 @@ pub struct ValTy<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+impl<'tcx> ValTy<'tcx> {
+    pub fn from(val: &ty::Const<'tcx>) -> Option<Self> {
+        match val.val {
+            ConstVal::Value(value) => Some(ValTy { value, ty: val.ty }),
+            ConstVal::Unevaluated { .. } => None,
+        }
+    }
+}
+
 impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
     type Target = Value;
     fn deref(&self) -> &Value {
@@ -138,37 +147,37 @@ impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
     }
 }
 
-impl<'a, 'tcx, M: Machine<'tcx>> HasDataLayout for &'a EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for &'a EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'c, 'b, 'a, 'tcx, M: Machine<'tcx>> HasDataLayout
-    for &'c &'b mut EvalContext<'a, 'tcx, M> {
+impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout
+    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx, M: Machine<'tcx>> layout::HasTyCtxt<'tcx> for &'a EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx> for &'a EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'c, 'b, 'a, 'tcx, M: Machine<'tcx>> layout::HasTyCtxt<'tcx>
-    for &'c &'b mut EvalContext<'a, 'tcx, M> {
+impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> layout::HasTyCtxt<'tcx>
+    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn tcx<'d>(&'d self) -> TyCtxt<'d, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'a, 'tcx, M: Machine<'tcx>> LayoutOf<Ty<'tcx>> for &'a EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf<Ty<'tcx>> for &'a EvalContext<'a, 'mir, 'tcx, M> {
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
@@ -177,8 +186,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> LayoutOf<Ty<'tcx>> for &'a EvalContext<'a, 'tcx
     }
 }
 
-impl<'c, 'b, 'a, 'tcx, M: Machine<'tcx>> LayoutOf<Ty<'tcx>>
-    for &'c &'b mut EvalContext<'a, 'tcx, M> {
+impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf<Ty<'tcx>>
+    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M> {
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
 
     #[inline]
@@ -187,7 +196,7 @@ impl<'c, 'b, 'a, 'tcx, M: Machine<'tcx>> LayoutOf<Ty<'tcx>>
     }
 }
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -214,15 +223,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.memory.allocate(size, layout.align, Some(MemoryKind::Stack))
     }
 
-    pub fn memory(&self) -> &Memory<'a, 'tcx, M> {
+    pub fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
         &self.memory
     }
 
-    pub fn memory_mut(&mut self) -> &mut Memory<'a, 'tcx, M> {
+    pub fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
         &mut self.memory
     }
 
-    pub fn stack(&self) -> &[Frame<'tcx>] {
+    pub fn stack(&self) -> &[Frame<'mir, 'tcx>] {
         &self.stack
     }
 
@@ -240,14 +249,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         ))
     }
 
-    pub(super) fn const_to_value(&mut self, const_val: &ConstVal<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn const_to_value(&self, const_val: &ConstVal<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         match *const_val {
             ConstVal::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                Ok(self.read_global_as_value(GlobalId {
+                self.read_global_as_value(GlobalId {
                     instance,
                     promoted: None,
-                }, self.layout_of(ty)?))
+                }, ty)
             }
             ConstVal::Value(val) => Ok(val),
         }
@@ -380,14 +389,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         span: codemap::Span,
-        mir: &'tcx mir::Mir<'tcx>,
+        mir: &'mir mir::Mir<'tcx>,
         return_place: Place,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
         /// Return the set of locals that have a storage annotation anywhere
-        fn collect_storage_annotations<'tcx>(mir: &'tcx mir::Mir<'tcx>) -> HashSet<mir::Local> {
+        fn collect_storage_annotations<'mir, 'tcx>(mir: &'mir mir::Mir<'tcx>) -> HashSet<mir::Local> {
             use rustc::mir::StatementKind::*;
 
             let mut set = HashSet::new();
@@ -819,7 +828,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         self.read_global_as_value(GlobalId {
                             instance: self.frame().instance,
                             promoted: Some(index),
-                        }, self.layout_of(ty)?)
+                        }, ty)?
                     }
                 };
 
@@ -931,9 +940,28 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(())
     }
 
-    pub fn read_global_as_value(&self, gid: GlobalId, layout: TyLayout) -> Value {
-        let alloc = self.tcx.interpret_interner.borrow().get_cached(gid).expect("global not cached");
-        Value::ByRef(MemoryPointer::new(alloc, 0).into(), layout.align)
+    pub fn read_global_as_value(&self, gid: GlobalId<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+        if gid.promoted.is_none() {
+            let cached = self
+                .tcx
+                .interpret_interner
+                .borrow()
+                .get_cached(gid.instance.def_id());
+            if let Some(alloc_id) = cached {
+                let layout = self.layout_of(ty)?;
+                let ptr = MemoryPointer::new(alloc_id, 0);
+                return Ok(Value::ByRef(ptr.into(), layout.align))
+            }
+        }
+        let cv = match self.tcx.const_eval(self.param_env.and(gid)) {
+            Ok(val) => val,
+            Err(err) => match err.kind {
+                ErrKind::Miri(miri) => return Err(miri),
+                ErrKind::TypeckError => return err!(TypeckError),
+                other => bug!("const eval returned {:?}", other),
+            },
+        };
+        self.const_to_value(&cv.val, ty)
     }
 
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {
@@ -1326,15 +1354,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(Some(Value::ByVal(val)))
     }
 
-    pub fn frame(&self) -> &Frame<'tcx> {
+    pub fn frame(&self) -> &Frame<'mir, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
-    pub fn frame_mut(&mut self) -> &mut Frame<'tcx> {
+    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
 
-    pub(super) fn mir(&self) -> &'tcx mir::Mir<'tcx> {
+    pub(super) fn mir(&self) -> &'mir mir::Mir<'tcx> {
         self.frame().mir
     }
 
@@ -1544,7 +1572,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(())
     }
 
-    pub fn report(&self, e: &mut EvalError) {
+    pub fn report(&self, e: &mut EvalError, as_err: bool) {
+        if let EvalErrorKind::TypeckError = e.kind {
+            return;
+        }
         if let Some(ref mut backtrace) = e.backtrace {
             let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
             backtrace.resolve();
@@ -1582,8 +1613,34 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             } else {
                 block.terminator().source_info.span
             };
-            let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
+            let node_id = self
+                .stack()
+                .iter()
+                .rev()
+                .filter_map(|frame| self.tcx.hir.as_local_node_id(frame.instance.def_id()))
+                .next()
+                .expect("some part of a failing const eval must be local");
+            let mut err = if as_err {
+                ::rustc::middle::const_val::struct_error(self.tcx, span, "constant evaluation error")
+            } else {
+                self.tcx.struct_span_lint_node(
+                    ::rustc::lint::builtin::CONST_ERR,
+                    node_id,
+                    span,
+                    "constant evaluation error",
+                )
+            };
+            err.span_label(span, e.to_string());
+            let mut last_span = None;
             for &Frame { instance, span, .. } in self.stack().iter().rev() {
+                // make sure we don't emit frames that are duplicates of the previous
+                if let Some(last) = last_span {
+                    if last == span {
+                        continue;
+                    }
+                } else {
+                    last_span = Some(span);
+                }
                 if self.tcx.def_key(instance.def_id()).disambiguated_data.data ==
                     DefPathData::ClosureExpr
                 {
@@ -1599,7 +1656,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 }
 
-impl<'tcx> Frame<'tcx> {
+impl<'mir, 'tcx> Frame<'mir, 'tcx> {
     pub fn get_local(&self, local: mir::Local) -> EvalResult<'tcx, Value> {
         // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
         self.locals[local.index() - 1].ok_or(EvalErrorKind::DeadLocal.into())

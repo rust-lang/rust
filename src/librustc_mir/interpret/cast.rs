@@ -7,7 +7,7 @@ use rustc::mir::interpret::{PrimVal, EvalResult, MemoryPointer, PointerArithmeti
 use rustc_apfloat::ieee::{Single, Double};
 use rustc_apfloat::Float;
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub(super) fn cast_primval(
         &self,
         val: PrimVal,

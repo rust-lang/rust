@@ -169,6 +169,8 @@ pub struct Allocation {
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
     pub align: Align,
+    /// Whether the allocation should be put into mutable memory when translating via llvm
+    pub mutable: bool,
 }
 
 impl Allocation {
@@ -180,6 +182,7 @@ impl Allocation {
             relocations: BTreeMap::new(),
             undef_mask,
             align: Align::from_bytes(1, 1).unwrap(),
+            mutable: false,
         }
     }
 }

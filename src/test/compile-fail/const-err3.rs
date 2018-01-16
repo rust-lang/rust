@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(x: usize) -> usize {
-    x
+#![feature(rustc_attrs)]
+#![deny(const_err)]
+
+fn black_box<T>(_: T) {
+    unimplemented!()
 }
 
 fn main() {
-    let _ = [0; f(2)];
-    //~^ ERROR calls in constants are limited to constant functions
-    //~| E0080
+    let b = 200u8 + 200u8 + 200u8;
+    //~^ ERROR const_err
+    //~| ERROR const_err
+    let c = 200u8 * 4;
+    let d = 42u8 - (42u8 + 1);
+    let _e = [5u8][1];
+    black_box(b);
+    black_box(c);
+    black_box(d);
 }

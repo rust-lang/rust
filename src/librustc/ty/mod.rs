@@ -1854,11 +1854,11 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                 b, uint_type, tcx.sess.target.usize_ty).unwrap(),
                         };
                     }
-                    err => {
+                    _ => {
                         if !expr_did.is_local() {
                             span_bug!(tcx.def_span(expr_did),
                                 "variant discriminant evaluation succeeded \
-                                 in its crate but failed locally: {:?}", err);
+                                 in its crate but failed locally");
                         }
                     }
                 }
@@ -1910,11 +1910,11 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                             };
                             break;
                         }
-                        err => {
+                        _ => {
                             if !expr_did.is_local() {
                                 span_bug!(tcx.def_span(expr_did),
                                     "variant discriminant evaluation succeeded \
-                                     in its crate but failed locally: {:?}", err);
+                                     in its crate but failed locally");
                             }
                             if explicit_index == 0 {
                                 break;

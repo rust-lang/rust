@@ -194,6 +194,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
+use rustc::mir::interpret::{Value, PrimVal, AllocId, Pointer};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::{Substs, Kind};
@@ -568,14 +569,26 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
         debug!("visiting const {:?} @ {:?}", *constant, location);
 
-        if let ConstVal::Unevaluated(def_id, substs) = constant.val {
-            let substs = self.tcx.trans_apply_param_substs(self.param_substs,
-                                                           &substs);
-            let instance = ty::Instance::resolve(self.tcx,
-                                                 ty::ParamEnv::empty(traits::Reveal::All),
-                                                 def_id,
-                                                 substs).unwrap();
-            collect_neighbours(self.tcx, instance, true, self.output);
+        match constant.val {
+            ConstVal::Unevaluated(def_id, substs) => {
+                let substs = self.tcx.trans_apply_param_substs(self.param_substs,
+                                                            &substs);
+                let instance = ty::Instance::resolve(self.tcx,
+                                                    ty::ParamEnv::empty(traits::Reveal::All),
+                                                    def_id,
+                                                    substs).unwrap();
+                collect_neighbours(self.tcx, instance, true, self.output);
+            },
+            ConstVal::Value(Value::ByValPair(PrimVal::Ptr(a), PrimVal::Ptr(b))) => {
+                collect_miri(self.tcx, a.alloc_id, self.output);
+                collect_miri(self.tcx, b.alloc_id, self.output);
+            }
+            ConstVal::Value(Value::ByValPair(_, PrimVal::Ptr(ptr))) |
+            ConstVal::Value(Value::ByValPair(PrimVal::Ptr(ptr), _)) |
+            ConstVal::Value(Value::ByVal(PrimVal::Ptr(ptr))) |
+            ConstVal::Value(Value::ByRef(Pointer { primval: PrimVal::Ptr(ptr) }, _)) =>
+                collect_miri(self.tcx, ptr.alloc_id, self.output),
+            _ => {},
         }
 
         self.super_const(constant);
@@ -1095,6 +1108,28 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _ => {
             bug!()
         }
+    }
+}
+
+/// Scan the miri alloc in order to find function calls, closures, and drop-glue
+fn collect_miri<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    alloc_id: AllocId,
+    output: &mut Vec<MonoItem<'tcx>>,
+) {
+    let interpret_interner = tcx.interpret_interner.borrow();
+    if let Some(alloc) = interpret_interner.get_alloc(alloc_id) {
+        trace!("collecting {:?} with {:#?}", alloc_id, alloc);
+        for &inner in alloc.relocations.values() {
+            collect_miri(tcx, inner, output);
+        }
+    } else if let Some(fn_instance) = interpret_interner.get_fn(alloc_id) {
+        if should_monomorphize_locally(tcx, &fn_instance) {
+            trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
+            output.push(create_fn_mono_item(fn_instance));
+        }
+    } else {
+        bug!("alloc id without corresponding allocation: {}", alloc_id);
     }
 }
 

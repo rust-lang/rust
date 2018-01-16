@@ -1,6 +1,6 @@
 use rustc::hir;
-use rustc::middle::const_val::ErrKind::{CheckMatchError, TypeckError};
 use rustc::middle::const_val::{ConstEvalErr, ConstVal};
+use rustc::middle::const_val::ErrKind::{TypeckError, CheckMatchError};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::ty::layout::{self, LayoutOf};
@@ -9,17 +9,37 @@ use rustc::ty::subst::Subst;
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
-use rustc::mir::interpret::{EvalResult, EvalError, EvalErrorKind, GlobalId, Value, MemoryPointer, Pointer, PrimVal};
-use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra};
+use rustc::mir::interpret::{EvalResult, EvalError, EvalErrorKind, GlobalId, Value, MemoryPointer, Pointer, PrimVal, AllocId};
+use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory};
 
 use std::fmt;
 use std::error::Error;
+
+pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: Instance<'tcx>,
+    mir: &'mir mir::Mir<'tcx>,
+) -> EvalResult<'tcx, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>> {
+    debug!("mk_borrowck_eval_cx: {:?}", instance);
+    let param_env = tcx.param_env(instance.def_id());
+    let limits = super::ResourceLimits::default();
+    let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
+    // insert a stack frame so any queries have the correct substs
+    ecx.push_stack_frame(
+        instance,
+        mir.span,
+        mir,
+        Place::undef(),
+        StackPopCleanup::None,
+    )?;
+    Ok(ecx)
+}
 
 pub fn mk_eval_cx<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, EvalContext<'a, 'tcx, CompileTimeEvaluator>> {
+) -> EvalResult<'tcx, EvalContext<'a, 'tcx, 'tcx, CompileTimeEvaluator>> {
     debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
     let limits = super::ResourceLimits::default();
     let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
@@ -35,64 +55,95 @@ pub fn mk_eval_cx<'a, 'tcx>(
     Ok(ecx)
 }
 
+pub fn eval_body_with_mir<'a, 'mir, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    cid: GlobalId<'tcx>,
+    mir: &'mir mir::Mir<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> Option<(Value, Pointer, Ty<'tcx>)> {
+    let (res, ecx) = eval_body_and_ecx(tcx, cid, Some(mir), param_env);
+    match res {
+        Ok(val) => Some(val),
+        Err(mut err) => {
+            ecx.report(&mut err, true);
+            None
+        }
+    }
+}
+
 pub fn eval_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cid: GlobalId<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)> {
-    eval_body_and_ecx(tcx, cid, param_env).0
-}
-
-pub fn check_body<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cid: GlobalId<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) {
-    let (res, ecx) = eval_body_and_ecx(tcx, cid, param_env);
-    if let Err(mut err) = res {
-        ecx.report(&mut err);
+) -> Option<(Value, Pointer, Ty<'tcx>)> {
+    let (res, ecx) = eval_body_and_ecx(tcx, cid, None, param_env);
+    match res {
+        Ok(val) => Some(val),
+        Err(mut err) => {
+            ecx.report(&mut err, true);
+            None
+        }
     }
 }
 
-fn eval_body_and_ecx<'a, 'tcx>(
+fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cid: GlobalId<'tcx>,
+    mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'tcx, CompileTimeEvaluator>) {
+) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>) {
     debug!("eval_body: {:?}, {:?}", cid, param_env);
     let limits = super::ResourceLimits::default();
     let mut ecx = EvalContext::new(tcx, param_env, limits, CompileTimeEvaluator, ());
     let res = (|| {
-        let mut mir = ecx.load_mir(cid.instance.def)?;
+        let mut mir = match mir {
+            Some(mir) => mir,
+            None => ecx.load_mir(cid.instance.def)?,
+        };
         if let Some(index) = cid.promoted {
             mir = &mir.promoted[index];
         }
         let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
-        if ecx.tcx.has_attr(cid.instance.def_id(), "linkage") {
-            return Err(ConstEvalError::NotConst("extern global".to_string()).into());
-        }
-        if tcx.interpret_interner.borrow().get_cached(cid).is_none() {
-            assert!(!layout.is_unsized());
-            let ptr = ecx.memory.allocate(
-                layout.size.bytes(),
-                layout.align,
-                None,
-            )?;
-            tcx.interpret_interner.borrow_mut().cache(cid, ptr.alloc_id);
-            let cleanup = StackPopCleanup::MarkStatic(Mutability::Immutable);
-            let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
-            trace!("const_eval: pushing stack frame for global: {}", name);
-            ecx.push_stack_frame(
-                cid.instance,
-                mir.span,
-                mir,
-                Place::from_ptr(ptr, layout.align),
-                cleanup.clone(),
-            )?;
+        let alloc = tcx.interpret_interner.borrow().get_cached(cid.instance.def_id());
+        let alloc = match alloc {
+            Some(alloc) => {
+                assert!(cid.promoted.is_none());
+                assert!(param_env.caller_bounds.is_empty());
+                alloc
+            },
+            None => {
+                assert!(!layout.is_unsized());
+                let ptr = ecx.memory.allocate(
+                    layout.size.bytes(),
+                    layout.align,
+                    None,
+                )?;
+                if tcx.is_static(cid.instance.def_id()).is_some() {
+                    tcx.interpret_interner.borrow_mut().cache(cid.instance.def_id(), ptr.alloc_id);
+                }
+                let span = tcx.def_span(cid.instance.def_id());
+                let internally_mutable = !layout.ty.is_freeze(tcx, param_env, span);
+                let mutability = tcx.is_static(cid.instance.def_id());
+                let mutability = if mutability == Some(hir::Mutability::MutMutable) || internally_mutable {
+                    Mutability::Mutable
+                } else {
+                    Mutability::Immutable
+                };
+                let cleanup = StackPopCleanup::MarkStatic(mutability);
+                let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
+                trace!("const_eval: pushing stack frame for global: {}", name);
+                ecx.push_stack_frame(
+                    cid.instance,
+                    mir.span,
+                    mir,
+                    Place::from_ptr(ptr, layout.align),
+                    cleanup,
+                )?;
 
-            while ecx.step()? {}
-        }
-        let alloc = tcx.interpret_interner.borrow().get_cached(cid).expect("global not cached");
+                while ecx.step()? {}
+                ptr.alloc_id
+            }
+        };
         let ptr = MemoryPointer::new(alloc, 0).into();
         let value = match ecx.try_read_value(ptr, layout.align, layout.ty)? {
             Some(val) => val,
@@ -101,18 +152,6 @@ fn eval_body_and_ecx<'a, 'tcx>(
         Ok((value, ptr, layout.ty))
     })();
     (res, ecx)
-}
-
-pub fn eval_body_as_integer<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cid: GlobalId<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, u128> {
-    let (value, _, ty) = eval_body(tcx, cid, param_env)?;
-    match value {
-        Value::ByVal(prim) => prim.to_bytes(),
-        _ => err!(TypeNotPrimitive(ty)),
-    }
 }
 
 pub struct CompileTimeEvaluator;
@@ -159,11 +198,11 @@ impl Error for ConstEvalError {
     }
 }
 
-impl<'tcx> super::Machine<'tcx> for CompileTimeEvaluator {
+impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     type MemoryData = ();
     type MemoryKinds = !;
     fn eval_fn_call<'a>(
-        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Place, mir::BasicBlock)>,
         _args: &[ValTy<'tcx>],
@@ -204,7 +243,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeEvaluator {
 
 
     fn call_intrinsic<'a>(
-        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         _args: &[ValTy<'tcx>],
         dest: Place,
@@ -246,7 +285,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeEvaluator {
     }
 
     fn try_ptr_op<'a>(
-        _ecx: &EvalContext<'a, 'tcx, Self>,
+        _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
         left: PrimVal,
         _left_ty: Ty<'tcx>,
@@ -262,12 +301,16 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeEvaluator {
         }
     }
 
-    fn mark_static_initialized(m: !) -> EvalResult<'tcx> {
-        m
+    fn mark_static_initialized<'a>(
+        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
+        _id: AllocId,
+        _mutability: Mutability,
+    ) -> EvalResult<'tcx, bool> {
+        Ok(false)
     }
 
     fn box_alloc<'a>(
-        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _ty: Ty<'tcx>,
         _dest: Place,
     ) -> EvalResult<'tcx> {
@@ -277,7 +320,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeEvaluator {
     }
 
     fn global_item_with_linkage<'a>(
-        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _mutability: Mutability,
     ) -> EvalResult<'tcx> {
@@ -374,14 +417,34 @@ pub fn const_eval_provider<'a, 'tcx>(
     let def_id = cid.instance.def.def_id();
     let span = tcx.def_span(def_id);
 
+    if tcx.is_foreign_item(def_id) {
+        let id = tcx.interpret_interner.borrow().get_cached(def_id);
+        let id = match id {
+            // FIXME: due to caches this shouldn't happen, add some assertions
+            Some(id) => id,
+            None => {
+                let id = tcx.interpret_interner.borrow_mut().reserve();
+                tcx.interpret_interner.borrow_mut().cache(def_id, id);
+                id
+            },
+        };
+        let ty = tcx.type_of(def_id);
+        let layout = (tcx, key.param_env).layout_of(ty).unwrap();
+        let ptr = MemoryPointer::new(id, 0);
+        return Ok(tcx.mk_const(ty::Const {
+            val: ConstVal::Value(Value::ByRef(ptr.into(), layout.align)),
+            ty,
+        }))
+    }
+
     if let Some(id) = tcx.hir.as_local_node_id(def_id) {
         let tables = tcx.typeck_tables_of(def_id);
 
         // Do match-check before building MIR
         if tcx.check_match(def_id).is_err() {
             return Err(ConstEvalErr {
-                span,
                 kind: CheckMatchError,
+                span,
             });
         }
 
@@ -392,22 +455,25 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do not continue into miri if typeck errors occurred; it will fail horribly
         if tables.tainted_by_errors {
             return Err(ConstEvalErr {
+                kind: TypeckError,
                 span,
-                kind: TypeckError
             });
         }
     };
 
-    match ::interpret::eval_body(tcx, cid, key.param_env) {
-        Ok((miri_value, _, miri_ty)) => Ok(tcx.mk_const(ty::Const {
+    let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
+    res.map(|(miri_value, _, miri_ty)| {
+        tcx.mk_const(ty::Const {
             val: ConstVal::Value(miri_value),
             ty: miri_ty,
-        })),
-        Err(err) => {
-            Err(ConstEvalErr {
-                span,
-                kind: err.into()
-            })
+        })
+    }).map_err(|mut err| {
+        if tcx.is_static(def_id).is_some() {
+            ecx.report(&mut err, true);
         }
-    }
+        ConstEvalErr {
+        kind: err.into(),
+        span,
+        }
+    })
 }

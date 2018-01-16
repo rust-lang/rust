@@ -4013,7 +4013,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let count = tcx.const_eval(param_env.and(global_id));
 
             if let Err(ref err) = count {
-               err.report(tcx, tcx.def_span(count_def_id), "constant expression");
+                err.report(tcx, tcx.def_span(count_def_id), "constant expression");
             }
 
             let uty = match expected {

@@ -18,7 +18,7 @@ enum Bar<A, B> {
 }
 
 impl<A: Foo, B: Foo> Foo for Bar<A, B> {
-    const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize]; //~ ERROR constant evaluation
+    const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize]; //~ E0080
 }
 
 impl Foo for u8 {
@@ -30,5 +30,5 @@ impl Foo for u16 {
 }
 
 fn main() {
-    println!("{}", <Bar<u16, u8> as Foo>::AMT);
+    println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ E0080
 }

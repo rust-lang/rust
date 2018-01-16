@@ -11,14 +11,15 @@
 #![feature(const_indexing)]
 #![deny(const_err)]
 
-pub const A: i8 = -std::i8::MIN; //~ ERROR attempt to negate with overflow
-pub const B: u8 = 200u8 + 200u8; //~ ERROR attempt to add with overflow
-pub const C: u8 = 200u8 * 4; //~ ERROR attempt to multiply with overflow
-pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR attempt to subtract with overflow
+pub const A: i8 = -std::i8::MIN; //~ ERROR E0080
+//~^ ERROR attempt to negate with overflow
+//~| ERROR const_err
+pub const B: u8 = 200u8 + 200u8; //~ ERROR E0080
+pub const C: u8 = 200u8 * 4; //~ ERROR E0080
+pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR E0080
 pub const E: u8 = [5u8][1];
-//~^ ERROR index out of bounds: the len is 1 but the index is 1
+//~^ ERROR E0080
 
 fn main() {
     let _e = [6u8][1];
-    //~^ ERROR index out of bounds: the len is 1 but the index is 1
 }

@@ -18,13 +18,11 @@ fn black_box<T>(_: T) {
 
 fn main() {
     let a = -std::i8::MIN;
-    //~^ ERROR attempt to negate with overflow
+    //~^ ERROR const_err
+    //~| ERROR const_err
     let b = 200u8 + 200u8 + 200u8;
-    //~^ ERROR attempt to add with overflow
     let c = 200u8 * 4;
-    //~^ ERROR attempt to multiply with overflow
     let d = 42u8 - (42u8 + 1);
-    //~^ ERROR attempt to subtract with overflow
     let _e = [5u8][1];
     black_box(a);
     black_box(b);

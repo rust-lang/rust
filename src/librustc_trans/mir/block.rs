@@ -10,7 +10,6 @@
 
 use llvm::{self, ValueRef, BasicBlockRef};
 use rustc::middle::lang_items;
-use rustc::middle::const_val::{ConstEvalErr, ErrKind};
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::traits;
@@ -19,7 +18,7 @@ use abi::{Abi, FnType, ArgType, PassMode};
 use base;
 use callee;
 use builder::Builder;
-use common::{self, C_bool, C_str_slice, C_struct, C_u32, C_undef};
+use common::{self, C_bool, C_str_slice, C_struct, C_u32, C_uint_big, C_undef};
 use consts;
 use meth;
 use monomorphize;
@@ -30,7 +29,6 @@ use syntax::symbol::Symbol;
 use syntax_pos::Pos;
 
 use super::{FunctionCx, LocalRef};
-use super::constant::Const;
 use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
@@ -206,10 +204,11 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     let (otherwise, targets) = targets.split_last().unwrap();
                     let switch = bx.switch(discr.immediate(),
                                             llblock(self, *otherwise), values.len());
+                    let switch_llty = bcx.ccx.layout_of(switch_ty).immediate_llvm_type(bcx.ccx);
                     for (&value, target) in values.iter().zip(targets) {
-                        let val = Const::from_bytes(bx.cx, value, switch_ty);
+                        let llval = C_uint_big(switch_llty, value);
                         let llbb = llblock(self, *target);
-                        bx.add_case(switch, val.llval, llbb)
+                        bx.add_case(switch, llval, llbb)
                     }
                 }
             }
@@ -359,10 +358,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
                         let const_err = common::const_to_opt_u128(len, false)
                             .and_then(|len| common::const_to_opt_u128(index, false)
-                                .map(|index| ErrKind::IndexOutOfBounds {
-                                    len: len as u64,
-                                    index: index as u64
-                                }));
+                                .map(|index| format!(
+                                    "index out of bounds: the len is {} but the index is {}",
+                                    len, index,
+                                )));
 
                         let file_line_col = C_struct(bx.cx, &[filename, line, col], false);
                         let file_line_col = consts::addr_of(bx.cx,
@@ -385,7 +384,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                                                 "panic_loc");
                         (lang_items::PanicFnLangItem,
                          vec![msg_file_line_col],
-                         Some(ErrKind::Math(err.clone())))
+                         Some(err.description().to_owned()))
                     }
                     mir::AssertMessage::GeneratorResumedAfterReturn |
                     mir::AssertMessage::GeneratorResumedAfterPanic => {
@@ -413,10 +412,11 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 // is also constant, then we can produce a warning.
                 if const_cond == Some(!expected) {
                     if let Some(err) = const_err {
-                        let err = ConstEvalErr{ span: span, kind: err };
                         let mut diag = bx.tcx().sess.struct_span_warn(
-                            span, "this expression will panic at run-time");
-                        err.note(bx.tcx(), span, "expression", &mut diag);
+                            span, &format!(
+                                "this expression will panic at run-time with {:?}",
+                                err,
+                            ));
                         diag.emit();
                     }
                 }
@@ -530,10 +530,13 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                     span_bug!(span, "shuffle indices must be constant");
                                 }
                                 mir::Operand::Constant(ref constant) => {
-                                    let val = self.trans_constant(&bx, constant);
+                                    let (llval, ty) = self.remove_me_shuffle_indices(
+                                        &bx,
+                                        constant,
+                                    );
                                     return OperandRef {
-                                        val: Immediate(val.llval),
-                                        layout: bx.cx.layout_of(val.ty)
+                                        val: Immediate(llval),
+                                        layout: bx.cx.layout_of(ty)
                                     };
                                 }
                             }

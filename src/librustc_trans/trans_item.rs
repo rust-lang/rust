@@ -58,12 +58,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                 };
                 let attrs = tcx.get_attrs(def_id);
 
-                match consts::trans_static(&cx, def_id, is_mutable, &attrs) {
-                    Ok(_) => { /* Cool, everything's alright. */ },
-                    Err(err) => {
-                        err.report(tcx, tcx.def_span(def_id), "static");
-                    }
-                };
+                consts::trans_static(&cx, def_id, is_mutable, &attrs);
             }
             MonoItem::GlobalAsm(node_id) => {
                 let item = cx.tcx.hir.expect_item(node_id);

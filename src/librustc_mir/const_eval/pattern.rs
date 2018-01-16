@@ -10,7 +10,7 @@
 
 use interpret::{const_val_field, const_discr};
 
-use rustc::middle::const_val::{ConstEvalErr, ErrKind, ConstVal};
+use rustc::middle::const_val::ConstVal;
 use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::mir::interpret::{GlobalId, Value, PrimVal};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
@@ -28,10 +28,11 @@ use syntax::ptr::P;
 use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
-pub enum PatternError<'tcx> {
+pub enum PatternError {
     AssociatedConstInPattern(Span),
     StaticInPattern(Span),
-    ConstEval(ConstEvalErr<'tcx>),
+    FloatBug,
+    NonConstPath(Span),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -279,7 +280,7 @@ pub struct PatternContext<'a, 'tcx: 'a> {
     pub param_env: ty::ParamEnv<'tcx>,
     pub tables: &'a ty::TypeckTables<'tcx>,
     pub substs: &'tcx Substs<'tcx>,
-    pub errors: Vec<PatternError<'tcx>>,
+    pub errors: Vec<PatternError>,
 }
 
 impl<'a, 'tcx> Pattern<'tcx> {
@@ -650,10 +651,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             _ => {
-                self.errors.push(PatternError::ConstEval(ConstEvalErr {
-                    span,
-                    kind: ErrKind::NonConstPath,
-                }));
+                self.errors.push(PatternError::NonConstPath(span));
                 PatternKind::Wild
             }
         }
@@ -673,24 +671,35 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
-                let instance = ty::Instance::resolve(
+                match ty::Instance::resolve(
                     self.tcx,
                     self.param_env,
                     def_id,
                     substs,
-                ).unwrap();
-                let cid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                match self.tcx.at(span).const_eval(self.param_env.and(cid)) {
-                    Ok(value) => {
-                        return self.const_to_pat(instance, value, id, span)
+                ) {
+                    Some(instance) => {
+                        let cid = GlobalId {
+                            instance,
+                            promoted: None,
+                        };
+                        match self.tcx.at(span).const_eval(self.param_env.and(cid)) {
+                            Ok(value) => {
+                                return self.const_to_pat(instance, value, id, span)
+                            },
+                            Err(err) => {
+                                err.report(self.tcx, span, "pattern");
+                                PatternKind::Wild
+                            },
+                        }
                     },
-                    Err(e) => {
-                        self.errors.push(PatternError::ConstEval(e));
+                    None => {
+                        self.errors.push(if is_associated_const {
+                            PatternError::AssociatedConstInPattern(span)
+                        } else {
+                            PatternError::StaticInPattern(span)
+                        });
                         PatternKind::Wild
-                    }
+                    },
                 }
             }
             _ => self.lower_variant_or_leaf(def, span, ty, vec![]),
@@ -716,11 +725,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         let cv = self.tcx.mk_const(ty::Const { val, ty });
                         *self.const_to_pat(instance, cv, expr.hir_id, lit.span).kind
                     },
-                    Err(e) => {
-                        self.errors.push(PatternError::ConstEval(ConstEvalErr {
-                            span: lit.span,
-                            kind: e,
-                        }));
+                    Err(()) => {
+                        self.errors.push(PatternError::FloatBug);
                         PatternKind::Wild
                     },
                 }
@@ -733,17 +739,16 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     _ => span_bug!(expr.span, "not a literal: {:?}", expr),
                 };
                 match super::eval::lit_to_const(&lit.node, self.tcx, ty, true) {
-                    Ok(value) => PatternKind::Constant {
-                        value: self.tcx.mk_const(ty::Const {
-                            ty,
-                            val: value,
-                        }),
+                    Ok(val) => {
+                        let instance = ty::Instance::new(
+                            self.tables.local_id_root.expect("literal outside any scope"),
+                            self.substs,
+                        );
+                        let cv = self.tcx.mk_const(ty::Const { val, ty });
+                        *self.const_to_pat(instance, cv, expr.hir_id, lit.span).kind
                     },
-                    Err(e) => {
-                        self.errors.push(PatternError::ConstEval(ConstEvalErr {
-                            span: lit.span,
-                            kind: e,
-                        }));
+                    Err(()) => {
+                        self.errors.push(PatternError::FloatBug);
                         PatternKind::Wild
                     },
                 }

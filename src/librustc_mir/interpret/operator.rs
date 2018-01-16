@@ -8,7 +8,7 @@ use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc::mir::interpret::{EvalResult, PrimVal, PrimValKind, Value, bytes_to_f32, bytes_to_f64};
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
@@ -56,6 +56,24 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 }
 
 macro_rules! overflow {
+    (overflowing_div, $l:expr, $r:expr) => ({
+        let (val, overflowed) = if $r == 0 {
+            ($l, true)
+        } else {
+            $l.overflowing_div($r)
+        };
+        let primval = PrimVal::Bytes(val as u128);
+        Ok((primval, overflowed))
+    });
+    (overflowing_rem, $l:expr, $r:expr) => ({
+        let (val, overflowed) = if $r == 0 {
+            ($l, true)
+        } else {
+            $l.overflowing_rem($r)
+        };
+        let primval = PrimVal::Bytes(val as u128);
+        Ok((primval, overflowed))
+    });
     ($op:ident, $l:expr, $r:expr) => ({
         let (val, overflowed) = $l.$op($r);
         let primval = PrimVal::Bytes(val as u128);
@@ -105,7 +123,7 @@ macro_rules! int_shift {
     })
 }
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Returns the result of the specified operation and whether it overflowed.
     pub fn binary_op(
         &self,

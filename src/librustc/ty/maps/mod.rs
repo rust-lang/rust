@@ -16,7 +16,6 @@ use hir::{self, TraitCandidate, ItemLocalId, TransFnAttrs};
 use hir::svh::Svh;
 use lint;
 use middle::borrowck::BorrowCheckResult;
-use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
                      ExternBodyNestedBodies};
 use middle::cstore::{NativeLibraryKind, DepKind, CrateSource, ExternConstBody};
@@ -27,6 +26,7 @@ use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
+use middle::const_val::EvalResult;
 use mir::mono::{CodegenUnit, Stats};
 use mir;
 use mir::interpret::{GlobalId};
@@ -212,7 +212,7 @@ define_maps! { <'tcx>
     /// Results of evaluating const items or constants embedded in
     /// other items (such as enum variant explicit discriminants).
     [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-        -> const_val::EvalResult<'tcx>,
+        -> EvalResult<'tcx>,
 
     [] fn check_match: CheckMatch(DefId)
         -> Result<(), ErrorReported>,

@@ -907,16 +907,17 @@ pub struct InterpretInterner<'tcx> {
     alloc_by_id: FxHashMap<interpret::AllocId, &'tcx interpret::Allocation>,
 
     /// Reverse map of `alloc_cache`
-    ///
-    /// Multiple globals may share the same memory
-    global_cache: FxHashMap<interpret::AllocId, Vec<interpret::GlobalId<'tcx>>>,
+    global_cache: FxHashMap<interpret::AllocId, DefId>,
 
     /// The AllocId to assign to the next new regular allocation.
     /// Always incremented, never gets smaller.
     next_id: interpret::AllocId,
 
-    /// Allows checking whether a constant already has an allocation
-    alloc_cache: FxHashMap<interpret::GlobalId<'tcx>, interpret::AllocId>,
+    /// Allows checking whether a static already has an allocation
+    ///
+    /// This is only important for detecting statics referring to themselves
+    // FIXME(oli-obk) move it to the EvalContext?
+    alloc_cache: FxHashMap<DefId, interpret::AllocId>,
 
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
     /// allocations for string and bytestring literals.
@@ -951,30 +952,27 @@ impl<'tcx> InterpretInterner<'tcx> {
 
     pub fn get_cached(
         &self,
-        global_id: interpret::GlobalId<'tcx>,
+        static_id: DefId,
     ) -> Option<interpret::AllocId> {
-        self.alloc_cache.get(&global_id).cloned()
+        self.alloc_cache.get(&static_id).cloned()
     }
 
     pub fn cache(
         &mut self,
-        global_id: interpret::GlobalId<'tcx>,
+        static_id: DefId,
         alloc_id: interpret::AllocId,
     ) {
-        self.global_cache.entry(alloc_id).or_default().push(global_id);
-        if let Some(old) = self.alloc_cache.insert(global_id, alloc_id) {
-            bug!("tried to cache {:?}, but was already existing as {:#?}", global_id, old);
+        self.global_cache.insert(alloc_id, static_id);
+        if let Some(old) = self.alloc_cache.insert(static_id, alloc_id) {
+            bug!("tried to cache {:?}, but was already existing as {:#?}", static_id, old);
         }
     }
 
-    pub fn get_globals(
+    pub fn get_corresponding_static_def_id(
         &self,
         ptr: interpret::AllocId,
-    ) -> &[interpret::GlobalId<'tcx>] {
-        match self.global_cache.get(&ptr) {
-            Some(v) => v,
-            None => &[],
-        }
+    ) -> Option<DefId> {
+        self.global_cache.get(&ptr).cloned()
     }
 
     pub fn intern_at_reserved(

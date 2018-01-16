@@ -11,9 +11,14 @@
 #![deny(const_err)]
 
 pub const A: i8 = -std::i8::MIN; //~ ERROR attempt to negate with overflow
+//~^ ERROR E0080
+//~| ERROR const_err
 pub const B: i8 = A;
+//~^ ERROR E0080
 pub const C: u8 = A as u8;
+//~^ ERROR E0080
 pub const D: i8 = 50 - A;
+//~^ ERROR E0080
 
 fn main() {
 }

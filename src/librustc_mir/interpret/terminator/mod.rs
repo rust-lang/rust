@@ -13,7 +13,7 @@ use interpret::memory::HasMemory;
 
 mod drop;
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn goto_block(&mut self, target: mir::BasicBlock) {
         self.frame_mut().block = target;
         self.frame_mut().stmt = 0;
