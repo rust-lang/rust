@@ -111,6 +111,13 @@ pub enum ErrKind<'tcx> {
 
     TypeckError,
     CheckMatchError,
+    Miri(::mir::interpret::EvalError<'tcx>),
+}
+
+impl<'tcx> From<::mir::interpret::EvalError<'tcx>> for ErrKind<'tcx> {
+    fn from(err: ::mir::interpret::EvalError<'tcx>) -> ErrKind<'tcx> {
+        ErrKind::Miri(err)
+    }
 }
 
 impl<'tcx> From<ConstMathErr> for ErrKind<'tcx> {
@@ -173,6 +180,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
 
             TypeckError => simple!("type-checking failed"),
             CheckMatchError => simple!("match-checking failed"),
+            Miri(ref err) => simple!("miri failed: {}", err),
         }
     }
 

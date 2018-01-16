@@ -12,7 +12,7 @@ use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 use backtrace::Backtrace;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EvalError<'tcx> {
     pub kind: EvalErrorKind<'tcx>,
     pub backtrace: Option<Backtrace>,
@@ -31,11 +31,11 @@ impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EvalErrorKind<'tcx> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant
-    MachineError(Box<dyn Error>),
+    MachineError(String),
     FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
     NoMirFor(String),
     UnterminatedCString(MemoryPointer),
@@ -132,7 +132,7 @@ impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {
         use self::EvalErrorKind::*;
         match self.kind {
-            MachineError(ref inner) => inner.description(),
+            MachineError(ref inner) => inner,
             FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
             InvalidMemoryAccess =>
@@ -245,14 +245,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "there were unresolved type arguments during trait selection",
             TypeckError =>
                 "encountered constants with type errors, stopping evaluation",
-        }
-    }
-
-    fn cause(&self) -> Option<&dyn Error> {
-        use self::EvalErrorKind::*;
-        match self.kind {
-            MachineError(ref inner) => Some(&**inner),
-            _ => None,
         }
     }
 }

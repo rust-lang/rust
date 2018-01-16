@@ -470,6 +470,7 @@ for ::middle::const_val::ErrKind<'gcx> {
             ErroneousReferencedConstant(ref const_val) => {
                 const_val.hash_stable(hcx, hasher);
             }
+            Miri(ref err) => err.hash_stable(hcx, hasher),
         }
     }
 }
@@ -481,6 +482,175 @@ impl_stable_hash_for!(struct ty::GeneratorInterior<'tcx> { witness, movable });
 impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     parent,
     predicates
+});
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
+for ::mir::interpret::EvalError<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use mir::interpret::EvalErrorKind::*;
+
+        mem::discriminant(&self.kind).hash_stable(hcx, hasher);
+
+        match self.kind {
+            DanglingPointerDeref |
+            DoubleFree |
+            InvalidMemoryAccess |
+            InvalidFunctionPointer |
+            InvalidBool |
+            InvalidDiscriminant |
+            InvalidNullPointerUsage |
+            ReadPointerAsBytes |
+            ReadBytesAsPointer |
+            InvalidPointerMath |
+            ReadUndefBytes |
+            DeadLocal |
+            ExecutionTimeLimitReached |
+            StackFrameLimitReached |
+            OutOfTls |
+            TlsOutOfBounds |
+            CalledClosureAsFunction |
+            VtableForArgumentlessMethod |
+            ModifiedConstantMemory |
+            AssumptionNotHeld |
+            InlineAsm |
+            ReallocateNonBasePtr |
+            DeallocateNonBasePtr |
+            HeapAllocZeroBytes |
+            Unreachable |
+            Panic |
+            ReadFromReturnPointer |
+            UnimplementedTraitSelection |
+            TypeckError |
+            DerefFunctionPointer |
+            ExecuteMemory |
+            OverflowingMath => {}
+            MachineError(ref err) => err.hash_stable(hcx, hasher),
+            FunctionPointerTyMismatch(a, b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher)
+            },
+            NoMirFor(ref s) => s.hash_stable(hcx, hasher),
+            UnterminatedCString(ptr) => ptr.hash_stable(hcx, hasher),
+            PointerOutOfBounds {
+                ptr,
+                access,
+                allocation_size,
+            } => {
+                ptr.hash_stable(hcx, hasher);
+                access.hash_stable(hcx, hasher);
+                allocation_size.hash_stable(hcx, hasher)
+            },
+            InvalidBoolOp(bop) => bop.hash_stable(hcx, hasher),
+            Unimplemented(ref s) => s.hash_stable(hcx, hasher),
+            ArrayIndexOutOfBounds(sp, a, b) => {
+                sp.hash_stable(hcx, hasher);
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher)
+            },
+            Math(sp, ref err) => {
+                sp.hash_stable(hcx, hasher);
+                err.hash_stable(hcx, hasher)
+            },
+            Intrinsic(ref s) => s.hash_stable(hcx, hasher),
+            InvalidChar(c) => c.hash_stable(hcx, hasher),
+            OutOfMemory {
+                allocation_size,
+                memory_size,
+                memory_usage,
+            } => {
+                allocation_size.hash_stable(hcx, hasher);
+                memory_size.hash_stable(hcx, hasher);
+                memory_usage.hash_stable(hcx, hasher)
+            },
+            AbiViolation(ref s) => s.hash_stable(hcx, hasher),
+            AlignmentCheckFailed {
+                required,
+                has,
+            } => {
+                required.hash_stable(hcx, hasher);
+                has.hash_stable(hcx, hasher)
+            },
+            MemoryLockViolation {
+                ptr,
+                len,
+                frame,
+                access,
+                ref lock,
+            } =>  {
+                ptr.hash_stable(hcx, hasher);
+                len.hash_stable(hcx, hasher);
+                frame.hash_stable(hcx, hasher);
+                access.hash_stable(hcx, hasher);
+                lock.hash_stable(hcx, hasher)
+            },
+            MemoryAcquireConflict {
+                ptr,
+                len,
+                kind,
+                ref lock,
+            } =>  {
+                ptr.hash_stable(hcx, hasher);
+                len.hash_stable(hcx, hasher);
+                kind.hash_stable(hcx, hasher);
+                lock.hash_stable(hcx, hasher)
+            },
+            InvalidMemoryLockRelease {
+                ptr,
+                len,
+                frame,
+                ref lock,
+            } =>  {
+                ptr.hash_stable(hcx, hasher);
+                len.hash_stable(hcx, hasher);
+                frame.hash_stable(hcx, hasher);
+                lock.hash_stable(hcx, hasher)
+            },
+            DeallocatedLockedMemory {
+                ptr,
+                ref lock,
+            } => {
+                ptr.hash_stable(hcx, hasher);
+                lock.hash_stable(hcx, hasher)
+            },
+            ValidationFailure(ref s) => s.hash_stable(hcx, hasher),
+            TypeNotPrimitive(ty) => ty.hash_stable(hcx, hasher),
+            ReallocatedWrongMemoryKind(ref a, ref b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher)
+            },
+            DeallocatedWrongMemoryKind(ref a, ref b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher)
+            },
+            IncorrectAllocationInformation(a, b, c, d) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher);
+                c.hash_stable(hcx, hasher);
+                d.hash_stable(hcx, hasher)
+            },
+            Layout(lay) => lay.hash_stable(hcx, hasher),
+            HeapAllocNonPowerOfTwoAlignment(n) => n.hash_stable(hcx, hasher),
+            PathNotFound(ref v) => v.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl_stable_hash_for!(enum mir::interpret::Lock {
+    NoLock,
+    WriteLock(dl),
+    ReadLock(v)
+});
+
+impl_stable_hash_for!(struct mir::interpret::DynamicLifetime {
+    frame,
+    region
+});
+
+impl_stable_hash_for!(enum mir::interpret::AccessKind {
+    Read,
+    Write
 });
 
 impl_stable_hash_for!(enum ty::Variance {

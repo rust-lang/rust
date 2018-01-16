@@ -18,6 +18,7 @@ use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use mir::interpret;
 
 use std::rc::Rc;
 
@@ -585,6 +586,116 @@ impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
+    type Lifted = interpret::EvalError<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        use mir::interpret::EvalErrorKind::*;
+        let kind = match self.kind {
+            MachineError(ref err) => MachineError(err.clone()),
+            FunctionPointerTyMismatch(a, b) => FunctionPointerTyMismatch(
+                tcx.lift(&a)?,
+                tcx.lift(&b)?,
+            ),
+            NoMirFor(ref s) => NoMirFor(s.clone()),
+            UnterminatedCString(ptr) => UnterminatedCString(ptr),
+            DanglingPointerDeref => DanglingPointerDeref,
+            DoubleFree => DoubleFree,
+            InvalidMemoryAccess => InvalidMemoryAccess,
+            InvalidFunctionPointer => InvalidFunctionPointer,
+            InvalidBool => InvalidBool,
+            InvalidDiscriminant => InvalidDiscriminant,
+            PointerOutOfBounds {
+                ptr,
+                access,
+                allocation_size,
+            } => PointerOutOfBounds { ptr, access, allocation_size },
+            InvalidNullPointerUsage => InvalidNullPointerUsage,
+            ReadPointerAsBytes => ReadPointerAsBytes,
+            ReadBytesAsPointer => ReadBytesAsPointer,
+            InvalidPointerMath => InvalidPointerMath,
+            ReadUndefBytes => ReadUndefBytes,
+            DeadLocal => DeadLocal,
+            InvalidBoolOp(bop) => InvalidBoolOp(bop),
+            Unimplemented(ref s) => Unimplemented(s.clone()),
+            DerefFunctionPointer => DerefFunctionPointer,
+            ExecuteMemory => ExecuteMemory,
+            ArrayIndexOutOfBounds(sp, a, b) => ArrayIndexOutOfBounds(sp, a, b),
+            Math(sp, ref err) => Math(sp, err.clone()),
+            Intrinsic(ref s) => Intrinsic(s.clone()),
+            OverflowingMath => OverflowingMath,
+            InvalidChar(c) => InvalidChar(c),
+            OutOfMemory {
+                allocation_size,
+                memory_size,
+                memory_usage,
+            } => OutOfMemory { allocation_size, memory_size, memory_usage },
+            ExecutionTimeLimitReached => ExecutionTimeLimitReached,
+            StackFrameLimitReached => StackFrameLimitReached,
+            OutOfTls => OutOfTls,
+            TlsOutOfBounds => TlsOutOfBounds,
+            AbiViolation(ref s) => AbiViolation(s.clone()),
+            AlignmentCheckFailed {
+                required,
+                has,
+            } => AlignmentCheckFailed { required, has },
+            MemoryLockViolation {
+                ptr,
+                len,
+                frame,
+                access,
+                ref lock,
+            } => MemoryLockViolation { ptr, len, frame, access, lock: lock.clone() },
+            MemoryAcquireConflict {
+                ptr,
+                len,
+                kind,
+                ref lock,
+            } => MemoryAcquireConflict { ptr, len, kind, lock: lock.clone() },
+            InvalidMemoryLockRelease {
+                ptr,
+                len,
+                frame,
+                ref lock,
+            } => InvalidMemoryLockRelease { ptr, len, frame, lock: lock.clone() },
+            DeallocatedLockedMemory {
+                ptr,
+                ref lock,
+            } => DeallocatedLockedMemory { ptr, lock: lock.clone() },
+            ValidationFailure(ref s) => ValidationFailure(s.clone()),
+            CalledClosureAsFunction => CalledClosureAsFunction,
+            VtableForArgumentlessMethod => VtableForArgumentlessMethod,
+            ModifiedConstantMemory => ModifiedConstantMemory,
+            AssumptionNotHeld => AssumptionNotHeld,
+            InlineAsm => InlineAsm,
+            TypeNotPrimitive(ty) => TypeNotPrimitive(tcx.lift(&ty)?),
+            ReallocatedWrongMemoryKind(ref a, ref b) => {
+                ReallocatedWrongMemoryKind(a.clone(), b.clone())
+            },
+            DeallocatedWrongMemoryKind(ref a, ref b) => {
+                DeallocatedWrongMemoryKind(a.clone(), b.clone())
+            },
+            ReallocateNonBasePtr => ReallocateNonBasePtr,
+            DeallocateNonBasePtr => DeallocateNonBasePtr,
+            IncorrectAllocationInformation(a, b, c, d) => {
+                IncorrectAllocationInformation(a, b, c, d)
+            },
+            Layout(lay) => Layout(tcx.lift(&lay)?),
+            HeapAllocZeroBytes => HeapAllocZeroBytes,
+            HeapAllocNonPowerOfTwoAlignment(n) => HeapAllocNonPowerOfTwoAlignment(n),
+            Unreachable => Unreachable,
+            Panic => Panic,
+            ReadFromReturnPointer => ReadFromReturnPointer,
+            PathNotFound(ref v) => PathNotFound(v.clone()),
+            UnimplementedTraitSelection => UnimplementedTraitSelection,
+            TypeckError => TypeckError,
+        };
+        Some(interpret::EvalError {
+            kind,
+            backtrace: self.backtrace.clone(),
+        })
+    }
+}
+
 impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
     type Lifted = const_val::ErrKind<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
@@ -614,6 +725,7 @@ impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
 
             TypeckError => TypeckError,
             CheckMatchError => CheckMatchError,
+            Miri(ref e) => return tcx.lift(e).map(Miri),
         })
     }
 }
