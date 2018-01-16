@@ -32,8 +32,8 @@ pub unsafe trait Place<Data: ?Sized> {
     /// Note that the data at this address is generally uninitialized,
     /// and thus one should use `ptr::write` for initializing it.
     ///
-    /// This function must return a valid (non-zero) pointer to
-    /// a location at which a value of type `Data` can be written.
+    /// This function must return a pointer through which a value
+    /// of type `Data` can be written.
     fn pointer(&mut self) -> *mut Data;
 }
 
