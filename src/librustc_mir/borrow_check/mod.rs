@@ -707,6 +707,15 @@ impl InitializationRequiringAction {
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
+    /// Returns true if the borrow represented by `kind` is
+    /// allowed to be split into separate Reservation and
+    /// Activation phases.
+    fn allow_two_phase_borrow(&self, kind: BorrowKind) -> bool {
+        self.tcx.sess.two_phase_borrows() &&
+            (kind.allows_two_phase_borrow() ||
+             self.tcx.sess.opts.debugging_opts.two_phase_beyond_autoref)
+    }
+
     /// Checks an access to the given place to see if it is allowed. Examines the set of borrows
     /// that are in scope, as well as which paths have been initialized, to ensure that (a) the
     /// place is initialized and (b) it is not borrowed in some way that would prevent this
@@ -799,7 +808,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
-                    if this.tcx.sess.two_phase_borrows() && index.is_reservation()
+                    if this.allow_two_phase_borrow(borrow.kind) && index.is_reservation()
                     {
                         return Control::Continue;
                     }
@@ -947,7 +956,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if self.tcx.sess.two_phase_borrows() {
+                        if self.allow_two_phase_borrow(bk) {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))

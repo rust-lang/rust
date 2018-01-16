@@ -420,6 +420,15 @@ pub enum BorrowKind {
     }
 }
 
+impl BorrowKind {
+    pub fn allows_two_phase_borrow(&self) -> bool {
+        match *self {
+            BorrowKind::Shared | BorrowKind::Unique => false,
+            BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Variables and temps
 
