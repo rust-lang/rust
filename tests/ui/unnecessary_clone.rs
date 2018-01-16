@@ -1,9 +1,14 @@
+#![warn(clone_on_ref_ptr)]
 #![allow(unused)]
 
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
+
+trait SomeTrait {}
+struct SomeImpl;
+impl SomeTrait for SomeImpl {}
 
 fn main() {}
 
@@ -34,7 +39,8 @@ fn clone_on_ref_ptr() {
     arc_weak.clone();
     sync::Weak::clone(&arc_weak);
 
-
+    let x = Arc::new(SomeImpl);
+    let _: Arc<SomeTrait> = x.clone(); 
 }
 
 fn clone_on_copy_generic<T: Copy>(t: T) {
