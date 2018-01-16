@@ -1,0 +1,1 @@
+# Walkthrough: a typical contribution
