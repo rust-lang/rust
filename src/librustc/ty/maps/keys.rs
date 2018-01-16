@@ -14,6 +14,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
+use mir;
 
 use std::fmt::Debug;
 use std::hash::Hash;

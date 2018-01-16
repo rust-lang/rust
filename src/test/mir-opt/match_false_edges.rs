@@ -93,7 +93,7 @@ fn main() {
 //      _7 = const guard() -> [return: bb10, unwind: bb1];
 //  }
 //  bb10: { // end of guard
-//      switchInt(move _7) -> [0u8: bb11, otherwise: bb2];
+//      switchInt(move _7) -> [false: bb11, otherwise: bb2];
 //  }
 //  bb11: { // to pre_binding2
 //      falseEdges -> [real: bb5, imaginary: bb5];
@@ -157,7 +157,7 @@ fn main() {
 //      _7 = const guard() -> [return: bb10, unwind: bb1];
 //  }
 //  bb10: { // end of guard
-//      switchInt(move _7) -> [0u8: bb11, otherwise: bb2];
+//      switchInt(move _7) -> [false: bb11, otherwise: bb2];
 //  }
 //  bb11: { // to pre_binding2
 //      falseEdges -> [real: bb6, imaginary: bb5];
@@ -219,7 +219,7 @@ fn main() {
 //     _9 = const guard() -> [return: bb10, unwind: bb1];
 // }
 // bb10: { //end of guard
-//    switchInt(move _9) -> [0u8: bb11, otherwise: bb2];
+//    switchInt(move _9) -> [false: bb11, otherwise: bb2];
 // }
 // bb11: { // to pre_binding2
 //     falseEdges -> [real: bb5, imaginary: bb5];
@@ -239,8 +239,8 @@ fn main() {
 //     _11 = const guard2(move _12) -> [return: bb14, unwind: bb1];
 // }
 // bb14: { // end of guard2
-//     StorageDead(_12);
-//     switchInt(move _11) -> [0u8: bb15, otherwise: bb3];
+//     StorageDead(_11);
+//     switchInt(move _11) -> [false: bb15, otherwise: bb3];
 // }
 // bb15: { // to pre_binding4
 //     falseEdges -> [real: bb7, imaginary: bb7];

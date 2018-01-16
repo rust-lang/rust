@@ -10,7 +10,7 @@
 
 use llvm::{self, ValueRef, BasicBlockRef};
 use rustc::middle::lang_items;
-use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
+use rustc::middle::const_val::{ConstEvalErr, ErrKind};
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::traits;
@@ -196,17 +196,18 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 if switch_ty == bx.tcx().types.bool {
                     let lltrue = llblock(self, targets[0]);
                     let llfalse = llblock(self, targets[1]);
-                    if let [ConstInt::U8(0)] = values[..] {
+                    if let [0] = values[..] {
                         bx.cond_br(discr.immediate(), llfalse, lltrue);
                     } else {
+                        assert_eq!(&values[..], &[1]);
                         bx.cond_br(discr.immediate(), lltrue, llfalse);
                     }
                 } else {
                     let (otherwise, targets) = targets.split_last().unwrap();
                     let switch = bx.switch(discr.immediate(),
                                             llblock(self, *otherwise), values.len());
-                    for (value, target) in values.iter().zip(targets) {
-                        let val = Const::from_constint(bx.cx, value);
+                    for (&value, target) in values.iter().zip(targets) {
+                        let val = Const::from_bytes(bx.cx, value, switch_ty);
                         let llbb = llblock(self, *target);
                         bx.add_case(switch, val.llval, llbb)
                     }

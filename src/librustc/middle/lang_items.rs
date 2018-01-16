@@ -280,6 +280,7 @@ language_item_table! {
     GeneratorTraitLangItem,          "generator",               gen_trait;
 
     EqTraitLangItem,                 "eq",                      eq_trait;
+    PartialOrdTraitLangItem,         "partial_ord",             partial_ord_trait;
     OrdTraitLangItem,                "ord",                     ord_trait;
 
     // A number of panic-related lang items. The `panic` item corresponds to

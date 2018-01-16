@@ -16,6 +16,7 @@ use build::Builder;
 use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
+use rustc::mir::interpret::{Value, PrimVal};
 
 use rustc::mir::*;
 use syntax::ast;
@@ -62,7 +63,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ty::TyChar => {
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Char('\0'),
+                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
+                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(0)))
+                        } else {
+                            ConstVal::Char('\0')
+                        },
                         ty
                     })
                 }
@@ -83,7 +88,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Integral(val),
+                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
+                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(0)))
+                        } else {
+                            ConstVal::Integral(val)
+                        },
                         ty
                     })
                 }
@@ -104,7 +113,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Integral(val),
+                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
+                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(0)))
+                        } else {
+                            ConstVal::Integral(val)
+                        },
                         ty
                     })
                 }

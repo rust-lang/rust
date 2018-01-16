@@ -207,6 +207,13 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             return false;
         }
 
+        // Do not inline {u,i}128 lang items, trans const eval depends
+        // on detecting calls to these lang items and intercepting them
+        if tcx.is_binop_lang_item(callsite.callee).is_some() {
+            debug!("    not inlining 128bit integer lang item");
+            return false;
+        }
+
         let trans_fn_attrs = tcx.trans_fn_attrs(callsite.callee);
 
         let hinted = match trans_fn_attrs.inline {

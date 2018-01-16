@@ -26,6 +26,7 @@ use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangIte
 use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
+use mir::interpret::{Value, PrimVal};
 use mir::GeneratorLayout;
 use session::CrateDisambiguator;
 use traits;
@@ -1838,6 +1839,19 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
                         discr = v;
                     }
+                    Ok(&ty::Const {
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
+                        ..
+                    }) => {
+                        trace!("discriminants: {} ({:?})", b, repr_type);
+                        use syntax::attr::IntType;
+                        discr = match repr_type {
+                            IntType::SignedInt(int_type) => ConstInt::new_signed(
+                                b as i128, int_type, tcx.sess.target.isize_ty).unwrap(),
+                            IntType::UnsignedInt(uint_type) => ConstInt::new_unsigned(
+                                b, uint_type, tcx.sess.target.usize_ty).unwrap(),
+                        };
+                    }
                     err => {
                         if !expr_did.is_local() {
                             span_bug!(tcx.def_span(expr_did),
@@ -1877,6 +1891,20 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     match tcx.const_eval(param_env.and((expr_did, substs))) {
                         Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
                             explicit_value = v;
+                            break;
+                        }
+                        Ok(&ty::Const {
+                            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
+                            ..
+                        }) => {
+                            trace!("discriminants: {} ({:?})", b, repr_type);
+                            use syntax::attr::IntType;
+                            explicit_value = match repr_type {
+                                IntType::SignedInt(int_type) => ConstInt::new_signed(
+                                    b as i128, int_type, tcx.sess.target.isize_ty).unwrap(),
+                                IntType::UnsignedInt(uint_type) => ConstInt::new_unsigned(
+                                    b, uint_type, tcx.sess.target.usize_ty).unwrap(),
+                            };
                             break;
                         }
                         err => {

@@ -37,8 +37,8 @@ use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
-use rustc::util::nodemap::FxHashSet;
-use util::nodemap::FxHashMap;
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::mir::interpret::{Value, PrimVal};
 
 use rustc_const_math::ConstInt;
 
@@ -534,6 +534,18 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             match result {
                 Ok(&ty::Const { val: ConstVal::Integral(x), .. }) => Some(x),
+                Ok(&ty::Const {
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
+                    ..
+                }) => {
+                    use syntax::attr::IntType;
+                    Some(match repr_type {
+                        IntType::SignedInt(int_type) => ConstInt::new_signed(
+                            b as i128, int_type, tcx.sess.target.isize_ty).unwrap(),
+                        IntType::UnsignedInt(uint_type) => ConstInt::new_unsigned(
+                            b, uint_type, tcx.sess.target.usize_ty).unwrap(),
+                    })
+                }
                 _ => None
             }
         } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {

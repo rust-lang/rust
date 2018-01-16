@@ -10,7 +10,6 @@
 
 use hair::*;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_const_math::ConstInt;
 use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
@@ -18,6 +17,7 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::mir::interpret::{Value, PrimVal};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
@@ -100,7 +100,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::Deref { arg: expr.to_ref() }
         }
         Adjust::Deref(Some(deref)) => {
-            let call = deref.method_call(cx.tcx, expr.ty);
+            let call = deref.method_call(cx.tcx(), expr.ty);
 
             expr = Expr {
                 temp_lifetime,
@@ -314,7 +314,9 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprLit(..) => ExprKind::Literal { literal: cx.const_eval_literal(expr) },
+        hir::ExprLit(ref lit) => ExprKind::Literal {
+            literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, false),
+        },
 
         hir::ExprBinary(op, ref lhs, ref rhs) => {
             if cx.tables().is_method_call(expr) {
@@ -400,9 +402,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             if cx.tables().is_method_call(expr) {
                 overloaded_operator(cx, expr, vec![arg.to_ref()])
             } else {
-                // FIXME runtime-overflow
-                if let hir::ExprLit(_) = arg.node {
-                    ExprKind::Literal { literal: cx.const_eval_literal(expr) }
+                if let hir::ExprLit(ref lit) = arg.node {
+                    ExprKind::Literal {
+                        literal: cx.const_eval_literal(&lit.node, expr_ty, lit.span, true),
+                    }
                 } else {
                     ExprKind::Unary {
                         op: UnOp::Neg,
@@ -509,8 +512,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let def_id = cx.tcx.hir.body_owner_def_id(count);
             let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
             let count = match cx.tcx.at(c.span).const_eval(cx.param_env.and((def_id, substs))) {
-                Ok(&ty::Const { val: ConstVal::Integral(ConstInt::Usize(u)), .. }) => u,
-                Ok(other) => bug!("constant evaluation of repeat count yielded {:?}", other),
+                Ok(cv) => cv.val.unwrap_usize(cx.tcx),
                 Err(s) => cx.fatal_const_eval_err(&s, c.span, "expression")
             };
 
@@ -634,8 +636,8 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         span: expr.span,
         kind: ExprKind::Literal {
             literal: Literal::Value {
-                value: cx.tcx.mk_const(ty::Const {
-                    val: ConstVal::Function(def_id, substs),
+                value: cx.tcx().mk_const(ty::Const {
+                    val: const_fn(cx.tcx, def_id, substs),
                     ty
                 }),
             },
@@ -675,6 +677,28 @@ fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>, arm: &'tcx hir::Arm)
     }
 }
 
+fn const_fn<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    def_id: DefId,
+    substs: &'tcx Substs<'tcx>,
+) -> ConstVal<'tcx> {
+    if tcx.sess.opts.debugging_opts.miri {
+        /*
+        let inst = ty::Instance::new(def_id, substs);
+        let ptr = tcx
+            .interpret_interner
+            .borrow_mut()
+            .create_fn_alloc(inst);
+        let ptr = MemoryPointer::new(AllocId(ptr), 0);
+        ConstVal::Value(Value::ByVal(PrimVal::Ptr(ptr)))
+        */
+        // ZST function type
+        ConstVal::Value(Value::ByVal(PrimVal::Undef))
+    } else {
+        ConstVal::Function(def_id, substs)
+    }
+}
+
 fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      expr: &'tcx hir::Expr,
                                      def: Def)
@@ -688,7 +712,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Def::VariantCtor(def_id, CtorKind::Fn) => ExprKind::Literal {
             literal: Literal::Value {
                 value: cx.tcx.mk_const(ty::Const {
-                    val: ConstVal::Function(def_id, substs),
+                    val: const_fn(cx.tcx.global_tcx(), def_id, substs),
                     ty: cx.tables().node_id_to_type(expr.hir_id)
                 }),
             },

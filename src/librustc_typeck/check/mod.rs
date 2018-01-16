@@ -4029,9 +4029,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             if let Ok(count) = count {
-                let zero_or_one = count.val.to_const_int().and_then(|count| {
-                    count.to_u64().map(|count| count <= 1)
-                }).unwrap_or(false);
+                let zero_or_one = count.val.to_u128().map_or(false, |count| count <= 1);
                 if !zero_or_one {
                     // For [foo, ..n] where n > 1, `foo` must have
                     // Copy type:

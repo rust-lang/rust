@@ -248,10 +248,15 @@ pub fn unary_op<'tcx>(
         (Not, I64) => !(bytes as i64) as u128,
         (Not, I128) => !(bytes as i128) as u128,
 
+        (Neg, I8) if bytes == i8::min_value() as u128 => return err!(OverflowingMath),
         (Neg, I8) => -(bytes as i8) as u128,
+        (Neg, I16) if bytes == i16::min_value() as u128 => return err!(OverflowingMath),
         (Neg, I16) => -(bytes as i16) as u128,
+        (Neg, I32) if bytes == i32::min_value() as u128 => return err!(OverflowingMath),
         (Neg, I32) => -(bytes as i32) as u128,
+        (Neg, I64) if bytes == i64::min_value() as u128 => return err!(OverflowingMath),
         (Neg, I64) => -(bytes as i64) as u128,
+        (Neg, I128) if bytes == i128::min_value() as u128 => return err!(OverflowingMath),
         (Neg, I128) => -(bytes as i128) as u128,
 
         (Neg, F32) => (-bytes_to_f32(bytes)).bits,

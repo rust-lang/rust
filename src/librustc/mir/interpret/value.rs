@@ -1,6 +1,7 @@
 #![allow(unknown_lints)]
 
 use ty::layout::{Align, HasDataLayout};
+use ty;
 
 use super::{EvalResult, MemoryPointer, PointerArithmetic};
 use syntax::ast::FloatTy;
@@ -34,6 +35,15 @@ pub enum Value {
     ByRef(Pointer, Align),
     ByVal(PrimVal),
     ByValPair(PrimVal, PrimVal),
+}
+
+impl<'tcx> ty::TypeFoldable<'tcx> for Value {
+    fn super_fold_with<'gcx: 'tcx, F: ty::fold::TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> Self {
+        *self
+    }
+    fn super_visit_with<V: ty::fold::TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
+        false
+    }
 }
 
 /// A wrapper type around `PrimVal` that cannot be turned back into a `PrimVal` accidentally.

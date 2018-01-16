@@ -276,38 +276,54 @@ impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
         const MAX1: usize = usize::max_value() - 1;
-        let mut interpret_interner = self.tcx.unwrap().interpret_interner.borrow_mut();
+        let tcx = self.tcx;
+        let interpret_interner = || tcx.unwrap().interpret_interner.borrow_mut();
         let pos = self.position();
-        match self.read_usize()? {
+        match usize::decode(self)? {
             ::std::usize::MAX => {
+                let id = interpret_interner().reserve();
+                let alloc_id = interpret::AllocId(id);
+                trace!("creating alloc id {:?} at {}", alloc_id, pos);
+                // insert early to allow recursive allocs
+                self.interpret_alloc_cache.insert(pos, alloc_id);
+
                 let allocation = interpret::Allocation::decode(self)?;
-                let id = interpret_interner.reserve();
+                trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
                 let allocation = self.tcx.unwrap().intern_const_alloc(allocation);
-                interpret_interner.intern_at_reserved(id, allocation);
-                let id = interpret::AllocId(id);
-                self.interpret_alloc_cache.insert(pos, id);
+                interpret_interner().intern_at_reserved(id, allocation);
 
                 let num = usize::decode(self)?;
                 let ptr = interpret::Pointer {
                     primval: interpret::PrimVal::Ptr(interpret::MemoryPointer {
-                        alloc_id: id,
+                        alloc_id,
                         offset: 0,
                     }),
                 };
                 for _ in 0..num {
                     let glob = interpret::GlobalId::decode(self)?;
-                    interpret_interner.cache(glob, ptr);
+                    interpret_interner().cache(glob, ptr);
                 }
 
-                Ok(id)
+                Ok(alloc_id)
             },
             MAX1 => {
+                trace!("creating fn alloc id at {}", pos);
                 let instance = ty::Instance::decode(self)?;
-                let id = interpret::AllocId(interpret_interner.create_fn_alloc(instance));
+                trace!("decoded fn alloc instance: {:?}", instance);
+                let id = interpret::AllocId(interpret_interner().create_fn_alloc(instance));
+                trace!("created fn alloc id: {:?}", id);
                 self.interpret_alloc_cache.insert(pos, id);
                 Ok(id)
             },
-            shorthand => Ok(self.interpret_alloc_cache[&shorthand]),
+            shorthand => {
+                trace!("loading shorthand {}", shorthand);
+                if let Some(&alloc_id) = self.interpret_alloc_cache.get(&shorthand) {
+                    return Ok(alloc_id);
+                }
+                trace!("shorthand {} not cached, loading entire allocation", shorthand);
+                // need to load allocation
+                self.with_position(shorthand, |this| interpret::AllocId::decode(this))
+            },
         }
     }
 }

@@ -952,7 +952,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         enum StructKind {
             /// A tuple, closure, or univariant which cannot be coerced to unsized.
             AlwaysSized,
-            /// A univariant, the last field of which may be coerced to unsized.
+            /// A univariant, the last field of which fn compute_uncachedmay be coerced to unsized.
             MaybeUnsized,
             /// A univariant, but with a prefix of an arbitrary size & alignment (e.g. enum tag).
             Prefixed(Size, Align),
@@ -1237,7 +1237,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 let element = self.layout_of(element)?;
-                let count = count.val.to_const_int().unwrap().to_u64().unwrap();
+                let count = count.val.unwrap_u64();
                 let size = element.size.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
 

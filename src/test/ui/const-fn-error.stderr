@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 warning: constant evaluation error: non-constant path in constant expression
   --> $DIR/const-fn-error.rs:27:19
    |
@@ -10,6 +11,12 @@ error[E0016]: blocks in constant functions are limited to items and tail express
   --> $DIR/const-fn-error.rs:16:19
    |
 LL |     let mut sum = 0; //~ ERROR blocks in constant functions are limited
+=======
+error[E0016]: blocks in constant functions are limited to items and tail expressions
+  --> $DIR/const-fn-error.rs:16:19
+   |
+16 |     let mut sum = 0;
+>>>>>>> Produce  instead of pointers
    |                   ^
 
 error[E0015]: calls in constant functions are limited to constant functions, struct and enum constructors
@@ -25,6 +32,7 @@ LL |     for i in 0..x { //~ ERROR calls in constant functions
    |              ^^^^
 
 error[E0080]: constant evaluation error
+<<<<<<< HEAD
   --> $DIR/const-fn-error.rs:21:5
    |
 LL |     sum //~ ERROR E0080
@@ -35,6 +43,12 @@ note: for constant expression here
    |
 LL |     let a : [i32; f(X)];
    |             ^^^^^^^^^^^
+=======
+  --> $DIR/const-fn-error.rs:28:19
+   |
+28 |     let a : [i32; f(X)];
+   |                   ^^^^ miri failed: machine error: Cannot evaluate within constants: "calling non-const fn `<I as std::iter::IntoIterator><std::ops::Range<usize>>::into_iter`"
+>>>>>>> Produce  instead of pointers
 
 error: aborting due to 4 previous errors
 

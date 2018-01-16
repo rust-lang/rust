@@ -71,7 +71,7 @@ impl<'tcx> Place {
 
     pub(super) fn elem_ty_and_len(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
         match ty.sty {
-            ty::TyArray(elem, n) => (elem, n.val.to_const_int().unwrap().to_u64().unwrap() as u64),
+            ty::TyArray(elem, n) => (elem, n.val.unwrap_u64() as u64),
 
             ty::TySlice(elem) => {
                 match self {
@@ -115,6 +115,29 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
+    pub fn read_field(
+        &self,
+        base: Value,
+        field: mir::Field,
+        base_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Option<(Value, Ty<'tcx>)>> {
+        let base_layout = self.layout_of(base_ty)?;
+        let field_index = field.index();
+        let field = base_layout.field(self, field_index)?;
+        let offset = base_layout.fields.offset(field_index);
+        match base {
+            // the field covers the entire type
+            Value::ByValPair(..) |
+            Value::ByVal(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some((base, field.ty))),
+            // split fat pointers, 2 element tuples, ...
+            Value::ByValPair(a, b) if base_layout.fields.count() == 2 => {
+                let val = [a, b][field_index];
+                Ok(Some((Value::ByVal(val), field.ty)))
+            },
+            _ => Ok(None),
+        }
+    }
+
     fn try_read_place_projection(
         &mut self,
         proj: &mir::PlaceProjection<'tcx>,
@@ -126,23 +149,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         };
         let base_ty = self.place_ty(&proj.base);
         match proj.elem {
-            Field(field, _) => {
-                let base_layout = self.layout_of(base_ty)?;
-                let field_index = field.index();
-                let field = base_layout.field(&self, field_index)?;
-                let offset = base_layout.fields.offset(field_index);
-                match base {
-                    // the field covers the entire type
-                    Value::ByValPair(..) |
-                    Value::ByVal(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some(base)),
-                    // split fat pointers, 2 element tuples, ...
-                    Value::ByValPair(a, b) if base_layout.fields.count() == 2 => {
-                        let val = [a, b][field_index];
-                        Ok(Some(Value::ByVal(val)))
-                    },
-                    _ => Ok(None),
-                }
-            },
+            Field(field, _) => Ok(self.read_field(base, field, base_ty)?.map(|(f, _)| f)),
             // The NullablePointer cases should work fine, need to take care for normal enums
             Downcast(..) |
             Subslice { .. } |

@@ -276,7 +276,7 @@ fn fixed_vec_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     let upper_bound = match array_or_slice_type.sty {
         ty::TyArray(_, len) => {
-            len.val.to_const_int().unwrap().to_u64().unwrap() as c_longlong
+            len.val.unwrap_u64() as c_longlong
         }
         _ => -1
     };

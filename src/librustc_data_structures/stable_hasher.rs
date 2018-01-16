@@ -259,6 +259,14 @@ impl<CTX> HashStable<CTX> for f64 {
     }
 }
 
+impl<CTX> HashStable<CTX> for ::std::cmp::Ordering {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (*self as i8).hash_stable(ctx, hasher);
+    }
+}
+
 impl<T1: HashStable<CTX>, CTX> HashStable<CTX> for (T1,) {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,

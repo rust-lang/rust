@@ -80,6 +80,7 @@ use transform::simplify;
 use transform::no_landing_pads::no_landing_pads;
 use dataflow::{do_dataflow, DebugFormatted, state_for_location};
 use dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
+use rustc::mir::interpret::{Value, PrimVal};
 
 pub struct StateTransform;
 
@@ -181,7 +182,11 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
             ty: self.tcx.types.u32,
             literal: Literal::Value {
                 value: self.tcx.mk_const(ty::Const {
-                    val: ConstVal::Integral(ConstInt::U32(state_disc)),
+                    val: if self.tcx.sess.opts.debugging_opts.miri {
+                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(state_disc.into())))
+                    } else {
+                        ConstVal::Integral(ConstInt::U32(state_disc))
+                    },
                     ty: self.tcx.types.u32
                 }),
             },
@@ -534,7 +539,7 @@ fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let switch = TerminatorKind::SwitchInt {
         discr: Operand::Copy(transform.make_field(transform.state_field, tcx.types.u32)),
         switch_ty: tcx.types.u32,
-        values: Cow::from(cases.iter().map(|&(i, _)| ConstInt::U32(i)).collect::<Vec<_>>()),
+        values: Cow::from(cases.iter().map(|&(i, _)| i.into()).collect::<Vec<_>>()),
         targets: cases.iter().map(|&(_, d)| d).chain(once(default_block)).collect(),
     };
 

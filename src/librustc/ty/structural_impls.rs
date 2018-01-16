@@ -890,6 +890,61 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<Ty<'tcx>> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use ty::InstanceDef::*;
+        Self {
+            substs: self.substs.fold_with(folder),
+            def: match self.def {
+                Item(did) => Item(did.fold_with(folder)),
+                Intrinsic(did) => Intrinsic(did.fold_with(folder)),
+                FnPtrShim(did, ty) => FnPtrShim(
+                    did.fold_with(folder),
+                    ty.fold_with(folder),
+                ),
+                Virtual(did, i) => Virtual(
+                    did.fold_with(folder),
+                    i,
+                ),
+                ClosureOnceShim { call_once } => ClosureOnceShim {
+                    call_once: call_once.fold_with(folder),
+                },
+                DropGlue(did, ty) => DropGlue(
+                    did.fold_with(folder),
+                    ty.fold_with(folder),
+                ),
+                CloneShim(did, ty) => CloneShim(
+                    did.fold_with(folder),
+                    ty.fold_with(folder),
+                ),
+            },
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use ty::InstanceDef::*;
+        self.substs.visit_with(visitor) ||
+        match self.def {
+            Item(did) => did.visit_with(visitor),
+            Intrinsic(did) => did.visit_with(visitor),
+            FnPtrShim(did, ty) => {
+                did.visit_with(visitor) ||
+                ty.visit_with(visitor)
+            },
+            Virtual(did, _) => did.visit_with(visitor),
+            ClosureOnceShim { call_once } => call_once.visit_with(visitor),
+            DropGlue(did, ty) => {
+                did.visit_with(visitor) ||
+                ty.visit_with(visitor)
+            },
+            CloneShim(did, ty) => {
+                did.visit_with(visitor) ||
+                ty.visit_with(visitor)
+            },
+        }
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let sty = match self.sty {

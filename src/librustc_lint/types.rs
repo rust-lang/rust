@@ -16,6 +16,7 @@ use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::ty::layout::{self, LayoutOf};
 use middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
+use rustc::mir::interpret::{Value, PrimVal};
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -121,6 +122,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                     i.to_u64()
                                         .map(|i| i >= bits)
                                         .unwrap_or(true)
+                                }
+                                Ok(&ty::Const {
+                                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
+                                    ty,
+                                }) => {
+                                    if ty.is_signed() {
+                                        (b as i128) < 0
+                                    } else {
+                                        b >= bits as u128
+                                    }
                                 }
                                 _ => false,
                             }

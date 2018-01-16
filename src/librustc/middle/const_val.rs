@@ -14,7 +14,7 @@ use hir::def_id::DefId;
 use ty::{self, TyCtxt, layout};
 use ty::subst::Substs;
 use rustc_const_math::*;
-use mir::interpret::Value;
+use mir::interpret::{Value, PrimVal};
 
 use graphviz::IntoCow;
 use errors::DiagnosticBuilder;
@@ -39,7 +39,7 @@ pub enum ConstVal<'tcx> {
     Function(DefId, &'tcx Substs<'tcx>),
     Aggregate(ConstAggregate<'tcx>),
     Unevaluated(DefId, &'tcx Substs<'tcx>),
-    /// A miri value, currently only produced if old ctfe fails, but miri succeeds
+    /// A miri value, currently only produced if --miri is enabled
     Value(Value),
 }
 
@@ -71,12 +71,37 @@ impl<'tcx> Decodable for ConstAggregate<'tcx> {
 }
 
 impl<'tcx> ConstVal<'tcx> {
-    pub fn to_const_int(&self) -> Option<ConstInt> {
+    pub fn to_u128(&self) -> Option<u128> {
         match *self {
-            ConstVal::Integral(i) => Some(i),
-            ConstVal::Bool(b) => Some(ConstInt::U8(b as u8)),
-            ConstVal::Char(ch) => Some(ConstInt::U32(ch as u32)),
-            _ => None
+            ConstVal::Integral(i) => i.to_u128(),
+            ConstVal::Bool(b) => Some(b as u128),
+            ConstVal::Char(ch) => Some(ch as u32 as u128),
+            ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => {
+                Some(b)
+            },
+            _ => None,
+        }
+    }
+    pub fn unwrap_u64(&self) -> u64 {
+        match self.to_u128() {
+            Some(val) => {
+                assert_eq!(val as u64 as u128, val);
+                val as u64
+            },
+            None => bug!("expected constant u64, got {:#?}", self),
+        }
+    }
+    pub fn unwrap_usize<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> ConstUsize {
+        match *self {
+            ConstVal::Integral(ConstInt::Usize(i)) => i,
+            ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => {
+                assert_eq!(b as u64 as u128, b);
+                match ConstUsize::new(b as u64, tcx.sess.target.usize_ty) {
+                    Ok(val) => val,
+                    Err(e) => bug!("{:#?} is not a usize {:?}", self, e),
+                }
+            },
+            _ => bug!("expected constant u64, got {:#?}", self),
         }
     }
 }

@@ -70,7 +70,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 PlaceTy::Ty {
                     ty: match ty.sty {
                         ty::TyArray(inner, size) => {
-                            let size = size.val.to_const_int().unwrap().to_u64().unwrap();
+                            let size = size.val.unwrap_u64();
                             let len = size - (from as u64) - (to as u64);
                             tcx.mk_array(inner, len)
                         }

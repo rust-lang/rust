@@ -16,6 +16,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::traits;
 use rustc::mir;
+use rustc::mir::interpret::{Value as MiriValue, PrimVal};
 use rustc::mir::tcx::PlaceTy;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf, Size};
@@ -38,6 +39,7 @@ use value::Value;
 
 use syntax_pos::Span;
 use syntax::ast;
+use syntax::symbol::Symbol;
 
 use std::fmt;
 use std::ptr;
@@ -81,12 +83,46 @@ impl<'a, 'tcx> Const<'tcx> {
         Const { llval: llval, ty: ty }
     }
 
+    pub fn from_bytes(ccx: &CrateContext<'a, 'tcx>, b: u128, ty: Ty<'tcx>) -> Const<'tcx> {
+        let llval = match ty.sty {
+            ty::TyInt(ast::IntTy::I128) |
+            ty::TyUint(ast::UintTy::U128) => C_uint_big(Type::i128(ccx), b),
+            ty::TyInt(i) => C_int(Type::int_from_ty(ccx, i), b as i128 as i64),
+            ty::TyUint(u) => C_uint(Type::uint_from_ty(ccx, u), b as u64),
+            ty::TyBool => {
+                assert!(b <= 1);
+                C_bool(ccx, b == 1)
+            },
+            ty::TyChar => {
+                assert_eq!(b as u32 as u128, b);
+                let c = b as u32;
+                assert!(::std::char::from_u32(c).is_some());
+                C_uint(Type::char(ccx), c as u64)
+            },
+            ty::TyFloat(fty) => {
+                let llty = ccx.layout_of(ty).llvm_type(ccx);
+                let bits = match fty {
+                    ast::FloatTy::F32 => C_u32(ccx, b as u32),
+                    ast::FloatTy::F64 => C_u64(ccx, b as u64),
+                };
+                consts::bitcast(bits, llty)
+            },
+            ty::TyAdt(adt, _) if adt.is_enum() => {
+                use rustc::ty::util::IntTypeExt;
+                Const::from_bytes(ccx, b, adt.repr.discr_type().to_ty(ccx.tcx())).llval
+            },
+            _ => bug!("from_bytes({}, {})", b, ty),
+        };
+        Const { llval, ty }
+    }
+
     /// Translate ConstVal into a LLVM constant value.
     pub fn from_constval(cx: &CodegenCx<'a, 'tcx>,
                          cv: &ConstVal,
                          ty: Ty<'tcx>)
                          -> Const<'tcx> {
         let llty = cx.layout_of(ty).llvm_type(cx);
+        trace!("from_constval: {:#?}: {}", cv, ty);
         let val = match *cv {
             ConstVal::Float(v) => {
                 let bits = match v.ty {
@@ -108,7 +144,41 @@ impl<'a, 'tcx> Const<'tcx> {
             ConstVal::Unevaluated(..) => {
                 bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
             }
-            ConstVal::Value(_) => unimplemented!(),
+            ConstVal::Value(MiriValue::ByRef(..)) => unimplemented!("{:#?}:{}", cv, ty),
+            ConstVal::Value(MiriValue::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len))) => {
+                match ty.sty {
+                    ty::TyRef(_, ref tam) => match tam.ty.sty {
+                        ty::TyStr => {},
+                        _ => unimplemented!("non-str fat pointer: {:?}: {:?}", ptr, ty),
+                    },
+                    _ => unimplemented!("non-str fat pointer: {:?}: {:?}", ptr, ty),
+                }
+                let alloc = ccx
+                    .tcx()
+                    .interpret_interner
+                    .borrow()
+                    .get_alloc(ptr.alloc_id.0)
+                    .expect("miri alloc not found");
+                assert_eq!(len as usize as u128, len);
+                let slice = &alloc.bytes[(ptr.offset as usize)..][..(len as usize)];
+                let s = ::std::str::from_utf8(slice)
+                    .expect("non utf8 str from miri");
+                C_str_slice(ccx, Symbol::intern(s).as_str())
+            },
+            ConstVal::Value(MiriValue::ByValPair(..)) => unimplemented!(),
+            ConstVal::Value(MiriValue::ByVal(PrimVal::Bytes(b))) =>
+                return Const::from_bytes(ccx, b, ty),
+            ConstVal::Value(MiriValue::ByVal(PrimVal::Undef)) => C_undef(llty),
+            ConstVal::Value(MiriValue::ByVal(PrimVal::Ptr(ptr))) => {
+                let alloc = ccx
+                    .tcx()
+                    .interpret_interner
+                    .borrow()
+                    .get_alloc(ptr.alloc_id.0)
+                    .expect("miri alloc not found");
+                let data = &alloc.bytes[(ptr.offset as usize)..];
+                consts::addr_of(ccx, C_bytes(ccx, data), ccx.align_of(ty), "byte_str")
+            }
         };
 
         assert!(!ty.has_erasable_regions());
@@ -239,7 +309,7 @@ impl<'tcx> ConstPlace<'tcx> {
     pub fn len<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> ValueRef {
         match self.ty.sty {
             ty::TyArray(_, n) => {
-                C_usize(cx, n.val.to_const_int().unwrap().to_u64().unwrap())
+                C_usize(cx, n.val.unwrap_u64())
             }
             ty::TySlice(_) | ty::TyStr => {
                 assert!(self.llextra != ptr::null_mut());
@@ -316,7 +386,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
         let tcx = self.cx.tcx;
         let mut bb = mir::START_BLOCK;
 
-        // Make sure to evaluate all statemenets to
+        // Make sure to evaluate all statements to
         // report as many errors as we possibly can.
         let mut failure = Ok(());
 
@@ -392,6 +462,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         _ => span_bug!(span, "calling {:?} (of type {}) in constant",
                                        func, fn_ty)
                     };
+                    trace!("trans const fn call {:?}, {:?}, {:#?}", func, fn_ty, args);
 
                     let mut arg_vals = IndexVec::with_capacity(args.len());
                     for arg in args {
@@ -419,7 +490,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 }
                                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
                             }
-                        } else if let Some((op, is_checked)) = self.is_binop_lang_item(def_id) {
+                        } else if let Some((op, is_checked)) = tcx.is_binop_lang_item(def_id) {
                             (||{
                                 assert_eq!(arg_vals.len(), 2);
                                 let rhs = arg_vals.pop().unwrap()?;
@@ -468,37 +539,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
             };
         }
-    }
-
-    fn is_binop_lang_item(&mut self, def_id: DefId) -> Option<(mir::BinOp, bool)> {
-        let tcx = self.cx.tcx;
-        let items = tcx.lang_items();
-        let def_id = Some(def_id);
-        if items.i128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
-        else if items.u128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
-        else if items.i128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
-        else if items.u128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
-        else if items.i128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
-        else if items.u128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
-        else if items.i128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
-        else if items.u128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
-        else if items.i128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
-        else if items.u128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
-        else if items.i128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
-        else if items.u128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
-        else if items.i128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
-        else if items.u128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
-        else if items.i128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
-        else if items.u128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
-        else if items.i128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
-        else if items.u128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
-        else if items.i128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
-        else if items.u128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
-        else if items.i128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
-        else if items.u128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
-        else if items.i128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
-        else if items.u128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
-        else { None }
     }
 
     fn store(&mut self,

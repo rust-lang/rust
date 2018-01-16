@@ -15,7 +15,7 @@ use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId,
                   RESERVED_FOR_INCR_COMP_CACHE, LOCAL_CRATE};
 use hir::map::definitions::DefPathHash;
 use ich::{CachingCodemapView, Fingerprint};
-use mir;
+use mir::{self, interpret};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -541,6 +541,13 @@ impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 
 }
 
 implement_ty_decoder!( CacheDecoder<'a, 'tcx, 'x> );
+
+
+impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, 'tcx, 'x> {
+    fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
+        unimplemented!()
+    }
+}
 
 impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<Span, Self::Error> {

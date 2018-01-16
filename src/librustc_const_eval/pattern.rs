@@ -10,8 +10,9 @@
 
 use eval;
 
-use rustc::middle::const_val::{ConstEvalErr, ConstVal};
+use rustc::middle::const_val::{ConstEvalErr, ConstVal, ConstAggregate};
 use rustc::mir::{Field, BorrowKind, Mutability};
+use rustc::mir::interpret::{Value, PrimVal};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -110,19 +111,32 @@ pub enum PatternKind<'tcx> {
     },
 }
 
-fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
-    match *value {
+fn print_const_val(value: &ty::Const, f: &mut fmt::Formatter) -> fmt::Result {
+    match value.val {
         ConstVal::Float(ref x) => write!(f, "{}", x),
         ConstVal::Integral(ref i) => write!(f, "{}", i),
         ConstVal::Str(ref s) => write!(f, "{:?}", &s[..]),
         ConstVal::ByteStr(b) => write!(f, "{:?}", b.data),
         ConstVal::Bool(b) => write!(f, "{:?}", b),
         ConstVal::Char(c) => write!(f, "{:?}", c),
+        ConstVal::Value(v) => print_miri_value(v, value.ty, f),
         ConstVal::Variant(_) |
         ConstVal::Function(..) |
         ConstVal::Aggregate(_) |
-        ConstVal::Value(_) |
         ConstVal::Unevaluated(..) => bug!("{:?} not printable in a pattern", value)
+    }
+}
+
+fn print_miri_value(value: Value, ty: Ty, f: &mut fmt::Formatter) -> fmt::Result {
+    use rustc::ty::TypeVariants::*;
+    match (value, &ty.sty) {
+        (Value::ByVal(PrimVal::Bytes(0)), &TyBool) => write!(f, "false"),
+        (Value::ByVal(PrimVal::Bytes(1)), &TyBool) => write!(f, "true"),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyUint(..)) => write!(f, "{:?}", n),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyInt(..)) => write!(f, "{:?}", n as i128),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyChar) =>
+            write!(f, "{:?}", ::std::char::from_u32(n as u32).unwrap()),
+        _ => bug!("{:?}: {} not printable in a pattern", value, ty),
     }
 }
 
@@ -233,15 +247,15 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatternKind::Constant { value } => {
-                print_const_val(&value.val, f)
+                print_const_val(value, f)
             }
             PatternKind::Range { lo, hi, end } => {
-                print_const_val(&lo.val, f)?;
+                print_const_val(lo, f)?;
                 match end {
                     RangeEnd::Included => write!(f, "...")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
-                print_const_val(&hi.val, f)
+                print_const_val(hi, f)
             }
             PatternKind::Slice { ref prefix, ref slice, ref suffix } |
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
@@ -362,7 +376,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Path(ref qpath) => {
-                return self.lower_path(qpath, pat.hir_id, pat.id, pat.span);
+                return self.lower_path(qpath, pat.hir_id, pat.span);
             }
 
             PatKind::Ref(ref subpattern, _) |
@@ -581,7 +595,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             ty::TyArray(_, len) => {
                 // fixed-length array
-                let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+                let len = len.val.unwrap_u64();
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
                 PatternKind::Array { prefix: prefix, slice: slice, suffix: suffix }
             }
@@ -632,7 +646,6 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn lower_path(&mut self,
                   qpath: &hir::QPath,
                   id: hir::HirId,
-                  pat_id: ast::NodeId,
                   span: Span)
                   -> Pattern<'tcx> {
         let ty = self.tables.node_id_to_type(id);
@@ -644,29 +657,23 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
-                match eval::lookup_const_by_id(self.tcx, self.param_env.and((def_id, substs))) {
-                    Some((def_id, substs)) => {
-                        // Enter the inlined constant's tables&substs temporarily.
-                        let old_tables = self.tables;
-                        let old_substs = self.substs;
-                        self.tables = self.tcx.typeck_tables_of(def_id);
-                        self.substs = substs;
-                        let body = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                            self.tcx.hir.body(self.tcx.hir.body_owned_by(id))
-                        } else {
-                            self.tcx.extern_const_body(def_id).body
-                        };
-                        let pat = self.lower_const_expr(&body.value, pat_id, span);
-                        self.tables = old_tables;
-                        self.substs = old_substs;
-                        return pat;
-                    }
-                    None => {
-                        self.errors.push(if is_associated_const {
-                            PatternError::AssociatedConstInPattern(span)
-                        } else {
-                            PatternError::StaticInPattern(span)
-                        });
+                match self.tcx.at(span).const_eval(self.param_env.and((def_id, substs))) {
+                    Ok(value) => {
+                        if self.tcx.sess.opts.debugging_opts.miri {
+                            if let ConstVal::Value(_) = value.val {} else {
+                                panic!("const eval produced non-miri value: {:#?}", value);
+                            }
+                        }
+                        let instance = ty::Instance::resolve(
+                            self.tcx,
+                            self.param_env,
+                            def_id,
+                            substs,
+                        ).unwrap();
+                        return self.const_to_pat(instance, value, span)
+                    },
+                    Err(e) => {
+                        self.errors.push(PatternError::ConstEval(e));
                         PatternKind::Wild
                     }
                 }
@@ -682,6 +689,52 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     fn lower_lit(&mut self, expr: &'tcx hir::Expr) -> PatternKind<'tcx> {
+        if self.tcx.sess.opts.debugging_opts.miri {
+            return match expr.node {
+                hir::ExprLit(ref lit) => {
+                    let ty = self.tables.expr_ty(expr);
+                    match ::eval::lit_to_const(&lit.node, self.tcx, ty, false) {
+                        Ok(value) => PatternKind::Constant {
+                            value: self.tcx.mk_const(ty::Const {
+                                ty,
+                                val: value,
+                            }),
+                        },
+                        Err(e) => {
+                            self.errors.push(PatternError::ConstEval(ConstEvalErr {
+                                span: lit.span,
+                                kind: e,
+                            }));
+                            PatternKind::Wild
+                        },
+                    }
+                },
+                hir::ExprPath(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
+                hir::ExprUnary(hir::UnNeg, ref expr) => {
+                    let ty = self.tables.expr_ty(expr);
+                    let lit = match expr.node {
+                        hir::ExprLit(ref lit) => lit,
+                        _ => span_bug!(expr.span, "not a literal: {:?}", expr),
+                    };
+                    match ::eval::lit_to_const(&lit.node, self.tcx, ty, true) {
+                        Ok(value) => PatternKind::Constant {
+                            value: self.tcx.mk_const(ty::Const {
+                                ty,
+                                val: value,
+                            }),
+                        },
+                        Err(e) => {
+                            self.errors.push(PatternError::ConstEval(ConstEvalErr {
+                                span: lit.span,
+                                kind: e,
+                            }));
+                            PatternKind::Wild
+                        },
+                    }
+                }
+                _ => span_bug!(expr.span, "not a literal: {:?}", expr),
+            }
+        }
         let const_cx = eval::ConstContext::new(self.tcx,
                                                self.param_env.and(self.substs),
                                                self.tables);
@@ -701,118 +754,156 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         }
     }
 
-    fn lower_const_expr(&mut self,
-                        expr: &'tcx hir::Expr,
-                        pat_id: ast::NodeId,
-                        span: Span)
-                        -> Pattern<'tcx> {
-        let pat_ty = self.tables.expr_ty(expr);
-        debug!("expr={:?} pat_ty={:?} pat_id={}", expr, pat_ty, pat_id);
-        match pat_ty.sty {
+    fn const_to_pat(
+        &self,
+        instance: ty::Instance<'tcx>,
+        cv: &'tcx ty::Const<'tcx>,
+        span: Span,
+    ) -> Pattern<'tcx> {
+        debug!("const_to_pat: cv={:#?}", cv);
+        let kind = match cv.ty.sty {
             ty::TyFloat(_) => {
                 self.tcx.sess.span_err(span, "floating point constants cannot be used in patterns");
+                PatternKind::Wild
             }
             ty::TyAdt(adt_def, _) if adt_def.is_union() => {
                 // Matching on union fields is unsafe, we can't hide it in constants
                 self.tcx.sess.span_err(span, "cannot use unions in constant patterns");
+                PatternKind::Wild
             }
-            ty::TyAdt(adt_def, _) => {
-                if !self.tcx.has_attr(adt_def.did, "structural_match") {
-                    let msg = format!("to use a constant of type `{}` in a pattern, \
-                                       `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                                      self.tcx.item_path_str(adt_def.did),
-                                      self.tcx.item_path_str(adt_def.did));
-                    self.tcx.sess.span_err(span, &msg);
+            ty::TyAdt(adt_def, _) if !self.tcx.has_attr(adt_def.did, "structural_match") => {
+                let msg = format!("to use a constant of type `{}` in a pattern, \
+                                    `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                                    self.tcx.item_path_str(adt_def.did),
+                                    self.tcx.item_path_str(adt_def.did));
+                self.tcx.sess.span_err(span, &msg);
+                PatternKind::Wild
+            },
+            ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
+                match cv.val {
+                    ConstVal::Value(val) => {
+                        let discr = self.tcx.const_discr(self.param_env.and((
+                            instance, val, cv.ty
+                        ))).unwrap();
+                        let variant_index = adt_def
+                            .discriminants(self.tcx)
+                            .position(|var| var.to_u128_unchecked() == discr)
+                            .unwrap();
+                        PatternKind::Variant {
+                            adt_def,
+                            substs,
+                            variant_index,
+                            subpatterns: adt_def
+                                .variants[variant_index]
+                                .fields
+                                .iter()
+                                .enumerate()
+                                .map(|(i, _)| {
+                                let field = Field::new(i);
+                                let val = match cv.val {
+                                    ConstVal::Value(miri) => self.tcx.const_val_field(
+                                        self.param_env.and((instance, field, miri, cv.ty)),
+                                    ).unwrap(),
+                                    _ => bug!("{:#?} is not a valid tuple", cv),
+                                };
+                                FieldPattern {
+                                    field,
+                                    pattern: self.const_to_pat(instance, val, span),
+                                }
+                            }).collect(),
+                        }
+                    },
+                    ConstVal::Variant(var_did) => {
+                        let variant_index = adt_def
+                            .variants
+                            .iter()
+                            .position(|var| var.did == var_did)
+                            .unwrap();
+                        PatternKind::Variant {
+                            adt_def,
+                            substs,
+                            variant_index,
+                            subpatterns: Vec::new(),
+                        }
+                    }
+                    _ => return Pattern {
+                        span,
+                        ty: cv.ty,
+                        kind: Box::new(PatternKind::Constant {
+                            value: cv,
+                        }),
+                    }
                 }
-            }
-            _ => { }
-        }
-        let kind = match expr.node {
-            hir::ExprTup(ref exprs) => {
+            },
+            ty::TyAdt(adt_def, _) => {
+                let struct_var = adt_def.struct_variant();
                 PatternKind::Leaf {
-                    subpatterns: exprs.iter().enumerate().map(|(i, expr)| {
+                    subpatterns: struct_var.fields.iter().enumerate().map(|(i, f)| {
+                        let field = Field::new(i);
+                        let val = match cv.val {
+                            ConstVal::Aggregate(ConstAggregate::Struct(consts)) => {
+                                consts.iter().find(|&&(name, _)| name == f.name).unwrap().1
+                            },
+                            ConstVal::Value(miri) => self.tcx.const_val_field(
+                                self.param_env.and((instance, field, miri, cv.ty)),
+                            ).unwrap(),
+                            _ => bug!("{:#?} is not a valid tuple", cv),
+                        };
                         FieldPattern {
-                            field: Field::new(i),
-                            pattern: self.lower_const_expr(expr, pat_id, span)
+                            field,
+                            pattern: self.const_to_pat(instance, val, span),
                         }
                     }).collect()
                 }
             }
-
-            hir::ExprCall(ref callee, ref args) => {
-                let qpath = match callee.node {
-                    hir::ExprPath(ref qpath) => qpath,
-                    _ => bug!()
-                };
-                let ty = self.tables.node_id_to_type(callee.hir_id);
-                let def = self.tables.qpath_def(qpath, callee.hir_id);
-                match def {
-                    Def::Fn(..) | Def::Method(..) => self.lower_lit(expr),
-                    _ => {
-                        let subpatterns = args.iter().enumerate().map(|(i, expr)| {
-                            FieldPattern {
-                                field: Field::new(i),
-                                pattern: self.lower_const_expr(expr, pat_id, span)
-                            }
-                        }).collect();
-                        self.lower_variant_or_leaf(def, ty, subpatterns)
-                    }
+            ty::TyTuple(fields, _) => {
+                PatternKind::Leaf {
+                    subpatterns: (0..fields.len()).map(|i| {
+                        let field = Field::new(i);
+                        let val = match cv.val {
+                            ConstVal::Aggregate(ConstAggregate::Tuple(consts)) => consts[i],
+                            ConstVal::Value(miri) => self.tcx.const_val_field(
+                                self.param_env.and((instance, field, miri, cv.ty)),
+                            ).unwrap(),
+                            _ => bug!("{:#?} is not a valid tuple", cv),
+                        };
+                        FieldPattern {
+                            field,
+                            pattern: self.const_to_pat(instance, val, span),
+                        }
+                    }).collect()
                 }
             }
-
-            hir::ExprStruct(ref qpath, ref fields, None) => {
-                let def = self.tables.qpath_def(qpath, expr.hir_id);
-                let adt_def = match pat_ty.sty {
-                    ty::TyAdt(adt_def, _) => adt_def,
-                    _ => {
-                        span_bug!(
-                            expr.span,
-                            "struct expr without ADT type");
-                    }
-                };
-                let variant_def = adt_def.variant_of_def(def);
-
-                let subpatterns =
-                    fields.iter()
-                          .map(|field| {
-                              let index = variant_def.index_of_field_named(field.name.node);
-                              let index = index.unwrap_or_else(|| {
-                                  span_bug!(
-                                      expr.span,
-                                      "no field with name {:?}",
-                                      field.name);
-                              });
-                              FieldPattern {
-                                  field: Field::new(index),
-                                  pattern: self.lower_const_expr(&field.expr, pat_id, span),
-                              }
-                          })
-                          .collect();
-
-                self.lower_variant_or_leaf(def, pat_ty, subpatterns)
-            }
-
-            hir::ExprArray(ref exprs) => {
-                let pats = exprs.iter()
-                                .map(|expr| self.lower_const_expr(expr, pat_id, span))
-                                .collect();
-                PatternKind::Array {
-                    prefix: pats,
-                    slice: None,
-                    suffix: vec![]
+            ty::TyArray(_, n) => {
+                PatternKind::Leaf {
+                    subpatterns: (0..n.val.unwrap_u64()).map(|i| {
+                        let i = i as usize;
+                        let field = Field::new(i);
+                        let val = match cv.val {
+                            ConstVal::Aggregate(ConstAggregate::Array(consts)) => consts[i],
+                            ConstVal::Aggregate(ConstAggregate::Repeat(cv, _)) => cv,
+                            ConstVal::Value(miri) => self.tcx.const_val_field(
+                                self.param_env.and((instance, field, miri, cv.ty)),
+                            ).unwrap(),
+                            _ => bug!("{:#?} is not a valid tuple", cv),
+                        };
+                        FieldPattern {
+                            field,
+                            pattern: self.const_to_pat(instance, val, span),
+                        }
+                    }).collect()
                 }
             }
-
-            hir::ExprPath(ref qpath) => {
-                return self.lower_path(qpath, expr.hir_id, pat_id, span);
-            }
-
-            _ => self.lower_lit(expr)
+            _ => {
+                PatternKind::Constant {
+                    value: cv,
+                }
+            },
         };
 
         Pattern {
             span,
-            ty: pat_ty,
+            ty: cv.ty,
             kind: Box::new(kind),
         }
     }

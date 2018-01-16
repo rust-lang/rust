@@ -601,7 +601,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             Repeat(ref operand, _) => {
                 let (elem_ty, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (elem_ty, n.val.to_const_int().unwrap().to_u64().unwrap()),
+                    ty::TyArray(elem_ty, n) => (elem_ty, n.val.unwrap_u64()),
                     _ => {
                         bug!(
                             "tried to assign array-repeat to non-array type {:?}",
@@ -1386,7 +1386,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let ptr = self.into_ptr(src)?;
                 // u64 cast is from usize to u64, which is always good
                 let valty = ValTy {
-                    value: ptr.to_value_with_len(length.val.to_const_int().unwrap().to_u64().unwrap() ),
+                    value: ptr.to_value_with_len(length.val.unwrap_u64() ),
                     ty: dest_ty,
                 };
                 self.write_value(valty, dest)

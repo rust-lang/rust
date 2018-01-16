@@ -97,7 +97,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::TyArray(inner_type, len) => {
             output.push('[');
             push_debuginfo_type_name(cx, inner_type, true, output);
-            output.push_str(&format!("; {}", len.val.to_const_int().unwrap().to_u64().unwrap()));
+            output.push_str(&format!("; {}", len.val.unwrap_u64()));
             output.push(']');
         },
         ty::TySlice(inner_type) => {

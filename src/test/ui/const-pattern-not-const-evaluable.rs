@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// must-compile-successfully
+
 #![feature(const_fn)]
 
 #[derive(PartialEq, Eq)]
@@ -20,8 +22,6 @@ use Cake::*;
 struct Pair<A, B>(A, B);
 
 const BOO: Pair<Cake, Cake> = Pair(Marmor, BlackForest);
-//~^ ERROR: constant evaluation error [E0080]
-//~| unimplemented constant expression: tuple struct constructors
 const FOO: Cake = BOO.1;
 
 const fn foo() -> Cake {

@@ -13,6 +13,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex};
 use ty::{self, Ty, TyCtxt};
 use ty::maps::queries;
 use ty::subst::Substs;
+use mir;
 
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;

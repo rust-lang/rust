@@ -427,6 +427,7 @@ impl<T: Ord> Ord for Reverse<T> {
 ///     }
 /// }
 /// ```
+#[cfg_attr(not(stage0), lang = "ord")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Ord: Eq + PartialOrd<Self> {
     /// This method returns an `Ordering` between `self` and `other`.
@@ -596,7 +597,8 @@ impl PartialOrd for Ordering {
 /// assert_eq!(x < y, true);
 /// assert_eq!(x.lt(&y), true);
 /// ```
-#[lang = "ord"]
+#[cfg_attr(stage0, lang = "ord")]
+#[cfg_attr(not(stage0), lang = "partial_ord")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "can't compare `{Self}` with `{Rhs}`"]
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {

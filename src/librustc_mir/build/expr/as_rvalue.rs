@@ -24,6 +24,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
 use rustc::ty::{self, Ty};
 use rustc::mir::*;
+use rustc::mir::interpret::{Value, PrimVal};
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -203,7 +204,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ty: this.hir.tcx().types.u32,
                         literal: Literal::Value {
                             value: this.hir.tcx().mk_const(ty::Const {
-                                val: ConstVal::Integral(ConstInt::U32(0)),
+                                val: if this.hir.tcx().sess.opts.debugging_opts.miri {
+                                    ConstVal::Value(Value::ByVal(PrimVal::Bytes(0)))
+                                } else {
+                                    ConstVal::Integral(ConstInt::U32(0))
+                                },
                                 ty: this.hir.tcx().types.u32
                             }),
                         },
@@ -401,7 +406,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Integral(val),
+                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
+                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.to_u128_unchecked())))
+                        } else {
+                            ConstVal::Integral(val)
+                        },
                         ty
                     })
                 }
@@ -439,7 +448,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Integral(val),
+                        val: if self.hir.tcx().sess.opts.debugging_opts.miri {
+                            ConstVal::Value(Value::ByVal(PrimVal::Bytes(
+                                val.to_u128_unchecked()
+                            )))
+                        } else {
+                            ConstVal::Integral(val)
+                        },
                         ty
                     })
                 }
