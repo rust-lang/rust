@@ -1138,6 +1138,27 @@ impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for hir::TraitCandidate {
     }
 }
 
+impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrs
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'hir>,
+                                          hasher: &mut StableHasher<W>) {
+        let hir::TransFnAttrs {
+            flags,
+        } = *self;
+
+        flags.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrFlags
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'hir>,
+                                          hasher: &mut StableHasher<W>) {
+        self.bits().hash_stable(hcx, hasher);
+    }
+}
 
 impl_stable_hash_for!(struct hir::Freevar {
     def,

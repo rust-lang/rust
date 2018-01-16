@@ -2210,3 +2210,28 @@ pub type GlobMap = NodeMap<FxHashSet<Name>>;
 pub fn provide(providers: &mut Providers) {
     providers.describe_def = map::describe_def;
 }
+
+#[derive(Clone, RustcEncodable, RustcDecodable, Hash)]
+pub struct TransFnAttrs {
+    pub flags: TransFnAttrFlags,
+}
+
+bitflags! {
+    #[derive(RustcEncodable, RustcDecodable)]
+    pub struct TransFnAttrFlags: u8 {
+        const COLD                      = 0b0000_0001;
+        const ALLOCATOR                 = 0b0000_0010;
+        const UNWIND                    = 0b0000_0100;
+        const RUSTC_ALLOCATOR_NOUNWIND  = 0b0000_1000;
+        const NAKED                     = 0b0001_0000;
+    }
+}
+
+impl TransFnAttrs {
+    pub fn new() -> TransFnAttrs {
+        TransFnAttrs {
+            flags: TransFnAttrFlags::empty(),
+        }
+    }
+}
+

@@ -45,7 +45,7 @@ use syntax::codemap::Spanned;
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{Span, DUMMY_SP};
 
-use rustc::hir::{self, map as hir_map};
+use rustc::hir::{self, map as hir_map, TransFnAttrs, TransFnAttrFlags};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -71,6 +71,7 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
+        trans_fn_attrs,
         ..*providers
     };
 }
@@ -1722,4 +1723,27 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Some(_) => false,
         _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id)
     }
+}
+
+fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAttrs {
+    let attrs = tcx.get_attrs(id);
+
+    let mut trans_fn_attrs = TransFnAttrs::new();
+
+    for attr in attrs.iter() {
+        if attr.check_name("cold") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::COLD;
+        } else if attr.check_name("allocator") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::ALLOCATOR;
+        } else if attr.check_name("unwind") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::UNWIND;
+        } else if attr.check_name("rustc_allocator_nounwind") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND;
+        } else if attr.check_name("naked") {
+            trans_fn_attrs.flags |= TransFnAttrFlags::NAKED;
+        } else if attr.check_name("inline") {
+        }
+    }
+
+    trans_fn_attrs
 }

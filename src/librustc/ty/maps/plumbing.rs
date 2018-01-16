@@ -854,6 +854,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::IsReachableNonGeneric => { force!(is_reachable_non_generic, def_id!()); }
         DepKind::IsMirAvailable => { force!(is_mir_available, def_id!()); }
         DepKind::ItemAttrs => { force!(item_attrs, def_id!()); }
+        DepKind::TransFnAttrs => { force!(trans_fn_attrs, def_id!()); }
         DepKind::FnArgNames => { force!(fn_arg_names, def_id!()); }
         DepKind::DylibDepFormats => { force!(dylib_dependency_formats, krate!()); }
         DepKind::IsPanicRuntime => { force!(is_panic_runtime, krate!()); }

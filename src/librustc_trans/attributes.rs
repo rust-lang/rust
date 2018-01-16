@@ -11,6 +11,7 @@
 
 use std::ffi::{CStr, CString};
 
+use rustc::hir::TransFnAttrFlags;
 use rustc::hir::Unsafety;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::config::Sanitizer;
@@ -109,22 +110,27 @@ pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
     set_frame_pointer_elimination(cx, llfn);
     set_probestack(cx, llfn);
 
-    for attr in attrs.iter() {
-        if attr.check_name("cold") {
-            Attribute::Cold.apply_llfn(Function, llfn);
-        } else if attr.check_name("naked") {
-            naked(llfn, true);
-        } else if attr.check_name("allocator") {
-            Attribute::NoAlias.apply_llfn(
-                llvm::AttributePlace::ReturnValue, llfn);
-        } else if attr.check_name("unwind") {
-            unwind(llfn, true);
-        } else if attr.check_name("rustc_allocator_nounwind") {
-            unwind(llfn, false);
-        }
+    let trans_fn_attrs = cx.tcx.trans_fn_attrs(id);
+
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::COLD) {
+        Attribute::Cold.apply_llfn(Function, llfn);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::NAKED) {
+        naked(llfn, true);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::ALLOCATOR) {
+        Attribute::NoAlias.apply_llfn(
+            llvm::AttributePlace::ReturnValue, llfn);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::UNWIND) {
+        unwind(llfn, true);
+    }
+    if trans_fn_attrs.flags.contains(TransFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
+        unwind(llfn, false);
     }
 
     let target_features = cx.tcx.target_features_enabled(id);
+
     if !target_features.is_empty() {
         let val = CString::new(target_features.join(",")).unwrap();
         llvm::AddFunctionAttrStringValue(

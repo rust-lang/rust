@@ -559,6 +559,7 @@ define_dep_nodes!( <'tcx>
     [] IsReachableNonGeneric(DefId),
     [] IsMirAvailable(DefId),
     [] ItemAttrs(DefId),
+    [] TransFnAttrs(DefId),
     [] FnArgNames(DefId),
     [] DylibDepFormats(CrateNum),
     [] IsPanicRuntime(CrateNum),
