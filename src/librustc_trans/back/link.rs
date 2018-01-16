@@ -36,8 +36,8 @@ use std::char;
 use std::env;
 use std::ffi::OsString;
 use std::fmt;
-use std::fs::{self, File};
-use std::io::{self, Write, BufWriter};
+use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::str;
@@ -71,9 +71,7 @@ pub fn get_linker(sess: &Session) -> (PathBuf, Command, Vec<(OsString, OsString)
     let cmd = |linker: &Path| {
         if let Some(linker) = linker.to_str() {
             if cfg!(windows) && linker.ends_with(".bat") {
-                let mut cmd = Command::new("cmd");
-                cmd.arg("/c").arg(linker);
-                return cmd
+                return Command::bat_script(linker)
             }
         }
         Command::new(linker)
@@ -758,26 +756,26 @@ fn exec_linker(sess: &Session, cmd: &mut Command, tmpdir: &Path)
     // that contains all the arguments. The theory is that this is then
     // accepted on all linkers and the linker will read all its options out of
     // there instead of looking at the command line.
-    match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
-        Ok(child) => return child.wait_with_output(),
-        Err(ref e) if command_line_too_big(e) => {}
-        Err(e) => return Err(e)
+    if !cmd.very_likely_to_exceed_some_spawn_limit() {
+        match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
+            Ok(child) => return child.wait_with_output(),
+            Err(ref e) if command_line_too_big(e) => {}
+            Err(e) => return Err(e)
+        }
     }
 
-    let file = tmpdir.join("linker-arguments");
-    let mut cmd2 = Command::new(cmd.get_program());
-    cmd2.arg(format!("@{}", file.display()));
-    for &(ref k, ref v) in cmd.get_env() {
-        cmd2.env(k, v);
-    }
-    let mut f = BufWriter::new(File::create(&file)?);
-    for arg in cmd.get_args() {
-        writeln!(f, "{}", Escape {
+    let mut cmd2 = cmd.clone();
+    let mut args = String::new();
+    for arg in cmd2.take_args() {
+        args.push_str(&Escape {
             arg: arg.to_str().unwrap(),
             is_like_msvc: sess.target.target.options.is_like_msvc,
-        })?;
+        }.to_string());
+        args.push_str("\n");
     }
-    f.into_inner()?;
+    let file = tmpdir.join("linker-arguments");
+    fs::write(&file, args.as_bytes())?;
+    cmd2.arg(format!("@{}", file.display()));
     return cmd2.output();
 
     #[cfg(unix)]
