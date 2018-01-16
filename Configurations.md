@@ -1091,11 +1091,13 @@ Put a trailing comma after a block based match arm (non-block arms are not affec
 #### `false` (default):
 
 ```rust
-match lorem {
-    Lorem::Ipsum => {
-        println!("ipsum");
+fn main() {
+    match lorem {
+        Lorem::Ipsum => {
+            println!("ipsum");
+        }
+        Lorem::Dolor => println!("dolor"),
     }
-    Lorem::Dolor => println!("dolor"),
 }
 ```
 
