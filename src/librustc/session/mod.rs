@@ -498,9 +498,65 @@ impl Session {
             self.use_mir()
     }
 
-    pub fn lto(&self) -> bool {
-        self.opts.cg.lto || self.target.target.options.requires_lto
+    /// Calculates the flavor of LTO to use for this compilation.
+    pub fn lto(&self) -> config::Lto {
+        // If our target has codegen requirements ignore the command line
+        if self.target.target.options.requires_lto {
+            return config::Lto::Fat
+        }
+
+        // If the user specified something, return that. If they only said `-C
+        // lto` and we've for whatever reason forced off ThinLTO via the CLI,
+        // then ensure we can't use a ThinLTO.
+        match self.opts.cg.lto {
+            config::Lto::No => {}
+            config::Lto::Yes if self.opts.cli_forced_thinlto_off => {
+                return config::Lto::Fat
+            }
+            other => return other,
+        }
+
+        // Ok at this point the target doesn't require anything and the user
+        // hasn't asked for anything. Our next decision is whether or not
+        // we enable "auto" ThinLTO where we use multiple codegen units and
+        // then do ThinLTO over those codegen units. The logic below will
+        // either return `No` or `ThinLocal`.
+
+        // If processing command line options determined that we're incompatible
+        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
+        if self.opts.cli_forced_thinlto_off {
+            return config::Lto::No
+        }
+
+        // If `-Z thinlto` specified process that, but note that this is mostly
+        // a deprecated option now that `-C lto=thin` exists.
+        if let Some(enabled) = self.opts.debugging_opts.thinlto {
+            if enabled {
+                return config::Lto::ThinLocal
+            } else {
+                return config::Lto::No
+            }
+        }
+
+        // If there's only one codegen unit and LTO isn't enabled then there's
+        // no need for ThinLTO so just return false.
+        if self.codegen_units() == 1 {
+            return config::Lto::No
+        }
+
+        // Right now ThinLTO isn't compatible with incremental compilation.
+        if self.opts.incremental.is_some() {
+            return config::Lto::No
+        }
+
+        // Now we're in "defaults" territory. By default we enable ThinLTO for
+        // optimized compiles (anything greater than O0).
+        match self.opts.optimize {
+            config::OptLevel::No => config::Lto::No,
+            _ => config::Lto::ThinLocal,
+        }
     }
+
     /// Returns the panic strategy for this compile session. If the user explicitly selected one
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
     pub fn panic_strategy(&self) -> PanicStrategy {
@@ -803,38 +859,6 @@ impl Session {
         // and most benchmarks agreed it was roughly a local optimum. Not very
         // scientific.
         16
-    }
-
-    /// Returns whether ThinLTO is enabled for this compilation
-    pub fn thinlto(&self) -> bool {
-        // If processing command line options determined that we're incompatible
-        // with ThinLTO (e.g. `-C lto --emit llvm-ir`) then return that option.
-        if let Some(enabled) = self.opts.cli_forced_thinlto {
-            return enabled
-        }
-
-        // If explicitly specified, use that with the next highest priority
-        if let Some(enabled) = self.opts.debugging_opts.thinlto {
-            return enabled
-        }
-
-        // If there's only one codegen unit and LTO isn't enabled then there's
-        // no need for ThinLTO so just return false.
-        if self.codegen_units() == 1 && !self.lto() {
-            return false
-        }
-
-        // Right now ThinLTO isn't compatible with incremental compilation.
-        if self.opts.incremental.is_some() {
-            return false
-        }
-
-        // Now we're in "defaults" territory. By default we enable ThinLTO for
-        // optimized compiles (anything greater than O0).
-        match self.opts.optimize {
-            config::OptLevel::No => false,
-            _ => true,
-        }
     }
 }
 

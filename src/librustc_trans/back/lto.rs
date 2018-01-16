@@ -18,7 +18,7 @@ use llvm::{ModuleRef, TargetMachineRef, True, False};
 use llvm;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
-use rustc::session::config;
+use rustc::session::config::{self, Lto};
 use rustc::util::common::time;
 use time_graph::Timeline;
 use {ModuleTranslation, ModuleLlvm, ModuleKind, ModuleSource};
@@ -95,25 +95,22 @@ impl LtoModuleTranslation {
     }
 }
 
-pub enum LTOMode {
-    WholeCrateGraph,
-    JustThisCrate,
-}
-
 pub(crate) fn run(cgcx: &CodegenContext,
-           modules: Vec<ModuleTranslation>,
-           mode: LTOMode,
-           timeline: &mut Timeline)
+                  modules: Vec<ModuleTranslation>,
+                  timeline: &mut Timeline)
     -> Result<Vec<LtoModuleTranslation>, FatalError>
 {
     let diag_handler = cgcx.create_diag_handler();
-    let export_threshold = match mode {
-        LTOMode::WholeCrateGraph => {
+    let export_threshold = match cgcx.lto {
+        // We're just doing LTO for our one crate
+        Lto::ThinLocal => SymbolExportLevel::Rust,
+
+        // We're doing LTO for the entire crate graph
+        Lto::Yes | Lto::Fat | Lto::Thin => {
             symbol_export::crates_export_threshold(&cgcx.crate_types)
         }
-        LTOMode::JustThisCrate => {
-            SymbolExportLevel::Rust
-        }
+
+        Lto::No => panic!("didn't request LTO but we're doing LTO"),
     };
 
     let symbol_filter = &|&(ref name, _, level): &(String, _, SymbolExportLevel)| {
@@ -140,7 +137,7 @@ pub(crate) fn run(cgcx: &CodegenContext,
     // We save off all the bytecode and LLVM module ids for later processing
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
-    if let LTOMode::WholeCrateGraph = mode {
+    if cgcx.lto != Lto::ThinLocal {
         if cgcx.opts.cg.prefer_dynamic {
             diag_handler.struct_err("cannot prefer dynamic linking when performing LTO")
                         .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
@@ -186,13 +183,16 @@ pub(crate) fn run(cgcx: &CodegenContext,
     }
 
     let arr = symbol_white_list.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
-    match mode {
-        LTOMode::WholeCrateGraph if !cgcx.thinlto => {
+    match cgcx.lto {
+        Lto::Yes | // `-C lto` == fat LTO by default
+        Lto::Fat => {
             fat_lto(cgcx, &diag_handler, modules, upstream_modules, &arr, timeline)
         }
-        _ => {
+        Lto::Thin |
+        Lto::ThinLocal => {
             thin_lto(&diag_handler, modules, upstream_modules, &arr, timeline)
         }
+        Lto::No => unreachable!(),
     }
 }
 
