@@ -192,7 +192,17 @@ fn check(cache: &mut Cache,
             for part in Path::new(base).join(url).components() {
                 match part {
                     Component::Prefix(_) |
-                    Component::RootDir => panic!(),
+                    Component::RootDir => {
+                        // Avoid absolute paths as they make the docs not
+                        // relocatable by making assumptions on where the docs
+                        // are hosted relative to the site root.
+                        *errors = true;
+                        println!("{}:{}: absolute path - {}",
+                                 pretty_file.display(),
+                                 i + 1,
+                                 Path::new(base).join(url).display());
+                        return;
+                    }
                     Component::CurDir => {}
                     Component::ParentDir => { path.pop(); }
                     Component::Normal(s) => { path.push(s); }
