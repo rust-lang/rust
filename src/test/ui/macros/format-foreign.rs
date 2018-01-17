@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    println!("%.*3$s %s!\n", "Hello,", "World", 4);
+    println!("%.*3$s %s!\n", "Hello,", "World", 4); //~ ERROR multiple unused formatting arguments
     println!("%1$*2$.*3$f", 123.456); //~ ERROR never used
 
     // This should *not* produce hints, on the basis that there's equally as
