@@ -1,0 +1,449 @@
+- Feature Name: self_in_typedefs
+- Start Date: 2018-01-17
+- RFC PR: (leave this empty)
+- Rust Issue: (leave this empty)
+
+# Summary
+[summary]: #summary
+
+The special `Self` identifier is now permitted in `struct`, `enum`, and `union`
+type definitions. A simple example `struct` is:
+
+```rust
+enum List<T> {
+    Nil,
+    Cons(T, Box<Self>) // <-- Notice the `Self` instead of `List<T>`
+}
+```
+
+# Motivation
+[motivation]: #motivation
+
+## Removing exceptions and making the language more uniform
+
+The contextual identifier `Self` can already be used in type context in cases
+such as when defining what an associated type is for a particular type as well
+as for generic parameters in `impl`s as in:
+
+```rust
+trait Foo<T = Self> {
+    type Bar;
+
+    fn wibble<U>() where Self: Sized;
+}
+
+struct Quux;
+
+impl Foo<Self> for Quux {
+    type Bar = Self;
+
+    fn wibble<U>() where Self: Sized {}
+}
+```
+
+But this is not currently possible inside type definitions. This makes the
+language less consistent with respect to what is allowed in type positions
+than what it could be.
+
+## Principle of least surprise
+
+Users, just new to the language and experts in the language alike, also
+have a reasonable expectations that using `Self` inside type definitions is
+in fact already possible. Users may have and have these expectations because
+`Self` already works in other places where a type is expected. If a user
+attempts to use `Self` today, that attempt will fail, breaking the users
+intuition of the languages semantics. Avoiding that breakage will reduce the
+paper cuts newcomers face when using the language. It will also allow the
+community to focus on answering more important questions.
+
+## Better ergonomics with smaller edit distances
+
+When you have complex recursive `enum`s with many variants and generic types,
+and want to rename a type parameter or the type itself, it would make renaming
+and refactoring the type definitions easier if you did not have to make changes
+in the variant fields which mention the type. This can be helped by IDEs to some
+extent, but you do not always have such IDEs and even then, the readability of
+using `Self` is superior to repeating the type in variants and fields since it
+is a more visual cue that can be highlighted for specially.
+
+## Encouraging descriptively named types, type variables, and more generic code
+
+Making it simpler and more ergonomic to have longer type names and more
+generic parameters in type definitions can also encourage using more
+descriptive identifiers for both the type and the type variables used.
+It may also encourage more generic code altogether.
+
+# Guide-level explanation
+[guide-level-explanation]: #guide-level-explanation
+
+[An Obligatory Public Service Announcement]: http://cglab.ca/~abeinges/blah/too-many-lists/book/#an-obligatory-public-service-announcement
+
+> [An Obligatory Public Service Announcement]: When reading this RFC,
+> keep in mind that these lists are only examples.
+> **Always consider if you really need to use linked lists!**
+
+We will now go through a few examples of what you can and can't do with this RFC.
+
+## Simple example
+
+Let's look at a simple cons-list of `u8`s. Before this RFC, you had to write:
+
+```rust
+enum U8List {
+    Nil,
+    Cons(u8, Box<U8List>)
+}
+```
+
+But with this RFC, you can now instead write:
+
+```rust
+enum U8List {
+    Nil,
+    Cons(u8, Box<Self>) // <-- Notice 'Self' here
+}
+```
+
+If you had written this example with `Self` without this RFC,
+the compiler would have greeted you with:
+
+```
+error[E0411]: cannot find type `Self` in this scope
+ --> src/main.rs:3:18
+  |
+3 |     Cons(u8, Box<Self>) // <-- Notice 'Self' here
+  |                  ^^^^ `Self` is only available in traits and impls
+```
+
+With this RFC, the compiler will never do so.
+
+This new way of writing with `Self` can be thought of as literally
+desugaring to the way it is written in the example before it. This also
+extends to generic types (non-nullary type constructors) that are recursive.
+
+## With generic type parameters
+
+Continuing with the cons lists, let's take a look at how the canonical
+linked-list example can be rewritten using this RFC.
+
+We start off with:
+
+```rust
+enum List<T> {
+    Nil,
+    Cons(T, Box<List<T>>)
+}
+```
+
+With this RFC, the snippet above can be rewritten as:
+
+```rust
+enum List<T> {
+    Nil,
+    Cons(T, Box<Self>) // <-- Notice 'Self' here
+}
+```
+
+Notice in particular how we used just `Self` for both `U8List` and `List<T>`.
+This applies to types with any number of parameters, including those that are
+parameterized by lifetimes.
+
+## Examples with lifetimes
+
+An example of this can be seen in the following cons list:
+
+```rust
+enum StackList<'a, T: 'a> {
+    Nil,
+    Cons(T, &'a StackList<'a, T>)
+}
+```
+
+which is rewritten with this RFC as:
+
+```rust
+enum StackList<'a, T: 'a> {
+    Nil,
+    Cons(T, &'a Self) // <-- Still using just 'Self'
+}
+```
+
+## Structs and unions
+
+You can also use `Self` in `struct`s as in:
+
+```rust
+struct NonEmptyList<T> {
+    head: T,
+    tail: Option<Box<NonEmptyList<T>>>,
+}
+```
+
+which is written with this RFC as:
+
+```rust
+struct NonEmptyList<T> {
+    head: T,
+    tail: Option<Box<Self>>,
+}
+```
+
+This also extends to `union`s.
+
+## When `Self` can **not** be used
+
+Consider the following small expression language:
+
+```rust
+trait Ty { type Repr: ::std::fmt::Debug; }
+
+#[derive(Debug)]
+struct Int;
+impl Ty for Int { type Repr = usize; }
+
+#[derive(Debug)]
+struct Bool;
+impl Ty for Bool { type Repr = bool; }
+
+#[derive(Debug)]
+enum Expr<T: Ty> {
+    Lit(T::Repr),
+    Add(Box<Expr<Int>>, Box<Expr<Int>>),
+    If(Box<Expr<Bool>>, Box<Expr<T>>, Box<Expr<T>>),
+}
+
+fn main() {
+    let expr: Expr<Int> =
+        Expr::If(
+            Box::new(Expr::Lit(true)),
+            Box::new(Expr::Lit(1)),
+            Box::new(Expr::Add(
+                Box::new(Expr::Lit(1)),
+                Box::new(Expr::Lit(1))
+            ))
+        );
+    println!("{:#?}", expr);
+}
+```
+
+You may perhaps reach for this:
+
+```rust
+#[derive(Debug)]
+enum Expr<T: Ty> {
+    Lit(T::Repr),
+    Add(Box<Self>, Box<Self>),
+    If(Box<Self>, Box<Self>, Box<Self>),
+}
+```
+
+But you have now changed the definition of `Expr` semantically.
+The changed semantics are due to the fact that `Self` in this context is not
+the same type as `Expr<Int>` or `Expr<Bool>`. The compiler, when desugaring
+`Self` in this context, will simply substitute `Self` with what it sees in
+`Expr<T: Ty>` (with any bounds removed).
+
+You may at most use `Self` by changing the definition of `Expr<T>` to:
+
+```rust
+#[derive(Debug)]
+enum Expr<T: Ty> {
+    Lit(T::Repr),
+    Add(Box<Expr<Int>>, Box<Expr<Int>>),
+    If(Box<Expr<Bool>>, Box<Self>, Box<Self>),
+}
+```
+
+## Types of infinite size
+
+Consider the following example:
+
+```rust
+enum List<T> {
+    Nil,
+    Cons(T, List<T>)
+}
+```
+
+If you try to compile it this today, the compiler will greet you with:
+
+```
+error[E0072]: recursive type `List` has infinite size
+ --> src/main.rs:1:1
+  |
+1 | enum List<T> {
+  | ^^^^^^^^^^^^ recursive type has infinite size
+2 |     Nil,
+3 |     Cons(T, List<T>)
+  |             -------- recursive without indirection
+  |
+  = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `List` representable
+```
+
+If we use the syntax introduced by this RFC as in:
+
+```rust
+enum List<T> {
+    Nil,
+    Cons(T, Self)
+}
+```
+
+you will still get an error since
+[it is fundamentally impossible to construct a type of infinite size][E0072].
+The error message would however use `Self` as you wrote it instead of `List<T>`
+as seen in this snippet:
+
+[E0072]: https://doc.rust-lang.org/error-index.html#E0072
+
+```
+error[E0072]: recursive type `List` has infinite size
+ --> src/main.rs:1:1
+  |
+1 | enum List<T> {
+  | ^^^^^^^^^^^^ recursive type has infinite size
+2 |     Nil,
+3 |     Cons(T, Self)
+  |             ----- recursive without indirection
+  |
+  = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `List` representable
+```
+
+## Migration advice
+
+Since the new introduced syntax is often clearer and shorter, especially when
+dealing with long type names with many generic parameters, tools like `clippy`
+should add new lints that mention the new syntax and ask users to migrate to it.
+
+Such a lint in `clippy` could be called `use_self_in_typedef`
+and emit the following warning:
+
+```
+warning: the `Self` should be used for clarity in recursive types instead of mentioning the type again
+ --> src/main.rs:
+  |
+1 | /    enum List<T> {
+2 | |        Nil,
+3 | |        Cons(T, List<T>)
+4 | |    }
+  | |----^
+  |
+  = note: #[warn(use_self_in_typedef)] on by default
+  = help: for further information visit https://rust-lang-nursery.github.io/rust-clippy/<version>/index.html#use_self_in_typedef
+help: consider using `Self` instead of `List<T>`
+  |
+3 |          Cons(T, List<T>)
+  |                  ^^^^^^^
+```
+
+## Teaching the contents of this RFC
+
+[LRWETMLL]: http://cglab.ca/~abeinges/blah/too-many-lists/book/first-layout.html
+
+When talking about and teaching recursive types in Rust, since it is now
+possible to use `Self`, the ability to use `Self` in this context should
+be taught along side those types. An example of where this can be introduced
+is the [*"Learning Rust With Entirely Too Many Linked Lists"* guide][LRWETMLL].
+
+# Reference-level explanation
+[reference-level-explanation]: #reference-level-explanation
+
+The identifier `Self` is (now) allowed in type contexts in
+fields of `struct`s, `union`s, and the variants of `enum`s.
+
+## Desugaring
+
+When the compiler encounters `Self` in type contexts inside the places
+described above, it will substitute them with the header of the type
+definition but remove any bounds on generic parameters prior.
+
+An example: the following cons list:
+
+```rust
+enum StackList<'a, T: 'a + InterestingTrait> {
+    Nil,
+    Cons(T, &'a Self)
+}
+```
+
+desugars into:
+
+```rust
+enum StackList<'a, T: 'a + InterestingTrait> {
+    Nil,
+    Cons(T, &'a StackList<'a, T>)
+}
+```
+
+Note in particular that the source code is **not** desugared into:
+
+```rust
+enum StackList<'a, T: 'a + InterestingTrait> {
+    Nil,
+    Cons(T, &'a StackList<'a, T: 'a + InterestingTrait>)
+}
+```
+
+## Error messages
+
+When `Self` is used to construct an infinite type as in:
+
+```rust
+enum List<T> {
+    Nil,
+    Cons(T, List<T>)
+}
+```
+
+The compiler will emit error `E0072` as in:
+
+```
+error[E0072]: recursive type `List` has infinite size
+ --> src/main.rs:1:1
+  |
+1 | enum List<T> {
+  | ^^^^^^^^^^^^ recursive type has infinite size
+2 |     Nil,
+3 |     Cons(T, Self)
+  |             ----- recursive without indirection
+  |
+  = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `List` representable
+```
+
+Note in particular that `Self` is used and not `List<T>` on line `3`.
+
+## In relation to other RFCs
+
+This RFC expands on [RFC 593] and [RFC 1647] with respect to where the keyword
+`Self` is allowed.
+
+[RFC 593]: 0593-forbid-Self-definitions.md
+[RFC 1647]: 1647-allow-self-in-where-clauses.md
+
+# Drawbacks
+[drawbacks]: #drawbacks
+
+Some may argue that we shouldn't have many ways to do the same thing and
+that it introduces new syntax whereby making the surface language more complex.
+However, the RFC may equally be said to simplify the surface language since
+it removes exceptional cases especially in the users mental model.
+
+# Rationale and alternatives
+[alternatives]: #alternatives
+
+No other designs have been considered. The design choice and rational for
+this particular design is straightforward as it would be uneconomic to use
+other keywords and also confusing and inconsistent.
+
+The only known alternative to the changes proposed in this RFC is to
+simply not implement those changes. However, this has the downsides of not
+increasing the ergonomics and keeping the language less consistent than what
+it could be. Not improving the ergonomics here may be especially problematic
+when dealing with recursive types that have long names and/or many generic
+parameters and may encourage developers to use type names which are less
+descriptive and keep their code less generic than what is appropriate.
+
+# Unresolved questions
+[unresolved]: #unresolved-questions
+
+There are no unresolved questions.
