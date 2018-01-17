@@ -180,9 +180,12 @@ where
     args.push("--cfg".to_owned());
     args.push(r#"feature="cargo-clippy""#.to_owned());
 
-    let path = std::env::current_exe()
+    let mut path = std::env::current_exe()
         .expect("current executable path invalid")
         .with_file_name("clippy-driver");
+    if cfg!(windows) {
+        path.set_extension("exe");
+    }
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
         .env("RUSTC_WRAPPER", path)
