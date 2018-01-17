@@ -385,24 +385,37 @@ fn iter_skip_next() {
     let _ = foo.filter().skip(42).next();
 }
 
-/// Should trigger the `FOLD_ANY` lint
-fn fold_any() {
+/// Calls which should trigger the `UNNECESSARY_FOLD` lint
+fn unnecessary_fold() {
+    // Can be replaced by .any
     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
+    let _ = (0..3).fold(false, |acc, x| x > 2 || acc);
+
+    // Can be replaced by .all
+    let _ = (0..3).fold(true, |acc, x| acc && x > 2);
+    let _ = (0..3).fold(true, |acc, x| x > 2 && acc);
+
+    // Can be replaced by .sum
+    let _ = (0..3).fold(0, |acc, x| acc + x);
+    let _ = (0..3).fold(0, |acc, x| x + acc);
+
+    // Can be replaced by .product
+    let _ = (0..3).fold(1, |acc, x| acc * x);
+    let _ = (0..3).fold(1, |acc, x| x * acc);
 }
 
-/// Should not trigger the `FOLD_ANY` lint as the initial value is not the literal `false`
-fn fold_any_ignores_initial_value_of_true() {
-    let _ = (0..3).fold(true, |acc, x| acc || x > 2);
-}
-
-/// Should not trigger the `FOLD_ANY` lint as the accumulator is not integer valued
-fn fold_any_ignores_non_boolean_accumalator() {
-    let _ = (0..3).fold(0, |acc, x| acc + if x > 2 { 1 } else { 0 });
-}
-
-/// Should trigger the `FOLD_ANY` lint, with the error span including exactly `.fold(...)`
-fn fold_any_span_for_multi_element_chain() {
+/// Should trigger the `UNNECESSARY_FOLD` lint, with an error span including exactly `.fold(...)`
+fn unnecessary_fold_span_for_multi_element_chain() {
     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
+}
+
+/// Calls which should not trigger the `UNNECESSARY_FOLD` lint
+fn unnecessary_fold_should_ignore() {
+    let _ = (0..3).fold(true, |acc, x| acc || x > 2);
+    let _ = (0..3).fold(false, |acc, x| acc && x > 2);
+    let _ = (0..3).fold(1, |acc, x| acc + x);
+    let _ = (0..3).fold(0, |acc, x| acc * x);
+    let _ = (0..3).fold(0, |acc, x| 1 + acc + x);
 }
 
 #[allow(similar_names)]

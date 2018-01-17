@@ -1134,47 +1134,74 @@ fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
     assert!(fold_args.len() == 3,
         "Expected fold_args to have three entries - the receiver, the initial value and the closure");
 
-    if_chain! {
-        // Check if the initial value for the fold is the literal `false`
-        if let hir::ExprLit(ref lit) = fold_args[1].node;
-        if lit.node == ast::LitKind::Bool(false);
+    fn check_fold_with_op(
+        cx: &LateContext,
+        fold_args: &[hir::Expr],
+        op: hir::BinOp_,
+        replacement_method_name: &str) {
 
-        // Extract the body of the closure passed to fold
-        if let hir::ExprClosure(_, _, body_id, _, _) = fold_args[2].node;
-        let closure_body = cx.tcx.hir.body(body_id);
-        let closure_expr = remove_blocks(&closure_body.value);
+        if_chain! {
+            // Extract the body of the closure passed to fold
+            if let hir::ExprClosure(_, _, body_id, _, _) = fold_args[2].node;
+            let closure_body = cx.tcx.hir.body(body_id);
+            let closure_expr = remove_blocks(&closure_body.value);
 
-        // Extract the names of the two arguments to the closure
-        if let Some(first_arg_ident) = get_arg_name(&closure_body.arguments[0].pat);
-        if let Some(second_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
+            // Check if the closure body is of the form `acc <op> some_expr(x)`
+            if let hir::ExprBinary(ref bin_op, ref left_expr, ref right_expr) = closure_expr.node;
+            if bin_op.node == op;
 
-        // Check if the closure body is of the form `acc || some_expr(x)`
-        if let hir::ExprBinary(ref bin_op, ref left_expr, ref right_expr) = closure_expr.node;
-        if bin_op.node == hir::BinOp_::BiOr;
-        if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = left_expr.node;
-        if path.segments.len() == 1 && &path.segments[0].name == &first_arg_ident;
+            // Extract the names of the two arguments to the closure
+            if let Some(first_arg_ident) = get_arg_name(&closure_body.arguments[0].pat);
+            if let Some(second_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
 
-        then {
-            let right_source = snippet(cx, right_expr.span, "EXPR");
+            if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = left_expr.node;
+            if path.segments.len() == 1 && &path.segments[0].name == &first_arg_ident;
 
-            // Span containing `.fold(...)`
-            let fold_span = fold_args[0].span.next_point().with_hi(fold_args[2].span.hi() + BytePos(1));
+            then {
+                let right_source = snippet(cx, right_expr.span, "EXPR");
 
-            span_lint_and_sugg(
-                cx,
-                FOLD_ANY,
-                fold_span,
-                // TODO: don't suggest .any(|x| f(x)) if we can suggest .any(f)
-                "this `.fold` can more succintly be expressed as `.any`",
-                "try",
-                format!(
-                    ".any(|{s}| {r})",
-                    s = second_arg_ident,
-                    r = right_source
-                )
-            );
+                // Span containing `.fold(...)`
+                let fold_span = fold_args[0].span.next_point().with_hi(fold_args[2].span.hi() + BytePos(1));
+
+                span_lint_and_sugg(
+                    cx,
+                    FOLD_ANY,
+                    fold_span,
+                    // TODO: don't suggest e.g. .any(|x| f(x)) if we can suggest .any(f)
+                    "this `.fold` can be written more succinctly using another method",
+                    "try",
+                    format!(
+                        ".{replacement}(|{s}| {r})",
+                        replacement = replacement_method_name,
+                        s = second_arg_ident,
+                        r = right_source
+                    )
+                );
+            }
         }
     }
+
+    // Check if the first argument to .fold is a suitable literal
+    match fold_args[1].node {
+        hir::ExprLit(ref lit) => {
+            match lit.node {
+                ast::LitKind::Bool(false) => check_fold_with_op(
+                    cx, fold_args, hir::BinOp_::BiOr, "any"
+                ),
+                ast::LitKind::Bool(true) => check_fold_with_op(
+                    cx, fold_args, hir::BinOp_::BiAnd, "all"
+                ),
+                ast::LitKind::Int(0, _) => check_fold_with_op(
+                    cx, fold_args, hir::BinOp_::BiAdd, "sum"
+                ),
+                ast::LitKind::Int(1, _) => check_fold_with_op(
+                    cx, fold_args, hir::BinOp_::BiMul, "product"
+                ),
+                _ => return
+            }
+        }
+        _ => return
+    };
 }
 
 fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr], is_mut: bool) {

@@ -493,24 +493,42 @@ error: called `skip(x).next()` on an iterator. This is more succinctly expressed
 382 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this `.fold` can more succintly be expressed as `.any`
-   --> $DIR/methods.rs:390:19
+error: this `.fold` can be written more succinctly using another method
+   --> $DIR/methods.rs:391:19
     |
-390 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
+391 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
     |
     = note: `-D fold-any` implied by `-D warnings`
 
-error: this `.fold` can more succintly be expressed as `.any`
-   --> $DIR/methods.rs:405:34
+error: this `.fold` can be written more succinctly using another method
+   --> $DIR/methods.rs:395:19
     |
-405 |     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
+395 |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.all(|x| x > 2)`
+
+error: this `.fold` can be written more succinctly using another method
+   --> $DIR/methods.rs:399:19
+    |
+399 |     let _ = (0..3).fold(0, |acc, x| acc + x);
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.sum(|x| x)`
+
+error: this `.fold` can be written more succinctly using another method
+   --> $DIR/methods.rs:403:19
+    |
+403 |     let _ = (0..3).fold(1, |acc, x| acc * x);
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.product(|x| x)`
+
+error: this `.fold` can be written more succinctly using another method
+   --> $DIR/methods.rs:409:34
+    |
+409 |     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
     |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:411:13
+   --> $DIR/methods.rs:424:13
     |
-411 |     let _ = opt.unwrap();
+424 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
