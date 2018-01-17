@@ -621,13 +621,17 @@ impl CodeMap {
 
     /// Returns a new span representing the next character after the end-point of this span
     pub fn next_point(&self, sp: Span) -> Span {
-        let pos = sp.lo().0;
+        let start_of_next_point = sp.hi().0;
 
         let width = self.find_width_of_character_at_span(sp, true);
-        let corrected_next_position = pos.checked_add(width).unwrap_or(pos);
+        // If the width is 1, then the next span should point to the same `lo` and `hi`. However,
+        // in the case of a multibyte character, where the width != 1, the next span should
+        // span multiple bytes to include the whole character.
+        let end_of_next_point = start_of_next_point.checked_add(
+            width - 1).unwrap_or(start_of_next_point);
 
-        let next_point = BytePos(cmp::max(sp.hi().0, corrected_next_position));
-        Span::new(next_point, next_point, sp.ctxt())
+        let end_of_next_point = BytePos(cmp::max(sp.lo().0 + 1, end_of_next_point));
+        Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt())
     }
 
     /// Finds the width of a character, either before or after the provided span.
