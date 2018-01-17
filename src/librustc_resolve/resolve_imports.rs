@@ -524,7 +524,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     fn resolve_import(&mut self, directive: &'b ImportDirective<'b>) -> bool {
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
                names_to_string(&directive.module_path[..]),
-               module_to_string(self.current_module));
+               module_to_string(self.current_module).unwrap_or("???".to_string()));
 
         self.current_module = directive.parent;
 
@@ -773,10 +773,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         None => "".to_owned(),
                     };
                 let module_str = module_to_string(module);
-                let msg = if &module_str == "???" {
-                    format!("no `{}` in the root{}", ident, lev_suggestion)
-                } else {
+                let msg = if let Some(module_str) = module_str {
                     format!("no `{}` in `{}`{}", ident, module_str, lev_suggestion)
+                } else {
+                    format!("no `{}` in the root{}", ident, lev_suggestion)
                 };
                 Some((span, msg))
             } else {
