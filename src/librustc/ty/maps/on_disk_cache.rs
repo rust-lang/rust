@@ -205,6 +205,7 @@ impl<'sess> OnDiskCache<'sess> {
                 let qri = &mut query_result_index;
 
                 encode_query_results::<type_of, _>(tcx, enc, qri)?;
+                encode_query_results::<generics_of, _>(tcx, enc, qri)?;
                 encode_query_results::<predicates_of, _>(tcx, enc, qri)?;
                 encode_query_results::<used_trait_imports, _>(tcx, enc, qri)?;
                 encode_query_results::<typeck_tables_of, _>(tcx, enc, qri)?;

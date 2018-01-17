@@ -617,8 +617,8 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
     }
 
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          id: SerializedDepNodeIndex)
-                          -> Option<Self::Value> {
+                              id: SerializedDepNodeIndex)
+                              -> Option<Self::Value> {
         let mir: Option<::mir::Mir<'tcx>> = tcx.on_disk_query_result_cache
                                                .try_load_query_result(tcx, id);
         mir.map(|x| tcx.alloc_mir(x))
@@ -634,6 +634,21 @@ impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_pre
 impl<'tcx> QueryDescription<'tcx> for queries::target_features_whitelist<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("looking up the whitelist of target features")
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
+    #[inline]
+    fn cache_on_disk(def_id: Self::Key) -> bool {
+        def_id.is_local()
+    }
+
+    fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              id: SerializedDepNodeIndex)
+                              -> Option<Self::Value> {
+        let generics: Option<ty::Generics> = tcx.on_disk_query_result_cache
+                                                .try_load_query_result(tcx, id);
+        generics.map(|x| tcx.alloc_generics(x))
     }
 }
 

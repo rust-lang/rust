@@ -983,6 +983,7 @@ impl_load_from_cache!(
     ContainsExternIndicator => contains_extern_indicator,
     CheckMatch => check_match,
     TypeOfItem => type_of,
+    GenericsOfItem => generics_of,
     PredicatesOfItem => predicates_of,
     UsedTraitImports => used_trait_imports,
 );
