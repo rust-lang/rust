@@ -220,12 +220,12 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                     }
                 } else if match_def_path(cx.tcx, def_id, &paths::OPTION) {
                     if match_type_parameter(cx, qpath, &paths::OPTION) {
-                        span_help_and_lint(
+                        span_lint(
                             cx,
                             OPTION_OPTION,
                             ast_ty.span,
-                            "consider using `Option<T>` instead of `Option<Option<T>>`",
-                            "`Option<_>` is easier to use than `Option<Option<_>`",
+                            "consider using `Option<T>` instead of `Option<Option<T>>` or a custom \
+                            enum if you need to distinguish all 3 cases",
                         );
                         return; // don't recurse into the type
                     }
