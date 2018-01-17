@@ -189,11 +189,7 @@ fn dump_path(
     };
 
     let mut file_path = PathBuf::new();
-
-    if let Some(ref file_dir) = tcx.sess.opts.debugging_opts.dump_mir_dir {
-        let p = Path::new(file_dir);
-        file_path.push(p);
-    };
+    file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
 
     let item_name = tcx.hir
         .def_path(source.def_id)
