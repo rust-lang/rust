@@ -624,7 +624,7 @@ declare_lint! {
 }
 
 
-/// **What it does:** Checks for using `fold` when a more succint alternative exists.
+/// **What it does:** Checks for using `fold` when a more succinct alternative exists.
 /// Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
 /// `sum` or `product`.
 ///
@@ -643,7 +643,7 @@ declare_lint! {
 declare_lint! {
     pub UNNECESSARY_FOLD,
     Warn,
-    "using `fold` when a more succint alternative exists"
+    "using `fold` when a more succinct alternative exists"
 }
 
 impl LintPass for Pass {
