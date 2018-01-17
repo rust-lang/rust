@@ -407,9 +407,7 @@ impl<T> Option<T> {
     }
 
     /// Applies a function to the contained value (if any),
-    /// or returns a [`default`][] (if not).
-    ///
-    /// [`default`]: ../default/trait.Default.html#tymethod.default
+    /// or returns the provided default (if not).
     ///
     /// # Examples
     ///
@@ -430,9 +428,7 @@ impl<T> Option<T> {
     }
 
     /// Applies a function to the contained value (if any),
-    /// or computes a [`default`][] (if not).
-    ///
-    /// [`default`]: ../default/trait.Default.html#tymethod.default
+    /// or computes a default (if not).
     ///
     /// # Examples
     ///
@@ -850,7 +846,7 @@ impl<T: Default> Option<T> {
     /// Returns the contained value or a default
     ///
     /// Consumes the `self` argument then, if [`Some`], returns the contained
-    /// value, otherwise if [`None`], returns the default value for that
+    /// value, otherwise if [`None`], returns the [default value] for that
     /// type.
     ///
     /// # Examples
@@ -872,6 +868,7 @@ impl<T: Default> Option<T> {
     ///
     /// [`Some`]: #variant.Some
     /// [`None`]: #variant.None
+    /// [default value]: ../default/trait.Default.html#tymethod.default
     /// [`parse`]: ../../std/primitive.str.html#method.parse
     /// [`FromStr`]: ../../std/str/trait.FromStr.html
     #[inline]
