@@ -3,6 +3,8 @@ works. The aim of the guide is to help new contributors get oriented
 to rustc, as well as to help more experienced folks in figuring out
 some new part of the compiler that they haven't worked on before.
 
+[You can read the latest version of the guide here.](https://rust-lang-nursery.github.io/rustc-guide/)
+
 The guide can be useful today, but it has a lot of work still go.
 Once it gets more complete, the plan is probably to move it into the
 [main Rust repository](https://github.com/rust-lang/rust/).
