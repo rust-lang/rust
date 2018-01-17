@@ -18,7 +18,7 @@
 // compile-fail/type-mismatch-same-crate-name.rs
 // but deals with the case where one of the crates
 // is only introduced as an indirect dependency.
-// and the type is accessed via a reexport.
+// and the type is accessed via a re-export.
 // This is similar to how the error can be introduced
 // when using cargo's automatic dependency resolution.
 

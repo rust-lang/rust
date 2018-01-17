@@ -2119,7 +2119,7 @@ impl<'a> LoweringContext<'a> {
 
                 // Privatize the degenerate import base, used only to check
                 // the stability of `use a::{};`, to avoid it showing up as
-                // a reexport by accident when `pub`, e.g. in documentation.
+                // a re-export by accident when `pub`, e.g. in documentation.
                 let path = P(self.lower_path(id, &prefix, ParamMode::Explicit, true));
                 *vis = hir::Inherited;
                 hir::ItemUse(path, hir::UseKind::ListStem)

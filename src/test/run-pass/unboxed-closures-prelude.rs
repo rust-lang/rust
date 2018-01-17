@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that the reexports of `FnOnce` et al from the prelude work.
+// Tests that the re-exports of `FnOnce` et al from the prelude work.
 
 // pretty-expanded FIXME #23616
 

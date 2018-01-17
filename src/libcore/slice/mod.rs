@@ -22,7 +22,7 @@
 // a lot of stuff defined here. Let's keep it clean.
 //
 // Since slices don't support inherent methods; all operations
-// on them are defined on traits, which are then reexported from
+// on them are defined on traits, which are then re-exported from
 // the prelude for convenience. So there are a lot of traits here.
 //
 // The layout of this file is thus:

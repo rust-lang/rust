@@ -16,7 +16,7 @@
 
 #![stable(feature = "core_prelude", since = "1.4.0")]
 
-// Reexported core operators
+// Re-exported core operators
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use marker::{Copy, Send, Sized, Sync};
@@ -24,12 +24,12 @@ pub use marker::{Copy, Send, Sized, Sync};
 #[doc(no_inline)]
 pub use ops::{Drop, Fn, FnMut, FnOnce};
 
-// Reexported functions
+// Re-exported functions
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use mem::drop;
 
-// Reexported types and traits
+// Re-exported types and traits
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use clone::Clone;
@@ -55,7 +55,7 @@ pub use option::Option::{self, Some, None};
 #[doc(no_inline)]
 pub use result::Result::{self, Ok, Err};
 
-// Reexported extension traits for primitive types
+// Re-exported extension traits for primitive types
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use slice::SliceExt;
