@@ -1,0 +1,14 @@
+error: use of `#[inline]` on trait method `default_inline` which has no body
+ --> $DIR/inline_fn_without_body.rs:7:5
+  |
+7 |     #[inline]
+  |     ^^^^^^^^^
+  |
+  = note: `-D inline-fn-without-body` implied by `-D warnings`
+
+error: use of `#[inline]` on trait method `always_inline` which has no body
+  --> $DIR/inline_fn_without_body.rs:10:5
+   |
+10 |     #[inline(always)]
+   |     ^^^^^^^^^^^^^^^^^
+
