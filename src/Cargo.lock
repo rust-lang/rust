@@ -838,7 +838,7 @@ dependencies = [
 
 [[package]]
 name = "html-diff"
-version = "0.0.5"
+version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "kuchiki 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2127,7 +2127,7 @@ version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
  "cc 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "html-diff 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "html-diff 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2855,7 +2855,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum handlebars 0.29.1 (registry+https://github.com/rust-lang/crates.io-index)" = "fb04af2006ea09d985fef82b81e0eb25337e51b691c76403332378a53d521edc"
 "checksum hex 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d6a22814455d41612f41161581c2883c0c6a1c41852729b17d5ed88f01e153aa"
 "checksum home 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9f25ae61099d8f3fee8b483df0bd4ecccf4b2731897aad40d50eca1b641fe6db"
-"checksum html-diff 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "9778743e3b3c3679f471f0ed1833c690f19f4a0919e33b281f12ef5f77ad64c6"
+"checksum html-diff 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "ee4cfdf62a484a3ac0d9b80f562d37f99366db08a63621b917ea3056565345f7"
 "checksum html5ever 0.20.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5bfb46978eb757a603b7dfe2dafb1c62cb4dee3428d8ac1de734d83d6b022d06"
 "checksum idna 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "014b298351066f1512874135335d62a789ffe78a9974f94b43ed5621951eaf7d"
 "checksum if_chain 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "61bb90bdd39e3af69b0172dfc6130f6cd6332bf040fbb9bdd4401d37adbd48b8"
