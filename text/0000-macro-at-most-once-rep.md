@@ -7,68 +7,72 @@
 Summary
 -------
 
-Add a repetition specifiers to macros to repeat a pattern at most once: `$(pat)?`.  `?` behaves like `+` or `*` but represents at most one repetition of `pat`.
+Add a repetition specifier to macros to repeat a pattern at most once: `$(pat)?`. Here, `?` behaves like `+` or `*` but represents at most one repetition of `pat`.
 
 Motivation
 ----------
 
-There are two specific use cases in mind:
+There are two specific use cases in mind.
 
-1. Any macro rule with optional parts. Currently, you just have to write two rules and possibly have one "desugar" to the other.
+## Macro rules with optional parts
 
-   ```rust
-   macro_rules! foo {
-     (do $b:block) => {
-       $b
-     }
-     (do $b1:block and $b2:block) => {
-       foo!($b1)
-       $b2
-     }
-   }
-   ```
+Currently, you just have to write two rules and possibly have one "desugar" to the other.
 
-   Under this RFC, one would simply write:
+```rust
+macro_rules! foo {
+  (do $b:block) => {
+    $b
+  }
+  (do $b1:block and $b2:block) => {
+    foo!($b1)
+    $b2
+  }
+}
+```
 
-   ```rust
-   macro_rules! foo {
-     (do $b1:block $(and $b2:block)?) => {
-       $b1
-       $($b2)?
-     }
-   }
-   ```
+Under this RFC, one would simply write:
 
-2. Trailing commas. It's kind of infuriating that the best way to make a rule tolerate trailing commas TMK is to create another identical rule that has a comma at the end:
+```rust
+macro_rules! foo {
+  (do $b1:block $(and $b2:block)?) => {
+    $b1
+    $($b2)?
+  }
+}
+```
 
-   ```rust
-   macro_rules! foo {
-     ($(pat),*,) => { foo!( $(pat),* ) };
-     ($(pat),*) => {
-       // do stuff
-     }
-   }
-   ```
+## Trailing commas
 
-   or to allow multiple trailing commas:
+Currently, the best way to make a rule tolerate trailing commas is to create another identical rule that has a comma at the end:
 
-   ```rust
-   macro_rules! foo {
-     ($(pat),* $(,)*) => {
-       // do stuff
-     }
-   }
-   ```
+```rust
+macro_rules! foo {
+  ($(pat),*,) => { foo!( $(pat),* ) };
+  ($(pat),*) => {
+    // do stuff
+  }
+}
+```
 
-   Under this RFC, one would simply write:
+or to allow multiple trailing commas:
 
-   ```rust
-   macro_rules! foo {
-     ($(pat),* $(,)?) => {
-       // do stuff
-     }
-   }
-   ```
+```rust
+macro_rules! foo {
+  ($(pat),* $(,)*) => {
+    // do stuff
+  }
+}
+```
+
+This is unergonomic and clutters up macro definitions needlessly. Under this RFC, one would simply write:
+
+```rust
+macro_rules! foo {
+  ($(pat),* $(,)?) => {
+    // do stuff
+  }
+}
+```
 
 Guide-level explanation
 -----------------------
@@ -81,7 +85,7 @@ macro_rules! foo {
 }
 ```
 
-The pattern portion is composed of zero or more subpatterns concatenated together. One possible subpattern is to repeat another subpattern some number of times. This is extremely useful when writing variadic macros (e.g. `println`):
+The pattern portion is composed of zero or more subpatterns concatenated together. One possible subpattern is to repeat another subpattern some number of times. This is useful when writing variadic macros (e.g. `println`):
 
 ```rust
 macro_rules! println {
@@ -118,22 +122,23 @@ The `?` operator is particularly useful for making macro rules with optional com
 Reference-level explanation
 ---------------------------
 
-`?` is identical to `+` and `*` in use except that it represents "at most once" repetition. The implementation ought to be very similar to them. IIUC only the parser needs to change. I don't think it would be technically difficult to implement, nor do I think it would add much complexity to the compiler.
-
-The `?` character is chosen because
-- While there are grammar ambiguities, they can be easily fixed, as noted by @kennytm [here](https://internals.rust-lang.org/t/pre-rfc-at-most-one-repetition-macro-patterns/6557/2?u=mark-i-m):
-
-  > There is ambiguity: $($x:ident)?+ today matches a?b?c and not a+. Fortunately this is easy to resolve: you just look one more token ahead and always treat ?* and ?+ to mean separate by the question mark token.
-
-- It is consistent with common regex syntax, as are `+` and `*`
-- It intuitively expresses "this pattern is optional"
+`?` is identical to `+` and `*` in use except that it represents "at most once" repetition.
 
 Drawbacks
 ---------
-I can't really think of anything. Feel free to suggest.
+While there are grammar ambiguities, they can be easily fixed, as noted by @kennytm [here](https://internals.rust-lang.org/t/pre-rfc-at-most-one-repetition-macro-patterns/6557/2?u=mark-i-m):
+
+  > There is ambiguity: $($x:ident)?+ today matches a?b?c and not a+. Fortunately this is easy to resolve: you just look one more token ahead and always treat ?* and ?+ to mean separate by the question mark token.
 
 Rationale and Alternatives
 --------------------------
+
+The implementation of `?` ought to be very similar to `+` and `*`. Only the parser needs to change; to the author's knowledge, it would not be technically difficult to implement, nor would it add much complexity to the compiler.
+
+The `?` character is chosen because
+- As noted above, there are grammar ambiguities, but they can be easily fixed
+- It is consistent with common regex syntax, as are `+` and `*`
+- It intuitively expresses "this pattern is optional"
 
 One alternative to alleviate the trailing comma paper cut is to allow trailing commas automatically for any pattern repetitions. This would be a breaking change. Also, it would allow trailing commas in potentially unwanted places. For example:
 
