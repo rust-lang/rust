@@ -389,19 +389,12 @@ fn iter_skip_next() {
 fn unnecessary_fold() {
     // Can be replaced by .any
     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
-    let _ = (0..3).fold(false, |acc, x| x > 2 || acc);
-
     // Can be replaced by .all
     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
-    let _ = (0..3).fold(true, |acc, x| x > 2 && acc);
-
     // Can be replaced by .sum
     let _ = (0..3).fold(0, |acc, x| acc + x);
-    let _ = (0..3).fold(0, |acc, x| x + acc);
-
     // Can be replaced by .product
     let _ = (0..3).fold(1, |acc, x| acc * x);
-    let _ = (0..3).fold(1, |acc, x| x * acc);
 }
 
 /// Should trigger the `UNNECESSARY_FOLD` lint, with an error span including exactly `.fold(...)`
@@ -416,6 +409,16 @@ fn unnecessary_fold_should_ignore() {
     let _ = (0..3).fold(1, |acc, x| acc + x);
     let _ = (0..3).fold(0, |acc, x| acc * x);
     let _ = (0..3).fold(0, |acc, x| 1 + acc + x);
+
+    // We only match against an accumulator on the left
+    // hand side. We could lint for .sum and .product when
+    // it's on the right, but don't for now (and this wouldn't
+    // be valid if we extended the lint to cover arbitrary numeric
+    // types).
+    let _ = (0..3).fold(false, |acc, x| x > 2 || acc);
+    let _ = (0..3).fold(true, |acc, x| x > 2 && acc);
+    let _ = (0..3).fold(0, |acc, x| x + acc);
+    let _ = (0..3).fold(1, |acc, x| x * acc);
 }
 
 #[allow(similar_names)]

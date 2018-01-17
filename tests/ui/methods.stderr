@@ -502,33 +502,33 @@ error: this `.fold` can be written more succinctly using another method
     = note: `-D fold-any` implied by `-D warnings`
 
 error: this `.fold` can be written more succinctly using another method
-   --> $DIR/methods.rs:395:19
+   --> $DIR/methods.rs:393:19
     |
-395 |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
+393 |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.all(|x| x > 2)`
 
 error: this `.fold` can be written more succinctly using another method
-   --> $DIR/methods.rs:399:19
+   --> $DIR/methods.rs:395:19
     |
-399 |     let _ = (0..3).fold(0, |acc, x| acc + x);
-    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.sum(|x| x)`
+395 |     let _ = (0..3).fold(0, |acc, x| acc + x);
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.sum()`
 
 error: this `.fold` can be written more succinctly using another method
-   --> $DIR/methods.rs:403:19
+   --> $DIR/methods.rs:397:19
     |
-403 |     let _ = (0..3).fold(1, |acc, x| acc * x);
-    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.product(|x| x)`
+397 |     let _ = (0..3).fold(1, |acc, x| acc * x);
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.product()`
 
 error: this `.fold` can be written more succinctly using another method
-   --> $DIR/methods.rs:409:34
+   --> $DIR/methods.rs:402:34
     |
-409 |     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
+402 |     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
     |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:424:13
+   --> $DIR/methods.rs:427:13
     |
-424 |     let _ = opt.unwrap();
+427 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
