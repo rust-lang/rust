@@ -11,6 +11,7 @@
 use core::iter::*;
 use core::{i8, i16, isize};
 use core::usize;
+use std::cmp::Ordering;
 
 #[test]
 fn test_lt() {
@@ -867,6 +868,20 @@ fn test_cycle() {
 }
 
 #[test]
+fn test_cycle_iterator() {
+    let a = 1;
+    let b = 5;
+    let mut it = (a..b).cycle();
+    assert_eq!(it.all(|x| x <= b), true);
+    assert_eq!((a..b).cycle().max(), Some(b - 1));
+    assert_eq!((a..b).cycle().min(), Some(a));
+    assert_eq!((a..b).cycle().max_by_key(|x| -x), Some(a));
+    assert_eq!((a..b).cycle().max_by(|x, y| y.cmp(x)), Some(a));
+    assert_eq!((a..b).cycle().min_by_key(|x| -x), Some(b - 1));
+    assert_eq!((a..b).cycle().min_by(|x, y| y.cmp(x)), Some(b - 1));
+}
+
+#[test]
 fn test_iterator_nth() {
     let v: &[_] = &[0, 1, 2, 3, 4];
     for i in 0..v.len() {
@@ -1403,6 +1418,19 @@ fn test_repeat() {
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
+}
+
+#[test]
+fn test_repeat_iterator() {
+    let mut it = repeat(42);
+    assert_eq!(it.nth(usize::MAX), Some(42));
+    assert_eq!(it.all(|x| x == 42), true);
+    assert_eq!(repeat(42).max(), Some(42));
+    assert_eq!(repeat(42).min(), Some(42));
+    assert_eq!(repeat(42).max_by_key(|_| 0), Some(42));
+    assert_eq!(repeat(42).max_by(|_, _| Ordering::Equal), Some(42));
+    assert_eq!(repeat(42).min_by_key(|_| 0), Some(42));
+    assert_eq!(repeat(42).min_by(|_, _| Ordering::Equal), Some(42));
 }
 
 #[test]

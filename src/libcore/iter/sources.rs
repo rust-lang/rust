@@ -11,6 +11,7 @@
 use fmt;
 use marker;
 use usize;
+use cmp::Ordering;
 
 use super::{FusedIterator, TrustedLen};
 
@@ -31,8 +32,41 @@ impl<A: Clone> Iterator for Repeat<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> { Some(self.element.clone()) }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+
+    #[inline]
+    fn nth(&mut self, _: usize) -> Option<A> { self.next() }
+
+    #[inline]
+    fn all<F>(&mut self, mut f: F) -> bool where F: FnMut(A) -> bool { f(self.element.clone()) }
+
+    #[inline]
+    fn max(mut self) -> Option<A> { self.next() }
+
+    #[inline]
+    fn min(mut self) -> Option<A> { self.next() }
+
+    #[inline]
+    fn max_by_key<B: Ord, F>(mut self, _: F) -> Option<A> where F: FnMut(&A) -> B {
+        self.next()
+    }
+
+    #[inline]
+    fn max_by<F>(mut self, _: F) -> Option<A> where F: FnMut(&A, &A) -> Ordering {
+        self.next()
+    }
+
+    #[inline]
+    fn min_by_key<B: Ord, F>(mut self, _: F) -> Option<A> where F: FnMut(&A) -> B {
+        self.next()
+    }
+
+    #[inline]
+    fn min_by<F>(mut self, _: F) -> Option<A> where F: FnMut(&A, &A) -> Ordering {
+        self.next()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
