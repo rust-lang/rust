@@ -499,7 +499,7 @@ error: this `.fold` can be written more succinctly using another method
 391 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
     |
-    = note: `-D fold-any` implied by `-D warnings`
+    = note: `-D unnecessary-fold` implied by `-D warnings`
 
 error: this `.fold` can be written more succinctly using another method
    --> $DIR/methods.rs:393:19

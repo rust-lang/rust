@@ -1173,7 +1173,7 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
                         ".{replacement}(|{s}| {r})",
                         replacement = replacement_method_name,
                         s = second_arg_ident,
-                        r = snippet(cx, right_expr.span, "EXPR")
+                        r = snippet(cx, right_expr.span, "EXPR"),
                     )
                 } else {
                     format!(
@@ -1186,10 +1186,10 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
                     cx,
                     UNNECESSARY_FOLD,
                     fold_span,
-                    // TODO: don't suggest e.g. .any(|x| f(x)) if we can suggest .any(f)
+                    // TODO #2371 don't suggest e.g. .any(|x| f(x)) if we can suggest .any(f)
                     "this `.fold` can be written more succinctly using another method",
                     "try",
-                    sugg
+                    sugg,
                 );
             }
         }
