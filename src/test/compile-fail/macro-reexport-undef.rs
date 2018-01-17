@@ -13,7 +13,7 @@
 #![feature(macro_reexport)]
 
 #[macro_use(macro_two)]
-#[macro_reexport(no_way)] //~ ERROR reexported macro not found
+#[macro_reexport(no_way)] //~ ERROR re-exported macro not found
 extern crate two_macros;
 
 pub fn main() {

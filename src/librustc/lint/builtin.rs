@@ -127,7 +127,7 @@ declare_lint! {
 declare_lint! {
     pub PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     Deny,
-    "detect public reexports of private extern crates"
+    "detect public re-exports of private extern crates"
 }
 
 declare_lint! {

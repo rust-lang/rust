@@ -22,7 +22,7 @@
 // a lot of stuff defined here. Let's keep it clean.
 //
 // Since slices don't support inherent methods; all operations
-// on them are defined on traits, which are then reexported from
+// on them are defined on traits, which are then re-exported from
 // the prelude for convenience. So there are a lot of traits here.
 //
 // The layout of this file is thus:
@@ -1236,6 +1236,43 @@ macro_rules! iterator {
                     accum = f(accum, x);
                 }
                 accum
+            }
+
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
+                Self: Sized,
+                P: FnMut(Self::Item) -> bool,
+            {
+                // The addition might panic on overflow
+                let n = self.len();
+                self.try_fold(0, move |i, x| {
+                    if predicate(x) { Err(i) }
+                    else { Ok(i + 1) }
+                }).err()
+                    .map(|i| {
+                        unsafe { assume(i < n) };
+                        i
+                    })
+            }
+
+            #[inline]
+            fn rposition<P>(&mut self, mut predicate: P) -> Option<usize> where
+                P: FnMut(Self::Item) -> bool,
+                Self: Sized + ExactSizeIterator + DoubleEndedIterator
+            {
+                // No need for an overflow check here, because `ExactSizeIterator`
+                // implies that the number of elements fits into a `usize`.
+                let n = self.len();
+                self.try_rfold(n, move |i, x| {
+                    let i = i - 1;
+                    if predicate(x) { Err(i) }
+                    else { Ok(i) }
+                }).err()
+                    .map(|i| {
+                        unsafe { assume(i < n) };
+                        i
+                    })
             }
         }
 

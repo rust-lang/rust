@@ -1,7 +1,7 @@
 warning: unnecessary parentheses around assigned value
-  --> $DIR/suggestions.rs:36:21
+  --> $DIR/suggestions.rs:46:21
    |
-36 |         let mut a = (1); // should suggest no `mut`, no parens
+46 |         let mut a = (1); // should suggest no `mut`, no parens
    |                     ^^^ help: remove these parentheses
    |
 note: lint level defined here
@@ -11,17 +11,17 @@ note: lint level defined here
    |                     ^^^^^^^^^^^^^
 
 warning: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand. See https://github.com/rust-lang/rust/issues/29721
-  --> $DIR/suggestions.rs:31:1
+  --> $DIR/suggestions.rs:41:1
    |
-31 | #[no_debug] // should suggest removal of deprecated attribute
+41 | #[no_debug] // should suggest removal of deprecated attribute
    | ^^^^^^^^^^^ help: remove this attribute
    |
    = note: #[warn(deprecated)] on by default
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:36:13
+  --> $DIR/suggestions.rs:46:13
    |
-36 |         let mut a = (1); // should suggest no `mut`, no parens
+46 |         let mut a = (1); // should suggest no `mut`, no parens
    |             ---^^
    |             |
    |             help: remove this `mut`
@@ -72,18 +72,30 @@ warning: function is marked #[no_mangle], but not exported
    |
    = note: #[warn(private_no_mangle_fns)] on by default
 
-warning: denote infinite loops with `loop { ... }`
-  --> $DIR/suggestions.rs:34:5
+warning: static is marked #[no_mangle], but not exported
+  --> $DIR/suggestions.rs:31:18
    |
-34 |     while true { // should suggest `loop`
+31 |     #[no_mangle] pub static DAUNTLESS: bool = true;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function is marked #[no_mangle], but not exported
+  --> $DIR/suggestions.rs:33:18
+   |
+33 |     #[no_mangle] pub fn val_jean() {}
+   |                  ^^^^^^^^^^^^^^^^^^^^
+
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/suggestions.rs:44:5
+   |
+44 |     while true { // should suggest `loop`
    |     ^^^^^^^^^^ help: use `loop`
    |
    = note: #[warn(while_true)] on by default
 
 warning: the `warp_factor:` in this pattern is redundant
-  --> $DIR/suggestions.rs:41:23
+  --> $DIR/suggestions.rs:51:23
    |
-41 |             Equinox { warp_factor: warp_factor } => {} // should suggest shorthand
+51 |             Equinox { warp_factor: warp_factor } => {} // should suggest shorthand
    |                       ------------^^^^^^^^^^^^
    |                       |
    |                       help: remove this

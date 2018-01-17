@@ -15,5 +15,9 @@
 #![feature(plugin, custom_attribute)]
 #![plugin(lint_for_crate)]
 #![crate_okay]
+#![crate_blue]
+#![crate_red]
+#![crate_grey]
+#![crate_green]
 
 pub fn main() { }

@@ -59,6 +59,15 @@ pub fn opts() -> TargetOptions {
         "-lmingw32".to_string(),
         "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
         "-lmsvcrt".to_string(),
+        // mingw's msvcrt is a weird hybrid import library and static library.
+        // And it seems that the linker fails to use import symbols from msvcrt
+        // that are required from functions in msvcrt in certain cases. For example
+        // `_fmode` that is used by an implementation of `__p__fmode` in x86_64.
+        // Listing the library twice seems to fix that, and seems to also be done
+        // by mingw's gcc (Though not sure if it's done on purpose, or by mistake).
+        //
+        // See https://github.com/rust-lang/rust/pull/47483
+        "-lmsvcrt".to_string(),
         "-luser32".to_string(),
         "-lkernel32".to_string(),
     ]);

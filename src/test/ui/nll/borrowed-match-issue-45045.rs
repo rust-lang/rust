@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo {
-    pub const X: u32 = 1;
+// Regression test for issue #45045
+
+#![feature(nll)]
+
+enum Xyz {
+    A,
+    B,
 }
 
-pub use foo as foo2;
-//~^ ERROR `foo` is private, and cannot be re-exported [E0365]
-
-fn main() {}
+fn main() {
+    let mut e = Xyz::A;
+    let f = &mut e;
+    let g = f;
+    match e {
+        Xyz::A => println!("a"),
+        //~^ cannot use `e` because it was mutably borrowed [E0503]
+        Xyz::B => println!("b"),
+    };
+    *g = Xyz::B;
+}

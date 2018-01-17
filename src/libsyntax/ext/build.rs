@@ -17,7 +17,7 @@ use ext::base::ExtCtxt;
 use ptr::P;
 use symbol::{Symbol, keywords};
 
-// Transitional reexports so qquote can find the paths it is looking for
+// Transitional re-exports so qquote can find the paths it is looking for
 mod syntax {
     pub use ext;
     pub use parse;

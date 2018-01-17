@@ -82,9 +82,9 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
             ret.extend(build_impls(cx, did));
             clean::ForeignTypeItem
         }
-        // Never inline enum variants but leave them shown as reexports.
+        // Never inline enum variants but leave them shown as re-exports.
         Def::Variant(..) => return None,
-        // Assume that enum variants and struct types are reexported next to
+        // Assume that enum variants and struct types are re-exported next to
         // their constructors.
         Def::VariantCtor(..) |
         Def::StructCtor(..) => return Some(Vec::new()),
@@ -365,7 +365,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
     };
 
     fn fill_in(cx: &DocContext, did: DefId, items: &mut Vec<clean::Item>) {
-        // If we're reexporting a reexport it may actually reexport something in
+        // If we're re-exporting a re-export it may actually re-export something in
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         let mut visited = FxHashSet();

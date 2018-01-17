@@ -20,7 +20,7 @@
 
 extern crate lint_unused_extern_crate5; //~ ERROR: unused extern crate
 
-pub extern crate lint_unused_extern_crate4; // no error, it is reexported
+pub extern crate lint_unused_extern_crate4; // no error, it is re-exported
 
 extern crate lint_unused_extern_crate3; // no error, it is used
 

@@ -13,7 +13,7 @@ pub use self::SyntaxExtension::*;
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
 use codemap::{self, CodeMap, Spanned, respan};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use errors::DiagnosticBuilder;
 use ext::expand::{self, Expansion, Invocation};
 use ext::hygiene::{Mark, SyntaxContext};
@@ -754,22 +754,22 @@ impl<'a> ExtCtxt<'a> {
         last_macro
     }
 
-    pub fn struct_span_warn(&self,
-                            sp: Span,
-                            msg: &str)
-                            -> DiagnosticBuilder<'a> {
+    pub fn struct_span_warn<S: Into<MultiSpan>>(&self,
+                                                sp: S,
+                                                msg: &str)
+                                                -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.struct_span_warn(sp, msg)
     }
-    pub fn struct_span_err(&self,
-                           sp: Span,
-                           msg: &str)
-                           -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(&self,
+                                               sp: S,
+                                               msg: &str)
+                                               -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
-    pub fn struct_span_fatal(&self,
-                             sp: Span,
-                             msg: &str)
-                             -> DiagnosticBuilder<'a> {
+    pub fn struct_span_fatal<S: Into<MultiSpan>>(&self,
+                                                 sp: S,
+                                                 msg: &str)
+                                                 -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.struct_span_fatal(sp, msg)
     }
 
@@ -785,7 +785,7 @@ impl<'a> ExtCtxt<'a> {
     ///   in most cases one can construct a dummy expression/item to
     ///   substitute; we never hit resolve/type-checking so the dummy
     ///   value doesn't have to match anything)
-    pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
+    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         panic!(self.parse_sess.span_diagnostic.span_fatal(sp, msg));
     }
 
@@ -794,20 +794,20 @@ impl<'a> ExtCtxt<'a> {
     ///
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
-    pub fn span_err(&self, sp: Span, msg: &str) {
+    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_err(sp, msg);
     }
-    pub fn mut_span_err(&self, sp: Span, msg: &str)
+    pub fn mut_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str)
                         -> DiagnosticBuilder<'a> {
         self.parse_sess.span_diagnostic.mut_span_err(sp, msg)
     }
-    pub fn span_warn(&self, sp: Span, msg: &str) {
+    pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
-    pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
+    pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.span_unimpl(sp, msg);
     }
-    pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
     pub fn trace_macros_diag(&mut self) {

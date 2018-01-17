@@ -10,6 +10,25 @@
 
 use core::result::Result::{Ok, Err};
 
+
+#[test]
+fn test_position() {
+    let b = [1, 2, 3, 5, 5];
+    assert!(b.iter().position(|&v| v == 9) == None);
+    assert!(b.iter().position(|&v| v == 5) == Some(3));
+    assert!(b.iter().position(|&v| v == 3) == Some(2));
+    assert!(b.iter().position(|&v| v == 0) == None);
+}
+
+#[test]
+fn test_rposition() {
+    let b = [1, 2, 3, 5, 5];
+    assert!(b.iter().rposition(|&v| v == 9) == None);
+    assert!(b.iter().rposition(|&v| v == 5) == Some(4));
+    assert!(b.iter().rposition(|&v| v == 3) == Some(2));
+    assert!(b.iter().rposition(|&v| v == 0) == None);
+}
+
 #[test]
 fn test_binary_search() {
     let b: [i32; 0] = [];

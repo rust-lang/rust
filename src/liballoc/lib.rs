@@ -15,7 +15,7 @@
 //!
 //! This library, like libcore, is not intended for general usage, but rather as
 //! a building block of other libraries. The types and interfaces in this
-//! library are reexported through the [standard library](../std/index.html),
+//! library are re-exported through the [standard library](../std/index.html),
 //! and should not be used through this library.
 //!
 //! ## Boxed values
@@ -52,7 +52,7 @@
 //! ## Collections
 //!
 //! Implementations of the most common general purpose data structures are
-//! defined in this library. They are reexported through the
+//! defined in this library. They are re-exported through the
 //! [standard collections library](../std/collections/index.html).
 //!
 //! ## Heap interfaces

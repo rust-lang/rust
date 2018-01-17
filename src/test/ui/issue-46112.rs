@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Issue 46112: An extern crate pub reexporting libcore was causing
+// Issue 46112: An extern crate pub re-exporting libcore was causing
 // paths rooted from `std` to be misrendered in the diagnostic output.
 
 // ignore-windows

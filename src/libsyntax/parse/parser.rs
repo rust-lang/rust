@@ -42,7 +42,7 @@ use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, respan};
-use syntax_pos::{self, Span, BytePos, FileName, DUMMY_SP};
+use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, DUMMY_SP};
 use errors::{self, DiagnosticBuilder};
 use parse::{self, classify, token};
 use parse::common::SeqSep;
@@ -447,7 +447,9 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn span_err(self, sp: Span, handler: &errors::Handler) -> DiagnosticBuilder {
+    pub fn span_err<S: Into<MultiSpan>>(self,
+                                        sp: S,
+                                        handler: &errors::Handler) -> DiagnosticBuilder {
         match self {
             Error::FileNotFoundForModule { ref mod_name,
                                            ref default_path,
@@ -1266,13 +1268,16 @@ impl<'a> Parser<'a> {
     pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(self.span, m)
     }
-    pub fn span_fatal(&self, sp: Span, m: &str) -> DiagnosticBuilder<'a> {
+    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(sp, m)
     }
-    pub fn span_fatal_err(&self, sp: Span, err: Error) -> DiagnosticBuilder<'a> {
+    pub fn span_fatal_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
         err.span_err(sp, self.diagnostic())
     }
-    pub fn span_fatal_help(&self, sp: Span, m: &str, help: &str) -> DiagnosticBuilder<'a> {
+    pub fn span_fatal_help<S: Into<MultiSpan>>(&self,
+                                            sp: S,
+                                            m: &str,
+                                            help: &str) -> DiagnosticBuilder<'a> {
         let mut err = self.sess.span_diagnostic.struct_span_fatal(sp, m);
         err.help(help);
         err
@@ -1283,21 +1288,21 @@ impl<'a> Parser<'a> {
     pub fn warn(&self, m: &str) {
         self.sess.span_diagnostic.span_warn(self.span, m)
     }
-    pub fn span_warn(&self, sp: Span, m: &str) {
+    pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, m: &str) {
         self.sess.span_diagnostic.span_warn(sp, m)
     }
-    pub fn span_err(&self, sp: Span, m: &str) {
+    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
-    pub fn struct_span_err(&self, sp: Span, m: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }
-    pub fn span_err_help(&self, sp: Span, m: &str, h: &str) {
+    pub fn span_err_help<S: Into<MultiSpan>>(&self, sp: S, m: &str, h: &str) {
         let mut err = self.sess.span_diagnostic.mut_span_err(sp, m);
         err.help(h);
         err.emit();
     }
-    pub fn span_bug(&self, sp: Span, m: &str) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
     pub fn abort_if_errors(&self) {

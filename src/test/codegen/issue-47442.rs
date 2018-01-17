@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo {
-    pub const X: u32 = 1;
+// check that we don't emit unneeded `resume` cleanup blocks for every
+// destructor.
+
+// CHECK-NOT: Unwind
+
+#![feature(test)]
+#![crate_type="rlib"]
+
+extern crate test;
+
+struct Foo {}
+
+impl Drop for Foo {
+    fn drop(&mut self) {
+        test::black_box(());
+    }
 }
 
-pub use foo as foo2;
-//~^ ERROR `foo` is private, and cannot be re-exported [E0365]
-
-fn main() {}
+#[no_mangle]
+pub fn foo() {
+    let _foo = Foo {};
+}
