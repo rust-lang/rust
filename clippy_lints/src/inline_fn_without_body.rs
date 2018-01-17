@@ -3,7 +3,8 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use syntax::ast::{Attribute, Name};
-use utils::span_lint;
+use utils::span_lint_and_then;
+use utils::sugg::DiagnosticBuilderExt;
 
 /// **What it does:** Checks for `#[inline]` on trait methods without bodies
 ///
@@ -51,11 +52,14 @@ fn check_attrs(cx: &LateContext, name: &Name, attrs: &[Attribute]) {
             continue;
         }
 
-        span_lint(
+        span_lint_and_then(
             cx,
             INLINE_FN_WITHOUT_BODY,
             attr.span,
             &format!("use of `#[inline]` on trait method `{}` which has no body", name),
+            |db| {
+                db.suggest_remove_item(cx, attr.span, "remove");
+            },
         );
     }
 }
