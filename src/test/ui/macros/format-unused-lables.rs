@@ -10,9 +10,10 @@
 
 fn main() {
     println!("Test", 123, 456, 789);
+    //~^ ERROR multiple unused formatting arguments
 
     println!("Test2",
-        123,
+        123,  //~ ERROR multiple unused formatting arguments
         456,
         789
     );
@@ -20,7 +21,7 @@ fn main() {
     println!("Some stuff", UNUSED="args"); //~ ERROR named argument never used
 
     println!("Some more $STUFF",
-        "woo!",
+        "woo!",  //~ ERROR multiple unused formatting arguments
             STUFF=
        "things"
              , UNUSED="args");
