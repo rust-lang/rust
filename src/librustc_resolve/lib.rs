@@ -4062,7 +4062,7 @@ fn show_candidates(err: &mut DiagnosticBuilder,
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.
-fn module_to_string(module: Module) -> String {
+fn module_to_string(module: Module) -> Option<String> {
     let mut names = Vec::new();
 
     fn collect_mod(names: &mut Vec<Ident>, module: Module) {
@@ -4080,12 +4080,12 @@ fn module_to_string(module: Module) -> String {
     collect_mod(&mut names, module);
 
     if names.is_empty() {
-        return "???".to_string();
+        return None;
     }
-    names_to_string(&names.into_iter()
+    Some(names_to_string(&names.into_iter()
                         .rev()
                         .map(|n| dummy_spanned(n))
-                        .collect::<Vec<_>>())
+                        .collect::<Vec<_>>()))
 }
 
 fn err_path_resolution() -> PathResolution {
