@@ -16,4 +16,4 @@
 - [MIR borrowck](./chap-140-mir-borrowck.md)
 - [MIR optimizations](./chap-150-mir-optimizations.md)
 - [trans: generating LLVM IR](./chap-160-trans.md)
-
+- [Glossary](./glossary.md)
