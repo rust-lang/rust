@@ -5,7 +5,7 @@ error[E0597]: borrowed value does not live long enough
    |                     ^^^^^^^ temporary value does not live long enough
 18 |     x
 19 | }
-   |  - temporary value only lives until here
+   | - temporary value only lives until here
    |
    = note: borrowed value must be valid for lifetime '_#2r...
 
