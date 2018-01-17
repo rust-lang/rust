@@ -1629,7 +1629,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         let item_id = tcx.hir.ty_param_owner(node_id);
         let item_def_id = tcx.hir.local_def_id(item_id);
         let generics = tcx.generics_of(item_def_id);
-        let index = generics.type_param_to_index[&def_id.index];
+        let index = generics.type_param_to_index[&def_id];
         ty::GenericPredicates {
             parent: None,
             predicates: self.param_env.caller_bounds.iter().filter(|predicate| {
