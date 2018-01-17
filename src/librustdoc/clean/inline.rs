@@ -328,6 +328,9 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     if trait_.def_id() == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
+    if let Some(trait_did) = trait_.def_id() {
+        record_extern_trait(cx, trait_did);
+    }
 
     let provided = trait_.def_id().map(|did| {
         tcx.provided_trait_methods(did)
@@ -482,4 +485,10 @@ fn separate_supertrait_bounds(mut g: clean::Generics)
         }
     });
     (g, ty_bounds)
+}
+
+pub fn record_extern_trait(cx: &DocContext, did: DefId) {
+    cx.external_traits.borrow_mut().entry(did).or_insert_with(|| {
+        build_external_trait(cx, did)
+    });
 }

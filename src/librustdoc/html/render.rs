@@ -3277,8 +3277,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
         if let Some(impls) = c.impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
-                if impl_.trait_.def_id().and_then(|d| c.traits.get(&d))
-                                        .map_or(false, |t| t.is_spotlight) {
+                if impl_.trait_.def_id().map_or(false, |d| c.traits[&d].is_spotlight) {
                     if out.is_empty() {
                         out.push_str(
                             &format!("<h3 class=\"important\">Important traits for {}</h3>\
@@ -3444,7 +3443,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     let traits = &cache().traits;
-    let trait_ = i.trait_did().and_then(|did| traits.get(&did));
+    let trait_ = i.trait_did().map(|did| &traits[&did]);
 
     if !show_def_docs {
         write!(w, "<span class='docblock autohide'>")?;
