@@ -1162,6 +1162,9 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
                     out_filenames.push(p);
                 }
             }
+            OutputType::DepInfo if sess.opts.debugging_opts.dep_info_omit_d_target => {
+                // Don't add the dep-info output when omitting it from dep-info targets
+            }
             _ => {
                 out_filenames.push(file);
             }
