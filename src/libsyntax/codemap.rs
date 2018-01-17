@@ -637,7 +637,7 @@ impl CodeMap {
     /// Finds the width of a character, either before or after the provided span.
     fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
         // Disregard malformed spans and assume a one-byte wide character.
-        if sp.lo() > sp.hi() {
+        if sp.lo() >= sp.hi() {
             return 1;
         }
 
@@ -671,11 +671,16 @@ impl CodeMap {
         } else {
             return 1;
         };
+        debug!("DTW start {:?} end {:?}", start_index, end_index);
+        debug!("DTW snippet {:?}", snippet);
 
         let mut target = if forwards { end_index + 1 } else { end_index - 1 };
+        debug!("DTW initial target {:?}", target);
         while !snippet.is_char_boundary(target - start_index) {
             target = if forwards { target + 1 } else { target - 1 };
+            debug!("DTW update target {:?}", target);
         }
+        debug!("DTW final target {:?}", target);
 
         if forwards {
             (target - end_index) as u32
