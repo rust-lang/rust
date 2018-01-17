@@ -28,7 +28,7 @@ use std::fmt;
 use std::iter;
 
 use transform::{add_moves_for_packed_drops, add_call_guards};
-use transform::{no_landing_pads, simplify};
+use transform::{remove_noop_landing_pads, no_landing_pads, simplify};
 use util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
 use util::patch::MirPatch;
 
@@ -118,6 +118,7 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     add_moves_for_packed_drops::add_moves_for_packed_drops(
         tcx, &mut result, instance.def_id());
     no_landing_pads::no_landing_pads(tcx, &mut result);
+    remove_noop_landing_pads::remove_noop_landing_pads(tcx, &mut result);
     simplify::simplify_cfg(&mut result);
     add_call_guards::CriticalCallEdges.add_call_guards(&mut result);
     debug!("make_shim({:?}) = {:?}", instance, result);
