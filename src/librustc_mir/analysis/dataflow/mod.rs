@@ -513,7 +513,7 @@ pub struct BlockSets<'a, E: Idx> {
 }
 
 impl<'a, E:Idx> BlockSets<'a, E> {
-    fn gen(&mut self, e: &E) {
+    pub(crate) fn gen(&mut self, e: &E) {
         self.gen_set.add(e);
         self.kill_set.remove(e);
     }
@@ -538,7 +538,7 @@ impl<'a, E:Idx> BlockSets<'a, E> {
         }
     }
 
-    fn kill(&mut self, e: &E) {
+    pub(crate) fn kill(&mut self, e: &E) {
         self.gen_set.remove(e);
         self.kill_set.add(e);
     }

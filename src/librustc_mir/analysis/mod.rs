@@ -9,6 +9,7 @@
 // except according to those terms.
 
 pub mod alignment;
+pub mod borrows;
 pub mod dataflow;
 pub mod def_use;
 pub mod eventflow;
