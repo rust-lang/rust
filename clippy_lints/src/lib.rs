@@ -150,6 +150,7 @@ pub mod ptr;
 pub mod ranges;
 pub mod reference;
 pub mod regex;
+pub mod replace_consts;
 pub mod returns;
 pub mod serde_api;
 pub mod shadow;
@@ -361,6 +362,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box types::ImplicitHasher);
     reg.register_early_lint_pass(box const_static_lifetime::StaticConst);
     reg.register_late_lint_pass(box fallible_impl_from::FallibleImplFrom);
+    reg.register_late_lint_pass(box replace_consts::ReplaceConsts);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -399,6 +401,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         print::PRINT_STDOUT,
         print::USE_DEBUG,
         ranges::RANGE_PLUS_ONE,
+        replace_consts::REPLACE_CONSTS,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
         shadow::SHADOW_UNRELATED,

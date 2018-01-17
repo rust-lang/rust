@@ -38,7 +38,7 @@ use utils::{in_macro, snippet, span_lint_and_then};
 ///     let mut v = Vec::<String>::new();
 ///     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
 /// ```
-/// This clojure takes a reference on something that has been matched as a
+/// This closure takes a reference on something that has been matched as a
 /// reference and
 /// de-referenced.
 /// As such, it could just be |a| a.is_empty()

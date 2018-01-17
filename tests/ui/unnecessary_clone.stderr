@@ -1,75 +1,81 @@
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:11:5
+  --> $DIR/unnecessary_clone.rs:16:5
    |
-11 |     42.clone();
+16 |     42.clone();
    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
    |
    = note: `-D clone-on-copy` implied by `-D warnings`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:15:5
+  --> $DIR/unnecessary_clone.rs:20:5
    |
-15 |     (&42).clone();
+20 |     (&42).clone();
    |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:25:5
+  --> $DIR/unnecessary_clone.rs:30:5
    |
-25 |     rc.clone();
-   |     ^^^^^^^^^^ help: try this: `Rc::clone(&rc)`
+30 |     rc.clone();
+   |     ^^^^^^^^^^ help: try this: `Rc::<bool>::clone(&rc)`
    |
    = note: `-D clone-on-ref-ptr` implied by `-D warnings`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:28:5
+  --> $DIR/unnecessary_clone.rs:33:5
    |
-28 |     arc.clone();
-   |     ^^^^^^^^^^^ help: try this: `Arc::clone(&arc)`
+33 |     arc.clone();
+   |     ^^^^^^^^^^^ help: try this: `Arc::<bool>::clone(&arc)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:31:5
+  --> $DIR/unnecessary_clone.rs:36:5
    |
-31 |     rcweak.clone();
-   |     ^^^^^^^^^^^^^^ help: try this: `Weak::clone(&rcweak)`
+36 |     rcweak.clone();
+   |     ^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&rcweak)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:34:5
+  --> $DIR/unnecessary_clone.rs:39:5
    |
-34 |     arc_weak.clone();
-   |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::clone(&arc_weak)`
+39 |     arc_weak.clone();
+   |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
+
+error: using '.clone()' on a ref-counted pointer
+  --> $DIR/unnecessary_clone.rs:43:29
+   |
+43 |     let _: Arc<SomeTrait> = x.clone(); 
+   |                             ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:41:5
+  --> $DIR/unnecessary_clone.rs:47:5
    |
-41 |     t.clone();
+47 |     t.clone();
    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:43:5
+  --> $DIR/unnecessary_clone.rs:49:5
    |
-43 |     Some(t).clone();
+49 |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:49:22
+  --> $DIR/unnecessary_clone.rs:55:22
    |
-49 |     let z: &Vec<_> = y.clone();
+55 |     let z: &Vec<_> = y.clone();
    |                      ^^^^^^^^^
    |
    = note: `-D clone-double-ref` implied by `-D warnings`
 help: try dereferencing it
    |
-49 |     let z: &Vec<_> = &(*y).clone();
+55 |     let z: &Vec<_> = &(*y).clone();
    |                      ^^^^^^^^^^^^^
 help: or try being explicit about what type to clone
    |
-49 |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
+55 |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/unnecessary_clone.rs:56:27
+  --> $DIR/unnecessary_clone.rs:62:27
    |
-56 |     let v2 : Vec<isize> = v.iter().cloned().collect();
+62 |     let v2 : Vec<isize> = v.iter().cloned().collect();
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D iter-cloned-collect` implied by `-D warnings`

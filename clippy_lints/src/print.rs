@@ -5,7 +5,7 @@ use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
-use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint};
+use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint, span_lint_and_sugg};
 use utils::{opt_def_id, paths};
 
 /// **What it does:** This lint warns when you using `println!("")` to
@@ -182,8 +182,14 @@ fn check_println<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: Inter
         if let Ok(snippet) = cx.sess().codemap().span_to_snippet(span);
         if snippet.contains("\"\"");
         then {
-            span_lint(cx, PRINT_WITH_NEWLINE, span,
-                      "using `println!(\"\")`, consider using `println!()` instead");
+            span_lint_and_sugg(
+                cx,
+                PRINT_WITH_NEWLINE,
+                span,
+                "using `println!(\"\")`",
+                "replace it with",
+                "println!()".to_string(),
+            );
          }
     }
 }

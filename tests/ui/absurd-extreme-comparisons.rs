@@ -50,3 +50,8 @@ impl PartialOrd<u32> for U {
 pub fn foo(val: U) -> bool {
     val > std::u32::MAX
 }
+
+pub fn bar(len: u64) -> bool {
+    // This is OK as we are casting from target sized to fixed size
+    len >= std::usize::MAX as u64
+}
