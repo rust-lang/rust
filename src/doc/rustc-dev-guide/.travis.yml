@@ -1,0 +1,17 @@
+language: rust
+
+cache: pip
+
+install:
+  - bash ci/install.sh
+  - source ~/.cargo/env || true
+
+script:
+  - true
+
+after_success:
+  - bash ci/github_pages.sh
+
+notifications:
+  email:
+    on_success: never
