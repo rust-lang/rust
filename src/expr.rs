@@ -2163,7 +2163,7 @@ fn maybe_get_args_offset<T: ToExpr>(callee_str: &str, args: &[&T]) -> Option<(bo
         .iter()
         .find(|&&(s, _)| s == callee_str)
     {
-        let all_simple = args.len() >= num_args_before && is_every_args_simple(args);
+        let all_simple = args.len() > num_args_before && is_every_args_simple(args);
 
         Some((all_simple, num_args_before))
     } else {
