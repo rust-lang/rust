@@ -90,3 +90,5 @@ error: this loop never actually loops
 160 | |         }
     | |_________^
 
+error: aborting due to 9 previous errors
+

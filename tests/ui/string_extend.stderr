@@ -18,3 +18,5 @@ error: calling `.extend(_.chars())`
 22 |     s.extend(def.chars());
    |     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.push_str(&def)`
 
+error: aborting due to 3 previous errors
+

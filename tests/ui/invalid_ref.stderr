@@ -47,3 +47,5 @@ error: reference to uninitialized memory
    |
    = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 
+error: aborting due to 6 previous errors
+

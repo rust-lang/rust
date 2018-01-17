@@ -30,3 +30,5 @@ error: called `ok().expect()` on a Result value. You can call `expect` directly 
 26 |     res6.ok().expect("meh");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 5 previous errors
+

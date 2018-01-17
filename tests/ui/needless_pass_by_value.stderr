@@ -124,3 +124,5 @@ error: this argument is passed by value, but not consumed in the function body
 101 |         _s: Self,
     |             ^^^^ help: consider taking a reference instead: `&Self`
 
+error: aborting due to 16 previous errors
+

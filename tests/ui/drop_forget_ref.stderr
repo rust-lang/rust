@@ -216,3 +216,5 @@ note: argument has type &SomeStruct
 59 |     std::mem::forget(&SomeStruct);
    |                      ^^^^^^^^^^^
 
+error: aborting due to 18 previous errors
+

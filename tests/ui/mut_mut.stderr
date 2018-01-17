@@ -57,3 +57,5 @@ error: generally you want to avoid `&mut &mut _` if possible
 35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                      ^^^^^^^^^^^^^
 
+error: aborting due to 9 previous errors
+

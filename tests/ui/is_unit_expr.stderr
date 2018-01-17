@@ -69,3 +69,5 @@ error: This expression evaluates to the Unit type ()
 78 |     let x3 = match None { Some(_) => {}, None => {}, };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 6 previous errors
+

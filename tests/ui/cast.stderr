@@ -178,3 +178,5 @@ error: casting to the same type is unnecessary (`bool` -> `bool`)
 39 |     false as bool;
    |     ^^^^^^^^^^^^^
 
+error: aborting due to 28 previous errors
+
