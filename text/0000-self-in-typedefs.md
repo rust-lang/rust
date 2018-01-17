@@ -391,7 +391,7 @@ When `Self` is used to construct an infinite type as in:
 ```rust
 enum List<T> {
     Nil,
-    Cons(T, List<T>)
+    Cons(T, Self)
 }
 ```
 
