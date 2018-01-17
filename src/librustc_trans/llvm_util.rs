@@ -85,7 +85,8 @@ const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bm
                                                  "avx512dq\0", "avx512er\0",
                                                  "avx512f\0", "avx512ifma\0",
                                                  "avx512pf\0", "avx512vbmi\0",
-                                                 "avx512vl\0", "avx512vpopcntdq\0", "mmx\0"];
+                                                 "avx512vl\0", "avx512vpopcntdq\0",
+                                                 "mmx\0", "fxsr\0"];
 
 const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
 
