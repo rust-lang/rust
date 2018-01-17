@@ -12,7 +12,9 @@ use fmt;
 use hash;
 use io;
 use mem;
-use net::{lookup_host, ntoh, hton, IpAddr, Ipv4Addr, Ipv6Addr};
+use net::{ntoh, hton, IpAddr, Ipv4Addr, Ipv6Addr};
+#[allow(deprecated)]
+use net::lookup_host;
 use option;
 use sys::net::netc as c;
 use sys_common::{FromInner, AsInner, IntoInner};
@@ -845,6 +847,7 @@ impl ToSocketAddrs for (Ipv6Addr, u16) {
     }
 }
 
+#[allow(deprecated)]
 fn resolve_socket_addr(s: &str, p: u16) -> io::Result<vec::IntoIter<SocketAddr>> {
     let ips = lookup_host(s)?;
     let v: Vec<_> = ips.map(|mut a| { a.set_port(p); a }).collect();

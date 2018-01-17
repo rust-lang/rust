@@ -134,12 +134,15 @@ fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
                                               iterator and returning socket \
                                               addresses",
            issue = "27705")]
+#[rustc_deprecated(since = "1.25", reason = "Use the ToSocketAddrs trait instead")]
 pub struct LookupHost(net_imp::LookupHost);
 
 #[unstable(feature = "lookup_host", reason = "unsure about the returned \
                                               iterator and returning socket \
                                               addresses",
            issue = "27705")]
+#[rustc_deprecated(since = "1.25", reason = "Use the ToSocketAddrs trait instead")]
+#[allow(deprecated)]
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> { self.0.next() }
@@ -149,6 +152,8 @@ impl Iterator for LookupHost {
                                               iterator and returning socket \
                                               addresses",
            issue = "27705")]
+#[rustc_deprecated(since = "1.25", reason = "Use the ToSocketAddrs trait instead")]
+#[allow(deprecated)]
 impl fmt::Debug for LookupHost {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("LookupHost { .. }")
@@ -181,6 +186,8 @@ impl fmt::Debug for LookupHost {
                                               iterator and returning socket \
                                               addresses",
            issue = "27705")]
+#[rustc_deprecated(since = "1.25", reason = "Use the ToSocketAddrs trait instead")]
+#[allow(deprecated)]
 pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     net_imp::lookup_host(host).map(LookupHost)
 }
