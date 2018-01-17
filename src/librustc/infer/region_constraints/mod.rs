@@ -82,7 +82,7 @@ pub type VarOrigins = IndexVec<RegionVid, RegionVariableOrigin>;
 /// Describes constraints between the region variables and other
 /// regions, as well as other conditions that must be verified, or
 /// assumptions that can be made.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct RegionConstraintData<'tcx> {
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).

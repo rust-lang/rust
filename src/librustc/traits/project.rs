@@ -293,9 +293,23 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                     Reveal::UserFacing => ty,
 
                     Reveal::All => {
+                        let recursion_limit = self.tcx().sess.recursion_limit.get();
+                        if self.depth >= recursion_limit {
+                            let obligation = Obligation::with_depth(
+                                self.cause.clone(),
+                                recursion_limit,
+                                self.param_env,
+                                ty,
+                            );
+                            self.selcx.infcx().report_overflow_error(&obligation, true);
+                        }
+
                         let generic_ty = self.tcx().type_of(def_id);
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
-                        self.fold_ty(concrete_ty)
+                        self.depth += 1;
+                        let folded_ty = self.fold_ty(concrete_ty);
+                        self.depth -= 1;
+                        folded_ty
                     }
                 }
             }
