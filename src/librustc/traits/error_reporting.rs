@@ -1241,7 +1241,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             ObligationCauseCode::ItemObligation(item_def_id) => {
                 let item_name = tcx.item_path_str(item_def_id);
-                err.note(&format!("required by `{}`", item_name));
+                let msg = format!("required by `{}`", item_name);
+                if let Some(sp) = tcx.hir.span_if_local(item_def_id) {
+                    let sp = tcx.sess.codemap().def_span(sp);
+                    err.span_note(sp, &msg);
+                } else {
+                    err.note(&msg);
+                }
             }
             ObligationCauseCode::ObjectCastObligation(object_ty) => {
                 err.note(&format!("required for the cast to the object type `{}`",

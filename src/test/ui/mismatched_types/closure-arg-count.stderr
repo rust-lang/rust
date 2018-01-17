@@ -30,7 +30,11 @@ error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
    |     |
    |     expected closure that takes 1 argument
    |
-   = note: required by `f`
+note: required by `f`
+  --> $DIR/closure-arg-count.rs:13:1
+   |
+13 | fn f<F: Fn<usize>>(_: F) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0593]: closure is expected to take a single tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:24:53
