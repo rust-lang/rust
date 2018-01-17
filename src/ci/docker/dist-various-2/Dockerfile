@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:17.10
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
@@ -21,9 +21,12 @@ RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7
 RUN add-apt-repository -y 'deb http://apt.dilos.org/dilos dilos2-testing main'
 
 WORKDIR /tmp
-COPY dist-various-2/shared.sh dist-various-2/build-fuchsia-toolchain.sh /tmp/
-COPY dist-various-2/build-solaris-toolchain.sh /tmp/
+COPY dist-various-2/shared.sh /tmp/
+COPY dist-various-2/build-cloudabi-toolchain.sh /tmp/
+RUN /tmp/build-cloudabi-toolchain.sh x86_64-unknown-cloudabi
+COPY dist-various-2/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
+COPY dist-various-2/build-solaris-toolchain.sh /tmp/
 RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386
 RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc
 
@@ -44,12 +47,20 @@ ENV \
     CC_x86_64_sun_solaris=x86_64-sun-solaris2.10-gcc \
     CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++
 
+# FIXME(EdSchouten): Remove this once cc ≥1.0.4 has been merged. It can
+# automatically pick the right compiler path.
+ENV \
+    AR_x86_64_unknown_cloudabi=x86_64-unknown-cloudabi-ar \
+    CC_x86_64_unknown_cloudabi=x86_64-unknown-cloudabi-clang \
+    CXX_x86_64_unknown_cloudabi=x86_64-unknown-cloudabi-clang++
+
 ENV TARGETS=x86_64-unknown-fuchsia
 ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,x86_64-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
+ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
 
 ENV RUST_CONFIGURE_ARGS --target=$TARGETS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
