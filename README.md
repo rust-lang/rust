@@ -85,9 +85,9 @@ beforehand, to ascertain that the RFC may be desirable; having a consistent
 impact on the project requires concerted effort toward consensus-building.
 
 The most common preparations for writing and submitting an RFC include talking
-the idea over on #rust-internals, filing and discussing ideas on the
-[RFC issue tracker], and occasionally posting "pre-RFCs" on the
-[developer discussion forum] for early review.
+the idea over on #rust-internals, discussing the topic on our [developer discussion forum],
+and occasionally posting "pre-RFCs" on the developer forum. You may file issues
+on this repo for discussion, but these are not actively looked at by the teams.
 
 As a rule of thumb, receiving encouraging feedback from long-standing project
 developers, and particularly members of the relevant [sub-team] is a good
