@@ -23,7 +23,7 @@
 #![doc(hidden)]
 
 
-// Reexport some of our utilities which are expected by other crates.
+// Re-export some of our utilities which are expected by other crates.
 pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
 // To reduce the generated code of the new `lang_start`, this function is doing

@@ -702,8 +702,8 @@ impl<'a, 'tcx> CrateMetadata {
                     let vis = self.get_visibility(child_index);
                     let is_import = false;
                     callback(def::Export { def, ident, vis, span, is_import });
-                    // For non-reexport structs and variants add their constructors to children.
-                    // Reexport lists automatically contain constructors when necessary.
+                    // For non-re-export structs and variants add their constructors to children.
+                    // Re-export lists automatically contain constructors when necessary.
                     match def {
                         Def::Struct(..) => {
                             if let Some(ctor_def_id) = self.get_struct_ctor_def_id(child_index) {

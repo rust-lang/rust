@@ -28,7 +28,7 @@ mod foo {
     fn f() {
         use foo::bar::S;
         pub(self) use foo::bar::f; // ok
-        pub(super) use foo::bar::f as g; //~ ERROR cannot be reexported
+        pub(super) use foo::bar::f as g; //~ ERROR cannot be re-exported
         S::default().x; // ok
         S::default().f(); // ok
         S::g(); // ok

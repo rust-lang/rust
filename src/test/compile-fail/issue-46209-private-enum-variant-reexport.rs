@@ -12,14 +12,14 @@
 
 mod rank {
     pub use self::Professor::*;
-    //~^ ERROR enum is private and its variants cannot be reexported
+    //~^ ERROR enum is private and its variants cannot be re-exported
     pub use self::Lieutenant::{JuniorGrade, Full};
-    //~^ ERROR variant `JuniorGrade` is private and cannot be reexported
-    //~| ERROR variant `Full` is private and cannot be reexported
+    //~^ ERROR variant `JuniorGrade` is private and cannot be re-exported
+    //~| ERROR variant `Full` is private and cannot be re-exported
     pub use self::PettyOfficer::*;
-    //~^ ERROR enum is private and its variants cannot be reexported
+    //~^ ERROR enum is private and its variants cannot be re-exported
     pub use self::Crewman::*;
-    //~^ ERROR enum is private and its variants cannot be reexported
+    //~^ ERROR enum is private and its variants cannot be re-exported
 
     enum Professor {
         Adjunct,
