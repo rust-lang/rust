@@ -155,7 +155,7 @@ declare_features! (
     // OIBIT specific features
     (active, optin_builtin_traits, "1.0.0", Some(13231)),
 
-    // macro reexport needs more discussion and stabilization
+    // macro re-export needs more discussion and stabilization
     (active, macro_reexport, "1.0.0", Some(29638)),
 
     // Allows use of #[staged_api]
@@ -1479,7 +1479,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::ExternCrate(_) => {
                 if let Some(attr) = attr::find_by_name(&i.attrs[..], "macro_reexport") {
                     gate_feature_post!(&self, macro_reexport, attr.span,
-                                       "macros reexports are experimental \
+                                       "macros re-exports are experimental \
                                         and possibly buggy");
                 }
             }

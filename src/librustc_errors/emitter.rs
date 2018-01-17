@@ -1187,8 +1187,8 @@ impl EmitterWriter {
                     let sub_len = parts[0].snippet.trim().chars().fold(0, |acc, ch| {
                         acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0)
                     });
-                    let underline_start = span_start_pos.col.0 + start;
-                    let underline_end = span_start_pos.col.0 + start + sub_len;
+                    let underline_start = span_start_pos.col_display + start;
+                    let underline_end = span_start_pos.col_display + start + sub_len;
                     for p in underline_start..underline_end {
                         buffer.putc(row_num,
                                     max_line_num_len + 3 + p,

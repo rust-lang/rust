@@ -1286,9 +1286,9 @@ impl DocFolder for Cache {
             clean::ConstantItem(..) | clean::StaticItem(..) |
             clean::UnionItem(..) | clean::ForeignTypeItem
             if !self.stripped_mod => {
-                // Reexported items mean that the same id can show up twice
+                // Re-exported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
-                // however, that a reexported item doesn't show up in the
+                // however, that a re-exported item doesn't show up in the
                 // `public_items` map, so we can skip inserting into the
                 // paths map if there was already an entry present and we're
                 // not a public item.
@@ -1545,7 +1545,7 @@ impl Context {
     {
         // Stripped modules survive the rustdoc passes (i.e. `strip-private`)
         // if they contain impls for public types. These modules can also
-        // contain items such as publicly reexported structures.
+        // contain items such as publicly re-exported structures.
         //
         // External crates will provide links to these structures, so
         // these modules are recursed into, but not rendered normally
@@ -2008,7 +2008,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     if cx.shared.sort_modules_alphabetically {
         indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
     }
-    // This call is to remove reexport duplicates in cases such as:
+    // This call is to remove re-export duplicates in cases such as:
     //
     // ```
     // pub mod foo {
@@ -2059,7 +2059,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             curty = myty;
             let (short, name) = match myty.unwrap() {
                 ItemType::ExternCrate |
-                ItemType::Import          => ("reexports", "Reexports"),
+                ItemType::Import          => ("reexports", "Re-exports"),
                 ItemType::Module          => ("modules", "Modules"),
                 ItemType::Struct          => ("structs", "Structs"),
                 ItemType::Union           => ("unions", "Unions"),
@@ -3277,8 +3277,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
         if let Some(impls) = c.impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
-                if impl_.trait_.def_id().and_then(|d| c.traits.get(&d))
-                                        .map_or(false, |t| t.is_spotlight) {
+                if impl_.trait_.def_id().map_or(false, |d| c.traits[&d].is_spotlight) {
                     if out.is_empty() {
                         out.push_str(
                             &format!("<h3 class=\"important\">Important traits for {}</h3>\
@@ -3444,7 +3443,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     let traits = &cache().traits;
-    let trait_ = i.trait_did().and_then(|did| traits.get(&did));
+    let trait_ = i.trait_did().map(|did| &traits[&did]);
 
     if !show_def_docs {
         write!(w, "<span class='docblock autohide'>")?;
@@ -3959,7 +3958,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                              it.type_() == ItemType::Import) {
         sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
                                   id = "reexports",
-                                  name = "Reexports"));
+                                  name = "Re-exports"));
     }
 
     // ordering taken from item_module, reorder, where it prioritized elements in a certain order
@@ -3972,7 +3971,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
         if items.iter().any(|it| !it.is_stripped() && it.type_() == myty) {
             let (short, name) = match myty {
                 ItemType::ExternCrate |
-                ItemType::Import          => ("reexports", "Reexports"),
+                ItemType::Import          => ("reexports", "Re-exports"),
                 ItemType::Module          => ("modules", "Modules"),
                 ItemType::Struct          => ("structs", "Structs"),
                 ItemType::Union           => ("unions", "Unions"),

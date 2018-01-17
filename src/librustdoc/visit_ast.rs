@@ -55,7 +55,7 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn new(cstore: &'tcx CrateStore,
                cx: &'a core::DocContext<'a, 'tcx>) -> RustdocVisitor<'a, 'tcx> {
-        // If the root is reexported, terminate all recursion.
+        // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet();
         stack.insert(ast::CRATE_NODE_ID);
         RustdocVisitor {
@@ -214,7 +214,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     let imported_from = self.cx.tcx.original_crate_name(def_id.krate);
                     let def = match self.cstore.load_macro_untracked(def_id, self.cx.sess()) {
                         LoadedMacro::MacroDef(macro_def) => macro_def,
-                        // FIXME(jseyfried): document proc macro reexports
+                        // FIXME(jseyfried): document proc macro re-exports
                         LoadedMacro::ProcMacro(..) => continue,
                     };
 

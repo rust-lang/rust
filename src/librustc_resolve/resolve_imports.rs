@@ -46,8 +46,8 @@ pub enum ImportDirectiveSubclass<'a> {
     },
     GlobImport {
         is_prelude: bool,
-        max_vis: Cell<ty::Visibility>, // The visibility of the greatest reexport.
-        // n.b. `max_vis` is only used in `finalize_import` to check for reexport errors.
+        max_vis: Cell<ty::Visibility>, // The visibility of the greatest re-export.
+        // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
     },
     ExternCrate(Option<Name>),
     MacroUse,
@@ -524,7 +524,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     fn resolve_import(&mut self, directive: &'b ImportDirective<'b>) -> bool {
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
                names_to_string(&directive.module_path[..]),
-               module_to_string(self.current_module));
+               module_to_string(self.current_module).unwrap_or("???".to_string()));
 
         self.current_module = directive.parent;
 
@@ -773,10 +773,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         None => "".to_owned(),
                     };
                 let module_str = module_to_string(module);
-                let msg = if &module_str == "???" {
-                    format!("no `{}` in the root{}", ident, lev_suggestion)
-                } else {
+                let msg = if let Some(module_str) = module_str {
                     format!("no `{}` in `{}`{}", ident, module_str, lev_suggestion)
+                } else {
+                    format!("no `{}` in the root{}", ident, lev_suggestion)
                 };
                 Some((span, msg))
             } else {
@@ -803,8 +803,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if !any_successful_reexport {
             let (ns, binding) = reexport_error.unwrap();
             if ns == TypeNS && binding.is_extern_crate() {
-                let msg = format!("extern crate `{}` is private, and cannot be reexported \
-                                   (error E0365), consider declaring with `pub`",
+                let msg = format!("extern crate `{}` is private, and cannot be \
+                                   re-exported (error E0365), consider declaring with \
+                                   `pub`",
                                    ident);
                 self.session.buffer_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
                                          directive.id,
@@ -812,12 +813,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                          &msg);
             } else if ns == TypeNS {
                 struct_span_err!(self.session, directive.span, E0365,
-                                 "`{}` is private, and cannot be reexported", ident)
-                    .span_label(directive.span, format!("reexport of private `{}`", ident))
+                                 "`{}` is private, and cannot be re-exported", ident)
+                    .span_label(directive.span, format!("re-export of private `{}`", ident))
                     .note(&format!("consider declaring type or module `{}` with `pub`", ident))
                     .emit();
             } else {
-                let msg = format!("`{}` is private, and cannot be reexported", ident);
+                let msg = format!("`{}` is private, and cannot be re-exported", ident);
                 let note_msg =
                     format!("consider marking `{}` as `pub` in the imported module", ident);
                 struct_span_err!(self.session, directive.span, E0364, "{}", &msg)
@@ -876,7 +877,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         self.record_def(directive.id, PathResolution::new(module.def().unwrap()));
     }
 
-    // Miscellaneous post-processing, including recording reexports,
+    // Miscellaneous post-processing, including recording re-exports,
     // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(&mut self, module: Module<'b>) {
         // Since import resolution is finished, globs will not define any more names.
@@ -932,12 +933,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         !orig_binding.vis.is_at_least(binding.vis, &*self) {
                             let msg = match directive.subclass {
                                 ImportDirectiveSubclass::SingleImport { .. } => {
-                                    format!("variant `{}` is private and cannot be reexported",
+                                    format!("variant `{}` is private and cannot be re-exported",
                                             ident)
                                 },
                                 ImportDirectiveSubclass::GlobImport { .. } => {
                                     let msg = "enum is private and its variants \
-                                               cannot be reexported".to_owned();
+                                               cannot be re-exported".to_owned();
                                     let error_id = (DiagnosticMessageId::ErrorId(0), // no code?!
                                                     Some(binding.span),
                                                     msg.clone());

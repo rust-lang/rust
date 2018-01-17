@@ -407,10 +407,7 @@ fn dump_matched_mir_node<'a, 'tcx>(
     result: &LivenessResult,
 ) {
     let mut file_path = PathBuf::new();
-    if let Some(ref file_dir) = tcx.sess.opts.debugging_opts.dump_mir_dir {
-        let p = Path::new(file_dir);
-        file_path.push(p);
-    };
+    file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
     let item_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
     let file_name = format!("rustc.node{}{}-liveness.mir", item_id, pass_name);
     file_path.push(&file_name);

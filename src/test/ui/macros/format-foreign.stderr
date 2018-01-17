@@ -1,12 +1,8 @@
 error: multiple unused formatting arguments
-  --> $DIR/format-foreign.rs:12:5
+  --> $DIR/format-foreign.rs:12:30
    |
-12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^--------^^-------^^-^^
-   |                              |         |        |
-   |                              |         |        unused
-   |                              |         unused
-   |                              unused
+12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4); //~ ERROR multiple unused formatting arguments
+   |     -------------------------^^^^^^^^--^^^^^^^--^-- multiple unused arguments in this statement
    |
    = help: `%.*3$s` should be written as `{:.2$}`
    = help: `%s` should be written as `{}`

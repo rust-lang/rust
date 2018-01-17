@@ -97,12 +97,13 @@ macro_rules! declare_lint {
 
 /// Declare a static `LintArray` and return it as an expression.
 #[macro_export]
-macro_rules! lint_array { ($( $lint:expr ),*) => (
-    {
-        static ARRAY: LintArray = &[ $( &$lint ),* ];
-        ARRAY
-    }
-) }
+macro_rules! lint_array {
+    ($( $lint:expr ),*,) => { lint_array!( $( $lint ),* ) };
+    ($( $lint:expr ),*) => {{
+         static ARRAY: LintArray = &[ $( &$lint ),* ];
+         ARRAY
+    }}
+}
 
 pub type LintArray = &'static [&'static &'static Lint];
 
