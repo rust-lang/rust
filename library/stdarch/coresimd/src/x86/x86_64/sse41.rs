@@ -7,7 +7,7 @@ use stdsimd_test::assert_instr;
 
 /// Extract an 64-bit integer from `a` selected with `imm8`
 #[inline(always)]
-#[target_feature = "+sse4.1"]
+#[target_feature(enable = "sse4.1")]
 // TODO: Add test for Windows
 #[cfg_attr(all(test, not(windows)), assert_instr(pextrq, imm8 = 1))]
 pub unsafe fn _mm_extract_epi64(a: i64x2, imm8: i32) -> i64 {
@@ -18,7 +18,7 @@ pub unsafe fn _mm_extract_epi64(a: i64x2, imm8: i32) -> i64 {
 /// Return a copy of `a` with the 64-bit integer from `i` inserted at a
 /// location specified by `imm8`.
 #[inline(always)]
-#[target_feature = "+sse4.1"]
+#[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pinsrq, imm8 = 0))]
 pub unsafe fn _mm_insert_epi64(a: i64x2, i: i64, imm8: i32) -> i64x2 {
     a.replace((imm8 & 0b1) as u32, i)

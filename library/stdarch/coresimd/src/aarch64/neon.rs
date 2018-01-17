@@ -9,7 +9,7 @@ use v128::f64x2;
 
 /// Vector add.
 #[inline(always)]
-#[target_feature = "+neon"]
+#[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fadd))]
 pub unsafe fn vadd_f64(a: f64, b: f64) -> f64 {
     a + b
@@ -17,7 +17,7 @@ pub unsafe fn vadd_f64(a: f64, b: f64) -> f64 {
 
 /// Vector add.
 #[inline(always)]
-#[target_feature = "+neon"]
+#[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fadd))]
 pub unsafe fn vaddq_f64(a: f64x2, b: f64x2) -> f64x2 {
     simd_add(a, b)
@@ -25,7 +25,7 @@ pub unsafe fn vaddq_f64(a: f64x2, b: f64x2) -> f64x2 {
 
 /// Vector add.
 #[inline(always)]
-#[target_feature = "+neon"]
+#[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddd_s64(a: i64, b: i64) -> i64 {
     a + b
@@ -33,7 +33,7 @@ pub unsafe fn vaddd_s64(a: i64, b: i64) -> i64 {
 
 /// Vector add.
 #[inline(always)]
-#[target_feature = "+neon"]
+#[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddd_u64(a: u64, b: u64) -> u64 {
     a + b

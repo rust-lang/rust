@@ -22,7 +22,7 @@ extern "C" {
 /// [fxsave]: http://www.felixcloutier.com/x86/FXSAVE.html
 /// [fxrstor]: http://www.felixcloutier.com/x86/FXRSTOR.html
 #[inline(always)]
-#[target_feature = "+fxsr"]
+#[target_feature(enable = "fxsr")]
 #[cfg_attr(test, assert_instr(fxsave))]
 pub unsafe fn _fxsave(mem_addr: *mut u8) {
     fxsave(mem_addr)
@@ -43,7 +43,7 @@ pub unsafe fn _fxsave(mem_addr: *mut u8) {
 /// [fxsave]: http://www.felixcloutier.com/x86/FXSAVE.html
 /// [fxrstor]: http://www.felixcloutier.com/x86/FXRSTOR.html
 #[inline(always)]
-#[target_feature = "+fxsr"]
+#[target_feature(enable = "fxsr")]
 #[cfg_attr(test, assert_instr(fxrstor))]
 pub unsafe fn _fxrstor(mem_addr: *const u8) {
     fxrstor(mem_addr)

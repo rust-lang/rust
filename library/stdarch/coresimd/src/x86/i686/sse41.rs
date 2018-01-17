@@ -30,7 +30,7 @@ extern "C" {
 /// * `1` - if the specified bits are all zeros,
 /// * `0` - otherwise.
 #[inline(always)]
-#[target_feature = "+sse4.1"]
+#[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
     ptestz(a, mask)
@@ -50,7 +50,7 @@ pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
 /// * `1` - if the specified bits are all ones,
 /// * `0` - otherwise.
 #[inline(always)]
-#[target_feature = "+sse4.1"]
+#[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
     ptestc(a, mask)
@@ -70,7 +70,7 @@ pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
 /// * `1` - if the specified bits are neither all zeros nor all ones,
 /// * `0` - otherwise.
 #[inline(always)]
-#[target_feature = "+sse4.1"]
+#[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testnzc_si128(a: __m128i, mask: __m128i) -> i32 {
     ptestnzc(a, mask)
@@ -90,7 +90,7 @@ pub unsafe fn _mm_testnzc_si128(a: __m128i, mask: __m128i) -> i32 {
 /// * `1` - if the specified bits are all zeros,
 /// * `0` - otherwise.
 #[inline(always)]
-#[target_feature = "+sse4.1"]
+#[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_test_all_zeros(a: __m128i, mask: __m128i) -> i32 {
     _mm_testz_si128(a, mask)
@@ -108,7 +108,7 @@ pub unsafe fn _mm_test_all_zeros(a: __m128i, mask: __m128i) -> i32 {
 /// * `1` - if the bits specified in the operand are all set to 1,
 /// * `0` - otherwise.
 #[inline(always)]
-#[target_feature = "+sse4.1"]
+#[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pcmpeqd))]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_test_all_ones(a: __m128i) -> i32 {
@@ -129,7 +129,7 @@ pub unsafe fn _mm_test_all_ones(a: __m128i) -> i32 {
 /// * `1` - if the specified bits are neither all zeros nor all ones,
 /// * `0` - otherwise.
 #[inline(always)]
-#[target_feature = "+sse4.1"]
+#[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_test_mix_ones_zeros(a: __m128i, mask: __m128i) -> i32 {
     _mm_testnzc_si128(a, mask)

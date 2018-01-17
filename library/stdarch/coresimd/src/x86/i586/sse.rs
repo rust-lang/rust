@@ -14,7 +14,7 @@ use stdsimd_test::assert_instr;
 /// Adds the first component of `a` and `b`, the other components are copied
 /// from `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(addss))]
 pub unsafe fn _mm_add_ss(a: __m128, b: __m128) -> __m128 {
     addss(a, b)
@@ -22,7 +22,7 @@ pub unsafe fn _mm_add_ss(a: __m128, b: __m128) -> __m128 {
 
 /// Adds __m128 vectors.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(addps))]
 pub unsafe fn _mm_add_ps(a: __m128, b: __m128) -> __m128 {
     simd_add(a, b)
@@ -31,7 +31,7 @@ pub unsafe fn _mm_add_ps(a: __m128, b: __m128) -> __m128 {
 /// Subtracts the first component of `b` from `a`, the other components are
 /// copied from `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(subss))]
 pub unsafe fn _mm_sub_ss(a: __m128, b: __m128) -> __m128 {
     subss(a, b)
@@ -39,7 +39,7 @@ pub unsafe fn _mm_sub_ss(a: __m128, b: __m128) -> __m128 {
 
 /// Subtracts __m128 vectors.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(subps))]
 pub unsafe fn _mm_sub_ps(a: __m128, b: __m128) -> __m128 {
     simd_sub(a, b)
@@ -48,7 +48,7 @@ pub unsafe fn _mm_sub_ps(a: __m128, b: __m128) -> __m128 {
 /// Multiplies the first component of `a` and `b`, the other components are
 /// copied from `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(mulss))]
 pub unsafe fn _mm_mul_ss(a: __m128, b: __m128) -> __m128 {
     mulss(a, b)
@@ -56,7 +56,7 @@ pub unsafe fn _mm_mul_ss(a: __m128, b: __m128) -> __m128 {
 
 /// Multiplies __m128 vectors.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(mulps))]
 pub unsafe fn _mm_mul_ps(a: __m128, b: __m128) -> __m128 {
     simd_mul(a, b)
@@ -65,7 +65,7 @@ pub unsafe fn _mm_mul_ps(a: __m128, b: __m128) -> __m128 {
 /// Divides the first component of `b` by `a`, the other components are
 /// copied from `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(divss))]
 pub unsafe fn _mm_div_ss(a: __m128, b: __m128) -> __m128 {
     divss(a, b)
@@ -73,7 +73,7 @@ pub unsafe fn _mm_div_ss(a: __m128, b: __m128) -> __m128 {
 
 /// Divides __m128 vectors.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(divps))]
 pub unsafe fn _mm_div_ps(a: __m128, b: __m128) -> __m128 {
     simd_div(a, b)
@@ -82,7 +82,7 @@ pub unsafe fn _mm_div_ps(a: __m128, b: __m128) -> __m128 {
 /// Return the square root of the first single-precision (32-bit)
 /// floating-point element in `a`, the other elements are unchanged.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(sqrtss))]
 pub unsafe fn _mm_sqrt_ss(a: __m128) -> __m128 {
     sqrtss(a)
@@ -91,7 +91,7 @@ pub unsafe fn _mm_sqrt_ss(a: __m128) -> __m128 {
 /// Return the square root of packed single-precision (32-bit) floating-point
 /// elements in `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(sqrtps))]
 pub unsafe fn _mm_sqrt_ps(a: __m128) -> __m128 {
     sqrtps(a)
@@ -100,7 +100,7 @@ pub unsafe fn _mm_sqrt_ps(a: __m128) -> __m128 {
 /// Return the approximate reciprocal of the first single-precision
 /// (32-bit) floating-point element in `a`, the other elements are unchanged.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(rcpss))]
 pub unsafe fn _mm_rcp_ss(a: __m128) -> __m128 {
     rcpss(a)
@@ -109,7 +109,7 @@ pub unsafe fn _mm_rcp_ss(a: __m128) -> __m128 {
 /// Return the approximate reciprocal of packed single-precision (32-bit)
 /// floating-point elements in `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(rcpps))]
 pub unsafe fn _mm_rcp_ps(a: __m128) -> __m128 {
     rcpps(a)
@@ -118,7 +118,7 @@ pub unsafe fn _mm_rcp_ps(a: __m128) -> __m128 {
 /// Return the approximate reciprocal square root of the fist single-precision
 /// (32-bit) floating-point elements in `a`, the other elements are unchanged.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(rsqrtss))]
 pub unsafe fn _mm_rsqrt_ss(a: __m128) -> __m128 {
     rsqrtss(a)
@@ -127,7 +127,7 @@ pub unsafe fn _mm_rsqrt_ss(a: __m128) -> __m128 {
 /// Return the approximate reciprocal square root of packed single-precision
 /// (32-bit) floating-point elements in `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(rsqrtps))]
 pub unsafe fn _mm_rsqrt_ps(a: __m128) -> __m128 {
     rsqrtps(a)
@@ -137,7 +137,7 @@ pub unsafe fn _mm_rsqrt_ps(a: __m128) -> __m128 {
 /// and `b`, and return the minimum value in the first element of the return
 /// value, the other elements are copied from `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(minss))]
 pub unsafe fn _mm_min_ss(a: __m128, b: __m128) -> __m128 {
     minss(a, b)
@@ -146,7 +146,7 @@ pub unsafe fn _mm_min_ss(a: __m128, b: __m128) -> __m128 {
 /// Compare packed single-precision (32-bit) floating-point elements in `a` and
 /// `b`, and return the corresponding minimum values.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(minps))]
 pub unsafe fn _mm_min_ps(a: __m128, b: __m128) -> __m128 {
     minps(a, b)
@@ -156,7 +156,7 @@ pub unsafe fn _mm_min_ps(a: __m128, b: __m128) -> __m128 {
 /// and `b`, and return the maximum value in the first element of the return
 /// value, the other elements are copied from `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(maxss))]
 pub unsafe fn _mm_max_ss(a: __m128, b: __m128) -> __m128 {
     maxss(a, b)
@@ -165,7 +165,7 @@ pub unsafe fn _mm_max_ss(a: __m128, b: __m128) -> __m128 {
 /// Compare packed single-precision (32-bit) floating-point elements in `a` and
 /// `b`, and return the corresponding maximum values.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(maxps))]
 pub unsafe fn _mm_max_ps(a: __m128, b: __m128) -> __m128 {
     maxps(a, b)
@@ -173,7 +173,7 @@ pub unsafe fn _mm_max_ps(a: __m128, b: __m128) -> __m128 {
 
 /// Bitwise AND of packed single-precision (32-bit) floating-point elements.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 // i586 only seems to generate plain `and` instructions, so ignore it.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
            assert_instr(andps))]
@@ -188,7 +188,7 @@ pub unsafe fn _mm_and_ps(a: __m128, b: __m128) -> __m128 {
 ///
 /// Computes `!a & b` for each bit in `a` and `b`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 // i586 only seems to generate plain `not` and `and` instructions, so ignore
 // it.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
@@ -202,7 +202,7 @@ pub unsafe fn _mm_andnot_ps(a: __m128, b: __m128) -> __m128 {
 
 /// Bitwise OR of packed single-precision (32-bit) floating-point elements.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 // i586 only seems to generate plain `or` instructions, so we ignore it.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
            assert_instr(orps))]
@@ -215,7 +215,7 @@ pub unsafe fn _mm_or_ps(a: __m128, b: __m128) -> __m128 {
 /// Bitwise exclusive OR of packed single-precision (32-bit) floating-point
 /// elements.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 // i586 only seems to generate plain `xor` instructions, so we ignore it.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
            assert_instr(xorps))]
@@ -229,7 +229,7 @@ pub unsafe fn _mm_xor_ps(a: __m128, b: __m128) -> __m128 {
 /// the result will be `0xffffffff` if the two inputs are equal, or `0`
 /// otherwise. The upper 96 bits of the result are the upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpeqss))]
 pub unsafe fn _mm_cmpeq_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 0)
@@ -240,7 +240,7 @@ pub unsafe fn _mm_cmpeq_ss(a: __m128, b: __m128) -> __m128 {
 /// `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result are the
 /// upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpltss))]
 pub unsafe fn _mm_cmplt_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 1)
@@ -251,7 +251,7 @@ pub unsafe fn _mm_cmplt_ss(a: __m128, b: __m128) -> __m128 {
 /// or equal `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result
 /// are the upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpless))]
 pub unsafe fn _mm_cmple_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 2)
@@ -262,7 +262,7 @@ pub unsafe fn _mm_cmple_ss(a: __m128, b: __m128) -> __m128 {
 /// than `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result
 /// are the upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpltss))]
 pub unsafe fn _mm_cmpgt_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, cmpss(b, a, 1), [4, 1, 2, 3])
@@ -273,7 +273,7 @@ pub unsafe fn _mm_cmpgt_ss(a: __m128, b: __m128) -> __m128 {
 /// greater than or equal `b.extract(0)`, or `0` otherwise. The upper 96 bits
 /// of the result are the upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpless))]
 pub unsafe fn _mm_cmpge_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, cmpss(b, a, 2), [4, 1, 2, 3])
@@ -284,7 +284,7 @@ pub unsafe fn _mm_cmpge_ss(a: __m128, b: __m128) -> __m128 {
 /// `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result are the
 /// upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpneqss))]
 pub unsafe fn _mm_cmpneq_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 4)
@@ -295,7 +295,7 @@ pub unsafe fn _mm_cmpneq_ss(a: __m128, b: __m128) -> __m128 {
 /// `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result are the
 /// upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnltss))]
 pub unsafe fn _mm_cmpnlt_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 5)
@@ -306,7 +306,7 @@ pub unsafe fn _mm_cmpnlt_ss(a: __m128, b: __m128) -> __m128 {
 /// less than or equal to `b.extract(0)`, or `0` otherwise. The upper 96 bits
 /// of the result are the upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnless))]
 pub unsafe fn _mm_cmpnle_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 6)
@@ -317,7 +317,7 @@ pub unsafe fn _mm_cmpnle_ss(a: __m128, b: __m128) -> __m128 {
 /// than `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result are
 /// the upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnltss))]
 pub unsafe fn _mm_cmpngt_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, cmpss(b, a, 5), [4, 1, 2, 3])
@@ -328,7 +328,7 @@ pub unsafe fn _mm_cmpngt_ss(a: __m128, b: __m128) -> __m128 {
 /// greater than or equal to `b.extract(0)`, or `0` otherwise. The upper 96
 /// bits of the result are the upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnless))]
 pub unsafe fn _mm_cmpnge_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, cmpss(b, a, 6), [4, 1, 2, 3])
@@ -339,7 +339,7 @@ pub unsafe fn _mm_cmpnge_ss(a: __m128, b: __m128) -> __m128 {
 /// `b.extract(0)` is a NaN, or `0` otherwise. The upper 96 bits of the result
 /// are the upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpordss))]
 pub unsafe fn _mm_cmpord_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 7)
@@ -350,7 +350,7 @@ pub unsafe fn _mm_cmpord_ss(a: __m128, b: __m128) -> __m128 {
 /// `b.extract(0)` is a NaN, or `0` otherwise. The upper 96 bits of the result
 /// are the upper 96 bits of `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpunordss))]
 pub unsafe fn _mm_cmpunord_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 3)
@@ -360,7 +360,7 @@ pub unsafe fn _mm_cmpunord_ss(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input elements
 /// were equal, or `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpeqps))]
 pub unsafe fn _mm_cmpeq_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 0)
@@ -370,7 +370,7 @@ pub unsafe fn _mm_cmpeq_ps(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is less than the corresponding element in `b`, or `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpltps))]
 pub unsafe fn _mm_cmplt_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 1)
@@ -381,7 +381,7 @@ pub unsafe fn _mm_cmplt_ps(a: __m128, b: __m128) -> __m128 {
 /// in `a` is less than or equal to the corresponding element in `b`, or `0`
 /// otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpleps))]
 pub unsafe fn _mm_cmple_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 2)
@@ -391,7 +391,7 @@ pub unsafe fn _mm_cmple_ps(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is greater than the corresponding element in `b`, or `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpltps))]
 pub unsafe fn _mm_cmpgt_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 1)
@@ -402,7 +402,7 @@ pub unsafe fn _mm_cmpgt_ps(a: __m128, b: __m128) -> __m128 {
 /// in `a` is greater than or equal to the corresponding element in `b`, or `0`
 /// otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpleps))]
 pub unsafe fn _mm_cmpge_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 2)
@@ -412,7 +412,7 @@ pub unsafe fn _mm_cmpge_ps(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input elements
 /// are *not* equal, or `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpneqps))]
 pub unsafe fn _mm_cmpneq_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 4)
@@ -423,7 +423,7 @@ pub unsafe fn _mm_cmpneq_ps(a: __m128, b: __m128) -> __m128 {
 /// in `a` is *not* less than the corresponding element in `b`, or `0`
 /// otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnltps))]
 pub unsafe fn _mm_cmpnlt_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 5)
@@ -434,7 +434,7 @@ pub unsafe fn _mm_cmpnlt_ps(a: __m128, b: __m128) -> __m128 {
 /// in `a` is *not* less than or equal to the corresponding element in `b`, or
 /// `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnleps))]
 pub unsafe fn _mm_cmpnle_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 6)
@@ -445,7 +445,7 @@ pub unsafe fn _mm_cmpnle_ps(a: __m128, b: __m128) -> __m128 {
 /// in `a` is *not* greater than the corresponding element in `b`, or `0`
 /// otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnltps))]
 pub unsafe fn _mm_cmpngt_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 5)
@@ -456,7 +456,7 @@ pub unsafe fn _mm_cmpngt_ps(a: __m128, b: __m128) -> __m128 {
 /// in `a` is *not* greater than or equal to the corresponding element in `b`,
 /// or `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnleps))]
 pub unsafe fn _mm_cmpnge_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 6)
@@ -467,7 +467,7 @@ pub unsafe fn _mm_cmpnge_ps(a: __m128, b: __m128) -> __m128 {
 /// in the output vector will be `0xffffffff` if the input elements in `a` and
 /// `b` are ordered (i.e., neither of them is a NaN), or 0 otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpordps))]
 pub unsafe fn _mm_cmpord_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 7)
@@ -478,7 +478,7 @@ pub unsafe fn _mm_cmpord_ps(a: __m128, b: __m128) -> __m128 {
 /// in the output vector will be `0xffffffff` if the input elements in `a` and
 /// `b` are unordered (i.e., at least on of them is a NaN), or 0 otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpunordps))]
 pub unsafe fn _mm_cmpunord_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 3)
@@ -487,7 +487,7 @@ pub unsafe fn _mm_cmpunord_ps(a: __m128, b: __m128) -> __m128 {
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if they are equal, or `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
 pub unsafe fn _mm_comieq_ss(a: __m128, b: __m128) -> i32 {
     comieq_ss(a, b)
@@ -496,7 +496,7 @@ pub unsafe fn _mm_comieq_ss(a: __m128, b: __m128) -> i32 {
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if the value from `a` is less than the one from `b`, or `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
 pub unsafe fn _mm_comilt_ss(a: __m128, b: __m128) -> i32 {
     comilt_ss(a, b)
@@ -506,7 +506,7 @@ pub unsafe fn _mm_comilt_ss(a: __m128, b: __m128) -> i32 {
 /// `1` if the value from `a` is less than or equal to the one from `b`, or `0`
 /// otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
 pub unsafe fn _mm_comile_ss(a: __m128, b: __m128) -> i32 {
     comile_ss(a, b)
@@ -516,7 +516,7 @@ pub unsafe fn _mm_comile_ss(a: __m128, b: __m128) -> i32 {
 /// `1` if the value from `a` is greater than the one from `b`, or `0`
 /// otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
 pub unsafe fn _mm_comigt_ss(a: __m128, b: __m128) -> i32 {
     comigt_ss(a, b)
@@ -526,7 +526,7 @@ pub unsafe fn _mm_comigt_ss(a: __m128, b: __m128) -> i32 {
 /// `1` if the value from `a` is greater than or equal to the one from `b`, or
 /// `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
 pub unsafe fn _mm_comige_ss(a: __m128, b: __m128) -> i32 {
     comige_ss(a, b)
@@ -535,7 +535,7 @@ pub unsafe fn _mm_comige_ss(a: __m128, b: __m128) -> i32 {
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if they are *not* equal, or `0` otherwise.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
 pub unsafe fn _mm_comineq_ss(a: __m128, b: __m128) -> i32 {
     comineq_ss(a, b)
@@ -545,7 +545,7 @@ pub unsafe fn _mm_comineq_ss(a: __m128, b: __m128) -> i32 {
 /// `1` if they are equal, or `0` otherwise. This instruction will not signal
 /// an exception if either argument is a quiet NaN.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
 pub unsafe fn _mm_ucomieq_ss(a: __m128, b: __m128) -> i32 {
     ucomieq_ss(a, b)
@@ -556,7 +556,7 @@ pub unsafe fn _mm_ucomieq_ss(a: __m128, b: __m128) -> i32 {
 /// This instruction will not signal an exception if either argument is a quiet
 /// NaN.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
 pub unsafe fn _mm_ucomilt_ss(a: __m128, b: __m128) -> i32 {
     ucomilt_ss(a, b)
@@ -567,7 +567,7 @@ pub unsafe fn _mm_ucomilt_ss(a: __m128, b: __m128) -> i32 {
 /// otherwise. This instruction will not signal an exception if either argument
 /// is a quiet NaN.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
 pub unsafe fn _mm_ucomile_ss(a: __m128, b: __m128) -> i32 {
     ucomile_ss(a, b)
@@ -578,7 +578,7 @@ pub unsafe fn _mm_ucomile_ss(a: __m128, b: __m128) -> i32 {
 /// otherwise. This instruction will not signal an exception if either argument
 /// is a quiet NaN.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
 pub unsafe fn _mm_ucomigt_ss(a: __m128, b: __m128) -> i32 {
     ucomigt_ss(a, b)
@@ -589,7 +589,7 @@ pub unsafe fn _mm_ucomigt_ss(a: __m128, b: __m128) -> i32 {
 /// `0` otherwise. This instruction will not signal an exception if either
 /// argument is a quiet NaN.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
 pub unsafe fn _mm_ucomige_ss(a: __m128, b: __m128) -> i32 {
     ucomige_ss(a, b)
@@ -599,7 +599,7 @@ pub unsafe fn _mm_ucomige_ss(a: __m128, b: __m128) -> i32 {
 /// `1` if they are *not* equal, or `0` otherwise. This instruction will not
 /// signal an exception if either argument is a quiet NaN.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
 pub unsafe fn _mm_ucomineq_ss(a: __m128, b: __m128) -> i32 {
     ucomineq_ss(a, b)
@@ -614,7 +614,7 @@ pub unsafe fn _mm_ucomineq_ss(a: __m128, b: __m128) -> i32 {
 ///
 /// This corresponds to the `CVTSS2SI` instruction (with 32 bit output).
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtss2si))]
 pub unsafe fn _mm_cvtss_si32(a: __m128) -> i32 {
     cvtss2si(a)
@@ -622,7 +622,7 @@ pub unsafe fn _mm_cvtss_si32(a: __m128) -> i32 {
 
 /// Alias for [`_mm_cvtss_si32`](fn._mm_cvtss_si32.html).
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtss2si))]
 pub unsafe fn _mm_cvt_ss2si(a: __m128) -> i32 {
     _mm_cvtss_si32(a)
@@ -639,7 +639,7 @@ pub unsafe fn _mm_cvt_ss2si(a: __m128) -> i32 {
 ///
 /// This corresponds to the `CVTTSS2SI` instruction (with 32 bit output).
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvttss2si))]
 pub unsafe fn _mm_cvttss_si32(a: __m128) -> i32 {
     cvttss2si(a)
@@ -647,7 +647,7 @@ pub unsafe fn _mm_cvttss_si32(a: __m128) -> i32 {
 
 /// Alias for [`_mm_cvttss_si32`](fn._mm_cvttss_si32.html).
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvttss2si))]
 pub unsafe fn _mm_cvtt_ss2si(a: __m128) -> i32 {
     _mm_cvttss_si32(a)
@@ -655,7 +655,7 @@ pub unsafe fn _mm_cvtt_ss2si(a: __m128) -> i32 {
 
 /// Extract the lowest 32 bit float from the input vector.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 // No point in using assert_instrs. In Unix x86_64 calling convention this is a
 // no-op, and on Windows it's just a `mov`.
 pub unsafe fn _mm_cvtss_f32(a: __m128) -> f32 {
@@ -668,7 +668,7 @@ pub unsafe fn _mm_cvtss_f32(a: __m128) -> f32 {
 /// This intrinsic corresponds to the `CVTSI2SS` instruction (with 32 bit
 /// input).
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
 pub unsafe fn _mm_cvtsi32_ss(a: __m128, b: i32) -> __m128 {
     cvtsi2ss(a, b)
@@ -676,7 +676,7 @@ pub unsafe fn _mm_cvtsi32_ss(a: __m128, b: i32) -> __m128 {
 
 /// Alias for [`_mm_cvtsi32_ss`](fn._mm_cvtsi32_ss.html).
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
 pub unsafe fn _mm_cvt_si2ss(a: __m128, b: i32) -> __m128 {
     _mm_cvtsi32_ss(a, b)
@@ -685,7 +685,7 @@ pub unsafe fn _mm_cvt_si2ss(a: __m128, b: i32) -> __m128 {
 /// Construct a `__m128` with the lowest element set to `a` and the rest set to
 /// zero.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 pub unsafe fn _mm_set_ss(a: f32) -> __m128 {
     __m128(a, 0.0, 0.0, 0.0)
@@ -693,7 +693,7 @@ pub unsafe fn _mm_set_ss(a: f32) -> __m128 {
 
 /// Construct a `__m128` with all element set to `a`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps))]
 pub unsafe fn _mm_set1_ps(a: f32) -> __m128 {
     __m128(a, a, a, a)
@@ -701,7 +701,7 @@ pub unsafe fn _mm_set1_ps(a: f32) -> __m128 {
 
 /// Alias for [`_mm_set1_ps`](fn._mm_set1_ps.html)
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps))]
 pub unsafe fn _mm_set_ps1(a: f32) -> __m128 {
     _mm_set1_ps(a)
@@ -725,7 +725,7 @@ pub unsafe fn _mm_set_ps1(a: f32) -> __m128 {
 /// let v = _mm_set_ps(d, c, b, a);
 /// ```
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(unpcklps))]
 pub unsafe fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
     __m128(d, c, b, a)
@@ -740,7 +740,7 @@ pub unsafe fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
 /// assert_eq!(__m128::new(a, b, c, d), _mm_setr_ps(a, b, c, d));
 /// ```
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(unpcklps))]
 // On a 32-bit architecture it just copies the operands from the stack.
 #[cfg_attr(all(test, target_arch = "x86"), assert_instr(movaps))]
@@ -750,7 +750,7 @@ pub unsafe fn _mm_setr_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
 
 /// Construct a `__m128` with all elements initialized to zero.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(xorps))]
 pub unsafe fn _mm_setzero_ps() -> __m128 {
     __m128(0.0, 0.0, 0.0, 0.0)
@@ -762,7 +762,7 @@ pub unsafe fn _mm_setzero_ps() -> __m128 {
 /// The lower half of result takes values from `a` and the higher half from
 /// `b`. Mask is split to 2 control bits each to index the element from inputs.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps, mask = 3))]
 pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: u32) -> __m128 {
     let mask = (mask & 0xFF) as u8;
@@ -813,7 +813,7 @@ pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: u32) -> __m128 {
 /// Unpack and interleave single-precision (32-bit) floating-point elements
 /// from the higher half of `a` and `b`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(unpckhps))]
 pub unsafe fn _mm_unpackhi_ps(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, b, [2, 6, 3, 7])
@@ -822,7 +822,7 @@ pub unsafe fn _mm_unpackhi_ps(a: __m128, b: __m128) -> __m128 {
 /// Unpack and interleave single-precision (32-bit) floating-point elements
 /// from the lower half of `a` and `b`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(unpcklps))]
 pub unsafe fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, b, [0, 4, 1, 5])
@@ -831,7 +831,7 @@ pub unsafe fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
 /// Combine higher half of `a` and `b`. The highwe half of `b` occupies the
 /// lower half of result.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(all(test, not(windows)), assert_instr(movhlps))]
 #[cfg_attr(all(test, windows), assert_instr(unpckhpd))]
 pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
@@ -842,7 +842,7 @@ pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
 /// Combine lower half of `a` and `b`. The lower half of `b` occupies the
 /// higher half of result.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(all(test, target_feature = "sse2"), assert_instr(unpcklpd))]
 #[cfg_attr(all(test, not(target_feature = "sse2")), assert_instr(movlhps))]
 pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
@@ -854,7 +854,7 @@ pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
 /// The mask is stored in the 4 least significant bits of the return value.
 /// All other bits are set to `0`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movmskps))]
 pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
     movmskps(a)
@@ -875,8 +875,8 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 /// # // The real main function
 /// # fn main() {
 /// #     if cfg_feature_enabled!("sse") {
-/// #         #[target_feature = "+sse"]
-/// #         fn worker() {
+/// #         #[target_feature(enable = "sse")]
+/// #         unsafe fn worker() {
 /// #
 /// #   use stdsimd::vendor::*;
 /// #
@@ -888,12 +888,12 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 /// }
 /// #
 /// #         }
-/// #         worker();
+/// #         unsafe { worker(); }
 /// #     }
 /// # }
 /// ```
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 // TODO: generates MOVHPD if the CPU supports SSE2.
 // #[cfg_attr(test, assert_instr(movhps))]
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movhpd))]
@@ -926,8 +926,8 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 /// # // The real main function
 /// # fn main() {
 /// #     if cfg_feature_enabled!("sse") {
-/// #         #[target_feature = "+sse"]
-/// #         fn worker() {
+/// #         #[target_feature(enable = "sse")]
+/// #         unsafe fn worker() {
 /// #
 /// #   use stdsimd::vendor::*;
 /// #
@@ -939,12 +939,12 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 /// }
 /// #
 /// #         }
-/// #         worker();
+/// #         unsafe { worker(); }
 /// #     }
 /// # }
 /// ```
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 // TODO: generates MOVLPD if the CPU supports SSE2.
 // #[cfg_attr(test, assert_instr(movlps))]
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movlpd))]
@@ -967,7 +967,7 @@ pub unsafe fn _mm_loadl_pi(a: __m128, p: *const __m64) -> __m128 {
 ///
 /// This corresponds to instructions `VMOVSS` / `MOVSS`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 pub unsafe fn _mm_load_ss(p: *const f32) -> __m128 {
     __m128(*p, 0.0, 0.0, 0.0)
@@ -979,7 +979,7 @@ pub unsafe fn _mm_load_ss(p: *const f32) -> __m128 {
 /// This corresponds to instructions `VMOVSS` / `MOVSS` followed by some
 /// shuffling.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 pub unsafe fn _mm_load1_ps(p: *const f32) -> __m128 {
     let a = *p;
@@ -988,7 +988,7 @@ pub unsafe fn _mm_load1_ps(p: *const f32) -> __m128 {
 
 /// Alias for [`_mm_load1_ps`](fn._mm_load1_ps.html)
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 pub unsafe fn _mm_load_ps1(p: *const f32) -> __m128 {
     _mm_load1_ps(p)
@@ -1003,7 +1003,7 @@ pub unsafe fn _mm_load_ps1(p: *const f32) -> __m128 {
 ///
 /// This corresponds to instructions `VMOVAPS` / `MOVAPS`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 pub unsafe fn _mm_load_ps(p: *const f32) -> __m128 {
     *(p as *const __m128)
@@ -1017,7 +1017,7 @@ pub unsafe fn _mm_load_ps(p: *const f32) -> __m128 {
 ///
 /// This corresponds to instructions `VMOVUPS` / `MOVUPS`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movups))]
 pub unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
     // Note: Using `*p` would require `f32` alignment, but `movups` has no
@@ -1050,7 +1050,7 @@ pub unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
 /// This corresponds to instructions `VMOVAPS` / `MOVAPS` followed by some
 /// shuffling.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 pub unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
     let a = _mm_load_ps(p);
@@ -1062,7 +1062,7 @@ pub unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
 /// This intrinsic corresponds to the `MOVHPS` instruction. The compiler may
 /// choose to generate an equivalent sequence of other instructions.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 // On i686 and up LLVM actually generates MOVHPD instead of MOVHPS, that's
 // fine.
 // On i586 (no SSE2) it just generates plain MOV instructions.
@@ -1092,7 +1092,7 @@ pub unsafe fn _mm_storeh_pi(p: *mut __m64, a: __m128) {
 /// This intrinsic corresponds to the `MOVQ` instruction. The compiler may
 /// choose to generate an equivalent sequence of other instructions.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 // On i586 the codegen just generates plane MOVs. No need to test for that.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2"),
                not(target_family = "windows")),
@@ -1122,7 +1122,7 @@ pub unsafe fn _mm_storel_pi(p: *mut __m64, a: __m128) {
 ///
 /// This intrinsic corresponds to the `MOVSS` instruction.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 pub unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
     *p = simd_extract(a, 0);
@@ -1145,7 +1145,7 @@ pub unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
 /// *p.offset(3) = x;
 /// ```
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 pub unsafe fn _mm_store1_ps(p: *mut f32, a: __m128) {
     let b: __m128 = simd_shuffle4(a, a, [0, 0, 0, 0]);
@@ -1154,7 +1154,7 @@ pub unsafe fn _mm_store1_ps(p: *mut f32, a: __m128) {
 
 /// Alias for [`_mm_store1_ps`](fn._mm_store1_ps.html)
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 pub unsafe fn _mm_store_ps1(p: *mut f32, a: __m128) {
     _mm_store1_ps(p, a);
@@ -1170,7 +1170,7 @@ pub unsafe fn _mm_store_ps1(p: *mut f32, a: __m128) {
 ///
 /// This corresponds to instructions `VMOVAPS` / `MOVAPS`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 pub unsafe fn _mm_store_ps(p: *mut f32, a: __m128) {
     *(p as *mut __m128) = a;
@@ -1182,7 +1182,7 @@ pub unsafe fn _mm_store_ps(p: *mut f32, a: __m128) {
 ///
 /// This corresponds to instructions `VMOVUPS` / `MOVUPS`.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movups))]
 pub unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
     ptr::copy_nonoverlapping(
@@ -1207,7 +1207,7 @@ pub unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
 /// *p.offset(3) = a.extract(0);
 /// ```
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 pub unsafe fn _mm_storer_ps(p: *mut f32, a: __m128) {
     let b: __m128 = simd_shuffle4(a, a, [3, 2, 1, 0]);
@@ -1222,7 +1222,7 @@ pub unsafe fn _mm_storer_ps(p: *mut f32, a: __m128) {
 /// _mm_move_ss(a, b) == a.replace(0, b.extract(0))
 /// ```
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
 pub unsafe fn _mm_move_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, b, [4, 1, 2, 3])
@@ -1235,7 +1235,7 @@ pub unsafe fn _mm_move_ss(a: __m128, b: __m128) -> __m128 {
 /// globally visible before any store instruction which follows the fence in
 /// program order.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(sfence))]
 pub unsafe fn _mm_sfence() {
     sfence()
@@ -1245,7 +1245,7 @@ pub unsafe fn _mm_sfence() {
 ///
 /// For more info see [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(stmxcsr))]
 pub unsafe fn _mm_getcsr() -> u32 {
     let mut result = 0_i32;
@@ -1379,7 +1379,7 @@ pub unsafe fn _mm_getcsr() -> u32 {
 /// ```
 ///
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ldmxcsr))]
 pub unsafe fn _mm_setcsr(val: u32) {
     ldmxcsr(&val as *const _ as *const i8);
@@ -1437,7 +1437,7 @@ pub const _MM_FLUSH_ZERO_OFF: u32 = 0x0000;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _MM_GET_EXCEPTION_MASK() -> u32 {
     _mm_getcsr() & _MM_MASK_MASK
 }
@@ -1445,7 +1445,7 @@ pub unsafe fn _MM_GET_EXCEPTION_MASK() -> u32 {
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _MM_GET_EXCEPTION_STATE() -> u32 {
     _mm_getcsr() & _MM_EXCEPT_MASK
 }
@@ -1453,7 +1453,7 @@ pub unsafe fn _MM_GET_EXCEPTION_STATE() -> u32 {
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _MM_GET_FLUSH_ZERO_MODE() -> u32 {
     _mm_getcsr() & _MM_FLUSH_ZERO_MASK
 }
@@ -1461,7 +1461,7 @@ pub unsafe fn _MM_GET_FLUSH_ZERO_MODE() -> u32 {
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _MM_GET_ROUNDING_MODE() -> u32 {
     _mm_getcsr() & _MM_ROUND_MASK
 }
@@ -1469,7 +1469,7 @@ pub unsafe fn _MM_GET_ROUNDING_MODE() -> u32 {
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
     _mm_setcsr((_mm_getcsr() & !_MM_MASK_MASK) | x)
 }
@@ -1477,7 +1477,7 @@ pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
     _mm_setcsr((_mm_getcsr() & !_MM_EXCEPT_MASK) | x)
 }
@@ -1485,7 +1485,7 @@ pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
     let val = (_mm_getcsr() & !_MM_FLUSH_ZERO_MASK) | x;
     // println!("setting csr={:x}", val);
@@ -1495,7 +1495,7 @@ pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
 #[inline(always)]
 #[allow(non_snake_case)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _MM_SET_ROUNDING_MODE(x: u32) {
     _mm_setcsr((_mm_getcsr() & !_MM_ROUND_MASK) | x)
 }
@@ -1549,7 +1549,7 @@ pub const _MM_HINT_NTA: i8 = 0;
 ///   resources (e.g., request buffers).
 ///
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(prefetcht0, strategy = _MM_HINT_T0))]
 #[cfg_attr(test, assert_instr(prefetcht1, strategy = _MM_HINT_T1))]
 #[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
@@ -1574,7 +1574,7 @@ pub unsafe fn _mm_prefetch(p: *const u8, strategy: i8) {
 
 /// Return vector of type __m128 with undefined elements.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _mm_undefined_ps() -> __m128 {
     __m128(
         mem::uninitialized(),
@@ -1587,7 +1587,7 @@ pub unsafe fn _mm_undefined_ps() -> __m128 {
 /// Transpose the 4x4 matrix formed by 4 rows of __m128 in place.
 #[inline(always)]
 #[allow(non_snake_case)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 pub unsafe fn _MM_TRANSPOSE4_PS(
     row0: &mut __m128, row1: &mut __m128, row2: &mut __m128, row3: &mut __m128
 ) {
@@ -1685,7 +1685,7 @@ extern "C" {
 /// `mem_addr` must be aligned on a 16-byte boundary or a general-protection
 /// exception _may_ be generated.
 #[inline(always)]
-#[target_feature = "+sse"]
+#[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movntps))]
 pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
     ::core::intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
@@ -1694,7 +1694,7 @@ pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
 /// Store 64-bits of integer data from a into memory using a non-temporal
 /// memory hint.
 #[inline(always)]
-#[target_feature = "+sse,+mmx"]
+#[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(movntq))]
 pub unsafe fn _mm_stream_pi(mem_addr: *mut __m64, a: __m64) {
     movntdq(mem_addr, a)

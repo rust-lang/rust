@@ -61,7 +61,7 @@
 //! // This function is only safe to call if the CPU where the
 //! // binary runs supports SSE2.
 //! #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-//! #[target_feature = "+sse2"]
+//! #[target_feature(enable = "sse2")]
 //! unsafe fn sum_sse2(x: i32x4) -> i32 {
 //!     use std::mem;
 //!     let x: vendor::__m128i = mem::transmute(x);

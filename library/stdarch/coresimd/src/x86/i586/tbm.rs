@@ -28,7 +28,7 @@ extern "C" {
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 pub fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
     _bextr2_u32(a, (start & 0xffu32) | ((len & 0xffu32) << 8u32))
 }
@@ -36,7 +36,7 @@ pub fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 pub fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
     _bextr2_u64(a, (start & 0xffu64) | ((len & 0xffu64) << 8u64))
 }
@@ -47,7 +47,7 @@ pub fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
 /// Bits [7,0] of `control` specify the index to the first bit in the range to
 /// be extracted, and bits [15,8] specify the length of the range.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
     unsafe { x86_tbm_bextri_u32(a, control) }
 }
@@ -58,7 +58,7 @@ pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
 /// Bits [7,0] of `control` specify the index to the first bit in the range to
 /// be extracted, and bits [15,8] specify the length of the range.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
     unsafe { x86_tbm_bextri_u64(a, control) }
 }
@@ -68,7 +68,7 @@ pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
 ///
 /// If there is no zero bit in `x`, it returns zero.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcfill))]
 pub unsafe fn _blcfill_u32(x: u32) -> u32 {
     x & (x.wrapping_add(1))
@@ -78,7 +78,7 @@ pub unsafe fn _blcfill_u32(x: u32) -> u32 {
 ///
 /// If there is no zero bit in `x`, it returns zero.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcfill))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _blcfill_u64(x: u64) -> u64 {
@@ -89,7 +89,7 @@ pub unsafe fn _blcfill_u64(x: u64) -> u64 {
 ///
 /// If there is no zero bit in `x`, it sets all bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blci))]
 pub unsafe fn _blci_u32(x: u32) -> u32 {
     x | !(x.wrapping_add(1))
@@ -99,7 +99,7 @@ pub unsafe fn _blci_u32(x: u32) -> u32 {
 ///
 /// If there is no zero bit in `x`, it sets all bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blci))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _blci_u64(x: u64) -> u64 {
@@ -110,7 +110,7 @@ pub unsafe fn _blci_u64(x: u64) -> u64 {
 ///
 /// If there is no zero bit in `x`, it returns zero.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcic))]
 pub unsafe fn _blcic_u32(x: u32) -> u32 {
     !x & (x.wrapping_add(1))
@@ -120,7 +120,7 @@ pub unsafe fn _blcic_u32(x: u32) -> u32 {
 ///
 /// If there is no zero bit in `x`, it returns zero.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcic))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _blcic_u64(x: u64) -> u64 {
@@ -132,7 +132,7 @@ pub unsafe fn _blcic_u64(x: u64) -> u64 {
 ///
 /// If there is no zero bit in `x`, it sets all the bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcmsk))]
 pub unsafe fn _blcmsk_u32(x: u32) -> u32 {
     x ^ (x.wrapping_add(1))
@@ -143,7 +143,7 @@ pub unsafe fn _blcmsk_u32(x: u32) -> u32 {
 ///
 /// If there is no zero bit in `x`, it sets all the bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcmsk))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _blcmsk_u64(x: u64) -> u64 {
@@ -154,7 +154,7 @@ pub unsafe fn _blcmsk_u64(x: u64) -> u64 {
 ///
 /// If there is no zero bit in `x`, it returns `x`.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcs))]
 pub unsafe fn _blcs_u32(x: u32) -> u32 {
     x | (x.wrapping_add(1))
@@ -164,7 +164,7 @@ pub unsafe fn _blcs_u32(x: u32) -> u32 {
 ///
 /// If there is no zero bit in `x`, it returns `x`.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcs))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _blcs_u64(x: u64) -> u64 {
@@ -175,7 +175,7 @@ pub unsafe fn _blcs_u64(x: u64) -> u64 {
 ///
 /// If there is no set bit in `x`, it sets all the bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsfill))]
 pub unsafe fn _blsfill_u32(x: u32) -> u32 {
     x | (x.wrapping_sub(1))
@@ -185,7 +185,7 @@ pub unsafe fn _blsfill_u32(x: u32) -> u32 {
 ///
 /// If there is no set bit in `x`, it sets all the bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsfill))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _blsfill_u64(x: u64) -> u64 {
@@ -196,7 +196,7 @@ pub unsafe fn _blsfill_u64(x: u64) -> u64 {
 ///
 /// If there is no set bit in `x`, it sets all the bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsic))]
 pub unsafe fn _blsic_u32(x: u32) -> u32 {
     !x | (x.wrapping_sub(1))
@@ -206,7 +206,7 @@ pub unsafe fn _blsic_u32(x: u32) -> u32 {
 ///
 /// If there is no set bit in `x`, it sets all the bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsic))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _blsic_u64(x: u64) -> u64 {
@@ -218,7 +218,7 @@ pub unsafe fn _blsic_u64(x: u64) -> u64 {
 ///
 /// If the least significant bit of `x` is 0, it sets all bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(t1mskc))]
 pub unsafe fn _t1mskc_u32(x: u32) -> u32 {
     !x | (x.wrapping_add(1))
@@ -229,7 +229,7 @@ pub unsafe fn _t1mskc_u32(x: u32) -> u32 {
 ///
 /// If the least significant bit of `x` is 0, it sets all bits.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(t1mskc))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _t1mskc_u64(x: u64) -> u64 {
@@ -241,7 +241,7 @@ pub unsafe fn _t1mskc_u64(x: u64) -> u64 {
 ///
 /// If the least significant bit of `x` is 1, it returns zero.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(tzmsk))]
 pub unsafe fn _tzmsk_u32(x: u32) -> u32 {
     !x & (x.wrapping_sub(1))
@@ -252,7 +252,7 @@ pub unsafe fn _tzmsk_u32(x: u32) -> u32 {
 ///
 /// If the least significant bit of `x` is 1, it returns zero.
 #[inline(always)]
-#[target_feature = "+tbm"]
+#[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(tzmsk))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub unsafe fn _tzmsk_u64(x: u64) -> u64 {

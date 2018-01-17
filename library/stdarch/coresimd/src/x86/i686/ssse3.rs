@@ -8,7 +8,7 @@ use v64::*;
 /// Compute the absolute value of packed 8-bit integers in `a` and
 /// return the unsigned results.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pabsb))]
 pub unsafe fn _mm_abs_pi8(a: __m64) -> __m64 {
     pabsb(a)
@@ -17,7 +17,7 @@ pub unsafe fn _mm_abs_pi8(a: __m64) -> __m64 {
 /// Compute the absolute value of packed 8-bit integers in `a`, and return the
 /// unsigned results.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pabsw))]
 pub unsafe fn _mm_abs_pi16(a: __m64) -> __m64 {
     pabsw(a)
@@ -26,7 +26,7 @@ pub unsafe fn _mm_abs_pi16(a: __m64) -> __m64 {
 /// Compute the absolute value of packed 32-bit integers in `a`, and return the
 /// unsigned results.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pabsd))]
 pub unsafe fn _mm_abs_pi32(a: __m64) -> __m64 {
     pabsd(a)
@@ -35,7 +35,7 @@ pub unsafe fn _mm_abs_pi32(a: __m64) -> __m64 {
 /// Shuffle packed 8-bit integers in `a` according to shuffle control mask in
 /// the corresponding 8-bit element of `b`, and return the results
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pshufb))]
 pub unsafe fn _mm_shuffle_pi8(a: __m64, b: __m64) -> __m64 {
     pshufb(a, b)
@@ -44,7 +44,7 @@ pub unsafe fn _mm_shuffle_pi8(a: __m64, b: __m64) -> __m64 {
 /// Concatenates the two 64-bit integer vector operands, and right-shifts
 /// the result by the number of bytes specified in the immediate operand.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(palignr, n = 15))]
 pub unsafe fn _mm_alignr_pi8(a: __m64, b: __m64, n: i32) -> __m64 {
     macro_rules! call {
@@ -58,7 +58,7 @@ pub unsafe fn _mm_alignr_pi8(a: __m64, b: __m64, n: i32) -> __m64 {
 /// Horizontally add the adjacent pairs of values contained in 2 packed
 /// 64-bit vectors of [4 x i16].
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phaddw))]
 pub unsafe fn _mm_hadd_pi16(a: __m64, b: __m64) -> __m64 {
     phaddw(a, b)
@@ -67,7 +67,7 @@ pub unsafe fn _mm_hadd_pi16(a: __m64, b: __m64) -> __m64 {
 /// Horizontally add the adjacent pairs of values contained in 2 packed
 /// 64-bit vectors of [2 x i32].
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phaddd))]
 pub unsafe fn _mm_hadd_pi32(a: __m64, b: __m64) -> __m64 {
     phaddd(a, b)
@@ -77,7 +77,7 @@ pub unsafe fn _mm_hadd_pi32(a: __m64, b: __m64) -> __m64 {
 /// 64-bit vectors of [4 x i16]. Positive sums greater than 7FFFh are
 /// saturated to 7FFFh. Negative sums less than 8000h are saturated to 8000h.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phaddsw))]
 pub unsafe fn _mm_hadds_pi16(a: __m64, b: __m64) -> __m64 {
     phaddsw(a, b)
@@ -86,7 +86,7 @@ pub unsafe fn _mm_hadds_pi16(a: __m64, b: __m64) -> __m64 {
 /// Horizontally subtracts the adjacent pairs of values contained in 2
 /// packed 64-bit vectors of [4 x i16].
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phsubw))]
 pub unsafe fn _mm_hsub_pi16(a: __m64, b: __m64) -> __m64 {
     phsubw(a, b)
@@ -95,7 +95,7 @@ pub unsafe fn _mm_hsub_pi16(a: __m64, b: __m64) -> __m64 {
 /// Horizontally subtracts the adjacent pairs of values contained in 2
 /// packed 64-bit vectors of [2 x i32].
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phsubd))]
 pub unsafe fn _mm_hsub_pi32(a: __m64, b: __m64) -> __m64 {
     phsubd(a, b)
@@ -106,7 +106,7 @@ pub unsafe fn _mm_hsub_pi32(a: __m64, b: __m64) -> __m64 {
 /// 7FFFh are saturated to 7FFFh. Negative differences less than 8000h are
 /// saturated to 8000h.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(phsubsw))]
 pub unsafe fn _mm_hsubs_pi16(a: __m64, b: __m64) -> __m64 {
     phsubsw(a, b)
@@ -118,7 +118,7 @@ pub unsafe fn _mm_hsubs_pi16(a: __m64, b: __m64) -> __m64 {
 /// contiguous products with signed saturation, and writes the 16-bit sums to
 /// the corresponding bits in the destination.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pmaddubsw))]
 pub unsafe fn _mm_maddubs_pi16(a: __m64, b: __m64) -> __m64 {
     pmaddubsw(a, b)
@@ -128,7 +128,7 @@ pub unsafe fn _mm_maddubs_pi16(a: __m64, b: __m64) -> __m64 {
 /// products to the 18 most significant bits by right-shifting, rounds the
 /// truncated value by adding 1, and writes bits [16:1] to the destination.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(pmulhrsw))]
 pub unsafe fn _mm_mulhrs_pi16(a: __m64, b: __m64) -> __m64 {
     pmulhrsw(a, b)
@@ -139,7 +139,7 @@ pub unsafe fn _mm_mulhrs_pi16(a: __m64, b: __m64) -> __m64 {
 /// Element in result are zeroed out when the corresponding element in `b` is
 /// zero.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(psignb))]
 pub unsafe fn _mm_sign_pi8(a: __m64, b: __m64) -> __m64 {
     psignb(a, b)
@@ -150,7 +150,7 @@ pub unsafe fn _mm_sign_pi8(a: __m64, b: __m64) -> __m64 {
 /// Element in result are zeroed out when the corresponding element in `b` is
 /// zero.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(psignw))]
 pub unsafe fn _mm_sign_pi16(a: __m64, b: __m64) -> __m64 {
     psignw(a, b)
@@ -161,7 +161,7 @@ pub unsafe fn _mm_sign_pi16(a: __m64, b: __m64) -> __m64 {
 /// Element in result are zeroed out when the corresponding element in `b` is
 /// zero.
 #[inline(always)]
-#[target_feature = "+ssse3"]
+#[target_feature(enable = "ssse3")]
 #[cfg_attr(test, assert_instr(psignd))]
 pub unsafe fn _mm_sign_pi32(a: __m64, b: __m64) -> __m64 {
     psignd(a, b)

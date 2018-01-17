@@ -24,7 +24,7 @@ use stdsimd_test::assert_instr;
 ///
 /// When the operand is zero, it returns its size in bits.
 #[inline(always)]
-#[target_feature = "+lzcnt"]
+#[target_feature(enable = "lzcnt")]
 #[cfg_attr(test, assert_instr(lzcnt))]
 pub unsafe fn _lzcnt_u32(x: u32) -> u32 {
     x.leading_zeros()
@@ -34,7 +34,7 @@ pub unsafe fn _lzcnt_u32(x: u32) -> u32 {
 ///
 /// When the operand is zero, it returns its size in bits.
 #[inline(always)]
-#[target_feature = "+lzcnt"]
+#[target_feature(enable = "lzcnt")]
 #[cfg_attr(test, assert_instr(lzcnt))]
 pub unsafe fn _lzcnt_u64(x: u64) -> u64 {
     x.leading_zeros() as u64
@@ -42,7 +42,7 @@ pub unsafe fn _lzcnt_u64(x: u64) -> u64 {
 
 /// Counts the bits that are set.
 #[inline(always)]
-#[target_feature = "+popcnt"]
+#[target_feature(enable = "popcnt")]
 #[cfg_attr(test, assert_instr(popcnt))]
 pub unsafe fn _popcnt32(x: i32) -> i32 {
     x.count_ones() as i32
@@ -50,7 +50,7 @@ pub unsafe fn _popcnt32(x: i32) -> i32 {
 
 /// Counts the bits that are set.
 #[inline(always)]
-#[target_feature = "+popcnt"]
+#[target_feature(enable = "popcnt")]
 #[cfg_attr(test, assert_instr(popcnt))]
 pub unsafe fn _popcnt64(x: i64) -> i32 {
     x.count_ones() as i32

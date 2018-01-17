@@ -16,8 +16,8 @@ mod example {
     use self::stdsimd::vendor;
 
     #[inline(never)]
-    #[target_feature = "+sse4.2"]
-    fn index(needle: &str, haystack: &str) -> usize {
+    #[target_feature(enable = "sse4.2")]
+    unsafe fn index(needle: &str, haystack: &str) -> usize {
         assert!(needle.len() <= 16 && haystack.len() <= 16);
 
         let (needle_len, hay_len) = (needle.len(), haystack.len());
@@ -30,15 +30,13 @@ mod example {
         haystack.resize(16, 0);
         let vhaystack = s::__m128i::from(s::u8x16::load(&haystack, 0));
 
-        unsafe {
-            vendor::_mm_cmpestri(
-                vneedle,
-                needle_len as i32,
-                vhaystack,
-                hay_len as i32,
-                vendor::_SIDD_CMP_EQUAL_ORDERED,
-            ) as usize
-        }
+        vendor::_mm_cmpestri(
+            vneedle,
+            needle_len as i32,
+            vhaystack,
+            hay_len as i32,
+            vendor::_SIDD_CMP_EQUAL_ORDERED,
+        ) as usize
     }
 
     pub fn main() {
@@ -58,7 +56,9 @@ mod example {
 
         let needle = env::args().nth(1).unwrap();
         let haystack = env::args().nth(2).unwrap();
-        println!("{:?}", index(&needle, &haystack));
+        unsafe {
+            println!("{:?}", index(&needle, &haystack));
+        }
     }
 }
 

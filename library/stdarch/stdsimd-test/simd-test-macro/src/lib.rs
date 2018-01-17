@@ -47,8 +47,7 @@ pub fn simd_test(
     let enable_feature = enable_feature
         .trim_left_matches('"')
         .trim_right_matches('"');
-    let enable_feature =
-        string(&(format!("+{}", enable_feature).replace(',', ",+")));
+    let enable_feature = string(enable_feature);
     let item = TokenStream::from(item);
     let name = find_name(item.clone());
 
@@ -77,7 +76,7 @@ pub fn simd_test(
                 ::stdsimd_test::assert_skip_test_ok(stringify!(#name));
             }
 
-            #[target_feature = #enable_feature]
+            #[target_feature(enable = #enable_feature)]
             #item
         }
     }.into();

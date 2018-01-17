@@ -16,7 +16,7 @@ use stdsimd_test::assert_instr;
 
 /// Constructs a 64-bit integer vector initialized to zero.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 // FIXME: this produces a movl instead of xorps on x86
 // FIXME: this produces a xor intrinsic instead of xorps on x86_64
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(xor))]
@@ -26,7 +26,7 @@ pub unsafe fn _mm_setzero_si64() -> __m64 {
 
 /// Add packed 8-bit integers in `a` and `b`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddb))]
 pub unsafe fn _mm_add_pi8(a: __m64, b: __m64) -> __m64 {
     paddb(a, b)
@@ -34,7 +34,7 @@ pub unsafe fn _mm_add_pi8(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed 8-bit integers in `a` and `b`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddb))]
 pub unsafe fn _m_paddb(a: __m64, b: __m64) -> __m64 {
     _mm_add_pi8(a, b)
@@ -42,7 +42,7 @@ pub unsafe fn _m_paddb(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed 16-bit integers in `a` and `b`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddw))]
 pub unsafe fn _mm_add_pi16(a: __m64, b: __m64) -> __m64 {
     paddw(a, b)
@@ -50,7 +50,7 @@ pub unsafe fn _mm_add_pi16(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed 16-bit integers in `a` and `b`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddw))]
 pub unsafe fn _m_paddw(a: __m64, b: __m64) -> __m64 {
     _mm_add_pi16(a, b)
@@ -58,7 +58,7 @@ pub unsafe fn _m_paddw(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed 32-bit integers in `a` and `b`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddd))]
 pub unsafe fn _mm_add_pi32(a: __m64, b: __m64) -> __m64 {
     paddd(a, b)
@@ -66,7 +66,7 @@ pub unsafe fn _mm_add_pi32(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed 32-bit integers in `a` and `b`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddd))]
 pub unsafe fn _m_paddd(a: __m64, b: __m64) -> __m64 {
     _mm_add_pi32(a, b)
@@ -74,7 +74,7 @@ pub unsafe fn _m_paddd(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed 8-bit integers in `a` and `b` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsb))]
 pub unsafe fn _mm_adds_pi8(a: __m64, b: __m64) -> __m64 {
     paddsb(a, b)
@@ -82,7 +82,7 @@ pub unsafe fn _mm_adds_pi8(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed 8-bit integers in `a` and `b` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsb))]
 pub unsafe fn _m_paddsb(a: __m64, b: __m64) -> __m64 {
     _mm_adds_pi8(a, b)
@@ -90,7 +90,7 @@ pub unsafe fn _m_paddsb(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed 16-bit integers in `a` and `b` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsw))]
 pub unsafe fn _mm_adds_pi16(a: __m64, b: __m64) -> __m64 {
     paddsw(a, b)
@@ -98,7 +98,7 @@ pub unsafe fn _mm_adds_pi16(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed 16-bit integers in `a` and `b` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddsw))]
 pub unsafe fn _m_paddsw(a: __m64, b: __m64) -> __m64 {
     _mm_adds_pi16(a, b)
@@ -106,7 +106,7 @@ pub unsafe fn _m_paddsw(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed unsigned 8-bit integers in `a` and `b` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusb))]
 pub unsafe fn _mm_adds_pu8(a: __m64, b: __m64) -> __m64 {
     paddusb(a, b)
@@ -114,7 +114,7 @@ pub unsafe fn _mm_adds_pu8(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed unsigned 8-bit integers in `a` and `b` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusb))]
 pub unsafe fn _m_paddusb(a: __m64, b: __m64) -> __m64 {
     _mm_adds_pu8(a, b)
@@ -122,7 +122,7 @@ pub unsafe fn _m_paddusb(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed unsigned 16-bit integers in `a` and `b` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusw))]
 pub unsafe fn _mm_adds_pu16(a: __m64, b: __m64) -> __m64 {
     paddusw(a, b)
@@ -130,7 +130,7 @@ pub unsafe fn _mm_adds_pu16(a: __m64, b: __m64) -> __m64 {
 
 /// Add packed unsigned 16-bit integers in `a` and `b` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(paddusw))]
 pub unsafe fn _m_paddusw(a: __m64, b: __m64) -> __m64 {
     _mm_adds_pu16(a, b)
@@ -138,7 +138,7 @@ pub unsafe fn _m_paddusw(a: __m64, b: __m64) -> __m64 {
 
 /// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubb))]
 pub unsafe fn _mm_sub_pi8(a: __m64, b: __m64) -> __m64 {
     psubb(a, b)
@@ -146,7 +146,7 @@ pub unsafe fn _mm_sub_pi8(a: __m64, b: __m64) -> __m64 {
 
 /// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubb))]
 pub unsafe fn _m_psubb(a: __m64, b: __m64) -> __m64 {
     _mm_sub_pi8(a, b)
@@ -154,7 +154,7 @@ pub unsafe fn _m_psubb(a: __m64, b: __m64) -> __m64 {
 
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubw))]
 pub unsafe fn _mm_sub_pi16(a: __m64, b: __m64) -> __m64 {
     psubw(a, b)
@@ -162,7 +162,7 @@ pub unsafe fn _mm_sub_pi16(a: __m64, b: __m64) -> __m64 {
 
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubw))]
 pub unsafe fn _m_psubw(a: __m64, b: __m64) -> __m64 {
     _mm_sub_pi16(a, b)
@@ -170,7 +170,7 @@ pub unsafe fn _m_psubw(a: __m64, b: __m64) -> __m64 {
 
 /// Subtract packed 32-bit integers in `b` from packed 32-bit integers in `a`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubd))]
 pub unsafe fn _mm_sub_pi32(a: __m64, b: __m64) -> __m64 {
     psubd(a, b)
@@ -178,7 +178,7 @@ pub unsafe fn _mm_sub_pi32(a: __m64, b: __m64) -> __m64 {
 
 /// Subtract packed 32-bit integers in `b` from packed 32-bit integers in `a`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubd))]
 pub unsafe fn _m_psubd(a: __m64, b: __m64) -> __m64 {
     _mm_sub_pi32(a, b)
@@ -187,7 +187,7 @@ pub unsafe fn _m_psubd(a: __m64, b: __m64) -> __m64 {
 /// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`
 /// using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubsb))]
 pub unsafe fn _mm_subs_pi8(a: __m64, b: __m64) -> __m64 {
     psubsb(a, b)
@@ -196,7 +196,7 @@ pub unsafe fn _mm_subs_pi8(a: __m64, b: __m64) -> __m64 {
 /// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`
 /// using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubsb))]
 pub unsafe fn _m_psubsb(a: __m64, b: __m64) -> __m64 {
     _mm_subs_pi8(a, b)
@@ -205,7 +205,7 @@ pub unsafe fn _m_psubsb(a: __m64, b: __m64) -> __m64 {
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`
 /// using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubsw))]
 pub unsafe fn _mm_subs_pi16(a: __m64, b: __m64) -> __m64 {
     psubsw(a, b)
@@ -214,7 +214,7 @@ pub unsafe fn _mm_subs_pi16(a: __m64, b: __m64) -> __m64 {
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`
 /// using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubsw))]
 pub unsafe fn _m_psubsw(a: __m64, b: __m64) -> __m64 {
     _mm_subs_pi16(a, b)
@@ -223,7 +223,7 @@ pub unsafe fn _m_psubsw(a: __m64, b: __m64) -> __m64 {
 /// Subtract packed unsigned 8-bit integers in `b` from packed unsigned 8-bit
 /// integers in `a` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubusb))]
 pub unsafe fn _mm_subs_pu8(a: __m64, b: __m64) -> __m64 {
     psubusb(a, b)
@@ -232,7 +232,7 @@ pub unsafe fn _mm_subs_pu8(a: __m64, b: __m64) -> __m64 {
 /// Subtract packed unsigned 8-bit integers in `b` from packed unsigned 8-bit
 /// integers in `a` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubusb))]
 pub unsafe fn _m_psubusb(a: __m64, b: __m64) -> __m64 {
     _mm_subs_pu8(a, b)
@@ -241,7 +241,7 @@ pub unsafe fn _m_psubusb(a: __m64, b: __m64) -> __m64 {
 /// Subtract packed unsigned 16-bit integers in `b` from packed unsigned
 /// 16-bit integers in `a` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubusw))]
 pub unsafe fn _mm_subs_pu16(a: __m64, b: __m64) -> __m64 {
     psubusw(a, b)
@@ -250,7 +250,7 @@ pub unsafe fn _mm_subs_pu16(a: __m64, b: __m64) -> __m64 {
 /// Subtract packed unsigned 16-bit integers in `b` from packed unsigned
 /// 16-bit integers in `a` using saturation.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(psubusw))]
 pub unsafe fn _m_psubusw(a: __m64, b: __m64) -> __m64 {
     _mm_subs_pu16(a, b)
@@ -262,7 +262,7 @@ pub unsafe fn _m_psubusw(a: __m64, b: __m64) -> __m64 {
 /// Positive values greater than 0x7F are saturated to 0x7F. Negative values
 /// less than 0x80 are saturated to 0x80.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(packsswb))]
 pub unsafe fn _mm_packs_pi16(a: __m64, b: __m64) -> __m64 {
     packsswb(a, b)
@@ -274,7 +274,7 @@ pub unsafe fn _mm_packs_pi16(a: __m64, b: __m64) -> __m64 {
 /// Positive values greater than 0x7F are saturated to 0x7F. Negative values
 /// less than 0x80 are saturated to 0x80.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(packssdw))]
 pub unsafe fn _mm_packs_pi32(a: __m64, b: __m64) -> __m64 {
     packssdw(a, b)
@@ -283,7 +283,7 @@ pub unsafe fn _mm_packs_pi32(a: __m64, b: __m64) -> __m64 {
 /// Compares whether each element of `a` is greater than the corresponding
 /// element of `b` returning `0` for `false` and `-1` for `true`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(pcmpgtb))]
 pub unsafe fn _mm_cmpgt_pi8(a: __m64, b: __m64) -> __m64 {
     pcmpgtb(a, b)
@@ -292,7 +292,7 @@ pub unsafe fn _mm_cmpgt_pi8(a: __m64, b: __m64) -> __m64 {
 /// Compares whether each element of `a` is greater than the corresponding
 /// element of `b` returning `0` for `false` and `-1` for `true`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(pcmpgtw))]
 pub unsafe fn _mm_cmpgt_pi16(a: __m64, b: __m64) -> __m64 {
     pcmpgtw(a, b)
@@ -301,7 +301,7 @@ pub unsafe fn _mm_cmpgt_pi16(a: __m64, b: __m64) -> __m64 {
 /// Compares whether each element of `a` is greater than the corresponding
 /// element of `b` returning `0` for `false` and `-1` for `true`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(pcmpgtd))]
 pub unsafe fn _mm_cmpgt_pi32(a: __m64, b: __m64) -> __m64 {
     pcmpgtd(a, b)
@@ -310,7 +310,7 @@ pub unsafe fn _mm_cmpgt_pi32(a: __m64, b: __m64) -> __m64 {
 /// Unpacks the upper two elements from two `i16x4` vectors and interleaves
 /// them into the result: `[a.2, b.2, a.3, b.3]`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(punpckhwd))] // FIXME punpcklbw expected
 pub unsafe fn _mm_unpackhi_pi16(a: __m64, b: __m64) -> __m64 {
     punpckhwd(a, b)
@@ -319,7 +319,7 @@ pub unsafe fn _mm_unpackhi_pi16(a: __m64, b: __m64) -> __m64 {
 /// Unpacks the upper four elements from two `i8x8` vectors and interleaves
 /// them into the result: `[a.4, b.4, a.5, b.5, a.6, b.6, a.7, b.7]`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(punpckhbw))]
 pub unsafe fn _mm_unpackhi_pi8(a: __m64, b: __m64) -> __m64 {
     punpckhbw(a, b)
@@ -328,7 +328,7 @@ pub unsafe fn _mm_unpackhi_pi8(a: __m64, b: __m64) -> __m64 {
 /// Unpacks the lower four elements from two `i8x8` vectors and interleaves
 /// them into the result: `[a.0, b.0, a.1, b.1, a.2, b.2, a.3, b.3]`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(punpcklbw))]
 pub unsafe fn _mm_unpacklo_pi8(a: __m64, b: __m64) -> __m64 {
     punpcklbw(a, b)
@@ -337,7 +337,7 @@ pub unsafe fn _mm_unpacklo_pi8(a: __m64, b: __m64) -> __m64 {
 /// Unpacks the lower two elements from two `i16x4` vectors and interleaves
 /// them into the result: `[a.0 b.0 a.1 b.1]`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(punpcklwd))]
 pub unsafe fn _mm_unpacklo_pi16(a: __m64, b: __m64) -> __m64 {
     punpcklwd(a, b)
@@ -346,7 +346,7 @@ pub unsafe fn _mm_unpacklo_pi16(a: __m64, b: __m64) -> __m64 {
 /// Unpacks the upper element from two `i32x2` vectors and interleaves them
 /// into the result: `[a.1, b.1]`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(punpckhdq))]
 pub unsafe fn _mm_unpackhi_pi32(a: __m64, b: __m64) -> __m64 {
     punpckhdq(a, b)
@@ -355,7 +355,7 @@ pub unsafe fn _mm_unpackhi_pi32(a: __m64, b: __m64) -> __m64 {
 /// Unpacks the lower element from two `i32x2` vectors and interleaves them
 /// into the result: `[a.0, b.0]`.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 #[cfg_attr(test, assert_instr(punpckldq))]
 pub unsafe fn _mm_unpacklo_pi32(a: __m64, b: __m64) -> __m64 {
     punpckldq(a, b)
@@ -363,21 +363,21 @@ pub unsafe fn _mm_unpacklo_pi32(a: __m64, b: __m64) -> __m64 {
 
 /// Set packed 16-bit integers in dst with the supplied values.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set_pi16(e3: i16, e2: i16, e1: i16, e0: i16) -> __m64 {
     _mm_setr_pi16(e0, e1, e2, e3)
 }
 
 /// Set packed 32-bit integers in dst with the supplied values.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set_pi32(e1: i32, e0: i32) -> __m64 {
     _mm_setr_pi32(e0, e1)
 }
 
 /// Set packed 8-bit integers in dst with the supplied values.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set_pi8(
     e7: i8, e6: i8, e5: i8, e4: i8, e3: i8, e2: i8, e1: i8, e0: i8
 ) -> __m64 {
@@ -386,21 +386,21 @@ pub unsafe fn _mm_set_pi8(
 
 /// Broadcast 16-bit integer a to all all elements of dst.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set1_pi16(a: i16) -> __m64 {
     _mm_setr_pi16(a, a, a, a)
 }
 
 /// Broadcast 32-bit integer a to all all elements of dst.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set1_pi32(a: i32) -> __m64 {
     _mm_setr_pi32(a, a)
 }
 
 /// Broadcast 8-bit integer a to all all elements of dst.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 pub unsafe fn _mm_set1_pi8(a: i8) -> __m64 {
     _mm_setr_pi8(a, a, a, a, a, a, a, a)
 }
@@ -408,7 +408,7 @@ pub unsafe fn _mm_set1_pi8(a: i8) -> __m64 {
 /// Set packed 16-bit integers in dst with the supplied values in reverse
 /// order.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 pub unsafe fn _mm_setr_pi16(e0: i16, e1: i16, e2: i16, e3: i16) -> __m64 {
     mem::transmute(i16x4::new(e0, e1, e2, e3))
 }
@@ -416,14 +416,14 @@ pub unsafe fn _mm_setr_pi16(e0: i16, e1: i16, e2: i16, e3: i16) -> __m64 {
 /// Set packed 32-bit integers in dst with the supplied values in reverse
 /// order.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 pub unsafe fn _mm_setr_pi32(e0: i32, e1: i32) -> __m64 {
     mem::transmute(i32x2::new(e0, e1))
 }
 
 /// Set packed 8-bit integers in dst with the supplied values in reverse order.
 #[inline(always)]
-#[target_feature = "+mmx"]
+#[target_feature(enable = "mmx")]
 pub unsafe fn _mm_setr_pi8(
     e0: i8, e1: i8, e2: i8, e3: i8, e4: i8, e5: i8, e6: i8, e7: i8
 ) -> __m64 {

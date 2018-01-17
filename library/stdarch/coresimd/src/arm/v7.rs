@@ -36,7 +36,8 @@ pub unsafe fn _clz_u32(x: u32) -> u32 {
 /// Reverse the bit order.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(rbit))]
-#[cfg_attr(target_arch = "arm", target_feature = "+v7")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg(dont_compile_me)] // FIXME need to add `v7` upstream in rustc
 pub unsafe fn _rbit_u32(x: u32) -> u32 {
     rbit_u32(x as i32) as u32
 }
@@ -73,6 +74,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(dont_compile_me)] // FIXME need to add `v7` upstream in rustc
     fn _rbit_u32() {
         unsafe {
             assert_eq!(

@@ -10,7 +10,7 @@ use stdsimd_test::assert_instr;
 /// Compare packed 64-bit integers in `a` and `b` for greater-than,
 /// return the results.
 #[inline(always)]
-#[target_feature = "+sse4.2"]
+#[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpgtq))]
 pub unsafe fn _mm_cmpgt_epi64(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(simd_gt::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))

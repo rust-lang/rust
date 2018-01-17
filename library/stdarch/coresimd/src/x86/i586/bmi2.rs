@@ -21,7 +21,7 @@ use stdsimd_test::assert_instr;
 // LLVM BUG (should be mulxl): https://bugs.llvm.org/show_bug.cgi?id=34232
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(imul))]
 #[cfg_attr(all(test, target_arch = "x86"), assert_instr(mulx))]
-#[target_feature = "+bmi2"]
+#[target_feature(enable = "bmi2")]
 pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
     let result: u64 = (a as u64) * (b as u64);
     *hi = (result >> 32) as u32;
@@ -34,7 +34,7 @@ pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
 /// the low half and the high half of the result.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(mulx))]
-#[target_feature = "+bmi2"]
+#[target_feature(enable = "bmi2")]
 #[cfg(not(target_arch = "x86"))] // calls an intrinsic
 pub unsafe fn _mulx_u64(a: u64, b: u64, hi: &mut u64) -> u64 {
     let result: u128 = (a as u128) * (b as u128);
@@ -44,7 +44,7 @@ pub unsafe fn _mulx_u64(a: u64, b: u64, hi: &mut u64) -> u64 {
 
 /// Zero higher bits of `a` >= `index`.
 #[inline(always)]
-#[target_feature = "+bmi2"]
+#[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(bzhi))]
 pub unsafe fn _bzhi_u32(a: u32, index: u32) -> u32 {
     x86_bmi2_bzhi_32(a, index)
@@ -52,7 +52,7 @@ pub unsafe fn _bzhi_u32(a: u32, index: u32) -> u32 {
 
 /// Zero higher bits of `a` >= `index`.
 #[inline(always)]
-#[target_feature = "+bmi2"]
+#[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(bzhi))]
 #[cfg(not(target_arch = "x86"))]
 pub unsafe fn _bzhi_u64(a: u64, index: u32) -> u64 {
@@ -62,7 +62,7 @@ pub unsafe fn _bzhi_u64(a: u64, index: u32) -> u64 {
 /// Scatter contiguous low order bits of `a` to the result at the positions
 /// specified by the `mask`.
 #[inline(always)]
-#[target_feature = "+bmi2"]
+#[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pdep))]
 pub unsafe fn _pdep_u32(a: u32, mask: u32) -> u32 {
     x86_bmi2_pdep_32(a, mask)
@@ -71,7 +71,7 @@ pub unsafe fn _pdep_u32(a: u32, mask: u32) -> u32 {
 /// Scatter contiguous low order bits of `a` to the result at the positions
 /// specified by the `mask`.
 #[inline(always)]
-#[target_feature = "+bmi2"]
+#[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pdep))]
 #[cfg(not(target_arch = "x86"))]
 pub unsafe fn _pdep_u64(a: u64, mask: u64) -> u64 {
@@ -81,7 +81,7 @@ pub unsafe fn _pdep_u64(a: u64, mask: u64) -> u64 {
 /// Gathers the bits of `x` specified by the `mask` into the contiguous low
 /// order bit positions of the result.
 #[inline(always)]
-#[target_feature = "+bmi2"]
+#[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pext))]
 pub unsafe fn _pext_u32(a: u32, mask: u32) -> u32 {
     x86_bmi2_pext_32(a, mask)
@@ -90,7 +90,7 @@ pub unsafe fn _pext_u32(a: u32, mask: u32) -> u32 {
 /// Gathers the bits of `x` specified by the `mask` into the contiguous low
 /// order bit positions of the result.
 #[inline(always)]
-#[target_feature = "+bmi2"]
+#[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pext))]
 #[cfg(not(target_arch = "x86"))]
 pub unsafe fn _pext_u64(a: u64, mask: u64) -> u64 {
