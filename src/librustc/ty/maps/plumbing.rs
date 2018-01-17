@@ -982,4 +982,7 @@ impl_load_from_cache!(
     ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
     ContainsExternIndicator => contains_extern_indicator,
     CheckMatch => check_match,
+    TypeOfItem => type_of,
+    PredicatesOfItem => predicates_of,
+    UsedTraitImports => used_trait_imports,
 );
