@@ -624,20 +624,26 @@ declare_lint! {
 }
 
 
-/// **What it does:** Checks for using `fold` to implement `any`.
+/// **What it does:** Checks for using `fold` when a more succint alternative exists.
+/// Specifically, this checks for `fold`s which could be replaced by `any`, `all`,
+/// `sum` or `product`.
 ///
 /// **Why is this bad?** Readability.
 ///
-/// **Known problems:** Changes semantics - the suggested replacement is short-circuiting.
+/// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
 /// let _ = (0..3).fold(false, |acc, x| acc || x > 2);
 /// ```
+/// This could be written as:
+/// ```rust
+/// let _ = (0..3).any(|x| x > 2);
+/// ```
 declare_lint! {
-    pub FOLD_ANY,
+    pub UNNECESSARY_FOLD,
     Warn,
-    "using `fold` to emulate the behaviour of `any`"
+    "using `fold` when a more succint alternative exists"
 }
 
 impl LintPass for Pass {
@@ -671,7 +677,7 @@ impl LintPass for Pass {
             STRING_EXTEND_CHARS,
             ITER_CLONED_COLLECT,
             USELESS_ASREF,
-            FOLD_ANY
+            UNNECESSARY_FOLD
         )
     }
 }
@@ -736,7 +742,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 } else if let Some(arglists) = method_chain_args(expr, &["as_mut"]) {
                     lint_asref(cx, expr, "as_mut", arglists[0]);
                 } else if let Some(arglists) = method_chain_args(expr, &["fold"]) {
-                    lint_fold_any(cx, expr, arglists[0]);
+                    lint_unnecessary_fold(cx, expr, arglists[0]);
                 }
 
                 lint_or_fun_call(cx, expr, &method_call.name.as_str(), args);
@@ -1125,7 +1131,7 @@ fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir
     }
 }
 
-fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
+fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
     // Check that this is a call to Iterator::fold rather than just some function called fold
     if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
@@ -1138,7 +1144,8 @@ fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
         cx: &LateContext,
         fold_args: &[hir::Expr],
         op: hir::BinOp_,
-        replacement_method_name: &str) {
+        replacement_method_name: &str,
+        replacement_has_args: bool) {
 
         if_chain! {
             // Extract the body of the closure passed to fold
@@ -1158,24 +1165,31 @@ fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
             if path.segments.len() == 1 && &path.segments[0].name == &first_arg_ident;
 
             then {
-                let right_source = snippet(cx, right_expr.span, "EXPR");
-
                 // Span containing `.fold(...)`
                 let fold_span = fold_args[0].span.next_point().with_hi(fold_args[2].span.hi() + BytePos(1));
 
-                span_lint_and_sugg(
-                    cx,
-                    FOLD_ANY,
-                    fold_span,
-                    // TODO: don't suggest e.g. .any(|x| f(x)) if we can suggest .any(f)
-                    "this `.fold` can be written more succinctly using another method",
-                    "try",
+                let sugg = if replacement_has_args {
                     format!(
                         ".{replacement}(|{s}| {r})",
                         replacement = replacement_method_name,
                         s = second_arg_ident,
-                        r = right_source
+                        r = snippet(cx, right_expr.span, "EXPR")
                     )
+                } else {
+                    format!(
+                        ".{replacement}()",
+                        replacement = replacement_method_name,
+                    )
+                };
+
+                span_lint_and_sugg(
+                    cx,
+                    UNNECESSARY_FOLD,
+                    fold_span,
+                    // TODO: don't suggest e.g. .any(|x| f(x)) if we can suggest .any(f)
+                    "this `.fold` can be written more succinctly using another method",
+                    "try",
+                    sugg
                 );
             }
         }
@@ -1186,16 +1200,16 @@ fn lint_fold_any(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::Expr]) {
         hir::ExprLit(ref lit) => {
             match lit.node {
                 ast::LitKind::Bool(false) => check_fold_with_op(
-                    cx, fold_args, hir::BinOp_::BiOr, "any"
+                    cx, fold_args, hir::BinOp_::BiOr, "any", true
                 ),
                 ast::LitKind::Bool(true) => check_fold_with_op(
-                    cx, fold_args, hir::BinOp_::BiAnd, "all"
+                    cx, fold_args, hir::BinOp_::BiAnd, "all", true
                 ),
                 ast::LitKind::Int(0, _) => check_fold_with_op(
-                    cx, fold_args, hir::BinOp_::BiAdd, "sum"
+                    cx, fold_args, hir::BinOp_::BiAdd, "sum", false
                 ),
                 ast::LitKind::Int(1, _) => check_fold_with_op(
-                    cx, fold_args, hir::BinOp_::BiMul, "product"
+                    cx, fold_args, hir::BinOp_::BiMul, "product", false
                 ),
                 _ => return
             }
