@@ -248,7 +248,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         "using `string::to_string` is common even today and specialization will likely happen soon",
     );
     store.register_removed(
-        "is_unit_expr",
+        "unit_expr",
         "superseded by `let_unit_value` and `unit_arg`",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
