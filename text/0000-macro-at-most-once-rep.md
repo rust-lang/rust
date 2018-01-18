@@ -124,11 +124,13 @@ Reference-level explanation
 
 `?` is identical to `+` and `*` in use except that it represents "at most once" repetition.
 
-Drawbacks
----------
-While there are grammar ambiguities, they can be easily fixed, as noted by @kennytm [here](https://internals.rust-lang.org/t/pre-rfc-at-most-one-repetition-macro-patterns/6557/2?u=mark-i-m):
+Introducing `?` into the grammar for macro repetition introduces an easily fixable ambiguity, as noted by @kennytm [here](https://internals.rust-lang.org/t/pre-rfc-at-most-one-repetition-macro-patterns/6557/2?u=mark-i-m):
 
   > There is ambiguity: $($x:ident)?+ today matches a?b?c and not a+. Fortunately this is easy to resolve: you just look one more token ahead and always treat ?* and ?+ to mean separate by the question mark token.
+
+Drawbacks
+---------
+While there are grammar ambiguities, they can be easily fixed.
 
 Rationale and Alternatives
 --------------------------
