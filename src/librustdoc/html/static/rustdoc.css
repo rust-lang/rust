@@ -589,9 +589,9 @@ body.blur > :not(#help) {
 	border: 1px solid;
 }
 #help dt {
-    float: left;
-    clear: left;
-    display: block;
+	float: left;
+	clear: left;
+	display: block;
 }
 #help dd { margin: 5px 35px; }
 #help .infos { padding-left: 0; }

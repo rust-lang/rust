@@ -340,10 +340,9 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 kbd {
-    color: #444d56;
-    background-color: #fafbfc;
-    border-color: #d1d5da;
-    border-bottom-color: #c6cbd1;
-    box-shadow-color: #c6cbd1;
+	color: #444d56;
+	background-color: #fafbfc;
+	border-color: #d1d5da;
+	border-bottom-color: #c6cbd1;
+	box-shadow-color: #c6cbd1;
 }
-
