@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `s`
+  --> $DIR/issue-29723.rs:22:13
+   |
+18 |         0 if { drop(s); false } => String::from("oops"),
+   |                     - value moved here
+...
+22 |             s
+   |             ^ value used here after move
+   |
+   = note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
