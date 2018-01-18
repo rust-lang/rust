@@ -182,9 +182,9 @@ fn match_type_parameter(cx: &LateContext, qpath: &QPath, path: &[&str]) -> bool 
     if_chain! {
         if let Some(ref params) = last.parameters;
         if !params.parenthesized;
-        if let Some(vec) = params.types.get(0);
-        if let TyPath(ref qpath) = vec.node;
-        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id)));
+        if let Some(ty) = params.types.get(0);
+        if let TyPath(ref qpath) = ty.node;
+        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(ty.id)));
         if match_def_path(cx.tcx, did, path);
         then {
             return true;
