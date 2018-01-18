@@ -513,8 +513,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                (type_is_local || info.def_id.is_local())
-                    && self.associated_item(info.def_id, item_name, Namespace::Value).is_some()
+                (type_is_local || info.def_id.is_local()) &&
+                    self.associated_item(info.def_id, item_name, Namespace::Value)
+                        .filter(|item| {
+                            // We only want to suggest public or local traits (#45781).
+                            item.vis == ty::Visibility::Public || info.def_id.is_local()
+                        })
+                        .is_some()
             })
             .collect::<Vec<_>>();
 

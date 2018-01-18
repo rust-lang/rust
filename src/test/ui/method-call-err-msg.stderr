@@ -38,10 +38,8 @@ error[E0599]: no method named `take` found for type `Foo` in the current scope
            `&mut Foo : std::iter::Iterator`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following traits define an item `take`, perhaps you need to implement one of them:
-           candidate #1: `std::collections::hash::Recover`
-           candidate #2: `std::io::Read`
-           candidate #3: `std::iter::Iterator`
-           candidate #4: `alloc::btree::Recover`
+           candidate #1: `std::io::Read`
+           candidate #2: `std::iter::Iterator`
 
 error: aborting due to 4 previous errors
 
