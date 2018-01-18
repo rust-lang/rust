@@ -17,6 +17,12 @@ error: this argument is passed by value, but not consumed in the function body
    |
 26 | fn bar(x: String, y: Wrapper) {
    |                      ^^^^^^^ help: consider taking a reference instead: `&Wrapper`
+   |
+help: consider marking this type as Copy if possible
+  --> $DIR/needless_pass_by_value.rs:24:1
+   |
+24 | struct Wrapper(String);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:32:71
@@ -40,12 +46,24 @@ error: this argument is passed by value, but not consumed in the function body
    |
 57 | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                        ^^^^^^^ help: consider taking a reference instead: `&Wrapper`
+   |
+help: consider marking this type as Copy if possible
+  --> $DIR/needless_pass_by_value.rs:24:1
+   |
+24 | struct Wrapper(String);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:57:36
    |
 57 | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                                    ^^^^^^^
+   |
+help: consider marking this type as Copy if possible
+  --> $DIR/needless_pass_by_value.rs:24:1
+   |
+24 | struct Wrapper(String);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 help: consider taking a reference instead
    |
 57 | fn test_destructure(x: Wrapper, y: &Wrapper, z: Wrapper) {
@@ -123,6 +141,12 @@ error: this argument is passed by value, but not consumed in the function body
     |
 101 |         _s: Self,
     |             ^^^^ help: consider taking a reference instead: `&Self`
+    |
+help: consider marking this type as Copy if possible
+   --> $DIR/needless_pass_by_value.rs:82:1
+    |
+82  | struct S<T, U>(T, U);
+    | ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 16 previous errors
 
