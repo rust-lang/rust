@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.3.6] 2018-01-18
+
+### Fixed
+
+- Fix panicking on formatting certain macros (#2371).
+
 ## [0.3.5] 2018-01-15
 
 ### Changed
