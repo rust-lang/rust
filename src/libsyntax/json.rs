@@ -121,6 +121,8 @@ struct DiagnosticSpan {
     /// If we are suggesting a replacement, this will contain text
     /// that should be sliced in atop this span.
     suggested_replacement: Option<String>,
+    /// If the suggestion is approximate
+    suggestion_approximate: Option<bool>,
     /// Macro invocations that created the code at this span, if any.
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
@@ -220,7 +222,7 @@ impl Diagnostic {
 
 impl DiagnosticSpan {
     fn from_span_label(span: SpanLabel,
-                       suggestion: Option<&String>,
+                       suggestion: Option<(&String, bool)>,
                        je: &JsonEmitter)
                        -> DiagnosticSpan {
         Self::from_span_etc(span.span,
@@ -233,7 +235,7 @@ impl DiagnosticSpan {
     fn from_span_etc(span: Span,
                      is_primary: bool,
                      label: Option<String>,
-                     suggestion: Option<&String>,
+                     suggestion: Option<(&String, bool)>,
                      je: &JsonEmitter)
                      -> DiagnosticSpan {
         // obtain the full backtrace from the `macro_backtrace`
@@ -253,7 +255,7 @@ impl DiagnosticSpan {
     fn from_span_full(span: Span,
                       is_primary: bool,
                       label: Option<String>,
-                      suggestion: Option<&String>,
+                      suggestion: Option<(&String, bool)>,
                       mut backtrace: vec::IntoIter<MacroBacktrace>,
                       je: &JsonEmitter)
                       -> DiagnosticSpan {
@@ -291,7 +293,8 @@ impl DiagnosticSpan {
             column_end: end.col.0 + 1,
             is_primary,
             text: DiagnosticSpanLine::from_span(span, je),
-            suggested_replacement: suggestion.cloned(),
+            suggested_replacement: suggestion.map(|x| x.0.clone()),
+            suggestion_approximate: suggestion.map(|x| x.1),
             expansion: backtrace_step,
             label,
         }
@@ -309,14 +312,15 @@ impl DiagnosticSpan {
         suggestion.substitutions
                       .iter()
                       .flat_map(|substitution| {
-                          substitution.parts.iter().map(move |suggestion| {
+                          substitution.parts.iter().map(move |suggestion_inner| {
                               let span_label = SpanLabel {
-                                  span: suggestion.span,
+                                  span: suggestion_inner.span,
                                   is_primary: true,
                                   label: None,
                               };
                               DiagnosticSpan::from_span_label(span_label,
-                                                              Some(&suggestion.snippet),
+                                                              Some((&suggestion_inner.snippet,
+                                                                   suggestion.approximate)),
                                                               je)
                           })
                       })
