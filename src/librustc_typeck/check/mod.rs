@@ -2148,8 +2148,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ if self.is_tainted_by_errors() => self.tcx().types.err,
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
-            Neither if self.type_var_diverges(ty) && fallback == Fallback::Full
-                            => self.tcx.mk_diverging_default(),
+            Neither if self.type_var_diverges(ty) => {
+                match fallback {
+                    Fallback::Full => self.tcx.mk_diverging_default(),
+                    Fallback::Numeric => return,
+                }
+            }
             Neither => return
         };
         debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);

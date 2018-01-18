@@ -290,6 +290,9 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
             }
             CastError::UnknownCastPtrKind |
             CastError::UnknownExprPtrKind => {
+                if fcx.is_tainted_by_errors() {
+                    return;
+                }
                 let unknown_cast_to = match e {
                     CastError::UnknownCastPtrKind => true,
                     CastError::UnknownExprPtrKind => false,
