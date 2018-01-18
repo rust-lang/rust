@@ -18,6 +18,8 @@
 //! [wiki_avx]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
+use core::mem;
+
 use simd_llvm::simd_cast;
 use simd_llvm::{simd_shuffle2, simd_shuffle4, simd_shuffle8};
 use simd_llvm::{simd_shuffle16, simd_shuffle32};
@@ -1661,9 +1663,10 @@ pub unsafe fn _mm256_permute2x128_si256(
 pub unsafe fn _mm256_permute4x64_pd(a: f64x4, imm8: i32) -> f64x4 {
     use x86::i586::avx::_mm256_undefined_pd;
     let imm8 = (imm8 & 0xFF) as u8;
+    let undef: f64x4 = mem::transmute(_mm256_undefined_pd());
     macro_rules! shuffle_done {
         ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
-            simd_shuffle4(a, _mm256_undefined_pd(), [$x01, $x23, $x45, $x67])
+            simd_shuffle4(a, undef, [$x01, $x23, $x45, $x67])
         }
     }
     macro_rules! shuffle_x67 {

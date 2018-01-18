@@ -15,7 +15,18 @@ pub struct __m128(f32, f32, f32, f32);
 #[allow(non_camel_case_types)]
 pub struct __m128d(f64, f64);
 
+#[repr(simd)]
+#[derive(Clone, Copy, Debug)]
+#[allow(non_camel_case_types)]
+pub struct __m256(f32, f32, f32, f32, f32, f32, f32, f32);
+
+#[repr(simd)]
+#[derive(Clone, Copy, Debug)]
+#[allow(non_camel_case_types)]
+pub struct __m256d(f64, f64, f64, f64);
+
 pub use v128::__m128i;
+pub use v256::__m256i;
 pub use v64::__m64;
 
 #[cfg(test)]
@@ -72,6 +83,57 @@ trait m128iExt: Sized {
 impl m128iExt for __m128i {
     #[inline(always)]
     fn as_m128i(self) -> __m128i { self }
+}
+
+#[doc(hidden)]
+#[allow(non_camel_case_types)]
+trait m256iExt: Sized {
+    fn as_m256i(self) -> __m256i;
+
+    #[inline(always)]
+    fn as_u8x32(self) -> ::v256::u8x32 {
+        unsafe { mem::transmute(self.as_m256i()) }
+    }
+
+    #[inline(always)]
+    fn as_u16x16(self) -> ::v256::u16x16 {
+        unsafe { mem::transmute(self.as_m256i()) }
+    }
+
+    #[inline(always)]
+    fn as_u32x8(self) -> ::v256::u32x8 {
+        unsafe { mem::transmute(self.as_m256i()) }
+    }
+
+    #[inline(always)]
+    fn as_u64x4(self) -> ::v256::u64x4 {
+        unsafe { mem::transmute(self.as_m256i()) }
+    }
+
+    #[inline(always)]
+    fn as_i8x32(self) -> ::v256::i8x32 {
+        unsafe { mem::transmute(self.as_m256i()) }
+    }
+
+    #[inline(always)]
+    fn as_i16x16(self) -> ::v256::i16x16 {
+        unsafe { mem::transmute(self.as_m256i()) }
+    }
+
+    #[inline(always)]
+    fn as_i32x8(self) -> ::v256::i32x8 {
+        unsafe { mem::transmute(self.as_m256i()) }
+    }
+
+    #[inline(always)]
+    fn as_i64x4(self) -> ::v256::i64x4 {
+        unsafe { mem::transmute(self.as_m256i()) }
+    }
+}
+
+impl m256iExt for __m256i {
+    #[inline(always)]
+    fn as_m256i(self) -> __m256i { self }
 }
 
 mod i386;

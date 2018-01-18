@@ -1,7 +1,5 @@
 //! Utilities used in testing the x86 intrinsics
 
-use std::mem;
-
 use x86::*;
 
 #[target_feature(enable = "sse2")]
@@ -14,7 +12,7 @@ pub unsafe fn assert_eq_m128d(a: __m128d, b: __m128d) {
 #[target_feature(enable = "sse2")]
 pub unsafe fn get_m128d(a: __m128d, idx: usize) -> f64 {
     union A { a: __m128d, b: [f64; 2] };
-    mem::transmute::<__m128d, A>(a).b[idx]
+    A { a }.b[idx]
 }
 
 #[target_feature(enable = "sse")]
@@ -28,7 +26,7 @@ pub unsafe fn assert_eq_m128(a: __m128, b: __m128) {
 #[target_feature(enable = "sse")]
 pub unsafe fn get_m128(a: __m128, idx: usize) -> f32 {
     union A { a: __m128, b: [f32; 4] };
-    mem::transmute::<__m128, A>(a).b[idx]
+    A { a }.b[idx]
 }
 
 // not actually an intrinsic but useful in various tests as we proted from
@@ -36,4 +34,32 @@ pub unsafe fn get_m128(a: __m128, idx: usize) -> f32 {
 #[target_feature(enable = "sse2")]
 pub unsafe fn _mm_setr_epi64x(a: i64, b: i64) -> __m128i {
     _mm_set_epi64x(b, a)
+}
+
+#[target_feature(enable = "avx")]
+pub unsafe fn assert_eq_m256d(a: __m256d, b: __m256d) {
+    let cmp = _mm256_cmp_pd(a, b, _CMP_EQ_OQ);
+    if _mm256_movemask_pd(cmp) != 0b1111 {
+        panic!("{:?} != {:?}", a, b);
+    }
+}
+
+#[target_feature(enable = "avx")]
+pub unsafe fn get_m256d(a: __m256d, idx: usize) -> f64 {
+    union A { a: __m256d, b: [f64; 4] };
+    A { a }.b[idx]
+}
+
+#[target_feature(enable = "avx")]
+pub unsafe fn assert_eq_m256(a: __m256, b: __m256) {
+    let cmp = _mm256_cmp_ps(a, b, _CMP_EQ_OQ);
+    if _mm256_movemask_ps(cmp) != 0b11111111 {
+        panic!("{:?} != {:?}", a, b);
+    }
+}
+
+#[target_feature(enable = "avx")]
+pub unsafe fn get_m256(a: __m256, idx: usize) -> f32 {
+    union A { a: __m256, b: [f32; 8] };
+    A { a }.b[idx]
 }
