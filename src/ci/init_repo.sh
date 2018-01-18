@@ -36,6 +36,12 @@ fi
 rm -rf "$CACHE_DIR"
 mkdir "$CACHE_DIR"
 
+# On the beta channel we'll be automatically calculating the prerelease version
+# via the git history, so unshallow our shallow clone from CI.
+if grep -q RUST_RELEASE_CHANNEL=beta src/ci/run.sh; then
+  git fetch origin --unshallow beta master
+fi
+
 travis_fold start update_cache
 travis_time_start
 
