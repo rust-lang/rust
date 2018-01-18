@@ -24,7 +24,7 @@ fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgTyp
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector => arg.layout.size.bits() == 128
+            RegKind::Vector => arg.layout.size.bits() == 256
         };
 
         if valid_unit {
@@ -50,7 +50,7 @@ fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) 
     }
     let size = ret.layout.size;
     let bits = size.bits();
-    if bits <= 128 {
+    if bits <= 256 {
         let unit = if bits <= 8 {
             Reg::i8()
         } else if bits <= 16 {
@@ -84,6 +84,11 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) 
     }
 
     let total = arg.layout.size;
+    if total.bits() > 128 {
+        arg.make_indirect(cx);
+        return;
+    }
+
     arg.cast_to(Uniform {
         unit: Reg::i64(),
         total
