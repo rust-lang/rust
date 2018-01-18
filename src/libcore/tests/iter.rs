@@ -1403,6 +1403,7 @@ fn test_repeat() {
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
     assert_eq!(it.next(), Some(42));
+    assert_eq!(it.nth(usize::MAX), Some(42));
 }
 
 #[test]
