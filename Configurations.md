@@ -1179,21 +1179,22 @@ fn main() {
 #### `true`:
 
 ```rust
-
-result.and_then(|maybe_value| {
-    match maybe_value {
-        None => ...,
-        Some(value) => ...,
-    }
-})
-
-match lorem {
-    None => {
-        if ipsum {
-            println!("Hello World");
+fn main() {
+    result.and_then(|maybe_value| {
+        match maybe_value {
+            None => foo(),
+            Some(value) => bar(),
         }
+    });
+
+    match lorem {
+        None => {
+            if ipsum {
+                println!("Hello World");
+            }
+        }
+        Some(dolor) => foo(),
     }
-    Some(dolor) => ...,
 }
 ```
 
