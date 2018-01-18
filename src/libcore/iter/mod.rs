@@ -2286,16 +2286,7 @@ impl<I> Iterator for Take<I> where I: Iterator{
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (lower, upper) = self.iter.size_hint();
-
-        let lower = cmp::min(lower, self.n);
-
-        let upper = match upper {
-            Some(x) if x < self.n => Some(x),
-            _ => Some(self.n)
-        };
-
-        (lower, upper)
+        TakeImpl::size_hint(self)
     }
 
     #[inline]
@@ -2316,11 +2307,49 @@ impl<I> Iterator for Take<I> where I: Iterator{
     }
 }
 
+trait TakeImpl {
+    fn size_hint(&self) -> (usize, Option<usize>);
+}
+
+impl<I: Iterator> TakeImpl for Take<I> {
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lower, upper) = self.iter.size_hint();
+
+        let lower = cmp::min(lower, self.n);
+
+        let upper = match upper {
+            Some(x) if x < self.n => Some(x),
+            _ => Some(self.n)
+        };
+
+        (lower, upper)
+    }
+}
+
+impl<I: TrustedLen> TakeImpl for Take<I> {
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lower, upper) = self.iter.size_hint();
+        match upper {
+            None => (self.n, Some(self.n)),
+            Some(x) => {
+                debug_assert_eq!(x, lower);
+                let count = cmp::min(lower, self.n);
+                (count, Some(count))
+            }
+        }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 
 #[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I: TrustedLen> TrustedLen for Take<I> {}
 
 /// An iterator to maintain state while iterating another iterator.
 ///
