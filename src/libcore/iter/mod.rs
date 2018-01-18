@@ -694,6 +694,18 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
             (f(inner_hint.0), inner_hint.1.map(f))
         }
     }
+
+    #[inline]
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
+        if self.first_take {
+            if n == 0 {
+                self.first_take = false;
+                return self.iter.next()
+            }
+            n -= 1;
+        }
+        self.iter.nth(n * self.step)
+    }
 }
 
 // StepBy can only make the iterator shorter, so the len will still fit.
