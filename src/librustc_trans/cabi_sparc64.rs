@@ -85,7 +85,7 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) 
 
     let total = arg.layout.size;
     if total.bits() > 128 {
-        arg.make_indirect(cx);
+        arg.make_indirect();
         return;
     }
 
