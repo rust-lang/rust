@@ -1362,7 +1362,7 @@ impl<'a> Parser<'a> {
 
         self.expect_keyword(keywords::Fn)?;
         let (inputs, variadic) = self.parse_fn_args(false, true)?;
-        let ret_ty = self.parse_ret_ty()?;
+        let ret_ty = self.parse_ret_ty(false)?;
         let decl = P(FnDecl {
             inputs,
             output: ret_ty,
@@ -1501,9 +1501,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse optional return type [ -> TY ] in function decl
-    pub fn parse_ret_ty(&mut self) -> PResult<'a, FunctionRetTy> {
+    fn parse_ret_ty(&mut self, allow_plus: bool) -> PResult<'a, FunctionRetTy> {
         if self.eat(&token::RArrow) {
-            Ok(FunctionRetTy::Ty(self.parse_ty_no_plus()?))
+            Ok(FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true)?))
         } else {
             Ok(FunctionRetTy::Default(self.span.with_hi(self.span.lo())))
         }
@@ -4893,7 +4893,7 @@ impl<'a> Parser<'a> {
     pub fn parse_fn_decl(&mut self, allow_variadic: bool) -> PResult<'a, P<FnDecl>> {
 
         let (args, variadic) = self.parse_fn_args(true, allow_variadic)?;
-        let ret_ty = self.parse_ret_ty()?;
+        let ret_ty = self.parse_ret_ty(true)?;
 
         Ok(P(FnDecl {
             inputs: args,
@@ -5034,7 +5034,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::CloseDelim(token::Paren))?;
         Ok(P(FnDecl {
             inputs: fn_inputs,
-            output: self.parse_ret_ty()?,
+            output: self.parse_ret_ty(true)?,
             variadic: false
         }))
     }
@@ -5056,7 +5056,7 @@ impl<'a> Parser<'a> {
                 args
             }
         };
-        let output = self.parse_ret_ty()?;
+        let output = self.parse_ret_ty(true)?;
 
         Ok(P(FnDecl {
             inputs: inputs_captures,
