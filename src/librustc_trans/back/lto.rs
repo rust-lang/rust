@@ -607,7 +607,7 @@ impl ThinModule {
         // into that context. One day, however, we may do this for upstream
         // crates but for locally translated modules we may be able to reuse
         // that LLVM Context and Module.
-        let llcx = llvm::LLVMContextCreate();
+        let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
         let llmod = llvm::LLVMRustParseBitcodeForThinLTO(
             llcx,
             self.data().as_ptr(),

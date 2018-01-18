@@ -197,7 +197,7 @@ pub fn is_pie_binary(sess: &Session) -> bool {
 }
 
 pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
-    let llcx = llvm::LLVMContextCreate();
+    let llcx = llvm::LLVMRustContextCreate(sess.fewer_names());
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 

@@ -787,6 +787,7 @@ impl Build {
                 .arg("ls-remote")
                 .arg("origin")
                 .arg("beta")
+                .current_dir(&self.src)
         );
         let beta = beta.trim().split_whitespace().next().unwrap();
         let master = output(
@@ -794,6 +795,7 @@ impl Build {
                 .arg("ls-remote")
                 .arg("origin")
                 .arg("master")
+                .current_dir(&self.src)
         );
         let master = master.trim().split_whitespace().next().unwrap();
 
@@ -802,7 +804,8 @@ impl Build {
             Command::new("git")
                 .arg("merge-base")
                 .arg(beta)
-                .arg(master),
+                .arg(master)
+                .current_dir(&self.src),
         );
         let base = base.trim();
 
@@ -813,7 +816,8 @@ impl Build {
                 .arg("rev-list")
                 .arg("--count")
                 .arg("--merges")
-                .arg(format!("{}...HEAD", base)),
+                .arg(format!("{}...HEAD", base))
+                .current_dir(&self.src),
         );
         let n = count.trim().parse().unwrap();
         self.prerelease_version.set(Some(n));
