@@ -271,6 +271,7 @@ fn issue2214() {
 }
 
 fn special_case_macros() {
+    let p = eprint!();
     let q = eprint!("{}", 1);
     let r = eprint!(
         "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
@@ -691,6 +692,8 @@ fn special_case_macros() {
         26
     );
 
+    assert!();
+    assert!(result == 42);
     assert!(result == 42, "Ahoy there, {}!", target);
     assert!(
         result == 42,
@@ -730,6 +733,9 @@ fn special_case_macros() {
         26
     );
 
+    assert_eq!();
+    assert_eq!(left);
+    assert_eq!(left, right);
     assert_eq!(left, right, "Ahoy there, {}!", target);
     assert_eq!(
         left, right,

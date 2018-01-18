@@ -218,6 +218,7 @@ make_test!(str_searcher_ascii_haystack, "bb", "abbcbbd", [
 }
 
 fn special_case_macros() {
+    let p = eprint!();
     let q = eprint!("{}", 1);
     let r = eprint!("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
     let s = eprint!("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26);
@@ -266,10 +267,15 @@ fn special_case_macros() {
     warn!("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
     warn!("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26);
 
+    assert!();
+    assert!(result == 42);
     assert!(result == 42, "Ahoy there, {}!", target);
     assert!(result == 42, "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')", result, input, expected);
     assert!(result == 42, "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26);
 
+    assert_eq!();
+    assert_eq!(left);
+    assert_eq!(left, right);
     assert_eq!(left, right, "Ahoy there, {}!", target);
     assert_eq!(left, right, "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')", result, input, expected);
     assert_eq!(first_realllllllllllly_long_variable_that_doesnt_fit_one_one_line, second_reallllllllllly_long_variable_that_doesnt_fit_one_one_line, "Arr! While plunderin' the hold, we got '{}' when given '{}' (we expected '{}')", result, input, expected);
