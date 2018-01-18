@@ -145,7 +145,7 @@ tuple struct directly in the `impl` header, or via a type alias.
 
 ## Desugaring
 
-When the compiler encounters the syntactic following form specified in `EBNF`:
+When the compiler encounters the following syntactic form specified in `EBNF`:
 
 ```ebnf
 SelfTupleApply ::= "Self" "(" ExprList ")" ;
