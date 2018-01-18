@@ -15,6 +15,6 @@
 // compile-flags: -Z parse-only
 
 fn foo() -> Vec<usize>> {
-    //~^ ERROR expected one of `!`, `::`, `where`, or `{`, found `>`
+    //~^ ERROR expected one of `!`, `+`, `::`, `where`, or `{`, found `>`
     Vec::new()
 }
