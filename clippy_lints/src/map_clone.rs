@@ -10,7 +10,9 @@ use utils::{is_adjusted, iter_input_pats, match_qpath, match_trait_method, match
 /// **Why is this bad?** It makes the code less readable than using the
 /// `.cloned()` adapter.
 ///
-/// **Known problems:** None.
+/// **Known problems:** Sometimes `.cloned()` requires stricter trait
+/// bound than `.map(|e| e.clone())` (which works because of the coercion).
+/// See [#498](https://github.com/rust-lang-nursery/rust-clippy/issues/498).
 ///
 /// **Example:**
 /// ```rust
