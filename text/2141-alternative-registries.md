@@ -273,7 +273,9 @@ A valid registry index meets the following criteria:
     - `default_features`: whether the parent uses the default features of this dependency or not
     - `target`: on which target this dependency is needed
     - `kind`: can be `normal`, `build`, or `dev` to be a regular dependency, a build-time
-      dependency, or a development dependency
+      dependency, or a development dependency. Note: this is a required field, but a small number of
+      entries exist in the crates.io index with either a missing or null `kind` field due to
+      implementation bugs.
 
 If a dependency's registry is not specified, Cargo will assume the dependency can be located in the
 current registry. By specifying the registry of a dependency in the index, cargo will have the
