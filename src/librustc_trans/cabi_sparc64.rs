@@ -24,7 +24,7 @@ fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgTyp
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector => arg.layout.size.bits() == 256
+            RegKind::Vector => arg.layout.size.bits() == 128
         };
 
         if valid_unit {
