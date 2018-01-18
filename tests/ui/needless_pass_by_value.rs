@@ -4,6 +4,8 @@
 #![warn(needless_pass_by_value)]
 #![allow(dead_code, single_match, if_let_redundant_pattern_matching, many_single_char_names)]
 
+#![feature(collections_range)]
+
 use std::borrow::Borrow;
 use std::convert::AsRef;
 
@@ -112,5 +114,10 @@ trait FalsePositive {
 
 // shouldn't warn on extern funcs
 extern "C" fn ext(x: String) -> usize { x.len() }
+
+// whitelist RangeArgument
+fn range<T: ::std::collections::range::RangeArgument<usize>>(range: T) {
+    let _ = range.start();
+}
 
 fn main() {}

@@ -102,10 +102,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         // Allow `Borrow` or functions to be taken by value
         let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
-        let fn_traits = [
+        let whitelisted_traits = [
             need!(cx.tcx.lang_items().fn_trait()),
             need!(cx.tcx.lang_items().fn_once_trait()),
             need!(cx.tcx.lang_items().fn_mut_trait()),
+            need!(get_trait_def_id(cx, &paths::RANGE_ARGUMENT_TRAIT))
         ];
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
@@ -189,7 +190,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 if !is_self(arg);
                 if !ty.is_mutable_pointer();
                 if !is_copy(cx, ty);
-                if !fn_traits.iter().any(|&t| implements_trait(cx, ty, t, &[]));
+                if !whitelisted_traits.iter().any(|&t| implements_trait(cx, ty, t, &[]));
                 if !implements_borrow_trait;
                 if !all_borrowable_trait;
 
