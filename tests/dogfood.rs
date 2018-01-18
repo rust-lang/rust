@@ -1,5 +1,8 @@
 #[test]
 fn dogfood() {
+    if option_env!("RUSTC_TEST_SUITE").is_some() {
+        return;
+    }
     let root_dir = std::env::current_dir().unwrap();
     for d in &[".", "clippy_lints"] {
         std::env::set_current_dir(root_dir.join(d)).unwrap();
