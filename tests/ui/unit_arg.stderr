@@ -1,0 +1,68 @@
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:23:9
+   |
+23 |     foo({});
+   |         ^^
+   |
+   = note: `-D unit-arg` implied by `-D warnings`
+help: if you intended to pass a unit value, use a unit literal instead
+   |
+23 |     foo(());
+   |         ^^
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:24:9
+   |
+24 |     foo({ 1; });
+   |         ^^^^^^
+help: if you intended to pass a unit value, use a unit literal instead
+   |
+24 |     foo(());
+   |         ^^
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:25:9
+   |
+25 |     foo(foo(1));
+   |         ^^^^^^
+help: if you intended to pass a unit value, use a unit literal instead
+   |
+25 |     foo(());
+   |         ^^
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:26:9
+   |
+26 |       foo({
+   |  _________^
+27 | |         foo(1);
+28 | |         foo(2);
+29 | |     });
+   | |_____^
+help: if you intended to pass a unit value, use a unit literal instead
+   |
+26 |     foo(());
+   |         ^^
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:30:10
+   |
+30 |     foo3({}, 2, 2);
+   |          ^^
+help: if you intended to pass a unit value, use a unit literal instead
+   |
+30 |     foo3((), 2, 2);
+   |          ^^
+
+error: passing a unit value to a function
+  --> $DIR/unit_arg.rs:32:11
+   |
+32 |     b.bar({ 1; });
+   |           ^^^^^^
+help: if you intended to pass a unit value, use a unit literal instead
+   |
+32 |     b.bar(());
+   |           ^^
+
+error: aborting due to 6 previous errors
+

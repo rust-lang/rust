@@ -322,25 +322,22 @@ declare_lint! {
 
 fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
-        match cx.tables.pat_ty(&local.pat).sty {
-            ty::TyTuple(slice, _) if slice.is_empty() => {
-                if in_external_macro(cx, decl.span) || in_macro(local.pat.span) {
-                    return;
-                }
-                if higher::is_from_for_desugar(decl) {
-                    return;
-                }
-                span_lint(
-                    cx,
-                    LET_UNIT_VALUE,
-                    decl.span,
-                    &format!(
-                        "this let-binding has unit value. Consider omitting `let {} =`",
-                        snippet(cx, local.pat.span, "..")
-                    ),
-                );
-            },
-            _ => (),
+        if is_unit(cx.tables.pat_ty(&local.pat)) {
+            if in_external_macro(cx, decl.span) || in_macro(local.pat.span) {
+                return;
+            }
+            if higher::is_from_for_desugar(decl) {
+                return;
+            }
+            span_lint(
+                cx,
+                LET_UNIT_VALUE,
+                decl.span,
+                &format!(
+                    "this let-binding has unit value. Consider omitting `let {} =`",
+                    snippet(cx, local.pat.span, "..")
+                ),
+            );
         }
     }
 }
@@ -395,28 +392,115 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
         }
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
-            if op.is_comparison() {
-                match cx.tables.expr_ty(left).sty {
-                    ty::TyTuple(slice, _) if slice.is_empty() => {
-                        let result = match op {
-                            BiEq | BiLe | BiGe => "true",
-                            _ => "false",
-                        };
-                        span_lint(
-                            cx,
-                            UNIT_CMP,
-                            expr.span,
-                            &format!(
-                                "{}-comparison of unit values detected. This will always be {}",
-                                op.as_str(),
-                                result
-                            ),
-                        );
-                    },
-                    _ => (),
-                }
+            if op.is_comparison() && is_unit(cx.tables.expr_ty(left)) {
+                let result = match op {
+                    BiEq | BiLe | BiGe => "true",
+                    _ => "false",
+                };
+                span_lint(
+                    cx,
+                    UNIT_CMP,
+                    expr.span,
+                    &format!(
+                        "{}-comparison of unit values detected. This will always be {}",
+                        op.as_str(),
+                        result
+                    ),
+                );
             }
         }
+    }
+}
+
+/// **What it does:** Checks for passing a unit value as an argument to a function without using a unit literal (`()`).
+///
+/// **Why is this bad?** This is likely the result of an accidental semicolon.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// foo({
+///   let a = bar();
+///   baz(a);
+/// })
+/// ```
+declare_lint! {
+    pub UNIT_ARG,
+    Warn,
+    "passing unit to a function"
+}
+
+pub struct UnitArg;
+
+impl LintPass for UnitArg {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNIT_ARG)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        if in_macro(expr.span) {
+            return;
+        }
+        match expr.node {
+            ExprCall(_, ref args) | ExprMethodCall(_, _, ref args) => {
+                for arg in args {
+                    if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
+                        let map = &cx.tcx.hir;
+                        // apparently stuff in the desugaring of `?` can trigger this
+                        // so check for that here
+                        // only the calls to `Try::from_error` is marked as desugared,
+                        // so we need to check both the current Expr and its parent.
+                        if !is_questionmark_desugar_marked_call(expr) {
+                            if_chain!{
+                                let opt_parent_node = map.find(map.get_parent_node(expr.id));
+                                if let Some(hir::map::NodeExpr(parent_expr)) = opt_parent_node;
+                                if is_questionmark_desugar_marked_call(parent_expr);
+                                then {}
+                                else {
+                                    // `expr` and `parent_expr` where _both_ not from
+                                    // desugaring `?`, so lint
+                                    span_lint_and_sugg(
+                                        cx,
+                                        UNIT_ARG,
+                                        arg.span,
+                                        "passing a unit value to a function",
+                                        "if you intended to pass a unit value, use a unit literal instead",
+                                        "()".to_string(),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            _ => (),
+        }
+    }
+}
+
+fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
+    use syntax_pos::hygiene::CompilerDesugaringKind;
+    if let ExprCall(ref callee, _) = expr.node {
+        callee.span.is_compiler_desugaring(CompilerDesugaringKind::QuestionMark)
+    } else {
+        false
+    }
+}
+
+fn is_unit(ty: Ty) -> bool {
+    match ty.sty {
+        ty::TyTuple(slice, _) if slice.is_empty() => true,
+        _ => false,
+    }
+}
+
+fn is_unit_literal(expr: &Expr) -> bool {
+    match expr.node {
+        ExprTup(ref slice) if slice.is_empty() => true,
+        _ => false,
     }
 }
 
