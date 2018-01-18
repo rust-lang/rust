@@ -110,4 +110,7 @@ trait FalsePositive {
     }
 }
 
+// shouldn't warn on extern funcs
+extern "C" fn ext(x: String) -> usize { x.len() }
+
 fn main() {}

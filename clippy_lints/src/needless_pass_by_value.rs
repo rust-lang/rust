@@ -6,6 +6,7 @@ use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::traits;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
+use syntax::abi::Abi;
 use syntax::ast::NodeId;
 use syntax_pos::Span;
 use syntax::errors::DiagnosticBuilder;
@@ -71,13 +72,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., attrs) => for a in attrs {
-                if_chain! {
-                    if a.meta_item_list().is_some();
-                    if let Some(name) = a.name();
-                    if name == "proc_macro_derive";
-                    then {
-                        return;
+            FnKind::ItemFn(.., abi, _, attrs) => {
+                if abi != Abi::Rust {
+                    return;
+                }
+                for a in attrs {
+                    if_chain! {
+                        if a.meta_item_list().is_some();
+                        if let Some(name) = a.name();
+                        if name == "proc_macro_derive";
+                        then {
+                            return;
+                        }
                     }
                 }
             },
