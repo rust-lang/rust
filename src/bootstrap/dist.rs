@@ -224,6 +224,8 @@ fn make_win_dist(
         "libwinspool.a",
         "libws2_32.a",
         "libwsock32.a",
+        "libdbghelp.a",
+        "libmsimg32.a",
     ];
 
     //Find mingw artifacts we want to bundle
