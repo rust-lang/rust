@@ -42,3 +42,5 @@ error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enu
 23 |     Struct{x: Option<Option<u8>>},
    |               ^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 7 previous errors
+
