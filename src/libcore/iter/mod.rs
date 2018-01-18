@@ -297,8 +297,22 @@
 //! ```
 //!
 //! This will print the numbers `0` through `4`, each on their own line.
+//! 
+//! Bear in mind that methods on infinite iterators, even those for which a
+//! result can be computed in finite time, may not terminate. Specifically,
+//! methods such as [`min`], which in the general case require traversing
+//! every element in the iterator, are likely never to terminate for any
+//! infinite iterators.
+//! 
+//! ```
+//! let positives = 1..;
+//! let least = positives.min().unwrap(); // Oh no! An infinite loop!
+//! // `positives.min` causes an infinite loop, so we won't reach this point!
+//! println!("The least positive number is {}.", least);
+//! ```
 //!
 //! [`take`]: trait.Iterator.html#method.take
+//! [`min`]: trait.Iterator.html#method.min
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
