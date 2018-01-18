@@ -1161,16 +1161,18 @@ Force multiline closure and match arm bodies to be wrapped in a block
 #### `false` (default):
 
 ```rust
-result.and_then(|maybe_value| match maybe_value {
-    None => ...,
-    Some(value) => ...,
-})
+fn main() {
+    result.and_then(|maybe_value| match maybe_value {
+        None => foo(),
+        Some(value) => bar(),
+    });
 
-match lorem {
-    None => if ipsum {
-        println!("Hello World");
-    },
-    Some(dolor) => ...,
+    match lorem {
+        None => if ipsum {
+            println!("Hello World");
+        },
+        Some(dolor) => foo(),
+    }
 }
 ```
 
