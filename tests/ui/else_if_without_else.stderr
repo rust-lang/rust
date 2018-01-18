@@ -1,0 +1,22 @@
+error: if expression with an `else if`, but without a final `else`
+  --> $DIR/else_if_without_else.rs:39:12
+   |
+39 |       } else if bla2() { //~ ERROR else if without else
+   |  ____________^
+40 | |         println!("else if");
+41 | |     }
+   | |_____^ help: add an `else` block here
+   |
+   = note: `-D else-if-without-else` implied by `-D warnings`
+
+error: if expression with an `else if`, but without a final `else`
+  --> $DIR/else_if_without_else.rs:47:12
+   |
+47 |       } else if bla3() { //~ ERROR else if without else
+   |  ____________^
+48 | |         println!("else if 2");
+49 | |     }
+   | |_____^ help: add an `else` block here
+
+error: aborting due to 2 previous errors
+

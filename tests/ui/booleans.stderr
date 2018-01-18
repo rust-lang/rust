@@ -175,3 +175,5 @@ error: this boolean expression can be simplified
 58 |     let _ = !c ^ c || !a.is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `!c ^ c || a.is_none()`
 
+error: aborting due to 21 previous errors
+

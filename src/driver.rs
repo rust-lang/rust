@@ -12,7 +12,7 @@ extern crate rustc_plugin;
 extern crate syntax;
 
 use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
-use rustc::session::{config, CompileIncomplete, Session};
+use rustc::session::{config, Session};
 use rustc::session::config::{ErrorOutputType, Input};
 use std::path::PathBuf;
 use std::process::Command;
@@ -153,47 +153,44 @@ pub fn main() {
         })
         .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust");
 
-    rustc_driver::in_rustc_thread(|| {
-        // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
-        // We're invoking the compiler programmatically, so we ignore this/
-        let mut orig_args: Vec<String> = env::args().collect();
-        if orig_args.len() <= 1 {
-            std::process::exit(1);
-        }
-        if orig_args[1] == "rustc" {
-            // we still want to be able to invoke it normally though
-            orig_args.remove(1);
-        }
-        // this conditional check for the --sysroot flag is there so users can call
-        // `clippy_driver` directly
-        // without having to pass --sysroot or anything
-        let mut args: Vec<String> = if orig_args.iter().any(|s| s == "--sysroot") {
-            orig_args.clone()
-        } else {
-            orig_args
-                .clone()
-                .into_iter()
-                .chain(Some("--sysroot".to_owned()))
-                .chain(Some(sys_root))
-                .collect()
-        };
+    // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
+    // We're invoking the compiler programmatically, so we ignore this/
+    let mut orig_args: Vec<String> = env::args().collect();
+    if orig_args.len() <= 1 {
+        std::process::exit(1);
+    }
+    if orig_args[1] == "rustc" {
+        // we still want to be able to invoke it normally though
+        orig_args.remove(1);
+    }
+    // this conditional check for the --sysroot flag is there so users can call
+    // `clippy_driver` directly
+    // without having to pass --sysroot or anything
+    let mut args: Vec<String> = if orig_args.iter().any(|s| s == "--sysroot") {
+        orig_args.clone()
+    } else {
+        orig_args
+            .clone()
+            .into_iter()
+            .chain(Some("--sysroot".to_owned()))
+            .chain(Some(sys_root))
+            .collect()
+    };
 
-        // this check ensures that dependencies are built but not linted and the final
-        // crate is
-        // linted but not built
-        let clippy_enabled = env::var("CLIPPY_TESTS")
-            .ok()
-            .map_or(false, |val| val == "true")
-            || orig_args.iter().any(|s| s == "--emit=metadata");
+    // this check ensures that dependencies are built but not linted and the final
+    // crate is
+    // linted but not built
+    let clippy_enabled = env::var("CLIPPY_TESTS")
+        .ok()
+        .map_or(false, |val| val == "true")
+        || orig_args.iter().any(|s| s == "--emit=metadata");
 
-        if clippy_enabled {
-            args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
-        }
+    if clippy_enabled {
+        args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
+    }
 
-        let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
-        let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
-        if let Err(CompileIncomplete::Errored(_)) = result {
-            std::process::exit(1);
-        }
-    }).expect("rustc_thread failed");
+    let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
+    rustc_driver::run(move || {
+        rustc_driver::run_compiler(&args, &mut ccc, None, None)
+    });
 }

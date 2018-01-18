@@ -78,3 +78,5 @@ error: Constants have by default a `'static` lifetime
 24 | const VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
    |                  -^^^^^^^-------- help: consider removing `'static`: `&[u8; 1]`
 
+error: aborting due to 13 previous errors
+

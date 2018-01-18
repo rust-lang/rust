@@ -36,3 +36,5 @@ error: use of `stderr().write_fmt(...).unwrap()`. Consider using `eprint!` inste
 21 |         std::io::stderr().write_fmt(format_args!("test")).unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 6 previous errors
+

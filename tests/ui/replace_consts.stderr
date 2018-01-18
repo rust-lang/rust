@@ -214,3 +214,5 @@ error: using `MAX`
 47 |     { let foo = std::u128::MAX; };
    |                 ^^^^^^^^^^^^^^ help: try this: `u128::max_value()`
 
+error: aborting due to 35 previous errors
+

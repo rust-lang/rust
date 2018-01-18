@@ -18,3 +18,5 @@ error: this operation will always return zero. This is likely not the intended o
 11 |     0 / x;
    |     ^^^^^
 
+error: aborting due to 3 previous errors
+

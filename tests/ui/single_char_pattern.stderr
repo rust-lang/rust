@@ -102,3 +102,5 @@ error: single-character string constant used as pattern
 37 |     x.trim_right_matches("x");
    |     ---------------------^^^- help: try using a char instead: `x.trim_right_matches('x')`
 
+error: aborting due to 17 previous errors
+
