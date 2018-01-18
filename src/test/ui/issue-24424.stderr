@@ -4,7 +4,11 @@ error[E0283]: type annotations required: cannot resolve `T0: Trait0<'l0>`
 14 | impl <'l0, 'l1, T0> Trait1<'l0, T0> for bool where T0 : Trait0<'l0>, T0 : Trait0<'l1> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: required by `Trait0`
+note: required by `Trait0`
+  --> $DIR/issue-24424.rs:12:1
+   |
+12 | trait Trait0<'l0>  {}
+   | ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

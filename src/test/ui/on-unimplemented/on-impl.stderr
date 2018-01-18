@@ -5,7 +5,11 @@ error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
    |     ^^^^^^^^^^^^^^^^^^^ a usize is required to index into a slice
    |
    = help: the trait `Index<u32>` is not implemented for `[i32]`
-   = note: required by `Index::index`
+note: required by `Index::index`
+  --> $DIR/on-impl.rs:19:5
+   |
+19 |     fn index(&self, index: Idx) -> &Self::Output;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
   --> $DIR/on-impl.rs:32:5

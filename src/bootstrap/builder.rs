@@ -254,7 +254,9 @@ impl<'a> Builder<'a> {
             Kind::Test => describe!(check::Tidy, check::Bootstrap, check::DefaultCompiletest,
                 check::HostCompiletest, check::Crate, check::CrateLibrustc, check::Rustdoc,
                 check::Linkcheck, check::Cargotest, check::Cargo, check::Rls, check::Docs,
-                check::ErrorIndex, check::Distcheck, check::Rustfmt, check::Miri, check::Clippy),
+                check::ErrorIndex, check::Distcheck, check::Rustfmt, check::Miri, check::Clippy,
+                check::RustdocJS),
+
             Kind::Bench => describe!(check::Crate, check::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,
@@ -443,7 +445,8 @@ impl<'a> Builder<'a> {
         let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", out_dir)
              .arg(cmd)
-             .arg("--target").arg(target);
+             .arg("--target")
+             .arg(target);
 
         // If we were invoked from `make` then that's already got a jobserver
         // set up for us so no need to tell Cargo about jobs all over again.

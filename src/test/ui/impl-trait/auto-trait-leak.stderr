@@ -7,7 +7,11 @@ error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::S
    = help: within `impl std::ops::Fn<(i32,)>`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::cell::Cell<i32>>`
    = note: required because it appears within the type `[closure@$DIR/auto-trait-leak.rs:21:5: 21:22 p:std::rc::Rc<std::cell::Cell<i32>>]`
    = note: required because it appears within the type `impl std::ops::Fn<(i32,)>`
-   = note: required by `send`
+note: required by `send`
+  --> $DIR/auto-trait-leak.rs:24:1
+   |
+24 | fn send<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied in `impl std::ops::Fn<(i32,)>`
   --> $DIR/auto-trait-leak.rs:30:5
@@ -18,7 +22,11 @@ error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::S
    = help: within `impl std::ops::Fn<(i32,)>`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::cell::Cell<i32>>`
    = note: required because it appears within the type `[closure@$DIR/auto-trait-leak.rs:38:5: 38:22 p:std::rc::Rc<std::cell::Cell<i32>>]`
    = note: required because it appears within the type `impl std::ops::Fn<(i32,)>`
-   = note: required by `send`
+note: required by `send`
+  --> $DIR/auto-trait-leak.rs:24:1
+   |
+24 | fn send<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0391]: unsupported cyclic reference between types/traits detected
   --> $DIR/auto-trait-leak.rs:44:1
