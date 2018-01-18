@@ -50,6 +50,14 @@ fn closure_hr_elided_return() -> impl Fn(&u32) -> &u32 { |x| x }
 fn closure_pass_through_elided_return(x: impl Fn(&u32) -> &u32) -> impl Fn(&u32) -> &u32 { x }
 fn closure_pass_through_reference_elided(x: &impl Fn(&u32) -> &u32) -> &impl Fn(&u32) -> &u32 { x }
 
+fn nested_lifetime<'a>(input: &'a str)
+    -> impl Iterator<Item = impl Iterator<Item = i32> + 'a> + 'a
+{
+    input.lines().map(|line| {
+        line.split_whitespace().map(|cell| cell.parse().unwrap())
+    })
+}
+
 fn pass_through_elision(x: &u32) -> impl Into<&u32> { x }
 fn pass_through_elision_with_fn_ptr(x: &fn(&u32) -> &u32) -> impl Into<&fn(&u32) -> &u32> { x }
 
