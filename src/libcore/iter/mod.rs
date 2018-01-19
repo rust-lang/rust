@@ -698,13 +698,16 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
     #[inline]
     fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
         if self.first_take {
+            self.first_take = false;
+            let first = self.iter.next();
             if n == 0 {
-                self.first_take = false;
-                return self.iter.next()
+                return first;
             }
             n -= 1;
         }
-        self.iter.nth(n * self.step)
+        // n and self.step are indices, thus we need to add 1 before multiplying.
+        // After that we need to subtract 1 from the result to convert it back to an index.
+        self.iter.nth((n + 1) * (self.step + 1) - 1)
     }
 }
 
