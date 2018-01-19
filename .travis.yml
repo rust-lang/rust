@@ -4,7 +4,7 @@ rust: nightly
 
 os:
   - linux
-  - osx
+  # - osx # doesn't even start atm. Not sure what travis is up to. Disabling to reduce the noise
 
 sudo: false
 
