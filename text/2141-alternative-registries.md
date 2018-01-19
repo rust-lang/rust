@@ -182,14 +182,15 @@ A valid registry index meets the following criteria:
 
   ```json
   {
-    "dl": "https://my-crates-server.com/api/v1/crates",
+    "dl": "https://my-crates-server.com/api/v1/crates/{crate}/{version}/download",
     "api": "https://my-crates-server.com/",
     "allowed-registries": ["https://github.com/rust-lang/crates.io-index", "https://my-intranet:8080/index"]
   }
   ```
 
-  The `dl` key is required specifies where Cargo can download the tarballs containing the source
-  files of the crates listed in the registry.
+  The `dl` key is required and specifies where Cargo can download the tarballs containing the source
+  files of the crates listed in the registry. It is templated by the strings `{crate}` and
+  `{version}` which are replaced with the name and version of the crate to download, respectively.
 
   The `api` key is optional and specifies where Cargo can find the API server that provides the
   same API functionality that crates.io does today, such as publishing and searching. Without the
@@ -205,7 +206,9 @@ A valid registry index meets the following criteria:
 - There will be a number of directories in the git repository.
   - `1/` - holds files for all crates whose names have one letter.
   - `2/` - holds files for all crates whose names have two letters.
-  - `3/` - holds files for all crates whose names have three letters.
+  - `3/a` etc - for all crates whose names have three letters, their files will
+    be in a directory named `3`, then a subdirectory named with the first letter
+    of their name.
   - `aa/aa/` etc - for all crates whose names have four or more letters, their
     files will be in a directory named with the first and second letters of
     their name, then in a subdirectory named with the third and fourth letters
@@ -270,7 +273,9 @@ A valid registry index meets the following criteria:
     - `default_features`: whether the parent uses the default features of this dependency or not
     - `target`: on which target this dependency is needed
     - `kind`: can be `normal`, `build`, or `dev` to be a regular dependency, a build-time
-      dependency, or a development dependency
+      dependency, or a development dependency. Note: this is a required field, but a small number of
+      entries exist in the crates.io index with either a missing or null `kind` field due to
+      implementation bugs.
 
 If a dependency's registry is not specified, Cargo will assume the dependency can be located in the
 current registry. By specifying the registry of a dependency in the index, cargo will have the
