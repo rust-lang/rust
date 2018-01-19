@@ -487,7 +487,9 @@ fn inner_parse_loop(
                 // Need to descend into a sequence
                 TokenTree::Sequence(sp, seq) => {
                     // Examine the case where there are 0 matches of this sequence
-                    if seq.op == quoted::KleeneOp::ZeroOrMore || seq.op == quoted::KleeneOp::ZeroOrOne {
+                    if seq.op == quoted::KleeneOp::ZeroOrMore
+                        || seq.op == quoted::KleeneOp::ZeroOrOne
+                    {
                         let mut new_item = item.clone();
                         new_item.match_cur += seq.num_captures;
                         new_item.idx += 1;
@@ -500,9 +502,9 @@ fn inner_parse_loop(
                     // For ZeroOrMore and OneOrMore, we want to examine the case were there is at
                     // least one match. For ZeroOrOne, we only want the case where there is exactly
                     // one match.
-                    if (seq.op == quoted::KleeneOp::ZeroOrOne && seq.num_captures == 1) ||
-                        seq.op != quoted::KleeneOp::ZeroOrOne {
-
+                    if (seq.op == quoted::KleeneOp::ZeroOrOne && seq.num_captures == 1)
+                        || seq.op != quoted::KleeneOp::ZeroOrOne
+                    {
                         let matches = create_matches(item.matches.len());
                         cur_items.push(Box::new(MatcherPos {
                             stack: vec![],
