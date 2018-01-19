@@ -904,6 +904,32 @@ impl Clean<Attributes> for [ast::Attribute] {
                         }
                     };
 
+                    let macro_resolve = || {
+                            use syntax::ext::base::MacroKind;
+                            use syntax::ext::hygiene::Mark;
+                            let segment = ast::PathSegment {
+                                identifier: ast::Ident::from_str(path_str),
+                                span: DUMMY_SP,
+                                parameters: None,
+                            };
+                            let path = ast::Path {
+                                span: DUMMY_SP,
+                                segments: vec![segment],
+                            };
+
+                            let mut resolver = cx.resolver.borrow_mut();
+                            let mark = Mark::root();
+                            let res = resolver
+                                .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
+                            if let Ok(def) = res {
+                                Some(def)
+                            } else if let Some(def) = resolver.all_macros.get(&path_str.into()) {
+                                Some(*def)
+                            } else {
+                                None
+                            }
+                    };
+
                     match kind {
                         PathKind::Value => {
                             if let Ok(path) = resolve(true) {
@@ -974,34 +1000,18 @@ impl Clean<Attributes> for [ast::Attribute] {
                                 path.def
                             } else if let Ok(path) = resolve(true) {
                                 path.def
+                            } else if let Some(def) = macro_resolve() {
+                                def
                             } else {
                                 // this could just be a normal link
                                 continue;
                             }
                         }
                         PathKind::Macro => {
-                            use syntax::ext::base::MacroKind;
-                            use syntax::ext::hygiene::Mark;
-                            let segment = ast::PathSegment {
-                                identifier: ast::Ident::from_str(path_str),
-                                span: DUMMY_SP,
-                                parameters: None,
-                            };
-                            let path = ast::Path {
-                                span: DUMMY_SP,
-                                segments: vec![segment],
-                            };
-
-                            let mut resolver = cx.resolver.borrow_mut();
-                            let mark = Mark::root();
-                            let res = resolver
-                                .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
-                            if let Ok(def) = res {
+                            if let Some(def) = macro_resolve() {
                                 def
-                            } else if let Some(def) = resolver.all_macros.get(&path_str.into()) {
-                                *def
                             } else {
-                                continue;
+                                continue
                             }
                         }
                     }
