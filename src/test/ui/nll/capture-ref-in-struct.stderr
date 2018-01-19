@@ -5,7 +5,7 @@ error[E0597]: `y` does not live long enough
    |                ^^ borrowed value does not live long enough
 ...
 38 |     }
-   |      - borrowed value only lives until here
+   |     - borrowed value only lives until here
 39 | 
 40 |     deref(p);
    |           - borrow later used here

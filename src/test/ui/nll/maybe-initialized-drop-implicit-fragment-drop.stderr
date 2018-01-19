@@ -8,7 +8,7 @@ error[E0506]: cannot assign to `x` because it is borrowed
    |     ^^^^^ assignment to borrowed `x` occurs here
 33 |     // FIXME ^ Should not error in the future with implicit dtors, only manually implemented ones
 34 | }
-   |  - borrow later used here, when `foo` is dropped
+   | - borrow later used here, when `foo` is dropped
 
 error: aborting due to previous error
 

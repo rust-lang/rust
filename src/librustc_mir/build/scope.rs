@@ -695,10 +695,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if let DropKind::Value { .. } = drop_kind {
                     scope.needs_cleanup = true;
                 }
+
                 let region_scope_span = region_scope.span(self.hir.tcx(),
                                                           &self.hir.region_scope_tree);
-                // Attribute scope exit drops to scope's closing brace
-                let scope_end = region_scope_span.with_lo(region_scope_span.hi());
+                // Attribute scope exit drops to scope's closing brace.
+                let scope_end = self.hir.tcx().sess.codemap().end_point(region_scope_span);
+
                 scope.drops.push(DropData {
                     span: scope_end,
                     location: place.clone(),
