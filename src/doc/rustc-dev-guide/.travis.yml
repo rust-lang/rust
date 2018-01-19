@@ -3,8 +3,8 @@ language: rust
 cache: pip
 
 install:
-  - bash ci/install.sh
   - source ~/.cargo/env || true
+  - bash ci/install.sh
 
 script:
   - true
