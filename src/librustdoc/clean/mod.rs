@@ -862,13 +862,17 @@ impl Clean<Attributes> for [ast::Attribute] {
                         kind = PathKind::Type;
                         link.trim_left_matches(prefix)
                     } else if let Some(prefix) =
-                        ["const@", "static@"].iter()
-                                           .find(|p| link.starts_with(**p)) {
+                        ["const@", "static@",
+                         "value@", "function@"].iter()
+                                               .find(|p| link.starts_with(**p)) {
                         kind = PathKind::Value;
                         link.trim_left_matches(prefix)
                     } else if link.ends_with("()") {
                         kind = PathKind::Value;
                         link.trim_right_matches("()")
+                    } else if link.starts_with("macro@") {
+                        kind = PathKind::Macro;
+                        link.trim_left_matches("macro@")
                     } else if link.ends_with('!') {
                         kind = PathKind::Macro;
                         link.trim_right_matches('!')
