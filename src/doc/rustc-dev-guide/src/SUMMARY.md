@@ -9,7 +9,7 @@
 - [Macro expansion](./macro-expansion.md)
 - [Name resolution](./name-resolution.md)
 - [HIR lowering](./hir-lowering.md)
-- [Representing types (`ty` module in depth)](./ty.md)
+- [The `ty` module: representing types](./ty.md)
 - [Type inference](./type-inference.md)
 - [Trait resolution](./trait-resolution.md)
 - [Type checking](./type-checking.md)
