@@ -1,0 +1,27 @@
+error: use of `#[inline]` on trait method `default_inline` which has no body
+ --> $DIR/inline_fn_without_body.rs:8:5
+  |
+8 |       #[inline]
+  |  _____-^^^^^^^^
+9 | |     fn default_inline();
+  | |____- help: remove
+  |
+  = note: `-D inline-fn-without-body` implied by `-D warnings`
+
+error: use of `#[inline]` on trait method `always_inline` which has no body
+  --> $DIR/inline_fn_without_body.rs:11:5
+   |
+11 |     #[inline(always)]fn always_inline();
+   |     ^^^^^^^^^^^^^^^^^ help: remove
+
+error: use of `#[inline]` on trait method `never_inline` which has no body
+  --> $DIR/inline_fn_without_body.rs:13:5
+   |
+13 |       #[inline(never)]
+   |  _____-^^^^^^^^^^^^^^^
+14 | |
+15 | |     fn never_inline();
+   | |____- help: remove
+
+error: aborting due to 3 previous errors
+

@@ -6,6 +6,7 @@ use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::traits;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
+use syntax::abi::Abi;
 use syntax::ast::NodeId;
 use syntax_pos::Span;
 use syntax::errors::DiagnosticBuilder;
@@ -71,13 +72,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., attrs) => for a in attrs {
-                if_chain! {
-                    if a.meta_item_list().is_some();
-                    if let Some(name) = a.name();
-                    if name == "proc_macro_derive";
-                    then {
-                        return;
+            FnKind::ItemFn(.., abi, _, attrs) => {
+                if abi != Abi::Rust {
+                    return;
+                }
+                for a in attrs {
+                    if_chain! {
+                        if a.meta_item_list().is_some();
+                        if let Some(name) = a.name();
+                        if name == "proc_macro_derive";
+                        then {
+                            return;
+                        }
                     }
                 }
             },
@@ -87,7 +93,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         // Exclude non-inherent impls
         if let Some(NodeItem(item)) = cx.tcx.hir.find(cx.tcx.hir.get_parent_node(node_id)) {
-            if matches!(item.node, ItemImpl(_, _, _, _, Some(_), _, _) | ItemAutoImpl(..) |
+            if matches!(item.node, ItemImpl(_, _, _, _, Some(_), _, _) |
                 ItemTrait(..))
             {
                 return;
@@ -96,10 +102,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         // Allow `Borrow` or functions to be taken by value
         let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
-        let fn_traits = [
+        let whitelisted_traits = [
             need!(cx.tcx.lang_items().fn_trait()),
             need!(cx.tcx.lang_items().fn_once_trait()),
             need!(cx.tcx.lang_items().fn_mut_trait()),
+            need!(get_trait_def_id(cx, &paths::RANGE_ARGUMENT_TRAIT))
         ];
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
@@ -183,7 +190,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 if !is_self(arg);
                 if !ty.is_mutable_pointer();
                 if !is_copy(cx, ty);
-                if !fn_traits.iter().any(|&t| implements_trait(cx, ty, t, &[]));
+                if !whitelisted_traits.iter().any(|&t| implements_trait(cx, ty, t, &[]));
                 if !implements_borrow_trait;
                 if !all_borrowable_trait;
 
@@ -196,6 +203,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                     // Dereference suggestion
                     let sugg = |db: &mut DiagnosticBuilder| {
+                        if let ty::TypeVariants::TyAdt(ref def, ..) = ty.sty {
+                            if let Some(span) = cx.tcx.hir.span_if_local(def.did) {
+                                let param_env = ty::ParamEnv::empty(traits::Reveal::UserFacing);
+                                if param_env.can_type_implement_copy(cx.tcx, ty, span).is_ok() {
+                                    db.span_help(span, "consider marking this type as Copy");
+                                }
+                            }
+                        }
+
                         let deref_span = spans_need_deref.get(&canonical_id);
                         if_chain! {
                             if match_type(cx, ty, &paths::VEC);

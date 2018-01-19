@@ -2,7 +2,9 @@
 
 
 #![warn(needless_pass_by_value)]
-#![allow(dead_code, single_match, if_let_redundant_pattern_matching, many_single_char_names)]
+#![allow(dead_code, single_match, if_let_redundant_pattern_matching, many_single_char_names, option_option)]
+
+#![feature(collections_range)]
 
 use std::borrow::Borrow;
 use std::convert::AsRef;
@@ -108,6 +110,31 @@ trait FalsePositive {
     fn visit_string(s: String) {
         Self::visit_str(&s);
     }
+}
+
+// shouldn't warn on extern funcs
+extern "C" fn ext(x: String) -> usize { x.len() }
+
+// whitelist RangeArgument
+fn range<T: ::std::collections::range::RangeArgument<usize>>(range: T) {
+    let _ = range.start();
+}
+
+struct CopyWrapper(u32);
+
+fn bar_copy(x: u32, y: CopyWrapper) {
+    assert_eq!(x, 42);
+    assert_eq!(y.0, 42);
+}
+
+// x and y should be warned, but z is ok
+fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
+    let CopyWrapper(s) = z; // moved
+    let CopyWrapper(ref t) = y; // not moved
+    let CopyWrapper(_) = y; // still not moved
+
+    assert_eq!(x.0, s);
+    println!("{}", t);
 }
 
 fn main() {}

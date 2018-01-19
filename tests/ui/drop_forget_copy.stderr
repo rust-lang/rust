@@ -72,3 +72,5 @@ note: argument has type SomeStruct
 42 |     forget(s4);
    |            ^^
 
+error: aborting due to 6 previous errors
+

@@ -74,3 +74,5 @@ error: you should use the `ends_with` method
 38 |     Some(' ') != "".chars().next_back();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
 
+error: aborting due to 12 previous errors
+

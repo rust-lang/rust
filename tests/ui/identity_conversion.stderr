@@ -40,3 +40,5 @@ error: identical conversion
 39 |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
+error: aborting due to 6 previous errors
+

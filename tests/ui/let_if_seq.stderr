@@ -46,3 +46,5 @@ error: `if _ { .. } else { .. }` is an expression
     |
     = note: you might not need `mut` at all
 
+error: aborting due to 4 previous errors
+

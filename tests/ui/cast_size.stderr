@@ -120,3 +120,5 @@ error: casting i32 to usize may lose the sign of the value
 22 |     1i32 as usize;
    |     ^^^^^^^^^^^^^
 
+error: aborting due to 19 previous errors
+

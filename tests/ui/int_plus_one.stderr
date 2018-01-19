@@ -40,3 +40,5 @@ help: change `>= y + 1` to `> y` as shown
 14 |     y < x;
    |     ^^^^^
 
+error: aborting due to 4 previous errors
+

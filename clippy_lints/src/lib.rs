@@ -88,6 +88,7 @@ pub mod derive;
 pub mod doc;
 pub mod double_parens;
 pub mod drop_forget_ref;
+pub mod else_if_without_else;
 pub mod empty_enum;
 pub mod entry;
 pub mod enum_clike;
@@ -108,9 +109,9 @@ pub mod identity_op;
 pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
 pub mod infinite_iter;
+pub mod inline_fn_without_body;
 pub mod int_plus_one;
 pub mod invalid_ref;
-pub mod is_unit_expr;
 pub mod items_after_statements;
 pub mod large_enum_variant;
 pub mod len_zero;
@@ -247,6 +248,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         "string_to_string",
         "using `string::to_string` is common even today and specialization will likely happen soon",
     );
+    store.register_removed(
+        "unit_expr",
+        "superseded by `let_unit_value` and `unit_arg`",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde_api::Serde);
@@ -267,7 +272,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box approx_const::Pass);
     reg.register_late_lint_pass(box misc::Pass);
     reg.register_early_lint_pass(box precedence::Precedence);
-    reg.register_early_lint_pass(box is_unit_expr::UnitExpr);
     reg.register_early_lint_pass(box needless_continue::NeedlessContinue);
     reg.register_late_lint_pass(box eta_reduction::EtaPass);
     reg.register_late_lint_pass(box identity_op::IdentityOp);
@@ -329,6 +333,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box formatting::Formatting);
     reg.register_late_lint_pass(box swap::Swap);
     reg.register_early_lint_pass(box if_not_else::IfNotElse);
+    reg.register_early_lint_pass(box else_if_without_else::ElseIfWithoutElse);
     reg.register_early_lint_pass(box int_plus_one::IntPlusOne);
     reg.register_late_lint_pass(box overflow_check_conditional::OverflowCheckConditional);
     reg.register_late_lint_pass(box unused_label::UnusedLabel);
@@ -357,18 +362,21 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box use_self::UseSelf);
     reg.register_late_lint_pass(box bytecount::ByteCount);
     reg.register_late_lint_pass(box infinite_iter::Pass);
+    reg.register_late_lint_pass(box inline_fn_without_body::Pass);
     reg.register_late_lint_pass(box invalid_ref::InvalidRef);
     reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
     reg.register_late_lint_pass(box types::ImplicitHasher);
     reg.register_early_lint_pass(box const_static_lifetime::StaticConst);
     reg.register_late_lint_pass(box fallible_impl_from::FallibleImplFrom);
     reg.register_late_lint_pass(box replace_consts::ReplaceConsts);
+    reg.register_late_lint_pass(box types::UnitArg);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
         arithmetic::INTEGER_ARITHMETIC,
         array_indexing::INDEXING_SLICING,
         assign_ops::ASSIGN_OPS,
+        else_if_without_else::ELSE_IF_WITHOUT_ELSE,
         misc::FLOAT_CMP_CONST,
     ]);
 
@@ -474,8 +482,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
         infinite_iter::INFINITE_ITER,
+        inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
         invalid_ref::INVALID_REF,
-        is_unit_expr::UNIT_EXPR,
         large_enum_variant::LARGE_ENUM_VARIANT,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
@@ -602,8 +610,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::IMPLICIT_HASHER,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
+        types::OPTION_OPTION,
         types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
+        types::UNIT_ARG,
         types::UNNECESSARY_CAST,
         unicode::ZERO_WIDTH_SPACE,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,

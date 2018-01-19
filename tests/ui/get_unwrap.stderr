@@ -60,3 +60,5 @@ error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and 
 40 |         *some_vecdeque.get_mut(0).unwrap() = 1;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&mut some_vecdeque[0]`
 
+error: aborting due to 10 previous errors
+

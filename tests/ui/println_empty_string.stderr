@@ -6,3 +6,5 @@ error: using `println!("")`
   |
   = note: `-D print-with-newline` implied by `-D warnings`
 
+error: aborting due to previous error
+

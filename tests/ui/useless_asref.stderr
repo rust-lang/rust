@@ -70,3 +70,5 @@ error: this call to `as_ref` does nothing
 106 |     foo_rt(mrt.as_ref());
     |            ^^^^^^^^^^^^ help: try this: `mrt`
 
+error: aborting due to 11 previous errors
+

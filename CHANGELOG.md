@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.180
+* Rustup to *rustc 1.25.0-nightly (3f92e8d89 2018-01-14)*
+
 ## 0.0.179
 * Rustup to *rustc 1.25.0-nightly (61452e506 2018-01-09)*
 
@@ -580,6 +583,7 @@ All notable changes to this project will be documented in this file.
 [`ineffective_bit_mask`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ineffective_bit_mask
 [`infinite_iter`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#infinite_iter
 [`inline_always`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#inline_always
+[`inline_fn_without_body`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#inline_fn_without_body
 [`int_plus_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#int_plus_one
 [`integer_arithmetic`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#integer_arithmetic
 [`invalid_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#invalid_ref
@@ -670,6 +674,7 @@ All notable changes to this project will be documented in this file.
 [`redundant_closure_call`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure_call
 [`redundant_pattern`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_pattern
 [`regex_macro`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#regex_macro
+[`replace_consts`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#replace_consts
 [`result_map_unwrap_or_else`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#result_map_unwrap_or_else
 [`result_unwrap_used`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#result_unwrap_used
 [`reverse_range_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#reverse_range_loop

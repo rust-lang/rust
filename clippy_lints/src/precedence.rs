@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::Spanned;
-use utils::{snippet, span_lint_and_sugg};
+use utils::{in_macro, snippet, span_lint_and_sugg};
 
 /// **What it does:** Checks for operations where precedence may be unclear
 /// and suggests to add parentheses. Currently it catches the following:
@@ -37,6 +37,10 @@ impl LintPass for Precedence {
 
 impl EarlyLintPass for Precedence {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+        if in_macro(expr.span) {
+            return;
+        }
+
         if let ExprKind::Binary(Spanned { node: op, .. }, ref left, ref right) = expr.node {
             let span_sugg = |expr: &Expr, sugg| {
                 span_lint_and_sugg(

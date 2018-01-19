@@ -15,6 +15,7 @@ use syntax::print::pprust::token_to_string;
 use syntax::util::parser::AssocOp;
 use syntax::ast;
 use utils::{higher, snippet, snippet_opt};
+use syntax_pos::{BytePos, Pos};
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -454,6 +455,19 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
     /// }");
     /// ```
     fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str);
+
+    /// Suggest to completely remove an item.
+    ///
+    /// This will remove an item and all following whitespace until the next non-whitespace
+    /// character. This should work correctly if item is on the same indentation level as the
+    /// following item.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// db.suggest_remove_item(cx, item, "remove this")
+    /// ```
+    fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str);
 }
 
 impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_errors::DiagnosticBuilder<'b> {
@@ -484,5 +498,22 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
 
             self.span_suggestion(span, msg, format!("{}\n{}", new_item, indent));
         }
+    }
+
+    fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str) {
+        let mut remove_span = item;
+        let fmpos = cx.sess()
+            .codemap()
+            .lookup_byte_offset(remove_span.next_point().hi());
+
+        if let Some(ref src) = fmpos.fm.src {
+            let non_whitespace_offset = src[fmpos.pos.to_usize()..].find(|c| c != ' ' && c != '\t' && c != '\n');
+
+            if let Some(non_whitespace_offset) = non_whitespace_offset {
+                remove_span = remove_span.with_hi(remove_span.hi() + BytePos(non_whitespace_offset as u32))
+            }
+        }
+
+        self.span_suggestion(remove_span, msg, String::new());
     }
 }

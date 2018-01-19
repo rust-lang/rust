@@ -50,6 +50,26 @@ declare_lint! {
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 
+/// **What it does:** Checks for use of `Option<Option<_>>` in function signatures and type
+/// definitions
+///
+/// **Why is this bad?** `Option<_>` represents an optional value. `Option<Option<_>>`
+/// represents an optional optional value which is logically the same thing as an optional
+/// value but has an unneeded extra level of wrapping.
+///
+/// **Known problems:** None.
+///
+/// **Example**
+/// ```rust
+/// fn x() -> Option<Option<u32>> {
+///     None
+/// }
+declare_lint! {
+    pub OPTION_OPTION,
+    Warn,
+    "usage of `Option<Option<T>>`"
+}
+
 /// **What it does:** Checks for usage of any `LinkedList`, suggesting to use a
 /// `Vec` or a `VecDeque` (formerly called `RingBuf`).
 ///
@@ -111,7 +131,7 @@ declare_lint! {
 
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(BOX_VEC, LINKEDLIST, BORROWED_BOX)
+        lint_array!(BOX_VEC, OPTION_OPTION, LINKEDLIST, BORROWED_BOX)
     }
 }
 
@@ -156,6 +176,23 @@ fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
     }
 }
 
+/// Check if `qpath` has last segment with type parameter matching `path`
+fn match_type_parameter(cx: &LateContext, qpath: &QPath, path: &[&str]) -> bool {
+    let last = last_path_segment(qpath);
+    if_chain! {
+        if let Some(ref params) = last.parameters;
+        if !params.parenthesized;
+        if let Some(ty) = params.types.get(0);
+        if let TyPath(ref qpath) = ty.node;
+        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(ty.id)));
+        if match_def_path(cx.tcx, did, path);
+        then {
+            return true;
+        }
+    }
+    false
+}
+
 /// Recursively check for `TypePass` lints in the given type. Stop at the first
 /// lint found.
 ///
@@ -171,24 +208,26 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
             let def = cx.tables.qpath_def(qpath, hir_id);
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
-                    let last = last_path_segment(qpath);
-                    if_chain! {
-                        if let Some(ref params) = last.parameters;
-                        if !params.parenthesized;
-                        if let Some(vec) = params.types.get(0);
-                        if let TyPath(ref qpath) = vec.node;
-                        if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id)));
-                        if match_def_path(cx.tcx, did, &paths::VEC);
-                        then {
-                            span_help_and_lint(
-                                cx,
-                                BOX_VEC,
-                                ast_ty.span,
-                                "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
-                                "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
-                            );
-                            return; // don't recurse into the type
-                        }
+                    if match_type_parameter(cx, qpath, &paths::VEC) {
+                        span_help_and_lint(
+                            cx,
+                            BOX_VEC,
+                            ast_ty.span,
+                            "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                            "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
+                        );
+                        return; // don't recurse into the type
+                    }
+                } else if match_def_path(cx.tcx, def_id, &paths::OPTION) {
+                    if match_type_parameter(cx, qpath, &paths::OPTION) {
+                        span_lint(
+                            cx,
+                            OPTION_OPTION,
+                            ast_ty.span,
+                            "consider using `Option<T>` instead of `Option<Option<T>>` or a custom \
+                            enum if you need to distinguish all 3 cases",
+                        );
+                        return; // don't recurse into the type
                     }
                 } else if match_def_path(cx.tcx, def_id, &paths::LINKED_LIST) {
                     span_help_and_lint(
@@ -322,25 +361,22 @@ declare_lint! {
 
 fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
-        match cx.tables.pat_ty(&local.pat).sty {
-            ty::TyTuple(slice, _) if slice.is_empty() => {
-                if in_external_macro(cx, decl.span) || in_macro(local.pat.span) {
-                    return;
-                }
-                if higher::is_from_for_desugar(decl) {
-                    return;
-                }
-                span_lint(
-                    cx,
-                    LET_UNIT_VALUE,
-                    decl.span,
-                    &format!(
-                        "this let-binding has unit value. Consider omitting `let {} =`",
-                        snippet(cx, local.pat.span, "..")
-                    ),
-                );
-            },
-            _ => (),
+        if is_unit(cx.tables.pat_ty(&local.pat)) {
+            if in_external_macro(cx, decl.span) || in_macro(local.pat.span) {
+                return;
+            }
+            if higher::is_from_for_desugar(decl) {
+                return;
+            }
+            span_lint(
+                cx,
+                LET_UNIT_VALUE,
+                decl.span,
+                &format!(
+                    "this let-binding has unit value. Consider omitting `let {} =`",
+                    snippet(cx, local.pat.span, "..")
+                ),
+            );
         }
     }
 }
@@ -395,28 +431,115 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
         }
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
-            if op.is_comparison() {
-                match cx.tables.expr_ty(left).sty {
-                    ty::TyTuple(slice, _) if slice.is_empty() => {
-                        let result = match op {
-                            BiEq | BiLe | BiGe => "true",
-                            _ => "false",
-                        };
-                        span_lint(
-                            cx,
-                            UNIT_CMP,
-                            expr.span,
-                            &format!(
-                                "{}-comparison of unit values detected. This will always be {}",
-                                op.as_str(),
-                                result
-                            ),
-                        );
-                    },
-                    _ => (),
-                }
+            if op.is_comparison() && is_unit(cx.tables.expr_ty(left)) {
+                let result = match op {
+                    BiEq | BiLe | BiGe => "true",
+                    _ => "false",
+                };
+                span_lint(
+                    cx,
+                    UNIT_CMP,
+                    expr.span,
+                    &format!(
+                        "{}-comparison of unit values detected. This will always be {}",
+                        op.as_str(),
+                        result
+                    ),
+                );
             }
         }
+    }
+}
+
+/// **What it does:** Checks for passing a unit value as an argument to a function without using a unit literal (`()`).
+///
+/// **Why is this bad?** This is likely the result of an accidental semicolon.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// foo({
+///   let a = bar();
+///   baz(a);
+/// })
+/// ```
+declare_lint! {
+    pub UNIT_ARG,
+    Warn,
+    "passing unit to a function"
+}
+
+pub struct UnitArg;
+
+impl LintPass for UnitArg {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNIT_ARG)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        if in_macro(expr.span) {
+            return;
+        }
+        match expr.node {
+            ExprCall(_, ref args) | ExprMethodCall(_, _, ref args) => {
+                for arg in args {
+                    if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
+                        let map = &cx.tcx.hir;
+                        // apparently stuff in the desugaring of `?` can trigger this
+                        // so check for that here
+                        // only the calls to `Try::from_error` is marked as desugared,
+                        // so we need to check both the current Expr and its parent.
+                        if !is_questionmark_desugar_marked_call(expr) {
+                            if_chain!{
+                                let opt_parent_node = map.find(map.get_parent_node(expr.id));
+                                if let Some(hir::map::NodeExpr(parent_expr)) = opt_parent_node;
+                                if is_questionmark_desugar_marked_call(parent_expr);
+                                then {}
+                                else {
+                                    // `expr` and `parent_expr` where _both_ not from
+                                    // desugaring `?`, so lint
+                                    span_lint_and_sugg(
+                                        cx,
+                                        UNIT_ARG,
+                                        arg.span,
+                                        "passing a unit value to a function",
+                                        "if you intended to pass a unit value, use a unit literal instead",
+                                        "()".to_string(),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            _ => (),
+        }
+    }
+}
+
+fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
+    use syntax_pos::hygiene::CompilerDesugaringKind;
+    if let ExprCall(ref callee, _) = expr.node {
+        callee.span.is_compiler_desugaring(CompilerDesugaringKind::QuestionMark)
+    } else {
+        false
+    }
+}
+
+fn is_unit(ty: Ty) -> bool {
+    match ty.sty {
+        ty::TyTuple(slice, _) if slice.is_empty() => true,
+        _ => false,
+    }
+}
+
+fn is_unit_literal(expr: &Expr) -> bool {
+    match expr.node {
+        ExprTup(ref slice) if slice.is_empty() => true,
+        _ => false,
     }
 }
 
@@ -1106,6 +1229,20 @@ enum AbsurdComparisonResult {
 }
 
 
+fn is_cast_between_fixed_and_target<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx Expr
+) -> bool {
+
+    if let ExprCast(ref cast_exp, _) = expr.node {
+        let precast_ty = cx.tables.expr_ty(cast_exp);
+        let cast_ty = cx.tables.expr_ty(expr);
+
+        return is_isize_or_usize(precast_ty) != is_isize_or_usize(cast_ty)
+    }
+
+    return false;
+}
 
 fn detect_absurd_comparison<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
@@ -1120,6 +1257,11 @@ fn detect_absurd_comparison<'a, 'tcx>(
     // absurd comparison only makes sense on primitive types
     // primitive types don't implement comparison operators with each other
     if cx.tables.expr_ty(lhs) != cx.tables.expr_ty(rhs) {
+        return None;
+    }
+
+    // comparisons between fix sized types and target sized types are considered unanalyzable
+    if is_cast_between_fixed_and_target(cx, lhs) || is_cast_between_fixed_and_target(cx, rhs) {
         return None;
     }
 

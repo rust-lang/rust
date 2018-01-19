@@ -47,3 +47,5 @@ error: I see you're using a LinkedList! Perhaps you meant some other data struct
    |
    = help: a VecDeque might work
 
+error: aborting due to 6 previous errors
+

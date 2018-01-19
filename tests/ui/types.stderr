@@ -6,3 +6,5 @@ error: casting i32 to i64 may become silently lossy if types change
   |
   = note: `-D cast-lossless` implied by `-D warnings`
 
+error: aborting due to previous error
+

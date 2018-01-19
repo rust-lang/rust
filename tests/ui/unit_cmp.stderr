@@ -12,3 +12,5 @@ error: >-comparison of unit values detected. This will always be false
 19 |     if { true; } > { false; } {
    |        ^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 2 previous errors
+

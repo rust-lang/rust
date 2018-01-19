@@ -134,3 +134,5 @@ note: previous binding is here
 21 |     let x = y;
    |         ^
 
+error: aborting due to 9 previous errors
+

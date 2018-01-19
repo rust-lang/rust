@@ -278,3 +278,5 @@ error: statement can be reduced
 115 |     FooString { s: String::from("blah"), };
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `String::from("blah");`
 
+error: aborting due to 46 previous errors
+

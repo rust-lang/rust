@@ -48,3 +48,5 @@ error: unneeded return statement
 39 |     let _ = || return true;
    |                ^^^^^^^^^^^ help: remove `return` as shown: `true`
 
+error: aborting due to 8 previous errors
+

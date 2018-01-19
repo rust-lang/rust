@@ -124,7 +124,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         let desc = match it.node {
             hir::ItemConst(..) => "a constant",
             hir::ItemEnum(..) => "an enum",
-            hir::ItemFn(..) => "a function",
+            hir::ItemFn(..) => {
+                // ignore main()
+                if it.name == "main" {
+                    let def_id = cx.tcx.hir.local_def_id(it.id);
+                    let def_key = cx.tcx.hir.def_key(def_id);
+                    if def_key.parent == Some(hir::def_id::CRATE_DEF_INDEX) {
+                        return;
+                    }
+                }
+                "a function"
+            },
             hir::ItemMod(..) => "a module",
             hir::ItemStatic(..) => "a static",
             hir::ItemStruct(..) => "a struct",
@@ -133,7 +143,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemGlobalAsm(..) => "an assembly blob",
             hir::ItemTy(..) => "a type alias",
             hir::ItemUnion(..) => "a union",
-            hir::ItemAutoImpl(..) |
             hir::ItemExternCrate(..) |
             hir::ItemForeignMod(..) |
             hir::ItemImpl(..) |

@@ -406,9 +406,6 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
         hir::ItemTraitAlias(..) => {
             println!("trait alias");
         }
-        hir::ItemAutoImpl(_, ref _trait_ref) => {
-            println!("auto impl");
-        },
         hir::ItemImpl(_, _, _, _, Some(ref _trait_ref), _, _) => {
             println!("trait impl");
         },

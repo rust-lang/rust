@@ -533,3 +533,5 @@ error: used unwrap() on an Option value. If you don't want to handle the None ca
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
 
+error: aborting due to 66 previous errors
+

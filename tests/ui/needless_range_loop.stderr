@@ -37,3 +37,5 @@ help: consider using an iterator
 35 |     for <item> in &mut ms {
    |
 
+error: aborting due to 3 previous errors
+

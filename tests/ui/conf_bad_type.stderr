@@ -1,8 +1,10 @@
-error: compiler plugins are experimental and possibly buggy (see issue #29597)
+error[E0658]: compiler plugins are experimental and possibly buggy (see issue #29597)
  --> $DIR/conf_bad_type.rs:4:1
   |
 4 | #![plugin(clippy(conf_file="../ui/conf_bad_type.toml"))]
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = help: add #![feature(plugin)] to the crate attributes to enable
+
+error: aborting due to previous error
 
