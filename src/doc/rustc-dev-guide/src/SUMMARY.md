@@ -4,7 +4,7 @@
 - [How to build the compiler and run what you built](./chap-010-how-to-build-and-run.md)
 - [Using the compiler testing framework](./chap-020-running-tests.md)
 - [Walkthrough: a typical contribution](./chap-030-walkthrough.md)
-- [Conventions used in the compiler](./chap-040-compiler-conventions.md)
+- [High-level overview of the compiler source](./chap-040-high-level-overview.md)
 - [The parser](./chap-050-the-parser.md)
 - [Macro expansion](./chap-060-macro-expansion.md)
 - [Name resolution](./chap-070-name-resolution.md)
