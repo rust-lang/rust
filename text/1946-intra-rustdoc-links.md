@@ -292,24 +292,37 @@ Our proposal is this:
   Non-disambiguated paths cannot be used to link to macros.
 - Links to types can be disambiguated by prefixing them with the concrete
   item type:
+  - Links to any type-namespace object can be prefixed with `type@`,
+    e.g., `See [type@foo]`. This will work for structs, enums, mods, traits,
+    and unions.
   - Links to `struct`s can be prefixed with `struct@`,
     e.g., `See [struct@Foo]`.
   - Links to `enum`s can be prefixed with `enum@`,
     e.g., `See [enum@foo]`.
-  - Links to type aliases can be prefixed with `type@`,
-    e.g., `See [type@foo]`.
   - Links to modules can be prefixed with `mod@`,
     e.g., `See [mod@foo]`.
+  - Links to traits can be prefixed with `trait@`,
+    e.g., `See [trait@foo]`.
+  - Links to unions can be prefixed with `union@`,
+    e.g., `See [union@foo]`.
+  - It is possible that disambiguators for one kind of type-namespace object
+    will work for the other (i.e. you can use `struct@` to refer to an enum),
+    but do not rely on this.
 - In links to macros,
   the link label _must_ end with a `!`,
-  e.g., `Look at the [FOO!] macro`.
+  e.g., `Look at the [FOO!] macro`. You can alternatively use a `foo@` prefix,
+  e.g. `[macro@foo]`
 - For disambiguating links to values, we differentiate three cases:
+  - Links to any kind of value (function, const, static) can be prefixed with `value@`,
+    e.g., `See [value@foo]`.
   - Links to functions can be written with a `()` suffix,
     e.g., `Also see the [foo()] function`.
   - Links to constants are prefixed with `const@`,
     e.g., `As defined in [const@FOO].`
   - Links to statics are prefixed with `static@`,
     e.g., `See [static@FOO]`.
+  - It is possible that disambiguators for one kind of type-namespace object
+    will work for the other (i.e. you can use `static@` to refer to a const),
 
 For disambiguation markers using an `@`, in implied shortcut links
 you can use a space instead of the `@`. In other words, `[struct Foo]`
