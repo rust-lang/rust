@@ -307,6 +307,7 @@ use fmt;
 use iter_private::TrustedRandomAccess;
 use ops::Try;
 use usize;
+use intrinsics;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iterator::Iterator;
@@ -718,7 +719,11 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
         }
 
         // overflow handling
-        while n.checked_mul(step).is_none() {
+        loop {
+            let mul = n.checked_mul(step);
+            if unsafe { intrinsics::likely(mul.is_some())} {
+                return self.iter.nth(mul.unwrap() - 1);
+            }
             let div_n = usize::MAX / n;
             let div_step = usize::MAX / step;
             let nth_n = div_n * n;
@@ -732,7 +737,6 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
             };
             self.iter.nth(nth - 1);
         }
-        self.iter.nth(n * step - 1)
     }
 }
 
