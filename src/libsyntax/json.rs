@@ -38,34 +38,41 @@ pub struct JsonEmitter {
     registry: Option<Registry>,
     cm: Rc<CodeMapper + 'static>,
     pretty: bool,
+    /// Whether "approximate suggestions" are enabled in the config
+    approximate_suggestions: bool,
 }
 
 impl JsonEmitter {
     pub fn stderr(registry: Option<Registry>,
                   code_map: Rc<CodeMap>,
-                  pretty: bool) -> JsonEmitter {
+                  pretty: bool,
+                  approximate_suggestions: bool) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
             registry,
             cm: code_map,
             pretty,
+            approximate_suggestions,
         }
     }
 
     pub fn basic(pretty: bool) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
-        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)), pretty)
+        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)),
+                            pretty, false)
     }
 
     pub fn new(dst: Box<Write + Send>,
                registry: Option<Registry>,
                code_map: Rc<CodeMap>,
-               pretty: bool) -> JsonEmitter {
+               pretty: bool,
+               approximate_suggestions: bool) -> JsonEmitter {
         JsonEmitter {
             dst,
             registry,
             cm: code_map,
             pretty,
+            approximate_suggestions,
         }
     }
 }
@@ -283,6 +290,13 @@ impl DiagnosticSpan {
                 def_site_span,
             })
         });
+
+        let suggestion_approximate = if je.approximate_suggestions {
+             suggestion.map(|x| x.1)
+        } else {
+            None
+        };
+
         DiagnosticSpan {
             file_name: start.file.name.to_string(),
             byte_start: span.lo().0 - start.file.start_pos.0,
@@ -294,7 +308,7 @@ impl DiagnosticSpan {
             is_primary,
             text: DiagnosticSpanLine::from_span(span, je),
             suggested_replacement: suggestion.map(|x| x.0.clone()),
-            suggestion_approximate: suggestion.map(|x| x.1),
+            suggestion_approximate,
             expansion: backtrace_step,
             label,
         }
