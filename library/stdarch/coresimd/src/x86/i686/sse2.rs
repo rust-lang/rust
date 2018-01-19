@@ -80,7 +80,7 @@ pub unsafe fn _mm_setr_epi64(e1: __m64, e0: __m64) -> __m128i {
 // #[cfg_attr(test, assert_instr(movdq2q))] // FIXME: llvm codegens wrong
 // instr?
 pub unsafe fn _mm_movepi64_pi64(a: __m128i) -> __m64 {
-    mem::transmute(simd_extract::<_, i64>(a, 0))
+    mem::transmute(simd_extract::<_, i64>(a.as_i64x2(), 0))
 }
 
 /// Moves the 64-bit operand to a 128-bit integer vector, zeroing the

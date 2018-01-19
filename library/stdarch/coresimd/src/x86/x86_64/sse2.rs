@@ -82,7 +82,7 @@ pub unsafe fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(all(test, not(windows)), assert_instr(movq))]
 pub unsafe fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
-    simd_extract(a, 0)
+    simd_extract(a.as_i64x2(), 0)
 }
 
 /// Return the lowest element of `a`.

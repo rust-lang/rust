@@ -948,7 +948,9 @@ pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
 #[cfg_attr(all(test, not(windows), target_arch = "x86_64"),
            assert_instr(movq))]
 pub unsafe fn _mm_move_epi64(a: __m128i) -> __m128i {
-    simd_shuffle2(a, _mm_setzero_si128(), [0, 2])
+    let zero = _mm_setzero_si128();
+    let r: i64x2 = simd_shuffle2(a.as_i64x2(), zero.as_i64x2(), [0, 2]);
+    mem::transmute(r)
 }
 
 /// Convert packed 16-bit integers from `a` and `b` to packed 8-bit integers
@@ -2088,7 +2090,7 @@ pub unsafe fn _mm_castpd_ps(a: __m128d) -> __m128 {
 #[inline(always)]
 #[target_feature(enable = "sse2")]
 pub unsafe fn _mm_castpd_si128(a: __m128d) -> __m128i {
-    simd_cast(a)
+    mem::transmute::<i64x2, _>(simd_cast(a))
 }
 
 /// Casts a 128-bit floating-point vector of [4 x float] into a 128-bit
@@ -2112,7 +2114,7 @@ pub unsafe fn _mm_castps_si128(a: __m128) -> __m128i {
 #[inline(always)]
 #[target_feature(enable = "sse2")]
 pub unsafe fn _mm_castsi128_pd(a: __m128i) -> __m128d {
-    simd_cast(a)
+    simd_cast(a.as_i64x2())
 }
 
 /// Casts a 128-bit integer vector into a 128-bit floating-point vector

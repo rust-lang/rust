@@ -9,11 +9,11 @@ use stdsimd_test::assert_instr;
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.sse41.ptestz"]
-    fn ptestz(a: __m128i, mask: __m128i) -> i32;
+    fn ptestz(a: i64x2, mask: i64x2) -> i32;
     #[link_name = "llvm.x86.sse41.ptestc"]
-    fn ptestc(a: __m128i, mask: __m128i) -> i32;
+    fn ptestc(a: i64x2, mask: i64x2) -> i32;
     #[link_name = "llvm.x86.sse41.ptestnzc"]
-    fn ptestnzc(a: __m128i, mask: __m128i) -> i32;
+    fn ptestnzc(a: i64x2, mask: i64x2) -> i32;
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -33,7 +33,7 @@ extern "C" {
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
-    ptestz(a, mask)
+    ptestz(a.as_i64x2(), mask.as_i64x2())
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
@@ -53,7 +53,7 @@ pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
-    ptestc(a, mask)
+    ptestc(a.as_i64x2(), mask.as_i64x2())
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are
@@ -73,7 +73,7 @@ pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(ptest))]
 pub unsafe fn _mm_testnzc_si128(a: __m128i, mask: __m128i) -> i32 {
-    ptestnzc(a, mask)
+    ptestnzc(a.as_i64x2(), mask.as_i64x2())
 }
 
 /// Tests whether the specified bits in a 128-bit integer vector are all
