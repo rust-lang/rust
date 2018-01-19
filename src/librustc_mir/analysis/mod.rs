@@ -11,5 +11,6 @@
 pub mod alignment;
 pub mod dataflow;
 pub mod def_use;
+pub mod eventflow;
 pub mod liveness;
 pub mod locations;
