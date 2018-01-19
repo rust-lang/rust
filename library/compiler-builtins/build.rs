@@ -5464,7 +5464,7 @@ mod c {
                 ],
             );
 
-            // First of all aeabi_cdcmp and aeabi_cfcmp are never called LLVM.
+            // First of all aeabi_cdcmp and aeabi_cfcmp are never called by LLVM.
             // Second are little-endian only, so build fail on big-endian targets.
             // Temporally workaround: exclude these files for big-endian targets.
             if !llvm_target[0].starts_with("thumbeb") &&
@@ -5477,6 +5477,7 @@ mod c {
                         "arm/aeabi_cfcmpeq_check_nan.c",
                     ],
                 );
+            }
         }
 
         if llvm_target[0] == "armv7" {
