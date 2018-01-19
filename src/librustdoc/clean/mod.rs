@@ -836,6 +836,62 @@ impl AttributesExt for Attributes {
     }
 }
 
+/// Given a def, returns its name and disambiguator
+/// for a value namespace
+///
+/// Returns None for things which cannot be ambiguous since
+/// they exist in both namespaces (structs and modules)
+fn value_ns_kind(def: Def, path_str: &str) -> Option<(&'static str, String)> {
+    match def {
+        // structs and mods exist in both namespaces. skip them
+        Def::StructCtor(..) | Def::Mod(..) => None,
+        Def::Variant(..) | Def::VariantCtor(..)
+            => Some(("variant", format!("{}()", path_str))),
+        Def::Fn(..)
+            => Some(("function", format!("{}()", path_str))),
+        Def::Method(..)
+            => Some(("method", format!("{}()", path_str))),
+        Def::Const(..)
+            => Some(("const", format!("const@{}", path_str))),
+        Def::Static(..)
+            => Some(("static", format!("static@{}", path_str))),
+        _ => Some(("value", format!("value@{}", path_str))),
+    }
+}
+
+/// Given a def, returns its name, the article to be used, and a disambiguator
+/// for the type namespace
+fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String) {
+    let (kind, article) = match def {
+        // we can still have non-tuple structs
+        Def::Struct(..) => ("struct", "a"),
+        Def::Enum(..) => ("enum", "an"),
+        Def::Trait(..) => ("trait", "a"),
+        Def::Union(..) => ("union", "a"),
+        _ => ("type", "a"),
+    };
+    (kind, article, format!("{}@{}", kind, path_str))
+}
+
+fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
+                   path_str: &str,
+                   article1: &str, kind1: &str, disambig1: &str,
+                   article2: &str, kind2: &str, disambig2: &str) {
+    let sp = attrs.doc_strings.first()
+                  .map_or(DUMMY_SP, |a| a.span());
+    cx.sess()
+      .struct_span_err(sp,
+                       &format!("`{}` is both {} {} and {} {}",
+                                path_str, article1, kind1,
+                                article2, kind2))
+      .help(&format!("try `{0}` if you want to select the {1}, \
+                      or `{2}@{3}` if you want to \
+                      select the {2}",
+                      disambig1, kind1, disambig2,
+                      kind2))
+             .emit();
+}
+
 enum PathKind {
     /// can be either value or type, not a macro
     Unknown,
@@ -846,6 +902,7 @@ enum PathKind {
     /// types, traits, everything in the type namespace
     Type
 }
+
 impl Clean<Attributes> for [ast::Attribute] {
     fn clean(&self, cx: &DocContext) -> Attributes {
         let mut attrs = Attributes::from_ast(cx.sess().diagnostic(), self);
@@ -957,43 +1014,13 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Ok(path) = resolve(false) {
                                 // if there is something in both namespaces
                                 if let Ok(value_path) = resolve(true) {
-                                    let kind = match value_path.def {
-                                        // structs and mods exist in both namespaces. skip them
-                                        Def::StructCtor(..) | Def::Mod(..) => None,
-                                        Def::Variant(..) | Def::VariantCtor(..)
-                                            => Some(("variant", format!("{}()", path_str))),
-                                        Def::Fn(..)
-                                            => Some(("function", format!("{}()", path_str))),
-                                        Def::Method(..)
-                                            => Some(("method", format!("{}()", path_str))),
-                                        Def::Const(..)
-                                            => Some(("const", format!("const@{}", path_str))),
-                                        Def::Static(..)
-                                            => Some(("static", format!("static@{}", path_str))),
-                                        _ => Some(("value", format!("static@{}", path_str))),
-                                    };
-                                    if let Some((value_kind, disambig)) = kind {
-                                        let (type_kind, article) = match path.def {
-                                            // we can still have non-tuple structs
-                                            Def::Struct(..) => ("struct", "a"),
-                                            Def::Enum(..) => ("enum", "an"),
-                                            Def::Trait(..) => ("trait", "a"),
-                                            Def::Union(..) => ("union", "a"),
-                                            _ => ("type", "a"),
-                                        };
-                                        let sp = attrs.doc_strings.first()
-                                                      .map_or(DUMMY_SP, |a| a.span());
-                                        cx.sess()
-                                          .struct_span_err(sp,
-                                                           &format!("`{}` is both {} {} and a {}",
-                                                                    path_str, article, type_kind,
-                                                                    value_kind))
-                                          .help(&format!("try `{0}` if you want to select the {1}, \
-                                                          or `{2}@{3}` if you want to \
-                                                          select the {2}",
-                                                          disambig, value_kind, type_kind,
-                                                          path_str))
-                                                 .emit();
+                                    let kind = value_ns_kind(value_path.def, path_str);
+                                    if let Some((value_kind, value_disambig)) = kind {
+                                        let (type_kind, article, type_disambig)
+                                            = type_ns_kind(path.def);
+                                        ambiguity_error(cx, &attrs,
+                                                        article, type_kind, type_disambig,
+                                                        "a", value_kind, value_disambig);
                                         continue;
                                     }
                                 }
