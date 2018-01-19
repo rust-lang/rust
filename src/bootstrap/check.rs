@@ -605,6 +605,11 @@ static HOST_COMPILETESTS: &[Test] = &[
         mode: "compile-fail",
         suite: "compile-fail-fulldeps",
     },
+    Test {
+        path: "src/test/incremental-fulldeps",
+        mode: "incremental",
+        suite: "incremental-fulldeps",
+    },
     Test { path: "src/test/run-make", mode: "run-make", suite: "run-make" },
     Test { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" },
 
