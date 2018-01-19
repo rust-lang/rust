@@ -22,51 +22,37 @@ struct Function {
 
 static BOOL: Type = Type::Bool;
 static F32: Type = Type::PrimFloat(32);
-static F32x4: Type = Type::Float(32, 4);
-static F32x8: Type = Type::Float(32, 8);
 static F64: Type = Type::PrimFloat(64);
-static F64x2: Type = Type::Float(64, 2);
-static F64x4: Type = Type::Float(64, 4);
 static I16: Type = Type::PrimSigned(16);
-static I16x16: Type = Type::Signed(16, 16);
-static I16x4: Type = Type::Signed(16, 4);
-static I16x8: Type = Type::Signed(16, 8);
 static I32: Type = Type::PrimSigned(32);
-static I32x2: Type = Type::Signed(32, 2);
-static I32x4: Type = Type::Signed(32, 4);
-static I32x8: Type = Type::Signed(32, 8);
 static I64: Type = Type::PrimSigned(64);
-static I64x2: Type = Type::Signed(64, 2);
-static I64x4: Type = Type::Signed(64, 4);
 static I8: Type = Type::PrimSigned(8);
-static I8x16: Type = Type::Signed(8, 16);
-static I8x32: Type = Type::Signed(8, 32);
-static I8x8: Type = Type::Signed(8, 8);
 static U16: Type = Type::PrimUnsigned(16);
-static U16x16: Type = Type::Unsigned(16, 16);
-// static U16x4: Type = Type::Unsigned(16, 4);
-static U16x8: Type = Type::Unsigned(16, 8);
 static U32: Type = Type::PrimUnsigned(32);
-static U32x2: Type = Type::Unsigned(32, 2);
-static U32x4: Type = Type::Unsigned(32, 4);
-static U32x8: Type = Type::Unsigned(32, 8);
 static U64: Type = Type::PrimUnsigned(64);
-static U64x2: Type = Type::Unsigned(64, 2);
-static U64x4: Type = Type::Unsigned(64, 4);
 static U8: Type = Type::PrimUnsigned(8);
-static U8x16: Type = Type::Unsigned(8, 16);
-static U8x32: Type = Type::Unsigned(8, 32);
-// static U8x8: Type = Type::Unsigned(8, 8);
+
+static M64: Type = Type::M64;
+static M128: Type = Type::M128;
+static M128I: Type = Type::M128I;
+static M128D: Type = Type::M128D;
+static M256: Type = Type::M256;
+static M256I: Type = Type::M256I;
+static M256D: Type = Type::M256D;
 
 #[derive(Debug)]
 enum Type {
-    Float(u8, u8),
     PrimFloat(u8),
     PrimSigned(u8),
     PrimUnsigned(u8),
     Ptr(&'static Type),
-    Signed(u8, u8),
-    Unsigned(u8, u8),
+    M64,
+    M128,
+    M128D,
+    M128I,
+    M256,
+    M256D,
+    M256I,
     Bool,
 }
 
@@ -271,33 +257,22 @@ fn equate(t: &Type, intel: &str, intrinsic: &str) {
         (&Type::Ptr(&Type::PrimUnsigned(8)), "const void*") => {}
         (&Type::Ptr(&Type::PrimUnsigned(8)), "void*") => {}
 
-        (&Type::Signed(a, b), "__m128i")
-        | (&Type::Unsigned(a, b), "__m128i")
-        | (&Type::Ptr(&Type::Signed(a, b)), "__m128i*")
-        | (&Type::Ptr(&Type::Unsigned(a, b)), "__m128i*") if a * b == 128 => {}
+        (&Type::M64, "__m64")
+        | (&Type::Ptr(&Type::M64), "__m64*") => {}
 
-        (&Type::Signed(a, b), "__m256i")
-        | (&Type::Unsigned(a, b), "__m256i")
-        | (&Type::Ptr(&Type::Signed(a, b)), "__m256i*")
-        | (&Type::Ptr(&Type::Unsigned(a, b)), "__m256i*")
-            if (a as u32) * (b as u32) == 256 => {}
+        (&Type::M128I, "__m128i")
+        | (&Type::Ptr(&Type::M128I), "__m128i*")
+        | (&Type::M128D, "__m128d")
+        | (&Type::Ptr(&Type::M128D), "__m128d*")
+        | (&Type::M128, "__m128")
+        | (&Type::Ptr(&Type::M128), "__m128*") => {}
 
-        (&Type::Signed(a, b), "__m64")
-        | (&Type::Unsigned(a, b), "__m64")
-        | (&Type::Ptr(&Type::Signed(a, b)), "__m64*")
-        | (&Type::Ptr(&Type::Unsigned(a, b)), "__m64*") if a * b == 64 => {}
-
-        (&Type::Float(32, 4), "__m128") => {}
-        (&Type::Ptr(&Type::Float(32, 4)), "__m128*") => {}
-
-        (&Type::Float(64, 2), "__m128d") => {}
-        (&Type::Ptr(&Type::Float(64, 2)), "__m128d*") => {}
-
-        (&Type::Float(32, 8), "__m256") => {}
-        (&Type::Ptr(&Type::Float(32, 8)), "__m256*") => {}
-
-        (&Type::Float(64, 4), "__m256d") => {}
-        (&Type::Ptr(&Type::Float(64, 4)), "__m256d*") => {}
+        (&Type::M256I, "__m256i")
+        | (&Type::Ptr(&Type::M256I), "__m256i*")
+        | (&Type::M256D, "__m256d")
+        | (&Type::Ptr(&Type::M256D), "__m256d*")
+        | (&Type::M256, "__m256")
+        | (&Type::Ptr(&Type::M256), "__m256*") => {}
 
         // These two intrinsics return a 16-bit element but in Intel's
         // intrinsics they're listed as returning an `int`.
@@ -311,7 +286,7 @@ fn equate(t: &Type, intel: &str, intrinsic: &str) {
         // This is a macro (?) in C which seems to mutate its arguments, but
         // that means that we're taking pointers to arguments in rust
         // as we're not exposing it as a macro.
-        (&Type::Ptr(&Type::Float(32, 4)), "__m128")
+        (&Type::Ptr(&Type::M128), "__m128")
             if intrinsic == "_MM_TRANSPOSE4_PS" => {}
 
         // These intrinsics return an `int` in C but they're always either the

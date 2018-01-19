@@ -2,6 +2,7 @@
 
 use core::mem;
 use v128::*;
+use x86::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -13,9 +14,9 @@ extern "C" {
     #[link_name = "llvm.x86.sse4a.insertq"]
     fn insertq(x: i64x2, y: i64x2) -> i64x2;
     #[link_name = "llvm.x86.sse4a.movnt.sd"]
-    fn movntsd(x: *mut f64, y: f64x2);
+    fn movntsd(x: *mut f64, y: __m128d);
     #[link_name = "llvm.x86.sse4a.movnt.ss"]
-    fn movntss(x: *mut f32, y: f32x4);
+    fn movntss(x: *mut f32, y: __m128);
 }
 
 // FIXME(blocked on #248): _mm_extracti_si64(x, len, idx) // EXTRQ
@@ -35,8 +36,8 @@ extern "C" {
 #[inline(always)]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(extrq))]
-pub unsafe fn _mm_extract_si64(x: i64x2, y: i64x2) -> i64x2 {
-    extrq(x, mem::transmute(y))
+pub unsafe fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
+    mem::transmute(extrq(x.as_i64x2(), y.as_i8x16()))
 }
 
 /// Inserts the `[length:0]` bits of `y` into `x` at `index`.
@@ -51,15 +52,15 @@ pub unsafe fn _mm_extract_si64(x: i64x2, y: i64x2) -> i64x2 {
 #[inline(always)]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(insertq))]
-pub unsafe fn _mm_insert_si64(x: i64x2, y: i64x2) -> i64x2 {
-    insertq(x, y)
+pub unsafe fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
+    mem::transmute(insertq(x.as_i64x2(), y.as_i64x2()))
 }
 
 /// Non-temporal store of `a.0` into `p`.
 #[inline(always)]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(movntsd))]
-pub unsafe fn _mm_stream_sd(p: *mut f64, a: f64x2) {
+pub unsafe fn _mm_stream_sd(p: *mut f64, a: __m128d) {
     movntsd(p, a);
 }
 
@@ -67,43 +68,42 @@ pub unsafe fn _mm_stream_sd(p: *mut f64, a: f64x2) {
 #[inline(always)]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(movntss))]
-pub unsafe fn _mm_stream_ss(p: *mut f32, a: f32x4) {
+pub unsafe fn _mm_stream_ss(p: *mut f32, a: __m128) {
     movntss(p, a);
 }
 
 #[cfg(test)]
 mod tests {
     use stdsimd_test::simd_test;
-    use x86::i686::sse4a;
-    use v128::*;
+    use x86::*;
 
     #[simd_test = "sse4a"]
-    unsafe fn _mm_extract_si64() {
+    unsafe fn test_mm_extract_si64() {
         let b = 0b0110_0000_0000_i64;
         //        ^^^^ bit range extracted
-        let x = i64x2::new(b, 0);
+        let x = _mm_setr_epi64x(b, 0);
         let v = 0b001000___00___000100_i64;
         //        ^idx: 2^3 = 8 ^length = 2^2 = 4
-        let y = i64x2::new(v, 0);
-        let e = i64x2::new(0b0110_i64, 0);
-        let r = sse4a::_mm_extract_si64(x, y);
+        let y = _mm_setr_epi64x(v, 0);
+        let e = _mm_setr_epi64x(0b0110_i64, 0);
+        let r = _mm_extract_si64(x, y);
         assert_eq!(r, e);
     }
 
     #[simd_test = "sse4a"]
-    unsafe fn _mm_insert_si64() {
+    unsafe fn test_mm_insert_si64() {
         let i = 0b0110_i64;
         //        ^^^^ bit range inserted
         let z = 0b1010_1010_1010i64;
         //        ^^^^ bit range replaced
         let e = 0b0110_1010_1010i64;
         //        ^^^^ replaced 1010 with 0110
-        let x = i64x2::new(z, 0);
-        let expected = i64x2::new(e, 0);
+        let x = _mm_setr_epi64x(z, 0);
+        let expected = _mm_setr_epi64x(e, 0);
         let v = 0b001000___00___000100_i64;
         //        ^idx: 2^3 = 8 ^length = 2^2 = 4
-        let y = i64x2::new(i, v);
-        let r = sse4a::_mm_insert_si64(x, y);
+        let y = _mm_setr_epi64x(i, v);
+        let r = _mm_insert_si64(x, y);
         assert_eq!(r, expected);
     }
 
@@ -113,7 +113,7 @@ mod tests {
     }
 
     #[simd_test = "sse4a"]
-    unsafe fn _mm_stream_sd() {
+    unsafe fn test_mm_stream_sd() {
         let mut mem = MemoryF64 {
             data: [1.0_f64, 2.0],
         };
@@ -121,9 +121,9 @@ mod tests {
             let vals = &mut mem.data;
             let d = vals.as_mut_ptr();
 
-            let x = f64x2::new(3.0, 4.0);
+            let x = _mm_setr_pd(3.0, 4.0);
 
-            sse4a::_mm_stream_sd(d, x);
+            _mm_stream_sd(d, x);
         }
         assert_eq!(mem.data[0], 3.0);
         assert_eq!(mem.data[1], 2.0);
@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[simd_test = "sse4a"]
-    unsafe fn _mm_stream_ss() {
+    unsafe fn test_mm_stream_ss() {
         let mut mem = MemoryF32 {
             data: [1.0_f32, 2.0, 3.0, 4.0],
         };
@@ -143,9 +143,9 @@ mod tests {
             let vals = &mut mem.data;
             let d = vals.as_mut_ptr();
 
-            let x = f32x4::new(5.0, 6.0, 7.0, 8.0);
+            let x = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
 
-            sse4a::_mm_stream_ss(d, x);
+            _mm_stream_ss(d, x);
         }
         assert_eq!(mem.data[0], 5.0);
         assert_eq!(mem.data[1], 2.0);

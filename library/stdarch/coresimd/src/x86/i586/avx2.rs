@@ -3162,8 +3162,6 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use v256::*;
-    use v128::*;
     use x86::*;
     use std;
 
@@ -3423,17 +3421,16 @@ mod tests {
     unsafe fn test_mm256_and_si256() {
         let a = _mm256_set1_epi8(5);
         let b = _mm256_set1_epi8(3);
-        let got = _mm256_and_si256(__m256i::from(a), __m256i::from(b));
-        assert_eq!(got, __m256i::from(_mm256_set1_epi8(1)));
+        let got = _mm256_and_si256(a, b);
+        assert_eq!(got, _mm256_set1_epi8(1));
     }
 
     #[simd_test = "avx2"]
     unsafe fn test_mm256_andnot_si256() {
         let a = _mm256_set1_epi8(5);
         let b = _mm256_set1_epi8(3);
-        let got =
-            _mm256_andnot_si256(__m256i::from(a), __m256i::from(b));
-        assert_eq!(got, __m256i::from(_mm256_set1_epi8(2)));
+        let got = _mm256_andnot_si256(a, b);
+        assert_eq!(got, _mm256_set1_epi8(2));
     }
 
     #[simd_test = "avx2"]
@@ -3774,9 +3771,9 @@ mod tests {
 
     #[simd_test = "avx2"]
     unsafe fn test_mm256_extracti128_si256() {
-        let a = __m256i::from(_mm256_setr_epi64x(1, 2, 3, 4));
+        let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let r = _mm256_extracti128_si256(a, 0b01);
-        let e = __m128i::from(_mm_setr_epi64x(3, 4));
+        let e = _mm_setr_epi64x(3, 4);
         assert_eq!(r, e);
     }
 
@@ -3850,11 +3847,11 @@ mod tests {
 
     #[simd_test = "avx2"]
     unsafe fn test_mm256_inserti128_si256() {
-        let a = __m256i::from(_mm256_setr_epi64x(1, 2, 3, 4));
-        let b = __m128i::from(_mm_setr_epi64x(7, 8));
+        let a = _mm256_setr_epi64x(1, 2, 3, 4);
+        let b = _mm_setr_epi64x(7, 8);
         let r = _mm256_inserti128_si256(a, b, 0b01);
         let e = _mm256_setr_epi64x(1, 2, 7, 8);
-        assert_eq!(r, __m256i::from(e));
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx2"]
@@ -4124,8 +4121,8 @@ mod tests {
 
     #[simd_test = "avx2"]
     unsafe fn test_mm256_or_si256() {
-        let a = __m256i::from(_mm256_set1_epi8(-1));
-        let b = __m256i::from(_mm256_set1_epi8(0));
+        let a = _mm256_set1_epi8(-1);
+        let b = _mm256_set1_epi8(0);
         let r = _mm256_or_si256(a, b);
         assert_eq!(r, a);
     }
@@ -4301,8 +4298,8 @@ mod tests {
     #[simd_test = "avx2"]
     unsafe fn test_mm256_slli_si256() {
         let a = _mm256_set1_epi64x(0xFFFFFFFF);
-        let r = _mm256_slli_si256(__m256i::from(a), 3);
-        assert_eq!(r, __m256i::from(_mm256_set1_epi64x(0xFFFFFFFF000000)));
+        let r = _mm256_slli_si256(a, 3);
+        assert_eq!(r, _mm256_set1_epi64x(0xFFFFFFFF000000));
     }
 
     #[simd_test = "avx2"]
@@ -4400,7 +4397,7 @@ mod tests {
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         );
-        let r = _mm256_srli_si256(__m256i::from(a), 3);
+        let r = _mm256_srli_si256(a, 3);
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let e = _mm256_setr_epi8(
             4, 5, 6, 7, 8, 9, 10, 11,
@@ -4408,7 +4405,7 @@ mod tests {
             20, 21, 22, 23, 24, 25, 26, 27,
             28, 29, 30, 31, 32, 0, 0, 0,
         );
-        assert_eq!(r, __m256i::from(e));
+        assert_eq!(r, e);
     }
 
     #[simd_test = "avx2"]
@@ -4561,10 +4558,10 @@ mod tests {
 
     #[simd_test = "avx2"]
     unsafe fn test_mm256_xor_si256() {
-        let a = __m256i::from(_mm256_set1_epi8(5));
-        let b = __m256i::from(_mm256_set1_epi8(3));
+        let a = _mm256_set1_epi8(5);
+        let b = _mm256_set1_epi8(3);
         let r = _mm256_xor_si256(a, b);
-        assert_eq!(r, __m256i::from(_mm256_set1_epi8(6)));
+        assert_eq!(r, _mm256_set1_epi8(6));
     }
 
     #[simd_test = "avx2"]
