@@ -1,6 +1,8 @@
 language: rust
 
-cache: pip
+cache:
+- pip
+- cargo
 
 install:
   - source ~/.cargo/env || true
