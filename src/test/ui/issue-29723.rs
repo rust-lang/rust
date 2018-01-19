@@ -20,6 +20,7 @@ fn main() {
             // This should trigger an error,
             // s could have been moved from.
             s
+            //~ ERROR use of moved value: `s`
         }
     };
 }
