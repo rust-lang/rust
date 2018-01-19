@@ -892,6 +892,24 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
              .emit();
 }
 
+/// Resolve a given string as a path, along with whether or not it is
+/// in the value namespace
+fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<hir::Path, ()> {
+    // In case we're in a module, try to resolve the relative
+    // path
+    if let Some(id) = cx.mod_ids.borrow().last() {
+        cx.resolver.borrow_mut()
+                   .with_scope(*id, |resolver| {
+                        resolver.resolve_str_path_error(DUMMY_SP,
+                                                        &path_str, is_val)
+                    })
+    } else {
+        // FIXME(Manishearth) this branch doesn't seem to ever be hit, really
+        cx.resolver.borrow_mut()
+                   .resolve_str_path_error(DUMMY_SP, &path_str, is_val)
+    }
+}
+
 enum PathKind {
     /// can be either value or type, not a macro
     Unknown,
@@ -945,22 +963,6 @@ impl Clean<Attributes> for [ast::Attribute] {
                         continue;
                     }
 
-                    let resolve = |is_val| {
-                        // In case we're in a module, try to resolve the relative
-                        // path
-                        if let Some(id) = cx.mod_ids.borrow().last() {
-                            cx.resolver.borrow_mut()
-                                       .with_scope(*id, |resolver| {
-                                            resolver.resolve_str_path_error(DUMMY_SP,
-                                                                            &path_str, is_val)
-                                        })
-                        } else {
-                            // FIXME(Manishearth) this branch doesn't seem to ever be hit, really
-                            cx.resolver.borrow_mut()
-                                       .resolve_str_path_error(DUMMY_SP, &path_str, is_val)
-                        }
-                    };
-
                     let macro_resolve = || {
                             use syntax::ext::base::MacroKind;
                             use syntax::ext::hygiene::Mark;
@@ -989,7 +991,7 @@ impl Clean<Attributes> for [ast::Attribute] {
 
                     match kind {
                         PathKind::Value => {
-                            if let Ok(path) = resolve(true) {
+                            if let Ok(path) = resolve(cx, path_str, true) {
                                 path.def
                             } else {
                                 // this could just be a normal link or a broken link
@@ -999,7 +1001,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             }
                         }
                         PathKind::Type => {
-                            if let Ok(path) = resolve(false) {
+                            if let Ok(path) = resolve(cx, path_str, false) {
                                 path.def
                             } else {
                                 // this could just be a normal link
@@ -1009,14 +1011,14 @@ impl Clean<Attributes> for [ast::Attribute] {
                         PathKind::Unknown => {
                             // try everything!
                             if let Some(macro_def) = macro_resolve() {
-                                if let Ok(type_path) = resolve(false) {
+                                if let Ok(type_path) = resolve(cx, path_str, false) {
                                     let (type_kind, article, type_disambig)
                                         = type_ns_kind(type_path.def, path_str);
                                     ambiguity_error(cx, &attrs, path_str,
                                                     article, type_kind, &type_disambig,
                                                     "a", "macro", &format!("macro@{}", path_str));
                                     continue;
-                                } else if let Ok(value_path) = resolve(true) {
+                                } else if let Ok(value_path) = resolve(cx, path_str, true) {
                                     let (value_kind, value_disambig)
                                         = value_ns_kind(value_path.def, path_str)
                                             .expect("struct and mod cases should have been \
@@ -1026,12 +1028,12 @@ impl Clean<Attributes> for [ast::Attribute] {
                                                     "a", "macro", &format!("macro@{}", path_str));
                                 }
                                 macro_def
-                            } else if let Ok(type_path) = resolve(false) {
+                            } else if let Ok(type_path) = resolve(cx, path_str, false) {
                                 // It is imperative we search for not-a-value first
                                 // Otherwise we will find struct ctors for when we are looking
                                 // for structs, and the link won't work.
                                 // if there is something in both namespaces
-                                if let Ok(value_path) = resolve(true) {
+                                if let Ok(value_path) = resolve(cx, path_str, true) {
                                     let kind = value_ns_kind(value_path.def, path_str);
                                     if let Some((value_kind, value_disambig)) = kind {
                                         let (type_kind, article, type_disambig)
@@ -1043,7 +1045,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                                     }
                                 }
                                 type_path.def
-                            } else if let Ok(value_path) = resolve(true) {
+                            } else if let Ok(value_path) = resolve(cx, path_str, true) {
                                 value_path.def
                             } else {
                                 // this could just be a normal link
