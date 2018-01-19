@@ -50,6 +50,73 @@
 
 use fmt;
 
+/// An identity function. Two things are important to note about this function:
+///
+/// - It is not always equivalent to a closure like `|x| x` since the
+///   closure may coerce `x` into a different type.
+///
+/// - It moves the input `x` passed to the function.
+///
+/// While it might seem strange to have a function that just returns back the
+/// input, there are some interesting uses.
+///
+/// # Examples
+///
+/// Using `id` to do nothing among other interesting functions:
+///
+/// ```rust
+/// #![feature(convert_id)]
+/// use std::convert::id;
+///
+/// fn manipulation(x: u32) -> u32 {
+///     // Let's assume that this function does something interesting.
+///     x + 1
+/// }
+///
+/// let _arr = &[id, manipulation];
+/// ```
+///
+/// Using `id` to get a function that changes nothing in a conditional:
+///
+/// ```rust
+/// #![feature(convert_id)]
+/// use std::convert::id;
+///
+/// // Let's pretend we have an interesting condition:
+/// let condition = true;
+///
+/// let do_stuff = if condition { manipulation } else { id };
+///
+/// // do more interesting stuff..
+/// let _results = do_stuff(42);
+/// ```
+///
+/// Using `id` to concatenate an iterator of iterators:
+///
+/// ```rust
+/// #![feature(convert_id)]
+/// use std::convert::id;
+///
+/// let vec_vec = vec![vec![1, 3, 4], vec![5, 6]];
+/// let iter_iter = vec_vec.into_iter().map(Vec::into_iter);
+/// let concatenated = iter_iter.flat_map(id).collect::<Vec<_>>();
+/// assert_eq!(vec![1, 3, 4, 5, 6], concatenated);
+/// ```
+///
+/// Using `id` to keep the `Some` variants of an iterator of `Option<T>`:
+///
+/// ```rust
+/// #![feature(convert_id)]
+/// use std::convert::id;
+///
+/// let iter = vec![Some(1), None, Some(3)].into_iter();
+/// let filtered = iter.filter_map(id).collect::<Vec<_>>();
+/// assert_eq!(vec![1, 3], filtered);
+/// ```
+#[unstable(feature = "convert_id", issue = "0")]
+#[inline]
+pub fn id<T>(x: T) -> T { x }
+
 /// A type used as the error type for implementations of fallible conversion
 /// traits in cases where conversions cannot actually fail.
 ///
