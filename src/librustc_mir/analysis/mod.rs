@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod accesses;
 pub mod alignment;
 pub mod borrows;
 pub mod dataflow;

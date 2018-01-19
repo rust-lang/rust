@@ -121,14 +121,14 @@ pub struct MoveDataParamEnv<'gcx, 'tcx> {
     pub(crate) param_env: ty::ParamEnv<'gcx>,
 }
 
-pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                 mir: &'a Mir<'tcx>,
-                                                 node_id: ast::NodeId,
-                                                 attributes: &[ast::Attribute],
-                                                 dead_unwinds: &IdxSet<BasicBlock>,
-                                                 bd: BD,
-                                                 p: P)
-                                                 -> DataflowResults<BD>
+pub(crate) fn do_dataflow<BD, P>(tcx: TyCtxt,
+                                 mir: &Mir,
+                                 node_id: ast::NodeId,
+                                 attributes: &[ast::Attribute],
+                                 dead_unwinds: &IdxSet<BasicBlock>,
+                                 bd: BD,
+                                 p: P)
+                                 -> DataflowResults<BD>
     where BD: BitDenotation + InitialFlow,
           P: Fn(&BD, BD::Idx) -> DebugFormatted
 {
@@ -139,7 +139,7 @@ pub(crate) fn do_dataflow<'a, 'gcx, 'tcx, BD, P>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 impl<'a, 'gcx: 'tcx, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation
 {
     pub(crate) fn run<P>(self,
-                         tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                         tcx: TyCtxt,
                          node_id: ast::NodeId,
                          attributes: &[ast::Attribute],
                          p: P) -> DataflowResults<BD>
