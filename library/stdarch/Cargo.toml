@@ -4,8 +4,8 @@ version = "0.0.3"
 authors = ["Andrew Gallant <jamslam@gmail.com>"]
 description = "SIMD support in Rust's standard library."
 documentation = "https://docs.rs/stdsimd"
-homepage = "https://github.com/BurntSushi/stdsimd"
-repository = "https://github.com/BurntSushi/stdsimd"
+homepage = "https://github.com/rust-lang-nursery/stdsimd"
+repository = "https://github.com/rust-lang-nursery/stdsimd"
 readme = "README.md"
 keywords = ["std", "simd", "intrinsics"]
 categories = ["hardware-support"]
@@ -15,10 +15,10 @@ license = "MIT/Apache-2.0"
 members = ["stdsimd-verify"]
 
 [badges]
-travis-ci = { repository = "BurntSushi/stdsimd" }
-appveyor = { repository = "BurntSushi/stdsimd"  }
-is-it-maintained-issue-resolution = { repository = "BurntSushi/stdsimd" }
-is-it-maintained-open-issues = { repository = "BurntSushi/stdsimd" }
+travis-ci = { repository = "rust-lang-nursery/stdsimd" }
+appveyor = { repository = "rust-lang-nursery/stdsimd"  }
+is-it-maintained-issue-resolution = { repository = "rust-lang-nursery/stdsimd" }
+is-it-maintained-open-issues = { repository = "rust-lang-nursery/stdsimd" }
 maintenance = { status = "experimental" }
 
 [dependencies]
