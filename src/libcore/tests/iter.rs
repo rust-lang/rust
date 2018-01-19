@@ -162,6 +162,24 @@ fn test_iterator_step_by() {
 }
 
 #[test]
+fn test_iterator_step_by_nth() {
+    let mut it = (0..16).step_by(5);
+    assert_eq!(it.nth(0), Some(0));
+    assert_eq!(it.nth(0), Some(5));
+    assert_eq!(it.nth(0), Some(10));
+    assert_eq!(it.nth(0), Some(15));
+    assert_eq!(it.nth(0), None);
+
+    let it = (0..18).step_by(5);
+    assert_eq!(it.clone().nth(0), Some(0));
+    assert_eq!(it.clone().nth(1), Some(5));
+    assert_eq!(it.clone().nth(2), Some(10));
+    assert_eq!(it.clone().nth(3), Some(15));
+    assert_eq!(it.clone().nth(4), None);
+    assert_eq!(it.clone().nth(42), None);
+}
+
+#[test]
 #[should_panic]
 fn test_iterator_step_by_zero() {
     let mut it = (0..).step_by(0);
