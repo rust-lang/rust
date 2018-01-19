@@ -82,12 +82,14 @@ use fmt;
 /// #![feature(convert_id)]
 /// use std::convert::id;
 ///
-/// // Let's pretend we have an interesting condition:
-/// let condition = true;
+/// # let condition = true;
+///
+/// # fn manipulation(x: u32) -> u32 { x + 1 }
 ///
 /// let do_stuff = if condition { manipulation } else { id };
 ///
 /// // do more interesting stuff..
+///
 /// let _results = do_stuff(42);
 /// ```
 ///
