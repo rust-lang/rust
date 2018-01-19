@@ -301,12 +301,12 @@ It's absolutely fine to have multiple build directories with different
 [pull-requests]: #pull-requests
 
 Pull requests are the primary mechanism we use to change Rust. GitHub itself
-has some [great documentation][pull-requests] on using the Pull Request feature.
+has some [great documentation][about-pull-requests] on using the Pull Request feature.
 We use the "fork and pull" model [described here][development-models], where
 contributors push changes to their personal fork and create pull requests to
 bring those changes into the source repository.
 
-[pull-requests]: https://help.github.com/articles/about-pull-requests/
+[about-pull-requests]: https://help.github.com/articles/about-pull-requests/
 [development-models]: https://help.github.com/articles/about-collaborative-development-models/
 
 Please make pull requests against the `master` branch.
