@@ -5430,10 +5430,6 @@ mod c {
         if target_arch == "arm" && target_os != "ios" {
             sources.extend(
                 &[
-                    "arm/aeabi_cdcmp.S",
-                    "arm/aeabi_cdcmpeq_check_nan.c",
-                    "arm/aeabi_cfcmp.S",
-                    "arm/aeabi_cfcmpeq_check_nan.c",
                     "arm/aeabi_dcmp.S",
                     "arm/aeabi_div0.c",
                     "arm/aeabi_drsub.c",
@@ -5467,6 +5463,20 @@ mod c {
                     // "arm/udivsi3.S",
                 ],
             );
+
+            // First of all aeabi_cdcmp and aeabi_cfcmp are never called LLVM.
+            // Second are little-endian only, so build fail on big-endian targets.
+            // Temporally workaround: exclude these files for big-endian targets.
+            if !llvm_target[0].starts_with("thumbeb") &&
+               !llvm_target[0].starts_with("armeb") {
+                sources.extend(
+                    &[
+                        "arm/aeabi_cdcmp.S",
+                        "arm/aeabi_cdcmpeq_check_nan.c",
+                        "arm/aeabi_cfcmp.S",
+                        "arm/aeabi_cfcmpeq_check_nan.c",
+                    ],
+                );
         }
 
         if llvm_target[0] == "armv7" {
