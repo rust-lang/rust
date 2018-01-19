@@ -241,7 +241,7 @@ pub fn parse(
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
 fn parse_tree<I>(
     tree: tokenstream::TokenTree,
-    trees: &mut I,
+    trees: &mut Peekable<I>,
     expect_matchers: bool,
     sess: &ParseSess,
 ) -> TokenTree
@@ -339,15 +339,21 @@ fn kleene_op(token: &token::Token) -> Option<KleeneOp> {
 /// - Ok(Ok(op)) if the next token tree is a KleeneOp
 /// - Ok(Err(tok, span)) if the next token tree is a token but not a KleeneOp
 /// - Err(span) if the next token tree is not a token
-fn parse_kleene_op<I>(input: &mut I, span: Span) -> Result<Result<KleeneOp, (token::Token, Span)>, Span>
-    where I: Iterator<Item = tokenstream::TokenTree>,
+fn parse_kleene_op<I>(
+    input: &mut I,
+    span: Span,
+) -> Result<Result<KleeneOp, (token::Token, Span)>, Span>
+where
+    I: Iterator<Item = tokenstream::TokenTree>,
 {
     match input.next() {
         Some(tokenstream::TokenTree::Token(span, tok)) => match kleene_op(&tok) {
             Some(op) => Ok(Ok(op)),
             None => Ok(Err((tok, span))),
-        }
-        tree => Err(tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span)),
+        },
+        tree => Err(tree.as_ref()
+            .map(tokenstream::TokenTree::span)
+            .unwrap_or(span)),
     }
 }
 
@@ -363,9 +369,13 @@ fn parse_kleene_op<I>(input: &mut I, span: Span) -> Result<Result<KleeneOp, (tok
 /// session `sess`. If the next one (or possibly two) tokens in `input` correspond to a Kleene
 /// operator and separator, then a tuple with `(separator, KleeneOp)` is returned. Otherwise, an
 /// error with the appropriate span is emitted to `sess` and a dummy value is returned.
-fn parse_sep_and_kleene_op<I>(input: &mut Peekable<I>, span: Span, sess: &ParseSess)
-                              -> (Option<token::Token>, KleeneOp)
-    where I: Iterator<Item = tokenstream::TokenTree>,
+fn parse_sep_and_kleene_op<I>(
+    input: &mut Peekable<I>,
+    span: Span,
+    sess: &ParseSess,
+) -> (Option<token::Token>, KleeneOp)
+where
+    I: Iterator<Item = tokenstream::TokenTree>,
 {
     // We basically look at two token trees here, denoted as #1 and #2 below
     let span = match parse_kleene_op(input, span) {
@@ -415,12 +425,13 @@ fn parse_sep_and_kleene_op<I>(input: &mut Peekable<I>, span: Span, sess: &ParseS
 
             // #2 is not a token at all :(
             Err(span) => span,
-        }
+        },
 
         // #1 is not a token
         Err(span) => span,
     };
 
-    sess.span_diagnostic.span_err(span, "expected one of: `*`,  `+`, or `?`");
+    sess.span_diagnostic
+        .span_err(span, "expected one of: `*`,  `+`, or `?`");
     (None, KleeneOp::ZeroOrMore)
 }
