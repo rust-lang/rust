@@ -65,14 +65,14 @@ But with this RFC, you can now write:
 
 ```rust
 const X: T = None;
-const arr: [u32; 100] = [X; 100];
+const arr: [T; 100] = [X; 100];
 ```
 
 or, if you wish to modify the array later:
 
 ```rust
 const X: T = None;
-let mut arr = [x; 100];
+let mut arr = [X; 100];
 arr[0] = Some(Box::new(1));
 ```
 
@@ -108,7 +108,10 @@ internally as:
 
 ```rust
 // This is the value to be repeated and typeof(X) the type it has.
+// If a `VALUE` panics, it happens during compile time at this point
+// and not later.
 const X: typeof(X) = VALUE;
+
 // N is the size of the array and how many times to repeat X.
 const N: usize = SIZE;
 
@@ -121,7 +124,7 @@ const N: usize = SIZE;
         let mut iter = (&mut data[..]).into_iter();
         while let Some(elem) = iter.next() {
             // ptr::write does not run destructor of elem already in array.
-            // Since X is const, it can not panic.
+            // Since X is const, it can not panic at this point.
             ptr::write(elem, X);
         }
     }
@@ -156,8 +159,4 @@ be `const`.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-[`drop_types_in_const`]: https://github.com/rust-lang/rfcs/blob/master/text/1440-drop-types-in-const.md
-
-The relation to [`drop_types_in_const`] should be resolved during the RFC process.
-The soundness of the proposal should be verified.
-Other than that, there are no unresolved questions.
+There are no unresolved questions.
