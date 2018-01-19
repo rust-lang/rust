@@ -608,9 +608,6 @@ impl<'a, 'tcx> ArgType<'tcx> {
     }
 
     pub fn store_fn_arg(&self, bx: &Builder<'a, 'tcx>, idx: &mut usize, dst: PlaceRef<'tcx>) {
-        if self.pad.is_some() {
-            *idx += 1;
-        }
         let mut next = || {
             let val = llvm::get_param(bx.llfn(), *idx as c_uint);
             *idx += 1;
