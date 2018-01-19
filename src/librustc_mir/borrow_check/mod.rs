@@ -230,6 +230,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         },
         storage_dead_or_drop_error_reported_l: FxHashSet(),
         storage_dead_or_drop_error_reported_s: FxHashSet(),
+        read_or_write_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
         nonlexical_regioncx: opt_regioncx.clone(),
     };
@@ -300,6 +301,9 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     storage_dead_or_drop_error_reported_l: FxHashSet<Local>,
     /// Same as the above, but for statics (thread-locals)
     storage_dead_or_drop_error_reported_s: FxHashSet<DefId>,
+    /// This field keeps track of when borrow errors are reported in read or write passes
+    /// so that an error is not reported in both.
+    read_or_write_error_reported: FxHashSet<(Place<'tcx>, Span)>,
     /// This field keeps track of when borrow conflict errors are reported
     /// for reservations, so that we don't report seemingly duplicate
     /// errors for corresponding activations
@@ -739,10 +743,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
+        if self.read_or_write_error_reported.contains(&(place_span.0.clone(), place_span.1)) {
+            debug!("suppressing access_place write for {:?}", place_span);
+            return AccessErrorsReported {
+                mutability_error: false,
+                conflict_error: true,
+            };
+        }
+
         let mutability_error =
             self.check_access_permissions(place_span, rw, is_local_mutation_allowed);
         let conflict_error =
             self.check_access_for_conflict(context, place_span, sd, rw, flow_state);
+
+        if conflict_error {
+            self.read_or_write_error_reported.insert((place_span.0.clone(), place_span.1));
+        }
 
         AccessErrorsReported {
             mutability_error,
