@@ -252,7 +252,7 @@ impl TransCrate for LlvmTransCrate {
 
 /// This is the entrypoint for a hot plugged rustc_trans
 #[no_mangle]
-pub extern "C" fn __rustc_codegen_backend(sess: &Session) -> Box<TransCrate> {
+pub fn __rustc_codegen_backend(sess: &Session) -> Box<TransCrate> {
     LlvmTransCrate::new(sess)
 }
 
