@@ -1,24 +1,22 @@
 error: borrowed data cannot be stored outside of its closure
   --> $DIR/expect-region-supply-region.rs:28:18
    |
+26 |     let mut f: Option<&u32> = None;
+   |         ----- borrowed data cannot be stored into here...
 27 |     closure_expecting_bound(|x| {
-   |                             --- borrowed data cannot outlive this closure
+   |                             --- ...because it cannot outlive this closure
 28 |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
-   |             -----^-
-   |             |    |
-   |             |    cannot be stored outside of its closure
-   |             cannot infer an appropriate lifetime
+   |                  ^ cannot be stored outside of its closure
 
 error: borrowed data cannot be stored outside of its closure
   --> $DIR/expect-region-supply-region.rs:38:18
    |
+36 |     let mut f: Option<&u32> = None;
+   |         ----- borrowed data cannot be stored into here...
 37 |     closure_expecting_bound(|x: &u32| {
-   |                             --------- borrowed data cannot outlive this closure
+   |                             --------- ...because it cannot outlive this closure
 38 |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
-   |             -----^-
-   |             |    |
-   |             |    cannot be stored outside of its closure
-   |             cannot infer an appropriate lifetime
+   |                  ^ cannot be stored outside of its closure
 
 error[E0308]: mismatched types
   --> $DIR/expect-region-supply-region.rs:47:33
@@ -87,14 +85,14 @@ note: ...does not necessarily outlive the anonymous lifetime #2 defined on the b
 error: borrowed data cannot be stored outside of its closure
   --> $DIR/expect-region-supply-region.rs:52:18
    |
+43 |     let mut f: Option<&u32> = None;
+   |         ----- borrowed data cannot be stored into here...
+...
 47 |     closure_expecting_bound(|x: &'x u32| {
-   |                             ------------ borrowed data cannot outlive this closure
+   |                             ------------ ...because it cannot outlive this closure
 ...
 52 |         f = Some(x);
-   |             -----^-
-   |             |    |
-   |             |    cannot be stored outside of its closure
-   |             cannot infer an appropriate lifetime
+   |                  ^ cannot be stored outside of its closure
 
 error: aborting due to 5 previous errors
 

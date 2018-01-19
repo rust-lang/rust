@@ -28,6 +28,7 @@ pub fn remove_package_from_database() {
         //~^ NOTE cannot infer an appropriate lifetime
     let push_id = |installed_id: &CrateId| {
         //~^ NOTE borrowed data cannot outlive this closure
+        //~| NOTE ...so that variable is valid at time of its declaration
         lines_to_use.push(installed_id);
         //~^ ERROR borrowed data cannot be stored outside of its closure
         //~| NOTE cannot be stored outside of its closure

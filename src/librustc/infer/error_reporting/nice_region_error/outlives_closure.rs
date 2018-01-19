@@ -69,16 +69,46 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                                 sup_sp,
                                 "borrowed data cannot be stored outside of its closure");
                             err.span_label(sup_sp, "cannot be stored outside of its closure");
-                            if sup_sp == origin_sp {
+                            if origin_sp == sup_sp || origin_sp.contains(sup_sp) {
+// // sup_sp == origin.span():
+//
+// let mut x = None;
+//     ----- borrowed data cannot be stored into here...
+// with_int(|y| x = Some(y));
+//          ---          ^ cannot be stored outside of its closure
+//          |
+//          ...because it cannot outlive this closure
+//
+// // origin.contains(&sup_sp):
+//
+// let mut f: Option<&u32> = None;
+//     ----- borrowed data cannot be stored into here...
+// closure_expecting_bound(|x: &'x u32| {
+//                         ------------ ... because it cannot outlive this closure
+//     f = Some(x);
+//              ^ cannot be stored outside of its closure
                                 err.span_label(*external_span,
                                                "borrowed data cannot be stored into here...");
                                 err.span_label(*closure_span,
                                                "...because it cannot outlive this closure");
                             } else {
+// FIXME: the wording for this case could be much improved
+//
+// let mut lines_to_use: Vec<&CrateId> = Vec::new();
+//                           - cannot infer an appropriate lifetime...
+// let push_id = |installed_id: &CrateId| {
+//     -------   ------------------------ borrowed data cannot outlive this closure
+//     |
+//     ...so that variable is valid at time of its declaration
+//     lines_to_use.push(installed_id);
+//                       ^^^^^^^^^^^^ cannot be stored outside of its closure
+                                err.span_label(origin_sp,
+                                               "cannot infer an appropriate lifetime...");
+                                err.span_label(*external_span,
+                                               "...so that variable is valid at time of its \
+                                                declaration");
                                 err.span_label(*closure_span,
                                                "borrowed data cannot outlive this closure");
-                                err.span_label(origin_sp,
-                                               "cannot infer an appropriate lifetime");
                             }
                             err.emit();
                             return Some(ErrorReported);
