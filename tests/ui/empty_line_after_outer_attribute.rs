@@ -4,6 +4,18 @@
 // This should produce a warning
 #[crate_type = "lib"]
 
+/// some comment
+fn with_one_newline_and_comment() { assert!(true) }
+
+// This should not produce a warning
+#[crate_type = "lib"]
+/// some comment
+fn with_no_newline_and_comment() { assert!(true) }
+
+
+// This should produce a warning
+#[crate_type = "lib"]
+
 fn with_one_newline() { assert!(true) }
 
 // This should produce a warning, too

@@ -3,17 +3,28 @@ error: Found an empty line after an outer attribute. Perhaps you forgot to add a
   |
 5 | / #[crate_type = "lib"]
 6 | |
-7 | | fn with_one_newline() { assert!(true) }
+7 | | /// some comment
+8 | | fn with_one_newline_and_comment() { assert!(true) }
   | |_
   |
   = note: `-D empty-line-after-outer-attr` implied by `-D warnings`
 
 error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
-  --> $DIR/empty_line_after_outer_attribute.rs:10:1
+  --> $DIR/empty_line_after_outer_attribute.rs:17:1
    |
-10 | / #[crate_type = "lib"]
-11 | |
-12 | |
-13 | | fn with_two_newlines() { assert!(true) }
+17 | / #[crate_type = "lib"]
+18 | |
+19 | | fn with_one_newline() { assert!(true) }
    | |_
+
+error: Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?
+  --> $DIR/empty_line_after_outer_attribute.rs:22:1
+   |
+22 | / #[crate_type = "lib"]
+23 | |
+24 | |
+25 | | fn with_two_newlines() { assert!(true) }
+   | |_
+
+error: aborting due to 3 previous errors
 
