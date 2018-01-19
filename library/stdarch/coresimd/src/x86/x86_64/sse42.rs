@@ -20,15 +20,15 @@ pub unsafe fn _mm_crc32_u64(crc: u64, v: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use x86::x86_64::sse42;
+    use x86::*;
 
     use stdsimd_test::simd_test;
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_crc32_u64() {
+    unsafe fn test_mm_crc32_u64() {
         let crc = 0x7819dccd3e824;
         let v = 0x2a22b845fed;
-        let i = sse42::_mm_crc32_u64(crc, v);
+        let i = _mm_crc32_u64(crc, v);
         assert_eq!(i, 0xbb6cdc6c);
     }
 }

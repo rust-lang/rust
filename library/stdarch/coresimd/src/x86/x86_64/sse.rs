@@ -1,6 +1,6 @@
 //! `x86_64` Streaming SIMD Extensions (SSE)
 
-use v128::*;
+use x86::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -8,11 +8,11 @@ use stdsimd_test::assert_instr;
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.sse.cvtss2si64"]
-    fn cvtss2si64(a: f32x4) -> i64;
+    fn cvtss2si64(a: __m128) -> i64;
     #[link_name = "llvm.x86.sse.cvttss2si64"]
-    fn cvttss2si64(a: f32x4) -> i64;
+    fn cvttss2si64(a: __m128) -> i64;
     #[link_name = "llvm.x86.sse.cvtsi642ss"]
-    fn cvtsi642ss(a: f32x4, b: i64) -> f32x4;
+    fn cvtsi642ss(a: __m128, b: i64) -> __m128;
 }
 
 /// Convert the lowest 32 bit float in the input vector to a 64 bit integer.
@@ -27,7 +27,7 @@ extern "C" {
 #[inline(always)]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtss2si))]
-pub unsafe fn _mm_cvtss_si64(a: f32x4) -> i64 {
+pub unsafe fn _mm_cvtss_si64(a: __m128) -> i64 {
     cvtss2si64(a)
 }
 
@@ -43,7 +43,7 @@ pub unsafe fn _mm_cvtss_si64(a: f32x4) -> i64 {
 #[inline(always)]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvttss2si))]
-pub unsafe fn _mm_cvttss_si64(a: f32x4) -> i64 {
+pub unsafe fn _mm_cvttss_si64(a: __m128) -> i64 {
     cvttss2si64(a)
 }
 
@@ -55,21 +55,21 @@ pub unsafe fn _mm_cvttss_si64(a: f32x4) -> i64 {
 #[inline(always)]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
-pub unsafe fn _mm_cvtsi64_ss(a: f32x4, b: i64) -> f32x4 {
+pub unsafe fn _mm_cvtsi64_ss(a: __m128, b: i64) -> __m128 {
     cvtsi642ss(a, b)
 }
 
 #[cfg(test)]
 mod tests {
-    use v128::*;
-    use x86::x86_64::sse;
+    use std::f32::NAN;
+    use std::i64::MIN;
 
     use stdsimd_test::simd_test;
 
+    use x86::*;
+
     #[simd_test = "sse"]
-    unsafe fn _mm_cvtss_si64() {
-        use std::f32::NAN;
-        use std::i64::MIN;
+    unsafe fn test_mm_cvtss_si64() {
         let inputs = &[
             (42.0f32, 42i64),
             (-31.4, -31),
@@ -83,8 +83,8 @@ mod tests {
         ];
         for i in 0..inputs.len() {
             let (xi, e) = inputs[i];
-            let x = f32x4::new(xi, 1.0, 3.0, 4.0);
-            let r = sse::_mm_cvtss_si64(x);
+            let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
+            let r = _mm_cvtss_si64(x);
             assert_eq!(
                 e,
                 r,
@@ -98,9 +98,7 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    unsafe fn _mm_cvttss_si64() {
-        use std::f32::NAN;
-        use std::i64::MIN;
+    unsafe fn test_mm_cvttss_si64() {
         let inputs = &[
             (42.0f32, 42i64),
             (-31.4, -31),
@@ -117,8 +115,8 @@ mod tests {
         ];
         for i in 0..inputs.len() {
             let (xi, e) = inputs[i];
-            let x = f32x4::new(xi, 1.0, 3.0, 4.0);
-            let r = sse::_mm_cvttss_si64(x);
+            let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
+            let r = _mm_cvttss_si64(x);
             assert_eq!(
                 e,
                 r,
@@ -132,7 +130,7 @@ mod tests {
     }
 
     #[simd_test = "sse"]
-    pub unsafe fn _mm_cvtsi64_ss() {
+    pub unsafe fn test_mm_cvtsi64_ss() {
         let inputs = &[
             (4555i64, 4555.0f32),
             (322223333, 322223330.0),
@@ -144,19 +142,10 @@ mod tests {
 
         for i in 0..inputs.len() {
             let (x, f) = inputs[i];
-            let a = f32x4::new(5.0, 6.0, 7.0, 8.0);
-            let r = sse::_mm_cvtsi64_ss(a, x);
-            let e = a.replace(0, f);
-            assert_eq!(
-                e,
-                r,
-                "TestCase #{} _mm_cvtsi64_ss({:?}, {}) = {:?}, expected: {:?}",
-                i,
-                a,
-                x,
-                r,
-                e
-            );
+            let a = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
+            let r = _mm_cvtsi64_ss(a, x);
+            let e = _mm_setr_ps(f, 6.0, 7.0, 8.0);
+            assert_eq_m128(e, r);
         }
     }
 }
