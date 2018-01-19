@@ -96,6 +96,8 @@ pub struct UniversalRegions<'tcx> {
     /// our special inference variable there, we would mess that up.
     pub region_bound_pairs: Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
 
+    pub yield_ty: Option<Ty<'tcx>>,
+
     relations: UniversalRegionRelations,
 }
 
@@ -505,6 +507,13 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             num_universals
         );
 
+        let yield_ty = match defining_ty {
+            DefiningTy::Generator(def_id, substs, _) => {
+                Some(substs.generator_yield_ty(def_id, self.infcx.tcx))
+            }
+            _ => None,
+        };
+
         UniversalRegions {
             indices,
             fr_static,
@@ -516,6 +525,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
             unnormalized_output_ty,
             unnormalized_input_tys,
             region_bound_pairs: self.region_bound_pairs,
+            yield_ty: yield_ty,
             relations: self.relations,
         }
     }
