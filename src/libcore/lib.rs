@@ -72,6 +72,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
+#![feature(convert_id)]
 #![feature(custom_attribute)]
 #![feature(fundamental)]
 #![feature(i128_type)]

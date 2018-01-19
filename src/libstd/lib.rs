@@ -256,6 +256,7 @@
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
+#![feature(convert_id)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
