@@ -910,6 +910,33 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<hir::Path, (
     }
 }
 
+/// Resolve a string as a macro
+fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
+    use syntax::ext::base::MacroKind;
+    use syntax::ext::hygiene::Mark;
+    let segment = ast::PathSegment {
+        identifier: ast::Ident::from_str(path_str),
+        span: DUMMY_SP,
+        parameters: None,
+    };
+    let path = ast::Path {
+        span: DUMMY_SP,
+        segments: vec![segment],
+    };
+
+    let mut resolver = cx.resolver.borrow_mut();
+    let mark = Mark::root();
+    let res = resolver
+        .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
+    if let Ok(def) = res {
+        Some(def)
+    } else if let Some(def) = resolver.all_macros.get(&path_str.into()) {
+        Some(*def)
+    } else {
+        None
+    }
+}
+
 enum PathKind {
     /// can be either value or type, not a macro
     Unknown,
@@ -963,31 +990,6 @@ impl Clean<Attributes> for [ast::Attribute] {
                         continue;
                     }
 
-                    let macro_resolve = || {
-                            use syntax::ext::base::MacroKind;
-                            use syntax::ext::hygiene::Mark;
-                            let segment = ast::PathSegment {
-                                identifier: ast::Ident::from_str(path_str),
-                                span: DUMMY_SP,
-                                parameters: None,
-                            };
-                            let path = ast::Path {
-                                span: DUMMY_SP,
-                                segments: vec![segment],
-                            };
-
-                            let mut resolver = cx.resolver.borrow_mut();
-                            let mark = Mark::root();
-                            let res = resolver
-                                .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
-                            if let Ok(def) = res {
-                                Some(def)
-                            } else if let Some(def) = resolver.all_macros.get(&path_str.into()) {
-                                Some(*def)
-                            } else {
-                                None
-                            }
-                    };
 
                     match kind {
                         PathKind::Value => {
@@ -1010,7 +1012,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                         }
                         PathKind::Unknown => {
                             // try everything!
-                            if let Some(macro_def) = macro_resolve() {
+                            if let Some(macro_def) = macro_resolve(cx, path_str) {
                                 if let Ok(type_path) = resolve(cx, path_str, false) {
                                     let (type_kind, article, type_disambig)
                                         = type_ns_kind(type_path.def, path_str);
@@ -1053,7 +1055,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             }
                         }
                         PathKind::Macro => {
-                            if let Some(def) = macro_resolve() {
+                            if let Some(def) = macro_resolve(cx, path_str) {
                                 def
                             } else {
                                 continue
