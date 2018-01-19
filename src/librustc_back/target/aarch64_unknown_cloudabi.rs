@@ -15,6 +15,7 @@ pub fn target() -> TargetResult {
     let mut base = super::cloudabi_base::opts();
     base.max_atomic_width = Some(128);
     base.abi_blacklist = super::arm_base::abi_blacklist();
+    base.linker = "aarch64-unknown-cloudabi-cc".to_string();
 
     Ok(Target {
         llvm_target: "aarch64-unknown-cloudabi".to_string(),
