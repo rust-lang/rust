@@ -761,6 +761,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::EraseRegionsTy |
         DepKind::NormalizeTy |
         DepKind::SubstituteNormalizeAndTestPredicates |
+        DepKind::InstanceDefSizeEstimate |
 
         // This one should never occur in this context
         DepKind::Null => {

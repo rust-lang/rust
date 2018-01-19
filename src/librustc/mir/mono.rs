@@ -31,8 +31,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => {
                 // Estimate the size of a function based on how many statements
                 // it contains.
-                let mir = tcx.instance_mir(instance.def);
-                mir.basic_blocks().iter().map(|bb| bb.statements.len()).sum()
+                tcx.instance_def_size_estimate(instance.def)
             },
             // Conservatively estimate the size of a static declaration
             // or assembly to be 1.
