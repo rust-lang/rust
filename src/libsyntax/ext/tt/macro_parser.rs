@@ -486,8 +486,8 @@ fn inner_parse_loop(
             match item.top_elts.get_tt(idx) {
                 // Need to descend into a sequence
                 TokenTree::Sequence(sp, seq) => {
-                    if seq.op == quoted::KleeneOp::ZeroOrMore {
-                        // Examine the case where there are 0 matches of this sequence
+                    // Examine the case where there are 0 matches of this sequence
+                    if seq.op == quoted::KleeneOp::ZeroOrMore || seq.op == quoted::KleeneOp::ZeroOrOne {
                         let mut new_item = item.clone();
                         new_item.match_cur += seq.num_captures;
                         new_item.idx += 1;
@@ -497,20 +497,26 @@ fn inner_parse_loop(
                         cur_items.push(new_item);
                     }
 
-                    // Examine the case where there is at least one match of this sequence
-                    let matches = create_matches(item.matches.len());
-                    cur_items.push(Box::new(MatcherPos {
-                        stack: vec![],
-                        sep: seq.separator.clone(),
-                        idx: 0,
-                        matches,
-                        match_lo: item.match_cur,
-                        match_cur: item.match_cur,
-                        match_hi: item.match_cur + seq.num_captures,
-                        up: Some(item),
-                        sp_lo: sp.lo(),
-                        top_elts: Tt(TokenTree::Sequence(sp, seq)),
-                    }));
+                    // For ZeroOrMore and OneOrMore, we want to examine the case were there is at
+                    // least one match. For ZeroOrOne, we only want the case where there is exactly
+                    // one match.
+                    if (seq.op == quoted::KleeneOp::ZeroOrOne && seq.num_captures == 1) ||
+                        seq.op != quoted::KleeneOp::ZeroOrOne {
+
+                        let matches = create_matches(item.matches.len());
+                        cur_items.push(Box::new(MatcherPos {
+                            stack: vec![],
+                            sep: seq.separator.clone(),
+                            idx: 0,
+                            matches,
+                            match_lo: item.match_cur,
+                            match_cur: item.match_cur,
+                            match_hi: item.match_cur + seq.num_captures,
+                            up: Some(item),
+                            sp_lo: sp.lo(),
+                            top_elts: Tt(TokenTree::Sequence(sp, seq)),
+                        }));
+                    }
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
