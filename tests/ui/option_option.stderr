@@ -31,16 +31,28 @@ error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enu
    |        ^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:22:11
+  --> $DIR/option_option.rs:22:23
    |
-22 |     Tuple(Option<Option<u8>>),
+22 |     fn struct_fn() -> Option<Option<u8>> {
+   |                       ^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:28:22
+   |
+28 |     fn trait_fn() -> Option<Option<u8>>;
+   |                      ^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:32:11
+   |
+32 |     Tuple(Option<Option<u8>>),
    |           ^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:23:15
+  --> $DIR/option_option.rs:33:15
    |
-23 |     Struct{x: Option<Option<u8>>},
+33 |     Struct{x: Option<Option<u8>>},
    |               ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 

@@ -18,6 +18,16 @@ struct Struct {
     x: Option<Option<u8>>,
 }
 
+impl Struct {
+    fn struct_fn() -> Option<Option<u8>> {
+        None
+    }
+}
+
+trait Trait {
+    fn trait_fn() -> Option<Option<u8>>;
+}
+
 enum Enum {
     Tuple(Option<Option<u8>>),
     Struct{x: Option<Option<u8>>},
@@ -29,6 +39,13 @@ type OptionOption = Option<Option<u32>>;
 // The lint allows this
 fn output_type_alias() -> OptionOption {
     None
+}
+
+// The line allows this
+impl Trait for Struct {
+    fn trait_fn() -> Option<Option<u8>> {
+        None
+    }
 }
 
 fn main() {
