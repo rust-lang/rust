@@ -307,6 +307,8 @@ Our proposal is this:
   - It is possible that disambiguators for one kind of type-namespace object
     will work for the other (i.e. you can use `struct@` to refer to an enum),
     but do not rely on this.
+- Modules exist in both the type and value namespace and can be disambiguated
+  with a `mod@` or `module@`, e.g. `[module@foo]`
 - In links to macros,
   the link label can end with a `!`,
   e.g., `Look at the [FOO!] macro`. You can alternatively use a `macro@` prefix,
@@ -314,8 +316,9 @@ Our proposal is this:
 - For disambiguating links to values, we differentiate three cases:
   - Links to any kind of value (function, const, static) can be prefixed with `value@`,
     e.g., `See [value@foo]`.
-  - Links to functions can be written with a `()` suffix,
-    e.g., `Also see the [foo()] function`. You can also use `function@`.
+  - Links to functions and methods can be written with a `()` suffix,
+    e.g., `Also see the [foo()] function`. You can also use `function@`, `fn@`,
+    or `method@`.
   - Links to constants are prefixed with `const@`,
     e.g., `As defined in [const@FOO].`
   - Links to statics are prefixed with `static@`,
