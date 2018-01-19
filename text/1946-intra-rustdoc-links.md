@@ -289,7 +289,6 @@ Our proposal is this:
   applies to modules and tuple structs which exist in both namespaces.
   Rustdoc will throw an error if you use a non-disambiguated path in
   the case of there being a value in both the type and value namespace.
-  Non-disambiguated paths cannot be used to link to macros.
 - Links to types can be disambiguated by prefixing them with the concrete
   item type:
   - Links to any type-namespace object can be prefixed with `type@`,
@@ -309,8 +308,8 @@ Our proposal is this:
     will work for the other (i.e. you can use `struct@` to refer to an enum),
     but do not rely on this.
 - In links to macros,
-  the link label _must_ end with a `!`,
-  e.g., `Look at the [FOO!] macro`. You can alternatively use a `foo@` prefix,
+  the link label can end with a `!`,
+  e.g., `Look at the [FOO!] macro`. You can alternatively use a `macro@` prefix,
   e.g. `[macro@foo]`
 - For disambiguating links to values, we differentiate three cases:
   - Links to any kind of value (function, const, static) can be prefixed with `value@`,
