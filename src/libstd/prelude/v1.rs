@@ -23,6 +23,9 @@
 // Re-exported functions
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use mem::drop;
+#[unstable(feature = "convert_id_prelude", issue = "0")]
+#[inline]
+#[doc(no_inline)] pub use convert::id;
 
 // Re-exported types and traits
 #[stable(feature = "rust1", since = "1.0.0")]
