@@ -884,9 +884,9 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
                        &format!("`{}` is both {} {} and {} {}",
                                 path_str, article1, kind1,
                                 article2, kind2))
-      .help(&format!("try `{0}` if you want to select the {1}, \
-                      or `{2}@{3}` if you want to \
-                      select the {2}",
+      .help(&format!("try `{}` if you want to select the {}, \
+                      or `{}` if you want to \
+                      select the {}",
                       disambig1, kind1, disambig2,
                       kind2))
              .emit();
@@ -920,8 +920,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                         link.trim_left_matches(prefix)
                     } else if let Some(prefix) =
                         ["const@", "static@",
-                         "value@", "function@"].iter()
-                                               .find(|p| link.starts_with(**p)) {
+                         "value@", "function@", "mod@", "fn@", "module@"]
+                            .iter().find(|p| link.starts_with(**p)) {
                         kind = PathKind::Value;
                         link.trim_left_matches(prefix)
                     } else if link.ends_with("()") {
@@ -1007,28 +1007,44 @@ impl Clean<Attributes> for [ast::Attribute] {
                             }
                         }
                         PathKind::Unknown => {
-                            // try both!
-                            // It is imperative we search for not-a-value first
-                            // Otherwise we will find struct ctors for when we are looking
-                            // for structs, and the link won't work.
-                            if let Ok(path) = resolve(false) {
+                            // try everything!
+                            if let Some(macro_def) = macro_resolve() {
+                                if let Ok(type_path) = resolve(false) {
+                                    let (type_kind, article, type_disambig)
+                                        = type_ns_kind(type_path.def, path_str);
+                                    ambiguity_error(cx, &attrs, path_str,
+                                                    article, type_kind, &type_disambig,
+                                                    "a", "macro", &format!("macro@{}", path_str));
+                                    continue;
+                                } else if let Ok(value_path) = resolve(true) {
+                                    let (value_kind, value_disambig)
+                                        = value_ns_kind(value_path.def, path_str)
+                                            .expect("struct and mod cases should have been \
+                                                     caught in previous branch");
+                                    ambiguity_error(cx, &attrs, path_str,
+                                                    "a", value_kind, &value_disambig,
+                                                    "a", "macro", &format!("macro@{}", path_str));
+                                }
+                                macro_def
+                            } else if let Ok(type_path) = resolve(false) {
+                                // It is imperative we search for not-a-value first
+                                // Otherwise we will find struct ctors for when we are looking
+                                // for structs, and the link won't work.
                                 // if there is something in both namespaces
                                 if let Ok(value_path) = resolve(true) {
                                     let kind = value_ns_kind(value_path.def, path_str);
                                     if let Some((value_kind, value_disambig)) = kind {
                                         let (type_kind, article, type_disambig)
-                                            = type_ns_kind(path.def);
-                                        ambiguity_error(cx, &attrs,
-                                                        article, type_kind, type_disambig,
-                                                        "a", value_kind, value_disambig);
+                                            = type_ns_kind(type_path.def, path_str);
+                                        ambiguity_error(cx, &attrs, path_str,
+                                                        article, type_kind, &type_disambig,
+                                                        "a", value_kind, &value_disambig);
                                         continue;
                                     }
                                 }
-                                path.def
-                            } else if let Ok(path) = resolve(true) {
-                                path.def
-                            } else if let Some(def) = macro_resolve() {
-                                def
+                                type_path.def
+                            } else if let Ok(value_path) = resolve(true) {
+                                value_path.def
                             } else {
                                 // this could just be a normal link
                                 continue;
