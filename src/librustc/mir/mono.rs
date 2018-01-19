@@ -157,8 +157,7 @@ impl<'tcx> CodegenUnit<'tcx> {
 
     pub fn size_estimate(&self) -> usize {
         // Should only be called if `estimate_size` has previously been called.
-        assert!(self.size_estimate.is_some());
-        self.size_estimate.unwrap()
+        self.size_estimate.expect("estimate_size must be called before getting a size_estimate")
     }
 
     pub fn modify_size_estimate(&mut self, delta: usize) {
@@ -176,7 +175,8 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for CodegenUnit<'tcx> {
         let CodegenUnit {
             ref items,
             name,
-            ..
+            // The size estimate is not relevant to the hash
+            size_estimate: _,
         } = *self;
 
         name.hash_stable(hcx, hasher);
