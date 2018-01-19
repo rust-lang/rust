@@ -1,5 +1,6 @@
 # Summary
 
+- [About this guide](./chap-000-about-this-guide.md)
 - [How to build the compiler and run what you built](./chap-010-how-to-build-and-run.md)
 - [Using the compiler testing framework](./chap-020-running-tests.md)
 - [Walkthrough: a typical contribution](./chap-030-walkthrough.md)
