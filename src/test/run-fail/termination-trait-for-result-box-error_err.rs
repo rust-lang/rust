@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:nonzero
+// must-compile-successfully
+
 #![feature(termination_trait)]
 
 use std::io::{Error, ErrorKind};
