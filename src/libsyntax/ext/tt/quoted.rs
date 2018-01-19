@@ -16,6 +16,7 @@ use symbol::keywords;
 use syntax_pos::{BytePos, Span, DUMMY_SP};
 use tokenstream;
 
+use std::iter::Peekable;
 use std::rc::Rc;
 
 /// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
@@ -78,6 +79,7 @@ pub enum KleeneOp {
     ZeroOrMore,
     /// Kleene plus (`+`) for one or more repetitions
     OneOrMore,
+    ZeroOrOne,
 }
 
 /// Similar to `tokenstream::TokenTree`, except that `$i`, `$i:ident`, and `$(...)`
@@ -183,7 +185,7 @@ pub fn parse(
 
     // For each token tree in `input`, parse the token into a `self::TokenTree`, consuming
     // additional trees if need be.
-    let mut trees = input.trees();
+    let mut trees = input.trees().peekable();
     while let Some(tree) = trees.next() {
         let tree = parse_tree(tree, &mut trees, expect_matchers, sess);
 
@@ -321,6 +323,34 @@ where
     }
 }
 
+/// Takes a token and returns `Some(KleeneOp)` if the token is `+` `*` or `?`. Otherwise, return
+/// `None`.
+fn kleene_op(token: &token::Token) -> Option<KleeneOp> {
+    match *token {
+        token::BinOp(token::Star) => Some(KleeneOp::ZeroOrMore),
+        token::BinOp(token::Plus) => Some(KleeneOp::OneOrMore),
+        token::Question => Some(KleeneOp::ZeroOrOne),
+        _ => None,
+    }
+}
+
+/// Parse the next token tree of the input looking for a KleeneOp. Returns
+///
+/// - Ok(Ok(op)) if the next token tree is a KleeneOp
+/// - Ok(Err(tok, span)) if the next token tree is a token but not a KleeneOp
+/// - Err(span) if the next token tree is not a token
+fn parse_kleene_op<I>(input: &mut I, span: Span) -> Result<Result<KleeneOp, (token::Token, Span)>, Span>
+    where I: Iterator<Item = tokenstream::TokenTree>,
+{
+    match input.next() {
+        Some(tokenstream::TokenTree::Token(span, tok)) => match kleene_op(&tok) {
+            Some(op) => Ok(Ok(op)),
+            None => Ok(Err((tok, span))),
+        }
+        tree => Err(tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span)),
+    }
+}
+
 /// Attempt to parse a single Kleene star, possibly with a separator.
 ///
 /// For example, in a pattern such as `$(a),*`, `a` is the pattern to be repeated, `,` is the
@@ -333,56 +363,64 @@ where
 /// session `sess`. If the next one (or possibly two) tokens in `input` correspond to a Kleene
 /// operator and separator, then a tuple with `(separator, KleeneOp)` is returned. Otherwise, an
 /// error with the appropriate span is emitted to `sess` and a dummy value is returned.
-fn parse_sep_and_kleene_op<I>(
-    input: &mut I,
-    span: Span,
-    sess: &ParseSess,
-) -> (Option<token::Token>, KleeneOp)
-where
-    I: Iterator<Item = tokenstream::TokenTree>,
+fn parse_sep_and_kleene_op<I>(input: &mut Peekable<I>, span: Span, sess: &ParseSess)
+                              -> (Option<token::Token>, KleeneOp)
+    where I: Iterator<Item = tokenstream::TokenTree>,
 {
-    fn kleene_op(token: &token::Token) -> Option<KleeneOp> {
-        match *token {
-            token::BinOp(token::Star) => Some(KleeneOp::ZeroOrMore),
-            token::BinOp(token::Plus) => Some(KleeneOp::OneOrMore),
-            _ => None,
+    // We basically look at two token trees here, denoted as #1 and #2 below
+    let span = match parse_kleene_op(input, span) {
+        // #1 is a `+` or `*` KleeneOp
+        //
+        // `?` is ambiguous: it could be a separator or a Kleene::ZeroOrOne, so we need to look
+        // ahead one more token to be sure.
+        Ok(Ok(op)) if op != KleeneOp::ZeroOrOne => return (None, op),
+
+        // #1 is `?` token, but it could be a Kleene::ZeroOrOne without a separator or it could
+        // be a `?` separator followed by any Kleene operator. We need to look ahead 1 token to
+        // find out which.
+        Ok(Ok(op)) => {
+            // Lookahead at #2. If it is a KleenOp, then #1 is a separator.
+            let is_1_sep = if let Some(&tokenstream::TokenTree::Token(_, ref tok2)) = input.peek() {
+                kleene_op(tok2).is_some()
+            } else {
+                false
+            };
+
+            if is_1_sep {
+                // #1 is a separator and #2 should be a KleepeOp::*
+                // (N.B. We need to advance the input iterator.)
+                match parse_kleene_op(input, span) {
+                    // #2 is a KleeneOp (this is the only valid option) :)
+                    Ok(Ok(op)) => return (Some(token::Question), op),
+
+                    // #2 is a random token (this is an error) :(
+                    Ok(Err((_, span))) => span,
+
+                    // #2 is not even a token at all :(
+                    Err(span) => span,
+                }
+            } else {
+                // #2 is a random tree and #1 is KleeneOp::ZeroOrOne
+                return (None, op);
+            }
         }
-    }
 
-    // We attempt to look at the next two token trees in `input`. I will call the first #1 and the
-    // second #2. If #1 and #2 don't match a valid KleeneOp with/without separator, that is an
-    // error, and we should emit an error on the most specific span possible.
-    let span = match input.next() {
-        // #1 is a token
-        Some(tokenstream::TokenTree::Token(span, tok)) => match kleene_op(&tok) {
-            // #1 is a KleeneOp with no separator
-            Some(op) => return (None, op),
+        // #1 is a separator followed by #2, a KleeneOp
+        Ok(Err((tok, span))) => match parse_kleene_op(input, span) {
+            // #2 is a KleeneOp :D
+            Ok(Ok(op)) => return (Some(tok), op),
 
-            // #1 is not a KleeneOp, but may be a separator... need to look at #2
-            None => match input.next() {
-                // #2 is a token
-                Some(tokenstream::TokenTree::Token(span, tok2)) => match kleene_op(&tok2) {
-                    // #2 is a KleeneOp, so #1 must be a separator
-                    Some(op) => return (Some(tok), op),
+            // #2 is a random token :(
+            Ok(Err((_, span))) => span,
 
-                    // #2 is not a KleeneOp... error
-                    None => span,
-                },
+            // #2 is not a token at all :(
+            Err(span) => span,
+        }
 
-                // #2 is not a token at all... error
-                tree => tree.as_ref()
-                    .map(tokenstream::TokenTree::span)
-                    .unwrap_or(span),
-            },
-        },
-
-        // #1 is not a token at all... error
-        tree => tree.as_ref()
-            .map(tokenstream::TokenTree::span)
-            .unwrap_or(span),
+        // #1 is not a token
+        Err(span) => span,
     };
 
-    // Error...
-    sess.span_diagnostic.span_err(span, "expected `*` or `+`");
+    sess.span_diagnostic.span_err(span, "expected one of: `*`,  `+`, or `?`");
     (None, KleeneOp::ZeroOrMore)
 }
