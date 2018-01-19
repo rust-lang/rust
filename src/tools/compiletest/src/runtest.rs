@@ -297,8 +297,7 @@ impl<'test> TestCx<'test> {
     fn check_correct_failure_status(&self, proc_res: &ProcRes) {
         if proc_res.status.success() {
             self.fatal_proc_rec(
-                &format!("failure must not return success exit status!  Returned status: {}",
-                         proc_res.status),
+                &format!("failure must not return success (exit status 0)!"),
                 proc_res,
             );
         }
