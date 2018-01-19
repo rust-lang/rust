@@ -315,7 +315,7 @@ Our proposal is this:
   - Links to any kind of value (function, const, static) can be prefixed with `value@`,
     e.g., `See [value@foo]`.
   - Links to functions can be written with a `()` suffix,
-    e.g., `Also see the [foo()] function`.
+    e.g., `Also see the [foo()] function`. You can also use `function@`.
   - Links to constants are prefixed with `const@`,
     e.g., `As defined in [const@FOO].`
   - Links to statics are prefixed with `static@`,
