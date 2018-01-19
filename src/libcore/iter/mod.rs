@@ -299,15 +299,17 @@
 //! This will print the numbers `0` through `4`, each on their own line.
 //!
 //! Bear in mind that methods on infinite iterators, even those for which a
-//! result can be computed in finite time, may not terminate. Specifically,
-//! methods such as [`min`], which in the general case require traversing
-//! every element in the iterator, are likely never to terminate for any
-//! infinite iterators.
+//! result can be determined mathematically in finite time, may not terminate.
+//! Specifically, methods such as [`min`], which in the general case require
+//! traversing every element in the iterator, are likely not to return
+//! successfully for any infinite iterators.
 //!
 //! ```no_run
 //! let positives = 1..;
 //! let least = positives.min().unwrap(); // Oh no! An infinite loop!
-//! // `positives.min` causes an infinite loop, so we won't reach this point!
+//! // `positives.min` will either overflow and panic (in debug mode),
+//! // or cause an infinite loop (in release mode), so we won't reach
+//! // this point!
 //! println!("The least positive number is {}.", least);
 //! ```
 //!

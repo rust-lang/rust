@@ -25,10 +25,6 @@ fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 /// generally, please see the [module-level documentation]. In particular, you
 /// may want to know how to [implement `Iterator`][impl].
 ///
-/// Note: Methods on infinite iterators that generally require traversing every
-/// element to produce a result may not terminate, even on traits for which a
-/// result is determinable in finite time.
-///
 /// [module-level documentation]: index.html
 /// [impl]: index.html#implementing-iterator
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1429,6 +1425,10 @@ pub trait Iterator {
     ///
     /// Folding is useful whenever you have a collection of something, and want
     /// to produce a single value from it.
+    ///
+    /// Note: `fold()`, and similar methods that traverse the entire iterator,
+    /// may not terminate for infinite iterators, even on traits for which a
+    /// result is determinable in finite time.
     ///
     /// # Examples
     ///
