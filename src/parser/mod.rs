@@ -1,6 +1,7 @@
 use {Token, File, FileBuilder, Sink, SyntaxKind};
 
 use syntax_kinds::*;
+use tree::TOMBSTONE;
 
 mod event_parser;
 use self::event_parser::Event;
@@ -29,6 +30,8 @@ fn from_events_to_file(
         }
 
         match event {
+            &Event::Start { kind: TOMBSTONE, .. } => (),
+
             &Event::Start { .. } => {
                 forward_parents.clear();
                 let mut idx = i;
@@ -62,7 +65,7 @@ fn from_events_to_file(
                 }
                 builder.finish_internal()
             },
-            &Event::Token { kind, mut n_raw_tokens } => loop {
+            &Event::Token { kind: _, mut n_raw_tokens } => loop {
                 let token = tokens[idx];
                 if !is_insignificant(token.kind) {
                     n_raw_tokens -= 1;

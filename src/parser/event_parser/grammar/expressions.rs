@@ -6,9 +6,9 @@ pub(super) fn literal(p: &mut Parser) -> bool {
         INT_NUMBER | FLOAT_NUMBER |
         BYTE | CHAR |
         STRING | RAW_STRING | BYTE_STRING | RAW_BYTE_STRING => {
-            p.start(LITERAL);
+            let lit = p.start();
             p.bump();
-            p.finish();
+            lit.complete(p, LITERAL);
             true
         }
         _ => false

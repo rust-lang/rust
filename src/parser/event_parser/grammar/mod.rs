@@ -10,15 +10,15 @@ mod types;
 mod paths;
 
 pub(crate) fn file(p: &mut Parser) {
-    p.start(FILE);
+    let file = p.start();
     p.eat(SHEBANG);
     items::mod_contents(p);
-    p.finish()
+    file.complete(p, FILE);
 }
 
 fn visibility(p: &mut Parser) {
     if p.at(PUB_KW) {
-        p.start(VISIBILITY);
+        let vis = p.start();
         p.bump();
         if p.at(L_PAREN) {
             match p.raw_lookahead(1) {
@@ -32,16 +32,16 @@ fn visibility(p: &mut Parser) {
                 _ => ()
             }
         }
-        p.finish();
+        vis.complete(p, VISIBILITY);
     }
 }
 
 fn alias(p: &mut Parser) -> bool {
     if p.at(AS_KW) {
-        p.start(ALIAS);
+        let alias = p.start();
         p.bump();
         p.expect(IDENT);
-        p.finish();
+        alias.complete(p, ALIAS);
     }
     true //FIXME: return false if three are errors
 }

@@ -8,19 +8,34 @@ pub(super) fn mod_contents(p: &mut Parser) {
 }
 
 fn item(p: &mut Parser) {
-    let attrs_start = p.mark();
+    let item = p.start();
     attributes::outer_attributes(p);
     visibility(p);
     let la = p.raw_lookahead(1);
-    let item_start = p.mark();
-    match p.current() {
-        EXTERN_KW if la == CRATE_KW => extern_crate_item(p),
-        MOD_KW => mod_item(p),
-        USE_KW => use_item(p),
-        STRUCT_KW => struct_item(p),
-        FN_KW => fn_item(p),
+    let item_kind = match p.current() {
+        EXTERN_KW if la == CRATE_KW => {
+            extern_crate_item(p);
+            EXTERN_CRATE_ITEM
+        }
+        MOD_KW => {
+            mod_item(p);
+            MOD_ITEM
+        }
+        USE_KW => {
+            use_item(p);
+            USE_ITEM
+        }
+        STRUCT_KW => {
+            struct_item(p);
+            STRUCT_ITEM
+        }
+        FN_KW => {
+            fn_item(p);
+            FN_ITEM
+        }
         err_token => {
-            p.start(ERROR);
+            item.abandon(p);
+            let err = p.start();
             let message = if err_token == SEMI {
                 //TODO: if the item is incomplete, this message is misleading
                 "expected item, found `;`\n\
@@ -32,60 +47,52 @@ fn item(p: &mut Parser) {
                 .message(message)
                 .emit();
             p.bump();
-            p.finish();
+            err.complete(p, ERROR);
             return;
         }
     };
-    p.forward_parent(attrs_start, item_start);
+    item.complete(p, item_kind);
 }
 
 fn struct_item(p: &mut Parser) {
-    p.start(STRUCT_ITEM);
-
     assert!(p.at(STRUCT_KW));
     p.bump();
 
-    struct_inner(p);
-    p.finish();
-
-    fn struct_inner(p: &mut Parser) {
-        if !p.expect(IDENT) {
-            p.finish();
-            return;
-        }
-        generic_parameters(p);
-        match p.current() {
-            WHERE_KW => {
-                where_clause(p);
-                match p.current() {
-                    SEMI => {
-                        p.bump();
-                        return;
-                    }
-                    L_CURLY => named_fields(p),
-                    _ => { //TODO: special case `(` error message
-                        p.error()
-                            .message("expected `;` or `{`")
-                            .emit();
-                        return;
-                    }
+    if !p.expect(IDENT) {
+        return;
+    }
+    generic_parameters(p);
+    match p.current() {
+        WHERE_KW => {
+            where_clause(p);
+            match p.current() {
+                SEMI => {
+                    p.bump();
+                    return;
+                }
+                L_CURLY => named_fields(p),
+                _ => { //TODO: special case `(` error message
+                    p.error()
+                        .message("expected `;` or `{`")
+                        .emit();
+                    return;
                 }
             }
-            SEMI => {
-                p.bump();
-                return;
-            }
-            L_CURLY => named_fields(p),
-            L_PAREN => {
-                tuple_fields(p);
-                p.expect(SEMI);
-            }
-            _ => {
-                p.error()
-                    .message("expected `;`, `{`, or `(`")
-                    .emit();
-                return;
-            }
+        }
+        SEMI => {
+            p.bump();
+            return;
+        }
+        L_CURLY => named_fields(p),
+        L_PAREN => {
+            pos_fields(p);
+            p.expect(SEMI);
+        }
+        _ => {
+            p.error()
+                .message("expected `;`, `{`, or `(`")
+                .emit();
+            return;
         }
     }
 }
@@ -97,30 +104,30 @@ fn named_fields(p: &mut Parser) {
     }));
 
     fn named_field(p: &mut Parser) {
-        p.start(NAMED_FIELD);
+        let field = p.start();
         visibility(p);
         if p.expect(IDENT) && p.expect(COLON) {
             types::type_ref(p);
         };
-        p.finish()
+        field.complete(p, NAMED_FIELD);
     }
 }
 
-fn tuple_fields(p: &mut Parser) {
+fn pos_fields(p: &mut Parser) {
     if !p.expect(L_PAREN) {
         return;
     }
     comma_list(p, R_PAREN, |p| {
-        tuple_field(p);
+        pos_field(p);
         true
     });
     p.expect(R_PAREN);
 
-    fn tuple_field(p: &mut Parser) {
-        p.start(POS_FIELD);
+    fn pos_field(p: &mut Parser) {
+        let pos_field = p.start();
         visibility(p);
         types::type_ref(p);
-        p.finish();
+        pos_field.complete(p, POS_FIELD);
     }
 }
 
@@ -129,28 +136,21 @@ fn generic_parameters(_: &mut Parser) {}
 fn where_clause(_: &mut Parser) {}
 
 fn extern_crate_item(p: &mut Parser) {
-    p.start(EXTERN_CRATE_ITEM);
-
     assert!(p.at(EXTERN_KW));
     p.bump();
-
     assert!(p.at(CRATE_KW));
     p.bump();
 
     p.expect(IDENT) && alias(p) && p.expect(SEMI);
-    p.finish();
 }
 
 fn mod_item(p: &mut Parser) {
-    p.start(MOD_ITEM);
-
     assert!(p.at(MOD_KW));
     p.bump();
 
     if p.expect(IDENT) && !p.eat(SEMI) {
         p.curly_block(mod_contents);
     }
-    p.finish()
 }
 
 pub(super) fn is_use_tree_start(kind: SyntaxKind) -> bool {
@@ -158,28 +158,24 @@ pub(super) fn is_use_tree_start(kind: SyntaxKind) -> bool {
 }
 
 fn use_item(p: &mut Parser) {
-    p.start(USE_ITEM);
-
     assert!(p.at(USE_KW));
     p.bump();
+
     use_tree(p);
     p.expect(SEMI);
-    p.finish();
 
     fn use_tree(p: &mut Parser) -> bool {
         let la = p.raw_lookahead(1);
+        let m = p.start();
         match (p.current(), la) {
             (STAR, _) => {
-                p.start(USE_TREE);
                 p.bump();
             }
             (COLONCOLON, STAR) => {
-                p.start(USE_TREE);
                 p.bump();
                 p.bump();
             }
             (L_CURLY, _) | (COLONCOLON, L_CURLY) => {
-                p.start(USE_TREE);
                 if p.at(COLONCOLON) {
                     p.bump();
                 }
@@ -188,7 +184,6 @@ fn use_item(p: &mut Parser) {
                 });
             }
             _ if paths::is_path_start(p) => {
-                p.start(USE_TREE);
                 paths::use_path(p);
                 match p.current() {
                     AS_KW => {
@@ -216,23 +211,23 @@ fn use_item(p: &mut Parser) {
                     _ => (),
                 }
             }
-            _ => return false,
+            _ => {
+                m.abandon(p);
+                return false
+            },
         }
-        p.finish();
+        m.complete(p, USE_TREE);
         return true;
     }
 }
 
 
 fn fn_item(p: &mut Parser) {
-    p.start(FN_ITEM);
-
     assert!(p.at(FN_KW));
     p.bump();
 
     p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN)
         && p.curly_block(|_| ());
-    p.finish();
 }
 
 

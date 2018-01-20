@@ -48,7 +48,9 @@ impl Sink for FileBuilder {
     }
 
     fn finish_internal(&mut self) {
-        let (id, _) = self.in_progress.pop().unwrap();
+        let (id, _) = self.in_progress.pop().expect(
+            "trying to complete a node, but there are no in-progress nodes"
+        );
         if !self.in_progress.is_empty() {
             self.add_len(id);
         }
@@ -77,8 +79,8 @@ impl FileBuilder {
             self.in_progress.iter().map(|&(idx, _)| self.nodes[idx].kind)
                 .collect::<Vec<_>>()
         );
-        assert!(
-            self.pos == (self.text.len() as u32).into(),
+        assert_eq!(
+            self.pos, (self.text.len() as u32).into(),
             "nodes in FileBuilder do not cover the whole file"
         );
         File {

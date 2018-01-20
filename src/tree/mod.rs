@@ -10,17 +10,24 @@ pub use self::file_builder::{FileBuilder, Sink};
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxKind(pub(crate) u32);
 
-pub(crate) const EOF: SyntaxKind = SyntaxKind(10000);
+pub(crate) const EOF: SyntaxKind = SyntaxKind(!0);
 pub(crate) const EOF_INFO: SyntaxInfo = SyntaxInfo {
     name: "EOF"
 };
 
+pub(crate) const TOMBSTONE: SyntaxKind = SyntaxKind(!0 - 1);
+pub(crate) const TOMBSTONE_INFO: SyntaxInfo = SyntaxInfo {
+    name: "TOMBSTONE"
+};
+
+
 impl SyntaxKind {
     fn info(self) -> &'static SyntaxInfo {
-        if self == EOF {
-            return &EOF_INFO;
+        match self {
+            EOF => &EOF_INFO,
+            TOMBSTONE => &TOMBSTONE_INFO,
+            _ => syntax_info(self),
         }
-        syntax_info(self)
     }
 }
 

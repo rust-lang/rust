@@ -19,13 +19,13 @@ fn attribute(p: &mut Parser, kind: AttrKind) -> bool {
         if kind == AttrKind::Inner && p.raw_lookahead(1) != EXCL {
             return false;
         }
-        p.start(ATTR);
+        let attr = p.start();
         p.bump();
         if kind == AttrKind::Inner {
             p.bump();
         }
         p.expect(L_BRACK) && meta_item(p) && p.expect(R_BRACK);
-        p.finish();
+        attr.complete(p, ATTR);
         true
     } else {
         false
@@ -34,7 +34,7 @@ fn attribute(p: &mut Parser, kind: AttrKind) -> bool {
 
 fn meta_item(p: &mut Parser) -> bool {
     if p.at(IDENT) {
-        p.start(META_ITEM);
+        let meta_item = p.start();
         p.bump();
         if p.eat(EQ) {
             if !expressions::literal(p) {
@@ -46,7 +46,7 @@ fn meta_item(p: &mut Parser) -> bool {
             comma_list(p, R_PAREN, meta_item_inner);
             p.expect(R_PAREN);
         }
-        p.finish();
+        meta_item.complete(p, META_ITEM);
         true
     } else {
         false

@@ -8,19 +8,16 @@ pub(crate) fn use_path(p: &mut Parser) {
     if !is_path_start(p) {
         return;
     }
-    let mut prev = p.mark();
-    p.start(PATH);
+    let path = p.start();
     path_segment(p, true);
-    p.finish();
+    let mut qual = path.complete(p, PATH);
     loop {
-        let curr = p.mark();
         if p.at(COLONCOLON) && !items::is_use_tree_start(p.raw_lookahead(1)) {
-            p.start(PATH);
+            let path = qual.precede(p);
             p.bump();
             path_segment(p, false);
-            p.forward_parent(prev, curr);
-            prev = curr;
-            p.finish();
+            let path = path.complete(p, PATH);
+            qual = path;
         } else {
             break;
         }
@@ -28,7 +25,7 @@ pub(crate) fn use_path(p: &mut Parser) {
 }
 
 fn path_segment(p: &mut Parser, first: bool) {
-    p.start(PATH_SEGMENT);
+    let segment = p.start();
     if first {
         p.eat(COLONCOLON);
     }
@@ -42,5 +39,5 @@ fn path_segment(p: &mut Parser, first: bool) {
                 .emit();
         }
     };
-    p.finish();
+    segment.complete(p, PATH_SEGMENT);
 }
