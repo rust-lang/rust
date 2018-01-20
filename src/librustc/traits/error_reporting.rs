@@ -1342,7 +1342,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                   sized type");
                     }
                     AdtKind::Union => {
-                        err.note("no field of a union may have a dynamically sized type");
+                        err.note("only the last field of a union may have a dynamically \
+                                  sized type");
                     }
                     AdtKind::Enum => {
                         err.note("no field of an enum variant may have a dynamically sized type");
