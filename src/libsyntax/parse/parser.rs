@@ -762,13 +762,19 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
-        self.parse_ident_common(true)
+        self.parse_ident_common(true, false)
     }
 
-    fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
+    pub fn parse_ident_attr(&mut self) -> PResult<'a, ast::Ident> {
+        self.parse_ident_common(true, true)
+    }
+
+    fn parse_ident_common(&mut self, recover: bool, accept_self: bool) -> PResult<'a, ast::Ident> {
         match self.token {
             token::Ident(i) => {
-                if self.token.is_reserved_ident() {
+                if self.token.is_reserved_ident()
+                    && !(accept_self && i.name == keywords::SelfType.name())
+                {
                     let mut err = self.struct_span_err(self.span,
                                                        &format!("expected identifier, found {}",
                                                                 self.this_token_descr()));
@@ -2111,7 +2117,7 @@ impl<'a> Parser<'a> {
             self.bump();
             Ok(Ident::with_empty_ctxt(name))
         } else {
-            self.parse_ident_common(false)
+            self.parse_ident_common(false, false)
         }
     }
 
@@ -2128,7 +2134,7 @@ impl<'a> Parser<'a> {
             hi = self.prev_span;
             (fieldname, self.parse_expr()?, false)
         } else {
-            let fieldname = self.parse_ident_common(false)?;
+            let fieldname = self.parse_ident_common(false, false)?;
             hi = self.prev_span;
 
             // Mimic `x: x` for the `x` field shorthand.

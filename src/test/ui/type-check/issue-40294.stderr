@@ -10,11 +10,7 @@ error[E0283]: type annotations required: cannot resolve `&'a T: Foo`
 21 | | }
    | |_^
    |
-note: required by `Foo`
-  --> $DIR/issue-40294.rs:11:1
-   |
-11 | trait Foo: Sized {
-   | ^^^^^^^^^^^^^^^^
+   = note: required by `Foo`
 
 error: aborting due to previous error
 

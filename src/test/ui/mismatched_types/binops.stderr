@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `{integer}: std::ops::Add<std::option::Option<{integer}>>` is not satisfied
+error[E0277]: cannot add `std::option::Option<{integer}>` to `{integer}`
   --> $DIR/binops.rs:12:7
    |
 12 |     1 + Some(1); //~ ERROR is not satisfied
@@ -6,7 +6,7 @@ error[E0277]: the trait bound `{integer}: std::ops::Add<std::option::Option<{int
    |
    = help: the trait `std::ops::Add<std::option::Option<{integer}>>` is not implemented for `{integer}`
 
-error[E0277]: the trait bound `usize: std::ops::Sub<std::option::Option<{integer}>>` is not satisfied
+error[E0277]: cannot substract `std::option::Option<{integer}>` from `usize`
   --> $DIR/binops.rs:13:16
    |
 13 |     2 as usize - Some(1); //~ ERROR is not satisfied
@@ -14,7 +14,7 @@ error[E0277]: the trait bound `usize: std::ops::Sub<std::option::Option<{integer
    |
    = help: the trait `std::ops::Sub<std::option::Option<{integer}>>` is not implemented for `usize`
 
-error[E0277]: the trait bound `{integer}: std::ops::Mul<()>` is not satisfied
+error[E0277]: cannot multiply `()` to `{integer}`
   --> $DIR/binops.rs:14:7
    |
 14 |     3 * (); //~ ERROR is not satisfied
@@ -22,7 +22,7 @@ error[E0277]: the trait bound `{integer}: std::ops::Mul<()>` is not satisfied
    |
    = help: the trait `std::ops::Mul<()>` is not implemented for `{integer}`
 
-error[E0277]: the trait bound `{integer}: std::ops::Div<&str>` is not satisfied
+error[E0277]: cannot divide `{integer}` by `&str`
   --> $DIR/binops.rs:15:7
    |
 15 |     4 / ""; //~ ERROR is not satisfied

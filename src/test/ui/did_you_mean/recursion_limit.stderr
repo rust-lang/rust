@@ -15,11 +15,7 @@ error[E0275]: overflow evaluating the requirement `K: std::marker::Send`
    = note: required because it appears within the type `C`
    = note: required because it appears within the type `B`
    = note: required because it appears within the type `A`
-note: required by `is_send`
-  --> $DIR/recursion_limit.rs:41:1
-   |
-41 | fn is_send<T:Send>() { }
-   | ^^^^^^^^^^^^^^^^^^^^
+   = note: required by `is_send`
 
 error: aborting due to previous error
 

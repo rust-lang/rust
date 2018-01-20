@@ -75,7 +75,93 @@
 /// ```
 #[lang = "add"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} + {RHS}`"]
+#[rustc_on_unimplemented(
+    on(
+        any(
+            all(_Self="i128", RHS="i64"),
+            all(_Self="i128", RHS="i32"),
+            all(_Self="i128", RHS="i16"),
+            all(_Self="i128", RHS="i8"),
+            all(_Self="i64",  RHS="i32"),
+            all(_Self="i64",  RHS="i16"),
+            all(_Self="i64",  RHS="i8"),
+            all(_Self="i32",  RHS="i16"),
+            all(_Self="i32",  RHS="i8"),
+            all(_Self="i16",  RHS="i8"),
+            all(_Self="u128", RHS="u64"),
+            all(_Self="u128", RHS="u32"),
+            all(_Self="u128", RHS="u16"),
+            all(_Self="u128", RHS="u8"),
+            all(_Self="u64",  RHS="u32"),
+            all(_Self="u64",  RHS="u16"),
+            all(_Self="u64",  RHS="u8"),
+            all(_Self="u32",  RHS="u16"),
+            all(_Self="u32",  RHS="u8"),
+            all(_Self="u16",  RHS="u8"),
+            all(_Self="f64",  RHS="i32"),
+            all(_Self="f64",  RHS="i16"),
+            all(_Self="f64",  RHS="i8"),
+            all(_Self="f64",  RHS="u32"),
+            all(_Self="f64",  RHS="u16"),
+            all(_Self="f64",  RHS="u8"),
+            all(_Self="f32",  RHS="i16"),
+            all(_Self="f32",  RHS="i8"),
+            all(_Self="f32",  RHS="u16"),
+            all(_Self="f32",  RHS="u8"),
+        ),
+        message="cannot add `{RHS}` to `{Self}`",
+        label="no implementation for `{Self} + {RHS}`, but you can safely cast \
+               `{RHS}` into `{Self}` using `as {Self}`",
+    ),
+    on(
+        any(
+            all(RHS="i128", _Self="i64"),
+            all(RHS="i128", _Self="i32"),
+            all(RHS="i128", _Self="i16"),
+            all(RHS="i128", _Self="i8"),
+            all(RHS="i64",  _Self="i32"),
+            all(RHS="i64",  _Self="i16"),
+            all(RHS="i64",  _Self="i8"),
+            all(RHS="i32",  _Self="i16"),
+            all(RHS="i32",  _Self="i8"),
+            all(RHS="i16",  _Self="i8"),
+            all(RHS="u128", _Self="u64"),
+            all(RHS="u128", _Self="u32"),
+            all(RHS="u128", _Self="u16"),
+            all(RHS="u128", _Self="u8"),
+            all(RHS="u64",  _Self="u32"),
+            all(RHS="u64",  _Self="u16"),
+            all(RHS="u64",  _Self="u8"),
+            all(RHS="u32",  _Self="u16"),
+            all(RHS="u32",  _Self="u8"),
+            all(RHS="u16",  _Self="u8"),
+            all(RHS="f64",  _Self="i32"),
+            all(RHS="f64",  _Self="i16"),
+            all(RHS="f64",  _Self="i8"),
+            all(RHS="f64",  _Self="u32"),
+            all(RHS="f64",  _Self="u16"),
+            all(RHS="f64",  _Self="u8"),
+            all(RHS="f32",  _Self="i16"),
+            all(RHS="f32",  _Self="i8"),
+            all(RHS="f32",  _Self="u16"),
+            all(RHS="f32",  _Self="u8"),
+        ),
+        message="cannot add `{RHS}` to `{Self}`",
+        label="no implementation for `{Self} + {RHS}`, but you can safely turn \
+               `{Self}` into `{RHS}` using `as {RHS}`",
+    ),
+    on(
+        all(_Self="{integer}", RHS="{float}"),
+        message="cannot add a float to an integer",
+        label="no implementation for `{Self} + {RHS}`",
+    ),
+    on(
+        all(_Self="{float}", RHS="{integer}"),
+        message="cannot add an integer to a float",
+        label="no implementation for `{Self} + {RHS}`",
+    ),
+    message="cannot add `{RHS}` to `{Self}`",
+    label="no implementation for `{Self} + {RHS}`")]
 pub trait Add<RHS=Self> {
     /// The resulting type after applying the `+` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -170,7 +256,8 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} - {RHS}`"]
+#[rustc_on_unimplemented(message="cannot substract `{RHS}` from `{Self}`",
+                         label="no implementation for `{Self} - {RHS}`")]
 pub trait Sub<RHS=Self> {
     /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -287,7 +374,8 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} * {RHS}`"]
+#[rustc_on_unimplemented(message="cannot multiply `{RHS}` to `{Self}`",
+                         label="no implementation for `{Self} * {RHS}`")]
 pub trait Mul<RHS=Self> {
     /// The resulting type after applying the `*` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -408,7 +496,8 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} / {RHS}`"]
+#[rustc_on_unimplemented(message="cannot divide `{Self}` by `{RHS}`",
+                         label="no implementation for `{Self} / {RHS}`")]
 pub trait Div<RHS=Self> {
     /// The resulting type after applying the `/` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -490,7 +579,8 @@ div_impl_float! { f32 f64 }
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} % {RHS}`"]
+#[rustc_on_unimplemented(message="cannot mod `{Self}` by `{RHS}`",
+                         label="no implementation for `{Self} % {RHS}`")]
 pub trait Rem<RHS=Self> {
     /// The resulting type after applying the `%` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -647,7 +737,8 @@ neg_impl_numeric! { isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "add_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} += {Rhs}`"]
+#[rustc_on_unimplemented(message="cannot add-assign `{Rhs}` to `{Self}`",
+                         label="no implementation for `{Self} += {Rhs}`")]
 pub trait AddAssign<Rhs=Self> {
     /// Performs the `+=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
@@ -700,7 +791,8 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "sub_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} -= {Rhs}`"]
+#[rustc_on_unimplemented(message="cannot substract-assign `{Rhs}` from `{Self}`",
+                         label="no implementation for `{Self} -= {Rhs}`")]
 pub trait SubAssign<Rhs=Self> {
     /// Performs the `-=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
@@ -744,7 +836,8 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "mul_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} *= {Rhs}`"]
+#[rustc_on_unimplemented(message="cannot multiply-assign `{Rhs}` to `{Self}`",
+                         label="no implementation for `{Self} *= {Rhs}`")]
 pub trait MulAssign<Rhs=Self> {
     /// Performs the `*=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
@@ -788,7 +881,8 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "div_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} /= {Rhs}`"]
+#[rustc_on_unimplemented(message="cannot divide-assign `{Self}` by `{Rhs}`",
+                         label="no implementation for `{Self} /= {Rhs}`")]
 pub trait DivAssign<Rhs=Self> {
     /// Performs the `/=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
@@ -835,7 +929,8 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "rem_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented = "no implementation for `{Self} %= {Rhs}`"]
+#[rustc_on_unimplemented(message="cannot mod-assign `{Self}` by `{Rhs}``",
+                         label="no implementation for `{Self} %= {Rhs}`")]
 pub trait RemAssign<Rhs=Self> {
     /// Performs the `%=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]

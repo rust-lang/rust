@@ -5,11 +5,7 @@ error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
    |     ^^^^^^^^^^^^ trait message
    |
    = help: the trait `Index<u32>` is not implemented for `[i32]`
-note: required by `Index::index`
-  --> $DIR/multiple-impls.rs:22:5
-   |
-22 |     fn index(&self, index: Idx) -> &Self::Output;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: required by `Index::index`
 
 error[E0277]: the trait bound `[i32]: Index<u32>` is not satisfied
   --> $DIR/multiple-impls.rs:43:5
@@ -26,11 +22,7 @@ error[E0277]: the trait bound `[i32]: Index<Foo<u32>>` is not satisfied
    |     ^^^^^^^^^^^^ on impl for Foo
    |
    = help: the trait `Index<Foo<u32>>` is not implemented for `[i32]`
-note: required by `Index::index`
-  --> $DIR/multiple-impls.rs:22:5
-   |
-22 |     fn index(&self, index: Idx) -> &Self::Output;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: required by `Index::index`
 
 error[E0277]: the trait bound `[i32]: Index<Foo<u32>>` is not satisfied
   --> $DIR/multiple-impls.rs:46:5
@@ -47,11 +39,7 @@ error[E0277]: the trait bound `[i32]: Index<Bar<u32>>` is not satisfied
    |     ^^^^^^^^^^^^ on impl for Bar
    |
    = help: the trait `Index<Bar<u32>>` is not implemented for `[i32]`
-note: required by `Index::index`
-  --> $DIR/multiple-impls.rs:22:5
-   |
-22 |     fn index(&self, index: Idx) -> &Self::Output;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: required by `Index::index`
 
 error[E0277]: the trait bound `[i32]: Index<Bar<u32>>` is not satisfied
   --> $DIR/multiple-impls.rs:49:5

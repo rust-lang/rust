@@ -235,7 +235,7 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.span;
-        let ident = self.parse_ident()?;
+        let ident = self.parse_ident_attr()?;
         let node = self.parse_meta_item_kind()?;
         Ok(ast::MetaItem { name: ident.name, node: node, span: lo.to(self.prev_span) })
     }
