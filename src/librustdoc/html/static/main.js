@@ -122,6 +122,10 @@
             }
         }
         document.getElementsByTagName("body")[0].style.marginTop = '45px';
+        var themePicker = document.getElementById("theme-picker");
+        if (themePicker) {
+            themePicker.style.position = "fixed";
+        }
     }
 
     function hideSidebar() {
@@ -136,6 +140,10 @@
             filler.remove();
         }
         document.getElementsByTagName("body")[0].style.marginTop = '';
+        var themePicker = document.getElementById("theme-picker");
+        if (themePicker) {
+            themePicker.style.position = "absolute";
+        }
     }
 
     // used for special search precedence
@@ -1532,7 +1540,9 @@
                 ul.appendChild(li);
             }
             div.appendChild(ul);
-            sidebar.appendChild(div);
+            if (sidebar) {
+                sidebar.appendChild(div);
+            }
         }
 
         block("primitive", "Primitive Types");

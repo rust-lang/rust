@@ -219,6 +219,17 @@ impl Error {
     }
 }
 
+macro_rules! try_none {
+    ($e:expr, $file:expr) => ({
+        use std::io;
+        match $e {
+            Some(e) => e,
+            None => return Err(Error::new(io::Error::new(io::ErrorKind::Other, "not found"),
+                                          $file))
+        }
+    })
+}
+
 macro_rules! try_err {
     ($e:expr, $file:expr) => ({
         match $e {
@@ -859,12 +870,75 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write(cx.dst.join("main.js"),
-          include_bytes!("static/main.js"))?;
     write(cx.dst.join("rustdoc.css"),
           include_bytes!("static/rustdoc.css"))?;
-    write(cx.dst.join("main.css"),
-          include_bytes!("static/styles/main.css"))?;
+    let path = cx.shared.src_root.join("../librustdoc/html/static/themes");
+    let mut themes: Vec<String> = Vec::new();
+    for entry in try_err!(fs::read_dir(path.clone()), &path) {
+        let entry = try_err!(entry, &path);
+        let mut content = Vec::with_capacity(100000);
+
+        let mut f = try_err!(File::open(entry.path()), &entry.path());
+        try_err!(f.read_to_end(&mut content), &entry.path());
+        write(cx.dst.join(entry.file_name()), content.as_slice())?;
+        themes.push(try_none!(
+                        try_none!(entry.path().file_stem(), &entry.path()).to_str(),
+                        &entry.path()).to_owned());
+    }
+    themes.sort();
+    // To avoid theme switch latencies as much as possible, we put everything theme related
+    // at the beginning of the html files into another js file.
+    write(cx.dst.join("theme.js"), format!(
+r#"var themes = document.getElementById("theme-choices");
+var themePicker = document.getElementById("theme-picker");
+themePicker.onclick = function() {{
+    if (themes.style.display === "block") {{
+        themes.style.display = "none";
+        themePicker.style.borderBottomRightRadius = "3px";
+        themePicker.style.borderBottomLeftRadius = "3px";
+    }} else {{
+        themes.style.display = "block";
+        themePicker.style.borderBottomRightRadius = "0";
+        themePicker.style.borderBottomLeftRadius = "0";
+    }}
+}};
+var currentTheme = document.getElementById("themeStyle");
+var mainTheme = document.getElementById("mainThemeStyle");
+[{}].forEach(function(item) {{
+    var div = document.createElement('div');
+    div.innerHTML = item;
+    div.onclick = function(el) {{
+        switchTheme(currentTheme, mainTheme, item);
+    }};
+    themes.appendChild(div);
+}});
+
+function updateLocalStorage(theme) {{
+    if (typeof(Storage) !== "undefined") {{
+        localStorage.theme = theme;
+    }} else {{
+        // No Web Storage support so we do nothing
+    }}
+}}
+function switchTheme(styleElem, mainStyleElem, newTheme) {{
+    styleElem.href = mainStyleElem.href.replace("rustdoc.css", newTheme + ".css");
+    updateLocalStorage(newTheme);
+}}
+function getCurrentTheme() {{
+    if (typeof(Storage) !== "undefined" && localStorage.theme !== undefined) {{
+        return localStorage.theme;
+    }}
+    return "main";
+}}
+
+switchTheme(currentTheme, mainTheme, getCurrentTheme());
+"#, themes.iter()
+          .map(|s| format!("\"{}\"", s))
+          .collect::<Vec<String>>()
+          .join(",")).as_bytes())?;
+
+    write(cx.dst.join("main.js"), include_bytes!("static/main.js"))?;
+
     if let Some(ref css) = cx.shared.css_file_extension {
         let out = cx.dst.join("theme.css");
         try_err!(fs::copy(css, out), css);

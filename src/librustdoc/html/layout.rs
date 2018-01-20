@@ -47,8 +47,8 @@ r##"<!DOCTYPE html>
     <title>{title}</title>
 
     <link rel="stylesheet" type="text/css" href="{root_path}normalize.css">
-    <link rel="stylesheet" type="text/css" href="{root_path}rustdoc.css">
-    <link rel="stylesheet" type="text/css" href="{root_path}main.css">
+    <link rel="stylesheet" type="text/css" href="{root_path}rustdoc.css" id="mainThemeStyle">
+    <link rel="stylesheet" type="text/css" href="{root_path}main.css" id="themeStyle">
     {css_extension}
 
     {favicon}
@@ -70,6 +70,10 @@ r##"<!DOCTYPE html>
         {sidebar}
     </nav>
 
+    <div id="theme-picker">&#x1f58c;
+        <div id="theme-choices"></div>
+    </div>
+    <script src="{root_path}theme.js"></script>
     <nav class="sub">
         <form class="search-form js-only">
             <div class="search-container">

@@ -351,3 +351,26 @@ kbd {
 	border-bottom-color: #c6cbd1;
 	box-shadow-color: #c6cbd1;
 }
+
+#theme-picker {
+	border-color: #e0e0e0;
+}
+
+#theme-choices {
+	border-color: #ccc;
+	background-color: #fff;
+}
+
+#theme-choices > div {
+	border-top: #e0e0e0;
+}
+
+#theme-choices > div:hover {
+	background-color: #eee;
+}
+
+@media (max-width: 700px) {
+	#theme-picker {
+		background: #fff;
+	}
+}
