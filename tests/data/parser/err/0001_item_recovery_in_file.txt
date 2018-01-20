@@ -1,8 +1,10 @@
 FILE@[0; 21)
-  ERROR@[0; 10)
+  ERROR@[0; 3)
   err: `expected item`
     IDENT@[0; 2)
     WHITESPACE@[2; 3)
+  ERROR@[3; 10)
+  err: `expected item`
     IDENT@[3; 8)
     WHITESPACE@[8; 10)
   STRUCT_ITEM@[10; 21)

@@ -10,37 +10,39 @@ mod types;
 mod paths;
 
 pub(crate) fn file(p: &mut Parser) {
-    node(p, FILE, |p| {
-        p.eat(SHEBANG);
-        items::mod_contents(p);
-    })
+    p.start(FILE);
+    p.eat(SHEBANG);
+    items::mod_contents(p);
+    p.finish()
 }
 
 fn visibility(p: &mut Parser) {
-    node_if(p, PUB_KW, VISIBILITY, |p| {
-        if p.current() != L_PAREN {
-            return
-        }
-        match p.raw_lookahead(1) {
-            CRATE_KW | SELF_KW | SUPER_KW => {
-                p.bump();
-                p.bump();
+    if p.at(PUB_KW) {
+        p.start(VISIBILITY);
+        p.bump();
+        if p.at(L_PAREN) {
+            match p.raw_lookahead(1) {
+                CRATE_KW | SELF_KW | SUPER_KW | IN_KW => {
+                    p.bump();
+                    if p.bump() == IN_KW {
+                        paths::use_path(p);
+                    }
+                    p.expect(R_PAREN);
+                }
+                _ => ()
             }
-            IN_KW => {
-                p.bump();
-                p.bump();
-                paths::use_path(p);
-            }
-            _ => return
         }
-        p.expect(R_PAREN);
-    });
+        p.finish();
+    }
 }
 
 fn alias(p: &mut Parser) -> bool {
-    node_if(p, AS_KW, ALIAS, |p| {
+    if p.at(AS_KW) {
+        p.start(ALIAS);
+        p.bump();
         p.expect(IDENT);
-    });
+        p.finish();
+    }
     true //FIXME: return false if three are errors
 }
 
@@ -92,40 +94,13 @@ fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, end: SyntaxKind, f: F)
 }
 
 
-fn skip_to_first<C, F>(p: &mut Parser, cond: C, f: F, message: &str) -> bool
-where
-    C: Fn(&Parser) -> bool,
-    F: FnOnce(&mut Parser),
-{
-    let mut skipped = false;
-    loop {
-        if cond(p) {
-            if skipped {
-                p.finish();
-            }
-            f(p);
-            return true;
-        }
-        if p.current() == EOF {
-            if skipped {
-                p.finish();
-            }
-            return false;
-        }
-        if !skipped {
-            p.start(ERROR);
-            p.error()
-                .message(message)
-                .emit();
-        }
-        p.bump();
-        skipped = true;
-    }
-}
-
 impl<'p> Parser<'p> {
+    fn at(&self, kind: SyntaxKind) -> bool {
+        self.current() == kind
+    }
+
     pub(crate) fn expect(&mut self, kind: SyntaxKind) -> bool {
-        if self.current() == kind {
+        if self.at(kind) {
             self.bump();
             true
         } else {

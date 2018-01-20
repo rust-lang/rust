@@ -11,7 +11,10 @@ FILE@[0; 12)
         PATH_SEGMENT@[9; 9)
         err: `expected identifier`
     err: `expected SEMI`
-  ERROR@[9; 12)
+  ERROR@[9; 11)
   err: `expected item`
     INT_NUMBER@[9; 11)
+  ERROR@[11; 12)
+  err: `expected item, found `;`
+consider removing this semicolon`
     SEMI@[11; 12)

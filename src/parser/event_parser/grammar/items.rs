@@ -2,93 +2,90 @@ use super::*;
 
 pub(super) fn mod_contents(p: &mut Parser) {
     attributes::inner_attributes(p);
-    repeat(p, |p| {
-        skip_to_first(
-            p, item_first, mod_contents_item,
-            "expected item",
-        )
-    });
-}
-
-fn item_first(p: &Parser) -> bool {
-    match p.current() {
-        STRUCT_KW | FN_KW | EXTERN_KW | MOD_KW | USE_KW | POUND | PUB_KW => true,
-        _ => false,
+    while !p.at(EOF) {
+        item(p);
     }
 }
 
-fn mod_contents_item(p: &mut Parser) {
-    if item(p) {
-        if p.current() == SEMI {
-            node(p, ERROR, |p| {
-                p.error()
-                    .message("expected item, found `;`\n\
-                              consider removing this semicolon")
-                    .emit();
-                p.bump();
-            })
-        }
-    }
-}
-
-fn item(p: &mut Parser) -> bool {
+fn item(p: &mut Parser){
     let attrs_start = p.mark();
     attributes::outer_attributes(p);
     visibility(p);
-    //    node_if(p, USE_KW, USE_ITEM, use_item)
-    // || extern crate_fn
-    // || node_if(p, STATIC_KW, STATIC_ITEM, static_item)
-    // || node_if(p, CONST_KW, CONST_ITEM, const_item) or const FN!
-    // || unsafe trait, impl
-    // || node_if(p, FN_KW, FN_ITEM, fn_item)
-    // || node_if(p, TYPE_KW, TYPE_ITEM, type_item)
+    let la = p.raw_lookahead(1);
     let item_start = p.mark();
-    let item_parsed = node_if(p, [EXTERN_KW, CRATE_KW], EXTERN_CRATE_ITEM, extern_crate_item)
-        || node_if(p, MOD_KW, MOD_ITEM, mod_item)
-        || node_if(p, USE_KW, USE_ITEM, use_item)
-        || node_if(p, STRUCT_KW, STRUCT_ITEM, struct_item)
-        || node_if(p, FN_KW, FN_ITEM, fn_item);
-
+    match p.current() {
+        EXTERN_KW if la == CRATE_KW => extern_crate_item(p),
+        MOD_KW => mod_item(p),
+        USE_KW => use_item(p),
+        STRUCT_KW => struct_item(p),
+        FN_KW => fn_item(p),
+        err_token => {
+            p.start(ERROR);
+            let message = if err_token == SEMI {
+                //TODO: if the item is incomplete, this messsage is misleading
+                "expected item, found `;`\n\
+                consider removing this semicolon"
+            } else {
+                "expected item"
+            };
+            p.error()
+                .message(message)
+                .emit();
+            p.bump();
+            p.finish();
+            return;
+        }
+    };
     p.forward_parent(attrs_start, item_start);
-    item_parsed
 }
 
 fn struct_item(p: &mut Parser) {
-    if !p.expect(IDENT) {
-        return
-    }
-    generic_parameters(p);
-    match p.current() {
-        WHERE_KW => {
-            where_clause(p);
-            match p.current() {
-                SEMI => {
-                    p.bump();
-                    return
-                }
-                L_CURLY => named_fields(p),
-                _ => { //TODO: special case `(` error message
-                    p.error()
-                        .message("expected `;` or `{`")
-                        .emit();
-                    return
+    p.start(STRUCT_ITEM);
+
+    assert!(p.at(STRUCT_KW));
+    p.bump();
+
+    struct_inner(p);
+    p.finish();
+
+    fn struct_inner(p: &mut Parser) {
+        if !p.expect(IDENT) {
+            p.finish();
+            return
+        }
+        generic_parameters(p);
+        match p.current() {
+            WHERE_KW => {
+                where_clause(p);
+                match p.current() {
+                    SEMI => {
+                        p.bump();
+                        return
+                    }
+                    L_CURLY => named_fields(p),
+                    _ => { //TODO: special case `(` error message
+                        p.error()
+                            .message("expected `;` or `{`")
+                            .emit();
+                        return
+                    }
                 }
             }
-        }
-        SEMI => {
-            p.bump();
-            return
-        }
-        L_CURLY => named_fields(p),
-        L_PAREN => {
-            tuple_fields(p);
-            p.expect(SEMI);
-        },
-        _ => {
-            p.error()
-                .message("expected `;`, `{`, or `(`")
-                .emit();
-            return
+            SEMI => {
+                p.bump();
+                return
+            }
+            L_CURLY => named_fields(p),
+            L_PAREN => {
+                tuple_fields(p);
+                p.expect(SEMI);
+            },
+            _ => {
+                p.error()
+                    .message("expected `;`, `{`, or `(`")
+                    .emit();
+                return
+            }
         }
     }
 }
@@ -135,17 +132,28 @@ fn where_clause(_: &mut Parser) {
 }
 
 fn extern_crate_item(p: &mut Parser) {
+    p.start(EXTERN_CRATE_ITEM);
+
+    assert!(p.at(EXTERN_KW));
+    p.bump();
+
+    assert!(p.at(CRATE_KW));
+    p.bump();
+
     p.expect(IDENT) && alias(p) && p.expect(SEMI);
+    p.finish();
 }
 
 fn mod_item(p: &mut Parser) {
-    if !p.expect(IDENT) {
-        return;
+    p.start(MOD_ITEM);
+
+    assert!(p.at(MOD_KW));
+    p.bump();
+
+    if p.expect(IDENT) && !p.eat(SEMI) {
+        p.curly_block(mod_contents);
     }
-    if p.eat(SEMI) {
-        return;
-    }
-    p.curly_block(mod_contents);
+    p.finish()
 }
 
 pub(super) fn is_use_tree_start(kind: SyntaxKind) -> bool {
@@ -153,8 +161,13 @@ pub(super) fn is_use_tree_start(kind: SyntaxKind) -> bool {
 }
 
 fn use_item(p: &mut Parser) {
+    p.start(USE_ITEM);
+
+    assert!(p.at(USE_KW));
+    p.bump();
     use_tree(p);
     p.expect(SEMI);
+    p.finish();
 
     fn use_tree(p: &mut Parser) -> bool{
         if node_if(p, STAR, USE_TREE, |_| ()) {
@@ -210,8 +223,14 @@ fn use_item(p: &mut Parser) {
 
 
 fn fn_item(p: &mut Parser) {
+    p.start(FN_ITEM);
+
+    assert!(p.at(FN_KW));
+    p.bump();
+
     p.expect(IDENT) && p.expect(L_PAREN) && p.expect(R_PAREN)
         && p.curly_block(|_| ());
+    p.finish();
 }
 
 
