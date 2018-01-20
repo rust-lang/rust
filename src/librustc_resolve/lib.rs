@@ -2716,12 +2716,20 @@ impl<'a> Resolver<'a> {
                         }
                         return (err, candidates);
                     }
+                    (Def::Union(..), _) |
+                    (Def::Variant(..), _) |
+                    (Def::VariantCtor(_, CtorKind::Fictive), _) if ns == ValueNS => {
+                        err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
+                                                     path_str));
+                        return (err, candidates);
+                    }
                     (Def::SelfTy(..), _) if ns == ValueNS => {
+                        err.span_label(span, fallback_label);
                         err.note("can't use `Self` as a constructor, you must use the \
                                   implemented struct");
                         return (err, candidates);
                     }
-                    (Def::TyAlias(_), _) if ns == ValueNS => {
+                    (Def::TyAlias(_), _) | (Def::AssociatedTy(..), _) if ns == ValueNS => {
                         err.note("can't use a type alias as a constructor");
                         return (err, candidates);
                     }
