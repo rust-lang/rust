@@ -29,7 +29,7 @@ extern crate unicode_segmentation;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::io::{self, stdout, Write};
+use std::io::{self, stdout, BufRead, Write};
 use std::iter::repeat;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -691,6 +691,67 @@ pub fn format_input<T: Write>(
         }
         Err(e) => Err((e, summary)),
     }
+}
+
+/// A single span of changed lines, with 0 or more removed lines
+/// and a vector of 0 or more inserted lines.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ModifiedChunk {
+    /// The first affected line before formatting.
+    pub line_number: u32,
+    /// The number of lines which have been replaced
+    pub lines_removed: u32,
+    /// The new lines
+    pub lines: Vec<String>,
+}
+
+/// Set of changed sections of a file.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ModifiedLines {
+    /// The set of changed chunks.
+    pub chunks: Vec<ModifiedChunk>,
+}
+
+/// Format a file and return a `ModifiedLines` data structure describing
+/// the changed ranges of lines.
+pub fn get_modified_lines(
+    input: Input,
+    config: &Config,
+) -> Result<(Summary, FileMap, FormatReport, ModifiedLines), (io::Error, Summary)> {
+    let mut data = Vec::new();
+
+    let mut config = config.clone();
+    config.set().write_mode(config::WriteMode::Modified);
+    let (summary, filemap, formatreport) = format_input(input, &config, Some(&mut data))?;
+
+    let mut lines = data.lines();
+    let mut chunks = Vec::new();
+    while let Some(Ok(header)) = lines.next() {
+        // Parse the header line
+        let values: Vec<_> = header
+            .split(' ')
+            .map(|s| s.parse::<u32>().unwrap())
+            .collect();
+        assert_eq!(values.len(), 3);
+        let line_number = values[0];
+        let num_removed = values[1];
+        let num_added = values[2];
+        let mut added_lines = Vec::new();
+        for _ in 0..num_added {
+            added_lines.push(lines.next().unwrap().unwrap());
+        }
+        chunks.push(ModifiedChunk {
+            line_number: line_number,
+            lines_removed: num_removed,
+            lines: added_lines,
+        });
+    }
+    Ok((
+        summary,
+        filemap,
+        formatreport,
+        ModifiedLines { chunks: chunks },
+    ))
 }
 
 #[derive(Debug)]

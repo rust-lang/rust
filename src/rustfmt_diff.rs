@@ -13,6 +13,7 @@ use diff;
 use std::collections::VecDeque;
 use std::io;
 use term;
+use std::io::Write;
 use utils::use_colored_tty;
 
 #[derive(Debug, PartialEq)]
@@ -24,14 +25,19 @@ pub enum DiffLine {
 
 #[derive(Debug, PartialEq)]
 pub struct Mismatch {
+    /// The line number in the formatted version.
     pub line_number: u32,
+    /// The line number in the original version.
+    pub line_number_orig: u32,
+    /// The set of lines (context and old/new) in the mismatch.
     pub lines: Vec<DiffLine>,
 }
 
 impl Mismatch {
-    fn new(line_number: u32) -> Mismatch {
+    fn new(line_number: u32, line_number_orig: u32) -> Mismatch {
         Mismatch {
             line_number: line_number,
+            line_number_orig: line_number_orig,
             lines: Vec::new(),
         }
     }
@@ -77,17 +83,21 @@ impl OutputWriter {
 // Produces a diff between the expected output and actual output of rustfmt.
 pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
     let mut line_number = 1;
+    let mut line_number_orig = 1;
     let mut context_queue: VecDeque<&str> = VecDeque::with_capacity(context_size);
     let mut lines_since_mismatch = context_size + 1;
     let mut results = Vec::new();
-    let mut mismatch = Mismatch::new(0);
+    let mut mismatch = Mismatch::new(0, 0);
 
     for result in diff::lines(expected, actual) {
         match result {
             diff::Result::Left(str) => {
                 if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
                     results.push(mismatch);
-                    mismatch = Mismatch::new(line_number - context_queue.len() as u32);
+                    mismatch = Mismatch::new(
+                        line_number - context_queue.len() as u32,
+                        line_number_orig - context_queue.len() as u32,
+                    );
                 }
 
                 while let Some(line) = context_queue.pop_front() {
@@ -95,12 +105,16 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                 }
 
                 mismatch.lines.push(DiffLine::Resulting(str.to_owned()));
+                line_number_orig += 1;
                 lines_since_mismatch = 0;
             }
             diff::Result::Right(str) => {
                 if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
                     results.push(mismatch);
-                    mismatch = Mismatch::new(line_number - context_queue.len() as u32);
+                    mismatch = Mismatch::new(
+                        line_number - context_queue.len() as u32,
+                        line_number_orig - context_queue.len() as u32,
+                    );
                 }
 
                 while let Some(line) = context_queue.pop_front() {
@@ -123,6 +137,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                 }
 
                 line_number += 1;
+                line_number_orig += 1;
                 lines_since_mismatch += 1;
             }
         }
@@ -158,6 +173,42 @@ where
     }
 }
 
+/// Convert a Mismatch into a serialised form which just includes
+/// enough information to modify the original file.
+/// Each section starts with a line with three integers, space separated:
+///     lineno num_removed num_added
+/// followd by (num_added) lines of added text.  The line numbers are
+/// relative to the original file.
+pub fn output_modified<W>(mut out: W, diff: Vec<Mismatch>)
+where
+    W: Write,
+{
+    for mismatch in diff {
+        let (num_removed, num_added) = mismatch.lines.iter().fold((0, 0), |(rem, add), line| {
+            match *line {
+                DiffLine::Context(_) => panic!("No Context expected"),
+                DiffLine::Expected(_) => (rem, add + 1),
+                DiffLine::Resulting(_) => (rem + 1, add),
+            }
+        });
+        // Write a header with enough information to separate the modified lines.
+        writeln!(
+            out,
+            "{} {} {}",
+            mismatch.line_number_orig, num_removed, num_added
+        ).unwrap();
+
+        for line in mismatch.lines {
+            match line {
+                DiffLine::Context(_) | DiffLine::Resulting(_) => (),
+                DiffLine::Expected(ref str) => {
+                    writeln!(out, "{}", str).unwrap();
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{make_diff, Mismatch};
@@ -173,6 +224,7 @@ mod test {
             vec![
                 Mismatch {
                     line_number: 2,
+                    line_number_orig: 2,
                     lines: vec![
                         Context("two".to_owned()),
                         Resulting("three".to_owned()),
@@ -194,6 +246,7 @@ mod test {
             vec![
                 Mismatch {
                     line_number: 2,
+                    line_number_orig: 2,
                     lines: vec![
                         Context("two".to_owned()),
                         Resulting("three".to_owned()),
@@ -203,6 +256,7 @@ mod test {
                 },
                 Mismatch {
                     line_number: 5,
+                    line_number_orig: 5,
                     lines: vec![
                         Resulting("five".to_owned()),
                         Expected("cinq".to_owned()),
@@ -223,6 +277,7 @@ mod test {
             vec![
                 Mismatch {
                     line_number: 3,
+                    line_number_orig: 3,
                     lines: vec![Resulting("three".to_owned()), Expected("trois".to_owned())],
                 },
             ]
@@ -239,6 +294,7 @@ mod test {
             vec![
                 Mismatch {
                     line_number: 5,
+                    line_number_orig: 5,
                     lines: vec![Context("five".to_owned()), Expected("".to_owned())],
                 },
             ]

@@ -128,6 +128,8 @@ configuration_option_enum! { WriteMode:
     Plain,
     // Outputs a checkstyle XML file.
     Checkstyle,
+    // Output the changed lines
+    Modified,
 }
 
 configuration_option_enum! { Color:
@@ -298,7 +300,7 @@ macro_rules! create_config {
 
         // Macro hygiene won't allow us to make `set_$i()` methods on Config
         // for each item, so this struct is used to give the API to set values:
-        // `config.get().option(false)`. It's pretty ugly. Consider replacing
+        // `config.set().option(false)`. It's pretty ugly. Consider replacing
         // with `config.set_option(false)` if we ever get a stable/usable
         // `concat_idents!()`.
         pub struct ConfigSetter<'a>(&'a mut Config);
@@ -677,7 +679,7 @@ create_config! {
     // Control options (changes the operation of rustfmt, rather than the formatting)
     write_mode: WriteMode, WriteMode::Overwrite, false,
         "What Write Mode to use when none is supplied: \
-         Replace, Overwrite, Display, Plain, Diff, Coverage";
+         Replace, Overwrite, Display, Plain, Diff, Coverage, Modified";
     color: Color, Color::Auto, false,
         "What Color option to use when none is supplied: Always, Never, Auto";
     required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,
