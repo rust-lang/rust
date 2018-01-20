@@ -429,6 +429,17 @@ fn inner_parse_loop(
     Success(())
 }
 
+/// Parse the given set of token trees (`ms`), possibly consuming additional token trees from the
+/// tokenstream (`tts`).
+///
+/// # Parameters
+///
+/// - `sess`: The session into which errors are emitted
+/// - `tts`: The tokenstream from which additional token trees may be consumed if needed
+/// - `ms`: The token trees we want to parse as macros
+/// - `directory`: Information about the file locations (needed for the black-box parser)
+/// - `recurse_into_modules`: Whether or not to recurse into modules (needed for the black-box
+///   parser)
 pub fn parse(
     sess: &ParseSess,
     tts: TokenStream,
@@ -436,15 +447,28 @@ pub fn parse(
     directory: Option<Directory>,
     recurse_into_modules: bool,
 ) -> NamedParseResult {
+    // Create a parser that can be used for the "black box" parts.
     let mut parser = Parser::new(sess, tts, directory, recurse_into_modules, true);
+
+    // A queue of possible matcher positions. We initialize it with the matcher position in which
+    // the "dot" is before the first token of the first token tree. `inner_parse_loop` then
+    // processes all of these possible matcher positions and produces posible next positions into
+    // `next_items`. After some post-processing, the contents of `next_items` replenish
+    // `cur_items` and we start over again.
     let mut cur_items = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo()));
-    let mut next_items = Vec::new(); // or proceed normally
+    let mut next_items = Vec::new();
 
     loop {
-        let mut bb_items = SmallVector::new(); // black-box parsed by parser.rs
+        // Matcher positions black-box parsed by parser.rs (`parser`)
+        let mut bb_items = SmallVector::new();
+
+        // Matcher positions that would be valid if the macro invocation was over now
         let mut eof_items = SmallVector::new();
         assert!(next_items.is_empty());
 
+        // Process `cur_items` until either we have finished the input or we need to get some
+        // parsing from the black-box parser done. The result is that `next_items` will contain a
+        // bunch of possible next matcher positions in `next_items`.
         match inner_parse_loop(
             sess,
             &mut cur_items,
@@ -462,7 +486,12 @@ pub fn parse(
         // inner parse loop handled all cur_items, so it's empty
         assert!(cur_items.is_empty());
 
-        /* error messages here could be improved with links to orig. rules */
+        // We need to do some post processing after the `inner_parser_loop`.
+        //
+        // Error messages here could be improved with links to original rules.
+
+        // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
+        // either the parse is ambiguous (which should never happen) or their is a syntax error.
         if token_name_eq(&parser.token, &token::Eof) {
             if eof_items.len() == 1 {
                 let matches = eof_items[0]
@@ -478,7 +507,10 @@ pub fn parse(
             } else {
                 return Failure(parser.span, token::Eof);
             }
-        } else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
+        }
+        // Another possibility is that we need to call out to parse some rust nonterminal
+        // (black-box) parser. However, if there is not EXACTLY ONE of these, something is wrong.
+        else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
@@ -499,15 +531,23 @@ pub fn parse(
                     }
                 ),
             );
-        } else if bb_items.is_empty() && next_items.is_empty() {
+        }
+        // If there are no posible next positions AND we aren't waiting for the black-box parser,
+        // then their is a syntax error.
+        else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(parser.span, parser.token);
-        } else if !next_items.is_empty() {
-            /* Now process the next token */
+        }
+        // Dump all possible `next_items` into `cur_items` for the next iteration.
+        else if !next_items.is_empty() {
+            // Now process the next token
             cur_items.extend(next_items.drain(..));
             parser.bump();
-        } else
-        /* bb_items.len() == 1 */
-        {
+        }
+        // Finally, we have the case where we need to call the black-box parser to get some
+        // nonterminal.
+        else {
+            assert_eq!(bb_items.len(), 1);
+
             let mut item = bb_items.pop().unwrap();
             if let TokenTree::MetaVarDecl(span, _, ident) = item.top_elts.get_tt(item.idx) {
                 let match_cur = item.match_cur;
@@ -595,6 +635,18 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
     }
 }
 
+/// A call to the "black-box" parser to parse some rust nonterminal.
+///
+/// # Parameters
+///
+/// - `p`: the "black-box" parser to use
+/// - `sp`: the `Span` we want to parse
+/// - `name`: the name of the metavar _matcher_ we want to match (e.g. `tt`, `ident`, `block`,
+///   etc...)
+///
+/// # Returns
+///
+/// The parsed nonterminal.
 fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
     if name == "tt" {
         return token::NtTT(p.parse_token_tree());
