@@ -6,7 +6,7 @@ use core::ptr;
 use simd_llvm::*;
 use v128::*;
 use v64::*;
-use x86::__m128;
+use x86::*;
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -1705,8 +1705,8 @@ mod tests {
     use std::mem::transmute;
     use std::f32::NAN;
 
-    use v128::u32x4;
-    use v64::{i8x8, __m64};
+    use v128::*;
+    use v64::*;
     use x86::*;
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.

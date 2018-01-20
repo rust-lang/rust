@@ -29,12 +29,6 @@ define_impl! { u8x8, u8, 8, i8x8, x0, x1, x2, x3, x4, x5, x6, x7 }
 define_ty! { i8x8, i8, i8, i8, i8, i8, i8, i8, i8 }
 define_impl! { i8x8, i8, 8, i8x8, x0, x1, x2, x3, x4, x5, x6, x7 }
 
-// On `x86` corresponds to llvm's `x86_mmx` type.
-define_ty_doc! {
-    __m64, i64 |
-    /// 64-bit wide integer vector type.
-}
-
 define_from!(u32x2, i32x2, u16x4, i16x4, u8x8, i8x8);
 define_from!(i32x2, u32x2, u16x4, i16x4, u8x8, i8x8);
 define_from!(u16x4, u32x2, i32x2, i16x4, u8x8, i8x8);

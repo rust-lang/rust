@@ -42,11 +42,6 @@ define_impl! {
     x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15
 }
 
-define_ty_doc! {
-    __m128i, i64, i64 |
-    /// 128-bit wide signed integer vector type
-}
-
 define_from!(
     u64x2,
     i64x2,
