@@ -177,7 +177,7 @@ where
 /// enough information to modify the original file.
 /// Each section starts with a line with three integers, space separated:
 ///     lineno num_removed num_added
-/// followd by (num_added) lines of added text.  The line numbers are
+/// followed by (num_added) lines of added text.  The line numbers are
 /// relative to the original file.
 pub fn output_modified<W>(mut out: W, diff: Vec<Mismatch>)
 where
