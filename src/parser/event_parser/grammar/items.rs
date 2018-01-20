@@ -22,7 +22,7 @@ fn item(p: &mut Parser){
         err_token => {
             p.start(ERROR);
             let message = if err_token == SEMI {
-                //TODO: if the item is incomplete, this messsage is misleading
+                //TODO: if the item is incomplete, this message is misleading
                 "expected item, found `;`\n\
                 consider removing this semicolon"
             } else {
@@ -97,13 +97,12 @@ fn named_fields(p: &mut Parser) {
     }));
 
     fn named_field(p: &mut Parser) {
-        node(p, NAMED_FIELD, |p| {
-            visibility(p);
-            p.expect(IDENT) && p.expect(COLON) && {
-                types::type_ref(p);
-                true
-            };
-        })
+        p.start(NAMED_FIELD);
+        visibility(p);
+        if p.expect(IDENT) && p.expect(COLON) {
+            types::type_ref(p);
+        };
+        p.finish()
     }
 }
 
@@ -118,10 +117,10 @@ fn tuple_fields(p: &mut Parser) {
     p.expect(R_PAREN);
 
     fn tuple_field(p: &mut Parser) {
-        node(p, POS_FIELD, |p| {
-            visibility(p);
-            types::type_ref(p);
-        })
+        p.start(POS_FIELD);
+        visibility(p);
+        types::type_ref(p);
+        p.finish();
     }
 }
 
