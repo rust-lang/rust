@@ -498,6 +498,10 @@ pub mod debuginfo {
             const FlagStaticMember        = (1 << 12);
             const FlagLValueReference     = (1 << 13);
             const FlagRValueReference     = (1 << 14);
+            const FlagExternalTypeRef     = (1 << 15);
+            const FlagIntroducedVirtual   = (1 << 18);
+            const FlagBitField            = (1 << 19);
+            const FlagNoReturn            = (1 << 20);
             const FlagMainSubprogram      = (1 << 21);
         }
     }
