@@ -1,60 +1,84 @@
 use super::*;
 
-#[derive(PartialEq, Eq)]
-enum AttrKind {
-    Inner, Outer
-}
-
 pub(super) fn inner_attributes(p: &mut Parser) {
-    repeat(p, |p| attribute(p, AttrKind::Inner))
+    while p.at([POUND, EXCL]) {
+        attribute(p, true)
+    }
 }
 
 pub(super) fn outer_attributes(p: &mut Parser) {
-    repeat(p, |p| attribute(p, AttrKind::Outer))
-}
-
-
-fn attribute(p: &mut Parser, kind: AttrKind) -> bool {
-    if p.at(POUND) {
-        if kind == AttrKind::Inner && p.raw_lookahead(1) != EXCL {
-            return false;
-        }
-        let attr = p.start();
-        p.bump();
-        if kind == AttrKind::Inner {
-            p.bump();
-        }
-        p.expect(L_BRACK) && meta_item(p) && p.expect(R_BRACK);
-        attr.complete(p, ATTR);
-        true
-    } else {
-        false
+    while p.at(POUND) {
+        attribute(p, false)
     }
 }
 
-fn meta_item(p: &mut Parser) -> bool {
+
+fn attribute(p: &mut Parser, inner: bool){
+    let attr = p.start();
+    assert!(p.at(POUND));
+    p.bump();
+
+    if inner {
+        assert!(p.at(EXCL));
+        p.bump();
+    }
+
+    if p.expect(L_BRACK) {
+        meta_item(p);
+        p.expect(R_BRACK);
+    }
+    attr.complete(p, ATTR);
+}
+
+fn meta_item(p: &mut Parser) {
     if p.at(IDENT) {
         let meta_item = p.start();
         p.bump();
-        if p.eat(EQ) {
-            if !expressions::literal(p) {
-                p.error()
-                    .message("expected literal")
-                    .emit();
+        match p.current() {
+            EQ => {
+                p.bump();
+                if !expressions::literal(p) {
+                    p.error()
+                        .message("expected literal")
+                        .emit();
+                }
             }
-        } else if p.eat(L_PAREN) {
-            comma_list(p, R_PAREN, meta_item_inner);
-            p.expect(R_PAREN);
+            L_PAREN => meta_item_arg_list(p),
+            _ => (),
         }
         meta_item.complete(p, META_ITEM);
-        true
     } else {
-        false
+        p.error()
+            .message("expected attribute value")
+            .emit()
     }
-
 }
 
-fn meta_item_inner(p: &mut Parser) -> bool {
-    meta_item(p) || expressions::literal(p)
-}
+fn meta_item_arg_list(p: &mut Parser) {
+    assert!(p.at(L_PAREN));
+    p.bump();
+    loop {
+        match p.current() {
+            EOF | R_PAREN => break,
+            IDENT => meta_item(p),
+            c => if !expressions::literal(p) {
+                let message = "expected attribute";
 
+                if items::ITEM_FIRST.contains(c) {
+                    p.error().message(message).emit();
+                    return;
+                }
+
+                let err = p.start();
+                p.error().message(message).emit();
+                p.bump();
+                err.complete(p, ERROR);
+                continue
+            }
+        }
+        if !p.at(R_PAREN) {
+            p.expect(COMMA);
+        }
+    }
+    p.expect(R_PAREN);
+}

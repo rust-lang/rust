@@ -1,4 +1,4 @@
-use super::parser::Parser;
+use super::parser::{Parser, TokenSet};
 use {SyntaxKind};
 use tree::EOF;
 use syntax_kinds::*;
@@ -80,8 +80,8 @@ fn comma_list<F: Fn(&mut Parser) -> bool>(p: &mut Parser, end: SyntaxKind, f: F)
 
 
 impl<'p> Parser<'p> {
-    fn at(&self, kind: SyntaxKind) -> bool {
-        self.current() == kind
+    fn at<L: Lookahead>(&self, l: L) -> bool {
+        l.is_ahead(self)
     }
 
     pub(crate) fn expect(&mut self, kind: SyntaxKind) -> bool {

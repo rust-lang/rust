@@ -1,7 +1,8 @@
 use {Token, SyntaxKind};
 
-mod grammar;
+#[macro_use]
 mod parser;
+mod grammar;
 
 #[derive(Debug)]
 pub(crate) enum Event {

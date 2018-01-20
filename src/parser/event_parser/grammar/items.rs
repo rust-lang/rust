@@ -7,6 +7,16 @@ pub(super) fn mod_contents(p: &mut Parser) {
     }
 }
 
+pub(super) const ITEM_FIRST: TokenSet = token_set![
+    EXTERN_KW,
+    MOD_KW,
+    USE_KW,
+    STRUCT_KW,
+    FN_KW,
+    PUB_KW,
+    POUND,
+];
+
 fn item(p: &mut Parser) {
     let item = p.start();
     attributes::outer_attributes(p);
