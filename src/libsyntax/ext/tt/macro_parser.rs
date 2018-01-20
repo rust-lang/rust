@@ -90,8 +90,8 @@ use codemap::Spanned;
 use errors::FatalError;
 use ext::tt::quoted::{self, TokenTree};
 use parse::{Directory, ParseSess};
-use parse::parser::{PathStyle, Parser};
-use parse::token::{self, DocComment, Token, Nonterminal};
+use parse::parser::{Parser, PathStyle};
+use parse::token::{self, DocComment, Nonterminal, Token};
 use print::pprust;
 use symbol::keywords;
 use tokenstream::TokenStream;
@@ -100,7 +100,7 @@ use util::small_vector::SmallVector;
 use std::mem;
 use std::rc::Rc;
 use std::collections::HashMap;
-use std::collections::hash_map::Entry::{Vacant, Occupied};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 // To avoid costly uniqueness checks, we require that `MatchSeq` always has
 // a nonempty body.
@@ -182,7 +182,7 @@ fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
         match_lo: 0,
         match_cur: 0,
         match_hi: match_idx_hi,
-        sp_lo: lo
+        sp_lo: lo,
     })
 }
 
@@ -206,25 +206,27 @@ fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
 #[derive(Debug, Clone)]
 pub enum NamedMatch {
     MatchedSeq(Rc<Vec<NamedMatch>>, syntax_pos::Span),
-    MatchedNonterminal(Rc<Nonterminal>)
+    MatchedNonterminal(Rc<Nonterminal>),
 }
 
-fn nameize<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, ms: &[TokenTree], mut res: I)
-                                             -> NamedParseResult {
-    fn n_rec<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, m: &TokenTree, res: &mut I,
-             ret_val: &mut HashMap<Ident, Rc<NamedMatch>>)
-             -> Result<(), (syntax_pos::Span, String)> {
+fn nameize<I: Iterator<Item = NamedMatch>>(
+    sess: &ParseSess,
+    ms: &[TokenTree],
+    mut res: I,
+) -> NamedParseResult {
+    fn n_rec<I: Iterator<Item = NamedMatch>>(
+        sess: &ParseSess,
+        m: &TokenTree,
+        res: &mut I,
+        ret_val: &mut HashMap<Ident, Rc<NamedMatch>>,
+    ) -> Result<(), (syntax_pos::Span, String)> {
         match *m {
-            TokenTree::Sequence(_, ref seq) => {
-                for next_m in &seq.tts {
-                    n_rec(sess, next_m, res.by_ref(), ret_val)?
-                }
-            }
-            TokenTree::Delimited(_, ref delim) => {
-                for next_m in &delim.tts {
-                    n_rec(sess, next_m, res.by_ref(), ret_val)?;
-                }
-            }
+            TokenTree::Sequence(_, ref seq) => for next_m in &seq.tts {
+                n_rec(sess, next_m, res.by_ref(), ret_val)?
+            },
+            TokenTree::Delimited(_, ref delim) => for next_m in &delim.tts {
+                n_rec(sess, next_m, res.by_ref(), ret_val)?;
+            },
             TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
                 if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
                     return Err((span, "missing fragment specifier".to_string()));
@@ -250,7 +252,7 @@ fn nameize<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, ms: &[TokenTree], mut
     let mut ret_val = HashMap::new();
     for m in ms {
         match n_rec(sess, m, res.by_ref(), &mut ret_val) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err((sp, msg)) => return Error(sp, msg),
         }
     }
@@ -265,18 +267,21 @@ pub enum ParseResult<T> {
     /// indicates that no rules expected the given token.
     Failure(syntax_pos::Span, Token),
     /// Fatal error (malformed macro?). Abort compilation.
-    Error(syntax_pos::Span, String)
+    Error(syntax_pos::Span, String),
 }
 
 pub fn parse_failure_msg(tok: Token) -> String {
     match tok {
         token::Eof => "unexpected end of macro invocation".to_string(),
-        _ => format!("no rules expected the token `{}`", pprust::token_to_string(&tok)),
+        _ => format!(
+            "no rules expected the token `{}`",
+            pprust::token_to_string(&tok)
+        ),
     }
 }
 
 /// Perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
-fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
+fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     if let (Some(id1), Some(id2)) = (t1.ident(), t2.ident()) {
         id1.name == id2.name
     } else if let (&token::Lifetime(id1), &token::Lifetime(id2)) = (t1, t2) {
@@ -290,14 +295,15 @@ fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
     (0..len).into_iter().map(|_| Rc::new(Vec::new())).collect()
 }
 
-fn inner_parse_loop(sess: &ParseSess,
-                    cur_items: &mut SmallVector<Box<MatcherPos>>,
-                    next_items: &mut Vec<Box<MatcherPos>>,
-                    eof_items: &mut SmallVector<Box<MatcherPos>>,
-                    bb_items: &mut SmallVector<Box<MatcherPos>>,
-                    token: &Token,
-                    span: syntax_pos::Span)
-                    -> ParseResult<()> {
+fn inner_parse_loop(
+    sess: &ParseSess,
+    cur_items: &mut SmallVector<Box<MatcherPos>>,
+    next_items: &mut Vec<Box<MatcherPos>>,
+    eof_items: &mut SmallVector<Box<MatcherPos>>,
+    bb_items: &mut SmallVector<Box<MatcherPos>>,
+    token: &Token,
+    span: syntax_pos::Span,
+) -> ParseResult<()> {
     while let Some(mut item) = cur_items.pop() {
         // When unzipped trees end, remove them
         while item.idx >= item.top_elts.len() {
@@ -306,7 +312,7 @@ fn inner_parse_loop(sess: &ParseSess,
                     item.top_elts = elts;
                     item.idx = idx + 1;
                 }
-                None => break
+                None => break,
             }
         }
 
@@ -341,11 +347,16 @@ fn inner_parse_loop(sess: &ParseSess,
                 // Check if we need a separator
                 if idx == len && item.sep.is_some() {
                     // We have a separator, and it is the current token.
-                    if item.sep.as_ref().map(|sep| token_name_eq(token, sep)).unwrap_or(false) {
+                    if item.sep
+                        .as_ref()
+                        .map(|sep| token_name_eq(token, sep))
+                        .unwrap_or(false)
+                    {
                         item.idx += 1;
                         next_items.push(item);
                     }
-                } else { // we don't need a separator
+                } else {
+                    // we don't need a separator
                     item.match_cur = item.match_lo;
                     item.idx = 0;
                     cur_items.push(item);
@@ -418,12 +429,13 @@ fn inner_parse_loop(sess: &ParseSess,
     Success(())
 }
 
-pub fn parse(sess: &ParseSess,
-             tts: TokenStream,
-             ms: &[TokenTree],
-             directory: Option<Directory>,
-             recurse_into_modules: bool)
-             -> NamedParseResult {
+pub fn parse(
+    sess: &ParseSess,
+    tts: TokenStream,
+    ms: &[TokenTree],
+    directory: Option<Directory>,
+    recurse_into_modules: bool,
+) -> NamedParseResult {
     let mut parser = Parser::new(sess, tts, directory, recurse_into_modules, true);
     let mut cur_items = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo()));
     let mut next_items = Vec::new(); // or proceed normally
@@ -433,9 +445,16 @@ pub fn parse(sess: &ParseSess,
         let mut eof_items = SmallVector::new();
         assert!(next_items.is_empty());
 
-        match inner_parse_loop(sess, &mut cur_items, &mut next_items, &mut eof_items, &mut bb_items,
-                               &parser.token, parser.span) {
-            Success(_) => {},
+        match inner_parse_loop(
+            sess,
+            &mut cur_items,
+            &mut next_items,
+            &mut eof_items,
+            &mut bb_items,
+            &parser.token,
+            parser.span,
+        ) {
+            Success(_) => {}
             Failure(sp, tok) => return Failure(sp, tok),
             Error(sp, msg) => return Error(sp, msg),
         }
@@ -446,43 +465,56 @@ pub fn parse(sess: &ParseSess,
         /* error messages here could be improved with links to orig. rules */
         if token_name_eq(&parser.token, &token::Eof) {
             if eof_items.len() == 1 {
-                let matches = eof_items[0].matches.iter_mut().map(|dv| {
-                    Rc::make_mut(dv).pop().unwrap()
-                });
+                let matches = eof_items[0]
+                    .matches
+                    .iter_mut()
+                    .map(|dv| Rc::make_mut(dv).pop().unwrap());
                 return nameize(sess, ms, matches);
             } else if eof_items.len() > 1 {
-                return Error(parser.span, "ambiguity: multiple successful parses".to_string());
+                return Error(
+                    parser.span,
+                    "ambiguity: multiple successful parses".to_string(),
+                );
             } else {
                 return Failure(parser.span, token::Eof);
             }
         } else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
-            let nts = bb_items.iter().map(|item| match item.top_elts.get_tt(item.idx) {
-                TokenTree::MetaVarDecl(_, bind, name) => {
-                    format!("{} ('{}')", name, bind)
-                }
-                _ => panic!()
-            }).collect::<Vec<String>>().join(" or ");
+            let nts = bb_items
+                .iter()
+                .map(|item| match item.top_elts.get_tt(item.idx) {
+                    TokenTree::MetaVarDecl(_, bind, name) => format!("{} ('{}')", name, bind),
+                    _ => panic!(),
+                })
+                .collect::<Vec<String>>()
+                .join(" or ");
 
-            return Error(parser.span, format!(
-                "local ambiguity: multiple parsing options: {}",
-                match next_items.len() {
-                    0 => format!("built-in NTs {}.", nts),
-                    1 => format!("built-in NTs {} or 1 other option.", nts),
-                    n => format!("built-in NTs {} or {} other options.", nts, n),
-                }
-            ));
+            return Error(
+                parser.span,
+                format!(
+                    "local ambiguity: multiple parsing options: {}",
+                    match next_items.len() {
+                        0 => format!("built-in NTs {}.", nts),
+                        1 => format!("built-in NTs {} or 1 other option.", nts),
+                        n => format!("built-in NTs {} or {} other options.", nts, n),
+                    }
+                ),
+            );
         } else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(parser.span, parser.token);
         } else if !next_items.is_empty() {
             /* Now process the next token */
             cur_items.extend(next_items.drain(..));
             parser.bump();
-        } else /* bb_items.len() == 1 */ {
+        } else
+        /* bb_items.len() == 1 */
+        {
             let mut item = bb_items.pop().unwrap();
             if let TokenTree::MetaVarDecl(span, _, ident) = item.top_elts.get_tt(item.idx) {
                 let match_cur = item.match_cur;
-                item.push_match(match_cur,
-                    MatchedNonterminal(Rc::new(parse_nt(&mut parser, span, &ident.name.as_str()))));
+                item.push_match(
+                    match_cur,
+                    MatchedNonterminal(Rc::new(parse_nt(&mut parser, span, &ident.name.as_str()))),
+                );
                 item.idx += 1;
                 item.match_cur += 1;
             } else {
@@ -512,20 +544,21 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         "expr" => token.can_begin_expr(),
         "ty" => token.can_begin_type(),
         "ident" => token.is_ident(),
-        "vis" => match *token { // The follow-set of :vis + "priv" keyword + interpolated
+        "vis" => match *token {
+            // The follow-set of :vis + "priv" keyword + interpolated
             Token::Comma | Token::Ident(_) | Token::Interpolated(_) => true,
             _ => token.can_begin_type(),
         },
         "block" => match *token {
             Token::OpenDelim(token::Brace) => true,
             Token::Interpolated(ref nt) => match nt.0 {
-                token::NtItem(_) |
-                token::NtPat(_) |
-                token::NtTy(_) |
-                token::NtIdent(_) |
-                token::NtMeta(_) |
-                token::NtPath(_) |
-                token::NtVis(_) => false, // none of these may start with '{'.
+                token::NtItem(_)
+                | token::NtPat(_)
+                | token::NtTy(_)
+                | token::NtIdent(_)
+                | token::NtMeta(_)
+                | token::NtPath(_)
+                | token::NtVis(_) => false, // none of these may start with '{'.
                 _ => true,
             },
             _ => false,
@@ -591,12 +624,15 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "ident" => match p.token {
             token::Ident(sn) => {
                 p.bump();
-                token::NtIdent(Spanned::<Ident>{node: sn, span: p.prev_span})
+                token::NtIdent(Spanned::<Ident> {
+                    node: sn,
+                    span: p.prev_span,
+                })
             }
             _ => {
                 let token_str = pprust::token_to_string(&p.token);
-                p.fatal(&format!("expected ident, found {}",
-                                 &token_str[..])).emit();
+                p.fatal(&format!("expected ident, found {}", &token_str[..]))
+                    .emit();
                 FatalError.raise()
             }
         },
@@ -606,6 +642,6 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "lifetime" => token::NtLifetime(p.expect_lifetime()),
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.
-        _ => p.span_bug(sp, "invalid fragment specifier")
+        _ => p.span_bug(sp, "invalid fragment specifier"),
     }
 }
