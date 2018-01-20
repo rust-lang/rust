@@ -12,6 +12,7 @@
 
 #![feature(allocator_api)]
 #![feature(alloc_system)]
+#![feature(ascii_ctype)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
 #![feature(inclusive_range_syntax)]
@@ -20,6 +21,7 @@
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(iterator_step_by)]
+#![feature(lit_strings)]
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(rand)]

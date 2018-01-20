@@ -504,3 +504,227 @@ fn test_into_boxed_str() {
     let ys = xs.into_boxed_str();
     assert_eq!(&*ys, "hello my name is bob");
 }
+
+// Integration test for CoW strings
+fn cowlympics(lit: &'static str) {
+    // Things that don't CoW, and basic sanity checks
+    non_cowlympic_events(lit);
+
+
+    // Various appends
+    cowlympic_event(lit, true, |string| {
+        string.push_str("!");
+    });
+
+    cowlympic_event(lit, true, |string| {
+        string.push_str("🔥");
+    });
+
+    cowlympic_event(lit, true, |string| {
+        string.push_str("!!!!");
+    });
+
+    cowlympic_event(lit, true, |string| {
+        string.push_str("🔥🐮🔥");
+    });
+
+    cowlympic_event(lit, true, |string| {
+        string.push('!');
+    });
+
+    cowlympic_event(lit, true, |string| {
+        string.push('🔥');
+    });
+
+    cowlympic_event(lit, true, |string| {
+        *string += "🔥🐮🔥";
+    });
+
+    // Could be made to not allocate, but for now it does, so test it!
+    if lit.len() > 0 {
+        cowlympic_event(lit, false, |string| {
+            string.push_str("");
+        });
+    }
+
+    // Removals
+    if lit.len() > 0 {
+        cowlympic_event(lit, true, |string| {
+            string.remove(0);
+        });
+    }
+
+    if lit.chars().count() > 1 {
+        cowlympic_event(lit, true, |string| {
+            let (idx, _) = {
+                let mut it = string.char_indices();
+                it.next().unwrap();
+                it.next().unwrap()
+            };
+            string.remove(idx);
+       });
+    }
+
+    // Could be made non-cow, but for now check it!
+    cowlympic_event(lit, !lit.is_empty(), |string| {
+        string.drain(..);
+    });
+
+    cowlympic_event(lit, !lit.is_empty(), |string| {
+        string.retain(|_| false);
+    });
+
+    // In-place mutations
+    if lit.is_ascii() && !lit.is_empty() {
+        let has_upper_case = lit.chars().any(|char| char.is_ascii_uppercase());
+        let has_lower_case = lit.chars().any(|char| char.is_ascii_lowercase());
+        cowlympic_event(lit, has_upper_case, |string| {
+            string.make_ascii_lowercase()
+        });
+
+        cowlympic_event(lit, has_lower_case, |string| {
+            string.make_ascii_uppercase()
+        });
+    }
+
+    // mutable views
+    cowlympic_event(lit, false, |string| {
+        let _temp = &mut**string;
+    });
+
+    cowlympic_event(lit, false, |string| {
+        let _temp = string.as_mut_str();
+    });
+
+    cowlympic_event(lit, false, |string| {
+        let _temp = unsafe { string.as_mut_vec() };
+    });
+}
+
+fn non_cowlympic_events(lit: &'static str) {
+    let lit_ptr = lit.as_ptr();
+    let lit_len = lit.len();
+
+    // We're only going to truncate this (no CoW)
+    let mut string1 = String::literally(lit);
+    assert_eq!(string1.capacity(), 0);
+    assert_eq!(string1.len(), lit_len);
+    assert_eq!(string1.as_ptr(), lit_ptr);
+    assert_eq!(string1, String::from(lit));
+
+
+    // Check that pop doesn't trigger CoW, doesn't corrupt.
+    // Copy for comparison (also trivial copy)
+    {
+        let string2 = string1.clone();
+        assert_eq!(string2.capacity(), 0);
+        assert_eq!(string2.len(), lit_len);
+        assert_eq!(string2.as_ptr(), lit_ptr);
+        assert_eq!(string2, String::from(lit));
+
+        let old_len = string1.len();
+        assert_eq!(string1.pop(), lit.chars().next_back());
+        if old_len > 0 {
+            assert_ne!(string1, lit);
+            assert_ne!(string1, string2);
+            assert!(string1 < string2);
+            assert!(lit.contains(&string1));
+            assert!(string1.len() < old_len);
+        }
+        assert_eq!(string1.capacity(), 0);
+        assert_eq!(string1.as_ptr(), lit_ptr);
+    }
+
+    // Check that truncate doesn't trigger CoW, doesn't corrupt.
+    // Copy for comparison (trivial copy)
+    {
+        let string1_popped = string1.clone();
+        assert_eq!(string1_popped.capacity(), 0);
+        assert_eq!(string1_popped.len(), string1.len());
+        assert_eq!(string1_popped.as_ptr(), lit_ptr);
+        assert_eq!(string1_popped, string1);
+
+        let old_len = string1.len();
+        let offset = string1.char_indices()
+                            .nth(string1.chars().count()/2)
+                            .map(|(idx, _)| idx)
+                            .unwrap_or(0);
+        string1.truncate(offset);
+        if old_len > 0 {
+            assert_ne!(string1, lit);
+            assert!(string1 < string1_popped);
+            assert!(string1_popped.contains(&string1));
+            assert!(string1.len() < old_len);
+        }
+        assert_eq!(string1.capacity(), 0);
+        assert_eq!(string1.as_ptr(), lit_ptr);
+    }
+
+
+    // Check that clear doesn't trigger CoW, doesn't corrupt.
+    // Copy for comparison (also trivial copy)
+    {
+        let string1_truncated = string1.clone();
+        assert_eq!(string1_truncated.capacity(), 0);
+        assert_eq!(string1_truncated.len(), string1.len());
+        assert_eq!(string1_truncated.as_ptr(), lit_ptr);
+        assert_eq!(string1_truncated, string1);
+
+        let old_len = string1.len();
+        string1.clear();
+        if old_len > 0 {
+            assert_ne!(string1, lit);
+            assert!(string1 < string1_truncated);
+            assert!(string1_truncated.contains(&string1));
+            assert!(string1.len() < old_len);
+        }
+        assert_eq!(string1.capacity(), 0);
+        assert_eq!(string1.len(), 0);
+        assert_eq!(string1, String::new());
+        assert_eq!(string1.as_ptr(), lit_ptr);
+    }
+}
+
+// Event must change string value
+fn cowlympic_event<R, F>(lit: &'static str, net_mutates: bool, mut event: F)
+    where F: FnMut(&mut String) -> R
+{
+    let mut cow = String::literally(lit);
+    let mut owned = String::from(lit);
+
+    let lit_ptr = lit.as_ptr();
+    let lit_len = lit.len();
+
+    event(&mut cow);
+    event(&mut owned);
+
+    if net_mutates {
+        assert_ne!(owned, lit);
+        assert_ne!(cow, lit);
+    } else {
+        assert_eq!(cow, lit);
+        assert_eq!(owned, lit);
+        assert_eq!(cow.len(), lit_len);
+    }
+
+    assert_eq!(cow, owned);
+    assert_eq!(cow.len(), owned.len());
+    assert_ne!(cow.as_ptr(), lit_ptr);
+
+    if owned.capacity() != 0 {
+        assert_ne!(cow.capacity(), 0);
+    }
+}
+
+
+#[test]
+fn test_cow() {
+    cowlympics("it's lit 🔥🐮🔥");
+    cowlympics("OwO what's this?");
+    cowlympics("!");
+    cowlympics("!?");
+    cowlympics("🔥🐮");
+    cowlympics("🐮");
+    cowlympics("ⓒaⓒeⓒuⓒ");
+    cowlympics("");
+}
