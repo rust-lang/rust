@@ -289,7 +289,7 @@ class EncodedEnumInfo(object):
 
         # If the discriminant field is a fat pointer we have to consider the
         # first word as the true discriminant
-        if discriminant_val.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_STRUCT:
+        while discriminant_val.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_STRUCT:
             discriminant_val = discriminant_val.get_child_at_index(0)
 
         return discriminant_val.as_integer() == 0
