@@ -154,7 +154,7 @@ mod tests {
         let b = _mm_setr_pi32(3, 4);
         let expected = 3u64;
         let r = _mm_mul_su32(a, b);
-        assert_eq!(r, mem::transmute(expected));
+        assert_eq_m64(r, mem::transmute(expected));
     }
 
     #[simd_test = "sse2"]
@@ -178,26 +178,26 @@ mod tests {
     unsafe fn test_mm_set_epi64() {
         let r =
             _mm_set_epi64(mem::transmute(1i64), mem::transmute(2i64));
-        assert_eq!(r, _mm_setr_epi64x(2, 1));
+        assert_eq_m128i(r, _mm_setr_epi64x(2, 1));
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_set1_epi64() {
         let r = _mm_set1_epi64(mem::transmute(1i64));
-        assert_eq!(r, _mm_setr_epi64x(1, 1));
+        assert_eq_m128i(r, _mm_setr_epi64x(1, 1));
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_setr_epi64() {
         let r =
             _mm_setr_epi64(mem::transmute(1i64), mem::transmute(2i64));
-        assert_eq!(r, _mm_setr_epi64x(1, 2));
+        assert_eq_m128i(r, _mm_setr_epi64x(1, 2));
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_movepi64_pi64() {
         let r = _mm_movepi64_pi64(_mm_setr_epi64x(5, 0));
-        assert_eq!(r, _mm_setr_pi8(5, 0, 0, 0, 0, 0, 0, 0));
+        assert_eq_m64(r, _mm_setr_pi8(5, 0, 0, 0, 0, 0, 0, 0));
     }
 
     #[simd_test = "sse2"]
@@ -212,14 +212,14 @@ mod tests {
             0,
             0,
         ));
-        assert_eq!(r, _mm_setr_epi64x(5, 0));
+        assert_eq_m128i(r, _mm_setr_epi64x(5, 0));
     }
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_cvtpd_pi32() {
         let a = _mm_setr_pd(5., 0.);
         let r = _mm_cvtpd_pi32(a);
-        assert_eq!(r, _mm_setr_pi32(5, 0));
+        assert_eq_m64(r, _mm_setr_pi32(5, 0));
     }
 
     #[simd_test = "sse2"]
@@ -228,10 +228,10 @@ mod tests {
 
         let a = _mm_setr_pd(5., 0.);
         let r = _mm_cvttpd_pi32(a);
-        assert_eq!(r, _mm_setr_pi32(5, 0));
+        assert_eq_m64(r, _mm_setr_pi32(5, 0));
 
         let a = _mm_setr_pd(f64::NEG_INFINITY, f64::NAN);
         let r = _mm_cvttpd_pi32(a);
-        assert_eq!(r, _mm_setr_pi32(i32::MIN, i32::MIN));
+        assert_eq_m64(r, _mm_setr_pi32(i32::MIN, i32::MIN));
     }
 }

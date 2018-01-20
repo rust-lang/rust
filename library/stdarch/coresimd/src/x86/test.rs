@@ -2,6 +2,18 @@
 
 use x86::*;
 
+#[target_feature(enable = "mmx")]
+pub unsafe fn assert_eq_m64(a: __m64, b: __m64) {
+    union A { a: __m64, b: u64 }
+    assert_eq!(A { a }.b, A { a: b }.b)
+}
+
+#[target_feature(enable = "sse2")]
+pub unsafe fn assert_eq_m128i(a: __m128i, b: __m128i) {
+    union A { a: __m128i, b: [u64; 2] }
+    assert_eq!(A { a }.b, A { a: b }.b)
+}
+
 #[target_feature(enable = "sse2")]
 pub unsafe fn assert_eq_m128d(a: __m128d, b: __m128d) {
     if _mm_movemask_pd(_mm_cmpeq_pd(a, b)) != 0b11 {
@@ -34,6 +46,12 @@ pub unsafe fn get_m128(a: __m128, idx: usize) -> f32 {
 #[target_feature(enable = "sse2")]
 pub unsafe fn _mm_setr_epi64x(a: i64, b: i64) -> __m128i {
     _mm_set_epi64x(b, a)
+}
+
+#[target_feature(enable = "avx")]
+pub unsafe fn assert_eq_m256i(a: __m256i, b: __m256i) {
+    union A { a: __m256i, b: [u64; 4] }
+    assert_eq!(A { a }.b, A { a: b }.b)
 }
 
 #[target_feature(enable = "avx")]

@@ -67,7 +67,6 @@ types! {
     /// # if cfg_feature_enabled!("mmx") { unsafe { foo() } }
     /// # }
     /// ```
-    #[derive(PartialEq)]
     pub struct __m64(i64);
 
     /// 128-bit wide integer vector type, x86-specific
@@ -111,7 +110,6 @@ types! {
     /// # if cfg_feature_enabled!("sse2") { unsafe { foo() } }
     /// # }
     /// ```
-    #[derive(PartialEq)]
     pub struct __m128i(i64, i64);
 
     /// 128-bit wide set of four `f32` types, x86-specific
@@ -224,7 +222,6 @@ types! {
     /// # if cfg_feature_enabled!("avx") { unsafe { foo() } }
     /// # }
     /// ```
-    #[derive(PartialEq)]
     pub struct __m256i(i64, i64, i64, i64);
 
     /// 256-bit wide set of eight `f32` types, x86-specific

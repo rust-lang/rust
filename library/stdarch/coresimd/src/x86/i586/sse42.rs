@@ -640,7 +640,7 @@ mod tests {
             0x00, !0, !0, !0, !0, !0, !0, 0x00,
             !0, !0, !0, !0, 0x00, !0, !0, !0,
         );
-        assert_eq!(i, res);
+        assert_eq_m128i(i, res);
     }
 
     #[simd_test = "sse4.2"]
@@ -715,7 +715,7 @@ mod tests {
             !0, !0, !0, !0, !0, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         );
-        assert_eq!(i, r);
+        assert_eq_m128i(i, r);
     }
 
     #[simd_test = "sse4.2"]

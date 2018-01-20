@@ -87,7 +87,7 @@ mod tests {
         let y = _mm_setr_epi64x(v, 0);
         let e = _mm_setr_epi64x(0b0110_i64, 0);
         let r = _mm_extract_si64(x, y);
-        assert_eq!(r, e);
+        assert_eq_m128i(r, e);
     }
 
     #[simd_test = "sse4a"]
@@ -104,7 +104,7 @@ mod tests {
         //        ^idx: 2^3 = 8 ^length = 2^2 = 4
         let y = _mm_setr_epi64x(i, v);
         let r = _mm_insert_si64(x, y);
-        assert_eq!(r, expected);
+        assert_eq_m128i(r, expected);
     }
 
     #[repr(align(16))]

@@ -27,6 +27,6 @@ mod tests {
         let a = _mm_setr_epi64x(0, 0x2a);
         let b = _mm_set1_epi64x(0x00);
         let i = _mm_cmpgt_epi64(a, b);
-        assert_eq!(i, _mm_setr_epi64x(0x00, 0xffffffffffffffffu64 as i64));
+        assert_eq_m128i(i, _mm_setr_epi64x(0x00, 0xffffffffffffffffu64 as i64));
     }
 }

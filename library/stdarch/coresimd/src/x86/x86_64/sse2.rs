@@ -160,7 +160,7 @@ mod tests {
     #[simd_test = "sse2"]
     unsafe fn test_mm_cvtsi64_si128() {
         let r = _mm_cvtsi64_si128(5);
-        assert_eq!(r, _mm_setr_epi64x(5, 0));
+        assert_eq_m128i(r, _mm_setr_epi64x(5, 0));
     }
 
     #[simd_test = "sse2"]

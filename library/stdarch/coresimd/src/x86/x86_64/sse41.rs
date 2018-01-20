@@ -46,8 +46,8 @@ mod tests {
         let a = _mm_set1_epi64x(0);
         let e = _mm_setr_epi64x(0, 32);
         let r = _mm_insert_epi64(a, 32, 1);
-        assert_eq!(r, e);
+        assert_eq_m128i(r, e);
         let r = _mm_insert_epi64(a, 32, 3);
-        assert_eq!(r, e);
+        assert_eq_m128i(r, e);
     }
 }

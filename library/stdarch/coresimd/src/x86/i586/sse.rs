@@ -3188,6 +3188,6 @@ mod tests {
         let mut mem =
             ::std::boxed::Box::<__m64>::new(transmute(i8x8::splat(1)));
         _mm_stream_pi(&mut *mem as *mut _ as *mut _, a);
-        assert_eq!(a, *mem);
+        assert_eq_m64(a, *mem);
     }
 }

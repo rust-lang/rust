@@ -227,19 +227,19 @@ mod tests {
     #[simd_test = "ssse3"]
     unsafe fn test_mm_abs_pi8() {
         let r = _mm_abs_pi8(_mm_set1_pi8(-5));
-        assert_eq!(r, _mm_set1_pi8(5));
+        assert_eq_m64(r, _mm_set1_pi8(5));
     }
 
     #[simd_test = "ssse3"]
     unsafe fn test_mm_abs_pi16() {
         let r = _mm_abs_pi16(_mm_set1_pi16(-5));
-        assert_eq!(r, _mm_set1_pi16(5));
+        assert_eq_m64(r, _mm_set1_pi16(5));
     }
 
     #[simd_test = "ssse3"]
     unsafe fn test_mm_abs_pi32() {
         let r = _mm_abs_pi32(_mm_set1_pi32(-5));
-        assert_eq!(r, _mm_set1_pi32(5));
+        assert_eq_m64(r, _mm_set1_pi32(5));
     }
 
     #[simd_test = "ssse3"]
@@ -248,7 +248,7 @@ mod tests {
         let b = _mm_setr_pi8(4, 128u8 as i8, 4, 3, 24, 12, 6, 19);
         let expected = _mm_setr_pi8(5, 0, 5, 4, 1, 5, 7, 4);
         let r = _mm_shuffle_pi8(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -256,7 +256,7 @@ mod tests {
         let a = _mm_setr_pi32(0x89ABCDEF_u32 as i32, 0x01234567_u32 as i32);
         let b = _mm_setr_pi32(0xBBAA9988_u32 as i32, 0xFFDDEECC_u32 as i32);
         let r = _mm_alignr_pi8(a, b, 4);
-        assert_eq!(r, ::std::mem::transmute(0x89abcdefffddeecc_u64));
+        assert_eq_m64(r, ::std::mem::transmute(0x89abcdefffddeecc_u64));
     }
 
     #[simd_test = "ssse3"]
@@ -265,7 +265,7 @@ mod tests {
         let b = _mm_setr_pi16(4, 128, 4, 3);
         let expected = _mm_setr_pi16(3, 7, 132, 7);
         let r = _mm_hadd_pi16(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -274,7 +274,7 @@ mod tests {
         let b = _mm_setr_pi32(4, 128);
         let expected = _mm_setr_pi32(3, 132);
         let r = _mm_hadd_pi32(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -283,7 +283,7 @@ mod tests {
         let b = _mm_setr_pi16(32767, 1, -32768, -1);
         let expected = _mm_setr_pi16(3, 7, 32767, -32768);
         let r = _mm_hadds_pi16(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -292,7 +292,7 @@ mod tests {
         let b = _mm_setr_pi16(4, 128, 4, 3);
         let expected = _mm_setr_pi16(-1, -1, -124, 1);
         let r = _mm_hsub_pi16(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -301,7 +301,7 @@ mod tests {
         let b = _mm_setr_pi32(4, 128);
         let expected = _mm_setr_pi32(-1, -124);
         let r = _mm_hsub_pi32(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -310,7 +310,7 @@ mod tests {
         let b = _mm_setr_pi16(4, 128, 4, 3);
         let expected = _mm_setr_pi16(-1, -1, -124, 1);
         let r = _mm_hsubs_pi16(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -319,7 +319,7 @@ mod tests {
         let b = _mm_setr_pi8(4, 63, 4, 3, 24, 12, 6, 19);
         let expected = _mm_setr_pi16(130, 24, 192, 194);
         let r = _mm_maddubs_pi16(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -328,7 +328,7 @@ mod tests {
         let b = _mm_setr_pi16(4, 32767, -1, -32768);
         let expected = _mm_setr_pi16(0, 2, 0, -4);
         let r = _mm_mulhrs_pi16(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -337,7 +337,7 @@ mod tests {
         let b = _mm_setr_pi8(4, 64, 0, 3, 1, -1, -2, 1);
         let expected = _mm_setr_pi8(1, 2, 0, 4, -5, 6, -7, 8);
         let r = _mm_sign_pi8(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -346,7 +346,7 @@ mod tests {
         let b = _mm_setr_pi16(1, -1, 1, 0);
         let expected = _mm_setr_pi16(-1, -2, 3, 0);
         let r = _mm_sign_pi16(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 
     #[simd_test = "ssse3"]
@@ -355,6 +355,6 @@ mod tests {
         let b = _mm_setr_pi32(1, 0);
         let expected = _mm_setr_pi32(-1, 0);
         let r = _mm_sign_pi32(a, b);
-        assert_eq!(r, expected);
+        assert_eq_m64(r, expected);
     }
 }

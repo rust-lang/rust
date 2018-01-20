@@ -189,7 +189,7 @@ mod tests {
             13, 14, 15, 16,
         );
         let r = _mm_lddqu_si128(&a);
-        assert_eq!(a, r);
+        assert_eq_m128i(a, r);
     }
 
     #[simd_test = "sse3"]
