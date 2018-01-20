@@ -1,4 +1,4 @@
-error: `catch` expression is experimental (see issue #31436)
+error[E0658]: `catch` expression is experimental (see issue #31436)
   --> $DIR/feature-gate-catch_expr.rs:12:24
    |
 12 |       let catch_result = do catch { //~ ERROR `catch` expression is experimental

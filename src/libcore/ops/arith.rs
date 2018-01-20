@@ -109,7 +109,6 @@
             all(_Self="f32",  RHS="u16"),
             all(_Self="f32",  RHS="u8"),
         ),
-        message="cannot add `{RHS}` to `{Self}`",
         label="no implementation for `{Self} + {RHS}`, but you can safely cast \
                `{RHS}` into `{Self}` using `as {Self}`",
     ),
@@ -146,22 +145,20 @@
             all(RHS="f32",  _Self="u16"),
             all(RHS="f32",  _Self="u8"),
         ),
-        message="cannot add `{RHS}` to `{Self}`",
-        label="no implementation for `{Self} + {RHS}`, but you can safely turn \
+        label="no implementation for `{Self} + {RHS}`, but you can safely cast \
                `{Self}` into `{RHS}` using `as {RHS}`",
     ),
     on(
         all(_Self="{integer}", RHS="{float}"),
         message="cannot add a float to an integer",
-        label="no implementation for `{Self} + {RHS}`",
     ),
     on(
         all(_Self="{float}", RHS="{integer}"),
         message="cannot add an integer to a float",
-        label="no implementation for `{Self} + {RHS}`",
     ),
     message="cannot add `{RHS}` to `{Self}`",
-    label="no implementation for `{Self} + {RHS}`")]
+    label="no implementation for `{Self} + {RHS}`",
+)]
 pub trait Add<RHS=Self> {
     /// The resulting type after applying the `+` operator.
     #[stable(feature = "rust1", since = "1.0.0")]

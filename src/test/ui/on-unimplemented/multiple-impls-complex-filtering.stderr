@@ -1,0 +1,44 @@
+error[E0277]: trait message `[i32]`
+  --> $DIR/multiple-impls-complex-filtering.rs:46:5
+   |
+46 |     Index::index(&[] as &[i32], 2usize);
+   |     ^^^^^^^^^^^^ u32 message
+   |
+   = help: the trait `Index<_>` is not implemented for `[i32]`
+note: required by `Index::index`
+  --> $DIR/multiple-impls-complex-filtering.rs:25:5
+   |
+25 |     fn index(&self, index: Idx) -> &Self::Output;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: trait message `[i32]`
+  --> $DIR/multiple-impls-complex-filtering.rs:46:5
+   |
+46 |     Index::index(&[] as &[i32], 2usize);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u32 message
+   |
+   = help: the trait `Index<_>` is not implemented for `[i32]`
+
+error[E0277]: trait message `[i32]`
+  --> $DIR/multiple-impls-complex-filtering.rs:47:5
+   |
+47 |     Index::index(&[] as &[i32], 2u32);
+   |     ^^^^^^^^^^^^ u32 message
+   |
+   = help: the trait `Index<_>` is not implemented for `[i32]`
+note: required by `Index::index`
+  --> $DIR/multiple-impls-complex-filtering.rs:25:5
+   |
+25 |     fn index(&self, index: Idx) -> &Self::Output;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: trait message `[i32]`
+  --> $DIR/multiple-impls-complex-filtering.rs:47:5
+   |
+47 |     Index::index(&[] as &[i32], 2u32);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u32 message
+   |
+   = help: the trait `Index<_>` is not implemented for `[i32]`
+
+error: aborting due to 4 previous errors
+

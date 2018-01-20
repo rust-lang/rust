@@ -12,7 +12,11 @@ error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync`
    = note: required because it appears within the type `[std::fmt::ArgumentV1<'_>]`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&[std::fmt::ArgumentV1<'_>]`
    = note: required because it appears within the type `std::fmt::Arguments<'_>`
-   = note: required by `send`
+note: required by `send`
+  --> $DIR/send-sync.rs:11:1
+   |
+11 | fn send<T: Send>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync` is not satisfied in `std::fmt::Arguments<'_>`
   --> $DIR/send-sync.rs:19:5
@@ -28,7 +32,11 @@ error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync`
    = note: required because it appears within the type `[std::fmt::ArgumentV1<'_>]`
    = note: required because it appears within the type `&[std::fmt::ArgumentV1<'_>]`
    = note: required because it appears within the type `std::fmt::Arguments<'_>`
-   = note: required by `sync`
+note: required by `sync`
+  --> $DIR/send-sync.rs:12:1
+   |
+12 | fn sync<T: Sync>(_: T) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

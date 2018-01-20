@@ -7,7 +7,11 @@ error[E0631]: type mismatch in function arguments
 21 |     apply(&3, takes_mut);
    |     ^^^^^ expected signature of `fn(&{integer}) -> _`
    |
-   = note: required by `apply`
+note: required by `apply`
+  --> $DIR/fn-variance-1.rs:15:1
+   |
+15 | fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in function arguments
   --> $DIR/fn-variance-1.rs:25:5
@@ -18,7 +22,11 @@ error[E0631]: type mismatch in function arguments
 25 |     apply(&mut 3, takes_imm);
    |     ^^^^^ expected signature of `fn(&mut {integer}) -> _`
    |
-   = note: required by `apply`
+note: required by `apply`
+  --> $DIR/fn-variance-1.rs:15:1
+   |
+15 | fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

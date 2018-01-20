@@ -14,7 +14,7 @@ error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
    |               |
    |               expected closure that takes 2 arguments
 
-error[E0593]: closure is expected to take 2 distinct arguments, but it takes a single 2-tuple as argument
+error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
   --> $DIR/closure-arg-count.rs:19:15
    |
 19 |     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
@@ -39,62 +39,58 @@ help: change the closure to take multiple arguments instead of a single tuple
    |                       ^^^^^^^^^^^^^^^
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:23:5
+  --> $DIR/closure-arg-count.rs:21:5
    |
-23 |     f(|| panic!());
+21 |     f(|| panic!());
    |     ^ -- takes 0 arguments
    |     |
    |     expected closure that takes 1 argument
    |
-   = note: required by `f`
+note: required by `f`
+  --> $DIR/closure-arg-count.rs:13:1
+   |
+13 | fn f<F: Fn<usize>>(_: F) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
+error[E0593]: closure is expected to take a single tuple as argument, but it takes 2 distinct arguments
+  --> $DIR/closure-arg-count.rs:24:53
+   |
+24 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
+   |                                                     ^^^ ------ help: consider changing the closure to accept a tuple: `|(i, x)|`
+   |                                                     |
+   |                                                     expected closure that takes a single tuple as argument
+
+error[E0593]: closure is expected to take a single tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:26:53
    |
-26 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
-   |                                                     ^^^ ------ takes 2 distinct arguments
+26 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
+   |                                                     ^^^ ------------- help: consider changing the closure to accept a tuple: `|(i, x): (usize, _)|`
    |                                                     |
-   |                                                     expected closure that takes a single 2-tuple as argument
-help: change the closure to accept a tuple instead of individual arguments
-   |
-26 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
-   |                                                         ^^^^^^^^
-
-error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
-  --> $DIR/closure-arg-count.rs:28:53
-   |
-28 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
-   |                                                     ^^^ ------------- takes 2 distinct arguments
-   |                                                     |
-   |                                                     expected closure that takes a single 2-tuple as argument
-help: change the closure to accept a tuple instead of individual arguments
-   |
-28 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
-   |                                                         ^^^^^^^^
+   |                                                     expected closure that takes a single tuple as argument
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
-  --> $DIR/closure-arg-count.rs:30:53
+  --> $DIR/closure-arg-count.rs:28:53
    |
-30 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x, y| i);
+28 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x, y| i);
    |                                                     ^^^ --------- takes 3 distinct arguments
    |                                                     |
    |                                                     expected closure that takes a single 2-tuple as argument
 
 error[E0593]: function is expected to take a single 2-tuple as argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:32:53
+  --> $DIR/closure-arg-count.rs:30:53
    |
-32 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(foo);
+30 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(foo);
    |                                                     ^^^ expected function that takes a single 2-tuple as argument
 ...
-41 | fn foo() {}
+37 | fn foo() {}
    | -------- takes 0 arguments
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
-  --> $DIR/closure-arg-count.rs:35:53
+  --> $DIR/closure-arg-count.rs:33:53
    |
-34 |     let bar = |i, x, y| i;
+32 |     let bar = |i, x, y| i;
    |               --------- takes 3 distinct arguments
-35 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(bar);
+33 |     let _it = vec![1, 2, 3].into_iter().enumerate().map(bar);
    |                                                     ^^^ expected closure that takes a single 2-tuple as argument
 
 error[E0593]: function is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
