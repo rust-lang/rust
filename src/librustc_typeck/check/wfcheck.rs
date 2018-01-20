@@ -381,12 +381,20 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         let defaulted_params = generics.types.iter()
                                              .filter(|def| def.has_default &&
                                                      def.index >= generics.parent_count() as u32);
+        // WF checks for type parameter defaults. See test `type-check-defaults.rs` for examples.
         for param_def in defaulted_params {
-            // Defaults must be well-formed.
+            // This parameter has a default value. Check that this default value is well-formed.
+            // For example this forbids the declaration:
+            // struct Foo<T = Vec<[u32]>> { .. }
+            // Here `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
             let d = param_def.def_id;
             fcx.register_wf_obligation(fcx.tcx.type_of(d), fcx.tcx.def_span(d), self.code.clone());
+
             // Check the clauses are well-formed when the param is substituted by it's default.
-            // In trait definitions, the predicate `Self: Trait` is problematic.
+            // For example this forbids the following declaration because `String` is not `Copy`:
+            // struct Foo<T: Copy = String> { .. }
+            //
+            // In `trait Trait: Super`, checking `Self: Trait` or `Self: Super` is problematic.
             // Therefore we skip such predicates. This means we check less than we could.
             for pred in predicates.predicates.iter().filter(|p| !(is_trait && p.has_self_ty())) {
                 let mut skip = true;
@@ -394,9 +402,9 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     // All regions are identity.
                     fcx.tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
                 }, |def, _| {
-                    let identity_substs = fcx.tcx.mk_param_from_def(def);
+                    let identity_ty = fcx.tcx.mk_param_from_def(def);
                     if def.index != param_def.index {
-                        identity_substs
+                        identity_ty
                     } else {
                         let sized = fcx.tcx.lang_items().sized_trait();
                         let pred_is_sized = match pred {
@@ -410,7 +418,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                         };
                         // In trait defs, skip `Self: Sized` when `Self` is the default.
                         if is_trait && pred_is_sized && default_is_self {
-                            identity_substs
+                            identity_ty
                         } else {
                             skip = false;
                             default_ty
@@ -420,6 +428,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 if skip { continue; }
                 substituted_predicates.push(match pred {
                     // In trait predicates, substitute defaults only for the LHS.
+                    // See test `defaults-well-formedness.rs` for why substituting the RHS is bad.
                     ty::Predicate::Trait(t_pred) => {
                         let trait_ref = t_pred.map_bound(|t_pred| {
                             let mut trait_subs = t_pred.trait_ref.substs.to_vec();

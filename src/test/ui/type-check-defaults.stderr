@@ -5,7 +5,11 @@ error[E0277]: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfi
    |                   ^ a collection of type `i32` cannot be built from an iterator over elements of type `i32`
    |
    = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
-   = note: required by `Foo`
+note: required by `Foo`
+  --> $DIR/type-check-defaults.rs:15:1
+   |
+15 | struct Foo<T, U: FromIterator<T>>(T, U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfied
   --> $DIR/type-check-defaults.rs:18:27
@@ -14,7 +18,11 @@ error[E0277]: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfi
    |                           ^ a collection of type `i32` cannot be built from an iterator over elements of type `i32`
    |
    = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
-   = note: required by `Foo`
+note: required by `Foo`
+  --> $DIR/type-check-defaults.rs:15:1
+   |
+15 | struct Foo<T, U: FromIterator<T>>(T, U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `A: std::iter::Iterator` is not satisfied
   --> $DIR/type-check-defaults.rs:21:1
@@ -74,7 +82,11 @@ error[E0277]: the trait bound `TwoParams<i32, U>: Trait` is not satisfied
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `TwoParams<i32, U>`
    |
    = help: consider adding a `where TwoParams<i32, U>: Trait` bound
-   = note: required by `Trait`
+note: required by `Trait`
+  --> $DIR/type-check-defaults.rs:39:1
+   |
+39 | trait Trait {}
+   | ^^^^^^^^^^^
 
 error[E0277]: the trait bound `TwoParams<T, i32>: Trait` is not satisfied
   --> $DIR/type-check-defaults.rs:43:1
@@ -83,7 +95,24 @@ error[E0277]: the trait bound `TwoParams<T, i32>: Trait` is not satisfied
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `TwoParams<T, i32>`
    |
    = help: consider adding a `where TwoParams<T, i32>: Trait` bound
-   = note: required by `Trait`
+note: required by `Trait`
+  --> $DIR/type-check-defaults.rs:39:1
+   |
+39 | trait Trait {}
+   | ^^^^^^^^^^^
 
-error: aborting due to 10 previous errors
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/type-check-defaults.rs:48:1
+   |
+48 | trait Base<T = String>: Super<T> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+   = help: consider adding a `where T: std::marker::Copy` bound
+note: required by `Super`
+  --> $DIR/type-check-defaults.rs:47:1
+   |
+47 | trait Super<T: Copy> { }
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
 

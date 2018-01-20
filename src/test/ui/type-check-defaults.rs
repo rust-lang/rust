@@ -44,4 +44,8 @@ struct Bogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait;
 //~^ error: the trait bound `TwoParams<i32, U>: Trait` is not satisfied [E0277]
 //~^^ error: the trait bound `TwoParams<T, i32>: Trait` is not satisfied [E0277]
 
+trait Super<T: Copy> { }
+trait Base<T = String>: Super<T> { }
+//~^ error: the trait bound `T: std::marker::Copy` is not satisfied [E0277]
+
 fn main() { }
