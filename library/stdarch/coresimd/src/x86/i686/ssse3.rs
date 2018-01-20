@@ -222,144 +222,139 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use v64::*;
-    use x86::i686::ssse3;
+    use x86::*;
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_abs_pi8() {
-        let r = u8x8::from(ssse3::_mm_abs_pi8(i8x8::splat(-5).into()));
-        assert_eq!(r, u8x8::splat(5));
+    unsafe fn test_mm_abs_pi8() {
+        let r = _mm_abs_pi8(_mm_set1_pi8(-5));
+        assert_eq!(r, _mm_set1_pi8(5));
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_abs_pi16() {
-        let r = u16x4::from(ssse3::_mm_abs_pi16(i16x4::splat(-5).into()));
-        assert_eq!(r, u16x4::splat(5));
+    unsafe fn test_mm_abs_pi16() {
+        let r = _mm_abs_pi16(_mm_set1_pi16(-5));
+        assert_eq!(r, _mm_set1_pi16(5));
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_abs_pi32() {
-        let r = u32x2::from(ssse3::_mm_abs_pi32(i32x2::splat(-5).into()));
-        assert_eq!(r, u32x2::splat(5));
+    unsafe fn test_mm_abs_pi32() {
+        let r = _mm_abs_pi32(_mm_set1_pi32(-5));
+        assert_eq!(r, _mm_set1_pi32(5));
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_shuffle_pi8() {
-        let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let b = u8x8::new(4, 128, 4, 3, 24, 12, 6, 19);
-        let expected = u8x8::new(5, 0, 5, 4, 1, 5, 7, 4);
-        let r = u8x8::from(ssse3::_mm_shuffle_pi8(a.into(), b.into()));
+    unsafe fn test_mm_shuffle_pi8() {
+        let a = _mm_setr_pi8(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm_setr_pi8(4, 128u8 as i8, 4, 3, 24, 12, 6, 19);
+        let expected = _mm_setr_pi8(5, 0, 5, 4, 1, 5, 7, 4);
+        let r = _mm_shuffle_pi8(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_alignr_pi8() {
-        let a = u32x2::new(0x89ABCDEF_u32, 0x01234567_u32);
-        let b = u32x2::new(0xBBAA9988_u32, 0xFFDDEECC_u32);
-        let r = ssse3::_mm_alignr_pi8(
-            u8x8::from(a).into(),
-            u8x8::from(b).into(),
-            4,
-        );
+    unsafe fn test_mm_alignr_pi8() {
+        let a = _mm_setr_pi32(0x89ABCDEF_u32 as i32, 0x01234567_u32 as i32);
+        let b = _mm_setr_pi32(0xBBAA9988_u32 as i32, 0xFFDDEECC_u32 as i32);
+        let r = _mm_alignr_pi8(a, b, 4);
         assert_eq!(r, ::std::mem::transmute(0x89abcdefffddeecc_u64));
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hadd_pi16() {
-        let a = i16x4::new(1, 2, 3, 4);
-        let b = i16x4::new(4, 128, 4, 3);
-        let expected = i16x4::new(3, 7, 132, 7);
-        let r = i16x4::from(ssse3::_mm_hadd_pi16(a.into(), b.into()));
+    unsafe fn test_mm_hadd_pi16() {
+        let a = _mm_setr_pi16(1, 2, 3, 4);
+        let b = _mm_setr_pi16(4, 128, 4, 3);
+        let expected = _mm_setr_pi16(3, 7, 132, 7);
+        let r = _mm_hadd_pi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hadd_pi32() {
-        let a = i32x2::new(1, 2);
-        let b = i32x2::new(4, 128);
-        let expected = i32x2::new(3, 132);
-        let r = i32x2::from(ssse3::_mm_hadd_pi32(a.into(), b.into()));
+    unsafe fn test_mm_hadd_pi32() {
+        let a = _mm_setr_pi32(1, 2);
+        let b = _mm_setr_pi32(4, 128);
+        let expected = _mm_setr_pi32(3, 132);
+        let r = _mm_hadd_pi32(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hadds_pi16() {
-        let a = i16x4::new(1, 2, 3, 4);
-        let b = i16x4::new(32767, 1, -32768, -1);
-        let expected = i16x4::new(3, 7, 32767, -32768);
-        let r = i16x4::from(ssse3::_mm_hadds_pi16(a.into(), b.into()));
+    unsafe fn test_mm_hadds_pi16() {
+        let a = _mm_setr_pi16(1, 2, 3, 4);
+        let b = _mm_setr_pi16(32767, 1, -32768, -1);
+        let expected = _mm_setr_pi16(3, 7, 32767, -32768);
+        let r = _mm_hadds_pi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hsub_pi16() {
-        let a = i16x4::new(1, 2, 3, 4);
-        let b = i16x4::new(4, 128, 4, 3);
-        let expected = i16x4::new(-1, -1, -124, 1);
-        let r = i16x4::from(ssse3::_mm_hsub_pi16(a.into(), b.into()));
+    unsafe fn test_mm_hsub_pi16() {
+        let a = _mm_setr_pi16(1, 2, 3, 4);
+        let b = _mm_setr_pi16(4, 128, 4, 3);
+        let expected = _mm_setr_pi16(-1, -1, -124, 1);
+        let r = _mm_hsub_pi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hsub_pi32() {
-        let a = i32x2::new(1, 2);
-        let b = i32x2::new(4, 128);
-        let expected = i32x2::new(-1, -124);
-        let r = i32x2::from(ssse3::_mm_hsub_pi32(a.into(), b.into()));
+    unsafe fn test_mm_hsub_pi32() {
+        let a = _mm_setr_pi32(1, 2);
+        let b = _mm_setr_pi32(4, 128);
+        let expected = _mm_setr_pi32(-1, -124);
+        let r = _mm_hsub_pi32(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_hsubs_pi16() {
-        let a = i16x4::new(1, 2, 3, 4);
-        let b = i16x4::new(4, 128, 4, 3);
-        let expected = i16x4::new(-1, -1, -124, 1);
-        let r = i16x4::from(ssse3::_mm_hsubs_pi16(a.into(), b.into()));
+    unsafe fn test_mm_hsubs_pi16() {
+        let a = _mm_setr_pi16(1, 2, 3, 4);
+        let b = _mm_setr_pi16(4, 128, 4, 3);
+        let expected = _mm_setr_pi16(-1, -1, -124, 1);
+        let r = _mm_hsubs_pi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_maddubs_pi16() {
-        let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let b = i8x8::new(4, 63, 4, 3, 24, 12, 6, 19);
-        let expected = i16x4::new(130, 24, 192, 194);
-        let r = i16x4::from(ssse3::_mm_maddubs_pi16(a.into(), b.into()));
+    unsafe fn test_mm_maddubs_pi16() {
+        let a = _mm_setr_pi8(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = _mm_setr_pi8(4, 63, 4, 3, 24, 12, 6, 19);
+        let expected = _mm_setr_pi16(130, 24, 192, 194);
+        let r = _mm_maddubs_pi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_mulhrs_pi16() {
-        let a = i16x4::new(1, 2, 3, 4);
-        let b = i16x4::new(4, 32767, -1, -32768);
-        let expected = i16x4::new(0, 2, 0, -4);
-        let r = i16x4::from(ssse3::_mm_mulhrs_pi16(a.into(), b.into()));
+    unsafe fn test_mm_mulhrs_pi16() {
+        let a = _mm_setr_pi16(1, 2, 3, 4);
+        let b = _mm_setr_pi16(4, 32767, -1, -32768);
+        let expected = _mm_setr_pi16(0, 2, 0, -4);
+        let r = _mm_mulhrs_pi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_sign_pi8() {
-        let a = i8x8::new(1, 2, 3, 4, -5, -6, 7, 8);
-        let b = i8x8::new(4, 64, 0, 3, 1, -1, -2, 1);
-        let expected = i8x8::new(1, 2, 0, 4, -5, 6, -7, 8);
-        let r = i8x8::from(ssse3::_mm_sign_pi8(a.into(), b.into()));
+    unsafe fn test_mm_sign_pi8() {
+        let a = _mm_setr_pi8(1, 2, 3, 4, -5, -6, 7, 8);
+        let b = _mm_setr_pi8(4, 64, 0, 3, 1, -1, -2, 1);
+        let expected = _mm_setr_pi8(1, 2, 0, 4, -5, 6, -7, 8);
+        let r = _mm_sign_pi8(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_sign_pi16() {
-        let a = i16x4::new(-1, 2, 3, 4);
-        let b = i16x4::new(1, -1, 1, 0);
-        let expected = i16x4::new(-1, -2, 3, 0);
-        let r = i16x4::from(ssse3::_mm_sign_pi16(a.into(), b.into()));
+    unsafe fn test_mm_sign_pi16() {
+        let a = _mm_setr_pi16(-1, 2, 3, 4);
+        let b = _mm_setr_pi16(1, -1, 1, 0);
+        let expected = _mm_setr_pi16(-1, -2, 3, 0);
+        let r = _mm_sign_pi16(a, b);
         assert_eq!(r, expected);
     }
 
     #[simd_test = "ssse3"]
-    unsafe fn _mm_sign_pi32() {
-        let a = i32x2::new(-1, 2);
-        let b = i32x2::new(1, 0);
-        let expected = i32x2::new(-1, 0);
-        let r = i32x2::from(ssse3::_mm_sign_pi32(a.into(), b.into()));
+    unsafe fn test_mm_sign_pi32() {
+        let a = _mm_setr_pi32(-1, 2);
+        let b = _mm_setr_pi32(1, 0);
+        let expected = _mm_setr_pi32(-1, 0);
+        let r = _mm_sign_pi32(a, b);
         assert_eq!(r, expected);
     }
 }

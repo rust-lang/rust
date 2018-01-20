@@ -68,7 +68,7 @@ pub unsafe fn _mm_hsub_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse3")]
 #[cfg_attr(test, assert_instr(lddqu))]
 pub unsafe fn _mm_lddqu_si128(mem_addr: *const __m128i) -> __m128i {
-    __m128i::from(lddqu(mem_addr as *const _))
+    mem::transmute(lddqu(mem_addr as *const _))
 }
 
 /// Duplicate the low double-precision (64-bit) floating-point element

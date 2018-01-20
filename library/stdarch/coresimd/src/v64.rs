@@ -35,13 +35,12 @@ define_ty_doc! {
     /// 64-bit wide integer vector type.
 }
 
-define_from!(u32x2, i32x2, u16x4, i16x4, u8x8, i8x8, __m64);
-define_from!(i32x2, u32x2, u16x4, i16x4, u8x8, i8x8, __m64);
-define_from!(u16x4, u32x2, i32x2, i16x4, u8x8, i8x8, __m64);
-define_from!(i16x4, u32x2, i32x2, u16x4, u8x8, i8x8, __m64);
-define_from!(u8x8, u32x2, i32x2, u16x4, i16x4, i8x8, __m64);
-define_from!(i8x8, u32x2, i32x2, u16x4, i16x4, u8x8, __m64);
-define_from!(__m64, i8x8, u32x2, i32x2, u16x4, i16x4, u8x8);
+define_from!(u32x2, i32x2, u16x4, i16x4, u8x8, i8x8);
+define_from!(i32x2, u32x2, u16x4, i16x4, u8x8, i8x8);
+define_from!(u16x4, u32x2, i32x2, i16x4, u8x8, i8x8);
+define_from!(i16x4, u32x2, i32x2, u16x4, u8x8, i8x8);
+define_from!(u8x8, u32x2, i32x2, u16x4, i16x4, i8x8);
+define_from!(i8x8, u32x2, i32x2, u16x4, i16x4, u8x8);
 
 define_common_ops!(f32x2, u32x2, i32x2, u16x4, i16x4, u8x8, i8x8);
 define_float_ops!(f32x2);

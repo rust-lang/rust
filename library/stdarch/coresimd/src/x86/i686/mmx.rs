@@ -486,117 +486,116 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use v64::{__m64, i16x4, i32x2, i8x8, u16x4, u8x8};
-    use x86::i686::mmx;
+    use x86::*;
     use stdsimd_test::simd_test;
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_setzero_si64() {
+    unsafe fn test_mm_setzero_si64() {
         let r: __m64 = ::std::mem::transmute(0_i64);
-        assert_eq!(r, mmx::_mm_setzero_si64());
+        assert_eq!(r, _mm_setzero_si64());
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_add_pi8() {
-        let a = i8x8::new(-1, -1, 1, 1, -1, 0, 1, 0);
-        let b = i8x8::new(-127, 101, 99, 126, 0, -1, 0, 1);
-        let e = i8x8::new(-128, 100, 100, 127, -1, -1, 1, 1);
-        assert_eq!(e, i8x8::from(mmx::_mm_add_pi8(a.into(), b.into())));
-        assert_eq!(e, i8x8::from(mmx::_m_paddb(a.into(), b.into())));
+    unsafe fn test_mm_add_pi8() {
+        let a = _mm_setr_pi8(-1, -1, 1, 1, -1, 0, 1, 0);
+        let b = _mm_setr_pi8(-127, 101, 99, 126, 0, -1, 0, 1);
+        let e = _mm_setr_pi8(-128, 100, 100, 127, -1, -1, 1, 1);
+        assert_eq!(e, _mm_add_pi8(a, b));
+        assert_eq!(e, _m_paddb(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_add_pi16() {
-        let a = i16x4::new(-1, -1, 1, 1);
-        let b = i16x4::new(
+    unsafe fn test_mm_add_pi16() {
+        let a = _mm_setr_pi16(-1, -1, 1, 1);
+        let b = _mm_setr_pi16(
             i16::min_value() + 1,
             30001,
             -30001,
             i16::max_value() - 1,
         );
-        let e = i16x4::new(i16::min_value(), 30000, -30000, i16::max_value());
-        assert_eq!(e, i16x4::from(mmx::_mm_add_pi16(a.into(), b.into())));
-        assert_eq!(e, i16x4::from(mmx::_m_paddw(a.into(), b.into())));
+        let e = _mm_setr_pi16(i16::min_value(), 30000, -30000, i16::max_value());
+        assert_eq!(e, _mm_add_pi16(a, b));
+        assert_eq!(e, _m_paddw(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_add_pi32() {
-        let a = i32x2::new(1, -1);
-        let b = i32x2::new(i32::max_value() - 1, i32::min_value() + 1);
-        let e = i32x2::new(i32::max_value(), i32::min_value());
-        assert_eq!(e, i32x2::from(mmx::_mm_add_pi32(a.into(), b.into())));
-        assert_eq!(e, i32x2::from(mmx::_m_paddd(a.into(), b.into())));
+    unsafe fn test_mm_add_pi32() {
+        let a = _mm_setr_pi32(1, -1);
+        let b = _mm_setr_pi32(i32::max_value() - 1, i32::min_value() + 1);
+        let e = _mm_setr_pi32(i32::max_value(), i32::min_value());
+        assert_eq!(e, _mm_add_pi32(a, b));
+        assert_eq!(e, _m_paddd(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_adds_pi8() {
-        let a = i8x8::new(-100, -1, 1, 100, -1, 0, 1, 0);
-        let b = i8x8::new(-100, 1, -1, 100, 0, -1, 0, 1);
+    unsafe fn test_mm_adds_pi8() {
+        let a = _mm_setr_pi8(-100, -1, 1, 100, -1, 0, 1, 0);
+        let b = _mm_setr_pi8(-100, 1, -1, 100, 0, -1, 0, 1);
         let e =
-            i8x8::new(i8::min_value(), 0, 0, i8::max_value(), -1, -1, 1, 1);
-        assert_eq!(e, i8x8::from(mmx::_mm_adds_pi8(a.into(), b.into())));
-        assert_eq!(e, i8x8::from(mmx::_m_paddsb(a.into(), b.into())));
+            _mm_setr_pi8(i8::min_value(), 0, 0, i8::max_value(), -1, -1, 1, 1);
+        assert_eq!(e, _mm_adds_pi8(a, b));
+        assert_eq!(e, _m_paddsb(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_adds_pi16() {
-        let a = i16x4::new(-32000, 32000, 4, 0);
-        let b = i16x4::new(-32000, 32000, -5, 1);
-        let e = i16x4::new(i16::min_value(), i16::max_value(), -1, 1);
-        assert_eq!(e, i16x4::from(mmx::_mm_adds_pi16(a.into(), b.into())));
-        assert_eq!(e, i16x4::from(mmx::_m_paddsw(a.into(), b.into())));
+    unsafe fn test_mm_adds_pi16() {
+        let a = _mm_setr_pi16(-32000, 32000, 4, 0);
+        let b = _mm_setr_pi16(-32000, 32000, -5, 1);
+        let e = _mm_setr_pi16(i16::min_value(), i16::max_value(), -1, 1);
+        assert_eq!(e, _mm_adds_pi16(a, b));
+        assert_eq!(e, _m_paddsw(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_adds_pu8() {
-        let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 200);
-        let b = u8x8::new(0, 10, 20, 30, 40, 50, 60, 200);
-        let e = u8x8::new(0, 11, 22, 33, 44, 55, 66, u8::max_value());
-        assert_eq!(e, u8x8::from(mmx::_mm_adds_pu8(a.into(), b.into())));
-        assert_eq!(e, u8x8::from(mmx::_m_paddusb(a.into(), b.into())));
+    unsafe fn test_mm_adds_pu8() {
+        let a = _mm_setr_pi8(0, 1, 2, 3, 4, 5, 6, 200u8 as i8);
+        let b = _mm_setr_pi8(0, 10, 20, 30, 40, 50, 60, 200u8 as i8);
+        let e = _mm_setr_pi8(0, 11, 22, 33, 44, 55, 66, u8::max_value() as i8);
+        assert_eq!(e, _mm_adds_pu8(a, b));
+        assert_eq!(e, _m_paddusb(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_adds_pu16() {
-        let a = u16x4::new(0, 1, 2, 60000);
-        let b = u16x4::new(0, 10, 20, 60000);
-        let e = u16x4::new(0, 11, 22, u16::max_value());
-        assert_eq!(e, u16x4::from(mmx::_mm_adds_pu16(a.into(), b.into())));
-        assert_eq!(e, u16x4::from(mmx::_m_paddusw(a.into(), b.into())));
+    unsafe fn test_mm_adds_pu16() {
+        let a = _mm_setr_pi16(0, 1, 2, 60000u16 as i16);
+        let b = _mm_setr_pi16(0, 10, 20, 60000u16 as i16);
+        let e = _mm_setr_pi16(0, 11, 22, u16::max_value() as i16);
+        assert_eq!(e, _mm_adds_pu16(a, b));
+        assert_eq!(e, _m_paddusw(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_sub_pi8() {
-        let a = i8x8::new(0, 0, 1, 1, -1, -1, 0, 0);
-        let b = i8x8::new(-1, 1, -2, 2, 100, -100, -127, 127);
-        let e = i8x8::new(1, -1, 3, -1, -101, 99, 127, -127);
-        assert_eq!(e, i8x8::from(mmx::_mm_sub_pi8(a.into(), b.into())));
-        assert_eq!(e, i8x8::from(mmx::_m_psubb(a.into(), b.into())));
+    unsafe fn test_mm_sub_pi8() {
+        let a = _mm_setr_pi8(0, 0, 1, 1, -1, -1, 0, 0);
+        let b = _mm_setr_pi8(-1, 1, -2, 2, 100, -100, -127, 127);
+        let e = _mm_setr_pi8(1, -1, 3, -1, -101, 99, 127, -127);
+        assert_eq!(e, _mm_sub_pi8(a, b));
+        assert_eq!(e, _m_psubb(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_sub_pi16() {
-        let a = i16x4::new(-20000, -20000, 20000, 30000);
-        let b = i16x4::new(-10000, 10000, -10000, 30000);
-        let e = i16x4::new(-10000, -30000, 30000, 0);
-        assert_eq!(e, i16x4::from(mmx::_mm_sub_pi16(a.into(), b.into())));
-        assert_eq!(e, i16x4::from(mmx::_m_psubw(a.into(), b.into())));
+    unsafe fn test_mm_sub_pi16() {
+        let a = _mm_setr_pi16(-20000, -20000, 20000, 30000);
+        let b = _mm_setr_pi16(-10000, 10000, -10000, 30000);
+        let e = _mm_setr_pi16(-10000, -30000, 30000, 0);
+        assert_eq!(e, _mm_sub_pi16(a, b));
+        assert_eq!(e, _m_psubw(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_sub_pi32() {
-        let a = i32x2::new(500_000, -500_000);
-        let b = i32x2::new(500_000, 500_000);
-        let e = i32x2::new(0, -1_000_000);
-        assert_eq!(e, i32x2::from(mmx::_mm_sub_pi32(a.into(), b.into())));
-        assert_eq!(e, i32x2::from(mmx::_m_psubd(a.into(), b.into())));
+    unsafe fn test_mm_sub_pi32() {
+        let a = _mm_setr_pi32(500_000, -500_000);
+        let b = _mm_setr_pi32(500_000, 500_000);
+        let e = _mm_setr_pi32(0, -1_000_000);
+        assert_eq!(e, _mm_sub_pi32(a, b));
+        assert_eq!(e, _m_psubd(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_subs_pi8() {
-        let a = i8x8::new(-100, 100, 0, 0, 0, 0, -5, 5);
-        let b = i8x8::new(100, -100, i8::min_value(), 127, -1, 1, 3, -3);
-        let e = i8x8::new(
+    unsafe fn test_mm_subs_pi8() {
+        let a = _mm_setr_pi8(-100, 100, 0, 0, 0, 0, -5, 5);
+        let b = _mm_setr_pi8(100, -100, i8::min_value(), 127, -1, 1, 3, -3);
+        let e = _mm_setr_pi8(
             i8::min_value(),
             i8::max_value(),
             i8::max_value(),
@@ -606,128 +605,128 @@ mod tests {
             -8,
             8,
         );
-        assert_eq!(e, i8x8::from(mmx::_mm_subs_pi8(a.into(), b.into())));
-        assert_eq!(e, i8x8::from(mmx::_m_psubsb(a.into(), b.into())));
+        assert_eq!(e, _mm_subs_pi8(a, b));
+        assert_eq!(e, _m_psubsb(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_subs_pi16() {
-        let a = i16x4::new(-20000, 20000, 0, 0);
-        let b = i16x4::new(20000, -20000, -1, 1);
-        let e = i16x4::new(i16::min_value(), i16::max_value(), 1, -1);
-        assert_eq!(e, i16x4::from(mmx::_mm_subs_pi16(a.into(), b.into())));
-        assert_eq!(e, i16x4::from(mmx::_m_psubsw(a.into(), b.into())));
+    unsafe fn test_mm_subs_pi16() {
+        let a = _mm_setr_pi16(-20000, 20000, 0, 0);
+        let b = _mm_setr_pi16(20000, -20000, -1, 1);
+        let e = _mm_setr_pi16(i16::min_value(), i16::max_value(), 1, -1);
+        assert_eq!(e, _mm_subs_pi16(a, b));
+        assert_eq!(e, _m_psubsw(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_subs_pu8() {
-        let a = u8x8::new(50, 10, 20, 30, 40, 60, 70, 80);
-        let b = u8x8::new(60, 20, 30, 40, 30, 20, 10, 0);
-        let e = u8x8::new(0, 0, 0, 0, 10, 40, 60, 80);
-        assert_eq!(e, u8x8::from(mmx::_mm_subs_pu8(a.into(), b.into())));
-        assert_eq!(e, u8x8::from(mmx::_m_psubusb(a.into(), b.into())));
+    unsafe fn test_mm_subs_pu8() {
+        let a = _mm_setr_pi8(50, 10, 20, 30, 40, 60, 70, 80);
+        let b = _mm_setr_pi8(60, 20, 30, 40, 30, 20, 10, 0);
+        let e = _mm_setr_pi8(0, 0, 0, 0, 10, 40, 60, 80);
+        assert_eq!(e, _mm_subs_pu8(a, b));
+        assert_eq!(e, _m_psubusb(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_subs_pu16() {
-        let a = u16x4::new(10000, 200, 0, 44444);
-        let b = u16x4::new(20000, 300, 1, 11111);
-        let e = u16x4::new(0, 0, 0, 33333);
-        assert_eq!(e, u16x4::from(mmx::_mm_subs_pu16(a.into(), b.into())));
-        assert_eq!(e, u16x4::from(mmx::_m_psubusw(a.into(), b.into())));
+    unsafe fn test_mm_subs_pu16() {
+        let a = _mm_setr_pi16(10000, 200, 0, 44444u16 as i16);
+        let b = _mm_setr_pi16(20000, 300, 1, 11111);
+        let e = _mm_setr_pi16(0, 0, 0, 33333u16 as i16);
+        assert_eq!(e, _mm_subs_pu16(a, b));
+        assert_eq!(e, _m_psubusw(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_packs_pi16() {
-        let a = i16x4::new(-1, 2, -3, 4);
-        let b = i16x4::new(-5, 6, -7, 8);
-        let r = i8x8::new(-1, 2, -3, 4, -5, 6, -7, 8);
-        assert_eq!(r, i8x8::from(mmx::_mm_packs_pi16(a.into(), b.into())));
+    unsafe fn test_mm_packs_pi16() {
+        let a = _mm_setr_pi16(-1, 2, -3, 4);
+        let b = _mm_setr_pi16(-5, 6, -7, 8);
+        let r = _mm_setr_pi8(-1, 2, -3, 4, -5, 6, -7, 8);
+        assert_eq!(r, _mm_packs_pi16(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_packs_pi32() {
-        let a = i32x2::new(-1, 2);
-        let b = i32x2::new(-5, 6);
-        let r = i16x4::new(-1, 2, -5, 6);
-        assert_eq!(r, i16x4::from(mmx::_mm_packs_pi32(a.into(), b.into())));
+    unsafe fn test_mm_packs_pi32() {
+        let a = _mm_setr_pi32(-1, 2);
+        let b = _mm_setr_pi32(-5, 6);
+        let r = _mm_setr_pi16(-1, 2, -5, 6);
+        assert_eq!(r, _mm_packs_pi32(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_cmpgt_pi8() {
-        let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
-        let b = i8x8::new(8, 7, 6, 5, 4, 3, 2, 1);
-        let r = i8x8::new(0, 0, 0, 0, 0, -1, -1, -1);
-        assert_eq!(r, i8x8::from(mmx::_mm_cmpgt_pi8(a.into(), b.into())));
+    unsafe fn test_mm_cmpgt_pi8() {
+        let a = _mm_setr_pi8(0, 1, 2, 3, 4, 5, 6, 7);
+        let b = _mm_setr_pi8(8, 7, 6, 5, 4, 3, 2, 1);
+        let r = _mm_setr_pi8(0, 0, 0, 0, 0, -1, -1, -1);
+        assert_eq!(r, _mm_cmpgt_pi8(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_cmpgt_pi16() {
-        let a = i16x4::new(0, 1, 2, 3);
-        let b = i16x4::new(4, 3, 2, 1);
-        let r = i16x4::new(0, 0, 0, -1);
-        assert_eq!(r, i16x4::from(mmx::_mm_cmpgt_pi16(a.into(), b.into())));
+    unsafe fn test_mm_cmpgt_pi16() {
+        let a = _mm_setr_pi16(0, 1, 2, 3);
+        let b = _mm_setr_pi16(4, 3, 2, 1);
+        let r = _mm_setr_pi16(0, 0, 0, -1);
+        assert_eq!(r, _mm_cmpgt_pi16(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_cmpgt_pi32() {
-        let a = i32x2::new(0, 3);
-        let b = i32x2::new(1, 2);
-        let r0 = i32x2::new(0, -1);
-        let r1 = i32x2::new(-1, 0);
+    unsafe fn test_mm_cmpgt_pi32() {
+        let a = _mm_setr_pi32(0, 3);
+        let b = _mm_setr_pi32(1, 2);
+        let r0 = _mm_setr_pi32(0, -1);
+        let r1 = _mm_setr_pi32(-1, 0);
 
-        assert_eq!(r0, mmx::_mm_cmpgt_pi32(a.into(), b.into()).into());
-        assert_eq!(r1, mmx::_mm_cmpgt_pi32(b.into(), a.into()).into());
+        assert_eq!(r0, _mm_cmpgt_pi32(a, b));
+        assert_eq!(r1, _mm_cmpgt_pi32(b, a));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_unpackhi_pi8() {
-        let a = i8x8::new(0, 3, 4, 7, 8, 11, 12, 15);
-        let b = i8x8::new(1, 2, 5, 6, 9, 10, 13, 14);
-        let r = i8x8::new(8, 9, 11, 10, 12, 13, 15, 14);
+    unsafe fn test_mm_unpackhi_pi8() {
+        let a = _mm_setr_pi8(0, 3, 4, 7, 8, 11, 12, 15);
+        let b = _mm_setr_pi8(1, 2, 5, 6, 9, 10, 13, 14);
+        let r = _mm_setr_pi8(8, 9, 11, 10, 12, 13, 15, 14);
 
-        assert_eq!(r, mmx::_mm_unpackhi_pi8(a.into(), b.into()).into());
+        assert_eq!(r, _mm_unpackhi_pi8(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_unpacklo_pi8() {
-        let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
-        let b = i8x8::new(8, 9, 10, 11, 12, 13, 14, 15);
-        let r = i8x8::new(0, 8, 1, 9, 2, 10, 3, 11);
-        assert_eq!(r, i8x8::from(mmx::_mm_unpacklo_pi8(a.into(), b.into())));
+    unsafe fn test_mm_unpacklo_pi8() {
+        let a = _mm_setr_pi8(0, 1, 2, 3, 4, 5, 6, 7);
+        let b = _mm_setr_pi8(8, 9, 10, 11, 12, 13, 14, 15);
+        let r = _mm_setr_pi8(0, 8, 1, 9, 2, 10, 3, 11);
+        assert_eq!(r, _mm_unpacklo_pi8(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_unpackhi_pi16() {
-        let a = i16x4::new(0, 1, 2, 3);
-        let b = i16x4::new(4, 5, 6, 7);
-        let r = i16x4::new(2, 6, 3, 7);
-        assert_eq!(r, i16x4::from(mmx::_mm_unpackhi_pi16(a.into(), b.into())));
+    unsafe fn test_mm_unpackhi_pi16() {
+        let a = _mm_setr_pi16(0, 1, 2, 3);
+        let b = _mm_setr_pi16(4, 5, 6, 7);
+        let r = _mm_setr_pi16(2, 6, 3, 7);
+        assert_eq!(r, _mm_unpackhi_pi16(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_unpacklo_pi16() {
-        let a = i16x4::new(0, 1, 2, 3);
-        let b = i16x4::new(4, 5, 6, 7);
-        let r = i16x4::new(0, 4, 1, 5);
-        assert_eq!(r, i16x4::from(mmx::_mm_unpacklo_pi16(a.into(), b.into())));
+    unsafe fn test_mm_unpacklo_pi16() {
+        let a = _mm_setr_pi16(0, 1, 2, 3);
+        let b = _mm_setr_pi16(4, 5, 6, 7);
+        let r = _mm_setr_pi16(0, 4, 1, 5);
+        assert_eq!(r, _mm_unpacklo_pi16(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_unpackhi_pi32() {
-        let a = i32x2::new(0, 3);
-        let b = i32x2::new(1, 2);
-        let r = i32x2::new(3, 2);
+    unsafe fn test_mm_unpackhi_pi32() {
+        let a = _mm_setr_pi32(0, 3);
+        let b = _mm_setr_pi32(1, 2);
+        let r = _mm_setr_pi32(3, 2);
 
-        assert_eq!(r, mmx::_mm_unpackhi_pi32(a.into(), b.into()).into());
+        assert_eq!(r, _mm_unpackhi_pi32(a, b));
     }
 
     #[simd_test = "mmx"]
-    unsafe fn _mm_unpacklo_pi32() {
-        let a = i32x2::new(0, 3);
-        let b = i32x2::new(1, 2);
-        let r = i32x2::new(0, 1);
+    unsafe fn test_mm_unpacklo_pi32() {
+        let a = _mm_setr_pi32(0, 3);
+        let b = _mm_setr_pi32(1, 2);
+        let r = _mm_setr_pi32(0, 1);
 
-        assert_eq!(r, mmx::_mm_unpacklo_pi32(a.into(), b.into()).into());
+        assert_eq!(r, _mm_unpacklo_pi32(a, b));
     }
 }

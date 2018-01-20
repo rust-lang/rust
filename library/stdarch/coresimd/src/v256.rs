@@ -80,8 +80,7 @@ define_from!(
     u16x16,
     i16x16,
     u8x32,
-    i8x32,
-    __m256i
+    i8x32
 );
 define_from!(
     i64x4,
@@ -91,8 +90,7 @@ define_from!(
     u16x16,
     i16x16,
     u8x32,
-    i8x32,
-    __m256i
+    i8x32
 );
 define_from!(
     u32x8,
@@ -102,8 +100,7 @@ define_from!(
     u16x16,
     i16x16,
     u8x32,
-    i8x32,
-    __m256i
+    i8x32
 );
 define_from!(
     i32x8,
@@ -113,8 +110,7 @@ define_from!(
     u16x16,
     i16x16,
     u8x32,
-    i8x32,
-    __m256i
+    i8x32
 );
 define_from!(
     u16x16,
@@ -124,8 +120,7 @@ define_from!(
     i32x8,
     i16x16,
     u8x32,
-    i8x32,
-    __m256i
+    i8x32
 );
 define_from!(
     i16x16,
@@ -135,8 +130,7 @@ define_from!(
     i32x8,
     u16x16,
     u8x32,
-    i8x32,
-    __m256i
+    i8x32
 );
 define_from!(
     u8x32,
@@ -146,22 +140,9 @@ define_from!(
     i32x8,
     u16x16,
     i16x16,
-    i8x32,
-    __m256i
+    i8x32
 );
 define_from!(
-    i8x32,
-    u64x4,
-    i64x4,
-    u32x8,
-    i32x8,
-    u16x16,
-    i16x16,
-    u8x32,
-    __m256i
-);
-define_from!(
-    __m256i,
     i8x32,
     u64x4,
     i64x4,

@@ -105,24 +105,21 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
 ///
-/// use stdsimd::simd::u8x16;
-/// use stdsimd::vendor::{_mm_cmpistri, _SIDD_CMP_EQUAL_ORDERED};
+/// use stdsimd::vendor::*;
 ///
 /// let haystack = b"This is a long string of text data\r\n\tthat extends
 /// multiple lines";
 /// let needle = b"\r\n\t\0\0\0\0\0\0\0\0\0\0\0\0\0";
 ///
-/// let a = u8x16::load(needle, 0);
+/// let a = _mm_loadu_si128(needle.as_ptr() as *const _);
 /// let hop = 16;
 /// let mut indexes = Vec::new();
 ///
 /// // Chunk the haystack into 16 byte chunks and find
 /// // the first "\r\n\t" in the chunk.
 /// for (i, chunk) in haystack.chunks(hop).enumerate() {
-///     let b = u8x16::load(chunk, 0);
-///     let idx = unsafe {
-///         _mm_cmpistri(a.into(), b.into(), _SIDD_CMP_EQUAL_ORDERED)
-///     };
+///     let b = _mm_loadu_si128(chunk.as_ptr() as *const _);
+///     let idx = _mm_cmpistri(a, b, _SIDD_CMP_EQUAL_ORDERED);
 ///     if idx != 16 {
 ///        indexes.push((idx as usize) + (i * hop));
 ///     }
@@ -147,21 +144,18 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// #     if cfg_feature_enabled!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
-/// use stdsimd::simd::u8x16;
-/// use stdsimd::vendor::{_mm_cmpistri, _SIDD_CMP_EQUAL_ANY};
+/// use stdsimd::vendor::*;
 ///
 /// // Ensure your input is 16 byte aligned
 /// let password = b"hunter2\0\0\0\0\0\0\0\0\0";
 /// let special_chars = b"!@#$%^&*()[]:;<>";
 ///
 /// // Load the input
-/// let a = u8x16::load(special_chars, 0);
-/// let b = u8x16::load(password, 0);
+/// let a = _mm_loadu_si128(special_chars.as_ptr() as *const _);
+/// let b = _mm_loadu_si128(password.as_ptr() as *const _);
 ///
 /// // Use _SIDD_CMP_EQUAL_ANY to find the index of any bytes in b
-/// let idx = unsafe {
-///     _mm_cmpistri(a.into(), b.into(), _SIDD_CMP_EQUAL_ANY)
-/// };
+/// let idx = _mm_cmpistri(a.into(), b.into(), _SIDD_CMP_EQUAL_ANY);
 ///
 /// if idx < 16 {
 ///     println!("Congrats! Your password contains a special character");
@@ -188,20 +182,18 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// #     if cfg_feature_enabled!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
-/// use stdsimd::simd::u8x16;
-/// use stdsimd::vendor::{_mm_cmpistri, _SIDD_CMP_RANGES};
-/// # let b = u8x16::load(b":;<=>?@[\\]^_`abc", 0);
+/// use stdsimd::vendor::*;
+/// # let b = b":;<=>?@[\\]^_`abc";
+/// # let b = _mm_loadu_si128(b.as_ptr() as *const _);
 ///
 /// // Specify the ranges of values to be searched for [A-Za-z0-9].
-/// let a = u8x16::load(b"AZaz09\0\0\0\0\0\0\0\0\0\0", 0);
+/// let a = b"AZaz09\0\0\0\0\0\0\0\0\0\0";
+/// let a = _mm_loadu_si128(a.as_ptr() as *const _);
 ///
 /// // Use _SIDD_CMP_RANGES to find the index of first byte in ranges.
 /// // Which in this case will be the first alpha numeric byte found
 /// // in the string.
-/// let idx = unsafe {
-///     _mm_cmpistri(a.into(), b.into(), _SIDD_CMP_RANGES)
-/// };
-///
+/// let idx = _mm_cmpistri(a, b, _SIDD_CMP_RANGES);
 ///
 /// if idx < 16 {
 ///     println!("Found an alpha numeric character");
@@ -227,23 +219,19 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// #     if cfg_feature_enabled!("sse4.2") {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
-/// use stdsimd::simd::u16x8;
-/// use stdsimd::vendor::{_mm_cmpistri};
-/// use stdsimd::vendor::{_SIDD_UWORD_OPS, _SIDD_CMP_EQUAL_EACH};
+/// use stdsimd::vendor::*;
 ///
 /// # let mut some_utf16_words = [0u16; 8];
 /// # let mut more_utf16_words = [0u16; 8];
 /// # '❤'.encode_utf16(&mut some_utf16_words);
 /// # '𝕊'.encode_utf16(&mut more_utf16_words);
 /// // Load the input
-/// let a = u16x8::load(&some_utf16_words, 0);
-/// let b = u16x8::load(&more_utf16_words, 0);
+/// let a = _mm_loadu_si128(some_utf16_words.as_ptr() as *const _);
+/// let b = _mm_loadu_si128(more_utf16_words.as_ptr() as *const _);
 ///
 /// // Specify _SIDD_UWORD_OPS to compare words instead of bytes, and
 /// // use _SIDD_CMP_EQUAL_EACH to compare the two strings.
-/// let idx = unsafe {
-/// _mm_cmpistri(a.into(), b.into(), _SIDD_UWORD_OPS |
-/// _SIDD_CMP_EQUAL_EACH) };
+/// let idx = _mm_cmpistri(a, b, _SIDD_UWORD_OPS | _SIDD_CMP_EQUAL_EACH);
 ///
 /// if idx == 0 {
 ///     println!("16-bit unicode strings were equal!");
@@ -367,9 +355,9 @@ pub unsafe fn _mm_cmpestrm(
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8:expr) => { __m128i::from(pcmpestrm128(a, la, b, lb, $imm8)) }
+        ($imm8:expr) => { pcmpestrm128(a, la, b, lb, $imm8) }
     }
-    constify_imm8!(imm8, call)
+    mem::transmute(constify_imm8!(imm8, call))
 }
 
 /// Compare packed strings `a` and `b` with lengths `la` and `lb` using the
@@ -415,8 +403,7 @@ pub unsafe fn _mm_cmpestrm(
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
 ///
-/// use stdsimd::simd::u8x16;
-/// use stdsimd::vendor::{_mm_cmpestri, _SIDD_CMP_EQUAL_ORDERED};
+/// use stdsimd::vendor::*;
 ///
 /// // The string we want to find a substring in
 /// let haystack = b"Split \r\n\t line  ";
@@ -425,14 +412,12 @@ pub unsafe fn _mm_cmpestrm(
 /// // extra bytes we do not want to search for.
 /// let needle = b"\r\n\t ignore this ";
 ///
-/// let a = u8x16::load(needle, 0);
-/// let b = u8x16::load(haystack, 0);
+/// let a = _mm_loadu_si128(needle.as_ptr() as *const _);
+/// let b = _mm_loadu_si128(haystack.as_ptr() as *const _);
 ///
 /// // Note: We explicitly specify we only want to search `b` for the
 /// // first 3 characters of a.
-/// let idx = unsafe {
-///     _mm_cmpestri(a.into(), 3, b.into(), 15, _SIDD_CMP_EQUAL_ORDERED)
-/// };
+/// let idx = _mm_cmpestri(a, 3, b, 15, _SIDD_CMP_EQUAL_ORDERED);
 ///
 /// assert_eq!(idx, 6);
 /// #         }
@@ -626,8 +611,7 @@ mod tests {
     use stdsimd_test::simd_test;
 
     use std::ptr;
-    use v128::*;
-    use x86::i586::sse42;
+    use x86::*;
 
     // Currently one cannot `load` a &[u8] that is is less than 16
     // in length. This makes loading strings less than 16 in length
@@ -643,179 +627,179 @@ mod tests {
             slice.get_unchecked_mut(0) as *mut u8 as *mut u8,
             s.len(),
         );
-        __m128i::from(u8x16::load(slice, 0))
+         _mm_loadu_si128(slice.as_ptr() as *const _)
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpistrm() {
+    unsafe fn test_mm_cmpistrm() {
         let a = str_to_m128i(b"Hello! Good-Bye!");
         let b = str_to_m128i(b"hello! good-bye!");
-        let i = sse42::_mm_cmpistrm(a, b, sse42::_SIDD_UNIT_MASK);
+        let i = _mm_cmpistrm(a, b, _SIDD_UNIT_MASK);
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let res = u8x16::new(
-            0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00,
-            0xff, 0xff, 0xff, 0xff, 0x00, 0xff, 0xff, 0xff,
+        let res = _mm_setr_epi8(
+            0x00, !0, !0, !0, !0, !0, !0, 0x00,
+            !0, !0, !0, !0, 0x00, !0, !0, !0,
         );
-        assert_eq!(i, __m128i::from(res));
+        assert_eq!(i, res);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpistri() {
+    unsafe fn test_mm_cmpistri() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"   Hello        ");
-        let i = sse42::_mm_cmpistri(a, b, sse42::_SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpistri(a, b, _SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(3, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpistrz() {
+    unsafe fn test_mm_cmpistrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
-        let i = sse42::_mm_cmpistrz(a, b, sse42::_SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpistrz(a, b, _SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(1, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpistrc() {
+    unsafe fn test_mm_cmpistrc() {
         let a = str_to_m128i(b"                ");
         let b = str_to_m128i(b"       !        ");
-        let i = sse42::_mm_cmpistrc(a, b, sse42::_SIDD_UNIT_MASK);
+        let i = _mm_cmpistrc(a, b, _SIDD_UNIT_MASK);
         assert_eq!(1, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpistrs() {
+    unsafe fn test_mm_cmpistrs() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"");
-        let i = sse42::_mm_cmpistrs(a, b, sse42::_SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpistrs(a, b, _SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(1, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpistro() {
+    unsafe fn test_mm_cmpistro() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a_bytes = u8x16::new(
+        let a_bytes = _mm_setr_epi8(
             0x00, 0x47, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
             0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         );
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let b_bytes = u8x16::new(
+        let b_bytes = _mm_setr_epi8(
             0x00, 0x48, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
             0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         );
-        let a = __m128i::from(a_bytes);
-        let b = __m128i::from(b_bytes);
-        let i = sse42::_mm_cmpistro(
+        let a = a_bytes;
+        let b = b_bytes;
+        let i = _mm_cmpistro(
             a,
             b,
-            sse42::_SIDD_UWORD_OPS | sse42::_SIDD_UNIT_MASK,
+            _SIDD_UWORD_OPS | _SIDD_UNIT_MASK,
         );
         assert_eq!(0, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpistra() {
+    unsafe fn test_mm_cmpistra() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello!!!!!!!!!!!");
-        let i = sse42::_mm_cmpistra(a, b, sse42::_SIDD_UNIT_MASK);
+        let i = _mm_cmpistra(a, b, _SIDD_UNIT_MASK);
         assert_eq!(1, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpestrm() {
+    unsafe fn test_mm_cmpestrm() {
         let a = str_to_m128i(b"Hello!");
         let b = str_to_m128i(b"Hello.");
-        let i = sse42::_mm_cmpestrm(a, 5, b, 5, sse42::_SIDD_UNIT_MASK);
+        let i = _mm_cmpestrm(a, 5, b, 5, _SIDD_UNIT_MASK);
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let r = u8x16::new(
-            0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00,
+        let r = _mm_setr_epi8(
+            !0, !0, !0, !0, !0, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         );
-        assert_eq!(i, __m128i::from(r));
+        assert_eq!(i, r);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpestri() {
+    unsafe fn test_mm_cmpestri() {
         let a = str_to_m128i(b"bar - garbage");
         let b = str_to_m128i(b"foobar");
         let i =
-            sse42::_mm_cmpestri(a, 3, b, 6, sse42::_SIDD_CMP_EQUAL_ORDERED);
+            _mm_cmpestri(a, 3, b, 6, _SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(3, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpestrz() {
+    unsafe fn test_mm_cmpestrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
         let i =
-            sse42::_mm_cmpestrz(a, 16, b, 6, sse42::_SIDD_CMP_EQUAL_ORDERED);
+            _mm_cmpestrz(a, 16, b, 6, _SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(1, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpestrc() {
+    unsafe fn test_mm_cmpestrc() {
         let va = str_to_m128i(b"!!!!!!!!");
         let vb = str_to_m128i(b"        ");
-        let i = sse42::_mm_cmpestrc(va, 7, vb, 7, sse42::_SIDD_UNIT_MASK);
+        let i = _mm_cmpestrc(va, 7, vb, 7, _SIDD_UNIT_MASK);
         assert_eq!(0, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpestrs() {
+    unsafe fn test_mm_cmpestrs() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
-        let a_bytes = u8x16::new(
+        let a_bytes = _mm_setr_epi8(
             0x00, 0x48, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
             0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         );
-        let a = __m128i::from(a_bytes);
-        let b = __m128i::from(u8x16::splat(0x00));
-        let i = sse42::_mm_cmpestrs(a, 8, b, 0, sse42::_SIDD_UWORD_OPS);
+        let a = a_bytes;
+        let b = _mm_set1_epi8(0x00);
+        let i = _mm_cmpestrs(a, 8, b, 0, _SIDD_UWORD_OPS);
         assert_eq!(0, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpestro() {
+    unsafe fn test_mm_cmpestro() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"World");
-        let i = sse42::_mm_cmpestro(a, 5, b, 5, sse42::_SIDD_UBYTE_OPS);
+        let i = _mm_cmpestro(a, 5, b, 5, _SIDD_UBYTE_OPS);
         assert_eq!(0, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_cmpestra() {
+    unsafe fn test_mm_cmpestra() {
         let a = str_to_m128i(b"Cannot match a");
         let b = str_to_m128i(b"Null after 14");
-        let i = sse42::_mm_cmpestra(
+        let i = _mm_cmpestra(
             a,
             14,
             b,
             16,
-            sse42::_SIDD_CMP_EQUAL_EACH | sse42::_SIDD_UNIT_MASK,
+            _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK,
         );
         assert_eq!(1, i);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_crc32_u8() {
+    unsafe fn test_mm_crc32_u8() {
         let crc = 0x2aa1e72b;
         let v = 0x2a;
-        let i = sse42::_mm_crc32_u8(crc, v);
+        let i = _mm_crc32_u8(crc, v);
         assert_eq!(i, 0xf24122e4);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_crc32_u16() {
+    unsafe fn test_mm_crc32_u16() {
         let crc = 0x8ecec3b5;
         let v = 0x22b;
-        let i = sse42::_mm_crc32_u16(crc, v);
+        let i = _mm_crc32_u16(crc, v);
         assert_eq!(i, 0x13bb2fb);
     }
 
     #[simd_test = "sse4.2"]
-    unsafe fn _mm_crc32_u32() {
+    unsafe fn test_mm_crc32_u32() {
         let crc = 0xae2912c8;
         let v = 0x845fed;
-        let i = sse42::_mm_crc32_u32(crc, v);
+        let i = _mm_crc32_u32(crc, v);
         assert_eq!(i, 0xffae2ed1);
     }
 }
