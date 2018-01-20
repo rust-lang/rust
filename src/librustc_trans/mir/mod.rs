@@ -547,7 +547,7 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
                 let ops = unsafe {
                     [llvm::LLVMRustDIBuilderCreateOpDeref(),
-                     llvm::LLVMRustDIBuilderCreateOpPlus(),
+                     llvm::LLVMRustDIBuilderCreateOpPlusUconst(),
                      byte_offset_of_var_in_env as i64,
                      llvm::LLVMRustDIBuilderCreateOpDeref()]
                 };

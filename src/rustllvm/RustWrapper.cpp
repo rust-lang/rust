@@ -866,7 +866,14 @@ extern "C" int64_t LLVMRustDIBuilderCreateOpDeref() {
   return dwarf::DW_OP_deref;
 }
 
-extern "C" int64_t LLVMRustDIBuilderCreateOpPlus() { return dwarf::DW_OP_plus; }
+extern "C" int64_t LLVMRustDIBuilderCreateOpPlusUconst() {
+#if LLVM_VERSION_GE(5, 0)
+  return dwarf::DW_OP_plus_uconst;
+#else
+  // older LLVM used `plus` to behave like `plus_uconst`.
+  return dwarf::DW_OP_plus;
+#endif
+}
 
 extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {
   RawRustStringOstream OS(Str);
