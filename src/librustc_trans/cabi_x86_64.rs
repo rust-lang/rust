@@ -134,12 +134,13 @@ fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg
         None => None,
         Some(Class::Int) => {
             *i += 1;
-            Some(match size.bytes() {
-                1 => Reg::i8(),
-                2 => Reg::i16(),
-                3 |
-                4 => Reg::i32(),
-                _ => Reg::i64()
+            Some(if size.bytes() < 8 {
+                Reg {
+                    kind: RegKind::Integer,
+                    size
+                }
+            } else {
+                Reg::i64()
             })
         }
         Some(Class::Sse) => {
