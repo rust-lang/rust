@@ -132,6 +132,8 @@ pub struct SharedContext {
     /// This flag indicates whether listings of modules (in the side bar and documentation itself)
     /// should be ordered alphabetically or in order of appearance (in the source code).
     pub sort_modules_alphabetically: bool,
+    /// Additional themes to be added to the generated docs.
+    pub themes: Vec<PathBuf>,
 }
 
 impl SharedContext {
@@ -500,7 +502,8 @@ pub fn run(mut krate: clean::Crate,
            renderinfo: RenderInfo,
            render_type: RenderType,
            sort_modules_alphabetically: bool,
-           deny_render_differences: bool) -> Result<(), Error> {
+           deny_render_differences: bool,
+           themes: Vec<PathBuf>) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -524,6 +527,7 @@ pub fn run(mut krate: clean::Crate,
         markdown_warnings: RefCell::new(vec![]),
         created_dirs: RefCell::new(FxHashSet()),
         sort_modules_alphabetically,
+        themes,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -872,19 +876,28 @@ fn write_shared(cx: &Context,
 
     write(cx.dst.join("rustdoc.css"),
           include_bytes!("static/rustdoc.css"))?;
-    let path = cx.shared.src_root.join("../librustdoc/html/static/themes");
-    let mut themes: Vec<String> = Vec::new();
-    for entry in try_err!(fs::read_dir(path.clone()), &path) {
-        let entry = try_err!(entry, &path);
+
+    // To avoid "main.css" to be overwritten, we'll first run over the received themes and only
+    // then we'll run over the "official" styles.
+    let mut themes: HashSet<String> = HashSet::new();
+
+    for entry in &cx.shared.themes {
         let mut content = Vec::with_capacity(100000);
 
-        let mut f = try_err!(File::open(entry.path()), &entry.path());
-        try_err!(f.read_to_end(&mut content), &entry.path());
-        write(cx.dst.join(entry.file_name()), content.as_slice())?;
-        themes.push(try_none!(
-                        try_none!(entry.path().file_stem(), &entry.path()).to_str(),
-                        &entry.path()).to_owned());
+        let mut f = try_err!(File::open(&entry), &entry);
+        try_err!(f.read_to_end(&mut content), &entry);
+        write(cx.dst.join(try_none!(entry.file_name(), &entry)), content.as_slice())?;
+        themes.insert(try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry).to_owned());
     }
+
+    write(cx.dst.join("main.css"),
+          include_bytes!("static/themes/main.css"))?;
+    themes.insert("main".to_owned());
+    write(cx.dst.join("dark.css"),
+          include_bytes!("static/themes/dark.css"))?;
+    themes.insert("dark".to_owned());
+
+    let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();
     // To avoid theme switch latencies as much as possible, we put everything theme related
     // at the beginning of the html files into another js file.

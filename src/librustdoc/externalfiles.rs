@@ -14,7 +14,7 @@ use std::str;
 use html::markdown::{Markdown, RenderType};
 
 #[derive(Clone)]
-pub struct ExternalHtml{
+pub struct ExternalHtml {
     /// Content that will be included inline in the <head> section of a
     /// rendered Markdown file or generated documentation
     pub in_header: String,
