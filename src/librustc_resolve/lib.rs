@@ -2791,8 +2791,8 @@ impl<'a> Resolver<'a> {
         if let Some(sp) = self.current_type_ascription.last() {
             let mut sp = *sp;
             loop {  // try to find the `:`, bail on first non-':'/non-whitespace
-                sp = sp.next_point();
-                if let Ok(snippet) = cm.span_to_snippet(sp.to(sp.next_point())) {
+                sp = cm.next_point(sp);
+                if let Ok(snippet) = cm.span_to_snippet(sp.to(cm.next_point(sp))) {
                     debug!("snippet {:?}", snippet);
                     let line_sp = cm.lookup_char_pos(sp.hi()).line;
                     let line_base_sp = cm.lookup_char_pos(base_span.lo()).line;
@@ -3783,7 +3783,7 @@ impl<'a> Resolver<'a> {
                 self.session.buffer_lint(lint::builtin::LEGACY_IMPORTS, id, span, &msg);
             } else {
                 let mut err =
-                    self.session.struct_span_err(span, &format!("`{}` is ambiguous", name));
+                    struct_span_err!(self.session, span, E0659, "`{}` is ambiguous", name);
                 err.span_note(b1.span, &msg1);
                 match b2.def() {
                     Def::Macro(..) if b2.span == DUMMY_SP =>

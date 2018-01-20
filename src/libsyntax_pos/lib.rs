@@ -216,20 +216,6 @@ impl Span {
         self.data().with_ctxt(ctxt)
     }
 
-    /// Returns a new span representing just the end-point of this span
-    pub fn end_point(self) -> Span {
-        let span = self.data();
-        let lo = cmp::max(span.hi.0 - 1, span.lo.0);
-        span.with_lo(BytePos(lo))
-    }
-
-    /// Returns a new span representing the next character after the end-point of this span
-    pub fn next_point(self) -> Span {
-        let span = self.data();
-        let lo = cmp::max(span.hi.0, span.lo.0 + 1);
-        Span::new(BytePos(lo), BytePos(lo), span.ctxt)
-    }
-
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
         if self.source_equal(&DUMMY_SP) { other } else { self }
