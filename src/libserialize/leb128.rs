@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[inline]
-fn write_to_vec(vec: &mut Vec<u8>, position: usize, byte: u8) {
+pub fn write_to_vec(vec: &mut Vec<u8>, position: usize, byte: u8) {
     if position == vec.len() {
         vec.push(byte);
     } else {
@@ -17,56 +17,86 @@ fn write_to_vec(vec: &mut Vec<u8>, position: usize, byte: u8) {
     }
 }
 
-#[inline]
-/// encodes an integer using unsigned leb128 encoding and stores
-/// the result using a callback function.
-///
-/// The callback `write` is called once for each position
-/// that is to be written to with the byte to be encoded
-/// at that position.
-pub fn write_unsigned_leb128_to<W>(mut value: u128, mut write: W) -> usize
-    where W: FnMut(usize, u8)
-{
-    let mut position = 0;
-    loop {
-        let mut byte = (value & 0x7F) as u8;
-        value >>= 7;
-        if value != 0 {
-            byte |= 0x80;
-        }
+#[cfg(target_pointer_width = "32")]
+const USIZE_LEB128_SIZE: usize = 5;
+#[cfg(target_pointer_width = "64")]
+const USIZE_LEB128_SIZE: usize = 10;
 
-        write(position, byte);
-        position += 1;
-
-        if value == 0 {
-            break;
-        }
-    }
-
-    position
+macro_rules! leb128_size {
+    (u16) => (3);
+    (u32) => (5);
+    (u64) => (10);
+    (u128) => (19);
+    (usize) => (USIZE_LEB128_SIZE);
 }
 
-pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, value: u128) -> usize {
-    write_unsigned_leb128_to(value, |i, v| write_to_vec(out, start_position+i, v))
-}
+macro_rules! impl_write_unsigned_leb128 {
+    ($fn_name:ident, $int_ty:ident) => (
+        #[inline]
+        pub fn $fn_name(out: &mut Vec<u8>, start_position: usize, mut value: $int_ty) -> usize {
+            let mut position = start_position;
+            for _ in 0 .. leb128_size!($int_ty) {
+                let mut byte = (value & 0x7F) as u8;
+                value >>= 7;
+                if value != 0 {
+                    byte |= 0x80;
+                }
 
-#[inline]
-pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u128, usize) {
-    let mut result = 0;
-    let mut shift = 0;
-    let mut position = start_position;
-    loop {
-        let byte = data[position];
-        position += 1;
-        result |= ((byte & 0x7F) as u128) << shift;
-        if (byte & 0x80) == 0 {
-            break;
+                write_to_vec(out, position, byte);
+                position += 1;
+
+                if value == 0 {
+                    break;
+                }
+            }
+
+            position - start_position
         }
-        shift += 7;
-    }
-
-    (result, position - start_position)
+    )
 }
+
+impl_write_unsigned_leb128!(write_u16_leb128, u16);
+impl_write_unsigned_leb128!(write_u32_leb128, u32);
+impl_write_unsigned_leb128!(write_u64_leb128, u64);
+impl_write_unsigned_leb128!(write_u128_leb128, u128);
+impl_write_unsigned_leb128!(write_usize_leb128, usize);
+
+
+macro_rules! impl_read_unsigned_leb128 {
+    ($fn_name:ident, $int_ty:ident) => (
+        #[inline]
+        pub fn $fn_name(slice: &[u8]) -> ($int_ty, usize) {
+            let mut result: $int_ty = 0;
+            let mut shift = 0;
+            let mut position = 0;
+
+            for _ in 0 .. leb128_size!($int_ty) {
+                let byte = unsafe {
+                    *slice.get_unchecked(position)
+                };
+                position += 1;
+                result |= ((byte & 0x7F) as $int_ty) << shift;
+                if (byte & 0x80) == 0 {
+                    break;
+                }
+                shift += 7;
+            }
+
+            // Do a single bounds check at the end instead of for every byte.
+            assert!(position <= slice.len());
+
+            (result, position)
+        }
+    )
+}
+
+impl_read_unsigned_leb128!(read_u16_leb128, u16);
+impl_read_unsigned_leb128!(read_u32_leb128, u32);
+impl_read_unsigned_leb128!(read_u64_leb128, u64);
+impl_read_unsigned_leb128!(read_u128_leb128, u128);
+impl_read_unsigned_leb128!(read_usize_leb128, usize);
+
+
 
 #[inline]
 /// encodes an integer using signed leb128 encoding and stores
@@ -130,25 +160,35 @@ pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i128, usize) {
     (result, position - start_position)
 }
 
-#[test]
-fn test_unsigned_leb128() {
-    let mut stream = Vec::with_capacity(10000);
+macro_rules! impl_test_unsigned_leb128 {
+    ($test_name:ident, $write_fn_name:ident, $read_fn_name:ident, $int_ty:ident) => (
+        #[test]
+        fn $test_name() {
+            let mut stream = Vec::new();
 
-    for x in 0..62 {
-        let pos = stream.len();
-        let bytes_written = write_unsigned_leb128(&mut stream, pos, 3 << x);
-        assert_eq!(stream.len(), pos + bytes_written);
-    }
+            for x in 0..62 {
+                let pos = stream.len();
+                let bytes_written = $write_fn_name(&mut stream, pos, (3u64 << x) as $int_ty);
+                assert_eq!(stream.len(), pos + bytes_written);
+            }
 
-    let mut position = 0;
-    for x in 0..62 {
-        let expected = 3 << x;
-        let (actual, bytes_read) = read_unsigned_leb128(&stream, position);
-        assert_eq!(expected, actual);
-        position += bytes_read;
-    }
-    assert_eq!(stream.len(), position);
+            let mut position = 0;
+            for x in 0..62 {
+                let expected = (3u64 << x) as $int_ty;
+                let (actual, bytes_read) = $read_fn_name(&stream[position ..]);
+                assert_eq!(expected, actual);
+                position += bytes_read;
+            }
+            assert_eq!(stream.len(), position);
+        }
+    )
 }
+
+impl_test_unsigned_leb128!(test_u16_leb128, write_u16_leb128, read_u16_leb128, u16);
+impl_test_unsigned_leb128!(test_u32_leb128, write_u32_leb128, read_u32_leb128, u32);
+impl_test_unsigned_leb128!(test_u64_leb128, write_u64_leb128, read_u64_leb128, u64);
+impl_test_unsigned_leb128!(test_u128_leb128, write_u128_leb128, read_u128_leb128, u128);
+impl_test_unsigned_leb128!(test_usize_leb128, write_usize_leb128, read_usize_leb128, usize);
 
 #[test]
 fn test_signed_leb128() {
