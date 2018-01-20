@@ -717,93 +717,40 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     self.tcx.hir.span_if_local(did)
                 }).map(|sp| self.tcx.sess.codemap().def_span(sp)); // the sp could be an fn def
 
-                let found_ty_count =
-                    match found_trait_ref.skip_binder().substs.type_at(1).sty {
-                        ty::TyTuple(ref tys, _) => tys.len(),
-                        _ => 1,
-                    };
-                let (expected_tys, expected_ty_count) =
-                    match expected_trait_ref.skip_binder().substs.type_at(1).sty {
-                        ty::TyTuple(ref tys, _) =>
-                            (tys.iter().map(|t| &t.sty).collect(), tys.len()),
-                        ref sty => (vec![sty], 1),
-                    };
-                if found_ty_count == expected_ty_count {
+                let found = match found_trait_ref.skip_binder().substs.type_at(1).sty {
+                    ty::TyTuple(ref tys, _) => tys.iter()
+                        .map(|_| ArgKind::empty()).collect::<Vec<_>>(),
+                    _ => vec![ArgKind::empty()],
+                };
+                let expected = match expected_trait_ref.skip_binder().substs.type_at(1).sty {
+                    ty::TyTuple(ref tys, _) => tys.iter()
+                        .map(|t| match t.sty {
+                            ty::TypeVariants::TyTuple(ref tys, _) => ArgKind::Tuple(
+                                span,
+                                tys.iter()
+                                    .map(|ty| ("_".to_owned(), format!("{}", ty.sty)))
+                                    .collect::<Vec<_>>()
+                            ),
+                            _ => ArgKind::Arg("_".to_owned(), format!("{}", t.sty)),
+                        }).collect(),
+                    ref sty => vec![ArgKind::Arg("_".to_owned(), format!("{}", sty))],
+                };
+                if found.len()== expected.len() {
                     self.report_closure_arg_mismatch(span,
                                                      found_span,
                                                      found_trait_ref,
                                                      expected_trait_ref)
                 } else {
-                    let expected_tuple = if expected_ty_count == 1 {
-                        expected_tys.first().and_then(|t| {
-                            if let &&ty::TyTuple(ref tuptys, _) = t {
-                                Some(tuptys.len())
-                            } else {
-                                None
-                            }
-                        })
-                    } else {
-                        None
-                    };
-
-                    // FIXME(#44150): Expand this to "N args expected but a N-tuple found."
-                    // Type of the 1st expected argument is somehow provided as type of a
-                    // found one in that case.
-                    //
-                    // ```
-                    // [1i32, 2, 3].sort_by(|(a, b)| ..)
-                    // //           ^^^^^^^ --------
-                    // // expected_trait_ref:  std::ops::FnMut<(&i32, &i32)>
-                    // //    found_trait_ref:  std::ops::FnMut<(&i32,)>
-                    // ```
-
-                    let (closure_span, closure_args) = found_did
+                    let (closure_span, found) = found_did
                         .and_then(|did| self.tcx.hir.get_if_local(did))
-                        .and_then(|node| {
-                            if let hir::map::NodeExpr(
-                                &hir::Expr {
-                                    node: hir::ExprClosure(_, ref decl, id, span, _),
-                                    ..
-                                }) = node
-                            {
-                                let ty_snips = decl.inputs.iter()
-                                    .map(|ty| {
-                                        self.tcx.sess.codemap().span_to_snippet(ty.span).ok()
-                                            .and_then(|snip| {
-                                                // filter out dummy spans
-                                                if snip == "," || snip == "|" {
-                                                    None
-                                                } else {
-                                                    Some(snip)
-                                                }
-                                            })
-                                    })
-                                    .collect::<Vec<Option<String>>>();
+                        .map(|node| self.get_fn_like_arguments(node))
+                        .unwrap_or((found_span.unwrap(), found));
 
-                                let body = self.tcx.hir.body(id);
-                                let pat_snips = body.arguments.iter()
-                                    .map(|arg|
-                                        self.tcx.sess.codemap().span_to_snippet(arg.pat.span).ok())
-                                    .collect::<Option<Vec<String>>>();
-
-                                Some((span, pat_snips, ty_snips))
-                            } else {
-                                None
-                            }
-                        })
-                        .map(|(span, pat, ty)| (Some(span), Some((pat, ty))))
-                        .unwrap_or((None, None));
-                    let closure_args = closure_args.and_then(|(pat, ty)| Some((pat?, ty)));
-
-                    self.report_arg_count_mismatch(
-                        span,
-                        closure_span.or(found_span),
-                        expected_ty_count,
-                        expected_tuple,
-                        found_ty_count,
-                        closure_args,
-                        found_trait_ty.is_closure()
-                    )
+                    self.report_arg_count_mismatch(span,
+                                                   closure_span,
+                                                   expected,
+                                                   found,
+                                                   found_trait_ty.is_closure())
                 }
             }
 
@@ -845,94 +792,135 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn get_fn_like_arguments(&self, node: hir::map::Node) -> (Span, Vec<ArgKind>) {
+        if let hir::map::NodeExpr(&hir::Expr {
+            node: hir::ExprClosure(_, ref _decl, id, span, _),
+            ..
+        }) = node {
+            (self.tcx.sess.codemap().def_span(span), self.tcx.hir.body(id).arguments.iter()
+                .map(|arg| {
+                    if let hir::Pat {
+                        node: hir::PatKind::Tuple(args, _),
+                        span,
+                        ..
+                    } = arg.pat.clone().into_inner() {
+                        ArgKind::Tuple(
+                            span,
+                            args.iter().map(|pat| {
+                                let snippet = self.tcx.sess.codemap()
+                                    .span_to_snippet(pat.span).unwrap();
+                                (snippet, "_".to_owned())
+                            }).collect::<Vec<_>>(),
+                        )
+                    } else {
+                        let name = self.tcx.sess.codemap().span_to_snippet(arg.pat.span).unwrap();
+                        ArgKind::Arg(name, "_".to_owned())
+                    }
+                })
+                .collect::<Vec<ArgKind>>())
+        } else if let hir::map::NodeItem(&hir::Item {
+            span,
+            node: hir::ItemFn(ref decl, ..),
+            ..
+        }) = node {
+            (self.tcx.sess.codemap().def_span(span), decl.inputs.iter()
+                    .map(|arg| match arg.clone().into_inner().node {
+                hir::TyTup(ref tys) => ArgKind::Tuple(
+                    arg.span,
+                    tys.iter()
+                        .map(|_| ("_".to_owned(), "_".to_owned()))
+                        .collect::<Vec<_>>(),
+                ),
+                _ => ArgKind::Arg("_".to_owned(), "_".to_owned())
+            }).collect::<Vec<ArgKind>>())
+        } else {
+            panic!("non-FnLike node found: {:?}", node);
+        }
+    }
+
     fn report_arg_count_mismatch(
         &self,
         span: Span,
-        found_span: Option<Span>,
-        expected: usize,
-        expected_tuple: Option<usize>,
-        found: usize,
-        closure_args: Option<(Vec<String>, Vec<Option<String>>)>,
-        is_closure: bool
+        found_span: Span,
+        expected_args: Vec<ArgKind>,
+        found_args: Vec<ArgKind>,
+        is_closure: bool,
     ) -> DiagnosticBuilder<'tcx> {
-        use std::borrow::Cow;
-
         let kind = if is_closure { "closure" } else { "function" };
 
-        let args_str = |n, distinct| format!(
-                "{} {}argument{}",
-                n,
-                if distinct && n >= 2 { "distinct " } else { "" },
-                if n == 1 { "" } else { "s" },
-            );
-
-        let expected_str = if let Some(n) = expected_tuple {
-            assert!(expected == 1);
-            if closure_args.as_ref().map(|&(ref pats, _)| pats.len()) == Some(n) {
-                Cow::from("a single tuple as argument")
-            } else {
-                // be verbose when numbers differ
-                Cow::from(format!("a single {}-tuple as argument", n))
+        let args_str = |arguments: &Vec<ArgKind>, other: &Vec<ArgKind>| {
+            let arg_length = arguments.len();
+            let distinct = match &other[..] {
+                &[ArgKind::Tuple(..)] => true,
+                _ => false,
+            };
+            match (arg_length, arguments.get(0)) {
+                (1, Some(&ArgKind::Tuple(_, ref fields))) => {
+                    format!("a single {}-tuple as argument", fields.len())
+                }
+                _ => format!("{} {}argument{}",
+                             arg_length,
+                             if distinct && arg_length > 1 { "distinct " } else { "" },
+                             if arg_length == 1 { "" } else { "s" }),
             }
-        } else {
-            Cow::from(args_str(expected, false))
         };
 
-        let found_str = if expected_tuple.is_some() {
-            args_str(found, true)
-        } else {
-            args_str(found, false)
-        };
+        let expected_str = args_str(&expected_args, &found_args);
+        let found_str = args_str(&found_args, &expected_args);
 
-
-        let mut err = struct_span_err!(self.tcx.sess, span, E0593,
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            span,
+            E0593,
             "{} is expected to take {}, but it takes {}",
             kind,
             expected_str,
             found_str,
         );
 
-        err.span_label(
-            span,
-            format!(
-                "expected {} that takes {}",
-                kind,
-                expected_str,
-            )
-        );
+        err.span_label(span, format!( "expected {} that takes {}", kind, expected_str));
+        err.span_label(found_span, format!("takes {}", found_str));
 
-        if let Some(span) = found_span {
-            if let (Some(expected_tuple), Some((pats, tys))) = (expected_tuple, closure_args) {
-                if expected_tuple != found || pats.len() != found {
-                    err.span_label(span, format!("takes {}", found_str));
-                } else {
-                    let sugg = format!(
-                        "|({}){}|",
-                        pats.join(", "),
-
-                        // add type annotations if available
-                        if tys.iter().any(|ty| ty.is_some()) {
-                            Cow::from(format!(
-                                ": ({})",
-                                tys.into_iter().map(|ty| if let Some(ty) = ty {
-                                    ty
-                                } else {
-                                    "_".to_string()
-                                }).collect::<Vec<String>>().join(", ")
-                            ))
-                        } else {
-                            Cow::from("")
-                        },
-                    );
-
-                    err.span_suggestion(
-                        span,
-                        "consider changing the closure to accept a tuple",
-                        sugg
-                    );
-                }
-            } else {
-                err.span_label(span, format!("takes {}", found_str));
+        if let &[ArgKind::Tuple(_, ref fields)] = &found_args[..] {
+            if fields.len() == expected_args.len() {
+                let sugg = fields.iter()
+                    .map(|(name, _)| name.to_owned())
+                    .collect::<Vec<String>>().join(", ");
+                err.span_suggestion(found_span,
+                                    "change the closure to take multiple arguments instead of \
+                                     a single tuple",
+                                    format!("|{}|", sugg));
+            }
+        }
+        if let &[ArgKind::Tuple(_, ref fields)] = &expected_args[..] {
+            if fields.len() == found_args.len() && is_closure {
+                let sugg = format!(
+                    "|({}){}|",
+                    found_args.iter()
+                        .map(|arg| match arg {
+                            ArgKind::Arg(name, _) => name.to_owned(),
+                            _ => "_".to_owned(),
+                        })
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    // add type annotations if available
+                    if found_args.iter().any(|arg| match arg {
+                        ArgKind::Arg(_, ty) => ty != "_",
+                        _ => false,
+                    }) {
+                        format!(": ({})",
+                                fields.iter()
+                                    .map(|(_, ty)| ty.to_owned())
+                                    .collect::<Vec<String>>()
+                                    .join(", "))
+                    } else {
+                        "".to_owned()
+                    },
+                );
+                err.span_suggestion(found_span,
+                                    "change the closure to accept a tuple instead of individual \
+                                     arguments",
+                                    sugg);
             }
         }
 
@@ -1329,5 +1317,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let suggested_limit = current_limit * 2;
         err.help(&format!("consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
                           suggested_limit));
+    }
+}
+
+enum ArgKind {
+    Arg(String, String),
+    Tuple(Span, Vec<(String, String)>),
+}
+
+impl ArgKind {
+    fn empty() -> ArgKind {
+        ArgKind::Arg("_".to_owned(), "_".to_owned())
     }
 }
