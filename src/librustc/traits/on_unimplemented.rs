@@ -185,8 +185,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         let mut message = None;
         let mut label = None;
         let mut note = None;
-        info!("evaluate({:?}, trait_ref={:?}, options={:?})",
-              self, trait_ref, options);
+        info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {

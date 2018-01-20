@@ -384,6 +384,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         Some(ty_str.clone())));
         }
 
+        if let Some(true) = self_ty.ty_to_def_id().map(|def_id| def_id.is_local()) {
+            flags.push(("crate_local".to_string(), None));
+        }
+
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(
             self.tcx, trait_ref.def_id, def_id
         ) {

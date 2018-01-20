@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `&str: std::iter::Iterator` is not satisfied
+  --> $DIR/iterate-str.rs:12:5
+   |
+12 | /     for c in "foobarbaz" {
+13 | |         println!("{}", c);
+14 | |     }
+   | |_____^ `&str` is not an iterator; try calling `.chars()` or `.bytes()`
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `&str`
+   = note: required by `std::iter::IntoIterator::into_iter`
+
+error: aborting due to previous error
+
