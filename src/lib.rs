@@ -712,12 +712,24 @@ pub struct ModifiedLines {
     pub chunks: Vec<ModifiedChunk>,
 }
 
+/// The successful result of formatting via get_modified_lines().
+pub struct ModifiedLinesResult {
+    /// The high level summary details
+    pub summary: Summary,
+    /// The result Filemap
+    pub filemap: FileMap,
+    /// Map of formatting errors
+    pub report: FormatReport,
+    /// The sets of updated lines.
+    pub modified_lines: ModifiedLines,
+}
+
 /// Format a file and return a `ModifiedLines` data structure describing
 /// the changed ranges of lines.
 pub fn get_modified_lines(
     input: Input,
     config: &Config,
-) -> Result<(Summary, FileMap, FormatReport, ModifiedLines), (io::Error, Summary)> {
+) -> Result<ModifiedLinesResult, (io::Error, Summary)> {
     let mut data = Vec::new();
 
     let mut config = config.clone();
@@ -746,12 +758,12 @@ pub fn get_modified_lines(
             lines: added_lines,
         });
     }
-    Ok((
-        summary,
-        filemap,
-        formatreport,
-        ModifiedLines { chunks: chunks },
-    ))
+    Ok(ModifiedLinesResult {
+        summary: summary,
+        filemap: filemap,
+        report: formatreport,
+        modified_lines: ModifiedLines { chunks: chunks },
+    })
 }
 
 #[derive(Debug)]
