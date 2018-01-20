@@ -68,7 +68,7 @@ use core::marker::{self, Unsize};
 use core::mem;
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
-use core::ptr::{self, Unique};
+use core::ptr::{self, NonNull, Unique};
 use core::convert::From;
 use str::from_boxed_utf8_unchecked;
 
@@ -269,38 +269,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box::from_unique(Unique::new_unchecked(raw))
-    }
-
-    /// Constructs a `Box` from a `Unique<T>` pointer.
-    ///
-    /// After calling this function, the memory is owned by a `Box` and `T` can
-    /// then be destroyed and released upon drop.
-    ///
-    /// # Safety
-    ///
-    /// A `Unique<T>` can be safely created via [`Unique::new`] and thus doesn't
-    /// necessarily own the data pointed to nor is the data guaranteed to live
-    /// as long as the pointer.
-    ///
-    /// [`Unique::new`]: ../../core/ptr/struct.Unique.html#method.new
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(unique)]
-    ///
-    /// fn main() {
-    ///     let x = Box::new(5);
-    ///     let ptr = Box::into_unique(x);
-    ///     let x = unsafe { Box::from_unique(ptr) };
-    /// }
-    /// ```
-    #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
-               issue = "27730")]
-    #[inline]
-    pub unsafe fn from_unique(u: Unique<T>) -> Self {
-        Box(u)
+        Box(Unique::new_unchecked(raw))
     }
 
     /// Consumes the `Box`, returning the wrapped raw pointer.
@@ -326,40 +295,42 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
-        Box::into_unique(b).as_ptr()
+        Box::into_raw_non_null(b).as_ptr()
     }
 
-    /// Consumes the `Box`, returning the wrapped pointer as `Unique<T>`.
+    /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
     ///
     /// After calling this function, the caller is responsible for the
     /// memory previously managed by the `Box`. In particular, the
     /// caller should properly destroy `T` and release the memory. The
-    /// proper way to do so is to either convert the `Unique<T>` pointer:
-    ///
-    /// - Into a `Box` with the [`Box::from_unique`] function.
-    ///
-    /// - Into a raw pointer and back into a `Box` with the [`Box::from_raw`]
-    ///   function.
+    /// proper way to do so is to convert the `NonNull<T>` pointer
+    /// into a raw pointer and back into a `Box` with the [`Box::from_raw`]
+    /// function.
     ///
     /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_unique(b)` instead of `b.into_unique()`. This
+    /// to call it as `Box::into_raw_non_null(b)`
+    /// instead of `b.into_raw_non_null()`. This
     /// is so that there is no conflict with a method on the inner type.
     ///
-    /// [`Box::from_unique`]: struct.Box.html#method.from_unique
     /// [`Box::from_raw`]: struct.Box.html#method.from_raw
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(unique)]
+    /// #![feature(box_into_raw_non_null)]
     ///
     /// fn main() {
     ///     let x = Box::new(5);
-    ///     let ptr = Box::into_unique(x);
+    ///     let ptr = Box::into_raw_non_null(x);
     /// }
     /// ```
-    #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
-               issue = "27730")]
+    #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
+    #[inline]
+    pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
+        Box::into_unique(b).into()
+    }
+
+    #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_raw_non_null instead")]
     #[inline]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
         let unique = b.0;

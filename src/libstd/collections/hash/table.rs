@@ -16,7 +16,7 @@ use marker;
 use mem::{align_of, size_of, needs_drop};
 use mem;
 use ops::{Deref, DerefMut};
-use ptr::{self, Unique, Shared};
+use ptr::{self, Unique, NonNull};
 
 use self::BucketState::*;
 
@@ -873,7 +873,7 @@ impl<K, V> RawTable<K, V> {
                 elems_left,
                 marker: marker::PhantomData,
             },
-            table: Shared::from(self),
+            table: NonNull::from(self),
             marker: marker::PhantomData,
         }
     }
@@ -1020,7 +1020,7 @@ impl<K, V> IntoIter<K, V> {
 
 /// Iterator over the entries in a table, clearing the table.
 pub struct Drain<'a, K: 'a, V: 'a> {
-    table: Shared<RawTable<K, V>>,
+    table: NonNull<RawTable<K, V>>,
     iter: RawBuckets<'static, K, V>,
     marker: marker::PhantomData<&'a RawTable<K, V>>,
 }

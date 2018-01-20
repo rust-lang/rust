@@ -12,7 +12,7 @@
 
 use std::marker::Unsize;
 use std::iter::Extend;
-use std::ptr::{self, drop_in_place, Shared};
+use std::ptr::{self, drop_in_place, NonNull};
 use std::ops::{Deref, DerefMut, Range};
 use std::hash::{Hash, Hasher};
 use std::slice;
@@ -146,7 +146,7 @@ impl<A: Array> ArrayVec<A> {
                 tail_start: end,
                 tail_len: len - end,
                 iter: range_slice.iter(),
-                array_vec: Shared::from(self),
+                array_vec: NonNull::from(self),
             }
         }
     }
@@ -232,7 +232,7 @@ pub struct Drain<'a, A: Array>
     tail_start: usize,
     tail_len: usize,
     iter: slice::Iter<'a, ManuallyDrop<A::Element>>,
-    array_vec: Shared<ArrayVec<A>>,
+    array_vec: NonNull<ArrayVec<A>>,
 }
 
 impl<'a, A: Array> Iterator for Drain<'a, A> {

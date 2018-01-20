@@ -25,7 +25,7 @@ use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val, uninitialized};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
-use core::ptr::{self, Shared};
+use core::ptr::{self, NonNull};
 use core::marker::{Unsize, PhantomData};
 use core::hash::{Hash, Hasher};
 use core::{isize, usize};
@@ -197,7 +197,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// [rc_examples]: ../../std/rc/index.html#examples
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
-    ptr: Shared<ArcInner<T>>,
+    ptr: NonNull<ArcInner<T>>,
     phantom: PhantomData<T>,
 }
 
@@ -234,7 +234,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
-    ptr: Shared<ArcInner<T>>,
+    ptr: NonNull<ArcInner<T>>,
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -286,7 +286,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Arc { ptr: Shared::from(Box::into_unique(x)), phantom: PhantomData }
+        Arc { ptr: Box::into_raw_non_null(x), phantom: PhantomData }
     }
 
     /// Returns the contained value, if the `Arc` has exactly one strong reference.
@@ -397,7 +397,7 @@ impl<T: ?Sized> Arc<T> {
         let arc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
 
         Arc {
-            ptr: Shared::new_unchecked(arc_ptr),
+            ptr: NonNull::new_unchecked(arc_ptr),
             phantom: PhantomData,
         }
     }
@@ -582,7 +582,7 @@ impl<T: ?Sized> Arc<T> {
             // Free the allocation without dropping its contents
             box_free(bptr);
 
-            Arc { ptr: Shared::new_unchecked(ptr), phantom: PhantomData }
+            Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
         }
     }
 }
@@ -609,7 +609,7 @@ impl<T> Arc<[T]> {
             &mut (*ptr).data as *mut [T] as *mut T,
             v.len());
 
-        Arc { ptr: Shared::new_unchecked(ptr), phantom: PhantomData }
+        Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
     }
 }
 
@@ -669,7 +669,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
             // All clear. Forget the guard so it doesn't free the new ArcInner.
             mem::forget(guard);
 
-            Arc { ptr: Shared::new_unchecked(ptr), phantom: PhantomData }
+            Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
         }
     }
 }
@@ -991,11 +991,11 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         unsafe {
             Weak {
-                ptr: Shared::from(Box::into_unique(box ArcInner {
+                ptr: Box::into_raw_non_null(box ArcInner {
                     strong: atomic::AtomicUsize::new(0),
                     weak: atomic::AtomicUsize::new(1),
                     data: uninitialized(),
-                })),
+                }),
             }
         }
     }

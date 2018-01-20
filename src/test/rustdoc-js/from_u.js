@@ -15,7 +15,6 @@ const EXPECTED = {
         { 'path': 'std::char', 'name': 'from_u32' },
         { 'path': 'std::str', 'name': 'from_utf8' },
         { 'path': 'std::string::String', 'name': 'from_utf8' },
-        { 'path': 'std::boxed::Box', 'name': 'from_unique' },
         { 'path': 'std::i32', 'name': 'from_unsigned' },
         { 'path': 'std::i128', 'name': 'from_unsigned' },
     ],

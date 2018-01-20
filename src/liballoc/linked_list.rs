@@ -29,7 +29,7 @@ use core::iter::{FromIterator, FusedIterator};
 use core::marker::PhantomData;
 use core::mem;
 use core::ops::{BoxPlace, InPlace, Place, Placer};
-use core::ptr::{self, Shared};
+use core::ptr::{self, NonNull};
 
 use boxed::{Box, IntermediateBox};
 use super::SpecExtend;
@@ -44,15 +44,15 @@ use super::SpecExtend;
 /// more memory efficient and make better use of CPU cache.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LinkedList<T> {
-    head: Option<Shared<Node<T>>>,
-    tail: Option<Shared<Node<T>>>,
+    head: Option<NonNull<Node<T>>>,
+    tail: Option<NonNull<Node<T>>>,
     len: usize,
     marker: PhantomData<Box<Node<T>>>,
 }
 
 struct Node<T> {
-    next: Option<Shared<Node<T>>>,
-    prev: Option<Shared<Node<T>>>,
+    next: Option<NonNull<Node<T>>>,
+    prev: Option<NonNull<Node<T>>>,
     element: T,
 }
 
@@ -65,8 +65,8 @@ struct Node<T> {
 /// [`LinkedList`]: struct.LinkedList.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
-    head: Option<Shared<Node<T>>>,
-    tail: Option<Shared<Node<T>>>,
+    head: Option<NonNull<Node<T>>>,
+    tail: Option<NonNull<Node<T>>>,
     len: usize,
     marker: PhantomData<&'a Node<T>>,
 }
@@ -98,8 +98,8 @@ impl<'a, T> Clone for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     list: &'a mut LinkedList<T>,
-    head: Option<Shared<Node<T>>>,
-    tail: Option<Shared<Node<T>>>,
+    head: Option<NonNull<Node<T>>>,
+    tail: Option<NonNull<Node<T>>>,
     len: usize,
 }
 
@@ -157,7 +157,7 @@ impl<T> LinkedList<T> {
         unsafe {
             node.next = self.head;
             node.prev = None;
-            let node = Some(Shared::from(Box::into_unique(node)));
+            let node = Some(Box::into_raw_non_null(node));
 
             match self.head {
                 None => self.tail = node,
@@ -192,7 +192,7 @@ impl<T> LinkedList<T> {
         unsafe {
             node.next = None;
             node.prev = self.tail;
-            let node = Some(Shared::from(Box::into_unique(node)));
+            let node = Some(Box::into_raw_non_null(node));
 
             match self.tail {
                 None => self.head = node,
@@ -225,7 +225,7 @@ impl<T> LinkedList<T> {
     ///
     /// Warning: this will not check that the provided node belongs to the current list.
     #[inline]
-    unsafe fn unlink_node(&mut self, mut node: Shared<Node<T>>) {
+    unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {
         let node = node.as_mut();
 
         match node.prev {
@@ -986,11 +986,11 @@ impl<'a, T> IterMut<'a, T> {
                     Some(prev) => prev,
                 };
 
-                let node = Some(Shared::from(Box::into_unique(box Node {
+                let node = Some(Box::into_raw_non_null(box Node {
                     next: Some(head),
                     prev: Some(prev),
                     element,
-                })));
+                }));
 
                 prev.as_mut().next = node;
                 head.as_mut().prev = node;
@@ -1038,7 +1038,7 @@ pub struct DrainFilter<'a, T: 'a, F: 'a>
     where F: FnMut(&mut T) -> bool,
 {
     list: &'a mut LinkedList<T>,
-    it: Option<Shared<Node<T>>>,
+    it: Option<NonNull<Node<T>>>,
     pred: F,
     idx: usize,
     old_len: usize,

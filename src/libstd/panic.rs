@@ -17,7 +17,7 @@ use cell::UnsafeCell;
 use fmt;
 use ops::{Deref, DerefMut};
 use panicking;
-use ptr::{Unique, Shared};
+use ptr::{Unique, NonNull};
 use rc::Rc;
 use sync::{Arc, Mutex, RwLock, atomic};
 use thread::Result;
@@ -196,10 +196,10 @@ impl<'a, T: RefUnwindSafe + ?Sized> UnwindSafe for &'a T {}
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *const T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *mut T {}
-#[unstable(feature = "unique", issue = "27730")]
+#[unstable(feature = "ptr_internals", issue = "0")]
 impl<T: UnwindSafe + ?Sized> UnwindSafe for Unique<T> {}
-#[unstable(feature = "shared", issue = "27730")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Shared<T> {}
+#[stable(feature = "nonnull", since = "1.24.0")]
+impl<T: RefUnwindSafe + ?Sized> UnwindSafe for NonNull<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: ?Sized> UnwindSafe for Mutex<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
