@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(PartialEq, Eq)]
 enum AttrKind {
     Inner, Outer
 }
@@ -14,18 +15,27 @@ pub(super) fn outer_attributes(p: &mut Parser) {
 
 
 fn attribute(p: &mut Parser, kind: AttrKind) -> bool {
-    fn attr_tail(p: &mut Parser) {
-        meta_item(p) && p.expect(R_BRACK);
-    }
-
-    match kind {
-        AttrKind::Inner => node_if(p, [POUND, EXCL, L_BRACK], ATTR, attr_tail),
-        AttrKind::Outer => node_if(p, [POUND, L_BRACK], ATTR, attr_tail),
+    if p.at(POUND) {
+        if kind == AttrKind::Inner && p.raw_lookahead(1) != EXCL {
+            return false;
+        }
+        p.start(ATTR);
+        p.bump();
+        if kind == AttrKind::Inner {
+            p.bump();
+        }
+        p.expect(L_BRACK) && meta_item(p) && p.expect(R_BRACK);
+        p.finish();
+        true
+    } else {
+        false
     }
 }
 
 fn meta_item(p: &mut Parser) -> bool {
-    node_if(p, IDENT, META_ITEM, |p| {
+    if p.at(IDENT) {
+        p.start(META_ITEM);
+        p.bump();
         if p.eat(EQ) {
             if !expressions::literal(p) {
                 p.error()
@@ -36,7 +46,12 @@ fn meta_item(p: &mut Parser) -> bool {
             comma_list(p, R_PAREN, meta_item_inner);
             p.expect(R_PAREN);
         }
-    })
+        p.finish();
+        true
+    } else {
+        false
+    }
+
 }
 
 fn meta_item_inner(p: &mut Parser) -> bool {

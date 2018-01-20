@@ -46,21 +46,6 @@ fn alias(p: &mut Parser) -> bool {
     true //FIXME: return false if three are errors
 }
 
-fn node_if<F: FnOnce(&mut Parser), L: Lookahead>(
-    p: &mut Parser,
-    first: L,
-    node_kind: SyntaxKind,
-    rest: F
-) -> bool {
-    first.is_ahead(p) && { node(p, node_kind, |p| { L::consume(p); rest(p); }); true }
-}
-
-fn node<F: FnOnce(&mut Parser)>(p: &mut Parser, node_kind: SyntaxKind, rest: F) {
-    p.start(node_kind);
-    rest(p);
-    p.finish();
-}
-
 fn repeat<F: FnMut(&mut Parser) -> bool>(p: &mut Parser, mut f: F) {
     loop {
         let pos = p.pos();
