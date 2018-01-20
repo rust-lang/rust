@@ -1434,7 +1434,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
         let max_change = S::MAX_EXP as i32 - (S::MIN_EXP as i32 - sig_bits) + 1;
 
         // Clamp to one past the range ends to let normalize handle overflow.
-        let exp_change = cmp::min(cmp::max(exp as i32, (-max_change - 1)), max_change);
+        let exp_change = cmp::min(cmp::max(exp as i32, -max_change - 1), max_change);
         self.exp = self.exp.saturating_add(exp_change as ExpInt);
         self = self.normalize(round, Loss::ExactlyZero).value;
         if self.is_nan() {

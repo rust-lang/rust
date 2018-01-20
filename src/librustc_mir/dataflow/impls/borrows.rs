@@ -131,7 +131,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
 }
 
 impl ReserveOrActivateIndex {
-    fn reserved(i: BorrowIndex) -> Self { ReserveOrActivateIndex::new((i.index() * 2)) }
+    fn reserved(i: BorrowIndex) -> Self { ReserveOrActivateIndex::new(i.index() * 2) }
     fn active(i: BorrowIndex) -> Self { ReserveOrActivateIndex::new((i.index() * 2) + 1) }
 
     pub(crate) fn is_reservation(self) -> bool { self.index() % 2 == 0 }
