@@ -1633,10 +1633,12 @@ let lorem = Lorem { ipsum: dolor, sit: amet };
 #### `false`:
 
 ```rust
-let lorem = Lorem {
-    ipsum: dolor,
-    sit: amet,
-};
+fn main() {
+    let lorem = Lorem {
+        ipsum: dolor,
+        sit: amet,
+    };
+}
 ```
 
 See also: [`indent_style`](#indent_style).
