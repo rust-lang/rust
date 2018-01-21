@@ -2046,7 +2046,8 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 // Correctly resolve `self` imports
-                if path.segments.last().unwrap().identifier.name == keywords::SelfValue.name() {
+                if path.segments.len() > 1 &&
+                   path.segments.last().unwrap().identifier.name == keywords::SelfValue.name() {
                     let _ = path.segments.pop();
                     if ident.name == keywords::SelfValue.name() {
                         *name = path.segments.last().unwrap().identifier.name;
