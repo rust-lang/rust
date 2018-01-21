@@ -647,14 +647,13 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Cycle<I>
-where I: Clone + Iterator + ExactSizeIterator,
-      <I as Iterator>::Item : Clone + Copy {
+where I: Copy + ExactSizeIterator, <I as Iterator>::Item : Copy {
     fn nth(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
         let cur_len = self.iter.len();
         if n < cur_len {
             self.iter.nth(n)
         } else {
-            self.iter = self.orig.clone();
+            self.iter = self.orig;
             self.iter.nth((n - cur_len) % self.orig.len())
         }
     }
