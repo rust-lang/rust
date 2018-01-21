@@ -2583,6 +2583,37 @@ impl<T: ?Sized> fmt::Pointer for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> Eq for NonNull<T> {}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> PartialEq for NonNull<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_ptr() == other.as_ptr()
+    }
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> Ord for NonNull<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.as_ptr().cmp(&other.as_ptr())
+    }
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> PartialOrd for NonNull<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.as_ptr().partial_cmp(&other.as_ptr())
+    }
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> hash::Hash for NonNull<T> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.as_ptr().hash(state)
+    }
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     fn from(unique: Unique<T>) -> Self {
         NonNull { pointer: unique.pointer }
