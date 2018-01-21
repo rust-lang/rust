@@ -34,7 +34,6 @@ use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
-use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
@@ -82,11 +81,11 @@ pub fn run(input_path: &Path,
                                           true, false,
                                           Some(codemap.clone()));
 
-    let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, Some(input_path.to_owned()), handler, codemap.clone(),
     );
-    rustc_trans::init(&sess);
+    let trans = rustc_trans::LlvmTransCrate::new(&sess);
+    let cstore = Rc::new(CStore::new(trans.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess.parse_sess.config =
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
@@ -108,7 +107,7 @@ pub fn run(input_path: &Path,
     };
 
     let crate_name = crate_name.unwrap_or_else(|| {
-        link::find_crate_name(None, &hir_forest.krate().attrs, &input)
+        ::rustc_trans_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
     });
     let opts = scrape_test_config(hir_forest.krate());
     let mut collector = Collector::new(crate_name,
@@ -247,11 +246,11 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     // Compile the code
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
-    let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
         sessopts, None, diagnostic_handler, codemap,
     );
-    rustc_trans::init(&sess);
+    let trans = rustc_trans::LlvmTransCrate::new(&sess);
+    let cstore = Rc::new(CStore::new(trans.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
@@ -266,7 +265,17 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     }
 
     let res = panic::catch_unwind(AssertUnwindSafe(|| {
-        driver::compile_input(&sess, &cstore, &None, &input, &out, &None, None, &control)
+        driver::compile_input(
+            trans,
+            &sess,
+            &cstore,
+            &None,
+            &input,
+            &out,
+            &None,
+            None,
+            &control
+        )
     }));
 
     let compile_result = match res {

@@ -42,7 +42,7 @@ pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     }
 }
 
-pub enum LtoModuleTranslation {
+pub(crate) enum LtoModuleTranslation {
     Fat {
         module: Option<ModuleTranslation>,
         _serialized_bitcode: Vec<SerializedModule>,
@@ -65,9 +65,9 @@ impl LtoModuleTranslation {
     /// points to LLVM data structures owned by this `LtoModuleTranslation`.
     /// It's intended that the module returned is immediately code generated and
     /// dropped, and then this LTO module is dropped.
-    pub unsafe fn optimize(&mut self,
-                           cgcx: &CodegenContext,
-                           timeline: &mut Timeline)
+    pub(crate) unsafe fn optimize(&mut self,
+                                  cgcx: &CodegenContext,
+                                  timeline: &mut Timeline)
         -> Result<ModuleTranslation, FatalError>
     {
         match *self {
@@ -100,7 +100,7 @@ pub enum LTOMode {
     JustThisCrate,
 }
 
-pub fn run(cgcx: &CodegenContext,
+pub(crate) fn run(cgcx: &CodegenContext,
            modules: Vec<ModuleTranslation>,
            mode: LTOMode,
            timeline: &mut Timeline)

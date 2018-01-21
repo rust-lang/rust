@@ -57,7 +57,6 @@ extern crate core; // for NonZero
 extern crate log_settings;
 extern crate rustc_apfloat;
 extern crate byteorder;
-extern crate rustc_trans_utils;
 
 mod diagnostics;
 

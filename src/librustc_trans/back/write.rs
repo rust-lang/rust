@@ -363,7 +363,7 @@ impl CodegenContext {
         Handler::with_emitter(true, false, Box::new(self.diag_emitter.clone()))
     }
 
-    pub fn config(&self, kind: ModuleKind) -> &ModuleConfig {
+    pub(crate) fn config(&self, kind: ModuleKind) -> &ModuleConfig {
         match kind {
             ModuleKind::Regular => &self.regular_module_config,
             ModuleKind::Metadata => &self.metadata_module_config,
@@ -371,7 +371,7 @@ impl CodegenContext {
         }
     }
 
-    pub fn save_temp_bitcode(&self, trans: &ModuleTranslation, name: &str) {
+    pub(crate) fn save_temp_bitcode(&self, trans: &ModuleTranslation, name: &str) {
         if !self.save_temps {
             return
         }
@@ -822,7 +822,7 @@ fn binaryen_assemble(cgcx: &CodegenContext,
     }
 }
 
-pub struct CompiledModules {
+pub(crate) struct CompiledModules {
     pub modules: Vec<CompiledModule>,
     pub metadata_module: CompiledModule,
     pub allocator_module: Option<CompiledModule>,
@@ -1162,7 +1162,7 @@ fn produce_final_output_artifacts(sess: &Session,
     // These are used in linking steps and will be cleaned up afterward.
 }
 
-pub fn dump_incremental_data(trans: &CrateTranslation) {
+pub(crate) fn dump_incremental_data(trans: &CrateTranslation) {
     println!("[incremental] Re-using {} out of {} modules",
               trans.modules.iter().filter(|m| m.pre_existing).count(),
               trans.modules.len());
@@ -2144,7 +2144,7 @@ pub struct OngoingCrateTranslation {
 }
 
 impl OngoingCrateTranslation {
-    pub fn join(self, sess: &Session, dep_graph: &DepGraph) -> CrateTranslation {
+    pub(crate) fn join(self, sess: &Session, dep_graph: &DepGraph) -> CrateTranslation {
         self.shared_emitter_main.check(sess, true);
         let compiled_modules = match self.future.join() {
             Ok(Ok(compiled_modules)) => compiled_modules,
@@ -2212,9 +2212,9 @@ impl OngoingCrateTranslation {
         trans
     }
 
-    pub fn submit_pre_translated_module_to_llvm(&self,
-                                                tcx: TyCtxt,
-                                                mtrans: ModuleTranslation) {
+    pub(crate) fn submit_pre_translated_module_to_llvm(&self,
+                                                       tcx: TyCtxt,
+                                                       mtrans: ModuleTranslation) {
         self.wait_for_signal_to_translate_item();
         self.check_for_errors(tcx.sess);
 
@@ -2247,9 +2247,9 @@ impl OngoingCrateTranslation {
     }
 }
 
-pub fn submit_translated_module_to_llvm(tcx: TyCtxt,
-                                        mtrans: ModuleTranslation,
-                                        cost: u64) {
+pub(crate) fn submit_translated_module_to_llvm(tcx: TyCtxt,
+                                               mtrans: ModuleTranslation,
+                                               cost: u64) {
     let llvm_work_item = WorkItem::Optimize(mtrans);
     drop(tcx.tx_to_llvm_workers.send(Box::new(Message::TranslationDone {
         llvm_work_item,

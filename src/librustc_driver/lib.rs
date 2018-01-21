@@ -48,7 +48,7 @@ extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_save_analysis;
 #[cfg(feature="llvm")]
-extern crate rustc_trans;
+pub extern crate rustc_trans;
 extern crate rustc_trans_utils;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -66,7 +66,7 @@ use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
-use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
+use rustc::session::config::{Input, PrintRequest, ErrorOutputType};
 use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
@@ -106,8 +106,31 @@ mod test;
 pub mod profile;
 pub mod driver;
 pub mod pretty;
-pub mod target_features;
 mod derive_registrar;
+
+pub mod target_features {
+    use syntax::ast;
+    use syntax::symbol::Symbol;
+    use rustc::session::Session;
+    use rustc_trans_utils::trans_crate::TransCrate;
+
+    /// Add `target_feature = "..."` cfgs for a variety of platform
+    /// specific features (SSE, NEON etc.).
+    ///
+    /// This is performed by checking whether a whitelisted set of
+    /// features is available on the target machine, by querying LLVM.
+    pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session, trans: &TransCrate) {
+        let tf = Symbol::intern("target_feature");
+
+        for feat in trans.target_features(sess) {
+            cfg.insert((tf, Some(feat)));
+        }
+
+        if sess.crt_static_feature() {
+            cfg.insert((tf, Some(Symbol::intern("crt-static"))));
+        }
+    }
+}
 
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
@@ -159,25 +182,51 @@ pub use rustc_trans_utils::trans_crate::MetadataOnlyTransCrate as DefaultTransCr
 pub use rustc_trans::LlvmTransCrate as DefaultTransCrate;
 
 #[cfg(not(feature="llvm"))]
-mod rustc_trans {
-    use syntax_pos::symbol::Symbol;
-    use rustc::session::Session;
-    use rustc::session::config::PrintRequest;
+pub mod rustc_trans {
     pub use rustc_trans_utils::trans_crate::MetadataOnlyTransCrate as LlvmTransCrate;
-    pub use rustc_trans_utils::trans_crate::TranslatedCrate as CrateTranslation;
 
-    pub fn init(_sess: &Session) {}
     pub fn print_version() {}
     pub fn print_passes() {}
-    pub fn print(_req: PrintRequest, _sess: &Session) {}
-    pub fn target_features(_sess: &Session) -> Vec<Symbol> { vec![] }
+}
 
-    pub mod back {
-        pub mod write {
-            pub const RELOC_MODEL_ARGS: [(&'static str, ()); 0] = [];
-            pub const CODE_GEN_MODEL_ARGS: [(&'static str, ()); 0] = [];
-            pub const TLS_MODEL_ARGS: [(&'static str, ()); 0] = [];
+fn load_backend_from_dylib(sess: &Session, backend_name: &str) -> Box<TransCrate> {
+    use std::path::Path;
+    use rustc_metadata::dynamic_lib::DynamicLibrary;
+
+    match DynamicLibrary::open(Some(Path::new(backend_name))) {
+        Ok(lib) => {
+            unsafe {
+                let trans = {
+                    let __rustc_codegen_backend: unsafe fn(&Session) -> Box<TransCrate>;
+                    __rustc_codegen_backend = match lib.symbol("__rustc_codegen_backend") {
+                        Ok(f) => ::std::mem::transmute::<*mut u8, _>(f),
+                        Err(e) => sess.fatal(&format!("Couldnt load codegen backend as it\
+                        doesn't export the __rustc_backend_new symbol: {:?}", e)),
+                    };
+                    __rustc_codegen_backend(sess)
+                };
+                ::std::mem::forget(lib);
+                trans
+            }
         }
+        Err(err) => {
+            sess.fatal(&format!("Couldnt load codegen backend {:?}: {:?}", backend_name, err));
+        }
+    }
+}
+
+pub fn get_trans(sess: &Session) -> Box<TransCrate> {
+    let trans_name = sess.opts.debugging_opts.codegen_backend.clone();
+    match trans_name.as_ref().map(|s|&**s) {
+        None => DefaultTransCrate::new(&sess),
+        Some("llvm") => rustc_trans::LlvmTransCrate::new(&sess),
+        Some("metadata_only") => {
+            rustc_trans_utils::trans_crate::MetadataOnlyTransCrate::new(&sess)
+        }
+        Some(filename) if filename.contains(".") => {
+            load_backend_from_dylib(&sess, &filename)
+        }
+        Some(trans_name) => sess.fatal(&format!("Unknown codegen backend {}", trans_name)),
     }
 }
 
@@ -222,30 +271,36 @@ pub fn run_compiler<'a>(args: &[String],
         },
     };
 
-    let cstore = CStore::new(DefaultTransCrate::metadata_loader());
-
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
         sopts, input_file_path.clone(), descriptions, codemap, emitter_dest,
     );
-    rustc_trans::init(&sess);
+
+    let trans = get_trans(&sess);
+
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, cfg);
-    target_features::add_configuration(&mut cfg, &sess);
+    target_features::add_configuration(&mut cfg, &sess, &*trans);
     sess.parse_sess.config = cfg;
 
-    do_or_return!(callbacks.late_callback(&matches,
+    let plugins = sess.opts.debugging_opts.extra_plugins.clone();
+
+    let cstore = CStore::new(trans.metadata_loader());
+
+    do_or_return!(callbacks.late_callback(&*trans,
+                                          &matches,
                                           &sess,
                                           &cstore,
                                           &input,
                                           &odir,
                                           &ofile), Some(sess));
 
-    let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess, &matches);
-    (driver::compile_input(&sess,
+
+    (driver::compile_input(trans,
+                           &sess,
                            &cstore,
                            &input_file_path,
                            &input,
@@ -338,6 +393,7 @@ pub trait CompilerCalls<'a> {
     // be called just before actual compilation starts (and before build_controller
     // is called), after all arguments etc. have been completely handled.
     fn late_callback(&mut self,
+                     _: &TransCrate,
                      _: &getopts::Matches,
                      _: &Session,
                      _: &CrateStore,
@@ -517,13 +573,18 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 let mut sess = build_session(sopts.clone(),
                     None,
                     descriptions.clone());
-                rustc_trans::init(&sess);
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
-                target_features::add_configuration(&mut cfg, &sess);
+                let trans = get_trans(&sess);
+                target_features::add_configuration(&mut cfg, &sess, &*trans);
                 sess.parse_sess.config = cfg;
-                let should_stop =
-                    RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile);
+                let should_stop = RustcDefaultCalls::print_crate_info(
+                    &*trans,
+                    &sess,
+                    None,
+                    odir,
+                    ofile
+                );
 
                 if should_stop == Compilation::Stop {
                     return None;
@@ -536,6 +597,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     }
 
     fn late_callback(&mut self,
+                     trans: &TransCrate,
                      matches: &getopts::Matches,
                      sess: &Session,
                      cstore: &CrateStore,
@@ -543,7 +605,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
                      -> Compilation {
-        RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile)
+        RustcDefaultCalls::print_crate_info(trans, sess, Some(input), odir, ofile)
             .and_then(|| RustcDefaultCalls::list_metadata(sess, cstore, matches, input))
     }
 
@@ -605,11 +667,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         if sess.opts.debugging_opts.no_analysis ||
            sess.opts.debugging_opts.ast_json {
             control.after_hir_lowering.stop = Compilation::Stop;
-        }
-
-        if !sess.opts.output_types.keys().any(|&i| i == OutputType::Exe ||
-                                                   i == OutputType::Metadata) {
-            control.after_llvm.stop = Compilation::Stop;
         }
 
         if save_analysis(sess) {
@@ -681,11 +738,13 @@ impl RustcDefaultCalls {
     }
 
 
-    fn print_crate_info(sess: &Session,
+    fn print_crate_info(trans: &TransCrate,
+                        sess: &Session,
                         input: Option<&Input>,
                         odir: &Option<PathBuf>,
                         ofile: &Option<PathBuf>)
                         -> Compilation {
+        use rustc::session::config::PrintRequest::*;
         // PrintRequest::NativeStaticLibs is special - printed during linking
         // (empty iterator returns true)
         if sess.opts.prints.iter().all(|&p| p==PrintRequest::NativeStaticLibs) {
@@ -707,15 +766,14 @@ impl RustcDefaultCalls {
         };
         for req in &sess.opts.prints {
             match *req {
-                PrintRequest::TargetList => {
+                TargetList => {
                     let mut targets = rustc_back::target::get_targets().collect::<Vec<String>>();
                     targets.sort();
                     println!("{}", targets.join("\n"));
                 },
-                PrintRequest::Sysroot => println!("{}", sess.sysroot().display()),
-                PrintRequest::TargetSpec => println!("{}", sess.target.target.to_json().pretty()),
-                PrintRequest::FileNames |
-                PrintRequest::CrateName => {
+                Sysroot => println!("{}", sess.sysroot().display()),
+                TargetSpec => println!("{}", sess.target.target.to_json().pretty()),
+                FileNames | CrateName => {
                     let input = match input {
                         Some(input) => input,
                         None => early_error(ErrorOutputType::default(), "no input file provided"),
@@ -741,7 +799,7 @@ impl RustcDefaultCalls {
                                       .to_string_lossy());
                     }
                 }
-                PrintRequest::Cfg => {
+                Cfg => {
                     let allow_unstable_cfg = UnstableFeatures::from_environment()
                         .is_nightly_build();
 
@@ -781,29 +839,8 @@ impl RustcDefaultCalls {
                         println!("{}", cfg);
                     }
                 }
-                PrintRequest::RelocationModels => {
-                    println!("Available relocation models:");
-                    for &(name, _) in rustc_trans::back::write::RELOC_MODEL_ARGS.iter() {
-                        println!("    {}", name);
-                    }
-                    println!("");
-                }
-                PrintRequest::CodeModels => {
-                    println!("Available code models:");
-                    for &(name, _) in rustc_trans::back::write::CODE_GEN_MODEL_ARGS.iter(){
-                        println!("    {}", name);
-                    }
-                    println!("");
-                }
-                PrintRequest::TlsModels => {
-                    println!("Available TLS models:");
-                    for &(name, _) in rustc_trans::back::write::TLS_MODEL_ARGS.iter(){
-                        println!("    {}", name);
-                    }
-                    println!("");
-                }
-                PrintRequest::TargetCPUs | PrintRequest::TargetFeatures => {
-                    rustc_trans::print(*req, sess);
+                RelocationModels | CodeModels | TlsModels | TargetCPUs | TargetFeatures => {
+                    trans.print(*req, sess);
                 }
                 // Any output here interferes with Cargo's parsing of other printed output
                 PrintRequest::NativeStaticLibs => {}
@@ -1281,6 +1318,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     #[cfg(feature="llvm")]
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_trans_utils::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_passes::DIAGNOSTICS);

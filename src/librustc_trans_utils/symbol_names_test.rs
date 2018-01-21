@@ -19,7 +19,7 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::ty::TyCtxt;
 use syntax::ast;
 
-use monomorphize::Instance;
+use rustc_mir::monomorphize::Instance;
 
 const SYMBOL_NAME: &'static str = "rustc_symbol_name";
 const ITEM_PATH: &'static str = "rustc_item_path";

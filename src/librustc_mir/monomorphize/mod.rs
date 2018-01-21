@@ -22,6 +22,54 @@ pub mod collector;
 pub mod item;
 pub mod partitioning;
 
+#[inline(never)] // give this a place in the profiler
+pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_items: I)
+    where I: Iterator<Item=&'a MonoItem<'tcx>>
+{
+    let mut symbols: Vec<_> = trans_items.map(|trans_item| {
+        (trans_item, trans_item.symbol_name(tcx))
+    }).collect();
+
+    (&mut symbols[..]).sort_by(|&(_, ref sym1), &(_, ref sym2)|{
+        sym1.cmp(sym2)
+    });
+
+    for pair in (&symbols[..]).windows(2) {
+        let sym1 = &pair[0].1;
+        let sym2 = &pair[1].1;
+
+        if *sym1 == *sym2 {
+            let trans_item1 = pair[0].0;
+            let trans_item2 = pair[1].0;
+
+            let span1 = trans_item1.local_span(tcx);
+            let span2 = trans_item2.local_span(tcx);
+
+            // Deterministically select one of the spans for error reporting
+            let span = match (span1, span2) {
+                (Some(span1), Some(span2)) => {
+                    Some(if span1.lo().0 > span2.lo().0 {
+                        span1
+                    } else {
+                        span2
+                    })
+                }
+                (Some(span), None) |
+                (None, Some(span)) => Some(span),
+                _ => None
+            };
+
+            let error_message = format!("symbol `{}` is already defined", sym1);
+
+            if let Some(span) = span {
+                tcx.sess.span_fatal(span, &error_message)
+            } else {
+                tcx.sess.fatal(&error_message)
+            }
+        }
+    }
+}
+
 fn fn_once_adapter_instance<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     closure_did: DefId,

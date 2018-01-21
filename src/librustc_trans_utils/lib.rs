@@ -35,9 +35,14 @@ extern crate log;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_back;
+extern crate rustc_mir;
+extern crate rustc_incremental;
+#[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
+
+pub extern crate rustc as __rustc;
 
 use rustc::ty::{TyCtxt, Instance};
 use rustc::hir;
@@ -45,8 +50,11 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir::map as hir_map;
 use rustc::util::nodemap::NodeSet;
 
+pub mod diagnostics;
 pub mod link;
 pub mod trans_crate;
+pub mod symbol_names;
+pub mod symbol_names_test;
 
 /// check for the #[rustc_error] annotation, which forces an
 /// error in trans. This is used to write compile-fail tests
@@ -110,3 +118,6 @@ pub fn find_exported_symbols<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> NodeSet {
         }
     }).collect()
 }
+
+#[cfg(not(stage0))] // remove after the next snapshot
+__build_diagnostic_array! { librustc_trans_utils, DIAGNOSTICS }

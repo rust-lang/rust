@@ -26,6 +26,7 @@ use std::io::prelude::*;
 use std::io::{self, Cursor};
 use std::fs::File;
 use std::path::Path;
+use std::rc::Rc;
 use std::sync::mpsc;
 
 use rustc_data_structures::owning_ref::{ErasedBoxRef, OwningRef};
@@ -35,83 +36,81 @@ use flate2::write::DeflateEncoder;
 
 use syntax::symbol::Symbol;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::session::Session;
-use rustc::session::config::{CrateType, OutputFilenames};
+use rustc::session::{Session, CompileIncomplete};
+use rustc::session::config::{CrateType, OutputFilenames, PrintRequest};
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::middle::cstore::EncodedMetadata;
-use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
+use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_back::target::Target;
+use rustc_mir::monomorphize::collector;
 use link::{build_link_meta, out_filename};
 
 pub trait TransCrate {
-    type MetadataLoader: MetadataLoaderTrait;
-    type OngoingCrateTranslation;
-    type TranslatedCrate;
+    fn print(&self, _req: PrintRequest, _sess: &Session) {}
+    fn target_features(&self, _sess: &Session) -> Vec<Symbol> { vec![] }
 
-    fn metadata_loader() -> Box<MetadataLoaderTrait>;
-    fn provide(_providers: &mut Providers);
-    fn provide_extern(_providers: &mut Providers);
+    fn metadata_loader(&self) -> Box<MetadataLoader>;
+    fn provide(&self, _providers: &mut Providers);
+    fn provide_extern(&self, _providers: &mut Providers);
     fn trans_crate<'a, 'tcx>(
+        &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         rx: mpsc::Receiver<Box<Any + Send>>
-    ) -> Self::OngoingCrateTranslation;
-    fn join_trans(
-        trans: Self::OngoingCrateTranslation,
+    ) -> Box<Any>;
+
+    /// This is called on the returned `Box<Any>` from `trans_crate`
+    ///
+    /// # Panics
+    ///
+    /// Panics when the passed `Box<Any>` was not returned by `trans_crate`.
+    fn join_trans_and_link(
+        &self,
+        trans: Box<Any>,
         sess: &Session,
-        dep_graph: &DepGraph
-    ) -> Self::TranslatedCrate;
-    fn link_binary(sess: &Session, trans: &Self::TranslatedCrate, outputs: &OutputFilenames);
-    fn dump_incremental_data(trans: &Self::TranslatedCrate);
+        dep_graph: &DepGraph,
+        outputs: &OutputFilenames,
+    ) -> Result<(), CompileIncomplete>;
 }
 
 pub struct DummyTransCrate;
 
 impl TransCrate for DummyTransCrate {
-    type MetadataLoader = DummyMetadataLoader;
-    type OngoingCrateTranslation = ();
-    type TranslatedCrate = ();
-
-    fn metadata_loader() -> Box<MetadataLoaderTrait> {
+    fn metadata_loader(&self) -> Box<MetadataLoader> {
         box DummyMetadataLoader(())
     }
 
-    fn provide(_providers: &mut Providers) {
+    fn provide(&self, _providers: &mut Providers) {
         bug!("DummyTransCrate::provide");
     }
 
-    fn provide_extern(_providers: &mut Providers) {
+    fn provide_extern(&self, _providers: &mut Providers) {
         bug!("DummyTransCrate::provide_extern");
     }
 
     fn trans_crate<'a, 'tcx>(
+        &self,
         _tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _rx: mpsc::Receiver<Box<Any + Send>>
-    ) -> Self::OngoingCrateTranslation {
+    ) -> Box<Any> {
         bug!("DummyTransCrate::trans_crate");
     }
 
-    fn join_trans(
-        _trans: Self::OngoingCrateTranslation,
+    fn join_trans_and_link(
+        &self,
+        _trans: Box<Any>,
         _sess: &Session,
-        _dep_graph: &DepGraph
-    ) -> Self::TranslatedCrate {
-        bug!("DummyTransCrate::join_trans");
-    }
-
-    fn link_binary(_sess: &Session, _trans: &Self::TranslatedCrate, _outputs: &OutputFilenames) {
-        bug!("DummyTransCrate::link_binary");
-    }
-
-    fn dump_incremental_data(_trans: &Self::TranslatedCrate) {
-        bug!("DummyTransCrate::dump_incremental_data");
+        _dep_graph: &DepGraph,
+        _outputs: &OutputFilenames,
+    ) -> Result<(), CompileIncomplete> {
+        bug!("DummyTransCrate::join_trans_and_link");
     }
 }
 
 pub struct DummyMetadataLoader(());
 
-impl MetadataLoaderTrait for DummyMetadataLoader {
+impl MetadataLoader for DummyMetadataLoader {
     fn get_rlib_metadata(
         &self,
         _target: &Target,
@@ -131,7 +130,7 @@ impl MetadataLoaderTrait for DummyMetadataLoader {
 
 pub struct NoLlvmMetadataLoader;
 
-impl MetadataLoaderTrait for NoLlvmMetadataLoader {
+impl MetadataLoader for NoLlvmMetadataLoader {
     fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
         let file = File::open(filename)
             .map_err(|e| format!("metadata file open err: {:?}", e))?;
@@ -161,87 +160,132 @@ impl MetadataLoaderTrait for NoLlvmMetadataLoader {
     }
 }
 
-pub struct MetadataOnlyTransCrate;
+pub struct MetadataOnlyTransCrate(());
 pub struct OngoingCrateTranslation {
     metadata: EncodedMetadata,
     metadata_version: Vec<u8>,
     crate_name: Symbol,
 }
-pub struct TranslatedCrate(OngoingCrateTranslation);
 
 impl MetadataOnlyTransCrate {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        MetadataOnlyTransCrate
+    pub fn new(sess: &Session) -> Box<TransCrate> {
+        for cty in sess.opts.crate_types.iter() {
+            match *cty {
+                CrateType::CrateTypeRlib | CrateType::CrateTypeDylib |
+                CrateType::CrateTypeExecutable => {},
+                _ => {
+                    sess.parse_sess.span_diagnostic.warn(
+                        &format!("LLVM unsupported, so output type {} is not supported", cty)
+                    );
+                },
+            }
+        }
+
+        box MetadataOnlyTransCrate(())
     }
 }
 
 impl TransCrate for MetadataOnlyTransCrate {
-    type MetadataLoader = NoLlvmMetadataLoader;
-    type OngoingCrateTranslation = OngoingCrateTranslation;
-    type TranslatedCrate = TranslatedCrate;
-
-    fn metadata_loader() -> Box<MetadataLoaderTrait> {
+    fn metadata_loader(&self) -> Box<MetadataLoader> {
         box NoLlvmMetadataLoader
     }
 
-    fn provide(_providers: &mut Providers) {}
-    fn provide_extern(_providers: &mut Providers) {}
+    fn provide(&self, providers: &mut Providers) {
+        ::symbol_names::provide(providers);
+        providers.target_features_enabled = |_tcx, _id| {
+            Rc::new(Vec::new()) // Just a dummy
+        };
+    }
+    fn provide_extern(&self, _providers: &mut Providers) {}
 
     fn trans_crate<'a, 'tcx>(
+        &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _rx: mpsc::Receiver<Box<Any + Send>>
-    ) -> Self::OngoingCrateTranslation {
+    ) -> Box<Any> {
+        use rustc_mir::monomorphize::item::MonoItem;
+
         ::check_for_rustc_errors_attr(tcx);
+        ::symbol_names_test::report_symbol_names(tcx);
+        ::rustc_incremental::assert_dep_graph(tcx);
+        ::rustc_incremental::assert_module_sources::assert_module_sources(tcx);
+        ::rustc_mir::monomorphize::assert_symbols_are_distinct(tcx,
+            collector::collect_crate_mono_items(
+                tcx,
+                collector::MonoItemCollectionMode::Eager
+            ).0.iter()
+        );
+        ::rustc::middle::dependency_format::calculate(tcx);
         let _ = tcx.link_args(LOCAL_CRATE);
         let _ = tcx.native_libraries(LOCAL_CRATE);
+        for trans_item in
+            collector::collect_crate_mono_items(
+                tcx,
+                collector::MonoItemCollectionMode::Eager
+            ).0 {
+            match trans_item {
+                MonoItem::Fn(inst) => {
+                    let def_id = inst.def_id();
+                    if def_id.is_local()  {
+                        let _ = tcx.export_name(def_id);
+                        let _ = tcx.contains_extern_indicator(def_id);
+                        let _ = inst.def.is_inline(tcx);
+                        let attrs = inst.def.attrs(tcx);
+                        let _ =
+                            ::syntax::attr::find_inline_attr(Some(tcx.sess.diagnostic()), &attrs);
+                    }
+                }
+                _ => {}
+            }
+        }
         tcx.sess.abort_if_errors();
 
         let link_meta = build_link_meta(tcx.crate_hash(LOCAL_CRATE));
         let exported_symbols = ::find_exported_symbols(tcx);
         let metadata = tcx.encode_metadata(&link_meta, &exported_symbols);
 
-        OngoingCrateTranslation {
+        box OngoingCrateTranslation {
             metadata: metadata,
             metadata_version: tcx.metadata_encoding_version().to_vec(),
             crate_name: tcx.crate_name(LOCAL_CRATE),
         }
     }
 
-    fn join_trans(
-        trans: Self::OngoingCrateTranslation,
-        _sess: &Session,
+    fn join_trans_and_link(
+        &self,
+        trans: Box<Any>,
+        sess: &Session,
         _dep_graph: &DepGraph,
-    ) -> Self::TranslatedCrate {
-        TranslatedCrate(trans)
-    }
-
-    fn link_binary(sess: &Session, trans: &Self::TranslatedCrate, outputs: &OutputFilenames) {
+        outputs: &OutputFilenames,
+    ) -> Result<(), CompileIncomplete> {
+        let trans = trans.downcast::<OngoingCrateTranslation>()
+            .expect("Expected MetadataOnlyTransCrate's OngoingCrateTranslation, found Box<Any>");
         for &crate_type in sess.opts.crate_types.iter() {
             if crate_type != CrateType::CrateTypeRlib && crate_type != CrateType::CrateTypeDylib {
                 continue;
             }
             let output_name =
-                out_filename(sess, crate_type, &outputs, &trans.0.crate_name.as_str());
-            let mut compressed = trans.0.metadata_version.clone();
+                out_filename(sess, crate_type, &outputs, &trans.crate_name.as_str());
+            let mut compressed = trans.metadata_version.clone();
             let metadata = if crate_type == CrateType::CrateTypeDylib {
                 DeflateEncoder::new(&mut compressed, Compression::fast())
-                    .write_all(&trans.0.metadata.raw_data)
+                    .write_all(&trans.metadata.raw_data)
                     .unwrap();
                 &compressed
             } else {
-                &trans.0.metadata.raw_data
+                &trans.metadata.raw_data
             };
             let mut builder = Builder::new(File::create(&output_name).unwrap());
             let header = Header::new("rust.metadata.bin".to_string(), metadata.len() as u64);
             builder.append(&header, Cursor::new(metadata)).unwrap();
         }
 
+        sess.abort_if_errors();
         if !sess.opts.crate_types.contains(&CrateType::CrateTypeRlib)
-            && !sess.opts.crate_types.contains(&CrateType::CrateTypeDylib) {
+            && !sess.opts.crate_types.contains(&CrateType::CrateTypeDylib)
+        {
             sess.fatal("Executables are not supported by the metadata-only backend.");
         }
+        Ok(())
     }
-
-    fn dump_incremental_data(_trans: &Self::TranslatedCrate) {}
 }

@@ -47,27 +47,9 @@ unsafe { simd_add(i32x2(0, 0), i32x2(1, 2)); } // ok!
 ```
 "##,
 
-E0558: r##"
-The `export_name` attribute was malformed.
+}
 
-Erroneous code example:
 
-```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
-#[export_name] // error: export_name attribute has invalid format
-pub fn something() {}
-
-fn main() {}
-```
-
-The `export_name` attribute expects a string in order to determine the name of
-the exported symbol. Example:
-
-```
-#[export_name = "some_function"] // ok!
-pub fn something() {}
-
-fn main() {}
-```
-"##,
-
+register_diagnostics! {
+    E0558
 }

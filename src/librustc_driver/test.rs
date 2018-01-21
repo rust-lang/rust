@@ -16,7 +16,6 @@ use std::sync::mpsc;
 use driver;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
-use rustc_trans;
 use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::{ObligationCause, Reveal};
@@ -29,7 +28,6 @@ use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{OutputFilenames, OutputTypes};
-use rustc_trans_utils::trans_crate::TransCrate;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -104,12 +102,11 @@ fn test_env<F>(source_string: &str,
     options.unstable_features = UnstableFeatures::Allow;
     let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
 
-    let cstore = Rc::new(CStore::new(::DefaultTransCrate::metadata_loader()));
     let sess = session::build_session_(options,
                                        None,
                                        diagnostic_handler,
                                        Rc::new(CodeMap::new(FilePathMapping::empty())));
-    rustc_trans::init(&sess);
+    let cstore = Rc::new(CStore::new(::get_trans(&sess).metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: FileName::Anon,
