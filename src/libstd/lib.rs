@@ -282,7 +282,7 @@
 #![feature(macro_reexport)]
 #![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
-#![feature(never_type)]
+#![feature(exhaustive_patterns)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]
@@ -324,6 +324,7 @@
 #![feature(doc_spotlight)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
+#![cfg_attr(stage0, feature(never_type))]
 
 #![default_lib_allocator]
 

@@ -10,8 +10,6 @@
 
 // Test that a variable of type ! can coerce to another type.
 
-#![feature(never_type)]
-
 // error-pattern:explicit
 fn main() {
     let x: ! = panic!();

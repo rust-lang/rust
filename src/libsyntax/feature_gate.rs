@@ -286,8 +286,8 @@ declare_features! (
     // Allows `impl Trait` in function arguments.
     (active, universal_impl_trait, "1.23.0", Some(34511), None),
 
-    // The `!` type
-    (active, never_type, "1.13.0", Some(35121), None),
+    // Allows exhaustive pattern matching on types that contain uninhabited types.
+    (active, exhaustive_patterns, "1.13.0", None, None),
 
     // Allows all literals in attribute lists and values of key-value pairs.
     (active, attr_literals, "1.13.0", Some(34981), None),
@@ -1566,10 +1566,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_abi(bare_fn_ty.abi, ty.span);
             }
-            ast::TyKind::Never => {
-                gate_feature_post!(&self, never_type, ty.span,
-                                   "The `!` type is experimental");
-            },
             ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::Dyn) => {
                 gate_feature_post!(&self, dyn_trait, ty.span,
                                    "`dyn Trait` syntax is unstable");

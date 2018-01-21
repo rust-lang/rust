@@ -12,8 +12,6 @@
 
 // error-pattern:oh no!
 
-#![feature(never_type)]
-
 struct Wub;
 
 impl PartialEq<!> for Wub {

@@ -1,5 +1,5 @@
 error: unreachable expression
-  --> $DIR/expr_return.rs:21:22
+  --> $DIR/expr_return.rs:20:22
    |
 LL |     let x = {return {return {return;}}}; //~ ERROR unreachable
    |                      ^^^^^^^^^^^^^^^^

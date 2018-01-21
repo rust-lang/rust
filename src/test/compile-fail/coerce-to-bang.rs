@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(never_type)]
 #![deny(coerce_never)]
 
 fn foo(x: usize, y: !, z: usize) { }

@@ -1,5 +1,5 @@
 error: unreachable expression
-  --> $DIR/expr_call.rs:23:17
+  --> $DIR/expr_call.rs:22:17
    |
 LL |     foo(return, 22); //~ ERROR unreachable
    |                 ^^
@@ -11,7 +11,7 @@ LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_call.rs:28:5
+  --> $DIR/expr_call.rs:27:5
    |
 LL |     bar(return); //~ ERROR unreachable
    |     ^^^^^^^^^^^

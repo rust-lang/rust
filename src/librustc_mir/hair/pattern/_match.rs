@@ -219,7 +219,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        if self.tcx.features().never_type {
+        if self.tcx.features().exhaustive_patterns {
             self.tcx.is_ty_uninhabited_from(self.module, ty)
         } else {
             false
@@ -245,7 +245,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                               substs: &'tcx ty::subst::Substs<'tcx>)
                               -> bool
     {
-        if self.tcx.features().never_type {
+        if self.tcx.features().exhaustive_patterns {
             self.tcx.is_enum_variant_uninhabited_from(self.module, variant, substs)
         } else {
             false
@@ -694,7 +694,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         // test for details.
         //
         // FIXME: currently the only way I know of something can
-        // be a privately-empty enum is when the never_type
+        // be a privately-empty enum is when the exhaustive_patterns
         // feature flag is not present, so this is only
         // needed for that case.
 

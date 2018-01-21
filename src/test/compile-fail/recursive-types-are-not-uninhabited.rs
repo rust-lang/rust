@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//#![feature(never_type)]
-
 struct R<'a> {
     r: &'a R<'a>,
 }

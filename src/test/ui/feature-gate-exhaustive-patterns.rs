@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This issue tracks a regression (a new warning) without
-// feature(never_type). When we make that the default, please
-// remove this test.
-
-enum Foo { }
-
-fn make_foo() -> Option<Foo> { None }
-
-#[deny(warnings)]
-fn main() {
-    match make_foo() {
-        None => {},
-        Some(_) => {}
-    }
+fn foo() -> Result<u32, !> {
+    Ok(123)
 }
+
+fn main() {
+    let Ok(_x) = foo(); //~ ERROR refutable pattern in local binding
+}
+
