@@ -13,15 +13,12 @@
 
 // compile-flags: -g -C no-prepopulate-passes
 
-// CHECK-LABEL: foo
-// CHECK: {{.*}}DISubprogram{{.*}} name: "foo",{{.*}}DIFlagNoReturn{{.*}}
+// CHECK: {{.*}}DISubprogram{{.*}}name: "foo"{{.*}}DIFlagNoReturn
 
-#[no_mangle]
-pub fn foo() -> ! {
+fn foo() -> ! {
     loop {}
 }
 
-// CHECK-LABEL: main
 // CHECK: {{.*}}DISubprogram{{.*}}name: "main",{{.*}}DIFlagMainSubprogram{{.*}}
 
 pub fn main() {
