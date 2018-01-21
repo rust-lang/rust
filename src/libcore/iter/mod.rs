@@ -305,12 +305,10 @@
 //! successfully for any infinite iterators.
 //!
 //! ```no_run
-//! let positives = 1..;
-//! let least = positives.min().unwrap(); // Oh no! An infinite loop!
-//! // `positives.min` will either overflow and panic (in debug mode),
-//! // or cause an infinite loop (in release mode), so we won't reach
-//! // this point!
-//! println!("The least positive number is {}.", least);
+//! let ones = std::iter::repeat(1);
+//! let least = ones.min().unwrap(); // Oh no! An infinite loop!
+//! // `ones.min()` causes an infinite loop, so we won't reach this point!
+//! println!("The smallest number one is {}.", least);
 //! ```
 //!
 //! [`take`]: trait.Iterator.html#method.take
