@@ -658,26 +658,26 @@ impl<T: Ord> BTreeSet<T> {
     /// Basic usage:
     ///
     /// ```
-    /// use std::collections::BTreeMap;
+    /// use std::collections::BTreeSet;
     ///
-    /// let mut a = BTreeMap::new();
-    /// a.insert(1, "a");
-    /// a.insert(2, "b");
-    /// a.insert(3, "c");
-    /// a.insert(17, "d");
-    /// a.insert(41, "e");
+    /// let mut a = BTreeSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    /// a.insert(3);
+    /// a.insert(17);
+    /// a.insert(41);
     ///
     /// let b = a.split_off(&3);
     ///
     /// assert_eq!(a.len(), 2);
     /// assert_eq!(b.len(), 3);
     ///
-    /// assert_eq!(a[&1], "a");
-    /// assert_eq!(a[&2], "b");
+    /// assert!(a.contains(&1));
+    /// assert!(a.contains(&2));
     ///
-    /// assert_eq!(b[&3], "c");
-    /// assert_eq!(b[&17], "d");
-    /// assert_eq!(b[&41], "e");
+    /// assert!(b.contains(&3));
+    /// assert!(b.contains(&17));
+    /// assert!(b.contains(&41));
     /// ```
     #[stable(feature = "btree_split_off", since = "1.11.0")]
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where T: Borrow<Q> {
