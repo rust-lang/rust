@@ -630,6 +630,8 @@ impl<T> [T] {
     /// assert_eq!(iter.next().unwrap(), &['m']);
     /// assert!(iter.next().is_none());
     /// ```
+    ///
+    /// [`exact_chunks`]: #method.exact_chunks
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<T> {
@@ -660,6 +662,8 @@ impl<T> [T] {
     /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
     /// assert!(iter.next().is_none());
     /// ```
+    ///
+    /// [`chunks`]: #method.chunks
     #[unstable(feature = "exact_chunks", issue = "47115")]
     #[inline]
     pub fn exact_chunks(&self, chunk_size: usize) -> ExactChunks<T> {
@@ -692,6 +696,8 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[1, 1, 2, 2, 3]);
     /// ```
+    ///
+    /// [`exact_chunks_mut`]: #method.exact_chunks_mut
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
@@ -728,6 +734,8 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[1, 1, 2, 2, 0]);
     /// ```
+    ///
+    /// [`chunks_mut`]: #method.chunks_mut
     #[unstable(feature = "exact_chunks", issue = "47115")]
     #[inline]
     pub fn exact_chunks_mut(&mut self, chunk_size: usize) -> ExactChunksMut<T> {
