@@ -15,6 +15,7 @@ use rustc::infer::InferOk;
 use rustc::traits::ObligationCause;
 
 use syntax::ast;
+use syntax::util::parser::AssocOp;
 use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::hir::print;
@@ -137,7 +138,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((msg, suggestion)) = self.check_ref(expr, checked_ty, expected) {
             err.span_suggestion(expr.span, msg, suggestion);
-        } else {
+        } else if !self.check_for_cast(&mut err, expr, expr_ty, expected) {
             let methods = self.get_conversion_methods(expected, checked_ty);
             if let Ok(expr_text) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                 let suggestions = iter::repeat(expr_text).zip(methods.iter())
@@ -287,8 +288,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // Maybe remove `&`?
                         hir::ExprAddrOf(_, ref expr) => {
                             if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
-                                return Some(("consider removing the borrow",
-                                             code));
+                                return Some(("consider removing the borrow", code));
                             }
                         }
 
@@ -303,12 +303,248 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                  format!("*{}", code)));
                                 }
                             }
-                        },
+                        }
                     }
                 }
                 None
             }
             _ => None,
+        }
+    }
+
+    fn check_for_cast(&self,
+                      err: &mut DiagnosticBuilder<'tcx>,
+                      expr: &hir::Expr,
+                      checked_ty: Ty<'tcx>,
+                      expected_ty: Ty<'tcx>)
+                      -> bool {
+        let will_truncate = "will truncate the source value";
+        let depending_on_isize = "will truncate or zero-extend depending on the bit width of \
+                                  `isize`";
+        let depending_on_usize = "will truncate or zero-extend depending on the bit width of \
+                                  `usize`";
+        let will_sign_extend = "will sign-extend the source value";
+        let will_zero_extend = "will zero-extend the source value";
+
+        // If casting this expression to a given numeric type would be appropriate in case of a type
+        // mismatch.
+        //
+        // We want to minimize the amount of casting operations that are suggested, as it can be a
+        // lossy operation with potentially bad side effects, so we only suggest when encountering
+        // an expression that indicates that the original type couldn't be directly changed.
+        //
+        // For now, don't suggest casting with `as`.
+        let can_cast = false;
+
+        let needs_paren = expr.precedence().order() < (AssocOp::As.precedence() as i8);
+
+        if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+            let msg = format!("you can cast an `{}` to `{}`", checked_ty, expected_ty);
+            let cast_suggestion = format!("{}{}{} as {}",
+                                          if needs_paren { "(" } else { "" },
+                                          src,
+                                          if needs_paren { ")" } else { "" },
+                                          expected_ty);
+            let into_suggestion = format!("{}{}{}.into()",
+                                          if needs_paren { "(" } else { "" },
+                                          src,
+                                          if needs_paren { ")" } else { "" });
+
+            match (&expected_ty.sty, &checked_ty.sty) {
+                (&ty::TyInt(ref exp), &ty::TyInt(ref found)) => {
+                    match (found.bit_width(), exp.bit_width()) {
+                        (Some(found), Some(exp)) if found > exp => {
+                            if can_cast {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}", msg, will_truncate),
+                                                    cast_suggestion);
+                            }
+                        }
+                        (None, _) | (_, None) => {
+                            if can_cast {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_isize),
+                                                    cast_suggestion);
+                            }
+                        }
+                        _ => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_sign_extend),
+                                                into_suggestion);
+                        }
+                    }
+                    true
+                }
+                (&ty::TyUint(ref exp), &ty::TyUint(ref found)) => {
+                    match (found.bit_width(), exp.bit_width()) {
+                        (Some(found), Some(exp)) if found > exp => {
+                            if can_cast {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}", msg, will_truncate),
+                                                    cast_suggestion);
+                            }
+                        }
+                        (None, _) | (_, None) => {
+                            if can_cast {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_usize),
+                                                    cast_suggestion);
+                            }
+                        }
+                        _ => {
+                            err.span_suggestion(expr.span,
+                                                &format!("{}, which {}", msg, will_zero_extend),
+                                                into_suggestion);
+                        }
+                    }
+                    true
+                }
+                (&ty::TyInt(ref exp), &ty::TyUint(ref found)) => {
+                    if can_cast {
+                        match (found.bit_width(), exp.bit_width()) {
+                            (Some(found), Some(exp)) if found > exp - 1 => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}", msg, will_truncate),
+                                                    cast_suggestion);
+                            }
+                            (None, None) => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}", msg, will_truncate),
+                                                    cast_suggestion);
+                            }
+                            (None, _) => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_isize),
+                                                    cast_suggestion);
+                            }
+                            (_, None) => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_usize),
+                                                    cast_suggestion);
+                            }
+                            _ => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}", msg, will_zero_extend),
+                                                    cast_suggestion);
+                            }
+                        }
+                    }
+                    true
+                }
+                (&ty::TyUint(ref exp), &ty::TyInt(ref found)) => {
+                    if can_cast {
+                        match (found.bit_width(), exp.bit_width()) {
+                            (Some(found), Some(exp)) if found - 1 > exp => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}", msg, will_truncate),
+                                                    cast_suggestion);
+                            }
+                            (None, None) => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}", msg, will_sign_extend),
+                                                    cast_suggestion);
+                            }
+                            (None, _) => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_usize),
+                                                    cast_suggestion);
+                            }
+                            (_, None) => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}",
+                                                             msg,
+                                                             depending_on_isize),
+                                                    cast_suggestion);
+                            }
+                            _ => {
+                                err.span_suggestion(expr.span,
+                                                    &format!("{}, which {}", msg, will_sign_extend),
+                                                    cast_suggestion);
+                            }
+                        }
+                    }
+                    true
+                }
+                (&ty::TyFloat(ref exp), &ty::TyFloat(ref found)) => {
+                    if found.bit_width() < exp.bit_width() {
+                        err.span_suggestion(expr.span,
+                                            &format!("{} in a lossless way",
+                                                     msg),
+                                            into_suggestion);
+                    } else if can_cast {
+                        err.span_suggestion(expr.span,
+                                            &format!("{}, producing the closest possible value",
+                                                     msg),
+                                            cast_suggestion);
+                        err.warn("casting here will cause undefined behavior if the value is \
+                                  finite but larger or smaller than the largest or smallest \
+                                  finite value representable by `f32` (this is a bug and will be \
+                                  fixed)");
+                    }
+                    true
+                }
+                (&ty::TyUint(_), &ty::TyFloat(_)) | (&ty::TyInt(_), &ty::TyFloat(_)) => {
+                    if can_cast {
+                        err.span_suggestion(expr.span,
+                                            &format!("{}, rounding the float towards zero",
+                                                     msg),
+                                            cast_suggestion);
+                        err.warn("casting here will cause undefined behavior if the rounded value \
+                                  cannot be represented by the target integer type, including \
+                                  `Inf` and `NaN` (this is a bug and will be fixed)");
+                    }
+                    true
+                }
+                (&ty::TyFloat(ref exp), &ty::TyUint(ref found)) => {
+                    // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
+                    if exp.bit_width() > found.bit_width().unwrap_or(256) {
+                        err.span_suggestion(expr.span,
+                                            &format!("{}, producing the floating point \
+                                                      representation of the integer",
+                                                      msg),
+                                            into_suggestion);
+                    } else if can_cast {
+                        err.span_suggestion(expr.span,
+                                            &format!("{}, producing the floating point \
+                                                      representation of the integer, rounded if \
+                                                      necessary",
+                                                      msg),
+                                            cast_suggestion);
+                    }
+                    true
+                }
+                (&ty::TyFloat(ref exp), &ty::TyInt(ref found)) => {
+                    // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
+                    if exp.bit_width() > found.bit_width().unwrap_or(256) {
+                        err.span_suggestion(expr.span,
+                                            &format!("{}, producing the floating point \
+                                                      representation of the integer",
+                                                      msg),
+                                            into_suggestion);
+                    } else if can_cast {
+                        err.span_suggestion(expr.span,
+                                            &format!("{}, producing the floating point \
+                                                      representation of the integer, rounded if \
+                                                      necessary",
+                                                      msg),
+                                            cast_suggestion);
+                    }
+                    true
+                }
+                _ => false,
+            }
+        } else {
+            false
         }
     }
 }

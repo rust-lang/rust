@@ -9,7 +9,9 @@
 // except according to those terms.
 use parse::token::{Token, BinOpToken};
 use symbol::keywords;
-use ast::{self, BinOpKind, ExprKind};
+use ast::{self, BinOpKind};
+
+use std::cmp::Ordering;
 
 /// Associative operator with precedence.
 ///
@@ -228,65 +230,129 @@ pub const PREC_POSTFIX: i8 = 60;
 pub const PREC_PAREN: i8 = 99;
 pub const PREC_FORCE_PAREN: i8 = 100;
 
-pub fn expr_precedence(expr: &ast::Expr) -> i8 {
-    match expr.node {
-        ExprKind::Closure(..) => PREC_CLOSURE,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExprPrecedence {
+    Closure,
+    Break,
+    Continue,
+    Ret,
+    Yield,
 
-        ExprKind::Break(..) |
-        ExprKind::Continue(..) |
-        ExprKind::Ret(..) |
-        ExprKind::Yield(..) => PREC_JUMP,
+    Range,
 
-        // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to parse,
-        // instead of parsing as `(x .. x) = x`.  Giving `Range` a lower precedence ensures that
-        // `pprust` will add parentheses in the right places to get the desired parse.
-        ExprKind::Range(..) => PREC_RANGE,
+    Binary(BinOpKind),
 
-        // Binop-like expr kinds, handled by `AssocOp`.
-        ExprKind::Binary(op, _, _) =>
-            AssocOp::from_ast_binop(op.node).precedence() as i8,
+    InPlace,
+    Cast,
+    Type,
 
-        ExprKind::InPlace(..) => AssocOp::Inplace.precedence() as i8,
-        ExprKind::Cast(..) => AssocOp::As.precedence() as i8,
-        ExprKind::Type(..) => AssocOp::Colon.precedence() as i8,
+    Assign,
+    AssignOp,
 
-        ExprKind::Assign(..) |
-        ExprKind::AssignOp(..) => AssocOp::Assign.precedence() as i8,
+    Box,
+    AddrOf,
+    Unary,
 
-        // Unary, prefix
-        ExprKind::Box(..) |
-        ExprKind::AddrOf(..) |
-        ExprKind::Unary(..) => PREC_PREFIX,
+    Call,
+    MethodCall,
+    Field,
+    TupField,
+    Index,
+    Try,
+    InlineAsm,
+    Mac,
 
-        // Unary, postfix
-        ExprKind::Call(..) |
-        ExprKind::MethodCall(..) |
-        ExprKind::Field(..) |
-        ExprKind::TupField(..) |
-        ExprKind::Index(..) |
-        ExprKind::Try(..) |
-        ExprKind::InlineAsm(..) |
-        ExprKind::Mac(..) => PREC_POSTFIX,
+    Array,
+    Repeat,
+    Tup,
+    Lit,
+    Path,
+    Paren,
+    If,
+    IfLet,
+    While,
+    WhileLet,
+    ForLoop,
+    Loop,
+    Match,
+    Block,
+    Catch,
+    Struct,
+}
 
-        // Never need parens
-        ExprKind::Array(..) |
-        ExprKind::Repeat(..) |
-        ExprKind::Tup(..) |
-        ExprKind::Lit(..) |
-        ExprKind::Path(..) |
-        ExprKind::Paren(..) |
-        ExprKind::If(..) |
-        ExprKind::IfLet(..) |
-        ExprKind::While(..) |
-        ExprKind::WhileLet(..) |
-        ExprKind::ForLoop(..) |
-        ExprKind::Loop(..) |
-        ExprKind::Match(..) |
-        ExprKind::Block(..) |
-        ExprKind::Catch(..) |
-        ExprKind::Struct(..) => PREC_PAREN,
+impl PartialOrd for ExprPrecedence {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.order().cmp(&other.order()))
     }
 }
+
+impl Ord for ExprPrecedence {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.order().cmp(&other.order())
+    }
+}
+
+impl ExprPrecedence {
+    pub fn order(self) -> i8 {
+        match self {
+            ExprPrecedence::Closure => PREC_CLOSURE,
+
+            ExprPrecedence::Break |
+            ExprPrecedence::Continue |
+            ExprPrecedence::Ret |
+            ExprPrecedence::Yield => PREC_JUMP,
+
+            // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
+            // parse, instead of parsing as `(x .. x) = x`.  Giving `Range` a lower precedence
+            // ensures that `pprust` will add parentheses in the right places to get the desired
+            // parse.
+            ExprPrecedence::Range => PREC_RANGE,
+
+            // Binop-like expr kinds, handled by `AssocOp`.
+            ExprPrecedence::Binary(op) => AssocOp::from_ast_binop(op).precedence() as i8,
+            ExprPrecedence::InPlace => AssocOp::Inplace.precedence() as i8,
+            ExprPrecedence::Cast => AssocOp::As.precedence() as i8,
+            ExprPrecedence::Type => AssocOp::Colon.precedence() as i8,
+
+            ExprPrecedence::Assign |
+            ExprPrecedence::AssignOp => AssocOp::Assign.precedence() as i8,
+
+            // Unary, prefix
+            ExprPrecedence::Box |
+            ExprPrecedence::AddrOf |
+            ExprPrecedence::Unary => PREC_PREFIX,
+
+            // Unary, postfix
+            ExprPrecedence::Call |
+            ExprPrecedence::MethodCall |
+            ExprPrecedence::Field |
+            ExprPrecedence::TupField |
+            ExprPrecedence::Index |
+            ExprPrecedence::Try |
+            ExprPrecedence::InlineAsm |
+            ExprPrecedence::Mac => PREC_POSTFIX,
+
+            // Never need parens
+            ExprPrecedence::Array |
+            ExprPrecedence::Repeat |
+            ExprPrecedence::Tup |
+            ExprPrecedence::Lit |
+            ExprPrecedence::Path |
+            ExprPrecedence::Paren |
+            ExprPrecedence::If |
+            ExprPrecedence::IfLet |
+            ExprPrecedence::While |
+            ExprPrecedence::WhileLet |
+            ExprPrecedence::ForLoop |
+            ExprPrecedence::Loop |
+            ExprPrecedence::Match |
+            ExprPrecedence::Block |
+            ExprPrecedence::Catch |
+            ExprPrecedence::Struct => PREC_PAREN,
+        }
+    }
+}
+
 
 /// Expressions that syntactically contain an "exterior" struct literal i.e. not surrounded by any
 /// parens or other delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
