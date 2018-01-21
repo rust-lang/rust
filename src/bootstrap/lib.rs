@@ -134,7 +134,7 @@ extern crate toml;
 #[cfg(unix)]
 extern crate libc;
 
-use std::cell::RefCell;
+use std::cell::{RefCell, Cell};
 use std::collections::{HashSet, HashMap};
 use std::env;
 use std::fs::{self, File};
@@ -250,6 +250,7 @@ pub struct Build {
     is_sudo: bool,
     ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
+    prerelease_version: Cell<Option<u32>>,
 }
 
 #[derive(Debug)]
@@ -335,6 +336,7 @@ impl Build {
             is_sudo,
             ci_env: CiEnv::current(),
             delayed_failures: RefCell::new(Vec::new()),
+            prerelease_version: Cell::new(None),
         }
     }
 
@@ -774,10 +776,57 @@ impl Build {
     fn release(&self, num: &str) -> String {
         match &self.config.channel[..] {
             "stable" => num.to_string(),
-            "beta" => format!("{}-beta{}", num, channel::CFG_PRERELEASE_VERSION),
+            "beta" => format!("{}-beta.{}", num, self.beta_prerelease_version()),
             "nightly" => format!("{}-nightly", num),
             _ => format!("{}-dev", num),
         }
+    }
+
+    fn beta_prerelease_version(&self) -> u32 {
+        if let Some(s) = self.prerelease_version.get() {
+            return s
+        }
+
+        let beta = output(
+            Command::new("git")
+                .arg("ls-remote")
+                .arg("origin")
+                .arg("beta")
+                .current_dir(&self.src)
+        );
+        let beta = beta.trim().split_whitespace().next().unwrap();
+        let master = output(
+            Command::new("git")
+                .arg("ls-remote")
+                .arg("origin")
+                .arg("master")
+                .current_dir(&self.src)
+        );
+        let master = master.trim().split_whitespace().next().unwrap();
+
+        // Figure out where the current beta branch started.
+        let base = output(
+            Command::new("git")
+                .arg("merge-base")
+                .arg(beta)
+                .arg(master)
+                .current_dir(&self.src),
+        );
+        let base = base.trim();
+
+        // Next figure out how many merge commits happened since we branched off
+        // beta. That's our beta number!
+        let count = output(
+            Command::new("git")
+                .arg("rev-list")
+                .arg("--count")
+                .arg("--merges")
+                .arg(format!("{}...HEAD", base))
+                .current_dir(&self.src),
+        );
+        let n = count.trim().parse().unwrap();
+        self.prerelease_version.set(Some(n));
+        n
     }
 
     /// Returns the value of `release` above for Rust itself.
