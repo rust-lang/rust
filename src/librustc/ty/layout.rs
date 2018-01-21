@@ -897,6 +897,7 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.layout_depth.set(depth+1);
     let cx = LayoutCx { tcx, param_env };
     let layout = cx.layout_raw_uncached(ty);
+    debug!("computed layout, ty = {:?}, layout = {:?}", ty, layout);
     tcx.layout_depth.set(depth);
 
     layout
@@ -1208,6 +1209,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 let unsized_part = tcx.struct_tail(pointee);
+                debug!("compute_uncached: unsized_part = {:?}", unsized_part.sty);
                 let metadata = match unsized_part.sty {
                     ty::TyForeign(..) => {
                         return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
@@ -1220,7 +1222,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         vtable.valid_range.start = 1;
                         vtable
                     }
-                    _ => return Err(LayoutError::Unknown(unsized_part))
+                    _ => {
+                        debug!("compute_uncached: unsized type with unknown \
+                               pointer layout: {:?}", unsized_part.sty);
+                        return Err(LayoutError::Unknown(ty))
+                    }
                 };
 
                 // Effectively a (ptr, meta) tuple.
@@ -1361,6 +1367,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }).collect::<Result<Vec<_>, _>>()?;
 
                 if def.is_union() {
+                    debug!("compute_uncached: calculating layout for union: {:?}", ty.sty);
                     let packed = def.repr.packed();
                     if packed && def.repr.align > 0 {
                         bug!("Union cannot be packed and aligned");
@@ -1379,8 +1386,16 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     }
 
                     let mut size = Size::from_bytes(0);
+                    let mut sized = true;
                     for field in &variants[0] {
-                        assert!(!field.is_unsized());
+                        if field.is_unsized() {
+                            if !sized {
+                                bug!("compute_uncached: field {:?} of union {:?} \
+                                     comes after unsized field", field, ty);
+                            }
+                            sized = false;
+                            break;
+                        }
 
                         if !packed {
                             align = align.max(field.align);
@@ -1391,7 +1406,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     return Ok(tcx.intern_layout(LayoutDetails {
                         variants: Variants::Single { index: 0 },
                         fields: FieldPlacement::Union(variants[0].len()),
-                        abi: Abi::Aggregate { sized: true },
+                        abi: Abi::Aggregate { sized },
                         align,
                         size: size.abi_align(align)
                     }));
