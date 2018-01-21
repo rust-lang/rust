@@ -814,9 +814,15 @@ impl Session {
             return enabled
         }
 
-        // If there's only one codegen unit and LTO isn't enabled then there's
-        // no need for ThinLTO so just return false.
-        if self.codegen_units() == 1 && !self.lto() {
+        // If LTO is enabled we right now unconditionally disable ThinLTO.
+        // This'll come at a later date! (full crate graph ThinLTO)
+        if self.lto() {
+            return false
+        }
+
+        // If there's only one codegen unit or then there's no need for ThinLTO
+        // so just return false.
+        if self.codegen_units() == 1 {
             return false
         }
 
