@@ -207,10 +207,12 @@ use rustc::mir::interpret::{Scalar, GlobalId, AllocType};
 
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
+use rustc::util::common::time;
 
 use monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::sync::{ParallelIterator, par_iter, Lock};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum MonoItemCollectionMode {
@@ -298,22 +300,26 @@ pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           mode: MonoItemCollectionMode)
                                           -> (FxHashSet<MonoItem<'tcx>>,
                                                      InliningMap<'tcx>) {
-    let roots = collect_roots(tcx, mode);
+    let roots = time(tcx.sess, "collecting roots", || {
+        collect_roots(tcx, mode)
+    });
 
     debug!("Building mono item graph, beginning at roots");
-    let mut visited = FxHashSet();
-    let mut recursion_depths = DefIdMap();
-    let mut inlining_map = InliningMap::new();
+    let visited = Lock::new(FxHashSet());
+    let inlining_map = Lock::new(InliningMap::new());
 
-    for root in roots {
-        collect_items_rec(tcx,
-                          root,
-                          &mut visited,
-                          &mut recursion_depths,
-                          &mut inlining_map);
-    }
+    time(tcx.sess, "collecting mono items", || {
+        par_iter(roots).for_each(|root| {
+            let mut recursion_depths = DefIdMap();
+            collect_items_rec(tcx,
+                              root,
+                              &visited,
+                              &mut recursion_depths,
+                              &inlining_map);
+        });
+    });
 
-    (visited, inlining_map)
+    (visited.into_inner(), inlining_map.into_inner())
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
@@ -354,10 +360,10 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 // Collect all monomorphized items reachable from `starting_point`
 fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    starting_point: MonoItem<'tcx>,
-                                   visited: &mut FxHashSet<MonoItem<'tcx>>,
+                                   visited: &Lock<FxHashSet<MonoItem<'tcx>>>,
                                    recursion_depths: &mut DefIdMap<usize>,
-                                   inlining_map: &mut InliningMap<'tcx>) {
-    if !visited.insert(starting_point.clone()) {
+                                   inlining_map: &Lock<InliningMap<'tcx>>) {
+    if !visited.lock().insert(starting_point.clone()) {
         // We've been here already, no need to search again.
         return;
     }
@@ -425,7 +431,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              caller: MonoItem<'tcx>,
                              callees: &[MonoItem<'tcx>],
-                             inlining_map: &mut InliningMap<'tcx>) {
+                             inlining_map: &Lock<InliningMap<'tcx>>) {
     let is_inlining_candidate = |mono_item: &MonoItem<'tcx>| {
         mono_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy
     };
@@ -435,7 +441,7 @@ fn record_accesses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              (*mono_item, is_inlining_candidate(mono_item))
                           });
 
-    inlining_map.record_accesses(caller, accesses);
+    inlining_map.lock().record_accesses(caller, accesses);
 }
 
 fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
