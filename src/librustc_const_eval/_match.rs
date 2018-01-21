@@ -561,19 +561,25 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 ///   (1) all_constructors will only return constructors that are statically
 ///       possible. eg. it will only return Ok for Result<T, !>
 ///
-/// Whether a vector `v` of patterns is 'useful' in relation to a set of such
-/// vectors `m` is defined as there being a set of inputs that will match `v`
-/// but not any of the sets in `m`.
+/// This finds whether a (row) vector `v` of patterns is 'useful' in relation
+/// to a set of such vectors `m` - this is defined as there being a set of
+/// inputs that will match `v` but not any of the sets in `m`.
+///
+/// All the patterns at each column of the `matrix ++ v` matrix must
+/// have the same type, except that wildcard (PatternKind::Wild) patterns
+/// with type TyErr are also allowed, even if the "type of the column"
+/// is not TyErr. That is used to represent private fields, as using their
+/// real type would assert that they are inhabited.
 ///
 /// This is used both for reachability checking (if a pattern isn't useful in
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
 pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                           matrix: &Matrix<'p, 'tcx>,
-                           v: &[&'p Pattern<'tcx>],
-                           witness: WitnessPreference)
-                           -> Usefulness<'tcx> {
+                                       matrix: &Matrix<'p, 'tcx>,
+                                       v: &[&'p Pattern<'tcx>],
+                                       witness: WitnessPreference)
+                                       -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:?}, {:?})", matrix, v);
 
@@ -596,6 +602,25 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
     let pcx = PatternContext {
+        // TyErr is used to represent the type of wildcard patterns matching
+        // against inaccessible (private) fields of structs, so that we won't
+        // be able to observe whether the types of the struct's fields are
+        // inhabited.
+        //
+        // If the field is truely inaccessible, then all the patterns
+        // matching against it must be wildcard patterns, so its type
+        // does not matter.
+        //
+        // However, if we are matching against non-wildcard patterns, we
+        // need to know the real type of the field so we can specialize
+        // against it. This primarily occurs through constants - they
+        // can include contents for fields that are inaccessible at the
+        // location of the match. In that case, the field's type is
+        // inhabited - by the constant - so we can just use it.
+        //
+        // FIXME: this might lead to "unstable" behavior with macro hygiene
+        // introducing uninhabited patterns for inaccessible fields. We
+        // need to figure out how to model that.
         ty: rows.iter().map(|r| r[0].ty).find(|ty| !ty.references_error())
             .unwrap_or(v[0].ty),
         max_slice_length: max_slice_length(cx, rows.iter().map(|r| r[0]).chain(Some(v[0])))
@@ -861,13 +886,13 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
                     if is_visible {
                         field.ty(cx.tcx, substs)
                     } else {
-                        // Treat all non-visible fields as nil. They
+                        // Treat all non-visible fields as TyErr. They
                         // can't appear in any other pattern from
                         // this match (because they are private),
                         // so their type does not matter - but
                         // we don't want to know they are
                         // uninhabited.
-                        cx.tcx.mk_nil()
+                        cx.tcx.types.err
                     }
                 }).collect()
             }
