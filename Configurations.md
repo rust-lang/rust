@@ -1688,15 +1688,17 @@ How to handle trailing commas for lists
 #### `"Vertical"` (default):
 
 ```rust
-let Lorem { ipsum, dolor, sit } = amet;
-let Lorem {
-    ipsum,
-    dolor,
-    sit,
-    amet,
-    consectetur,
-    adipiscing,
-} = elit;
+fn main() {
+    let Lorem { ipsum, dolor, sit } = amet;
+    let Lorem {
+        ipsum,
+        dolor,
+        sit,
+        amet,
+        consectetur,
+        adipiscing,
+    } = elit;
+}
 ```
 
 #### `"Always"`:
