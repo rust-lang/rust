@@ -881,6 +881,35 @@ impl<T: Default> Option<T> {
     }
 }
 
+impl<T, E> Option<Result<T, E>> {
+    /// Transposes an `Option` of a `Result` into a `Result` of an `Option`.
+    ///
+    /// `None` will be mapped to `Ok(None)`.
+    /// `Some(Ok(_))` and `Some(Err(_))` will be mapped to `Ok(Some(_))` and `Err(_)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(transpose_result)]
+    ///
+    /// #[derive(Debug, Eq, PartialEq)]
+    /// struct SomeErr;
+    ///
+    /// let x: Result<Option<i32>, SomeErr> = Ok(Some(5));
+    /// let y: Option<Result<i32, SomeErr>> = Some(Ok(5));
+    /// assert_eq!(x, y.transpose());
+    /// ```
+    #[inline]
+    #[unstable(feature = "transpose_result", issue = "47338")]
+    pub fn transpose(self) -> Result<Option<T>, E> {
+        match self {
+            Some(Ok(x)) => Ok(Some(x)),
+            Some(Err(e)) => Err(e),
+            None => Ok(None),
+        }
+    }
+}
+
 // This is a separate function to reduce the code size of .expect() itself.
 #[inline(never)]
 #[cold]

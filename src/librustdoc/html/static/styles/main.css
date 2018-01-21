@@ -194,11 +194,6 @@ a.test-arrow {
 	border-color: #bfbfbf;
 }
 
-#help dt {
-	border-color: #bfbfbf;
-	background: #fff;
-}
-
 .since {
 	color: grey;
 }
@@ -347,4 +342,12 @@ pre.ignore:hover, .information:hover + pre.ignore {
 		background-color: #F1F1F1;
 		border-bottom-color: #e0e0e0;
 	}
+}
+
+kbd {
+	color: #444d56;
+	background-color: #fafbfc;
+	border-color: #d1d5da;
+	border-bottom-color: #c6cbd1;
+	box-shadow-color: #c6cbd1;
 }
