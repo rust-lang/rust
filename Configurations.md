@@ -1601,17 +1601,19 @@ fn lorem<T: Eq>(t: T) {
 
 ```rust
 // generic arguments
-fn lorem< T: Eq >(t: T) {
+fn lorem< T: Eq >( t: T ) {
     // body
 }
 
 // non-empty parentheses
-fn lorem<T: Eq>( t: T ) {
+fn lorem< T: Eq >( t: T ) {
     let lorem = ( ipsum, dolor );
 }
 
 // non-empty square brackets
-let lorem: [ usize; 2 ] = [ ipsum, dolor ];
+fn lorem< T: Eq >( t: T ) {
+    let lorem: [ usize; 2 ] = [ ipsum, dolor ];
+}
 ```
 
 ## `struct_lit_single_line`
