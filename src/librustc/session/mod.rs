@@ -250,7 +250,7 @@ impl Session {
     }
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        panic!(self.diagnostic().span_fatal(sp, msg))
+        self.diagnostic().span_fatal(sp, msg).raise()
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
@@ -258,10 +258,10 @@ impl Session {
         msg: &str,
         code: DiagnosticId,
     ) -> ! {
-        panic!(self.diagnostic().span_fatal_with_code(sp, msg, code))
+        self.diagnostic().span_fatal_with_code(sp, msg, code).raise()
     }
     pub fn fatal(&self, msg: &str) -> ! {
-        panic!(self.diagnostic().fatal(msg))
+        self.diagnostic().fatal(msg).raise()
     }
     pub fn span_err_or_warn<S: Into<MultiSpan>>(&self, is_warning: bool, sp: S, msg: &str) {
         if is_warning {
@@ -919,7 +919,7 @@ pub fn build_session_(sopts: config::Options,
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,
         Err(e) => {
-            panic!(span_diagnostic.fatal(&format!("Error loading host specification: {}", e)));
+            span_diagnostic.fatal(&format!("Error loading host specification: {}", e)).raise();
         }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
@@ -945,7 +945,7 @@ pub fn build_session_(sopts: config::Options,
     let working_dir = match env::current_dir() {
         Ok(dir) => dir,
         Err(e) => {
-            panic!(p_s.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)))
+            p_s.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)).raise()
         }
     };
     let working_dir = file_path_mapping.map_prefix(working_dir);
@@ -1076,7 +1076,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     };
     let handler = errors::Handler::with_emitter(true, false, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
-    panic!(errors::FatalError);
+    errors::FatalError.raise();
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {

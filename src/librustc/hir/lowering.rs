@@ -2837,8 +2837,8 @@ impl<'a> LoweringContext<'a> {
                     (&None, &Some(..), Closed) => "RangeToInclusive",
                     (&Some(..), &Some(..), Closed) => "RangeInclusive",
                     (_, &None, Closed) =>
-                        panic!(self.diagnostic().span_fatal(
-                            e.span, "inclusive range with no end")),
+                        self.diagnostic().span_fatal(
+                            e.span, "inclusive range with no end").raise(),
                 };
 
                 let fields =

@@ -19,6 +19,7 @@
 #![cfg_attr(unix, feature(libc))]
 #![feature(conservative_impl_trait)]
 #![feature(i128_type)]
+#![feature(optin_builtin_traits)]
 
 extern crate term;
 #[cfg(unix)]
@@ -44,6 +45,7 @@ use std::rc::Rc;
 use std::{error, fmt};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
+use std::panic;
 
 mod diagnostic;
 mod diagnostic_builder;
@@ -200,6 +202,18 @@ impl CodeSuggestion {
 #[derive(Copy, Clone, Debug)]
 #[must_use]
 pub struct FatalError;
+
+pub struct FatalErrorMarker;
+
+// Don't implement Send on FatalError. This makes it impossible to panic!(FatalError).
+// We don't want to invoke the panic handler and print a backtrace for fatal errors.
+impl !Send for FatalError {}
+
+impl FatalError {
+    pub fn raise(self) -> ! {
+        panic::resume_unwind(Box::new(FatalErrorMarker))
+    }
+}
 
 impl fmt::Display for FatalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -539,7 +553,7 @@ impl Handler {
             }
         }
 
-        panic!(self.fatal(&s));
+        self.fatal(&s).raise();
     }
     pub fn emit(&self, msp: &MultiSpan, msg: &str, lvl: Level) {
         if lvl == Warning && !self.flags.can_emit_warnings {

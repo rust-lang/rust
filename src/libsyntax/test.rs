@@ -123,7 +123,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             match i.node {
                 ast::ItemKind::Fn(_, ast::Unsafety::Unsafe, _, _, _, _) => {
                     let diag = self.cx.span_diagnostic;
-                    panic!(diag.span_fatal(i.span, "unsafe functions cannot be used for tests"));
+                    diag.span_fatal(i.span, "unsafe functions cannot be used for tests").raise();
                 }
                 _ => {
                     debug!("this is a test function");

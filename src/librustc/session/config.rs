@@ -1333,7 +1333,7 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
             sp.struct_fatal(&format!("Error loading target specification: {}", e))
                 .help("Use `--print target-list` for a list of built-in targets")
                 .emit();
-            panic!(FatalError);
+            FatalError.raise();
         }
     };
 
@@ -1341,8 +1341,8 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
         "16" => (ast::IntTy::I16, ast::UintTy::U16),
         "32" => (ast::IntTy::I32, ast::UintTy::U32),
         "64" => (ast::IntTy::I64, ast::UintTy::U64),
-        w    => panic!(sp.fatal(&format!("target specification was invalid: \
-                                          unrecognized target-pointer-width {}", w))),
+        w    => sp.fatal(&format!("target specification was invalid: \
+                                          unrecognized target-pointer-width {}", w)).raise(),
     };
 
     Config {

@@ -222,10 +222,10 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
         Success(m) => m,
         Failure(sp, tok) => {
             let s = parse_failure_msg(tok);
-            panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s));
+            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
         }
         Error(sp, s) => {
-            panic!(sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s));
+            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
         }
     };
 
