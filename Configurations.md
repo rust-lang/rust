@@ -1841,11 +1841,13 @@ Wrap the body of arms in blocks when it does not fit on the same line with the p
 #### `true` (default):
 
 ```rust
-match lorem {
-    true => {
-        foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x)
+fn main() {
+    match lorem {
+        true => {
+            foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x)
+        }
+        false => println!("{}", sit),
     }
-    false => println!("{}", sit),
 }
 ```
 
