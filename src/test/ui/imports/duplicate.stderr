@@ -12,7 +12,7 @@ help: You can use `as` to change the binding name of the import
 25 |     use a::foo as Otherfoo; //~ ERROR the name `foo` is defined multiple times
    |         ^^^^^^^^^^^^^^^^^^
 
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:56:9
    |
 56 |     use self::foo::bar; //~ ERROR `foo` is ambiguous
@@ -30,7 +30,7 @@ note: `foo` could also refer to the name imported here
    |         ^^^^^^^^^^^
    = note: consider adding an explicit import of `foo` to disambiguate
 
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:45:5
    |
 45 |     f::foo(); //~ ERROR `foo` is ambiguous
@@ -48,7 +48,7 @@ note: `foo` could also refer to the name imported here
    |             ^^^^
    = note: consider adding an explicit import of `foo` to disambiguate
 
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:46:5
    |
 46 |     g::foo(); //~ ERROR `foo` is ambiguous
@@ -66,7 +66,7 @@ note: `foo` could also refer to the name imported here
    |             ^^^^
    = note: consider adding an explicit import of `foo` to disambiguate
 
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:59:9
    |
 59 |         foo::bar(); //~ ERROR `foo` is ambiguous

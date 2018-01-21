@@ -3802,7 +3802,7 @@ impl<'a> Resolver<'a> {
                 self.session.buffer_lint(lint::builtin::LEGACY_IMPORTS, id, span, &msg);
             } else {
                 let mut err =
-                    self.session.struct_span_err(span, &format!("`{}` is ambiguous", name));
+                    struct_span_err!(self.session, span, E0659, "`{}` is ambiguous", name);
                 err.span_note(b1.span, &msg1);
                 match b2.def() {
                     Def::Macro(..) if b2.span == DUMMY_SP =>
