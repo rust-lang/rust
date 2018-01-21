@@ -548,7 +548,6 @@ static unsigned fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagRValueReference)) {
     Result |= DINode::DIFlags::FlagRValueReference;
   }
-#if LLVM_RUSTLLVM || LLVM_VERSION_GE(4, 0)
   if (isSet(Flags & LLVMRustDIFlags::FlagExternalTypeRef)) {
     Result |= DINode::DIFlags::FlagExternalTypeRef;
   }
@@ -558,6 +557,7 @@ static unsigned fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagBitField)) {
     Result |= DINode::DIFlags::FlagBitField;
   }
+#if LLVM_RUSTLLVM || LLVM_VERSION_GE(4, 0)
   if (isSet(Flags & LLVMRustDIFlags::FlagNoReturn)) {
     Result |= DINode::DIFlags::FlagNoReturn;
   }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// min-llvm-version 3.8
+// min-llvm-version 4.0
 
 // compile-flags: -g -C no-prepopulate-passes
 
@@ -18,8 +18,6 @@
 fn foo() -> ! {
     loop {}
 }
-
-// CHECK: {{.*}}DISubprogram{{.*}}name: "main",{{.*}}DIFlagMainSubprogram{{.*}}
 
 pub fn main() {
     foo();
