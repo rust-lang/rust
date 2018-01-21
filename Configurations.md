@@ -1592,7 +1592,9 @@ fn lorem<T: Eq>(t: T) {
 }
 
 // non-empty square brackets
-let lorem: [usize; 2] = [ipsum, dolor];
+fn lorem<T: Eq>(t: T) {
+    let lorem: [usize; 2] = [ipsum, dolor];
+}
 ```
 
 #### `true`:
