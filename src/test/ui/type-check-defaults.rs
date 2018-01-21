@@ -33,19 +33,15 @@ trait TraitBound<T:Copy=String> {}
 trait SelfBound<T:Copy=Self> {}
 //~^ error: the trait bound `Self: std::marker::Copy` is not satisfied [E0277]
 
-trait FooTrait<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
-//~^ error: the trait bound `i32: std::ops::Add<u8>` is not satisfied [E0277]
-
-trait Trait {}
-struct TwoParams<T, U>(T, U);
-impl Trait for TwoParams<i32, i32> {}
-// Check that each default is substituted individually in the clauses.
-struct Bogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait;
-//~^ error: the trait bound `TwoParams<i32, U>: Trait` is not satisfied [E0277]
-//~^^ error: the trait bound `TwoParams<T, i32>: Trait` is not satisfied [E0277]
-
 trait Super<T: Copy> { }
 trait Base<T = String>: Super<T> { }
 //~^ error: the trait bound `T: std::marker::Copy` is not satisfied [E0277]
 
+trait Trait<T> {}
+struct DefaultedLhs<U, V=i32>(U, V) where V: Trait<U>;
+//~^ error: the trait bound `i32: Trait<U>` is not satisfied [E0277]
+
+// FIXME: Deal with projection predicates
+// trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
+// ~^ error: the trait bound `i32: std::ops::Add<u8>` is not satisfied [E0277]
 fn main() { }

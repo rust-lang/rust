@@ -11,4 +11,11 @@
 trait Trait<T> {}
 struct Foo<U, V=i32>(U, V) where U: Trait<V>;
 
+trait Trait2 {}
+struct TwoParams<T, U>(T, U);
+impl Trait2 for TwoParams<i32, i32> {}
+// Check that defaults are substituted simultaneously.
+struct IndividuallyBogus<T = i32, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait2;
+// Clauses with non-defaulted params are not checked.
+struct NonDefaultedInClause<T, U = i32>(TwoParams<T, U>) where TwoParams<T, U>: Trait2;
 fn main() {}
