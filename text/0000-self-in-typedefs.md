@@ -384,6 +384,14 @@ enum StackList<'a, T: 'a + InterestingTrait> {
 }
 ```
 
+[RFC 2102]: https://github.com/rust-lang/rfcs/pull/2102
+
+## In relation to [RFC 2102]
+
+It should be noted that `Self` always refers to the top level type and not the
+inner unnamed `struct` or `union`. In other words:
+*Self always applies to the top level inside type definitions*.
+
 ## Error messages
 
 When `Self` is used to construct an infinite type as in:
