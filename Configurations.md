@@ -1854,10 +1854,12 @@ fn main() {
 #### `false`:
 
 ```rust
-match lorem {
-    true =>
-        foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x),
-    false => println!("{}", sit),
+fn main() {
+    match lorem {
+        true =>
+            foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(x),
+        false => println!("{}", sit),
+    }
 }
 ```
 
