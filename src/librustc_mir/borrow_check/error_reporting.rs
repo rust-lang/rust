@@ -789,7 +789,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 } else {
                     format!("{}", def.non_enum_variant().fields[field.index()].name)
                 },
-                ty::TyTuple(_, _) => format!("{}", field.index()),
+                ty::TyTuple(_) => format!("{}", field.index()),
                 ty::TyRef(_, tnm) | ty::TyRawPtr(tnm) => {
                     self.describe_field_from_ty(&tnm.ty, field)
                 }

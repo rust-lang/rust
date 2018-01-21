@@ -362,7 +362,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     // return type
     signature_metadata.push(match signature.output().sty {
-        ty::TyTuple(ref tys, _) if tys.is_empty() => ptr::null_mut(),
+        ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
         _ => type_metadata(cx, signature.output(), span)
     });
 
@@ -533,7 +533,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::TyFloat(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::TyTuple(ref elements, _) if elements.is_empty() => {
+        ty::TyTuple(ref elements) if elements.is_empty() => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
         ty::TyArray(typ, _) |
@@ -621,7 +621,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                     usage_site_span).finalize(cx)
             }
         },
-        ty::TyTuple(ref elements, _) => {
+        ty::TyTuple(ref elements) => {
             prepare_tuple_metadata(cx,
                                    t,
                                    &elements[..],
@@ -731,7 +731,7 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     let (name, encoding) = match t.sty {
         ty::TyNever => ("!", DW_ATE_unsigned),
-        ty::TyTuple(ref elements, _) if elements.is_empty() =>
+        ty::TyTuple(ref elements) if elements.is_empty() =>
             ("()", DW_ATE_unsigned),
         ty::TyBool => ("bool", DW_ATE_boolean),
         ty::TyChar => ("char", DW_ATE_unsigned_char),

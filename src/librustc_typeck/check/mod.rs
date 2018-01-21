@@ -2160,8 +2160,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Tries to apply a fallback to `ty` if it is an unsolved variable.
-    // Non-numerics get replaced with ! or () (depending on whether
-    // feature(never_type) is enabled), unconstrained ints with i32,
+    // Non-numerics get replaced with !, unconstrained ints with i32,
     // unconstrained floats with f64.
     // Fallback becomes very dubious if we have encountered type-checking errors.
     // In that case, fallback to TyError.
@@ -2174,7 +2173,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ if self.is_tainted_by_errors() => self.tcx().types.err,
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
-            Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
+            Neither if self.type_var_diverges(ty) => self.tcx.types.never,
             Neither => return
         };
         debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);
@@ -2438,7 +2437,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
-                TupleArguments => vec![self.tcx.intern_tup(&err_inputs[..], false)],
+                TupleArguments => vec![self.tcx.intern_tup(&err_inputs[..])],
             };
 
             self.check_argument_types(sp, expr_sp, &err_inputs[..], &[], args_no_rcvr,
@@ -2531,16 +2530,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let formal_tys = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
             match tuple_type.sty {
-                ty::TyTuple(arg_types, _) if arg_types.len() != args.len() => {
+                ty::TyTuple(arg_types) if arg_types.len() != args.len() => {
                     parameter_count_error(tcx.sess, sp, expr_sp, arg_types.len(), args.len(),
                                           "E0057", false, def_span, false);
                     expected_arg_tys = &[];
                     self.err_args(args.len())
                 }
-                ty::TyTuple(arg_types, _) => {
+                ty::TyTuple(arg_types) => {
                     expected_arg_tys = match expected_arg_tys.get(0) {
                         Some(&ty) => match ty.sty {
-                            ty::TyTuple(ref tys, _) => &tys,
+                            ty::TyTuple(ref tys) => &tys,
                             _ => &[]
                         },
                         None => &[]
@@ -3193,7 +3192,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         None
                     }
                 }
-                ty::TyTuple(ref v, _) => {
+                ty::TyTuple(ref v) => {
                     tuple_like = true;
                     v.get(idx.node).cloned()
                 }
@@ -4060,7 +4059,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let flds = expected.only_has_type(self).and_then(|ty| {
                 let ty = self.resolve_type_vars_with_obligations(ty);
                 match ty.sty {
-                    ty::TyTuple(ref flds, _) => Some(&flds[..]),
+                    ty::TyTuple(ref flds) => Some(&flds[..]),
                     _ => None
                 }
             });
@@ -4078,7 +4077,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
                 t
             });
-            let tuple = tcx.mk_tup(elt_ts_iter, false);
+            let tuple = tcx.mk_tup(elt_ts_iter);
             if tuple.references_error() {
                 tcx.types.err
             } else {

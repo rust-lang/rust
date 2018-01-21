@@ -710,7 +710,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             let layout = cx.layout_of(cx.tcx.intern_tup(&[
                 cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
                 cx.tcx.types.i32
-            ], false));
+            ]));
             let slot = PlaceRef::alloca(bx, layout, "personalityslot");
             self.personality_slot = Some(slot);
             slot

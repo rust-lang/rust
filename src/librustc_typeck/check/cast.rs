@@ -115,7 +115,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            ty::TyTuple(fields, _) => match fields.last() {
+            ty::TyTuple(fields) => match fields.last() {
                 None => Some(PointerKind::Thin),
                 Some(f) => self.pointer_kind(f, span)?
             },

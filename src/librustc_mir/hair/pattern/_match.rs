@@ -877,7 +877,7 @@ fn pat_constructors<'tcx>(_cx: &mut MatchCheckCtxt,
 fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> u64 {
     debug!("constructor_arity({:#?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::TyTuple(ref fs, _) => fs.len() as u64,
+        ty::TyTuple(ref fs) => fs.len() as u64,
         ty::TySlice(..) | ty::TyArray(..) => match *ctor {
             Slice(length) => length,
             ConstantValue(_) => 0,
@@ -901,7 +901,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
 {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::TyTuple(ref fs, _) => fs.into_iter().map(|t| *t).collect(),
+        ty::TyTuple(ref fs) => fs.into_iter().map(|t| *t).collect(),
         ty::TySlice(ty) | ty::TyArray(ty, _) => match *ctor {
             Slice(length) => (0..length).map(|_| ty).collect(),
             ConstantValue(_) => vec![],

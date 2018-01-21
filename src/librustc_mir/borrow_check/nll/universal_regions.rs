@@ -635,7 +635,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                         let (&output, tuplized_inputs) = inputs_and_output.split_last().unwrap();
                         assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
                         let inputs = match tuplized_inputs[0].sty {
-                            ty::TyTuple(inputs, _) => inputs,
+                            ty::TyTuple(inputs) => inputs,
                             _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
                         };
 

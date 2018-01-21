@@ -2046,7 +2046,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 vec![ty]
             }
 
-            TyTuple(ref tys, _) => {
+            TyTuple(ref tys) => {
                 match tys.last() {
                     None => vec![],
                     Some(ty) => self.sized_constraint_for_ty(tcx, ty)

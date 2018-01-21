@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let t = cx.tables.expr_ty(&expr);
         let ty_warned = match t.sty {
-            ty::TyTuple(ref tys, _) if tys.is_empty() => return,
+            ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
             ty::TyAdt(def, _) => {
                 if def.variants.is_empty() {

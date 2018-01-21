@@ -256,7 +256,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             },
 
             TyNever => DefIdForest::full(tcx),
-            TyTuple(ref tys, _) => {
+            TyTuple(ref tys) => {
                 DefIdForest::union(tcx, tys.iter().map(|ty| {
                     ty.uninhabited_from(visited, tcx)
                 }))
