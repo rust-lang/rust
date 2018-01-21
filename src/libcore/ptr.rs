@@ -2487,13 +2487,6 @@ pub struct NonNull<T: ?Sized> {
     pointer: NonZero<*const T>,
 }
 
-#[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> fmt::Debug for NonNull<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&self.as_ptr(), f)
-    }
-}
-
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
 // NB: This impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
@@ -2574,6 +2567,13 @@ impl<T: ?Sized> Copy for NonNull<T> { }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> { }
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T: ?Sized> fmt::Debug for NonNull<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Pointer::fmt(&self.as_ptr(), f)
+    }
+}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> fmt::Pointer for NonNull<T> {
