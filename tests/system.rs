@@ -261,6 +261,16 @@ fn format_lines_errors_are_reported() {
     assert!(error_summary.has_formatting_errors());
 }
 
+#[test]
+fn format_lines_errors_are_reported_with_tabs() {
+    let long_identifier = String::from_utf8(vec![b'a'; 97]).unwrap();
+    let input = Input::Text(format!("fn a() {{\n\t{}\n}}", long_identifier));
+    let config = Config::from_toml("hard_tabs = true").unwrap();
+    let (error_summary, _file_map, _report) =
+        format_input::<io::Stdout>(input, &config, None).unwrap();
+    assert!(error_summary.has_formatting_errors());
+}
+
 // For each file, run rustfmt and collect the output.
 // Returns the number of files checked and the number of failures.
 fn check_files(files: Vec<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
