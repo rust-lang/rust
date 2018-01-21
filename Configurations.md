@@ -1704,15 +1704,17 @@ fn main() {
 #### `"Always"`:
 
 ```rust
-let Lorem { ipsum, dolor, sit, } = amet;
-let Lorem {
-    ipsum,
-    dolor,
-    sit,
-    amet,
-    consectetur,
-    adipiscing,
-} = elit;
+fn main() {
+    let Lorem { ipsum, dolor, sit, } = amet;
+    let Lorem {
+        ipsum,
+        dolor,
+        sit,
+        amet,
+        consectetur,
+        adipiscing,
+    } = elit;
+}
 ```
 
 #### `"Never"`:
