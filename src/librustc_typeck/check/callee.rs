@@ -210,15 +210,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                 }
-                let mut err = type_error_struct!(self.tcx.sess, call_expr.span, callee_ty, E0618,
-                                                 "expected function, found `{}`",
-                                                 if let Some(ref path) = unit_variant {
-                                                     path.to_string()
-                                                 } else {
-                                                     callee_ty.to_string()
-                                                 });
-                if let Some(path) = unit_variant {
-                    err.help(&format!("did you mean to write `{}`?", path));
+
+                let mut err = type_error_struct!(
+                    self.tcx.sess,
+                    call_expr.span,
+                    callee_ty,
+                    E0618,
+                    "expected function, found {}",
+                    match unit_variant {
+                        Some(ref path) => format!("enum variant `{}`", path),
+                        None => format!("`{}`", callee_ty),
+                    });
+
+                err.span_label(call_expr.span, "not a function");
+
+                if let Some(ref path) = unit_variant {
+                    err.span_suggestion(call_expr.span,
+                                        &format!("`{}` is a unit variant, you need to write it \
+                                                  without the parenthesis", path),
+                                        path.to_string());
                 }
 
                 if let hir::ExprCall(ref expr, _) = call_expr.node {
@@ -235,7 +245,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => self.tcx.hir.span_if_local(def.def_id())
                     };
                     if let Some(span) = def_span {
-                        err.span_note(span, "defined here");
+                        let name = match unit_variant {
+                            Some(path) => path,
+                            None => callee_ty.to_string(),
+                        };
+                        err.span_label(span, format!("`{}` defined here", name));
                     }
                 }
 

@@ -13,7 +13,7 @@ error[E0618]: expected function, found `()`
   --> $DIR/issue-20862.rs:17:13
    |
 17 |     let x = foo(5)(2);
-   |             ^^^^^^^^^
+   |             ^^^^^^^^^ not a function
 
 error: aborting due to 2 previous errors
 

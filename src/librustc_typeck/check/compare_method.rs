@@ -518,7 +518,10 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            self_descr);
             err.span_label(impl_m_span, format!("`{}` used in impl", self_descr));
             if let Some(span) = tcx.hir.span_if_local(trait_m.def_id) {
-                err.span_label(span, format!("trait declared without `{}`", self_descr));
+                err.span_label(span, format!("trait method declared without `{}`", self_descr));
+            } else {
+                err.note_trait_signature(trait_m.name.to_string(),
+                                         trait_m.signature(&tcx));
             }
             err.emit();
             return Err(ErrorReported);
@@ -533,8 +536,7 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             not in the impl",
                                            trait_m.name,
                                            self_descr);
-            err.span_label(impl_m_span,
-                           format!("expected `{}` in impl", self_descr));
+            err.span_label(impl_m_span, format!("expected `{}` in impl", self_descr));
             if let Some(span) = tcx.hir.span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{}` used in trait", self_descr));
             } else {
