@@ -7,7 +7,7 @@
 [summary]: #summary
 
 Add support for formatting integers as hexadecimal with the `fmt::Debug` trait,
-including when the occur within larger types.
+including when they occur within larger types.
 
 ```rust
 println!("{:02X?}", b"AZaz\0")
