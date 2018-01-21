@@ -1720,15 +1720,17 @@ fn main() {
 #### `"Never"`:
 
 ```rust
-let Lorem { ipsum, dolor, sit } = amet;
-let Lorem {
-    ipsum,
-    dolor,
-    sit,
-    amet,
-    consectetur,
-    adipiscing
-} = elit;
+fn main() {
+    let Lorem { ipsum, dolor, sit } = amet;
+    let Lorem {
+        ipsum,
+        dolor,
+        sit,
+        amet,
+        consectetur,
+        adipiscing
+    } = elit;
+}
 ```
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
