@@ -906,7 +906,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Clears the buffer, removing all values.
+    /// Clears the `VecDeque`, removing all values.
     ///
     /// # Examples
     ///
@@ -1624,10 +1624,10 @@ impl<T> VecDeque<T> {
         return elem;
     }
 
-    /// Splits the collection into two at the given index.
+    /// Splits the `VecDeque` into two at the given index.
     ///
-    /// Returns a newly allocated `Self`. `self` contains elements `[0, at)`,
-    /// and the returned `Self` contains elements `[at, len)`.
+    /// Returns a newly allocated `VecDeque`. `self` contains elements `[0, at)`,
+    /// and the returned `VecDeque` contains elements `[at, len)`.
     ///
     /// Note that the capacity of `self` does not change.
     ///
@@ -1635,7 +1635,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `at > len`
+    /// Panics if `at > len`.
     ///
     /// # Examples
     ///
@@ -1815,7 +1815,8 @@ impl<T> VecDeque<T> {
 
 impl<T: Clone> VecDeque<T> {
     /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
-    /// either by removing excess elements or by appending clones of `value` to the back.
+    /// either by removing excess elements from the back or by appending clones of `value`
+    /// to the back.
     ///
     /// # Examples
     ///
@@ -2390,7 +2391,7 @@ impl<T> IntoIterator for VecDeque<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
-    /// Consumes the list into a front-to-back iterator yielding elements by
+    /// Consumes the `VecDeque` into a front-to-back iterator yielding elements by
     /// value.
     fn into_iter(self) -> IntoIter<T> {
         IntoIter { inner: self }
