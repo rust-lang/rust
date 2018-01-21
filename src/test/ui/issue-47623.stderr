@@ -1,0 +1,8 @@
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/issue-47623.rs:11:5
+   |
+11 | use self; //~ERROR `self` imports are only allowed within a { } list
+   |     ^^^^
+
+error: aborting due to previous error
+
