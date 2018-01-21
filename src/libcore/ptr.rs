@@ -2553,6 +2553,14 @@ impl<T: ?Sized> NonNull<T> {
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
+
+    /// Cast to a pointer of another type
+    #[unstable(feature = "nonnull_cast", issue = "47653")]
+    pub fn cast<U>(self) -> NonNull<U> {
+        unsafe {
+            NonNull::new_unchecked(self.as_ptr() as *mut U)
+        }
+    }
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
