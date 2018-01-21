@@ -127,18 +127,21 @@ fn pos_fields(p: &mut Parser) {
     if !p.expect(L_PAREN) {
         return;
     }
-    comma_list(p, R_PAREN, |p| {
-        pos_field(p);
-        true
-    });
-    p.expect(R_PAREN);
+    loop {
+        if p.at(R_PAREN) || p.at(EOF) {
+            break;
+        }
 
-    fn pos_field(p: &mut Parser) {
         let pos_field = p.start();
         visibility(p);
         types::type_ref(p);
         pos_field.complete(p, POS_FIELD);
+
+        if !p.at(R_PAREN) {
+            p.expect(COMMA);
+        }
     }
+    p.expect(R_PAREN);
 }
 
 fn generic_parameters(_: &mut Parser) {}
