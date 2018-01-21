@@ -19,7 +19,7 @@ use tokenstream;
 use std::rc::Rc;
 
 /// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
-/// thatthat the delimiter itself might be `NoDelim`.
+/// that the delimiter itself might be `NoDelim`.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Delimited {
     pub delim: token::DelimToken,
@@ -76,7 +76,7 @@ pub struct SequenceRepetition {
 pub enum KleeneOp {
     /// Kleene star (`*`) for zero or more repetitions
     ZeroOrMore,
-    /// Kleene star (`+`) for one or more repetitions
+    /// Kleene plus (`+`) for one or more repetitions
     OneOrMore,
 }
 
@@ -261,7 +261,7 @@ where
                 }
                 // Parse the contents of the sequence itself
                 let sequence = parse(delimited.tts.into(), expect_matchers, sess);
-                // Get the Kleen operator and optional separator
+                // Get the Kleene operator and optional separator
                 let (separator, op) = parse_sep_and_kleene_op(trees, span, sess);
                 // Count the number of captured "names" (i.e. named metavars)
                 let name_captures = macro_parser::count_names(&sequence);
