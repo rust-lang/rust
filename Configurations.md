@@ -1792,7 +1792,9 @@ Replace uses of the try! macro by the ? shorthand
 #### `false` (default):
 
 ```rust
-let lorem = try!(ipsum.map(|dolor|dolor.sit()));
+fn main() {
+    let lorem = try!(ipsum.map(|dolor| dolor.sit()));
+}
 ```
 
 #### `true`:
