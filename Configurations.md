@@ -1777,7 +1777,7 @@ fn lorem<Ipsum: Dolor + Sit = Amet>() {
 
 ```rust
 fn lorem<Ipsum: Dolor+Sit=Amet>() {
-	// body
+    // body
 }
 ```
 
