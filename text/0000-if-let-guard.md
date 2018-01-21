@@ -25,7 +25,55 @@ match ui.wait_event() {
 
 `accept` may in general be lengthy and inconvenient to move into another function, for example if it refers to many locals.
 
-The code is clearer with an `if let` guard as follows.
+Here is an (incomplete) example taken from a real codebase, to respond to ANSI CSI escape sequences:
+
+```rust
+#[inline]
+fn csi_dispatch(&mut self, parms: &[i64], ims: &[u8], ignore: bool, x: char) {
+    match x {
+        'C' => if let &[n] = parms { self.screen.move_x( n as _) }
+               else { log_debug!("Unknown CSI sequence: {:?}, {:?}, {:?}, {:?}",
+                                 parms, ims, ignore, x) },
+        'D' => if let &[n] = parms { self.screen.move_x(-n as _) }
+               else { log_debug!("Unknown CSI sequence: {:?}, {:?}, {:?}, {:?}",
+                                 parms, ims, ignore, x) },
+        'J' => self.screen.erase(match parms {
+            &[] |
+            &[0] => Erasure::ScreenFromCursor,
+            &[1] => Erasure::ScreenToCursor,
+            &[2] => Erasure::Screen,
+            _ => { log_debug!("Unknown CSI sequence: {:?}, {:?}, {:?}, {:?}",
+                              parms, ims, ignore, x); return },
+        }, false),
+        'K' => self.screen.erase(match parms {
+            &[] |
+            &[0] => Erasure::LineFromCursor,
+            &[1] => Erasure::LineToCursor,
+            &[2] => Erasure::Line,
+            _ => { log_debug!("Unknown CSI sequence: {:?}, {:?}, {:?}, {:?}",
+                              parms, ims, ignore, x); return },
+        }, false),
+        'm' => match parms {
+            &[] |
+            &[0] => *self.screen.def_attr_mut() = Attr { fg_code: 0, fg_rgb: [0xFF; 3],
+                                                         bg_code: 0, bg_rgb: [0x00; 3],
+                                                         flags: AttrFlags::empty() },
+            &[n] => if let (3, Some(rgb)) = (n / 10, color_for_code(n % 10, 0xFF)) {
+                self.screen.def_attr_mut().fg_rgb = rgb;
+            } else {
+                log_debug!("Unknown CSI sequence: {:?}, {:?}, {:?}, {:?}",
+                           parms, ims, ignore, x);
+            },
+            _ => log_debug!("Unknown CSI sequence: {:?}, {:?}, {:?}, {:?}",
+                            parms, ims, ignore, x),
+        },
+        _ => log_debug!("Unknown CSI sequence: {:?}, {:?}, {:?}, {:?}",
+                        parms, ims, ignore, x),
+    }
+}
+```
+
+These examples are both clearer with `if let` guards as follows. Particularly in the latter example, in the author's opinion, the control flow is easier to follow.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -43,6 +91,53 @@ match ui.wait_event() {
     ev => accept!(ev),
 }
 ```
+
+Here is another example, to respond to ANSI CSI escape sequences:
+
+```rust
+#[inline]
+fn csi_dispatch(&mut self, parms: &[i64], ims: &[u8], ignore: bool, x: char) {
+    match x {
+        'C' if let &[n] = parms => self.screen.move_x( n as _),
+        'D' if let &[n] = parms => self.screen.move_x(-n as _),
+        _ if let Some(e) = erasure(x, parms) => self.screen.erase(e, false),
+        'm' => match parms {
+            &[] |
+            &[0] => *self.screen.def_attr_mut() = Attr { fg_code: 0, fg_rgb: [0xFF; 3],
+                                                         bg_code: 0, bg_rgb: [0x00; 3],
+                                                         flags: AttrFlags::empty() },
+            &[n] if let (3, Some(rgb)) = (n / 10, color_for_code(n % 10, 0xFF)) =>
+                self.screen.def_attr_mut().fg_rgb = rgb,
+            _ => log_debug!("Unknown CSI sequence: {:?}, {:?}, {:?}, {:?}",
+                            parms, ims, ignore, x),
+        },
+        _ => log_debug!("Unknown CSI sequence: {:?}, {:?}, {:?}, {:?}",
+                        parms, ims, ignore, x),
+    }
+}
+
+#[inline]
+fn erasure(x: char, parms: &[i64]) -> Option<Erasure> {
+    match x {
+        'J' => match parms {
+            &[] |
+            &[0] => Some(Erasure::ScreenFromCursor),
+            &[1] => Some(Erasure::ScreenToCursor),
+            &[2] => Some(Erasure::Screen),
+            _ => None,
+        },
+        'K' => match parms {
+            &[] |
+            &[0] => Some(Erasure::LineFromCursor),
+            &[1] => Some(Erasure::LineToCursor),
+            &[2] => Some(Erasure::Line),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+```
+
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
