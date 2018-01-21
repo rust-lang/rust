@@ -1104,7 +1104,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_expr_maybe_paren(&mut self, expr: &hir::Expr, prec: i8) -> io::Result<()> {
-        let needs_par = expr_precedence(expr) < prec;
+        let needs_par = expr.precedence().order() < prec;
         if needs_par {
             self.popen()?;
         }
@@ -2315,55 +2315,6 @@ fn stmt_ends_with_semi(stmt: &hir::Stmt_) -> bool {
         hir::StmtSemi(..) => {
             false
         }
-    }
-}
-
-
-fn expr_precedence(expr: &hir::Expr) -> i8 {
-    use syntax::util::parser::*;
-
-    match expr.node {
-        hir::ExprClosure(..) => PREC_CLOSURE,
-
-        hir::ExprBreak(..) |
-        hir::ExprAgain(..) |
-        hir::ExprRet(..) |
-        hir::ExprYield(..) => PREC_JUMP,
-
-        // Binop-like expr kinds, handled by `AssocOp`.
-        hir::ExprBinary(op, _, _) => bin_op_to_assoc_op(op.node).precedence() as i8,
-
-        hir::ExprCast(..) => AssocOp::As.precedence() as i8,
-        hir::ExprType(..) => AssocOp::Colon.precedence() as i8,
-
-        hir::ExprAssign(..) |
-        hir::ExprAssignOp(..) => AssocOp::Assign.precedence() as i8,
-
-        // Unary, prefix
-        hir::ExprBox(..) |
-        hir::ExprAddrOf(..) |
-        hir::ExprUnary(..) => PREC_PREFIX,
-
-        // Unary, postfix
-        hir::ExprCall(..) |
-        hir::ExprMethodCall(..) |
-        hir::ExprField(..) |
-        hir::ExprTupField(..) |
-        hir::ExprIndex(..) |
-        hir::ExprInlineAsm(..) => PREC_POSTFIX,
-
-        // Never need parens
-        hir::ExprArray(..) |
-        hir::ExprRepeat(..) |
-        hir::ExprTup(..) |
-        hir::ExprLit(..) |
-        hir::ExprPath(..) |
-        hir::ExprIf(..) |
-        hir::ExprWhile(..) |
-        hir::ExprLoop(..) |
-        hir::ExprMatch(..) |
-        hir::ExprBlock(..) |
-        hir::ExprStruct(..) => PREC_PAREN,
     }
 }
 

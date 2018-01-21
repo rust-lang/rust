@@ -1621,6 +1621,59 @@ println!("const value: {}", SomeModule::PRIVATE); // ok!
 ```
 "##,
 
+E0659: r##"
+An item usage is ambiguous.
+
+Erroneous code example:
+
+```compile_fail,E0659
+pub mod moon {
+    pub fn foo() {}
+}
+
+pub mod earth {
+    pub fn foo() {}
+}
+
+mod collider {
+    pub use moon::*;
+    pub use earth::*;
+}
+
+fn main() {
+    collider::foo(); // ERROR: `foo` is ambiguous
+}
+```
+
+This error generally appears when two items with the same name are imported into
+a module. Here, the `foo` functions are imported and reexported from the
+`collider` module and therefore, when we're using `collider::foo()`, both
+functions collide.
+
+To solve this error, the best solution is generally to keep the path before the
+item when using it. Example:
+
+```
+pub mod moon {
+    pub fn foo() {}
+}
+
+pub mod earth {
+    pub fn foo() {}
+}
+
+mod collider {
+    pub use moon;
+    pub use earth;
+}
+
+fn main() {
+    collider::moon::foo(); // ok!
+    collider::earth::foo(); // ok!
+}
+```
+"##,
+
 }
 
 register_diagnostics! {

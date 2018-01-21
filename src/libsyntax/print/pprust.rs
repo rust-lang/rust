@@ -1839,7 +1839,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_expr_maybe_paren(&mut self, expr: &ast::Expr, prec: i8) -> io::Result<()> {
-        let needs_par = parser::expr_precedence(expr) < prec;
+        let needs_par = expr.precedence().order() < prec;
         if needs_par {
             self.popen()?;
         }

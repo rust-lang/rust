@@ -1652,7 +1652,6 @@ fn add_env(build: &Build, cmd: &mut Command, target: Interned<String>) {
     cmd.env("CFG_RELEASE_INFO", build.rust_version())
        .env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM)
        .env("CFG_RELEASE", build.rust_release())
-       .env("CFG_PRERELEASE_VERSION", channel::CFG_PRERELEASE_VERSION)
        .env("CFG_VER_MAJOR", parts.next().unwrap())
        .env("CFG_VER_MINOR", parts.next().unwrap())
        .env("CFG_VER_PATCH", parts.next().unwrap())

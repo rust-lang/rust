@@ -34,13 +34,14 @@ use util::nodemap::{NodeMap, FxHashSet};
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
-use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
+use syntax::ast::{self, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
+use syntax::util::parser::ExprPrecedence;
 use ty::AdtKind;
 
 use rustc_data_structures::indexed_vec;
@@ -958,6 +959,31 @@ impl BinOp_ {
     }
 }
 
+impl Into<ast::BinOpKind> for BinOp_ {
+    fn into(self) -> ast::BinOpKind {
+        match self {
+            BiAdd => ast::BinOpKind::Add,
+            BiSub => ast::BinOpKind::Sub,
+            BiMul => ast::BinOpKind::Mul,
+            BiDiv => ast::BinOpKind::Div,
+            BiRem => ast::BinOpKind::Rem,
+            BiAnd => ast::BinOpKind::And,
+            BiOr => ast::BinOpKind::Or,
+            BiBitXor => ast::BinOpKind::BitXor,
+            BiBitAnd => ast::BinOpKind::BitAnd,
+            BiBitOr => ast::BinOpKind::BitOr,
+            BiShl => ast::BinOpKind::Shl,
+            BiShr => ast::BinOpKind::Shr,
+            BiEq => ast::BinOpKind::Eq,
+            BiLt => ast::BinOpKind::Lt,
+            BiLe => ast::BinOpKind::Le,
+            BiNe => ast::BinOpKind::Ne,
+            BiGe => ast::BinOpKind::Ge,
+            BiGt => ast::BinOpKind::Gt,
+        }
+    }
+}
+
 pub type BinOp = Spanned<BinOp_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1164,6 +1190,42 @@ pub struct Expr {
     pub node: Expr_,
     pub attrs: ThinVec<Attribute>,
     pub hir_id: HirId,
+}
+
+impl Expr {
+    pub fn precedence(&self) -> ExprPrecedence {
+        match self.node {
+            ExprBox(_) => ExprPrecedence::Box,
+            ExprArray(_) => ExprPrecedence::Array,
+            ExprCall(..) => ExprPrecedence::Call,
+            ExprMethodCall(..) => ExprPrecedence::MethodCall,
+            ExprTup(_) => ExprPrecedence::Tup,
+            ExprBinary(op, ..) => ExprPrecedence::Binary(op.node.into()),
+            ExprUnary(..) => ExprPrecedence::Unary,
+            ExprLit(_) => ExprPrecedence::Lit,
+            ExprType(..) | ExprCast(..) => ExprPrecedence::Cast,
+            ExprIf(..) => ExprPrecedence::If,
+            ExprWhile(..) => ExprPrecedence::While,
+            ExprLoop(..) => ExprPrecedence::Loop,
+            ExprMatch(..) => ExprPrecedence::Match,
+            ExprClosure(..) => ExprPrecedence::Closure,
+            ExprBlock(..) => ExprPrecedence::Block,
+            ExprAssign(..) => ExprPrecedence::Assign,
+            ExprAssignOp(..) => ExprPrecedence::AssignOp,
+            ExprField(..) => ExprPrecedence::Field,
+            ExprTupField(..) => ExprPrecedence::TupField,
+            ExprIndex(..) => ExprPrecedence::Index,
+            ExprPath(..) => ExprPrecedence::Path,
+            ExprAddrOf(..) => ExprPrecedence::AddrOf,
+            ExprBreak(..) => ExprPrecedence::Break,
+            ExprAgain(..) => ExprPrecedence::Continue,
+            ExprRet(..) => ExprPrecedence::Ret,
+            ExprInlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprStruct(..) => ExprPrecedence::Struct,
+            ExprRepeat(..) => ExprPrecedence::Repeat,
+            ExprYield(..) => ExprPrecedence::Yield,
+        }
+    }
 }
 
 impl fmt::Debug for Expr {

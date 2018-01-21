@@ -15,7 +15,7 @@ note: `m` could also refer to the macro imported here
 49 |     use two_macros::m;
    |         ^^^^^^^^^^^^^
 
-error: `m` is ambiguous
+error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:28:5
    |
 28 |     m! { //~ ERROR ambiguous
@@ -33,7 +33,7 @@ note: `m` could also refer to the name imported here
    |         ^^^^^^^^^^^^^
    = note: macro-expanded macro imports do not shadow
 
-error: `m` is ambiguous
+error[E0659]: `m` is ambiguous
   --> $DIR/macros.rs:41:9
    |
 41 |         m! { //~ ERROR ambiguous

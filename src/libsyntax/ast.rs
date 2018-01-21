@@ -15,6 +15,7 @@ pub use self::UnsafeSource::*;
 pub use self::PathParameters::*;
 pub use symbol::{Ident, Symbol as Name};
 pub use util::ThinVec;
+pub use util::parser::ExprPrecedence;
 
 use syntax_pos::{Span, DUMMY_SP};
 use codemap::{respan, Spanned};
@@ -730,6 +731,7 @@ impl BinOpKind {
             _ => false
         }
     }
+
     pub fn is_comparison(&self) -> bool {
         use self::BinOpKind::*;
         match *self {
@@ -740,6 +742,7 @@ impl BinOpKind {
             false,
         }
     }
+
     /// Returns `true` if the binary operator takes its arguments by value
     pub fn is_by_value(&self) -> bool {
         !self.is_comparison()
@@ -965,6 +968,49 @@ impl Expr {
         };
 
         Some(P(Ty { node, id: self.id, span: self.span }))
+    }
+
+    pub fn precedence(&self) -> ExprPrecedence {
+        match self.node {
+            ExprKind::Box(_) => ExprPrecedence::Box,
+            ExprKind::InPlace(..) => ExprPrecedence::InPlace,
+            ExprKind::Array(_) => ExprPrecedence::Array,
+            ExprKind::Call(..) => ExprPrecedence::Call,
+            ExprKind::MethodCall(..) => ExprPrecedence::MethodCall,
+            ExprKind::Tup(_) => ExprPrecedence::Tup,
+            ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
+            ExprKind::Unary(..) => ExprPrecedence::Unary,
+            ExprKind::Lit(_) => ExprPrecedence::Lit,
+            ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
+            ExprKind::If(..) => ExprPrecedence::If,
+            ExprKind::IfLet(..) => ExprPrecedence::IfLet,
+            ExprKind::While(..) => ExprPrecedence::While,
+            ExprKind::WhileLet(..) => ExprPrecedence::WhileLet,
+            ExprKind::ForLoop(..) => ExprPrecedence::ForLoop,
+            ExprKind::Loop(..) => ExprPrecedence::Loop,
+            ExprKind::Match(..) => ExprPrecedence::Match,
+            ExprKind::Closure(..) => ExprPrecedence::Closure,
+            ExprKind::Block(..) => ExprPrecedence::Block,
+            ExprKind::Catch(..) => ExprPrecedence::Catch,
+            ExprKind::Assign(..) => ExprPrecedence::Assign,
+            ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
+            ExprKind::Field(..) => ExprPrecedence::Field,
+            ExprKind::TupField(..) => ExprPrecedence::TupField,
+            ExprKind::Index(..) => ExprPrecedence::Index,
+            ExprKind::Range(..) => ExprPrecedence::Range,
+            ExprKind::Path(..) => ExprPrecedence::Path,
+            ExprKind::AddrOf(..) => ExprPrecedence::AddrOf,
+            ExprKind::Break(..) => ExprPrecedence::Break,
+            ExprKind::Continue(..) => ExprPrecedence::Continue,
+            ExprKind::Ret(..) => ExprPrecedence::Ret,
+            ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
+            ExprKind::Mac(..) => ExprPrecedence::Mac,
+            ExprKind::Struct(..) => ExprPrecedence::Struct,
+            ExprKind::Repeat(..) => ExprPrecedence::Repeat,
+            ExprKind::Paren(..) => ExprPrecedence::Paren,
+            ExprKind::Try(..) => ExprPrecedence::Try,
+            ExprKind::Yield(..) => ExprPrecedence::Yield,
+        }
     }
 }
 
