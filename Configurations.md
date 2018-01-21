@@ -1769,7 +1769,7 @@ Determines if `+` or `=` are wrapped in spaces in the punctuation of types
 
 ```rust
 fn lorem<Ipsum: Dolor + Sit = Amet>() {
-	// body
+    // body
 }
 ```
 
