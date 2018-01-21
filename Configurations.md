@@ -1800,7 +1800,9 @@ fn main() {
 #### `true`:
 
 ```rust
-let lorem = ipsum.map(|dolor| dolor.sit())?;
+fn main() {
+    let lorem = ipsum.map(|dolor| dolor.sit())?;
+}
 ```
 
 
