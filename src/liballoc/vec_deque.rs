@@ -1635,7 +1635,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `at` is out of bounds.
+    /// Panics if `at > len`.
     ///
     /// # Examples
     ///
