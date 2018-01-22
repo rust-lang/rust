@@ -419,6 +419,9 @@ fn unnecessary_fold_should_ignore() {
     let _ = (0..3).fold(true, |acc, x| x > 2 && acc);
     let _ = (0..3).fold(0, |acc, x| x + acc);
     let _ = (0..3).fold(1, |acc, x| x * acc);
+
+    let _ = [(0..2), (0..3)].iter().fold(0, |a, b| a + b.len());
+    let _ = [(0..2), (0..3)].iter().fold(1, |a, b| a * b.len());
 }
 
 #[allow(similar_names)]

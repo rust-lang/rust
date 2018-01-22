@@ -526,9 +526,9 @@ error: this `.fold` can be written more succinctly using another method
     |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:427:13
+   --> $DIR/methods.rs:430:13
     |
-427 |     let _ = opt.unwrap();
+430 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`

@@ -1141,6 +1141,13 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
     assert!(fold_args.len() == 3,
         "Expected fold_args to have three entries - the receiver, the initial value and the closure");
 
+    fn is_exactly_closure_param(expr: &hir::Expr, closure_param: ast::Name) -> bool {
+        if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = expr.node {
+            return path.segments.len() == 1 && &path.segments[0].name == &closure_param;
+        }
+        false
+    }
+
     fn check_fold_with_op(
         cx: &LateContext,
         fold_args: &[hir::Expr],
@@ -1162,8 +1169,8 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
             if let Some(first_arg_ident) = get_arg_name(&closure_body.arguments[0].pat);
             if let Some(second_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
 
-            if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = left_expr.node;
-            if path.segments.len() == 1 && &path.segments[0].name == &first_arg_ident;
+            if is_exactly_closure_param(&*left_expr, first_arg_ident);
+            if replacement_has_args || is_exactly_closure_param(&*right_expr, second_arg_ident);
 
             then {
                 // Span containing `.fold(...)`
