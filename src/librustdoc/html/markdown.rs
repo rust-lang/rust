@@ -1337,7 +1337,6 @@ pub fn markdown_links(md: &str, render_type: RenderType) -> Vec<String> {
                 };
                 (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
                         = &mut opaque as *mut _ as *mut libc::c_void;
-                (*renderer).blockcode = Some(hoedown_block);
                 (*renderer).header = Some(hoedown_header);
                 (*renderer).codespan = Some(hoedown_codespan);
                 (*renderer).link = Some(hoedown_link);
@@ -1360,7 +1359,7 @@ pub fn markdown_links(md: &str, render_type: RenderType) -> Vec<String> {
 
             let p = Parser::new_ext(md, opts);
 
-            let iter = Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None)));
+            let iter = Footnotes::new(HeadingLinks::new(p, None));
             let mut links = vec![];
 
             for ev in iter {
