@@ -58,7 +58,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableVec};
 use arena::{TypedArena, SyncDroplessArena};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -80,14 +80,14 @@ use syntax_pos::Span;
 use hir;
 
 pub struct AllArenas<'tcx> {
-    pub global: GlobalArenas<'tcx>,
+    pub global: WorkerLocal<GlobalArenas<'tcx>>,
     pub interner: SyncDroplessArena,
 }
 
 impl<'tcx> AllArenas<'tcx> {
     pub fn new() -> Self {
         AllArenas {
-            global: GlobalArenas::new(),
+            global: WorkerLocal::new(|_| GlobalArenas::new()),
             interner: SyncDroplessArena::new(),
         }
     }
@@ -854,7 +854,7 @@ impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 pub struct GlobalCtxt<'tcx> {
-    global_arenas: &'tcx GlobalArenas<'tcx>,
+    global_arenas: &'tcx WorkerLocal<GlobalArenas<'tcx>>,
     global_interners: CtxtInterners<'tcx>,
 
     cstore: &'tcx CrateStoreDyn,
