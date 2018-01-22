@@ -510,6 +510,7 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
         &config.src_base,
         &PathBuf::new(),
         &mut tests,
+        true,
     ).unwrap();
     tests
 }
@@ -520,6 +521,7 @@ fn collect_tests_from_dir(
     dir: &Path,
     relative_dir_path: &Path,
     tests: &mut Vec<test::TestDescAndFn>,
+    tests_in_dir: bool,
 ) -> io::Result<()> {
     // Ignore directories that contain a file
     // `compiletest-ignore-dir`.
@@ -535,7 +537,7 @@ fn collect_tests_from_dir(
                 base: base.to_path_buf(),
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
             };
-            tests.push(make_test(config, &paths));
+            tests.extend(make_test(config, &paths));
             return Ok(());
         }
     }
@@ -556,14 +558,23 @@ fn collect_tests_from_dir(
         let file = file?;
         let file_path = file.path();
         let file_name = file.file_name();
-        if is_test(&file_name) {
+        if tests_in_dir && is_test(&file_name) {
             debug!("found test file: {:?}", file_path.display());
+
+            let relative_file_path = relative_dir_path.join(file_path.file_stem().unwrap());
+            let build_dir = config.build_base.join(&relative_file_path);
+            fs::create_dir_all(&build_dir).unwrap();
+
             let paths = TestPaths {
                 file: file_path,
                 base: base.to_path_buf(),
                 relative_dir: relative_dir_path.to_path_buf(),
             };
-            tests.push(make_test(config, &paths))
+            tests.extend(make_test(config, &paths))
+        } else if file_path.is_file() {
+            let relative_file_path = relative_dir_path.join(file_path.file_stem().unwrap());
+            let build_dir = config.build_base.join(&relative_file_path);
+            fs::create_dir_all(&build_dir).unwrap();
         } else if file_path.is_dir() {
             let relative_file_path = relative_dir_path.join(file.file_name());
             if &file_name == "auxiliary" {
@@ -572,11 +583,17 @@ fn collect_tests_from_dir(
                 // do create a directory in the build dir for them,
                 // since we will dump intermediate output in there
                 // sometimes.
-                let build_dir = config.build_base.join(&relative_file_path);
-                fs::create_dir_all(&build_dir).unwrap();
+                collect_tests_from_dir(
+                    config,
+                    base,
+                    &file_path,
+                    &relative_file_path,
+                    tests,
+                    false,
+                )?;
             } else {
                 debug!("found directory: {:?}", file_path.display());
-                collect_tests_from_dir(config, base, &file_path, &relative_file_path, tests)?;
+                collect_tests_from_dir(config, base, &file_path, &relative_file_path, tests, true)?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
@@ -597,7 +614,7 @@ pub fn is_test(file_name: &OsString) -> bool {
     !invalid_prefixes.iter().any(|p| file_name.starts_with(p))
 }
 
-pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
+pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAndFn> {
     let early_props = EarlyProps::from_file(config, &testpaths.file);
 
     // The `should-fail` annotation doesn't apply to pretty tests,
@@ -617,14 +634,41 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
         || (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
             && config.target.contains("emscripten");
 
-    test::TestDescAndFn {
-        desc: test::TestDesc {
-            name: make_test_name(config, testpaths),
-            ignore,
-            should_panic,
-            allow_fail: false,
-        },
-        testfn: make_test_closure(config, testpaths),
+    // This is going to create a directory structure containing the test relative dir, joined with
+    // the revision if any and as last the stage.
+    // i.e.
+    // run-pass/borrowck/two-phase-baseline/lxl/stage1-x86_64-unknown-linux-gnu
+    // This is done here to create directories in advance, avoiding race conditions over the file
+    // system.
+    let dir = config.build_base.join(&testpaths.relative_dir)
+        .join(PathBuf::from(&testpaths.file.file_stem().unwrap()));
+
+    if early_props.revisions.is_empty() {
+        fs::create_dir_all(&dir).unwrap();
+
+        vec![test::TestDescAndFn {
+            desc: test::TestDesc {
+                name: make_test_name(config, testpaths, None),
+                ignore,
+                should_panic,
+                allow_fail: false,
+            },
+            testfn: make_test_closure(config, testpaths, None),
+        }]
+    } else {
+        early_props.revisions.iter().map(|revision| {
+            fs::create_dir_all(dir.join(revision)).unwrap();
+
+            test::TestDescAndFn {
+                desc: test::TestDesc {
+                    name: make_test_name(config, testpaths, Some(revision)),
+                    ignore,
+                    should_panic,
+                    allow_fail: false,
+                },
+                testfn: make_test_closure(config, testpaths, Some(revision)),
+            }
+        }).collect()
     }
 }
 
@@ -698,20 +742,34 @@ fn mtime(path: &Path) -> FileTime {
         .unwrap_or_else(|_| FileTime::zero())
 }
 
-pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
+pub fn make_test_name(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> test::TestName {
     // Convert a complete path to something like
     //
     //    run-pass/foo/bar/baz.rs
     let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
-    test::DynTestName(format!("[{}] {}", config.mode, path.display()))
+    test::DynTestName(format!(
+        "[{}] {}{}",
+        config.mode,
+        path.display(),
+        revision.map_or("".to_string(), |rev| format!("#{}", rev))
+    ))
 }
 
-pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {
+pub fn make_test_closure(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> test::TestFn {
     let config = config.clone();
     let testpaths = testpaths.clone();
-    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths)))
+    let revision = revision.map(|r| r.to_string());
+    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths, revision)))
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)
