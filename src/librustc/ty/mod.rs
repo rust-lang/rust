@@ -20,6 +20,7 @@ use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use hir::map::DefPathData;
 use hir::svh::Svh;
+use ich::Fingerprint;
 use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
@@ -37,6 +38,7 @@ use util::common::ErrorReported;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::cmp;
 use std::fmt;
@@ -1476,17 +1478,32 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for AdtDef {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        let ty::AdtDef {
-            did,
-            ref variants,
-            ref flags,
-            ref repr,
-        } = *self;
+        thread_local! {
+            static CACHE: RefCell<FxHashMap<usize, Fingerprint>> =
+                RefCell::new(FxHashMap());
+        }
 
-        did.hash_stable(hcx, hasher);
-        variants.hash_stable(hcx, hasher);
-        flags.hash_stable(hcx, hasher);
-        repr.hash_stable(hcx, hasher);
+        let hash: Fingerprint = CACHE.with(|cache| {
+            let addr = self as *const AdtDef as usize;
+            *cache.borrow_mut().entry(addr).or_insert_with(|| {
+                let ty::AdtDef {
+                    did,
+                    ref variants,
+                    ref flags,
+                    ref repr,
+                } = *self;
+
+                let mut hasher = StableHasher::new();
+                did.hash_stable(hcx, &mut hasher);
+                variants.hash_stable(hcx, &mut hasher);
+                flags.hash_stable(hcx, &mut hasher);
+                repr.hash_stable(hcx, &mut hasher);
+
+                hasher.finish()
+           })
+        });
+
+        hash.hash_stable(hcx, hasher);
     }
 }
 

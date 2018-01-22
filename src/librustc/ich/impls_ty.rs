@@ -11,9 +11,11 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
-use ich::{StableHashingContext, NodeIdHashingMode};
+use ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
+use std::cell::RefCell;
 use std::hash as std_hash;
 use std::mem;
 use middle::region;
@@ -26,7 +28,26 @@ for &'gcx ty::Slice<T>
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        (&self[..]).hash_stable(hcx, hasher);
+        thread_local! {
+            static CACHE: RefCell<FxHashMap<(usize, usize), Fingerprint>> =
+                RefCell::new(FxHashMap());
+        }
+
+        let hash = CACHE.with(|cache| {
+            let key = (self.as_ptr() as usize, self.len());
+            if let Some(&hash) = cache.borrow().get(&key) {
+                return hash;
+            }
+
+            let mut hasher = StableHasher::new();
+            (&self[..]).hash_stable(hcx, &mut hasher);
+
+            let hash: Fingerprint = hasher.finish();
+            cache.borrow_mut().insert(key, hash);
+            hash
+        });
+
+        hash.hash_stable(hcx, hasher);
     }
 }
 
