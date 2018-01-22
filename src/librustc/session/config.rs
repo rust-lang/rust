@@ -1622,8 +1622,11 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     let mut debugging_opts = build_debugging_options(matches, error_format);
 
     if !debugging_opts.unstable_options && error_format == ErrorOutputType::Json(true) {
-        early_error(ErrorOutputType::Json(false),
-                    "--error-format=pretty-json is unstable");
+        early_error(ErrorOutputType::Json(false), "--error-format=pretty-json is unstable");
+    }
+
+    if !debugging_opts.unstable_options && debugging_opts.explain {
+        early_error(ErrorOutputType::Json(false), "-Z --explain is unstable");
     }
 
     let mut output_types = BTreeMap::new();
