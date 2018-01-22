@@ -2591,9 +2591,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // arguments which we skipped above.
         if variadic {
             fn variadic_error<'tcx>(s: &Session, span: Span, t: Ty<'tcx>, cast_ty: &str) {
-                type_error_struct!(s, span, t, E0617,
-                                   "can't pass `{}` to variadic function, cast to `{}`",
-                                   t, cast_ty).emit();
+                let mut err = type_error_struct!(
+                    s, span, t, E0617, "can't pass `{}` to variadic function", t);
+                if s.opts.debugging_opts.explain {
+                    err.note(&format!("certain types, like `{}`, must be cast before passing them \
+                                       to a variadic function, because of arcane ABI rules \
+                                       dictated by the C standard",
+                                      t));
+                }
+                if let Ok(snippet) = s.codemap().span_to_snippet(span) {
+                    err.span_suggestion(span,
+                                        &format!("cast the value to `{}`", cast_ty),
+                                        format!("{} as {}", snippet, cast_ty));
+                } else {
+                    err.help(&format!("cast the value to `{}`", cast_ty));
+                }
+                err.emit();
             }
 
             for arg in args.iter().skip(expected_arg_count) {
