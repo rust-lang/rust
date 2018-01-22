@@ -90,8 +90,8 @@ impl BadIssueSeeker {
                 todo_idx: 0,
                 fixme_idx: 0,
             },
-            report_todo: report_todo,
-            report_fixme: report_fixme,
+            report_todo,
+            report_fixme,
         }
     }
 
@@ -169,8 +169,8 @@ impl BadIssueSeeker {
         }
 
         Seeking::Issue {
-            todo_idx: todo_idx,
-            fixme_idx: fixme_idx,
+            todo_idx,
+            fixme_idx,
         }
     }
 
@@ -213,10 +213,7 @@ impl BadIssueSeeker {
             NumberPart::CloseParen => {}
         }
 
-        self.state = Seeking::Number {
-            part: part,
-            issue: issue,
-        };
+        self.state = Seeking::Number { part, issue };
 
         IssueClassification::None
     }

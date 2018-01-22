@@ -441,7 +441,7 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
     let ends_with_newline = tactic.ends_with_newline(context.config.indent_style());
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: if trailing_comma {
             SeparatorTactic::Always
@@ -462,7 +462,7 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
         },
         separator_place: SeparatorPlace::Back,
         shape: nested_shape,
-        ends_with_newline: ends_with_newline,
+        ends_with_newline,
         preserve_newline: false,
         config: context.config,
     };
@@ -779,19 +779,19 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         ControlFlow {
             cond: Some(cond),
-            block: block,
-            else_block: else_block,
+            block,
+            else_block,
             label: None,
-            pat: pat,
+            pat,
             keyword: "if",
             matcher: match pat {
                 Some(..) => "let",
                 None => "",
             },
             connector: " =",
-            allow_single_line: allow_single_line,
-            nested_if: nested_if,
-            span: span,
+            allow_single_line,
+            nested_if,
+            span,
         }
     }
 
@@ -802,16 +802,16 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         ControlFlow {
             cond: None,
-            block: block,
+            block,
             else_block: None,
-            label: label,
+            label,
             pat: None,
             keyword: "loop",
             matcher: "",
             connector: "",
             allow_single_line: false,
             nested_if: false,
-            span: span,
+            span,
         }
     }
 
@@ -824,10 +824,10 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         ControlFlow {
             cond: Some(cond),
-            block: block,
+            block,
             else_block: None,
-            label: label,
-            pat: pat,
+            label,
+            pat,
             keyword: "while",
             matcher: match pat {
                 Some(..) => "let",
@@ -836,7 +836,7 @@ impl<'a> ControlFlow<'a> {
             connector: " =",
             allow_single_line: false,
             nested_if: false,
-            span: span,
+            span,
         }
     }
 
@@ -849,16 +849,16 @@ impl<'a> ControlFlow<'a> {
     ) -> ControlFlow<'a> {
         ControlFlow {
             cond: Some(cond),
-            block: block,
+            block,
             else_block: None,
-            label: label,
+            label,
             pat: Some(pat),
             keyword: "for",
             matcher: "",
             connector: " in",
             allow_single_line: false,
             nested_if: false,
-            span: span,
+            span,
         }
     }
 
@@ -1484,7 +1484,7 @@ fn rewrite_match_pattern(
         )
     };
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: " |",
         trailing_separator: SeparatorTactic::Never,
         separator_place: context.config.binop_separator(),
@@ -1988,7 +1988,7 @@ where
     );
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: if force_trailing_comma {
             SeparatorTactic::Always
@@ -2671,11 +2671,11 @@ where
         nested_shape.width,
     );
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
         separator_place: SeparatorPlace::Back,
-        shape: shape,
+        shape,
         ends_with_newline: false,
         preserve_newline: false,
         config: context.config,

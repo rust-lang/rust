@@ -448,7 +448,7 @@ fn format_lines(
                         line: cur_line,
                         kind: error_kind,
                         is_comment: kind.is_comment(),
-                        is_string: is_string,
+                        is_string,
                         line_buffer: line_buffer.clone(),
                     });
                 }

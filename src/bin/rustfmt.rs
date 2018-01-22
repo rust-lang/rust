@@ -453,7 +453,7 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
 
         return Ok(Operation::Stdin {
             input: buffer,
-            config_path: config_path,
+            config_path,
         });
     }
 
@@ -469,8 +469,8 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         .collect();
 
     Ok(Operation::Format {
-        files: files,
-        config_path: config_path,
-        minimal_config_path: minimal_config_path,
+        files,
+        config_path,
+        minimal_config_path,
     })
 }

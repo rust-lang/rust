@@ -29,8 +29,8 @@ const INDENT_BUFFER: &str =
 impl Indent {
     pub fn new(block_indent: usize, alignment: usize) -> Indent {
         Indent {
-            block_indent: block_indent,
-            alignment: alignment,
+            block_indent,
+            alignment,
         }
     }
 
@@ -161,8 +161,8 @@ impl Shape {
     //        |<--->|    width
     pub fn legacy(width: usize, indent: Indent) -> Shape {
         Shape {
-            width: width,
-            indent: indent,
+            width,
+            indent,
             offset: indent.alignment,
         }
     }
@@ -170,7 +170,7 @@ impl Shape {
     pub fn indented(indent: Indent, config: &Config) -> Shape {
         Shape {
             width: config.max_width().checked_sub(indent.width()).unwrap_or(0),
-            indent: indent,
+            indent,
             offset: indent.alignment,
         }
     }
@@ -187,9 +187,9 @@ impl Shape {
 
     pub fn offset(width: usize, indent: Indent, offset: usize) -> Shape {
         Shape {
-            width: width,
-            indent: indent,
-            offset: offset,
+            width,
+            indent,
+            offset,
         }
     }
 

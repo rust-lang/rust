@@ -34,7 +34,7 @@ impl<'a> From<&'a LineRange> for Range {
 
 impl Range {
     pub fn new(lo: usize, hi: usize) -> Range {
-        Range { lo: lo, hi: hi }
+        Range { lo, hi }
     }
 
     fn is_empty(self) -> bool {

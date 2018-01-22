@@ -138,7 +138,7 @@ impl<'a> Item<'a> {
                 .iter()
                 .map(|i| BodyElement::ForeignItem(i))
                 .collect(),
-            span: span,
+            span,
         }
     }
 }
@@ -169,8 +169,8 @@ impl<'a> FnSig<'a> {
         vis: ast::Visibility,
     ) -> FnSig<'a> {
         FnSig {
-            decl: decl,
-            generics: generics,
+            decl,
+            generics,
             abi: abi::Abi::Rust,
             constness: ast::Constness::NotConst,
             defaultness: ast::Defaultness::Final,
@@ -189,7 +189,7 @@ impl<'a> FnSig<'a> {
             defaultness: ast::Defaultness::Final,
             abi: method_sig.abi,
             decl: &*method_sig.decl,
-            generics: generics,
+            generics,
             visibility: ast::Visibility::Inherited,
         }
     }
@@ -202,12 +202,12 @@ impl<'a> FnSig<'a> {
     ) -> FnSig<'a> {
         match *fn_kind {
             visit::FnKind::ItemFn(_, unsafety, constness, abi, visibility, _) => FnSig {
-                decl: decl,
-                generics: generics,
-                abi: abi,
+                decl,
+                generics,
+                abi,
                 constness: constness.node,
                 defaultness: defualtness,
-                unsafety: unsafety,
+                unsafety,
                 visibility: visibility.clone(),
             },
             visit::FnKind::Method(_, method_sig, vis, _) => {
@@ -510,7 +510,7 @@ impl<'a> FmtVisitor<'a> {
             separator: ",",
             trailing_separator: self.config.trailing_comma(),
             separator_place: SeparatorPlace::Back,
-            shape: shape,
+            shape,
             ends_with_newline: true,
             preserve_newline: true,
             config: self.config,
@@ -895,10 +895,10 @@ impl<'a> StructParts<'a> {
             _ => unreachable!(),
         };
         StructParts {
-            prefix: prefix,
+            prefix,
             ident: item.ident,
             vis: &item.vis,
-            def: def,
+            def,
             generics: Some(generics),
             span: item.span,
         }
@@ -1509,11 +1509,11 @@ impl<'a> StaticParts<'a> {
             _ => unreachable!(),
         };
         StaticParts {
-            prefix: prefix,
+            prefix,
             vis: &item.vis,
             ident: item.ident,
-            ty: ty,
-            mutability: mutability,
+            ty,
+            mutability,
             expr_opt: Some(expr),
             defaultness: None,
             span: item.span,
@@ -1529,7 +1529,7 @@ impl<'a> StaticParts<'a> {
             prefix: "const",
             vis: &ast::Visibility::Inherited,
             ident: ti.ident,
-            ty: ty,
+            ty,
             mutability: ast::Mutability::Immutable,
             expr_opt: expr_opt.as_ref(),
             defaultness: None,
@@ -1546,7 +1546,7 @@ impl<'a> StaticParts<'a> {
             prefix: "const",
             vis: &ii.vis,
             ident: ii.ident,
-            ty: ty,
+            ty,
             mutability: ast::Mutability::Immutable,
             expr_opt: Some(expr),
             defaultness: Some(ii.defaultness),
@@ -1818,7 +1818,7 @@ fn rewrite_fn_base(
     let one_line_budget = context.budget(used_width + overhead);
     let shape = Shape {
         width: one_line_budget,
-        indent: indent,
+        indent,
         offset: used_width,
     };
     let fd = fn_sig.decl;
@@ -2085,8 +2085,8 @@ struct WhereClauseOption {
 impl WhereClauseOption {
     pub fn new(suppress_comma: bool, snuggle: bool) -> WhereClauseOption {
         WhereClauseOption {
-            suppress_comma: suppress_comma,
-            snuggle: snuggle,
+            suppress_comma,
+            snuggle,
             compress_where: false,
         }
     }
@@ -2233,7 +2233,7 @@ fn rewrite_args(
     debug!("rewrite_args: budget: {}, tactic: {:?}", budget, tactic);
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: if variadic {
             SeparatorTactic::Never
@@ -2404,7 +2404,7 @@ where
         one_line_budget,
     );
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: if context.config.indent_style() == IndentStyle::Visual {
             SeparatorTactic::Never
@@ -2412,7 +2412,7 @@ where
             context.config.trailing_comma()
         },
         separator_place: SeparatorPlace::Back,
-        shape: shape,
+        shape,
         ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
         preserve_newline: true,
         config: context.config,
@@ -2637,7 +2637,7 @@ fn rewrite_where_clause(
     }
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: comma_tactic,
         separator_place: SeparatorPlace::Back,

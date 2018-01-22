@@ -244,7 +244,7 @@ fn rewrite_closure_fn_decl(
     };
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
         separator_place: SeparatorPlace::Back,

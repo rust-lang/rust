@@ -284,7 +284,7 @@ fn rewrite_imports(
         separator: "",
         trailing_separator: SeparatorTactic::Never,
         separator_place: SeparatorPlace::Back,
-        shape: shape,
+        shape,
         ends_with_newline: true,
         preserve_newline: false,
         config: context.config,
@@ -537,7 +537,7 @@ fn rewrite_nested_use_tree(
         && tactic != DefinitiveListTactic::Horizontal;
 
     let fmt = ListFormatting {
-        tactic: tactic,
+        tactic,
         separator: ",",
         trailing_separator: if ends_with_newline {
             context.config.trailing_comma()
@@ -546,7 +546,7 @@ fn rewrite_nested_use_tree(
         },
         separator_place: SeparatorPlace::Back,
         shape: nested_shape,
-        ends_with_newline: ends_with_newline,
+        ends_with_newline,
         preserve_newline: true,
         config: context.config,
     };
