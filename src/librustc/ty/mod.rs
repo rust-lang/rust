@@ -1499,8 +1499,9 @@ bitflags! {
         const IS_C               = 1 << 0;
         const IS_PACKED          = 1 << 1;
         const IS_SIMD            = 1 << 2;
+        const IS_TRANSPARENT     = 1 << 3;
         // Internal only for now. If true, don't reorder fields.
-        const IS_LINEAR          = 1 << 3;
+        const IS_LINEAR          = 1 << 4;
 
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits |
@@ -1540,6 +1541,7 @@ impl ReprOptions {
                 flags.insert(match r {
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked => ReprFlags::IS_PACKED,
+                    attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
                     attr::ReprSimd => ReprFlags::IS_SIMD,
                     attr::ReprInt(i) => {
                         size = Some(i);
@@ -1566,6 +1568,8 @@ impl ReprOptions {
     pub fn c(&self) -> bool { self.flags.contains(ReprFlags::IS_C) }
     #[inline]
     pub fn packed(&self) -> bool { self.flags.contains(ReprFlags::IS_PACKED) }
+    #[inline]
+    pub fn transparent(&self) -> bool { self.flags.contains(ReprFlags::IS_TRANSPARENT) }
     #[inline]
     pub fn linear(&self) -> bool { self.flags.contains(ReprFlags::IS_LINEAR) }
 

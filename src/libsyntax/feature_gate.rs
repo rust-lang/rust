@@ -452,6 +452,9 @@ declare_features! (
 
     // `extern` in paths
     (active, extern_in_paths, "1.23.0", Some(44660)),
+
+    // Allows `#[repr(transparent)]` attribute on newtype structs
+    (active, repr_transparent, "1.25.0", Some(43036)),
 );
 
 declare_features! (
@@ -1523,6 +1526,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                             gate_feature_post!(&self, repr_align, attr.span,
                                                "the struct `#[repr(align(u16))]` attribute \
                                                 is experimental");
+                        }
+                        if item.check_name("transparent") {
+                            gate_feature_post!(&self, repr_transparent, attr.span,
+                                               "the `#[repr(transparent)]` attribute \
+                                               is experimental");
                         }
                     }
                 }

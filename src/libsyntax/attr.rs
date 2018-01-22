@@ -992,7 +992,8 @@ pub fn find_deprecation(diagnostic: &Handler, attrs: &[Attribute],
 /// Valid repr contents: any of the primitive integral type names (see
 /// `int_type_of_word`, below) to specify enum discriminant type; `C`, to use
 /// the same discriminant size that the corresponding C enum would or C
-/// structure layout, and `packed` to remove padding.
+/// structure layout, `packed` to remove padding, and `transparent` to elegate representation
+/// concerns to the only non-ZST field.
 pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> {
     let mut acc = Vec::new();
     if attr.path == "repr" {
@@ -1011,6 +1012,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         "C" => Some(ReprC),
                         "packed" => Some(ReprPacked),
                         "simd" => Some(ReprSimd),
+                        "transparent" => Some(ReprTransparent),
                         _ => match int_type_of_word(word) {
                             Some(ity) => Some(ReprInt(ity)),
                             None => {
@@ -1082,6 +1084,7 @@ pub enum ReprAttr {
     ReprC,
     ReprPacked,
     ReprSimd,
+    ReprTransparent,
     ReprAlign(u32),
 }
 

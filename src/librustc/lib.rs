@@ -44,6 +44,7 @@
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
+#![feature(copy_closures, clone_closures)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![feature(dyn_trait)]
