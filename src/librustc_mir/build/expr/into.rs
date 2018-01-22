@@ -104,8 +104,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Or:
                 //
                 // [block: If(lhs)] -false-> [else_block: If(rhs)] -true-> [true_block]
-                //        |                          | (false)
-                //        +----------true------------+-------------------> [false_block]
+                //        | (true)                   | (false)
+                //  [true_block]               [false_block]
 
                 let (true_block, false_block, mut else_block, join_block) =
                     (this.cfg.start_new_block(), this.cfg.start_new_block(),
