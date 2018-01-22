@@ -17,7 +17,7 @@ union U {
 
 union W {
     a: u8,
-    b: str, //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+    b: str,
 }
 
 fn main() {}
