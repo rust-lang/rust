@@ -12,8 +12,8 @@ use syntax::ast;
 use syntax::codemap::{Span, BytePos};
 use utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_self, is_self_ty,
             iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
-            match_type, method_chain_args, return_ty, remove_blocks, same_tys, single_segment_path, snippet, span_lint,
-            span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
+            match_type, method_chain_args, match_var, return_ty, remove_blocks, same_tys, single_segment_path, snippet,
+            span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::paths;
 use utils::sugg;
 use utils::const_to_u64;
@@ -1162,8 +1162,8 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
             if let Some(first_arg_ident) = get_arg_name(&closure_body.arguments[0].pat);
             if let Some(second_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
 
-            if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = left_expr.node;
-            if path.segments.len() == 1 && &path.segments[0].name == &first_arg_ident;
+            if match_var(&*left_expr, first_arg_ident);
+            if replacement_has_args || match_var(&*right_expr, second_arg_ident);
 
             then {
                 // Span containing `.fold(...)`
