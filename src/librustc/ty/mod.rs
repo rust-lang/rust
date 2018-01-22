@@ -1040,13 +1040,6 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
                 Predicate::ConstEvaluatable(def_id, const_substs.subst(tcx, substs)),
         }
     }
-
-    pub fn as_poly_trait_predicate(&self) -> Option<&PolyTraitPredicate<'tcx>> {
-        match self {
-            Predicate::Trait(trait_pred) => Some(trait_pred),
-            _ => None
-        }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]

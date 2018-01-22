@@ -79,17 +79,28 @@ note: required by `Super`
 36 | trait Super<T: Copy> { }
    | ^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `i32: Trait<U>` is not satisfied
-  --> $DIR/type-check-defaults.rs:41:1
-   |
-41 | struct DefaultedLhs<U, V=i32>(U, V) where V: Trait<U>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<U>` is not implemented for `i32`
-   |
-note: required by `Trait`
+error[E0277]: the trait bound `i32: std::ops::Add<u8>` is not satisfied
   --> $DIR/type-check-defaults.rs:40:1
    |
-40 | trait Trait<T> {}
-   | ^^^^^^^^^^^^^^
+40 | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `i32 + u8`
+   |
+   = help: the trait `std::ops::Add<u8>` is not implemented for `i32`
+   = note: required by `std::ops::Add`
 
-error: aborting due to 9 previous errors
+error[E0277]: the trait bound `u32: Bar<i32>` is not satisfied
+  --> $DIR/type-check-defaults.rs:44:1
+   |
+44 | struct TwoParams<T = u32, U = i32>(T, U) where T: Bar<U>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar<i32>` is not implemented for `u32`
+   |
+   = help: the following implementations were found:
+             <u32 as Bar<std::string::String>>
+note: required by `Bar`
+  --> $DIR/type-check-defaults.rs:46:1
+   |
+46 | trait Bar<V> {}
+   | ^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
 

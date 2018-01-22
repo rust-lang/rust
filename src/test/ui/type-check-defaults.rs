@@ -37,11 +37,14 @@ trait Super<T: Copy> { }
 trait Base<T = String>: Super<T> { }
 //~^ error: the trait bound `T: std::marker::Copy` is not satisfied [E0277]
 
-trait Trait<T> {}
-struct DefaultedLhs<U, V=i32>(U, V) where V: Trait<U>;
-//~^ error: the trait bound `i32: Trait<U>` is not satisfied [E0277]
+trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
+//~^ error: the trait bound `i32: std::ops::Add<u8>` is not satisfied [E0277]
 
-// FIXME: Deal with projection predicates
-// trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
-// ~^ error: the trait bound `i32: std::ops::Add<u8>` is not satisfied [E0277]
+// Defaults must work together.
+struct TwoParams<T = u32, U = i32>(T, U) where T: Bar<U>;
+//~^ the trait bound `u32: Bar<i32>` is not satisfied [E0277]
+trait Bar<V> {}
+impl Bar<String> for u32 { }
+impl Bar<i32> for String { }
+
 fn main() { }

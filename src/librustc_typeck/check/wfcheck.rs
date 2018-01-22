@@ -392,14 +392,13 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         // Check that trait predicates are WF when params are substituted by their defaults.
         // We don't want to overly constrain the predicates that may be written but we
         // want to catch obviously wrong cases such as `struct Foo<T: Copy = String>`
-        // or cases that may cause backwards incompatibility such as a library going from
-        // `pub struct Foo<T>` to `pub struct Foo<T, U = i32>` where U: Trait<T>`
-        // which may break existing uses of Foo<T>.
-        // Therefore the check we do is: If if all params appearing in the LHS of the predicate
-        // have defaults then we verify that it is WF with all defaults substituted simultaneously.
+        // or cases where defaults don't work together such as:
+        // `struct Foo<T = i32, U = u8> where T: into<U>`
+        // Therefore we check if a predicate in which all type params are defaulted
+        // is WF with those defaults simultaneously substituted.
         // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
         //
-        // First, we build the defaulted substitution.
+        // First we build the defaulted substitution.
         let mut defaulted_params = Vec::new();
         let substs = ty::subst::Substs::for_item(fcx.tcx, def_id, |def, _| {
                 // All regions are identity.
@@ -414,33 +413,35 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     fcx.tcx.type_of(def.def_id)
                 }
             });
-        // In `trait Trait: Super`, checking `Self: Trait` or `Self: Super` is problematic.
-        // We avoid those by skipping any predicates in trait declarations that contain `Self`,
-        // which is excessive so we end up checking less than we could.
-        for pred in predicates.predicates.iter()
-                                         .filter_map(ty::Predicate::as_poly_trait_predicate)
-                                         .filter(|p| !(is_trait && p.has_self_ty())) {
-            let is_defaulted_param = |ty: ty::Ty| match ty.sty {
-                                            ty::TyParam(p) => defaulted_params.contains(&p.idx),
-                                            _ => false
-                                          };
-            // If there is a non-defaulted param in the LHS, don't check the substituted predicate.
-            // `skip_binder()` is ok, we're only inspecting the type params.
-            if !pred.skip_binder().self_ty().walk().all(is_defaulted_param) {
+        let defaulted_params = &defaulted_params;
+        // Now we build the substituted predicates.
+        for &pred in predicates.predicates.iter() {
+            struct HasNonDefaulted<'a> { defaulted_params: &'a Vec<u32> }
+            impl<'tcx, 'a> ty::fold::TypeVisitor<'tcx> for HasNonDefaulted<'a> {
+                fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                    match t.sty {
+                        ty::TyParam(p) => !self.defaulted_params.contains(&p.idx),
+                        _ => t.super_visit_with(self)
+                    }
+                }
+            }
+            // If there is a non-defaulted param in the predicate, don't check it.
+            if pred.visit_with(&mut HasNonDefaulted { defaulted_params }) {
                 continue;
             }
             let substituted_pred = pred.subst(fcx.tcx, substs);
-            // `skip_binder()` is ok, we're only inspecting for `has_self_ty()`.
-            let substituted_lhs = substituted_pred.skip_binder().self_ty();
             // In trait defs, don't check `Self: Sized` when `Self` is the default.
-            let pred_is_sized = Some(pred.def_id()) == fcx.tcx.lang_items().sized_trait();
-            if is_trait && substituted_lhs.has_self_ty() && pred_is_sized {
-                continue;
+            if let ty::Predicate::Trait(trait_pred) = substituted_pred {
+                // `skip_binder()` is ok, we're only inspecting for `has_self_ty()`.
+                let lhs_is_self = trait_pred.skip_binder().self_ty().has_self_ty();
+                let pred_sized = Some(trait_pred.def_id()) == fcx.tcx.lang_items().sized_trait();
+                if is_trait && lhs_is_self && pred_sized {
+                    continue;
+                }
             }
-            let pred = ty::Predicate::Trait(pred.subst(fcx.tcx, substs));
-            // Avoid duplicates.
-            if !predicates.predicates.contains(&pred) {
-                substituted_predicates.push(pred);
+            // Avoid duplication of predicates that contain no parameters, for example.
+            if !predicates.predicates.contains(&substituted_pred) {
+                substituted_predicates.push(substituted_pred);
             }
         }
 
