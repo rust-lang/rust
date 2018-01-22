@@ -67,6 +67,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::BTreeSet;
 use std::fmt;
+use std::iter;
 use std::mem::replace;
 use std::rc::Rc;
 
@@ -1413,8 +1414,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     }
 
     fn resolve_str_path(&mut self, span: Span, crate_root: Option<&str>,
-                components: &[&str], is_value: bool) -> hir::Path {
-        use std::iter;
+                        components: &[&str], is_value: bool) -> hir::Path {
         let mut path = hir::Path {
             span,
             def: Def::Err,
