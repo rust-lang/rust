@@ -69,7 +69,6 @@ pub mod transitive_relation;
 pub mod unify;
 pub mod fx;
 pub mod tuple_slice;
-pub mod veccell;
 pub mod control_flow_graph;
 pub mod flock;
 pub mod sync;
