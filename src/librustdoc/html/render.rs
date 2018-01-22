@@ -917,8 +917,6 @@ themePicker.onclick = function() {{
         themePicker.style.borderBottomLeftRadius = "0";
     }}
 }};
-var currentTheme = document.getElementById("themeStyle");
-var mainTheme = document.getElementById("mainThemeStyle");
 [{}].forEach(function(item) {{
     var div = document.createElement('div');
     div.innerHTML = item;
@@ -927,32 +925,13 @@ var mainTheme = document.getElementById("mainThemeStyle");
     }};
     themes.appendChild(div);
 }});
-
-function updateLocalStorage(theme) {{
-    if (typeof(Storage) !== "undefined") {{
-        localStorage.theme = theme;
-    }} else {{
-        // No Web Storage support so we do nothing
-    }}
-}}
-function switchTheme(styleElem, mainStyleElem, newTheme) {{
-    styleElem.href = mainStyleElem.href.replace("rustdoc.css", newTheme + ".css");
-    updateLocalStorage(newTheme);
-}}
-function getCurrentTheme() {{
-    if (typeof(Storage) !== "undefined" && localStorage.theme !== undefined) {{
-        return localStorage.theme;
-    }}
-    return "main";
-}}
-
-switchTheme(currentTheme, mainTheme, getCurrentTheme());
 "#, themes.iter()
           .map(|s| format!("\"{}\"", s))
           .collect::<Vec<String>>()
           .join(",")).as_bytes())?;
 
     write(cx.dst.join("main.js"), include_bytes!("static/main.js"))?;
+    write(cx.dst.join("storage.js"), include_bytes!("static/storage.js"))?;
 
     if let Some(ref css) = cx.shared.css_file_extension {
         let out = cx.dst.join("theme.css");
