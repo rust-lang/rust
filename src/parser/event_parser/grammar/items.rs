@@ -127,11 +127,7 @@ fn pos_fields(p: &mut Parser) {
     if !p.expect(L_PAREN) {
         return;
     }
-    loop {
-        if p.at(R_PAREN) || p.at(EOF) {
-            break;
-        }
-
+    while !(p.at(R_PAREN) || p.at(EOF)) {
         let pos_field = p.start();
         visibility(p);
         types::type_ref(p);
