@@ -132,7 +132,9 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
                 };
                 let cleanup = StackPopCleanup::MarkStatic(mutability);
                 let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
-                trace!("const_eval: pushing stack frame for global: {}", name);
+                let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
+                trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
+                assert!(mir.arg_count == 0);
                 ecx.push_stack_frame(
                     cid.instance,
                     mir.span,
