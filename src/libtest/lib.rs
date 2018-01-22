@@ -887,10 +887,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         .map(|t| t.desc.name.as_slice().len())
         .unwrap_or(0);
 
-    let is_multithreaded = match opts.test_threads {
-        Some(n) => n > 1,
-        None => get_concurrency() > 1,
-    };
+    let is_multithreaded = opts.test_threads.unwrap_or_else(get_concurrency) > 1;
 
     let mut out: Box<OutputFormatter> = match opts.format {
         OutputFormat::Pretty => Box::new(PrettyFormatter::new(
@@ -1014,6 +1011,15 @@ pub enum TestEvent {
 
 pub type MonitorMsg = (TestDesc, TestResult, Vec<u8>);
 
+struct Sink(Arc<Mutex<Vec<u8>>>);
+impl Write for Sink {
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+        Write::write(&mut *self.0.lock().unwrap(), data)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 
 pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> io::Result<()>
 where
@@ -1051,10 +1057,7 @@ where
             _ => false,
         });
 
-    let concurrency = match opts.test_threads {
-        Some(n) => n,
-        None => get_concurrency(),
-    };
+    let concurrency = opts.test_threads.unwrap_or_else(get_concurrency);
 
     let mut remaining = filtered_tests;
     remaining.reverse();
@@ -1384,16 +1387,6 @@ pub fn run_test(
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
                       testfn: Box<FnBox() + Send>) {
-        struct Sink(Arc<Mutex<Vec<u8>>>);
-        impl Write for Sink {
-            fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-                Write::write(&mut *self.0.lock().unwrap(), data)
-            }
-            fn flush(&mut self) -> io::Result<()> {
-                Ok(())
-            }
-        }
-
         // Buffer for capturing standard I/O
         let data = Arc::new(Mutex::new(Vec::new()));
         let data2 = data.clone();
@@ -1438,14 +1431,16 @@ pub fn run_test(
 
     match testfn {
         DynBenchFn(bencher) => {
-            let bs = ::bench::benchmark(|harness| bencher.run(harness));
-            monitor_ch.send((desc, TrBench(bs), Vec::new())).unwrap();
-            return;
+            ::bench::benchmark(desc,
+                                monitor_ch,
+                                opts.nocapture,
+                                |harness| bencher.run(harness));
         }
         StaticBenchFn(benchfn) => {
-            let bs = ::bench::benchmark(|harness| (benchfn.clone())(harness));
-            monitor_ch.send((desc, TrBench(bs), Vec::new())).unwrap();
-            return;
+            ::bench::benchmark(desc,
+                                monitor_ch,
+                                opts.nocapture,
+                                |harness| (benchfn.clone())(harness));
         }
         DynTestFn(f) => {
             let cb = move || {
@@ -1453,9 +1448,10 @@ pub fn run_test(
             };
             run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb))
         }
-        StaticTestFn(f) =>
+        StaticTestFn(f) => {
             run_test_inner(desc, monitor_ch, opts.nocapture,
-                           Box::new(move || __rust_begin_short_backtrace(f))),
+                           Box::new(move || __rust_begin_short_backtrace(f)))
+        }
     }
 }
 
@@ -1655,11 +1651,14 @@ where
 }
 
 pub mod bench {
+    use std::panic::{catch_unwind, AssertUnwindSafe};
     use std::cmp;
+    use std::io;
+    use std::sync::{Arc, Mutex};
     use stats;
-    use super::{Bencher, BenchSamples, BenchMode};
+    use super::{Bencher, BenchSamples, BenchMode, Sink, MonitorMsg, TestDesc, Sender, TestResult};
 
-    pub fn benchmark<F>(f: F) -> BenchSamples
+    pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<MonitorMsg>, nocapture: bool, f: F)
     where
         F: FnMut(&mut Bencher),
     {
@@ -1669,26 +1668,53 @@ pub mod bench {
             bytes: 0,
         };
 
-        return match bs.bench(f) {
-            Some(ns_iter_summ) => {
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let data2 = data.clone();
+
+        let oldio = if !nocapture {
+            Some((
+                io::set_print(Some(Box::new(Sink(data2.clone())))),
+                io::set_panic(Some(Box::new(Sink(data2)))),
+            ))
+        } else {
+            None
+        };
+
+        let result = catch_unwind(AssertUnwindSafe(|| bs.bench(f)));
+
+        if let Some((printio, panicio)) = oldio {
+            io::set_print(printio);
+            io::set_panic(panicio);
+        };
+
+        let test_result = match result { //bs.bench(f) {
+            Ok(Some(ns_iter_summ)) => {
                 let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
                 let mb_s = bs.bytes * 1000 / ns_iter;
 
-                BenchSamples {
+                let bs = BenchSamples {
                     ns_iter_summ,
                     mb_s: mb_s as usize,
-                }
+                };
+                TestResult::TrBench(bs)
             }
-            None => {
+            Ok(None) => {
                 // iter not called, so no data.
                 // FIXME: error in this case?
                 let samples: &mut [f64] = &mut [0.0_f64; 1];
-                BenchSamples {
+                let bs = BenchSamples {
                     ns_iter_summ: stats::Summary::new(samples),
                     mb_s: 0,
-                }
+                };
+                TestResult::TrBench(bs)
+            }
+            Err(_) => {
+                TestResult::TrFailed
             }
         };
+
+        let stdout = data.lock().unwrap().to_vec();
+        monitor_ch.send((desc, test_result, stdout)).unwrap();
     }
 
     pub fn run_once<F>(f: F)
@@ -2067,7 +2093,21 @@ mod tests {
     #[test]
     pub fn test_bench_no_iter() {
         fn f(_: &mut Bencher) {}
-        bench::benchmark(f);
+
+        let (tx, rx) = channel();
+
+        let desc = TestDesc {
+            name: StaticTestName("f"),
+            ignore: false,
+            should_panic: ShouldPanic::No,
+            allow_fail: false,
+        };
+
+        ::bench::benchmark(desc,
+                            tx,
+                            true,
+                            f);
+        rx.recv().unwrap();
     }
 
     #[test]
@@ -2075,6 +2115,20 @@ mod tests {
         fn f(b: &mut Bencher) {
             b.iter(|| {})
         }
-        bench::benchmark(f);
+
+        let (tx, rx) = channel();
+
+        let desc = TestDesc {
+            name: StaticTestName("f"),
+            ignore: false,
+            should_panic: ShouldPanic::No,
+            allow_fail: false,
+        };
+
+        ::bench::benchmark(desc,
+                            tx,
+                            true,
+                            f);
+        rx.recv().unwrap();
     }
 }
