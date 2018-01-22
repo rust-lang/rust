@@ -33,7 +33,6 @@ use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
-use rustc_trans;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
@@ -84,7 +83,7 @@ pub fn run(input_path: &Path,
     let mut sess = session::build_session_(
         sessopts, Some(input_path.to_owned()), handler, codemap.clone(),
     );
-    let trans = rustc_trans::LlvmTransCrate::new(&sess);
+    let trans = rustc_driver::get_trans(&sess);
     let cstore = Rc::new(CStore::new(trans.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess.parse_sess.config =
@@ -249,7 +248,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let mut sess = session::build_session_(
         sessopts, None, diagnostic_handler, codemap,
     );
-    let trans = rustc_trans::LlvmTransCrate::new(&sess);
+    let trans = rustc_driver::get_trans(&sess);
     let cstore = Rc::new(CStore::new(trans.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 

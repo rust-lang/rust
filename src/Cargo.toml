@@ -4,6 +4,7 @@ members = [
   "rustc",
   "libstd",
   "libtest",
+  "librustc_trans",
   "tools/cargotest",
   "tools/clippy",
   "tools/compiletest",

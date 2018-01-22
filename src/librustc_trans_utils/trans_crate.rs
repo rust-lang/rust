@@ -48,8 +48,12 @@ use rustc_mir::monomorphize::collector;
 use link::{build_link_meta, out_filename};
 
 pub trait TransCrate {
+    fn init(&self, _sess: &Session) {}
     fn print(&self, _req: PrintRequest, _sess: &Session) {}
     fn target_features(&self, _sess: &Session) -> Vec<Symbol> { vec![] }
+    fn print_passes(&self) {}
+    fn print_version(&self) {}
+    fn diagnostics(&self) -> &[(&'static str, &'static str)] { &[] }
 
     fn metadata_loader(&self) -> Box<MetadataLoader>;
     fn provide(&self, _providers: &mut Providers);
@@ -168,7 +172,13 @@ pub struct OngoingCrateTranslation {
 }
 
 impl MetadataOnlyTransCrate {
-    pub fn new(sess: &Session) -> Box<TransCrate> {
+    pub fn new() -> Box<TransCrate> {
+        box MetadataOnlyTransCrate(())
+    }
+}
+
+impl TransCrate for MetadataOnlyTransCrate {
+    fn init(&self, sess: &Session) {
         for cty in sess.opts.crate_types.iter() {
             match *cty {
                 CrateType::CrateTypeRlib | CrateType::CrateTypeDylib |
@@ -180,12 +190,8 @@ impl MetadataOnlyTransCrate {
                 },
             }
         }
-
-        box MetadataOnlyTransCrate(())
     }
-}
 
-impl TransCrate for MetadataOnlyTransCrate {
     fn metadata_loader(&self) -> Box<MetadataLoader> {
         box NoLlvmMetadataLoader
     }

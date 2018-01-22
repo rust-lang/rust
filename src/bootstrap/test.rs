@@ -900,6 +900,8 @@ impl Step for Compiletest {
             cmd.env("PROFILER_SUPPORT", "1");
         }
 
+        cmd.env("RUST_TEST_TMPDIR", build.out.join("tmp"));
+
         cmd.arg("--adb-path").arg("adb");
         cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
         if target.contains("android") {
@@ -1209,7 +1211,7 @@ impl Step for Crate {
             }
             Mode::Librustc => {
                 builder.ensure(compile::Rustc { compiler, target });
-                compile::rustc_cargo(build, target, &mut cargo);
+                compile::rustc_cargo(build, &mut cargo);
                 ("librustc", "rustc-main")
             }
             _ => panic!("can only test libraries"),

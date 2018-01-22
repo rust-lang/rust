@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc_lint;
-use rustc_driver::{driver, target_features, abort_on_err};
+use rustc_driver::{self, driver, target_features, abort_on_err};
 use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
@@ -18,7 +18,6 @@ use rustc::ty::{self, TyCtxt, AllArenas};
 use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::util::nodemap::FxHashMap;
-use rustc_trans;
 use rustc_resolve as resolve;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
@@ -151,7 +150,7 @@ pub fn run_core(search_paths: SearchPaths,
     let mut sess = session::build_session_(
         sessopts, cpath, diagnostic_handler, codemap,
     );
-    let trans = rustc_trans::LlvmTransCrate::new(&sess);
+    let trans = rustc_driver::get_trans(&sess);
     let cstore = Rc::new(CStore::new(trans.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 

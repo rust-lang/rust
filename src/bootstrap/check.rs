@@ -94,7 +94,7 @@ impl Step for Rustc {
         build.clear_if_dirty(&stage_out, &libtest_stamp(build, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
-        rustc_cargo(build, target, &mut cargo);
+        rustc_cargo(build, &mut cargo);
         run_cargo(build,
                   &mut cargo,
                   &librustc_stamp(build, compiler, target),

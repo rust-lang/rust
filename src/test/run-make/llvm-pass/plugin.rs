@@ -14,7 +14,6 @@
 
 extern crate rustc;
 extern crate rustc_plugin;
-extern crate rustc_trans;
 
 #[link(name = "llvm-function-pass", kind = "static")]
 #[link(name = "llvm-module-pass", kind = "static")]
