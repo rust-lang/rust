@@ -1626,7 +1626,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     }
 
     if !debugging_opts.unstable_options && debugging_opts.explain {
-        early_error(ErrorOutputType::Json(false), "-Z --explain is unstable");
+        early_error(error_format, "-Z --explain is unstable");
     }
 
     let mut output_types = BTreeMap::new();
