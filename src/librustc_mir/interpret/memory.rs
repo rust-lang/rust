@@ -518,7 +518,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx> {
         match self.alloc_kind.get(&alloc) {
             // do not go into statics
-            None  => Ok(()),
+            None => Ok(()),
             // just locals and machine allocs
             Some(_) => self.mark_static_initialized(alloc, mutability),
         }
@@ -555,6 +555,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             for &alloc in alloc.relocations.values() {
                 self.mark_inner_allocation_initialized(alloc, mutability)?;
             }
+        } else {
+            bug!("no allocation found for {:?}", alloc_id);
         }
         Ok(())
     }
