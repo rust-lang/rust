@@ -552,9 +552,11 @@ static unsigned fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagRValueReference)) {
     Result |= DINode::DIFlags::FlagRValueReference;
   }
+#if LLVM_VERSION_LE(4, 0)
   if (isSet(Flags & LLVMRustDIFlags::FlagExternalTypeRef)) {
     Result |= DINode::DIFlags::FlagExternalTypeRef;
   }
+#endif
   if (isSet(Flags & LLVMRustDIFlags::FlagIntroducedVirtual)) {
     Result |= DINode::DIFlags::FlagIntroducedVirtual;
   }

@@ -15,10 +15,13 @@
 // Unfortunately, LLVM has no "disable" option for this, so we have to set
 // "enable" to 0 instead.
 
-// compile-flags:-g -Cllvm-args=-enable-tail-merge=0
+// compile-flags:-g -Cllvm-args=-enable-tail-merge=0 -Cllvm-args=-opt-bisect-limit=0
 // ignore-pretty issue #37195
 // ignore-cloudabi spawning processes is not supported
 // ignore-emscripten spawning processes is not supported
+
+// note that above `-opt-bisect-limit=0` is used to basically disable
+// optimizations
 
 use std::env;
 
@@ -114,18 +117,26 @@ fn outer(mut counter: i32, main_pos: Pos) {
     inner_inlined(&mut counter, main_pos, pos!());
 }
 
-fn check_trace(output: &str, error: &str) {
+fn check_trace(output: &str, error: &str) -> Result<(), String> {
     // reverse the position list so we can start with the last item (which was the first line)
     let mut remaining: Vec<&str> = output.lines().map(|s| s.trim()).rev().collect();
 
-    assert!(error.contains("stack backtrace"), "no backtrace in the error: {}", error);
+    if !error.contains("stack backtrace") {
+        return Err(format!("no backtrace found in stderr:\n{}", error))
+    }
     for line in error.lines() {
         if !remaining.is_empty() && line.contains(remaining.last().unwrap()) {
             remaining.pop();
         }
     }
-    assert!(remaining.is_empty(),
-            "trace does not match position list: {}\n---\n{}", error, output);
+    if !remaining.is_empty() {
+        return Err(format!("trace does not match position list\n\
+            still need to find {:?}\n\n\
+            --- stdout\n{}\n\
+            --- stderr\n{}",
+            remaining, output, error))
+    }
+    Ok(())
 }
 
 fn run_test(me: &str) {
@@ -133,6 +144,7 @@ fn run_test(me: &str) {
     use std::process::Command;
 
     let mut i = 0;
+    let mut errors = Vec::new();
     loop {
         let out = Command::new(me)
                           .env("RUST_BACKTRACE", "full")
@@ -143,9 +155,19 @@ fn run_test(me: &str) {
             assert!(output.contains("done."), "bad output for successful run: {}", output);
             break;
         } else {
-            check_trace(output, error);
+            if let Err(e) = check_trace(output, error) {
+                errors.push(e);
+            }
         }
         i += 1;
+    }
+    if errors.len() > 0 {
+        for error in errors {
+            println!("---------------------------------------");
+            println!("{}", error);
+        }
+
+        panic!("found some errors");
     }
 }
 
