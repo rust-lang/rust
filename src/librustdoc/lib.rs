@@ -503,10 +503,10 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let crate_name = matches.opt_str("crate-name");
     let crate_version = matches.opt_str("crate-version");
     let plugin_path = matches.opt_str("plugin-path");
-    let render_type = if matches.opt_present("enable-commonmark") {
-        RenderType::Pulldown
-    } else {
+    let render_type = if matches.opt_present("disable-commonmark") {
         RenderType::Hoedown
+    } else {
+        RenderType::Pulldown
     };
 
     info!("starting to run rustc");
