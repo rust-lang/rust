@@ -192,9 +192,7 @@ fn use_item(p: &mut Parser) {
                 if p.at(COLONCOLON) {
                     p.bump();
                 }
-                p.curly_block(|p| {
-                    comma_list(p, EOF, use_tree);
-                });
+                nested_trees(p);
             }
             _ if paths::is_path_start(p) => {
                 paths::use_path(p);
@@ -208,11 +206,7 @@ fn use_item(p: &mut Parser) {
                             STAR => {
                                 p.bump();
                             }
-                            L_CURLY => {
-                                p.curly_block(|p| {
-                                    comma_list(p, EOF, use_tree);
-                                });
-                            }
+                            L_CURLY => nested_trees(p),
                             _ => {
                                 // is this unreachable?
                                 p.error()
@@ -231,6 +225,11 @@ fn use_item(p: &mut Parser) {
         }
         m.complete(p, USE_TREE);
         return true;
+    }
+
+    fn nested_trees(p: &mut Parser) {
+        assert!(p.at(L_CURLY));
+        p.curly_block(|p| comma_list(p, EOF, use_tree));
     }
 }
 
