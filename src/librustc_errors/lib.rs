@@ -244,6 +244,7 @@ pub struct Handler {
     continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<Diagnostic>>,
     tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
+    tracked_diagnostic_codes: RefCell<FxHashSet<DiagnosticId>>,
 
     // This set contains a hash of every diagnostic that has been emitted by
     // this handler. These hashes is used to avoid emitting the same error
@@ -303,6 +304,7 @@ impl Handler {
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
             tracked_diagnostics: RefCell::new(None),
+            tracked_diagnostic_codes: RefCell::new(FxHashSet()),
             emitted_diagnostics: RefCell::new(FxHashSet()),
         }
     }
@@ -575,11 +577,19 @@ impl Handler {
         (ret, diagnostics)
     }
 
+    pub fn code_emitted(&self, code: &DiagnosticId) -> bool {
+        self.tracked_diagnostic_codes.borrow().contains(code)
+    }
+
     fn emit_db(&self, db: &DiagnosticBuilder) {
         let diagnostic = &**db;
 
         if let Some(ref mut list) = *self.tracked_diagnostics.borrow_mut() {
             list.push(diagnostic.clone());
+        }
+
+        if let Some(ref code) = diagnostic.code {
+            self.tracked_diagnostic_codes.borrow_mut().insert(code.clone());
         }
 
         let diagnostic_hash = {

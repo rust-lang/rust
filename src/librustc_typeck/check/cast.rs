@@ -290,18 +290,22 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     self.expr_ty,
                     fcx.ty_to_string(self.cast_ty)
                 );
-                if fcx.tcx.sess.opts.debugging_opts.explain {
+                if fcx.tcx.sess.opts.debugging_opts.explain
+                    && !fcx.tcx.sess.parse_sess.span_diagnostic
+                        .code_emitted(&err.get_code().unwrap()) {
                     err.note(
-                        "Thin pointers are \"simple\" pointers: they are purely a reference to a \
-                         memory address.\n\n\
-                         Fat pointers are pointers referencing \"Dynamically Sized Types\" (also \
-                         called DST). DST don't have a statically known size, therefore they can \
-                         only exist behind some kind of pointers that contain additional \
-                         information. Slices and trait objects are DSTs. In the case of slices, \
-                         the additional information the fat pointer holds is their size.");
+                        "Thin pointers are \"simple\" pointers: they are purely a reference to a
+memory address.
+
+Fat pointers are pointers referencing \"Dynamically Sized Types\" (also
+called DST). DST don't have a statically known size, therefore they can
+only exist behind some kind of pointers that contain additional
+information. Slices and trait objects are DSTs. In the case of slices,
+the additional information the fat pointer holds is their size.");
                     err.note("to fix this error, don't try to cast directly between thin and fat \
                               pointers");
-                    err.help("for more information about casts, take a look at [The Book]\
+                    err.help("for more information about casts, take a look at
+                              [The Book]\
                               (https://doc.rust-lang.org/book/first-edition/\
                               casting-between-types.html)");
                 }

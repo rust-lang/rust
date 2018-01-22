@@ -27,7 +27,7 @@ pub struct Diagnostic {
     pub suggestions: Vec<CodeSuggestion>,
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum DiagnosticId {
     Error(String),
     Lint(String),
@@ -279,6 +279,10 @@ impl Diagnostic {
     pub fn code(&mut self, s: DiagnosticId) -> &mut Self {
         self.code = Some(s);
         self
+    }
+
+    pub fn get_code(&self) -> Option<DiagnosticId> {
+        self.code.clone()
     }
 
     pub fn message(&self) -> String {
