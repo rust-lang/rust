@@ -10,6 +10,7 @@
 
 use std::fmt;
 use std::io;
+use std::path::PathBuf;
 
 use externalfiles::ExternalHtml;
 
@@ -31,7 +32,7 @@ pub struct Page<'a> {
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
     dst: &mut io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T,
-    css_file_extension: bool)
+    css_file_extension: bool, themes: &[PathBuf])
     -> io::Result<()>
 {
     write!(dst,
@@ -48,7 +49,9 @@ r##"<!DOCTYPE html>
 
     <link rel="stylesheet" type="text/css" href="{root_path}normalize.css">
     <link rel="stylesheet" type="text/css" href="{root_path}rustdoc.css" id="mainThemeStyle">
-    <link rel="stylesheet" type="text/css" href="" id="themeStyle">
+    {themes}
+    <link rel="stylesheet" type="text/css" href="{root_path}dark.css">
+    <link rel="stylesheet" type="text/css" href="{root_path}main.css" id="themeStyle">
     <script src="{root_path}storage.js"></script>
     {css_extension}
 
@@ -182,6 +185,12 @@ r##"<!DOCTYPE html>
     after_content = layout.external_html.after_content,
     sidebar   = *sidebar,
     krate     = layout.krate,
+    themes = themes.iter()
+                   .filter_map(|t| t.file_stem())
+                   .filter_map(|t| t.to_str())
+                   .map(|t| format!(r#"<link rel="stylesheet" type="text/css" href="{}{}">"#,
+                                    page.root_path, t))
+                   .collect::<String>(),
     )
 }
 

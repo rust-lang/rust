@@ -1224,7 +1224,8 @@ impl<'a> SourceCollector<'a> {
         };
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
-                       self.scx.css_file_extension.is_some())?;
+                       self.scx.css_file_extension.is_some(),
+                       &self.scx.themes)?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
@@ -1588,7 +1589,8 @@ impl Context {
             layout::render(writer, &self.shared.layout, &page,
                            &Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
-                           self.shared.css_file_extension.is_some())?;
+                           self.shared.css_file_extension.is_some(),
+                           &self.shared.themes)?;
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {

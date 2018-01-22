@@ -31,14 +31,6 @@ function getCurrentValue(name) {
 function switchTheme(styleElem, mainStyleElem, newTheme) {
     styleElem.href = mainStyleElem.href.replace("rustdoc.css", newTheme + ".css");
     updateLocalStorage('theme', newTheme);
-    /*var elem = document.getElementsByTagName('body')[0];
-    if (elem) {
-        updateLocalStorage('background', getComputedStyle(elem)['background-color']);
-    }*/
 }
 
-/*var elem = document.getElementsByTagName('body')[0];
-if (elem) {
-    var value = 
-}*/
 switchTheme(currentTheme, mainTheme, getCurrentValue('theme') || 'main');
