@@ -29,7 +29,7 @@ use std::mem;
 /// To reduce memory usage, a `Kind` is a interned pointer,
 /// with the lowest 2 bits being reserved for a tag to
 /// indicate the type (`Ty` or `Region`) it points to.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Kind<'tcx> {
     ptr: NonZero<usize>,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>)>

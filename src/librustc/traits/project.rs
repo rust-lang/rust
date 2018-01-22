@@ -101,7 +101,7 @@ pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::error::TypeError<'tcx>
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum ProjectionTyCandidate<'tcx> {
     // from a where-clause in the env or object type
     ParamEnv(ty::PolyProjectionPredicate<'tcx>),
