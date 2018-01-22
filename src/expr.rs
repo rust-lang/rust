@@ -2565,9 +2565,13 @@ pub fn rewrite_field(
     if contains_skip(&field.attrs) {
         return Some(context.snippet(field.span()).to_owned());
     }
-    let name = &field.ident.node.to_string();
+    let mut attrs_str = field.attrs.rewrite(context, shape)?;
+    if !attrs_str.is_empty() {
+        attrs_str.push_str(&format!("\n{}", shape.indent.to_string(context.config)));
+    };
+    let name = field.ident.node.to_string();
     if field.is_shorthand {
-        Some(name.to_string())
+        Some(attrs_str + &name)
     } else {
         let mut separator = String::from(struct_lit_field_separator(context.config));
         for _ in 0..prefix_max_width.checked_sub(name.len()).unwrap_or(0) {
@@ -2577,12 +2581,8 @@ pub fn rewrite_field(
         let expr_shape = shape.offset_left(overhead)?;
         let expr = field.expr.rewrite(context, expr_shape);
 
-        let mut attrs_str = field.attrs.rewrite(context, shape)?;
-        if !attrs_str.is_empty() {
-            attrs_str.push_str(&format!("\n{}", shape.indent.to_string(context.config)));
-        };
-
         match expr {
+            Some(ref e) if e.as_str() == name => Some(attrs_str + &name),
             Some(e) => Some(format!("{}{}{}{}", attrs_str, name, separator, e)),
             None => {
                 let expr_offset = shape.indent.block_indent(context.config);
