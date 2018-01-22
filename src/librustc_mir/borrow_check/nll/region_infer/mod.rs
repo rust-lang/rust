@@ -989,7 +989,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if let (Some(f), Some(o)) = (fr_name, outlived_fr_name) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);
-            let nice = NiceRegionError::new(infcx.tcx, blame_span, o, f, Some(tables));
+            let nice = NiceRegionError::new_from_span(infcx.tcx, blame_span, o, f, Some(tables));
             if let Some(ErrorReported) = nice.try_report() {
                 return;
             }

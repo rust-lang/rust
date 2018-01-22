@@ -25,7 +25,7 @@ fn expect_bound_supply_nothing() {
     // it to escape into `f`:
     let mut f: Option<&u32> = None;
     closure_expecting_bound(|x| {
-        f = Some(x); //~ ERROR E0495
+        f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
     });
 }
 
@@ -35,7 +35,7 @@ fn expect_bound_supply_bound() {
     // closure:
     let mut f: Option<&u32> = None;
     closure_expecting_bound(|x: &u32| {
-        f = Some(x); //~ ERROR E0495
+        f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
     });
 }
 
@@ -50,7 +50,7 @@ fn expect_bound_supply_named<'x>() {
 
         // And we still cannot let `x` escape into `f`.
         f = Some(x);
-        //~^ ERROR cannot infer
+        //~^ ERROR borrowed data cannot be stored outside of its closure
     });
 }
 

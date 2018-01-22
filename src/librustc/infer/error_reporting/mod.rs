@@ -1067,6 +1067,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                sub_region: Region<'tcx>,
                                sup_origin: SubregionOrigin<'tcx>,
                                sup_region: Region<'tcx>) {
+
         let mut err = self.report_inference_failure(var_origin);
 
         self.tcx.note_and_explain_region(region_scope_tree, &mut err,
