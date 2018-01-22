@@ -1,0 +1,14 @@
+// Use field initialization shorthand if possible.
+
+fn main() {
+    let a = Foo { x, y, z };
+
+    let b = Bar {
+        x,
+        y,
+        #[attr]
+        z,
+        #[rustfmt_skip]
+        skipped: skipped,
+    };
+}
