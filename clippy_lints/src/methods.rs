@@ -12,8 +12,8 @@ use syntax::ast;
 use syntax::codemap::{Span, BytePos};
 use utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_self, is_self_ty,
             iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
-            match_type, method_chain_args, return_ty, remove_blocks, same_tys, single_segment_path, snippet, span_lint,
-            span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
+            match_type, method_chain_args, match_var, return_ty, remove_blocks, same_tys, single_segment_path, snippet,
+            span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::paths;
 use utils::sugg;
 use utils::const_to_u64;
@@ -1141,13 +1141,6 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
     assert!(fold_args.len() == 3,
         "Expected fold_args to have three entries - the receiver, the initial value and the closure");
 
-    fn is_exactly_closure_param(expr: &hir::Expr, closure_param: ast::Name) -> bool {
-        if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = expr.node {
-            return path.segments.len() == 1 && &path.segments[0].name == &closure_param;
-        }
-        false
-    }
-
     fn check_fold_with_op(
         cx: &LateContext,
         fold_args: &[hir::Expr],
@@ -1169,8 +1162,8 @@ fn lint_unnecessary_fold(cx: &LateContext, expr: &hir::Expr, fold_args: &[hir::E
             if let Some(first_arg_ident) = get_arg_name(&closure_body.arguments[0].pat);
             if let Some(second_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
 
-            if is_exactly_closure_param(&*left_expr, first_arg_ident);
-            if replacement_has_args || is_exactly_closure_param(&*right_expr, second_arg_ident);
+            if match_var(&*left_expr, first_arg_ident);
+            if replacement_has_args || match_var(&*right_expr, second_arg_ident);
 
             then {
                 // Span containing `.fold(...)`
