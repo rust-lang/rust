@@ -1468,7 +1468,7 @@ struct Foo {
 
 ## `spaces_around_ranges`
 
-Put spaces around the .. and ... range operators
+Put spaces around the .., ..=, and ... range operators
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
@@ -1477,13 +1477,49 @@ Put spaces around the .. and ... range operators
 #### `false` (default):
 
 ```rust
-let lorem = 0..10;
+fn main() {
+    let lorem = 0..10;
+    let ipsum = 0..=10;
+
+    match lorem {
+        1..5 => foo(),
+        _ => bar,
+    }
+
+    match lorem {
+        1..=5 => foo(),
+        _ => bar,
+    }
+
+    match lorem {
+        1...5 => foo(),
+        _ => bar,
+    }
+}
 ```
 
 #### `true`:
 
 ```rust
-let lorem = 0 .. 10;
+fn main() {
+    let lorem = 0 .. 10;
+    let ipsum = 0 ..= 10;
+
+    match lorem {
+        1 .. 5 => foo(),
+        _ => bar,
+    }
+
+    match lorem {
+        1 ..= 5 => foo(),
+        _ => bar,
+    }
+
+    match lorem {
+        1 ... 5 => foo(),
+        _ => bar,
+    }
+}
 ```
 
 ## `spaces_within_parens_and_brackets`
