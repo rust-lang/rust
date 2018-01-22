@@ -890,6 +890,8 @@ fn write_shared(cx: &Context,
         themes.insert(try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry).to_owned());
     }
 
+    write(cx.dst.join("brush.svg"),
+          include_bytes!("static/brush.svg"))?;
     write(cx.dst.join("main.css"),
           include_bytes!("static/themes/main.css"))?;
     themes.insert("main".to_owned());

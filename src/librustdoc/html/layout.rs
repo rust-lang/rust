@@ -70,7 +70,8 @@ r##"<!DOCTYPE html>
         {sidebar}
     </nav>
 
-    <div id="theme-picker">&#x1f58c;
+    <div id="theme-picker">
+        <img src="{root_path}brush.svg" width="18" alt="Pick another theme!">
         <div id="theme-choices"></div>
     </div>
     <script src="{root_path}theme.js"></script>
