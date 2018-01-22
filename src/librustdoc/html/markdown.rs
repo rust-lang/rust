@@ -775,6 +775,55 @@ pub fn render(w: &mut fmt::Formatter,
               links: &[(String, String)],
               print_toc: bool,
               html_flags: libc::c_uint) -> fmt::Result {
+    // copied from pulldown-cmark (MIT license, Google)
+    // https://github.com/google/pulldown-cmark
+    // this is temporary till we remove the hoedown renderer
+    static HREF_SAFE: [u8; 128] = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
+            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+        ];
+
+    static HEX_CHARS: &'static [u8] = b"0123456789ABCDEF";
+
+    fn escape_href(ob: &mut String, s: &str) {
+        let mut mark = 0;
+        for i in 0..s.len() {
+            let c = s.as_bytes()[i];
+            if c >= 0x80 || HREF_SAFE[c as usize] == 0 {
+                // character needing escape
+
+                // write partial substring up to mark
+                if mark < i {
+                    ob.push_str(&s[mark..i]);
+                }
+                match c {
+                    b'&' => {
+                        ob.push_str("&amp;");
+                    },
+                    b'\'' => {
+                        ob.push_str("&#x27;");
+                    },
+                    _ => {
+                        let mut buf = [0u8; 3];
+                        buf[0] = b'%';
+                        buf[1] = HEX_CHARS[((c as usize) >> 4) & 0xF];
+                        buf[2] = HEX_CHARS[(c as usize) & 0xF];
+                        ob.push_str(str::from_utf8(&buf).unwrap());
+                    }
+                }
+                mark = i + 1;  // all escaped characters are ASCII
+            }
+        }
+        ob.push_str(&s[mark..]);
+    }
+    // end code copied from pulldown-cmark
+
     extern fn hoedown_link(
         ob: *mut hoedown_buffer,
         content: *const hoedown_buffer,
@@ -810,6 +859,9 @@ pub fn render(w: &mut fmt::Formatter,
             })
         };
 
+        let mut link_buf = String::new();
+        escape_href(&mut link_buf, &link);
+
         let title = unsafe {
             title.as_ref().map(|t| {
                 let s = t.as_bytes();
@@ -818,7 +870,7 @@ pub fn render(w: &mut fmt::Formatter,
         };
 
         let link_out = format!("<a href=\"{link}\"{title}>{content}</a>",
-                               link = link,
+                               link = link_buf,
                                title = title.map_or(String::new(),
                                                     |t| format!(" title=\"{}\"", t)),
                                content = content.unwrap_or(String::new()));
