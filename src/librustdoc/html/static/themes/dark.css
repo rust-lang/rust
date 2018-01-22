@@ -113,38 +113,38 @@ pre {
 .content .highlighted a, .content .highlighted span { color: #eee !important; }
 .content .highlighted.trait { background-color: #013191; }
 .content .highlighted.mod { background-color: #803a1b; }
-.content .highlighted.externcrate { background-color: #afc6e4; }
+.content .highlighted.externcrate { background-color: #396bac; }
 .content .highlighted.enum { background-color: #5b4e68; }
 .content .highlighted.struct { background-color: #194e9f; }
 .content .highlighted.fn,
 .content .highlighted.method,
 .content .highlighted.tymethod { background-color: #4950ed; }
 .content .highlighted.type { background-color: #38902c; }
-.content .highlighted.foreigntype { background-color: #f5c4ff; }
-.content .highlighted.macro { background-color: #8ce488; }
+.content .highlighted.foreigntype { background-color: #b200d6; }
+.content .highlighted.macro { background-color: #217d1c; }
 .content .highlighted.constant,
-.content .highlighted.static { background-color: #c3e0ff; }
-.content .highlighted.primitive { background-color: #9aecff; }
+.content .highlighted.static { background-color: #0063cc; }
+.content .highlighted.primitive { background-color: #00708a; }
 
-.content span.enum, .content a.enum, .block a.current.enum { color: #508157; }
-.content span.struct, .content a.struct, .block a.current.struct { color: #df3600; }
-.content span.type, .content a.type, .block a.current.type { color: #ba5d00; }
-.content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #cd00e2; }
-.content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
-.content span.union, .content a.union, .block a.current.union { color: #767b27; }
+.content span.enum, .content a.enum, .block a.current.enum { color: #82b089; }
+.content span.struct, .content a.struct, .block a.current.struct { color: #ff794d; }
+.content span.type, .content a.type, .block a.current.type { color: #ff7f00; }
+.content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #dd7de8; }
+.content span.macro, .content a.macro, .block a.current.macro { color: #09bd00; }
+.content span.union, .content a.union, .block a.current.union { color: #a6ae37; }
 .content span.constant, .content a.constant, .block a.current.constant,
-.content span.static, .content a.static, .block a.current.static { color: #546e8a; }
-.content span.primitive, .content a.primitive, .block a.current.primitive { color: #2c8093; }
+.content span.static, .content a.static, .block a.current.static { color: #82a5c9; }
+.content span.primitive, .content a.primitive, .block a.current.primitive { color: #43aec7; }
 .content span.externcrate,
-.content span.mod, .content a.mod, .block a.current.mod { color: #967F00; }
-.content span.trait, .content a.trait, .block a.current.trait { color: #7c5af3; }
+.content span.mod, .content a.mod, .block a.current.mod { color: #bda000; }
+.content span.trait, .content a.trait, .block a.current.trait { color: #b78cf2; }
 .content span.fn, .content a.fn, .block a.current.fn,
 .content span.method, .content a.method, .block a.current.method,
 .content span.tymethod, .content a.tymethod, .block a.current.tymethod,
 .content .fnname{ color: #2BAB63; }
 
-pre.rust .comment { color: #4D4D4C; }
-pre.rust .doccomment { color: #8E908C; }
+pre.rust .comment { color: #8d8d8b; }
+pre.rust .doccomment { color: #8ca375; }
 
 nav {
 	border-bottom-color: #4e4e4e;
@@ -191,13 +191,14 @@ a.test-arrow {
 }
 
 #help > div {
-	background: #e9e9e9;
+	background: #4d4d4d;
 	border-color: #bfbfbf;
 }
 
 #help dt {
 	border-color: #bfbfbf;
 	background: #fff;
+	color: black;
 }
 
 .since {
@@ -205,19 +206,19 @@ a.test-arrow {
 }
 
 tr.result span.primitive::after {
-	color: black;
+	color: #ddd;
 }
 
 .line-numbers :target { background-color: transparent; }
 
 /* Code highlighting */
-pre.rust .kw { color: #8959A8; }
-pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
-pre.rust .number, pre.rust .string { color: #718C00; }
+pre.rust .kw { color: #ab8ac1; }
+pre.rust .kw-2, pre.rust .prelude-ty { color: #769acb; }
+pre.rust .number, pre.rust .string { color: #83a300; }
 pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
+pre.rust .attribute, pre.rust .attribute .ident { color: #ee6868; }
 pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
-pre.rust .lifetime { color: #B76514; }
+pre.rust .lifetime { color: #d97f26; }
 pre.rust .question-mark {
 	color: #ff9011;
 }
