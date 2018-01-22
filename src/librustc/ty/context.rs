@@ -69,7 +69,6 @@ use std::ops::Deref;
 use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
-use std::sync::Mutex;
 use rustc_target::spec::abi;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
@@ -1714,8 +1713,6 @@ pub mod tls {
     use rayon_core;
     use dep_graph::OpenTask;
     use rustc_data_structures::sync::{self, Lrc, Lock};
-    use std::sync::Arc;
-    use std::sync::Mutex;
 
     /// This is the implicit state of rustc. It contains the current
     /// TyCtxt and query. It is updated when creating a local interner or
