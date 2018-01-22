@@ -9,9 +9,11 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_plugin;
+extern crate rustc_trans_utils;
 extern crate syntax;
 
 use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
+use rustc_trans_utils::trans_crate::TransCrate;
 use rustc::session::{config, Session};
 use rustc::session::config::{ErrorOutputType, Input};
 use std::path::PathBuf;
@@ -58,6 +60,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
     }
     fn late_callback(
         &mut self,
+        trans_crate: &TransCrate,
         matches: &getopts::Matches,
         sess: &Session,
         crate_stores: &rustc::middle::cstore::CrateStore,
@@ -66,7 +69,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         ofile: &Option<PathBuf>,
     ) -> Compilation {
         self.default
-            .late_callback(matches, sess, crate_stores, input, odir, ofile)
+            .late_callback(trans_crate, matches, sess, crate_stores, input, odir, ofile)
     }
     fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> driver::CompileController<'a> {
         let mut control = self.default.build_controller(sess, matches);
