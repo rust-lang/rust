@@ -248,10 +248,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         "string_to_string",
         "using `string::to_string` is common even today and specialization will likely happen soon",
     );
-    store.register_removed(
-        "unit_expr",
-        "superseded by `let_unit_value` and `unit_arg`",
-    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde_api::Serde);
@@ -377,6 +373,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         array_indexing::INDEXING_SLICING,
         assign_ops::ASSIGN_OPS,
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
+        methods::CLONE_ON_REF_PTR,
         misc::FLOAT_CMP_CONST,
     ]);
 
@@ -520,7 +517,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::CHARS_NEXT_CMP,
         methods::CLONE_DOUBLE_REF,
         methods::CLONE_ON_COPY,
-        methods::CLONE_ON_REF_PTR,
         methods::FILTER_NEXT,
         methods::GET_UNWRAP,
         methods::ITER_CLONED_COLLECT,
@@ -535,6 +531,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::SINGLE_CHAR_PATTERN,
         methods::STRING_EXTEND_CHARS,
         methods::TEMPORARY_CSTRING_AS_PTR,
+        methods::UNNECESSARY_FOLD,
         methods::USELESS_ASREF,
         methods::WRONG_SELF_CONVENTION,
         minmax::MIN_MAX,
@@ -612,8 +609,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::LINKEDLIST,
         types::OPTION_OPTION,
         types::TYPE_COMPLEXITY,
-        types::UNIT_CMP,
         types::UNIT_ARG,
+        types::UNIT_CMP,
         types::UNNECESSARY_CAST,
         unicode::ZERO_WIDTH_SPACE,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,

@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.181
+* Rustup to *rustc 1.25.0-nightly (97520ccb1 2018-01-21)*
+* New lints: [`else_if_without_else`], [`option_option`], [`unit_arg`], [`unnecessary_fold`]
+* Removed [`unit_expr`]
+* Various false positive fixes for [`needless_pass_by_value`]
+
 ## 0.0.180
 * Rustup to *rustc 1.25.0-nightly (3f92e8d89 2018-01-14)*
 
@@ -544,6 +550,7 @@ All notable changes to this project will be documented in this file.
 [`drop_copy`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#drop_copy
 [`drop_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#drop_ref
 [`duplicate_underscore_argument`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#duplicate_underscore_argument
+[`else_if_without_else`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#else_if_without_else
 [`empty_enum`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#empty_enum
 [`empty_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#empty_loop
 [`enum_clike_unportable_variant`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#enum_clike_unportable_variant
@@ -653,6 +660,7 @@ All notable changes to this project will be documented in this file.
 [`option_map_or_none`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_map_or_none
 [`option_map_unwrap_or`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_map_unwrap_or
 [`option_map_unwrap_or_else`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_map_unwrap_or_else
+[`option_option`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_option
 [`option_unwrap_used`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_unwrap_used
 [`or_fun_call`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#or_fun_call
 [`out_of_bounds_indexing`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#out_of_bounds_indexing
@@ -711,9 +719,10 @@ All notable changes to this project will be documented in this file.
 [`trivial_regex`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#trivial_regex
 [`type_complexity`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#type_complexity
 [`unicode_not_nfc`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unicode_not_nfc
+[`unit_arg`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unit_arg
 [`unit_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unit_cmp
-[`unit_expr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unit_expr
 [`unnecessary_cast`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_cast
+[`unnecessary_fold`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_fold
 [`unnecessary_mut_passed`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_mut_passed
 [`unnecessary_operation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_operation
 [`unneeded_field_pattern`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unneeded_field_pattern
