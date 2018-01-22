@@ -69,6 +69,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
     fn visit_ty(&mut self, ty: &ty::Ty<'tcx>, ty_context: TyContext) {
         match ty_context {
             TyContext::ReturnTy(source_info) |
+            TyContext::YieldTy(source_info) |
             TyContext::LocalDecl { source_info, .. } => {
                 span_bug!(source_info.span,
                           "should not be visiting outside of the CFG: {:?}",

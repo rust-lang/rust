@@ -60,6 +60,15 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             self.equate_normalized_input_or_output(start_position, input_ty, mir_input_ty);
         }
 
+        assert!(
+            mir.yield_ty.is_some() && universal_regions.yield_ty.is_some() ||
+            mir.yield_ty.is_none() && universal_regions.yield_ty.is_none()
+            );
+        if let Some(mir_yield_ty) = mir.yield_ty {
+            let ur_yield_ty = universal_regions.yield_ty.unwrap();
+            self.equate_normalized_input_or_output(start_position, ur_yield_ty, mir_yield_ty);
+        }
+
         // Return types are a bit more complex. They may contain existential `impl Trait`
         // types.
         debug!(

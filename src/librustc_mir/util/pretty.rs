@@ -518,7 +518,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     w: &mut Write,
 ) -> io::Result<()> {
     write_mir_sig(tcx, src, mir, w)?;
-    writeln!(w, " {{")?;
+    writeln!(w, "{{")?;
 
     // construct a scope tree and write it out
     let mut scope_tree: FxHashMap<VisibilityScope, Vec<VisibilityScope>> = FxHashMap();
@@ -581,13 +581,20 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write) -> io::R
                 write!(w, "{:?}: {}", Place::Local(arg), mir.local_decls[arg].ty)?;
             }
 
-            write!(w, ") -> {}", mir.return_ty())
+            write!(w, ") -> {}", mir.return_ty())?;
         }
         (hir::BodyOwnerKind::Const, _) | (hir::BodyOwnerKind::Static(_), _) | (_, Some(_)) => {
             assert_eq!(mir.arg_count, 0);
-            write!(w, ": {} =", mir.return_ty())
+            write!(w, ": {} =", mir.return_ty())?;
         }
     }
+
+    if let Some(yield_ty) = mir.yield_ty {
+        writeln!(w)?;
+        writeln!(w, "yields {}", yield_ty)?;
+    }
+
+    Ok(())
 }
 
 fn write_temp_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
