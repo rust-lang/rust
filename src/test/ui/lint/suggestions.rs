@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-tab
+
 #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896
 #![feature(no_debug)]
 
@@ -46,11 +48,15 @@ fn main() {
         let mut a = (1); // should suggest no `mut`, no parens
         //~^ WARN does not need to be mutable
         //~| WARN unnecessary parentheses
+        // the line after `mut` has a `\t` at the beginning, this is on purpose
+        let mut
+	        b = 1;
+        //~^^ WARN does not need to be mutable
         let d = Equinox { warp_factor: 9.975 };
         match d {
             Equinox { warp_factor: warp_factor } => {} // should suggest shorthand
             //~^ WARN this pattern is redundant
         }
-        println!("{}", a);
+        println!("{} {}", a, b);
     }
 }
