@@ -27,6 +27,7 @@
 
 #if LLVM_VERSION_GE(6, 0)
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
+#include "llvm/IR/IntrinsicInst.h"
 #else
 #include "llvm/Target/TargetSubtargetInfo.h"
 #endif
