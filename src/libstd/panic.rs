@@ -23,7 +23,10 @@ use sync::{Arc, Mutex, RwLock, atomic};
 use thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use panicking::{take_hook, set_hook, PanicInfo, Location};
+pub use panicking::{take_hook, set_hook};
+
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+pub use core::panic::{PanicInfo, Location};
 
 /// A marker trait which represents "panic safe" types in Rust.
 ///
