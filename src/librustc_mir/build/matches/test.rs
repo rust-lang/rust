@@ -173,39 +173,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Convert a byte array or byte slice to a byte slice.
-    fn to_slice_operand(&mut self,
-                        block: BasicBlock,
-                        source_info: SourceInfo,
-                        operand: Operand<'tcx>)
-                        -> Operand<'tcx>
-    {
-        let tcx = self.hir.tcx();
-        let ty = operand.ty(&self.local_decls, tcx);
-        debug!("to_slice_operand({:?}, {:?}: {:?})", block, operand, ty);
-        match ty.sty {
-            ty::TyRef(region, mt) => match mt.ty.sty {
-                ty::TyArray(ety, _) => {
-                    let ty = tcx.mk_imm_ref(region, tcx.mk_slice(ety));
-                    let temp = self.temp(ty, source_info.span);
-                    self.cfg.push_assign(block, source_info, &temp,
-                                         Rvalue::Cast(CastKind::Unsize, operand, ty));
-                    Operand::Move(temp)
-                }
-                ty::TySlice(_) => operand,
-                _ => {
-                    span_bug!(source_info.span,
-                              "bad operand {:?}: {:?} to `to_slice_operand`", operand, ty)
-                }
-            }
-            _ => {
-                span_bug!(source_info.span,
-                          "bad operand {:?}: {:?} to `to_slice_operand`", operand, ty)
-            }
-        }
-
-    }
-
     /// Generates the code to perform a test.
     pub fn perform_test(&mut self,
                         block: BasicBlock,
@@ -292,8 +259,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ret
             }
 
-            TestKind::Eq { value, ty } => {
-                let tcx = self.hir.tcx();
+            TestKind::Eq { value, mut ty } => {
                 let mut val = Operand::Copy(place.clone());
                 let mut expect = self.literal_operand(test.span, ty, Literal::Value {
                     value

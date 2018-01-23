@@ -1263,9 +1263,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 ty::TyDynamic(..) => Ok(p.to_value_with_vtable(
                     self.memory.read_ptr_sized_unsigned(extra, ptr_align)?.to_ptr()?,
                 )),
-                ty::TySlice(..) | ty::TyStr => Ok(
-                    p.to_value_with_len(self.memory.read_ptr_sized_unsigned(extra, ptr_align)?.to_bytes()? as u64),
-                ),
+                ty::TySlice(..) | ty::TyStr => {
+                    match p.primval {
+                        PrimVal::Bytes(b) => bug!("slice ptr: {:x}", b),
+                        PrimVal::Undef => bug!("undef slice ptr"),
+                        _ => {},
+                    }
+                    Ok(
+                        p.to_value_with_len(self.memory.read_ptr_sized_unsigned(extra, ptr_align)?.to_bytes()? as u64),
+                    )
+                },
                 _ => bug!("unsized primval ptr read from {:?}", pointee_ty),
             }
         }
