@@ -315,7 +315,11 @@ extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
 // enable fpmath flag UnsafeAlgebra
 extern "C" void LLVMRustSetHasUnsafeAlgebra(LLVMValueRef V) {
   if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
+#if LLVM_VERSION_GE(6, 0)
+    I->setFast(true);
+#else
     I->setHasUnsafeAlgebra(true);
+#endif
   }
 }
 
