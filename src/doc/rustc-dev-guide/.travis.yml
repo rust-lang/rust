@@ -1,17 +1,17 @@
 language: rust
-
-cache: pip
-
+cache:
+- pip
+- cargo
 install:
-  - bash ci/install.sh
-  - source ~/.cargo/env || true
-
+- source ~/.cargo/env || true
+- bash ci/install.sh
 script:
-  - true
-
+- true
 after_success:
-  - bash ci/github_pages.sh
-
+- bash ci/github_pages.sh
 notifications:
   email:
     on_success: never
+env:
+  global:
+    secure: EzIPKgJnOk8W0CPK2r6xQv02mV0L2NZJsoWlf3KEHs/ZSskzQEcN18V05/N6H6D4RazRu/UqtWqATV96vZHlmevWkU4PVYz/0UvHfPnu/TbEKBxY/BdJdLIuaNwXVIQ8EnRqVFcRUo/M9xlKk/8mlwVzhPRot8oJQmWDrOqZQgoABFFiU1/OktBz3BtTneR66hqs0rC1tNJyzNh+y2b0qn9Su+N3bp5AXDx5FvDyAKWUfPwP1sRh3xM7oF+0XCnjKKeMYENx7ZltKVQeYSCIHZjBnDIfKX2V1bwKHHrUMrQosJf4lmKsrvdP3sEYUQIIXtY80lA+18yDBhQCKIjh4JyuEisYDMYeYJc2WhUjYaS14WuqnyzRgMMf1EAIwBZgmcsLE2S31csHXXgTWSwwEPzC07erqEsc3nldSQWUbvV9EkFQRXNqMkvyXNt8BQDgSifVw+v0AUBIAr462YlbAN+dk/Ldnd++JPQ6kdrOmegE5B/Ukv+LwFzr9oog2V66TL2STMk8o5ffYWrFGijUfSbMLXIoPRxNj+jFMfAW346tyNCCVKqCexNZV4yUID0f+/zCzcL+DAK1c2hlO4vMQ2fIu2McNKk8RMrMwVsYZhr5jOIvRAkAuaOKZIY+RAsE1VF+G4iGY+UtT89hergHWAdDeFZB+z8OHr1uvaaTQC0=
