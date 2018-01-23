@@ -229,6 +229,9 @@ LLVMRustWriteArchive(char *Dst, size_t NumMembers,
         LLVMRustSetLastError(toString(MOrErr.takeError()).c_str());
         return LLVMRustResult::Failure;
       }
+#if LLVM_VERSION_GE(6, 0)
+      MOrErr->MemberName = sys::path::filename(MOrErr->MemberName);
+#endif
       Members.push_back(std::move(*MOrErr));
     }
   }
