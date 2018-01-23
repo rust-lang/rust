@@ -18,6 +18,7 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(32);
     // see #36994
     base.exe_allocation_crate = None;
+    base.crt_static_default = false;
     Ok(Target {
         llvm_target: "mipsel-unknown-linux-musl".to_string(),
         target_endian: "little".to_string(),
