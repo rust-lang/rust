@@ -761,29 +761,37 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
+        let mut err = self.struct_span_err(self.span,
+                                           &format!("expected identifier, found {}",
+                                                    self.this_token_descr()));
+        if let Some(token_descr) = self.token_descr() {
+            err.span_label(self.span, format!("expected identifier, found {}", token_descr));
+        } else {
+            err.span_label(self.span, "expected identifier");
+        }
+        err
+    }
+
     pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
-        self.parse_ident_common(true, false)
+        self.parse_ident_common(true)
     }
 
     pub fn parse_ident_attr(&mut self) -> PResult<'a, ast::Ident> {
-        self.parse_ident_common(true, true)
+        match self.token {
+            token::Ident(i) if i.name == keywords::SelfType.name() {
+                self.bump();
+                Ok(i)
+            }
+            _ => self.parse_ident(),
+        }
     }
 
-    fn parse_ident_common(&mut self, recover: bool, accept_self: bool) -> PResult<'a, ast::Ident> {
+    fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
         match self.token {
             token::Ident(i) => {
-                if self.token.is_reserved_ident()
-                    && !(accept_self && i.name == keywords::SelfType.name())
-                {
-                    let mut err = self.struct_span_err(self.span,
-                                                       &format!("expected identifier, found {}",
-                                                                self.this_token_descr()));
-                    if let Some(token_descr) = self.token_descr() {
-                        err.span_label(self.span, format!("expected identifier, found {}",
-                                                          token_descr));
-                    } else {
-                        err.span_label(self.span, "expected identifier");
-                    }
+                if self.token.is_reserved_ident() {
+                    let mut err = self.expected_ident_found();
                     if recover {
                         err.emit();
                     } else {
@@ -797,14 +805,7 @@ impl<'a> Parser<'a> {
                 Err(if self.prev_token_kind == PrevTokenKind::DocComment {
                         self.span_fatal_err(self.prev_span, Error::UselessDocComment)
                     } else {
-                        let mut err = self.fatal(&format!("expected identifier, found `{}`",
-                                                          self.this_token_to_string()));
-                        if let Some(token_descr) = self.token_descr() {
-                            err.span_label(self.span, format!("expected identifier, found {}",
-                                                              token_descr));
-                        } else {
-                            err.span_label(self.span, "expected identifier");
-                        }
+                        let mut err = self.expected_ident_found();
                         if self.token == token::Underscore {
                             err.note("`_` is a wildcard pattern, not an identifier");
                         }
@@ -2117,7 +2118,7 @@ impl<'a> Parser<'a> {
             self.bump();
             Ok(Ident::with_empty_ctxt(name))
         } else {
-            self.parse_ident_common(false, false)
+            self.parse_ident_common(false)
         }
     }
 
@@ -2134,7 +2135,7 @@ impl<'a> Parser<'a> {
             hi = self.prev_span;
             (fieldname, self.parse_expr()?, false)
         } else {
-            let fieldname = self.parse_ident_common(false, false)?;
+            let fieldname = self.parse_ident_common(false)?;
             hi = self.prev_span;
 
             // Mimic `x: x` for the `x` field shorthand.
