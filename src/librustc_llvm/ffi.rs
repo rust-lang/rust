@@ -1546,7 +1546,7 @@ extern "C" {
                                                 InlinedAt: MetadataRef)
                                                 -> ValueRef;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
-    pub fn LLVMRustDIBuilderCreateOpPlus() -> i64;
+    pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
 
     pub fn LLVMRustWriteTypeToString(Type: TypeRef, s: RustStringRef);
     pub fn LLVMRustWriteValueToString(value_ref: ValueRef, s: RustStringRef);
