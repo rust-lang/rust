@@ -600,7 +600,7 @@
                 var lev_distance = MAX_LEV_DISTANCE + 1;
                 if (obj.name === val.name) {
                     if (literalSearch === true) {
-                        if (val.generics.length !== 0) {
+                        if (val.generics && val.generics.length !== 0) {
                             if (obj.generics && obj.length >= val.generics.length) {
                                 var elems = obj.generics.slice(0);
                                 var allFound = true;
@@ -637,7 +637,7 @@
                 }
                 // Names didn't match so let's check if one of the generic types could.
                 if (literalSearch === true) {
-                     if (obj.generics.length > 0) {
+                     if (obj.generics && obj.generics.length > 0) {
                         for (var x = 0; x < obj.generics.length; ++x) {
                             if (obj.generics[x] === val.name) {
                                 return true;
