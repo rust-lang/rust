@@ -281,35 +281,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                 .emit();
             }
             CastError::SizedUnsizedCast => {
-                let mut err = type_error_struct!(
-                    fcx.tcx.sess,
-                    self.span,
-                    self.expr_ty,
-                    E0607,
-                    "cannot cast thin pointer `{}` to fat pointer `{}`",
-                    self.expr_ty,
-                    fcx.ty_to_string(self.cast_ty)
-                );
-                if fcx.tcx.sess.opts.debugging_opts.explain
-                    && !fcx.tcx.sess.parse_sess.span_diagnostic
-                        .code_emitted(&err.get_code().unwrap()) {
-                    err.help(
-                        "Thin pointers are \"simple\" pointers: they are purely a reference to a
-memory address.
-
-Fat pointers are pointers referencing \"Dynamically Sized Types\" (also
-called DST). DST don't have a statically known size, therefore they can
-only exist behind some kind of pointers that contain additional
-information. Slices and trait objects are DSTs. In the case of slices,
-the additional information the fat pointer holds is their size.
-
-To fix this error, don't try to cast directly between thin and fat
-pointers.
-
-For more information about casts, take a look at The Book:
-https://doc.rust-lang.org/book/first-edition/casting-between-types.html");
-                }
-                err.emit();
+                use structured_errors::{SizedUnsizedCastError, StructuredDiagnostic};
+                SizedUnsizedCastError::new(&fcx.tcx.sess,
+                                           self.span,
+                                           self.expr_ty,
+                                           fcx.ty_to_string(self.cast_ty))
+                    .diagnostic().emit();
             }
             CastError::UnknownCastPtrKind |
             CastError::UnknownExprPtrKind => {

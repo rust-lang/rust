@@ -831,6 +831,10 @@ impl Session {
             _ => true,
         }
     }
+
+    pub fn explain(&self, code: &DiagnosticId) -> bool {
+        self.opts.debugging_opts.explain && !self.parse_sess.span_diagnostic.code_emitted(code)
+    }
 }
 
 pub fn build_session(sopts: config::Options,
