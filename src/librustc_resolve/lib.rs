@@ -67,6 +67,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::BTreeSet;
 use std::fmt;
+use std::iter;
 use std::mem::replace;
 use std::rc::Rc;
 
@@ -1320,6 +1321,7 @@ pub struct Resolver<'a> {
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Ident>,
     global_macros: FxHashMap<Name, &'a NameBinding<'a>>,
+    pub all_macros: FxHashMap<Name, Def>,
     lexical_macro_resolutions: Vec<(Ident, &'a Cell<LegacyScope<'a>>)>,
     macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
     macro_defs: FxHashMap<Mark, DefId>,
@@ -1407,6 +1409,71 @@ impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
 
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_hir_path(&mut self, path: &mut hir::Path, is_value: bool) {
+        self.resolve_hir_path_cb(path, is_value,
+                                 |resolver, span, error| resolve_error(resolver, span, error))
+    }
+
+    fn resolve_str_path(&mut self, span: Span, crate_root: Option<&str>,
+                        components: &[&str], is_value: bool) -> hir::Path {
+        let mut path = hir::Path {
+            span,
+            def: Def::Err,
+            segments: iter::once(keywords::CrateRoot.name()).chain({
+                crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
+            }).map(hir::PathSegment::from_name).collect(),
+        };
+
+        self.resolve_hir_path(&mut path, is_value);
+        path
+    }
+
+    fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
+        self.def_map.get(&id).cloned()
+    }
+
+    fn definitions(&mut self) -> &mut Definitions {
+        &mut self.definitions
+    }
+}
+
+impl<'a> Resolver<'a> {
+    /// Rustdoc uses this to resolve things in a recoverable way. ResolutionError<'a>
+    /// isn't something that can be returned because it can't be made to live that long,
+    /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
+    /// just that an error occured.
+    pub fn resolve_str_path_error(&mut self, span: Span, path_str: &str, is_value: bool)
+        -> Result<hir::Path, ()> {
+        use std::iter;
+        let mut errored = false;
+
+        let mut path = if path_str.starts_with("::") {
+            hir::Path {
+                span,
+                def: Def::Err,
+                segments: iter::once(keywords::CrateRoot.name()).chain({
+                    path_str.split("::").skip(1).map(Symbol::intern)
+                }).map(hir::PathSegment::from_name).collect(),
+            }
+        } else {
+            hir::Path {
+                span,
+                def: Def::Err,
+                segments: path_str.split("::").map(Symbol::intern)
+                                  .map(hir::PathSegment::from_name).collect(),
+            }
+        };
+        self.resolve_hir_path_cb(&mut path, is_value, |_, _, _| errored = true);
+        if errored || path.def == Def::Err {
+            Err(())
+        } else {
+            Ok(path)
+        }
+    }
+
+    /// resolve_hir_path, but takes a callback in case there was an error
+    fn resolve_hir_path_cb<F>(&mut self, path: &mut hir::Path, is_value: bool, error_callback: F)
+            where F: for<'c, 'b> FnOnce(&'c mut Resolver, Span, ResolutionError<'b>)
+        {
         let namespace = if is_value { ValueNS } else { TypeNS };
         let hir::Path { ref segments, span, ref mut def } = *path;
         let path: Vec<SpannedIdent> = segments.iter()
@@ -1418,23 +1485,15 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
                 *def = path_res.base_def(),
             PathResult::NonModule(..) => match self.resolve_path(&path, None, true, span) {
                 PathResult::Failed(span, msg, _) => {
-                    resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                    error_callback(self, span, ResolutionError::FailedToResolve(&msg));
                 }
                 _ => {}
             },
             PathResult::Indeterminate => unreachable!(),
             PathResult::Failed(span, msg, _) => {
-                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
+                error_callback(self, span, ResolutionError::FailedToResolve(&msg));
             }
         }
-    }
-
-    fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
-        self.def_map.get(&id).cloned()
-    }
-
-    fn definitions(&mut self) -> &mut Definitions {
-        &mut self.definitions
     }
 }
 
@@ -1538,6 +1597,7 @@ impl<'a> Resolver<'a> {
             crate_loader,
             macro_names: FxHashSet(),
             global_macros: FxHashMap(),
+            all_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
             macro_map: FxHashMap(),
             macro_exports: Vec::new(),
@@ -1833,8 +1893,8 @@ impl<'a> Resolver<'a> {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope<F>(&mut self, id: NodeId, f: F)
-        where F: FnOnce(&mut Resolver)
+    pub fn with_scope<F, T>(&mut self, id: NodeId, f: F) -> T
+        where F: FnOnce(&mut Resolver) -> T
     {
         let id = self.definitions.local_def_id(id);
         let module = self.module_map.get(&id).cloned(); // clones a reference
@@ -1845,13 +1905,14 @@ impl<'a> Resolver<'a> {
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
 
             self.finalize_current_module_macro_resolutions();
-            f(self);
+            let ret = f(self);
 
             self.current_module = orig_module;
             self.ribs[ValueNS].pop();
             self.ribs[TypeNS].pop();
+            ret
         } else {
-            f(self);
+            f(self)
         }
     }
 

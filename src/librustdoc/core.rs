@@ -20,8 +20,10 @@ use rustc::lint;
 use rustc::util::nodemap::FxHashMap;
 use rustc_trans;
 use rustc_resolve as resolve;
+use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
 
+use syntax::ast::NodeId;
 use syntax::codemap;
 use syntax::feature_gate::UnstableFeatures;
 use errors;
@@ -35,6 +37,7 @@ use std::path::PathBuf;
 use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
+use html::markdown::RenderType;
 use html::render::RenderInfo;
 
 pub use rustc::session::config::Input;
@@ -42,8 +45,11 @@ pub use rustc::session::search_paths::SearchPaths;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
-pub struct DocContext<'a, 'tcx: 'a> {
+pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub resolver: &'a RefCell<resolve::Resolver<'rcx>>,
+    /// The stack of module NodeIds up till this point
+    pub mod_ids: RefCell<Vec<NodeId>>,
     pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -54,6 +60,8 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
     pub external_traits: RefCell<FxHashMap<DefId, clean::Trait>>,
+    /// Which markdown renderer to use when extracting links.
+    pub render_type: RenderType,
 
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
@@ -64,7 +72,7 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
 }
 
-impl<'a, 'tcx> DocContext<'a, 'tcx> {
+impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
     pub fn sess(&self) -> &session::Session {
         &self.tcx.sess
     }
@@ -104,7 +112,8 @@ pub fn run_core(search_paths: SearchPaths,
                 triple: Option<String>,
                 maybe_sysroot: Option<PathBuf>,
                 allow_warnings: bool,
-                force_unstable_if_unmarked: bool) -> (clean::Crate, RenderInfo)
+                force_unstable_if_unmarked: bool,
+                render_type: RenderType) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -156,16 +165,40 @@ pub fn run_core(search_paths: SearchPaths,
 
     let name = ::rustc_trans_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
 
-    let driver::ExpansionResult { defs, analysis, resolutions, mut hir_forest, .. } = {
-        let result = driver::phase_2_configure_and_expand(&sess,
-                                                          &cstore,
-                                                          krate,
-                                                          None,
-                                                          &name,
-                                                          None,
-                                                          resolve::MakeGlobMap::No,
-                                                          |_| Ok(()));
-        abort_on_err(result, &sess)
+    let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
+
+    let resolver_arenas = resolve::Resolver::arenas();
+    let result = driver::phase_2_configure_and_expand_inner(&sess,
+                                                      &cstore,
+                                                      krate,
+                                                      None,
+                                                      &name,
+                                                      None,
+                                                      resolve::MakeGlobMap::No,
+                                                      &resolver_arenas,
+                                                      &mut crate_loader,
+                                                      |_| Ok(()));
+    let driver::InnerExpansionResult {
+        mut hir_forest,
+        resolver,
+        ..
+    } = abort_on_err(result, &sess);
+
+    // We need to hold on to the complete resolver, so we clone everything
+    // for the analysis passes to use. Suboptimal, but necessary in the
+    // current architecture.
+    let defs = resolver.definitions.clone();
+    let resolutions = ty::Resolutions {
+        freevars: resolver.freevars.clone(),
+        export_map: resolver.export_map.clone(),
+        trait_map: resolver.trait_map.clone(),
+        maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
+        maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
+    };
+    let analysis = ty::CrateAnalysis {
+        access_levels: Rc::new(AccessLevels::default()),
+        name: name.to_string(),
+        glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
     };
 
     let arenas = AllArenas::new();
@@ -175,6 +208,8 @@ pub fn run_core(search_paths: SearchPaths,
                                                           &None,
                                                           &[],
                                                           &sess);
+
+    let resolver = RefCell::new(resolver);
 
     abort_on_err(driver::phase_3_run_analysis_passes(&*trans,
                                                      control,
@@ -203,12 +238,15 @@ pub fn run_core(search_paths: SearchPaths,
 
         let ctxt = DocContext {
             tcx,
+            resolver: &resolver,
             populated_all_crate_impls: Cell::new(false),
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),
             renderinfo: Default::default(),
+            render_type,
             ty_substs: Default::default(),
             lt_substs: Default::default(),
+            mod_ids: Default::default(),
         };
         debug!("crate: {:?}", tcx.hir.krate());
 

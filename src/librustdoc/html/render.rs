@@ -421,7 +421,7 @@ thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
 thread_local!(pub static USED_ID_MAP: RefCell<FxHashMap<String, usize>> =
                     RefCell::new(init_ids()));
 
-pub fn render_text<F: FnMut(RenderType) -> String>(mut render: F) -> (String, String) {
+pub fn render_text<T, F: FnMut(RenderType) -> T>(mut render: F) -> (T, T) {
     // Save the state of USED_ID_MAP so it only gets updated once even
     // though we're rendering twice.
     let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
@@ -1284,7 +1284,7 @@ impl DocFolder for Cache {
             clean::FunctionItem(..) | clean::ModuleItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
             clean::ConstantItem(..) | clean::StaticItem(..) |
-            clean::UnionItem(..) | clean::ForeignTypeItem
+            clean::UnionItem(..) | clean::ForeignTypeItem | clean::MacroItem(..)
             if !self.stripped_mod => {
                 // Re-exported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
@@ -1861,12 +1861,14 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
 /// rendering between Pulldown and Hoedown.
 fn render_markdown(w: &mut fmt::Formatter,
                    md_text: &str,
+                   links: Vec<(String, String)>,
                    span: Span,
                    render_type: RenderType,
                    prefix: &str,
                    scx: &SharedContext)
                    -> fmt::Result {
-    let (hoedown_output, pulldown_output) = render_text(|ty| format!("{}", Markdown(md_text, ty)));
+    let (hoedown_output, pulldown_output) =
+        render_text(|ty| format!("{}", Markdown(md_text, &links, ty)));
     let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
     differences.retain(|s| {
         match *s {
@@ -1898,7 +1900,13 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        render_markdown(w, &markdown, item.source.clone(), cx.render_type, prefix, &cx.shared)?;
+        render_markdown(w,
+                        &markdown,
+                        item.links(),
+                        item.source.clone(),
+                        cx.render_type,
+                        prefix,
+                        &cx.shared)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -1924,7 +1932,13 @@ fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
                  cx: &Context, prefix: &str) -> fmt::Result {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
-        render_markdown(w, &*s, item.source.clone(), cx.render_type, prefix, &cx.shared)?;
+        render_markdown(w,
+                        &*s,
+                        item.links(),
+                        item.source.clone(),
+                        cx.render_type,
+                        prefix,
+                        &cx.shared)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -2146,10 +2160,10 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        stab_docs = stab_docs,
                        docs = if cx.render_type == RenderType::Hoedown {
                            format!("{}",
-                                   shorter(Some(&Markdown(doc_value,
+                                   shorter(Some(&Markdown(doc_value, &myitem.links(),
                                                           RenderType::Hoedown).to_string())))
                        } else {
-                           format!("{}", MarkdownSummaryLine(doc_value))
+                           format!("{}", MarkdownSummaryLine(doc_value, &myitem.links()))
                        },
                        class = myitem.type_(),
                        stab = myitem.stability_class().unwrap_or("".to_string()),
@@ -3338,7 +3352,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
-            write!(w, "<div class='docblock'>{}</div>", Markdown(&*dox, cx.render_type))?;
+            write!(w, "<div class='docblock'>{}</div>",
+                   Markdown(&*dox, &i.impl_item.links(), cx.render_type))?;
         }
     }
 

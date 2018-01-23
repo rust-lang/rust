@@ -28,7 +28,7 @@ use rustc::util::common::{ErrorReported, time};
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_incremental;
-use rustc_resolve::{MakeGlobMap, Resolver};
+use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
 use rustc_trans_utils::trans_crate::TransCrate;
@@ -139,6 +139,7 @@ pub fn compile_input(trans: Box<TransCrate>,
 
         let crate_name =
             ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
+
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
                 sess,
@@ -562,6 +563,12 @@ pub struct ExpansionResult {
     pub hir_forest: hir_map::Forest,
 }
 
+pub struct InnerExpansionResult<'a> {
+    pub expanded_crate: ast::Crate,
+    pub resolver: Resolver<'a>,
+    pub hir_forest: hir_map::Forest,
+}
+
 /// Run the "early phases" of the compiler: initial `cfg` processing,
 /// loading compiler plugins (including those from `addl_plugins`),
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
@@ -578,6 +585,55 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                                        make_glob_map: MakeGlobMap,
                                        after_expand: F)
                                        -> Result<ExpansionResult, CompileIncomplete>
+    where F: FnOnce(&ast::Crate) -> CompileResult {
+    // Currently, we ignore the name resolution data structures for the purposes of dependency
+    // tracking. Instead we will run name resolution and include its output in the hash of each
+    // item, much like we do for macro expansion. In other words, the hash reflects not just
+    // its contents but the results of name resolution on those contents. Hopefully we'll push
+    // this back at some point.
+    let mut crate_loader = CrateLoader::new(sess, &cstore, &crate_name);
+    let resolver_arenas = Resolver::arenas();
+    let result = phase_2_configure_and_expand_inner(sess, cstore, krate, registry, crate_name,
+                                                    addl_plugins, make_glob_map, &resolver_arenas,
+                                                    &mut crate_loader, after_expand);
+    match result {
+        Ok(InnerExpansionResult {expanded_crate, resolver, hir_forest}) => {
+            Ok(ExpansionResult {
+                expanded_crate,
+                defs: resolver.definitions,
+                hir_forest,
+                resolutions: Resolutions {
+                    freevars: resolver.freevars,
+                    export_map: resolver.export_map,
+                    trait_map: resolver.trait_map,
+                    maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
+                    maybe_unused_extern_crates: resolver.maybe_unused_extern_crates,
+                },
+
+                analysis: ty::CrateAnalysis {
+                    access_levels: Rc::new(AccessLevels::default()),
+                    name: crate_name.to_string(),
+                    glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
+                },
+            })
+        }
+        Err(x) => Err(x)
+    }
+}
+
+/// Same as phase_2_configure_and_expand, but doesn't let you keep the resolver
+/// around
+pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
+                                       cstore: &'a CStore,
+                                       krate: ast::Crate,
+                                       registry: Option<Registry>,
+                                       crate_name: &str,
+                                       addl_plugins: Option<Vec<String>>,
+                                       make_glob_map: MakeGlobMap,
+                                       resolver_arenas: &'a ResolverArenas<'a>,
+                                       crate_loader: &'a mut CrateLoader,
+                                       after_expand: F)
+                                       -> Result<InnerExpansionResult<'a>, CompileIncomplete>
     where F: FnOnce(&ast::Crate) -> CompileResult,
 {
     let time_passes = sess.time_passes();
@@ -666,19 +722,12 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         return Err(CompileIncomplete::Stopped);
     }
 
-    // Currently, we ignore the name resolution data structures for the purposes of dependency
-    // tracking. Instead we will run name resolution and include its output in the hash of each
-    // item, much like we do for macro expansion. In other words, the hash reflects not just
-    // its contents but the results of name resolution on those contents. Hopefully we'll push
-    // this back at some point.
-    let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name);
-    let resolver_arenas = Resolver::arenas();
     let mut resolver = Resolver::new(sess,
                                      cstore,
                                      &krate,
                                      crate_name,
                                      make_glob_map,
-                                     &mut crate_loader,
+                                     crate_loader,
                                      &resolver_arenas);
     resolver.whitelisted_legacy_custom_derives = whitelisted_legacy_custom_derives;
     syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features.borrow().quote);
@@ -855,21 +904,9 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         syntax::ext::hygiene::clear_markings();
     }
 
-    Ok(ExpansionResult {
+    Ok(InnerExpansionResult {
         expanded_crate: krate,
-        defs: resolver.definitions,
-        analysis: ty::CrateAnalysis {
-            access_levels: Rc::new(AccessLevels::default()),
-            name: crate_name.to_string(),
-            glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
-        },
-        resolutions: Resolutions {
-            freevars: resolver.freevars,
-            export_map: resolver.export_map,
-            trait_map: resolver.trait_map,
-            maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
-            maybe_unused_extern_crates: resolver.maybe_unused_extern_crates,
-        },
+        resolver,
         hir_forest,
     })
 }

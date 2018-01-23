@@ -56,15 +56,16 @@ pub enum RenderType {
 /// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
-// The second parameter is whether we need a shorter version or not.
-pub struct Markdown<'a>(pub &'a str, pub RenderType);
+/// The second parameter is a list of link replacements
+// The third parameter is whether we need a shorter version or not.
+pub struct Markdown<'a>(pub &'a str, pub &'a [(String, String)], pub RenderType);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
 pub struct MarkdownWithToc<'a>(pub &'a str, pub RenderType);
 /// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
 pub struct MarkdownHtml<'a>(pub &'a str, pub RenderType);
 /// A unit struct like `Markdown`, that renders only the first paragraph.
-pub struct MarkdownSummaryLine<'a>(pub &'a str);
+pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
 
 /// Controls whether a line will be hidden or shown in HTML output.
 ///
@@ -244,6 +245,39 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                         tooltip));
             Some(Event::Html(s.into()))
         })
+    }
+}
+
+/// Make headings links with anchor ids and build up TOC.
+struct LinkReplacer<'a, 'b, I: Iterator<Item = Event<'a>>> {
+    inner: I,
+    links: &'b [(String, String)]
+}
+
+impl<'a, 'b, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, 'b, I> {
+    fn new(iter: I, links: &'b [(String, String)]) -> Self {
+        LinkReplacer {
+            inner: iter,
+            links
+        }
+    }
+}
+
+impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let event = self.inner.next();
+        if let Some(Event::Start(Tag::Link(dest, text))) = event {
+            if let Some(&(_, ref replace)) = self.links.into_iter().find(|link| &*link.0 == &*dest)
+            {
+                Some(Event::Start(Tag::Link(replace.to_owned().into(), text)))
+            } else {
+                Some(Event::Start(Tag::Link(dest, text)))
+            }
+        } else {
+            event
+        }
     }
 }
 
@@ -527,6 +561,8 @@ struct MyOpaque {
                            *const hoedown_buffer, *const hoedown_renderer_data,
                            libc::size_t),
     toc_builder: Option<TocBuilder>,
+    links_out: Option<Vec<String>>,
+    links_replace: Vec<(String, String)>,
 }
 
 extern {
@@ -555,186 +591,293 @@ impl hoedown_buffer {
     }
 }
 
-pub fn render(w: &mut fmt::Formatter,
-              s: &str,
-              print_toc: bool,
-              html_flags: libc::c_uint) -> fmt::Result {
-    extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
-                    lang: *const hoedown_buffer, data: *const hoedown_renderer_data,
-                    line: libc::size_t) {
-        unsafe {
-            if orig_text.is_null() { return }
+extern fn hoedown_block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
+                        lang: *const hoedown_buffer, data: *const hoedown_renderer_data,
+                        line: libc::size_t) {
+    unsafe {
+        if orig_text.is_null() { return }
 
-            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
-            let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
-            let text = (*orig_text).as_bytes();
-            let origtext = str::from_utf8(text).unwrap();
-            let origtext = origtext.trim_left();
-            debug!("docblock: ==============\n{:?}\n=======", text);
-            let mut compile_fail = false;
-            let mut ignore = false;
+        let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
+        let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
+        let text = (*orig_text).as_bytes();
+        let origtext = str::from_utf8(text).unwrap();
+        let origtext = origtext.trim_left();
+        debug!("docblock: ==============\n{:?}\n=======", text);
+        let mut compile_fail = false;
+        let mut ignore = false;
 
-            let rendered = if lang.is_null() || origtext.is_empty() {
-                false
-            } else {
-                let rlang = (*lang).as_bytes();
-                let rlang = str::from_utf8(rlang).unwrap();
-                let parse_result = LangString::parse(rlang);
-                compile_fail = parse_result.compile_fail;
-                ignore = parse_result.ignore;
-                if !parse_result.rust {
-                    (my_opaque.dfltblk)(ob, orig_text, lang,
-                                        opaque as *const hoedown_renderer_data,
-                                        line);
-                    true
-                } else {
-                    false
-                }
-            };
-
-            let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
-            let text = lines.collect::<Vec<&str>>().join("\n");
-            if rendered { return }
-            PLAYGROUND.with(|play| {
-                // insert newline to clearly separate it from the
-                // previous block so we can shorten the html output
-                let mut s = String::from("\n");
-                let playground_button = play.borrow().as_ref().and_then(|&(ref krate, ref url)| {
-                    if url.is_empty() {
-                        return None;
-                    }
-                    let test = origtext.lines()
-                        .map(|l| map_line(l).for_code())
-                        .collect::<Vec<&str>>().join("\n");
-                    let krate = krate.as_ref().map(|s| &**s);
-                    let (test, _) = test::make_test(&test, krate, false,
-                                               &Default::default());
-                    let channel = if test.contains("#![feature(") {
-                        "&amp;version=nightly"
-                    } else {
-                        ""
-                    };
-                    // These characters don't need to be escaped in a URI.
-                    // FIXME: use a library function for percent encoding.
-                    fn dont_escape(c: u8) -> bool {
-                        (b'a' <= c && c <= b'z') ||
-                        (b'A' <= c && c <= b'Z') ||
-                        (b'0' <= c && c <= b'9') ||
-                        c == b'-' || c == b'_' || c == b'.' ||
-                        c == b'~' || c == b'!' || c == b'\'' ||
-                        c == b'(' || c == b')' || c == b'*'
-                    }
-                    let mut test_escaped = String::new();
-                    for b in test.bytes() {
-                        if dont_escape(b) {
-                            test_escaped.push(char::from(b));
-                        } else {
-                            write!(test_escaped, "%{:02X}", b).unwrap();
-                        }
-                    }
-                    Some(format!(
-                        r#"<a class="test-arrow" target="_blank" href="{}?code={}{}">Run</a>"#,
-                        url, test_escaped, channel
-                    ))
-                });
-                let tooltip = if ignore {
-                    Some(("This example is not tested", "ignore"))
-                } else if compile_fail {
-                    Some(("This example deliberately fails to compile", "compile_fail"))
-                } else {
-                    None
-                };
-                s.push_str(&highlight::render_with_highlighting(
-                               &text,
-                               Some(&format!("rust-example-rendered{}",
-                                             if ignore { " ignore" }
-                                             else if compile_fail { " compile_fail" }
-                                             else { "" })),
-                               None,
-                               playground_button.as_ref().map(String::as_str),
-                               tooltip));
-                hoedown_buffer_put(ob, s.as_ptr(), s.len());
-            })
-        }
-    }
-
-    extern fn header(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
-                     level: libc::c_int, data: *const hoedown_renderer_data,
-                     _: libc::size_t) {
-        // hoedown does this, we may as well too
-        unsafe { hoedown_buffer_put(ob, "\n".as_ptr(), 1); }
-
-        // Extract the text provided
-        let s = if text.is_null() {
-            "".to_owned()
+        let rendered = if lang.is_null() || origtext.is_empty() {
+            false
         } else {
-            let s = unsafe { (*text).as_bytes() };
-            str::from_utf8(&s).unwrap().to_owned()
+            let rlang = (*lang).as_bytes();
+            let rlang = str::from_utf8(rlang).unwrap();
+            let parse_result = LangString::parse(rlang);
+            compile_fail = parse_result.compile_fail;
+            ignore = parse_result.ignore;
+            if !parse_result.rust {
+                (my_opaque.dfltblk)(ob, orig_text, lang,
+                                    opaque as *const hoedown_renderer_data,
+                                    line);
+                true
+            } else {
+                false
+            }
         };
 
-        // Discard '<em>', '<code>' tags and some escaped characters,
-        // transform the contents of the header into a hyphenated string
-        // without non-alphanumeric characters other than '-' and '_'.
-        //
-        // This is a terrible hack working around how hoedown gives us rendered
-        // html for text rather than the raw text.
-        let mut id = s.clone();
-        let repl_sub = vec!["<em>", "</em>", "<code>", "</code>",
-                            "<strong>", "</strong>",
-                            "&lt;", "&gt;", "&amp;", "&#39;", "&quot;"];
-        for sub in repl_sub {
-            id = id.replace(sub, "");
-        }
-        let id = id.chars().filter_map(|c| {
-            if c.is_alphanumeric() || c == '-' || c == '_' {
-                if c.is_ascii() {
-                    Some(c.to_ascii_lowercase())
-                } else {
-                    Some(c)
+        let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
+        let text = lines.collect::<Vec<&str>>().join("\n");
+        if rendered { return }
+        PLAYGROUND.with(|play| {
+            // insert newline to clearly separate it from the
+            // previous block so we can shorten the html output
+            let mut s = String::from("\n");
+            let playground_button = play.borrow().as_ref().and_then(|&(ref krate, ref url)| {
+                if url.is_empty() {
+                    return None;
                 }
-            } else if c.is_whitespace() && c.is_ascii() {
-                Some('-')
+                let test = origtext.lines()
+                    .map(|l| map_line(l).for_code())
+                    .collect::<Vec<&str>>().join("\n");
+                let krate = krate.as_ref().map(|s| &**s);
+                let (test, _) = test::make_test(&test, krate, false,
+                                                &Default::default());
+                let channel = if test.contains("#![feature(") {
+                    "&amp;version=nightly"
+                } else {
+                    ""
+                };
+                // These characters don't need to be escaped in a URI.
+                // FIXME: use a library function for percent encoding.
+                fn dont_escape(c: u8) -> bool {
+                    (b'a' <= c && c <= b'z') ||
+                    (b'A' <= c && c <= b'Z') ||
+                    (b'0' <= c && c <= b'9') ||
+                    c == b'-' || c == b'_' || c == b'.' ||
+                    c == b'~' || c == b'!' || c == b'\'' ||
+                    c == b'(' || c == b')' || c == b'*'
+                }
+                let mut test_escaped = String::new();
+                for b in test.bytes() {
+                    if dont_escape(b) {
+                        test_escaped.push(char::from(b));
+                    } else {
+                        write!(test_escaped, "%{:02X}", b).unwrap();
+                    }
+                }
+                Some(format!(
+                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}">Run</a>"#,
+                    url, test_escaped, channel
+                ))
+            });
+            let tooltip = if ignore {
+                Some(("This example is not tested", "ignore"))
+            } else if compile_fail {
+                Some(("This example deliberately fails to compile", "compile_fail"))
             } else {
                 None
+            };
+            s.push_str(&highlight::render_with_highlighting(
+                           &text,
+                           Some(&format!("rust-example-rendered{}",
+                                         if ignore { " ignore" }
+                                         else if compile_fail { " compile_fail" }
+                                         else { "" })),
+                           None,
+                           playground_button.as_ref().map(String::as_str),
+                           tooltip));
+            hoedown_buffer_put(ob, s.as_ptr(), s.len());
+        })
+    }
+}
+
+extern fn hoedown_header(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
+                         level: libc::c_int, data: *const hoedown_renderer_data,
+                         _: libc::size_t) {
+    // hoedown does this, we may as well too
+    unsafe { hoedown_buffer_put(ob, "\n".as_ptr(), 1); }
+
+    // Extract the text provided
+    let s = if text.is_null() {
+        "".to_owned()
+    } else {
+        let s = unsafe { (*text).as_bytes() };
+        str::from_utf8(&s).unwrap().to_owned()
+    };
+
+    // Discard '<em>', '<code>' tags and some escaped characters,
+    // transform the contents of the header into a hyphenated string
+    // without non-alphanumeric characters other than '-' and '_'.
+    //
+    // This is a terrible hack working around how hoedown gives us rendered
+    // html for text rather than the raw text.
+    let mut id = s.clone();
+    let repl_sub = vec!["<em>", "</em>", "<code>", "</code>",
+                        "<strong>", "</strong>",
+                        "&lt;", "&gt;", "&amp;", "&#39;", "&quot;"];
+    for sub in repl_sub {
+        id = id.replace(sub, "");
+    }
+    let id = id.chars().filter_map(|c| {
+        if c.is_alphanumeric() || c == '-' || c == '_' {
+            if c.is_ascii() {
+                Some(c.to_ascii_lowercase())
+            } else {
+                Some(c)
             }
-        }).collect::<String>();
+        } else if c.is_whitespace() && c.is_ascii() {
+            Some('-')
+        } else {
+            None
+        }
+    }).collect::<String>();
+
+    let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
+    let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
+
+    let id = derive_id(id);
+
+    let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
+        format!("{} ", builder.push(level as u32, s.clone(), id.clone()))
+    });
+
+    // Render the HTML
+    let text = format!("<h{lvl} id='{id}' class='section-header'>\
+                       <a href='#{id}'>{sec}{}</a></h{lvl}>",
+                       s, lvl = level, id = id, sec = sec);
+
+    unsafe { hoedown_buffer_put(ob, text.as_ptr(), text.len()); }
+}
+
+extern fn hoedown_codespan(
+    ob: *mut hoedown_buffer,
+    text: *const hoedown_buffer,
+    _: *const hoedown_renderer_data,
+    _: libc::size_t
+) -> libc::c_int {
+    let content = if text.is_null() {
+        "".to_owned()
+    } else {
+        let bytes = unsafe { (*text).as_bytes() };
+        let s = str::from_utf8(bytes).unwrap();
+        collapse_whitespace(s)
+    };
+
+    let content = format!("<code>{}</code>", Escape(&content));
+    unsafe {
+        hoedown_buffer_put(ob, content.as_ptr(), content.len());
+    }
+    // Return anything except 0, which would mean "also print the code span verbatim".
+    1
+}
+
+pub fn render(w: &mut fmt::Formatter,
+              s: &str,
+              links: &[(String, String)],
+              print_toc: bool,
+              html_flags: libc::c_uint) -> fmt::Result {
+    // copied from pulldown-cmark (MIT license, Google)
+    // https://github.com/google/pulldown-cmark
+    // this is temporary till we remove the hoedown renderer
+    static HREF_SAFE: [u8; 128] = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
+            0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+        ];
+
+    static HEX_CHARS: &'static [u8] = b"0123456789ABCDEF";
+
+    fn escape_href(ob: &mut String, s: &str) {
+        let mut mark = 0;
+        for i in 0..s.len() {
+            let c = s.as_bytes()[i];
+            if c >= 0x80 || HREF_SAFE[c as usize] == 0 {
+                // character needing escape
+
+                // write partial substring up to mark
+                if mark < i {
+                    ob.push_str(&s[mark..i]);
+                }
+                match c {
+                    b'&' => {
+                        ob.push_str("&amp;");
+                    },
+                    b'\'' => {
+                        ob.push_str("&#x27;");
+                    },
+                    _ => {
+                        let mut buf = [0u8; 3];
+                        buf[0] = b'%';
+                        buf[1] = HEX_CHARS[((c as usize) >> 4) & 0xF];
+                        buf[2] = HEX_CHARS[(c as usize) & 0xF];
+                        ob.push_str(str::from_utf8(&buf).unwrap());
+                    }
+                }
+                mark = i + 1;  // all escaped characters are ASCII
+            }
+        }
+        ob.push_str(&s[mark..]);
+    }
+    // end code copied from pulldown-cmark
+
+    extern fn hoedown_link(
+        ob: *mut hoedown_buffer,
+        content: *const hoedown_buffer,
+        link: *const hoedown_buffer,
+        title: *const hoedown_buffer,
+        data: *const hoedown_renderer_data,
+        _line: libc::size_t
+    ) -> libc::c_int {
+        if link.is_null() {
+            return 0;
+        }
 
         let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
-        let id = derive_id(id);
-
-        let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
-            format!("{} ", builder.push(level as u32, s.clone(), id.clone()))
-        });
-
-        // Render the HTML
-        let text = format!("<h{lvl} id='{id}' class='section-header'>\
-                           <a href='#{id}'>{sec}{}</a></h{lvl}>",
-                           s, lvl = level, id = id, sec = sec);
-
-        unsafe { hoedown_buffer_put(ob, text.as_ptr(), text.len()); }
-    }
-
-    extern fn codespan(
-        ob: *mut hoedown_buffer,
-        text: *const hoedown_buffer,
-        _: *const hoedown_renderer_data,
-        _: libc::size_t
-    ) -> libc::c_int {
-        let content = if text.is_null() {
-            "".to_owned()
-        } else {
-            let bytes = unsafe { (*text).as_bytes() };
-            let s = str::from_utf8(bytes).unwrap();
-            collapse_whitespace(s)
+        let link = {
+            let s = unsafe { (*link).as_bytes() };
+            str::from_utf8(s).unwrap().to_owned()
         };
 
-        let content = format!("<code>{}</code>", Escape(&content));
-        unsafe {
-            hoedown_buffer_put(ob, content.as_ptr(), content.len());
-        }
-        // Return anything except 0, which would mean "also print the code span verbatim".
+        let link = if let Some(&(_, ref new_target)) = opaque.links_replace
+                                                             .iter()
+                                                             .find(|t| &*t.0 == &*link) {
+            new_target.to_owned()
+        } else {
+            link
+        };
+
+        let content = unsafe {
+            content.as_ref().map(|c| {
+                let s = c.as_bytes();
+                str::from_utf8(s).unwrap().to_owned()
+            })
+        };
+
+        let mut link_buf = String::new();
+        escape_href(&mut link_buf, &link);
+
+        let title = unsafe {
+            title.as_ref().map(|t| {
+                let s = t.as_bytes();
+                str::from_utf8(s).unwrap().to_owned()
+            })
+        };
+
+        let link_out = format!("<a href=\"{link}\"{title}>{content}</a>",
+                               link = link_buf,
+                               title = title.map_or(String::new(),
+                                                    |t| format!(" title=\"{}\"", t)),
+                               content = content.unwrap_or(String::new()));
+
+        unsafe { hoedown_buffer_put(ob, link_out.as_ptr(), link_out.len()); }
+
+        //return "anything but 0" to show we've written the link in
         1
     }
 
@@ -743,13 +886,16 @@ pub fn render(w: &mut fmt::Formatter,
         let renderer = hoedown_html_renderer_new(html_flags, 0);
         let mut opaque = MyOpaque {
             dfltblk: (*renderer).blockcode.unwrap(),
-            toc_builder: if print_toc {Some(TocBuilder::new())} else {None}
+            toc_builder: if print_toc {Some(TocBuilder::new())} else {None},
+            links_out: None,
+            links_replace: links.to_vec(),
         };
         (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
                 = &mut opaque as *mut _ as *mut libc::c_void;
-        (*renderer).blockcode = Some(block);
-        (*renderer).header = Some(header);
-        (*renderer).codespan = Some(codespan);
+        (*renderer).blockcode = Some(hoedown_block);
+        (*renderer).header = Some(hoedown_header);
+        (*renderer).codespan = Some(hoedown_codespan);
+        (*renderer).link = Some(hoedown_link);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, s.as_ptr(),
@@ -993,12 +1139,12 @@ impl LangString {
 
 impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let Markdown(md, render_type) = *self;
+        let Markdown(md, links, render_type) = *self;
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
         if render_type == RenderType::Hoedown {
-            render(fmt, md, false, 0)
+            render(fmt, md, links, false, 0)
         } else {
             let mut opts = Options::empty();
             opts.insert(OPTION_ENABLE_TABLES);
@@ -1009,7 +1155,11 @@ impl<'a> fmt::Display for Markdown<'a> {
             let mut s = String::with_capacity(md.len() * 3 / 2);
 
             html::push_html(&mut s,
-                            Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
+                            Footnotes::new(
+                                CodeBlocks::new(
+                                    LinkReplacer::new(
+                                        HeadingLinks::new(p, None),
+                                        links))));
 
             fmt.write_str(&s)
         }
@@ -1021,7 +1171,7 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
         let MarkdownWithToc(md, render_type) = *self;
 
         if render_type == RenderType::Hoedown {
-            render(fmt, md, true, 0)
+            render(fmt, md, &[], true, 0)
         } else {
             let mut opts = Options::empty();
             opts.insert(OPTION_ENABLE_TABLES);
@@ -1050,7 +1200,7 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
         if render_type == RenderType::Hoedown {
-            render(fmt, md, false, HOEDOWN_HTML_ESCAPE)
+            render(fmt, md, &[], false, HOEDOWN_HTML_ESCAPE)
         } else {
             let mut opts = Options::empty();
             opts.insert(OPTION_ENABLE_TABLES);
@@ -1076,7 +1226,7 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
 
 impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownSummaryLine(md) = *self;
+        let MarkdownSummaryLine(md, links) = *self;
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
 
@@ -1084,7 +1234,7 @@ impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
 
         let mut s = String::new();
 
-        html::push_html(&mut s, SummaryLine::new(p));
+        html::push_html(&mut s, LinkReplacer::new(SummaryLine::new(p), links));
 
         fmt.write_str(&s)
     }
@@ -1140,6 +1290,90 @@ pub fn plain_summary_line(md: &str) -> String {
     s
 }
 
+pub fn markdown_links(md: &str, render_type: RenderType) -> Vec<String> {
+    if md.is_empty() {
+        return vec![];
+    }
+
+    match render_type {
+        RenderType::Hoedown => {
+            extern fn hoedown_link(
+                _ob: *mut hoedown_buffer,
+                _content: *const hoedown_buffer,
+                link: *const hoedown_buffer,
+                _title: *const hoedown_buffer,
+                data: *const hoedown_renderer_data,
+                _line: libc::size_t
+            ) -> libc::c_int {
+                if link.is_null() {
+                    return 0;
+                }
+
+                let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
+                let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
+
+                if let Some(ref mut links) = opaque.links_out {
+                    let s = unsafe { (*link).as_bytes() };
+                    let s = str::from_utf8(&s).unwrap().to_owned();
+
+                    debug!("found link: {}", s);
+
+                    links.push(s);
+                }
+
+                //returning 0 here means "emit the span verbatim", but we're not using the output
+                //anyway so we don't really care
+                0
+            }
+
+            unsafe {
+                let ob = hoedown_buffer_new(DEF_OUNIT);
+                let renderer = hoedown_html_renderer_new(0, 0);
+                let mut opaque = MyOpaque {
+                    dfltblk: (*renderer).blockcode.unwrap(),
+                    toc_builder: None,
+                    links_out: Some(vec![]),
+                    links_replace: vec![],
+                };
+                (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
+                        = &mut opaque as *mut _ as *mut libc::c_void;
+                (*renderer).header = Some(hoedown_header);
+                (*renderer).codespan = Some(hoedown_codespan);
+                (*renderer).link = Some(hoedown_link);
+
+                let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
+                hoedown_document_render(document, ob, md.as_ptr(),
+                                        md.len() as libc::size_t);
+                hoedown_document_free(document);
+
+                hoedown_html_renderer_free(renderer);
+                hoedown_buffer_free(ob);
+
+                opaque.links_out.unwrap()
+            }
+        }
+        RenderType::Pulldown => {
+            let mut opts = Options::empty();
+            opts.insert(OPTION_ENABLE_TABLES);
+            opts.insert(OPTION_ENABLE_FOOTNOTES);
+
+            let p = Parser::new_ext(md, opts);
+
+            let iter = Footnotes::new(HeadingLinks::new(p, None));
+            let mut links = vec![];
+
+            for ev in iter {
+                if let Event::Start(Tag::Link(dest, _)) = ev {
+                    debug!("found link: {}", dest);
+                    links.push(dest.into_owned());
+                }
+            }
+
+            links
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{LangString, Markdown, MarkdownHtml};
@@ -1191,14 +1425,14 @@ mod tests {
     #[test]
     fn issue_17736() {
         let markdown = "# title";
-        format!("{}", Markdown(markdown, RenderType::Pulldown));
+        format!("{}", Markdown(markdown, &[], RenderType::Pulldown));
         reset_ids(true);
     }
 
     #[test]
     fn test_header() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input, RenderType::Pulldown));
+            let output = format!("{}", Markdown(input, &[], RenderType::Pulldown));
             assert_eq!(output, expect, "original: {}", input);
             reset_ids(true);
         }
@@ -1220,7 +1454,7 @@ mod tests {
     #[test]
     fn test_header_ids_multiple_blocks() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input, RenderType::Pulldown));
+            let output = format!("{}", Markdown(input, &[], RenderType::Pulldown));
             assert_eq!(output, expect, "original: {}", input);
         }
 

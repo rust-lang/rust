@@ -100,7 +100,7 @@ impl Formatter for HTMLFormatter {
 
         // Description rendered as markdown.
         match info.description {
-            Some(ref desc) => write!(output, "{}", Markdown(desc, RenderType::Hoedown))?,
+            Some(ref desc) => write!(output, "{}", Markdown(desc, &[], RenderType::Hoedown))?,
             None => write!(output, "<p>No description.</p>\n")?,
         }
 

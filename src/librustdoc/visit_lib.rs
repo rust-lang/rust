@@ -22,8 +22,8 @@ use clean::{AttributesExt, NestedAttributesExt};
 
 /// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
 /// specific rustdoc annotations into account (i.e. `doc(hidden)`)
-pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    cx: &'a ::core::DocContext<'b, 'tcx>,
+pub struct LibEmbargoVisitor<'a, 'tcx: 'a, 'rcx: 'a> {
+    cx: &'a ::core::DocContext<'a, 'tcx, 'rcx>,
     // Accessibility levels for reachable nodes
     access_levels: RefMut<'a, AccessLevels<DefId>>,
     // Previous accessibility level, None means unreachable
@@ -32,8 +32,8 @@ pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b> {
     visited_mods: FxHashSet<DefId>,
 }
 
-impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
-    pub fn new(cx: &'a ::core::DocContext<'b, 'tcx>) -> LibEmbargoVisitor<'a, 'b, 'tcx> {
+impl<'a, 'tcx, 'rcx> LibEmbargoVisitor<'a, 'tcx, 'rcx> {
+    pub fn new(cx: &'a ::core::DocContext<'a, 'tcx, 'rcx>) -> LibEmbargoVisitor<'a, 'tcx, 'rcx> {
         LibEmbargoVisitor {
             cx,
             access_levels: cx.access_levels.borrow_mut(),

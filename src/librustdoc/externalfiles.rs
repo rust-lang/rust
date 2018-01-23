@@ -37,7 +37,7 @@ impl ExternalHtml {
             )
             .and_then(|(ih, bc)|
                 load_external_files(md_before_content)
-                    .map(|m_bc| (ih, format!("{}{}", bc, Markdown(&m_bc, render))))
+                    .map(|m_bc| (ih, format!("{}{}", bc, Markdown(&m_bc, &[], render))))
             )
             .and_then(|(ih, bc)|
                 load_external_files(after_content)
@@ -45,7 +45,7 @@ impl ExternalHtml {
             )
             .and_then(|(ih, bc, ac)|
                 load_external_files(md_after_content)
-                    .map(|m_ac| (ih, bc, format!("{}{}", ac, Markdown(&m_ac, render))))
+                    .map(|m_ac| (ih, bc, format!("{}{}", ac, Markdown(&m_ac, &[], render))))
             )
             .map(|(ih, bc, ac)|
                 ExternalHtml {

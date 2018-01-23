@@ -409,7 +409,7 @@ impl<'a> Resolver<'a> {
         def
     }
 
-    fn resolve_macro_to_def_inner(&mut self, scope: Mark, path: &ast::Path,
+    pub fn resolve_macro_to_def_inner(&mut self, scope: Mark, path: &ast::Path,
                                   kind: MacroKind, force: bool)
                                   -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
@@ -755,8 +755,9 @@ impl<'a> Resolver<'a> {
             *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
                 parent: Cell::new(*legacy_scope), ident: ident, def_id: def_id, span: item.span,
             }));
+            let def = Def::Macro(def_id, MacroKind::Bang);
+            self.all_macros.insert(ident.name, def);
             if attr::contains_name(&item.attrs, "macro_export") {
-                let def = Def::Macro(def_id, MacroKind::Bang);
                 self.macro_exports.push(Export {
                     ident: ident.modern(),
                     def: def,

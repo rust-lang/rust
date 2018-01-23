@@ -503,6 +503,11 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let crate_name = matches.opt_str("crate-name");
     let crate_version = matches.opt_str("crate-version");
     let plugin_path = matches.opt_str("plugin-path");
+    let render_type = if matches.opt_present("disable-commonmark") {
+        RenderType::Hoedown
+    } else {
+        RenderType::Pulldown
+    };
 
     info!("starting to run rustc");
     let display_warnings = matches.opt_present("display-warnings");
@@ -517,7 +522,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
 
         let (mut krate, renderinfo) =
             core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
-                           display_warnings, force_unstable_if_unmarked);
+                           display_warnings, force_unstable_if_unmarked, render_type);
 
         info!("finished with rustc");
 
