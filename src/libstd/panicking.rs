@@ -344,7 +344,7 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments,
 
     let mut s = String::new();
     let _ = s.write_fmt(*msg);
-    begin_panic(s, file_line_col)
+    rust_panic_with_hook(Box::new(s), Some(msg), file_line_col)
 }
 
 /// This is the entry point of panicking for panic!() and assert!().
@@ -360,7 +360,7 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
     // be performed in the parent of this thread instead of the thread that's
     // panicking.
 
-    rust_panic_with_hook(Box::new(msg), file_line_col)
+    rust_panic_with_hook(Box::new(msg), None, file_line_col)
 }
 
 /// Executes the primary logic for a panic, including checking for recursive
@@ -371,7 +371,8 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
 /// run panic hooks, and then delegate to the actual implementation of panics.
 #[inline(never)]
 #[cold]
-fn rust_panic_with_hook(msg: Box<Any + Send>,
+fn rust_panic_with_hook(payload: Box<Any + Send>,
+                        message: Option<&fmt::Arguments>,
                         file_line_col: &(&'static str, u32, u32)) -> ! {
     let (file, line, col) = *file_line_col;
 
@@ -390,8 +391,8 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
 
     unsafe {
         let info = PanicInfo::internal_constructor(
-            &*msg,
-            None,
+            &*payload,
+            message,
             Location::internal_constructor(file, line, col),
         );
         HOOK_LOCK.read();
@@ -412,7 +413,7 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
         unsafe { intrinsics::abort() }
     }
 
-    rust_panic(msg)
+    rust_panic(payload)
 }
 
 /// Shim around rust_panic. Called by resume_unwind.

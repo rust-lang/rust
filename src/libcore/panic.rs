@@ -130,8 +130,8 @@ impl<'a> fmt::Display for PanicInfo<'a> {
         }
         // NOTE: we cannot use downcast_ref::<String>() here
         // since String is not available in libcore!
-        // A String payload and no message is what we’d get from `std::panic!`
-        // called with multiple arguments.
+        // The payload is a String when `std::panic!` is called with multiple arguments,
+        // but in that case the message is also available.
 
         self.location.fmt(formatter)
     }
