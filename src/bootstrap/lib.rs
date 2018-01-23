@@ -312,7 +312,7 @@ impl Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             local_rebuild: config.local_rebuild,
-            fail_fast: config.cmd.fail_fast(),
+            fail_fast: config.cmd.fail_fast() && false,
             verbosity: config.verbose,
 
             build: config.build,

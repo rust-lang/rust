@@ -107,7 +107,7 @@ impl Step for Llvm {
         // NOTE: remember to also update `config.toml.example` when changing the defaults!
         let llvm_targets = match build.config.llvm_targets {
             Some(ref s) => s,
-            None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon",
+            None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon",
         };
 
         let llvm_exp_targets = &build.config.llvm_experimental_targets;

@@ -230,6 +230,17 @@ fn fat_lto(cgcx: &CodegenContext,
     let llmod = module.llvm().expect("can't lto pre-translated modules").llmod;
     info!("using {:?} as a base module", module.llmod_id);
 
+    // See comments in ThinLTO for what this is doing
+    let mut cu1 = ptr::null_mut();
+    let mut cu2 = ptr::null_mut();
+    unsafe {
+        llvm::LLVMRustLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
+        if !cu2.is_null() {
+            let msg = format!("multiple source DICompileUnits found");
+            return Err(write::llvm_err(&diag_handler, msg))
+        }
+    }
+
     // For all other modules we translated we'll need to link them into our own
     // bitcode. All modules were translated in their own LLVM context, however,
     // and we want to move everything to the same LLVM context. Currently the
@@ -265,14 +276,19 @@ fn fat_lto(cgcx: &CodegenContext,
     }
     cgcx.save_temp_bitcode(&module, "lto.input");
 
-    // Internalize everything that *isn't* in our whitelist to help strip out
-    // more modules and such
     unsafe {
+        // Internalize everything that *isn't* in our whitelist to help strip
+        // out more modules and such
         let ptr = symbol_white_list.as_ptr();
         llvm::LLVMRustRunRestrictionPass(llmod,
                                          ptr as *const *const libc::c_char,
                                          symbol_white_list.len() as libc::size_t);
         cgcx.save_temp_bitcode(&module, "lto.after-restriction");
+
+        // More documentation about this in ThinLTO below, but it suffices to
+        // say that this arises during normal LTO as well.
+        llvm::LLVMRustLTOPatchDICompileUnit(llmod, cu1);
+        cgcx.save_temp_bitcode(&module, "lto.after-patch");
     }
 
     if cgcx.no_landing_pads {
@@ -636,7 +652,7 @@ impl ThinModule {
         // an error.
         let mut cu1 = ptr::null_mut();
         let mut cu2 = ptr::null_mut();
-        llvm::LLVMRustThinLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
+        llvm::LLVMRustLTOGetDICompileUnit(llmod, &mut cu1, &mut cu2);
         if !cu2.is_null() {
             let msg = format!("multiple source DICompileUnits found");
             return Err(write::llvm_err(&diag_handler, msg))
@@ -712,7 +728,7 @@ impl ThinModule {
         // not too much) but for now at least gets LLVM to emit valid DWARF (or
         // so it appears). Hopefully we can remove this once upstream bugs are
         // fixed in LLVM.
-        llvm::LLVMRustThinLTOPatchDICompileUnit(llmod, cu1);
+        llvm::LLVMRustLTOPatchDICompileUnit(llmod, cu1);
         cgcx.save_temp_bitcode(&mtrans, "thin-lto-after-patch");
         timeline.record("patch");
 

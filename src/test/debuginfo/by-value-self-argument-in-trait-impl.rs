@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // min-lldb-version: 310
+// ignore-test
 
 // compile-flags:-g
 

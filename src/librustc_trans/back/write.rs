@@ -68,8 +68,7 @@ pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
     ("ropi-rwpi", llvm::RelocMode::ROPI_RWPI),
 ];
 
-pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
-    ("default", llvm::CodeModel::Default),
+pub const CODE_GEN_MODEL_ARGS: &[(&str, llvm::CodeModel)] = &[
     ("small", llvm::CodeModel::Small),
     ("kernel", llvm::CodeModel::Kernel),
     ("medium", llvm::CodeModel::Medium),
@@ -170,20 +169,23 @@ pub fn target_machine_factory(sess: &Session)
     let ffunction_sections = sess.target.target.options.function_sections;
     let fdata_sections = ffunction_sections;
 
-    let code_model_arg = match sess.opts.cg.code_model {
-        Some(ref s) => &s,
-        None => &sess.target.target.options.code_model,
-    };
+    let code_model_arg = sess.opts.cg.code_model.as_ref().or(
+        sess.target.target.options.code_model.as_ref(),
+    );
 
-    let code_model = match CODE_GEN_MODEL_ARGS.iter().find(
-        |&&arg| arg.0 == code_model_arg) {
-        Some(x) => x.1,
-        _ => {
-            sess.err(&format!("{:?} is not a valid code model",
-                              code_model_arg));
-            sess.abort_if_errors();
-            bug!();
+    let code_model = match code_model_arg {
+        Some(s) => {
+            match CODE_GEN_MODEL_ARGS.iter().find(|arg| arg.0 == s) {
+                Some(x) => x.1,
+                _ => {
+                    sess.err(&format!("{:?} is not a valid code model",
+                                      code_model_arg));
+                    sess.abort_if_errors();
+                    bug!();
+                }
+            }
         }
+        None => llvm::CodeModel::None,
     };
 
     let singlethread = sess.target.target.options.singlethread;
