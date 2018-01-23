@@ -7,4 +7,6 @@ BOOK_DIR=book
 if [ "$TRAVIS_BRANCH" = master -a "$TRAVIS_PULL_REQUEST" = false ]; then
     mdbook build 
     ghp-import $BOOK_DIR
+else
+    echo Skipping 'mdbook build' because this is not master or this is just a PR.
 fi
