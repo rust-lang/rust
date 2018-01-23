@@ -1339,7 +1339,7 @@ pub fn get_args() -> Vec<String> {
 }
 
 pub fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
     let result = run(|| run_compiler(&get_args(),
                                      &mut RustcDefaultCalls,
                                      None,
