@@ -488,7 +488,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         literal_representation::INCONSISTENT_DIGIT_GROUPING,
         literal_representation::LARGE_DIGIT_GROUPS,
         literal_representation::UNREADABLE_LITERAL,
-        literal_representation::BAD_LITERAL_REPRESENTATION,
+        literal_representation::DECIMAL_LITERAL_REPRESENTATION,
         loops::EMPTY_LOOP,
         loops::EXPLICIT_COUNTER_LOOP,
         loops::EXPLICIT_INTO_ITER_LOOP,

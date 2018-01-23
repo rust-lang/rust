@@ -29,5 +29,5 @@ fn main() {
     -1 & x;
 
     let u : u8 = 0;
-    u & 0xFF;
+    u & 255;
 }

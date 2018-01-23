@@ -75,7 +75,7 @@ declare_lint! {
 /// `65_535` => `0xFFFF`
 /// `4_042_322_160` => `0xF0F0_F0F0`
 declare_lint! {
-    pub BAD_LITERAL_REPRESENTATION,
+    pub DECIMAL_LITERAL_REPRESENTATION,
     Warn,
     "using decimal representation when hexadecimal would be better"
 }
@@ -217,7 +217,7 @@ enum WarningType {
     UnreadableLiteral,
     InconsistentDigitGrouping,
     LargeDigitGroups,
-    BadRepresentation,
+    DecimalRepresentation,
 }
 
 impl WarningType {
@@ -244,11 +244,11 @@ impl WarningType {
                 "digits grouped inconsistently by underscores",
                 &format!("consider: {}", grouping_hint),
             ),
-            WarningType::BadRepresentation => span_help_and_lint(
+            WarningType::DecimalRepresentation => span_help_and_lint(
                 cx,
-                BAD_LITERAL_REPRESENTATION,
+                DECIMAL_LITERAL_REPRESENTATION,
                 *span,
-                "bad representation of integer literal",
+                "integer literal has a better hexadecimal representation",
                 &format!("consider: {}", grouping_hint),
             ),
         };
@@ -400,7 +400,7 @@ pub struct LiteralRepresentation {
 
 impl LintPass for LiteralRepresentation {
     fn get_lints(&self) -> LintArray {
-        lint_array!(BAD_LITERAL_REPRESENTATION)
+        lint_array!(DECIMAL_LITERAL_REPRESENTATION)
     }
 }
 
@@ -456,7 +456,7 @@ impl LiteralRepresentation {
             if digits == "1" || digits == "2" || digits == "4" || digits == "8" || digits == "3" || digits == "7"
                 || digits == "F"
             {
-                return Err(WarningType::BadRepresentation);
+                return Err(WarningType::DecimalRepresentation);
             }
         } else if digits.len() < 4 {
             // Lint for Literals with a hex-representation of 2 or 3 digits
@@ -467,7 +467,7 @@ impl LiteralRepresentation {
                 // Powers of 2 minus 1
                 || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && s.chars().all(|c| c == 'F'))
             {
-                return Err(WarningType::BadRepresentation);
+                return Err(WarningType::DecimalRepresentation);
             }
         } else {
             // Lint for Literals with a hex-representation of 4 digits or more
@@ -481,7 +481,7 @@ impl LiteralRepresentation {
                 // digit
                 || ((f.eq("7") || f.eq("F")) && s.chars().all(|c| c == '0' || c == 'F'))
             {
-                return Err(WarningType::BadRepresentation);
+                return Err(WarningType::DecimalRepresentation);
             }
         }
 

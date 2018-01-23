@@ -1,7 +1,7 @@
 
 
 
-#[warn(bad_literal_representation)]
+#[warn(decimal_literal_representation)]
 #[allow(unused_variables)]
 fn main() {
     // Hex:      7F,  80, 100, 1FF,  800,  FFA,   F0F3,     7F0F_F00D

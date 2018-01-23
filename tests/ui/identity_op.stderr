@@ -45,6 +45,8 @@ error: the operation is ineffective. Consider reducing it to `x`
 error: the operation is ineffective. Consider reducing it to `u`
   --> $DIR/identity_op.rs:32:5
    |
-32 |     u & 0xFF;
-   |     ^^^^^^^^
+32 |     u & 255;
+   |     ^^^^^^^
+
+error: aborting due to 8 previous errors
 
