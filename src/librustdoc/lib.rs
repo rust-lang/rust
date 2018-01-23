@@ -91,6 +91,7 @@ pub mod plugins;
 pub mod visit_ast;
 pub mod visit_lib;
 pub mod test;
+pub mod theme;
 
 use clean::AttributesExt;
 
@@ -267,6 +268,11 @@ pub fn opts() -> Vec<RustcOptGroup> {
                        "additional themes which will be added to the generated docs",
                        "FILES")
         }),
+        unstable("theme-checker", |o| {
+            o.optmulti("", "theme-checker",
+                       "check if given theme is valid",
+                       "FILES")
+        }),
     ]
 }
 
@@ -312,6 +318,27 @@ pub fn main_args(args: &[String]) -> isize {
         println!("\nDefault passes for rustdoc:");
         for &name in passes::DEFAULT_PASSES {
             println!("{:>20}", name);
+        }
+        return 0;
+    }
+
+    let to_check = matches.opt_strs("theme-checker");
+    if !to_check.is_empty() {
+        let pathes = theme::load_css_pathes(include_bytes!("html/static/themes/main.css"));
+        let mut errors = 0;
+
+        println!("rustdoc: [theme-checker] Starting tests!");
+        for theme_file in to_check.iter() {
+            print!(" - Checking \"{}\"...", theme_file);
+            if !theme::test_theme_against(theme_file, &pathes) {
+                eprintln!(" FAILED");
+                errors += 1;
+            } else {
+                println!(" OK");
+            }
+        }
+        if errors != 0 {
+            return 1;
         }
         return 0;
     }
