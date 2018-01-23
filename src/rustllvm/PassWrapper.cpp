@@ -399,7 +399,11 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     Options.ThreadModel = ThreadModel::Single;
   }
 
+#if LLVM_VERSION_GE(6, 0)
   Optional<CodeModel::Model> CM;
+#else
+  CodeModel::Model CM = CodeModel::Model::Default;
+#endif
   if (RustCM != LLVMRustCodeModel::None)
     CM = fromRust(RustCM);
   TargetMachine *TM = TheTarget->createTargetMachine(
@@ -1228,6 +1232,7 @@ LLVMRustLTOGetDICompileUnit(LLVMModuleRef Mod,
 // the comment in `back/lto.rs` for why this exists.
 extern "C" void
 LLVMRustLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
+#if LLVM_VERSION_GE(4, 0)
   Module *M = unwrap(Mod);
 
   // If the original source module didn't have a `DICompileUnit` then try to
@@ -1272,4 +1277,5 @@ LLVMRustLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
   auto *MD = M->getNamedMetadata("llvm.dbg.cu");
   MD->clearOperands();
   MD->addOperand(Unit);
+#endif
 }
