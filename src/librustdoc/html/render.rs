@@ -132,6 +132,8 @@ pub struct SharedContext {
     /// This flag indicates whether listings of modules (in the side bar and documentation itself)
     /// should be ordered alphabetically or in order of appearance (in the source code).
     pub sort_modules_alphabetically: bool,
+    /// Additional themes to be added to the generated docs.
+    pub themes: Vec<PathBuf>,
 }
 
 impl SharedContext {
@@ -217,6 +219,17 @@ impl Error {
             error: e,
         }
     }
+}
+
+macro_rules! try_none {
+    ($e:expr, $file:expr) => ({
+        use std::io;
+        match $e {
+            Some(e) => e,
+            None => return Err(Error::new(io::Error::new(io::ErrorKind::Other, "not found"),
+                                          $file))
+        }
+    })
 }
 
 macro_rules! try_err {
@@ -489,7 +502,8 @@ pub fn run(mut krate: clean::Crate,
            renderinfo: RenderInfo,
            render_type: RenderType,
            sort_modules_alphabetically: bool,
-           deny_render_differences: bool) -> Result<(), Error> {
+           deny_render_differences: bool,
+           themes: Vec<PathBuf>) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -513,6 +527,7 @@ pub fn run(mut krate: clean::Crate,
         markdown_warnings: RefCell::new(vec![]),
         created_dirs: RefCell::new(FxHashSet()),
         sort_modules_alphabetically,
+        themes,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -859,12 +874,65 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write(cx.dst.join("main.js"),
-          include_bytes!("static/main.js"))?;
     write(cx.dst.join("rustdoc.css"),
           include_bytes!("static/rustdoc.css"))?;
+
+    // To avoid "main.css" to be overwritten, we'll first run over the received themes and only
+    // then we'll run over the "official" styles.
+    let mut themes: HashSet<String> = HashSet::new();
+
+    for entry in &cx.shared.themes {
+        let mut content = Vec::with_capacity(100000);
+
+        let mut f = try_err!(File::open(&entry), &entry);
+        try_err!(f.read_to_end(&mut content), &entry);
+        write(cx.dst.join(try_none!(entry.file_name(), &entry)), content.as_slice())?;
+        themes.insert(try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry).to_owned());
+    }
+
+    write(cx.dst.join("brush.svg"),
+          include_bytes!("static/brush.svg"))?;
     write(cx.dst.join("main.css"),
-          include_bytes!("static/styles/main.css"))?;
+          include_bytes!("static/themes/main.css"))?;
+    themes.insert("main".to_owned());
+    write(cx.dst.join("dark.css"),
+          include_bytes!("static/themes/dark.css"))?;
+    themes.insert("dark".to_owned());
+
+    let mut themes: Vec<&String> = themes.iter().collect();
+    themes.sort();
+    // To avoid theme switch latencies as much as possible, we put everything theme related
+    // at the beginning of the html files into another js file.
+    write(cx.dst.join("theme.js"), format!(
+r#"var themes = document.getElementById("theme-choices");
+var themePicker = document.getElementById("theme-picker");
+themePicker.onclick = function() {{
+    if (themes.style.display === "block") {{
+        themes.style.display = "none";
+        themePicker.style.borderBottomRightRadius = "3px";
+        themePicker.style.borderBottomLeftRadius = "3px";
+    }} else {{
+        themes.style.display = "block";
+        themePicker.style.borderBottomRightRadius = "0";
+        themePicker.style.borderBottomLeftRadius = "0";
+    }}
+}};
+[{}].forEach(function(item) {{
+    var div = document.createElement('div');
+    div.innerHTML = item;
+    div.onclick = function(el) {{
+        switchTheme(currentTheme, mainTheme, item);
+    }};
+    themes.appendChild(div);
+}});
+"#, themes.iter()
+          .map(|s| format!("\"{}\"", s))
+          .collect::<Vec<String>>()
+          .join(",")).as_bytes())?;
+
+    write(cx.dst.join("main.js"), include_bytes!("static/main.js"))?;
+    write(cx.dst.join("storage.js"), include_bytes!("static/storage.js"))?;
+
     if let Some(ref css) = cx.shared.css_file_extension {
         let out = cx.dst.join("theme.css");
         try_err!(fs::copy(css, out), css);
@@ -1156,7 +1224,8 @@ impl<'a> SourceCollector<'a> {
         };
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
-                       self.scx.css_file_extension.is_some())?;
+                       self.scx.css_file_extension.is_some(),
+                       &self.scx.themes)?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
@@ -1520,7 +1589,8 @@ impl Context {
             layout::render(writer, &self.shared.layout, &page,
                            &Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
-                           self.shared.css_file_extension.is_some())?;
+                           self.shared.css_file_extension.is_some(),
+                           &self.shared.themes)?;
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {

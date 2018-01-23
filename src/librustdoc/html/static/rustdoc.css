@@ -360,7 +360,8 @@ ul.item-list > li > .out-of-band {
 }
 
 h4 > code, h3 > code, .invisible > code {
-	position: inherit;
+	max-width: calc(100% - 41px);
+	display: block;
 }
 
 .in-band, code {
@@ -376,6 +377,7 @@ h4 > code, h3 > code, .invisible > code {
 	margin: 0px;
 	padding: 0px;
 	display: inline-block;
+	max-width: calc(100% - 43px);
 }
 
 .in-band > code {
@@ -1139,4 +1141,38 @@ kbd {
 	border: solid 1px;
 	border-radius: 3px;
 	box-shadow: inset 0 -1px 0;
+}
+
+#theme-picker {
+	position: absolute;
+	left: 211px;
+	top: 17px;
+	padding: 4px;
+	border: 1px solid;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+#theme-choices {
+	display: none;
+	position: absolute;
+	left: -1px;
+	top: 30px;
+	border: 1px solid;
+	border-radius: 3px;
+	z-index: 1;
+}
+
+#theme-choices > div {
+	border-top: 1px solid;
+	padding: 4px;
+	text-align: center;
+}
+
+@media (max-width: 700px) {
+	#theme-picker {
+		left: 109px;
+		top: 7px;
+		z-index: 1;
+	}
 }

@@ -264,6 +264,11 @@ pub fn opts() -> Vec<RustcOptGroup> {
             o.optflag("", "deny-render-differences", "abort doc runs when markdown rendering \
                                                       differences are found")
         }),
+        unstable("themes", |o| {
+            o.optmulti("", "themes",
+                       "additional themes which will be added to the generated docs",
+                       "FILES")
+        }),
     ]
 }
 
@@ -365,6 +370,15 @@ pub fn main_args(args: &[String]) -> isize {
         }
     }
 
+    let mut themes = Vec::new();
+    for theme in matches.opt_strs("themes").iter().map(|s| PathBuf::from(&s)) {
+        if !theme.is_file() {
+            eprintln!("rustdoc: option --themes arguments must all be files");
+            return 1;
+        }
+        themes.push(theme);
+    }
+
     let external_html = match ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
             &matches.opt_strs("html-before-content"),
@@ -413,7 +427,8 @@ pub fn main_args(args: &[String]) -> isize {
                                   renderinfo,
                                   render_type,
                                   sort_modules_alphabetically,
-                                  deny_render_differences)
+                                  deny_render_differences,
+                                  themes)
                     .expect("failed to generate documentation");
                 0
             }
