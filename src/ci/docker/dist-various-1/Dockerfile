@@ -89,7 +89,6 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CFLAGS_armv5te_unknown_linux_gnueabi="-march=armv5te -marm -mfloat-abi=soft"
 
 ENV RUST_CONFIGURE_ARGS \
-      --enable-extended \
       --target=$TARGETS \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \

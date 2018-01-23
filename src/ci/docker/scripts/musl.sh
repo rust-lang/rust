@@ -30,6 +30,8 @@ exit 1
 TAG=$1
 shift
 
+export CFLAGS="-fPIC $CFLAGS"
+
 MUSL=musl-1.1.18
 
 # may have been downloaded in a previous run

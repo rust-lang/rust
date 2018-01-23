@@ -18,10 +18,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build/
 COPY scripts/musl.sh /build/
-RUN CC=gcc CFLAGS="-m32 -fPIC -Wa,-mrelax-relocations=no" \
+RUN CC=gcc CFLAGS="-m32 -Wa,-mrelax-relocations=no" \
     CXX=g++ CXXFLAGS="-m32 -Wa,-mrelax-relocations=no" \
     bash musl.sh i686 --target=i686 && \
-    CC=gcc CFLAGS="-march=pentium -m32 -fPIC -Wa,-mrelax-relocations=no" \
+    CC=gcc CFLAGS="-march=pentium -m32 -Wa,-mrelax-relocations=no" \
     CXX=g++ CXXFLAGS="-march=pentium -m32 -Wa,-mrelax-relocations=no" \
     bash musl.sh i586 --target=i586 && \
     rm -rf /build
