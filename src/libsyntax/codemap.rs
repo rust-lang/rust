@@ -598,18 +598,16 @@ impl CodeMap {
     /// If `sp` points to `"let mut x"`, then a span pointing at `"let "` will be returned.
     pub fn span_until_non_whitespace(&self, sp: Span) -> Span {
         if let Ok(snippet) = self.span_to_snippet(sp) {
-            let mut offset = 0;
-            let mut pos = 0;
+            let mut offset = 1;
             // get the bytes width of all the non-whitespace characters
-            for (i, c) in snippet.chars().take_while(|c| !c.is_whitespace()).enumerate() {
+            for c in snippet.chars().take_while(|c| !c.is_whitespace()) {
                 offset += c.len_utf8();
-                pos = i + 1;
             }
             // get the bytes width of all the whitespace characters after that
-            for c in snippet[pos..].chars().take_while(|c| c.is_whitespace()) {
+            for c in snippet[offset..].chars().take_while(|c| c.is_whitespace()) {
                 offset += c.len_utf8();
             }
-            if offset != 0 {
+            if offset > 1 {
                 return sp.with_hi(BytePos(sp.lo().0 + offset as u32));
             }
         }
