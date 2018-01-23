@@ -44,6 +44,9 @@ fn syntax_error() {
         OPENING_PAREN,
         r"[a-z]+\.(com|org|net)",
     ]);
+
+    let raw_string_error = Regex::new(r"[...\/...]");
+    let raw_string_error = Regex::new(r#"[...\/...]"#);
 }
 
 fn trivial_regex() {

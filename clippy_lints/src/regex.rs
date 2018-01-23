@@ -7,7 +7,7 @@ use rustc_const_eval::ConstContext;
 use rustc::ty::subst::Substs;
 use std::collections::HashSet;
 use std::error::Error;
-use syntax::ast::{LitKind, NodeId};
+use syntax::ast::{LitKind, NodeId, StrStyle};
 use syntax::codemap::{BytePos, Span};
 use syntax::symbol::InternedString;
 use utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
@@ -199,8 +199,9 @@ fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: boo
     let builder = regex_syntax::ExprBuilder::new().unicode(utf8);
 
     if let ExprLit(ref lit) = expr.node {
-        if let LitKind::Str(ref r, _) = lit.node {
+        if let LitKind::Str(ref r, style) = lit.node {
             let r = &r.as_str();
+            let offset = if let StrStyle::Raw(n) = style { 1 + n } else { 0 };
             match builder.parse(r) {
                 Ok(r) => if let Some(repl) = is_trivial_regex(&r) {
                     span_help_and_lint(
@@ -215,7 +216,7 @@ fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: boo
                     span_lint(
                         cx,
                         INVALID_REGEX,
-                        str_span(expr.span, r, e.position()),
+                        str_span(expr.span, r, e.position() + offset),
                         &format!("regex syntax error: {}", e.description()),
                     );
                 },
