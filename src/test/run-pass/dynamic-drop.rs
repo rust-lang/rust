@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// revisions:lexical nll
+#![cfg_attr(nll, feature(nll))]
+
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(generators, generator_trait, untagged_unions, slice_patterns, advanced_slice_patterns)]
