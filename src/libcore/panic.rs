@@ -120,6 +120,23 @@ impl<'a> PanicInfo<'a> {
     }
 }
 
+impl<'a> fmt::Display for PanicInfo<'a> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("panicked at ")?;
+        if let Some(message) = self.message {
+            write!(formatter, "'{}', ", message)?
+        } else if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
+            write!(formatter, "'{}', ", payload)?
+        }
+        // NOTE: we cannot use downcast_ref::<String>() here
+        // since String is not available in libcore!
+        // A String payload and no message is what we’d get from `std::panic!`
+        // called with multiple arguments.
+
+        self.location.fmt(formatter)
+    }
+}
+
 /// A struct containing information about the location of a panic.
 ///
 /// This structure is created by the [`location`] method of [`PanicInfo`].
@@ -224,5 +241,11 @@ impl<'a> Location<'a> {
     #[stable(feature = "panic_col", since = "1.25")]
     pub fn column(&self) -> u32 {
         self.col
+    }
+}
+
+impl<'a> fmt::Display for Location<'a> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
     }
 }
