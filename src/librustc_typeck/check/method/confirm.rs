@@ -17,7 +17,7 @@ use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, OverloadedDeref};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, OverloadedDeref};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk};
 use syntax_pos::Span;
@@ -165,6 +165,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 mutbl,
                 ty: target
             });
+            let mutbl = match mutbl {
+                hir::MutImmutable => AutoBorrowMutability::Immutable,
+                hir::MutMutable => AutoBorrowMutability::Mutable {
+                    // Method call receivers are the primary use case
+                    // for two-phase borrows.
+                    allow_two_phase_borrow: true,
+                }
+            };
             adjustments.push(Adjustment {
                 kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                 target
@@ -172,7 +180,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
             if let Some(unsize_target) = pick.unsize {
                 target = self.tcx.mk_ref(region, ty::TypeAndMut {
-                    mutbl,
+                    mutbl: mutbl.into(),
                     ty: unsize_target
                 });
                 adjustments.push(Adjustment {
@@ -530,10 +538,19 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             for adjustment in &mut adjustments[..] {
                 if let Adjust::Borrow(AutoBorrow::Ref(..)) = adjustment.kind {
                     debug!("convert_place_op_to_mutable: converting autoref {:?}", adjustment);
+                    let mutbl = match mutbl {
+                        hir::MutImmutable => AutoBorrowMutability::Immutable,
+                        hir::MutMutable => AutoBorrowMutability::Mutable {
+                            // For initial two-phase borrow
+                            // deployment, conservatively omit
+                            // overloaded operators.
+                            allow_two_phase_borrow: false,
+                        }
+                    };
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(region, mutbl));
                     adjustment.target = self.tcx.mk_ref(region, ty::TypeAndMut {
                         ty: source,
-                        mutbl
+                        mutbl: mutbl.into(),
                     });
                 }
                 source = adjustment.target;

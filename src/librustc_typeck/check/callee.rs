@@ -16,7 +16,7 @@ use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
 use rustc::ty::{self, TyCtxt, TypeFoldable, Ty};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use syntax::abi;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -176,8 +176,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let mut autoref = None;
                     if borrow {
                         if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
+                            let mutbl = match mt.mutbl {
+                                hir::MutImmutable => AutoBorrowMutability::Immutable,
+                                hir::MutMutable => AutoBorrowMutability::Mutable {
+                                    // For initial two-phase borrow
+                                    // deployment, conservatively omit
+                                    // overloaded function call ops.
+                                    allow_two_phase_borrow: false,
+                                }
+                            };
                             autoref = Some(Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(region, mt.mutbl)),
+                                kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                                 target: method.sig.inputs()[0]
                             });
                         }
