@@ -69,7 +69,6 @@ pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
 ];
 
 pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
-    ("default", llvm::CodeModel::Default),
     ("small", llvm::CodeModel::Small),
     ("kernel", llvm::CodeModel::Kernel),
     ("medium", llvm::CodeModel::Medium),

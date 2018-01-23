@@ -23,8 +23,13 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Target/TargetMachine.h"
-#include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
+#if LLVM_VERSION_GE(6, 0)
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
+#else
+#include "llvm/Target/TargetSubtargetInfo.h"
+#endif
 
 #if LLVM_VERSION_GE(4, 0)
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
@@ -210,8 +215,6 @@ extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
 
 enum class LLVMRustCodeModel {
   Other,
-  Default,
-  JITDefault,
   Small,
   Kernel,
   Medium,
@@ -220,10 +223,6 @@ enum class LLVMRustCodeModel {
 
 static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
   switch (Model) {
-  case LLVMRustCodeModel::Default:
-    return CodeModel::Default;
-  case LLVMRustCodeModel::JITDefault:
-    return CodeModel::JITDefault;
   case LLVMRustCodeModel::Small:
     return CodeModel::Small;
   case LLVMRustCodeModel::Kernel:
