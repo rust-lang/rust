@@ -55,7 +55,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
-    lang_items::extract(attrs).and_then(|name| {
+    lang_items::extract(attrs).and_then(|(name, _)| {
         $(if name == stringify!($name) {
             Some(Symbol::intern(stringify!($sym)))
         } else)* {
@@ -129,7 +129,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
-        if let Some(lang_item) = lang_items::extract(&i.attrs) {
+        if let Some((lang_item, _)) = lang_items::extract(&i.attrs) {
             self.register(&lang_item.as_str(), i.span);
         }
         intravisit::walk_foreign_item(self, i)
