@@ -320,8 +320,8 @@ pub struct TargetOptions {
     /// Relocation model to use in object file. Corresponds to `llc
     /// -relocation-model=$relocation_model`. Defaults to "pic".
     pub relocation_model: String,
-    /// Code model to use. Corresponds to `llc -code-model=$code_model`. Defaults to "default".
-    pub code_model: String,
+    /// Code model to use. Corresponds to `llc -code-model=$code_model`.
+    pub code_model: Option<String>,
     /// TLS model to use. Options are "global-dynamic" (default), "local-dynamic", "initial-exec"
     /// and "local-exec". This is similar to the -ftls-model option in GCC/Clang.
     pub tls_model: String,
@@ -483,7 +483,7 @@ impl Default for TargetOptions {
             only_cdylib: false,
             executables: false,
             relocation_model: "pic".to_string(),
-            code_model: "default".to_string(),
+            code_model: None,
             tls_model: "global-dynamic".to_string(),
             disable_redzone: false,
             eliminate_frame_pointer: true,
@@ -736,7 +736,7 @@ impl Target {
         key!(only_cdylib, bool);
         key!(executables, bool);
         key!(relocation_model);
-        key!(code_model);
+        key!(code_model, optional);
         key!(tls_model);
         key!(disable_redzone, bool);
         key!(eliminate_frame_pointer, bool);

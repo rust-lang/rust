@@ -299,12 +299,11 @@ pub enum RelocMode {
 #[repr(C)]
 pub enum CodeModel {
     Other,
-    Default,
-    JITDefault,
     Small,
     Kernel,
     Medium,
     Large,
+    None,
 }
 
 /// LLVMRustDiagnosticKind
