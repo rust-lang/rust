@@ -130,7 +130,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty::TyInfer(_) => None,
 
             ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
-            ty::TyFloat(_) | ty::TyArray(..) |
+            ty::TyFloat(_) | ty::TyArray(..) | ty::TyGeneratorWitness(..) |
             ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyFnDef(..) |
             ty::TyFnPtr(..) | ty::TyClosure(..) | ty::TyGenerator(..) |
             ty::TyAdt(..) | ty::TyNever | ty::TyError => {

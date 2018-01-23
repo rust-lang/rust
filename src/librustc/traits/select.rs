@@ -2044,8 +2044,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
             ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyRawPtr(..) |
             ty::TyChar | ty::TyRef(..) | ty::TyGenerator(..) |
-            ty::TyArray(..) | ty::TyClosure(..) | ty::TyNever |
-            ty::TyError => {
+            ty::TyGeneratorWitness(..) | ty::TyArray(..) | ty::TyClosure(..) |
+            ty::TyNever | ty::TyError => {
                 // safe for everything
                 Where(ty::Binder(Vec::new()))
             }
@@ -2095,7 +2095,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
-            ty::TyGenerator(..) | ty::TyForeign(..) |
+            ty::TyGenerator(..) | ty::TyGeneratorWitness(..) | ty::TyForeign(..) |
             ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
                 Never
             }
@@ -2206,8 +2206,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::TyGenerator(def_id, ref substs, interior) => {
-                let witness = iter::once(interior.witness);
-                substs.upvar_tys(def_id, self.tcx()).chain(witness).collect()
+                substs.upvar_tys(def_id, self.tcx()).chain(iter::once(interior.witness)).collect()
+            }
+
+            ty::TyGeneratorWitness(types) => {
+                // This is sound because no regions in the witness can refer to
+                // the binder outside the witness. So we'll effectivly reuse
+                // the implicit binder around the witness.
+                types.skip_binder().to_vec()
             }
 
             // for `PhantomData<T>`, we pass `T`

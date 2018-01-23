@@ -227,6 +227,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             }
             ty::TyClosure(..) => "closure".to_string(),
             ty::TyGenerator(..) => "generator".to_string(),
+            ty::TyGeneratorWitness(..) => "generator witness".to_string(),
             ty::TyTuple(..) => "tuple".to_string(),
             ty::TyInfer(ty::TyVar(_)) => "inferred type".to_string(),
             ty::TyInfer(ty::IntVar(_)) => "integral variable".to_string(),

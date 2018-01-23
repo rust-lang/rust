@@ -173,6 +173,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::TyInfer(_) |
         ty::TyProjection(..) |
         ty::TyAnon(..) |
+        ty::TyGeneratorWitness(..) |
         ty::TyParam(_) => {
             bug!("debuginfo: Trying to create type name for \
                 unexpected type: {:?}", t);

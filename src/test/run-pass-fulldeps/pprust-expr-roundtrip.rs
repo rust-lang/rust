@@ -142,7 +142,11 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                     variadic: false,
                 });
                 iter_exprs(depth - 1, &mut |e| g(
-                        ExprKind::Closure(CaptureBy::Value, decl.clone(), e, DUMMY_SP)));
+                        ExprKind::Closure(CaptureBy::Value,
+                                          Movability::Movable,
+                                          decl.clone(),
+                                          e,
+                                          DUMMY_SP)));
             },
             10 => {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Assign(e, make_x())));

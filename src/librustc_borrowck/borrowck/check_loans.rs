@@ -25,7 +25,7 @@ use rustc::middle::expr_use_visitor::MutateMode;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, RegionKind};
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
@@ -92,6 +92,7 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     move_data: &'a move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan<'tcx>],
     param_env: ty::ParamEnv<'tcx>,
+    movable_generator: bool,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
@@ -147,6 +148,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
         }
 
         self.check_for_conflicting_loans(hir_id.local_id);
+
+        self.check_for_loans_across_yields(cmt, loan_region, borrow_span);
     }
 
     fn mutate(&mut self,
@@ -198,6 +201,16 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     debug!("check_loans(body id={})", body.value.id);
 
     let def_id = bccx.tcx.hir.body_owner_def_id(body.id());
+
+    let node_id = bccx.tcx.hir.as_local_node_id(def_id).unwrap();
+    let movable_generator = !match bccx.tcx.hir.get(node_id) {
+        hir::map::Node::NodeExpr(&hir::Expr {
+            node: hir::ExprClosure(.., Some(hir::GeneratorMovability::Static)),
+            ..
+        }) => true,
+        _ => false,
+    };
+
     let param_env = bccx.tcx.param_env(def_id);
     let mut clcx = CheckLoanCtxt {
         bccx,
@@ -205,6 +218,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         move_data,
         all_loans,
         param_env,
+        movable_generator,
     };
     let rvalue_promotable_map = bccx.tcx.rvalue_promotable_map(def_id);
     euv::ExprUseVisitor::new(&mut clcx,
@@ -346,6 +360,99 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             true
         });
         return result;
+    }
+
+    pub fn check_for_loans_across_yields(&self,
+                                         cmt: mc::cmt<'tcx>,
+                                         loan_region: ty::Region<'tcx>,
+                                         borrow_span: Span) {
+        pub fn borrow_of_local_data<'tcx>(cmt: &mc::cmt<'tcx>) -> bool {
+            match cmt.cat {
+                // Borrows of static items is allowed
+                Categorization::StaticItem => false,
+                // Reborrow of already borrowed data is ignored
+                // Any errors will be caught on the initial borrow
+                Categorization::Deref(..) => false,
+
+                // By-ref upvars has Derefs so they will get ignored.
+                // Generators counts as FnOnce so this leaves only
+                // by-move upvars, which is local data for generators
+                Categorization::Upvar(..) => true,
+
+                Categorization::Rvalue(region) => {
+                    // Rvalues promoted to 'static are no longer local
+                    if let RegionKind::ReStatic = *region {
+                        false
+                    } else {
+                        true
+                    }
+                }
+
+                // Borrow of local data must be checked
+                Categorization::Local(..) => true,
+
+                // For interior references and downcasts, find out if the base is local
+                Categorization::Downcast(ref cmt_base, _) |
+                Categorization::Interior(ref cmt_base, _) => borrow_of_local_data(&cmt_base),
+            }
+        }
+
+        if !self.movable_generator {
+            return;
+        }
+
+        if !borrow_of_local_data(&cmt) {
+            return;
+        }
+
+        let scope = match *loan_region {
+            // A concrete region in which we will look for a yield expression
+            RegionKind::ReScope(scope) => scope,
+
+            // There cannot be yields inside an empty region
+            RegionKind::ReEmpty => return,
+
+            // Local data cannot have these lifetimes
+            RegionKind::ReEarlyBound(..) |
+            RegionKind::ReLateBound(..) |
+            RegionKind::ReFree(..) |
+            RegionKind::ReStatic => {
+                self.bccx
+                    .tcx
+                    .sess.delay_span_bug(borrow_span,
+                                         &format!("unexpected region for local data {:?}",
+                                                  loan_region));
+                return
+            }
+
+            // These cannot exist in borrowck
+            RegionKind::ReVar(..) |
+            RegionKind::ReSkolemized(..) |
+            RegionKind::ReClosureBound(..) |
+            RegionKind::ReErased => span_bug!(borrow_span,
+                                              "unexpected region in borrowck {:?}",
+                                              loan_region),
+        };
+
+        let body_id = self.bccx.body.value.hir_id.local_id;
+
+        if self.bccx.region_scope_tree.containing_body(scope) != Some(body_id) {
+            // We are borrowing local data longer than its storage.
+            // This should result in other borrowck errors.
+            self.bccx.tcx.sess.delay_span_bug(borrow_span,
+                                              "borrowing local data longer than its storage");
+            return;
+        }
+
+        if let Some(yield_span) = self.bccx
+                                      .region_scope_tree
+                                      .yield_in_scope_for_expr(scope,
+                                                               cmt.id,
+                                                               self.bccx.body) {
+            self.bccx.cannot_borrow_across_generator_yield(borrow_span,
+                                                           yield_span,
+                                                           Origin::Ast).emit();
+        }
     }
 
     pub fn check_for_conflicting_loans(&self, node: hir::ItemLocalId) {

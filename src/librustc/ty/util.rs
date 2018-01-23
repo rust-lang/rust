@@ -29,7 +29,6 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 use rustc_data_structures::fx::FxHashMap;
 use std::cmp;
-use std::iter;
 use std::hash::Hash;
 use std::intrinsics;
 use syntax::ast::{self, Name};
@@ -550,7 +549,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let result = match ty.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
             ty::TyFloat(_) | ty::TyStr | ty::TyNever | ty::TyForeign(..) |
-            ty::TyRawPtr(..) | ty::TyRef(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+            ty::TyRawPtr(..) | ty::TyRef(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) |
+            ty::TyGeneratorWitness(..) => {
                 // these types never have a destructor
                 Ok(ty::DtorckConstraint::empty())
             }
@@ -572,8 +572,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }).collect()
             }
 
-            ty::TyGenerator(def_id, substs, interior) => {
-                substs.upvar_tys(def_id, self).chain(iter::once(interior.witness)).map(|ty| {
+            ty::TyGenerator(def_id, substs, _) => {
+                // Note that the interior types are ignored here.
+                // Any type reachable inside the interior must also be reachable
+                // through the upvars.
+                substs.upvar_tys(def_id, self).map(|ty| {
                     self.dtorck_constraint_for_ty(span, for_ty, depth+1, ty)
                 }).collect()
             }
@@ -782,6 +785,9 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
                 for d in data.auto_traits() {
                     self.def_id(d);
                 }
+            }
+            TyGeneratorWitness(tys) => {
+                self.hash(tys.skip_binder().len());
             }
             TyTuple(tys, defaulted) => {
                 self.hash(tys.len());
@@ -1139,7 +1145,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Fast-path for primitive types
         ty::TyInfer(ty::FreshIntTy(_)) | ty::TyInfer(ty::FreshFloatTy(_)) |
         ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyNever |
-        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
+        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar | ty::TyGeneratorWitness(..) |
         ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyStr => false,
 
         // Foreign types can never have destructors

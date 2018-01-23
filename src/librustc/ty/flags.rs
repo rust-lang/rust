@@ -94,6 +94,12 @@ impl FlagComputation {
                 self.add_ty(interior.witness);
             }
 
+            &ty::TyGeneratorWitness(ref ts) => {
+                let mut computation = FlagComputation::new();
+                computation.add_tys(&ts.skip_binder()[..]);
+                self.add_bound_computation(&computation);
+            }
+
             &ty::TyClosure(_, ref substs) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_LOCAL_NAMES);

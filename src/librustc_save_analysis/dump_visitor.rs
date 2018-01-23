@@ -1602,7 +1602,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                     _ => span_bug!(ex.span, "Expected struct or tuple type, found {:?}", ty),
                 }
             }
-            ast::ExprKind::Closure(_, ref decl, ref body, _fn_decl_span) => {
+            ast::ExprKind::Closure(_, _, ref decl, ref body, _fn_decl_span) => {
                 let mut id = String::from("$");
                 id.push_str(&ex.id.to_string());
 

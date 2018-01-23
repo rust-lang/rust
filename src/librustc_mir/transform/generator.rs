@@ -332,9 +332,39 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
     }
 }
 
+struct BorrowedLocals(liveness::LocalSet);
+
+fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
+    match *place {
+        Place::Local(l) => { locals.0.add(&l); },
+        Place::Static(..) => (),
+        Place::Projection(ref proj) => {
+            match proj.elem {
+                // For derefs we don't look any further.
+                // If it pointed to a Local, it would already be borrowed elsewhere
+                ProjectionElem::Deref => (),
+                _ => mark_as_borrowed(&proj.base, locals)
+            }
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for BorrowedLocals {
+    fn visit_rvalue(&mut self,
+                    rvalue: &Rvalue<'tcx>,
+                    location: Location) {
+        if let Rvalue::Ref(_, _, ref place) = *rvalue {
+            mark_as_borrowed(place, self);
+        }
+
+        self.super_rvalue(rvalue, location)
+    }
+}
+
 fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                mir: &Mir<'tcx>,
-                                               source: MirSource) ->
+                                               source: MirSource,
+                                               movable: bool) ->
                                                (liveness::LocalSet,
                                                 HashMap<BasicBlock, liveness::LocalSet>) {
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
@@ -347,8 +377,11 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut ignored = StorageIgnored(IdxSetBuf::new_filled(mir.local_decls.len()));
     ignored.visit_mir(mir);
 
+    let mut borrowed_locals = BorrowedLocals(IdxSetBuf::new_empty(mir.local_decls.len()));
+    borrowed_locals.visit_mir(mir);
+
     let mut set = liveness::LocalSet::new_empty(mir.local_decls.len());
-    let liveness = liveness::liveness_of_locals(mir, LivenessMode {
+    let mut liveness = liveness::liveness_of_locals(mir, LivenessMode {
         include_regular_use: true,
         include_drops: true,
     });
@@ -372,6 +405,12 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Mark locals without storage statements as always having live storage
             live_locals.union(&ignored.0);
 
+            if !movable {
+                // For immovable generators we consider borrowed locals to always be live.
+                // This effectively makes those locals use just the storage liveness.
+                liveness.outs[block].union(&borrowed_locals.0);
+            }
+
             // Locals live are live at this point only if they are used across suspension points
             // and their storage is live
             live_locals.intersect(&liveness.outs[block]);
@@ -390,6 +429,7 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             source: MirSource,
+                            upvars: Vec<Ty<'tcx>>,
                             interior: GeneratorInterior<'tcx>,
                             mir: &mut Mir<'tcx>)
     -> (HashMap<Local, (Ty<'tcx>, usize)>,
@@ -397,11 +437,17 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         HashMap<BasicBlock, liveness::LocalSet>)
 {
     // Use a liveness analysis to compute locals which are live across a suspension point
-    let (live_locals, storage_liveness) = locals_live_across_suspend_points(tcx, mir, source);
-
+    let (live_locals, storage_liveness) = locals_live_across_suspend_points(tcx,
+                                                                            mir,
+                                                                            source,
+                                                                            interior.movable);
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
-    let allowed = tcx.erase_regions(&interior.as_slice());
+    let allowed_upvars = tcx.erase_regions(&upvars);
+    let allowed = match interior.witness.sty {
+        ty::TyGeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
+        _ => bug!(),
+    };
 
     for (local, decl) in mir.local_decls.iter_enumerated() {
         // Ignore locals which are internal or not live
@@ -411,7 +457,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Sanity check that typeck knows about the type of locals which are
         // live across a suspension point
-        if !allowed.contains(&decl.ty) {
+        if !allowed.contains(&decl.ty) && !allowed_upvars.contains(&decl.ty) {
             span_bug!(mir.span,
                       "Broken MIR: generator contains type {} in MIR, \
                        but typeck only knows about {}",
@@ -763,18 +809,17 @@ impl MirPass for StateTransform {
         assert!(mir.generator_drop.is_none());
 
         let def_id = source.def_id;
-        let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-        let hir_id = tcx.hir.node_to_hir_id(node_id);
-
-        // Get the interior types which typeck computed
-        let tables = tcx.typeck_tables_of(def_id);
-        let interior = match tables.node_id_to_type(hir_id).sty {
-            ty::TyGenerator(_, _, interior) => interior,
-            ref t => bug!("type of generator not a generator: {:?}", t),
-        };
 
         // The first argument is the generator type passed by value
         let gen_ty = mir.local_decls.raw[1].ty;
+
+        // Get the interior types and substs which typeck computed
+        let (upvars, interior) = match gen_ty.sty {
+            ty::TyGenerator(_, substs, interior) => {
+                (substs.upvar_tys(def_id, tcx).collect(), interior)
+            }
+            _ => bug!(),
+        };
 
         // Compute GeneratorState<yield_ty, return_ty>
         let state_did = tcx.lang_items().gen_state().unwrap();
@@ -790,7 +835,7 @@ impl MirPass for StateTransform {
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
-        let (remap, layout, storage_liveness) = compute_layout(tcx, source, interior, mir);
+        let (remap, layout, storage_liveness) = compute_layout(tcx, source, upvars, interior, mir);
 
         let state_field = mir.upvar_decls.len();
 

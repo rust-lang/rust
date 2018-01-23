@@ -769,7 +769,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     // Retrieve span of given borrow from the current MIR representation
-    fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
+    pub fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
         self.mir.source_info(borrow.location).span
     }
 

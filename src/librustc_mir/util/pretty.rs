@@ -397,17 +397,17 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
         self.super_constant(constant, location);
         let Constant { span, ty, literal } = constant;
         self.push(&format!("mir::Constant"));
-        self.push(&format!("└ span: {:?}", span));
-        self.push(&format!("└ ty: {:?}", ty));
-        self.push(&format!("└ literal: {:?}", literal));
+        self.push(&format!("+ span: {:?}", span));
+        self.push(&format!("+ ty: {:?}", ty));
+        self.push(&format!("+ literal: {:?}", literal));
     }
 
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
         let ty::Const { ty, val } = constant;
         self.push(&format!("ty::Const"));
-        self.push(&format!("└ ty: {:?}", ty));
-        self.push(&format!("└ val: {:?}", val));
+        self.push(&format!("+ ty: {:?}", ty));
+        self.push(&format!("+ val: {:?}", val));
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -416,15 +416,15 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
             Rvalue::Aggregate(kind, _) => match **kind {
                 AggregateKind::Closure(def_id, substs) => {
                     self.push(&format!("closure"));
-                    self.push(&format!("└ def_id: {:?}", def_id));
-                    self.push(&format!("└ substs: {:#?}", substs));
+                    self.push(&format!("+ def_id: {:?}", def_id));
+                    self.push(&format!("+ substs: {:#?}", substs));
                 }
 
                 AggregateKind::Generator(def_id, substs, interior) => {
                     self.push(&format!("generator"));
-                    self.push(&format!("└ def_id: {:?}", def_id));
-                    self.push(&format!("└ substs: {:#?}", substs));
-                    self.push(&format!("└ interior: {:?}", interior));
+                    self.push(&format!("+ def_id: {:?}", def_id));
+                    self.push(&format!("+ substs: {:#?}", substs));
+                    self.push(&format!("+ interior: {:?}", interior));
                 }
 
                 _ => {}

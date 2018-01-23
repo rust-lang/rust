@@ -2773,7 +2773,7 @@ impl<'a> LoweringContext<'a> {
                                arms.iter().map(|x| self.lower_arm(x)).collect(),
                                hir::MatchSource::Normal)
             }
-            ExprKind::Closure(capture_clause, ref decl, ref body, fn_decl_span) => {
+            ExprKind::Closure(capture_clause, movability, ref decl, ref body, fn_decl_span) => {
                 self.with_new_scopes(|this| {
                     this.with_parent_def(e.id, |this| {
                         let mut is_generator = false;
@@ -2782,16 +2782,28 @@ impl<'a> LoweringContext<'a> {
                             is_generator = this.is_generator;
                             e
                         });
-                        if is_generator && !decl.inputs.is_empty() {
-                            span_err!(this.sess, fn_decl_span, E0628,
-                                      "generators cannot have explicit arguments");
-                            this.sess.abort_if_errors();
-                        }
+                        let generator_option = if is_generator {
+                            if !decl.inputs.is_empty() {
+                                span_err!(this.sess, fn_decl_span, E0628,
+                                        "generators cannot have explicit arguments");
+                                this.sess.abort_if_errors();
+                            }
+                            Some(match movability {
+                                Movability::Movable => hir::GeneratorMovability::Movable,
+                                Movability::Static => hir::GeneratorMovability::Static,
+                            })
+                        } else {
+                            if movability == Movability::Static {
+                                span_err!(this.sess, fn_decl_span, E0906,
+                                        "closures cannot be static");
+                            }
+                            None
+                        };
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
                                          this.lower_fn_decl(decl, None, false),
                                          body_id,
                                          fn_decl_span,
-                                         is_generator)
+                                         generator_option)
                     })
                 })
             }

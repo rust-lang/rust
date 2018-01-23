@@ -141,6 +141,10 @@ pub enum TypeVariants<'tcx> {
     /// `|a| yield a`.
     TyGenerator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>),
 
+    /// A type representin the types stored inside a generator.
+    /// This should only appear in GeneratorInteriors.
+    TyGeneratorWitness(Binder<&'tcx Slice<Ty<'tcx>>>),
+
     /// The never type `!`
     TyNever,
 
@@ -405,19 +409,7 @@ impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct GeneratorInterior<'tcx> {
     pub witness: Ty<'tcx>,
-}
-
-impl<'tcx> GeneratorInterior<'tcx> {
-    pub fn new(witness: Ty<'tcx>) -> GeneratorInterior<'tcx> {
-        GeneratorInterior { witness }
-    }
-
-    pub fn as_slice(&self) -> &'tcx Slice<Ty<'tcx>> {
-        match self.witness.sty {
-            ty::TyTuple(s, _) => s,
-            _ => bug!(),
-        }
-    }
+    pub movable: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -1611,6 +1603,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
             TyFnDef(..) |
             TyFnPtr(_) |
+            TyGeneratorWitness(..) |
             TyBool |
             TyChar |
             TyInt(_) |

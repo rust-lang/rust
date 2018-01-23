@@ -1880,7 +1880,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 vec![]
             }
 
-            TyStr | TyDynamic(..) | TySlice(_) | TyForeign(..) | TyError => {
+            TyStr |
+            TyDynamic(..) |
+            TySlice(_) |
+            TyForeign(..) |
+            TyError |
+            TyGeneratorWitness(..) => {
                 // these are never sized - return the target type
                 vec![ty]
             }

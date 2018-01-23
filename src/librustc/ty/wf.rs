@@ -283,6 +283,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 ty::TyFloat(..) |
                 ty::TyError |
                 ty::TyStr |
+                ty::TyGeneratorWitness(..) |
                 ty::TyNever |
                 ty::TyParam(_) |
                 ty::TyForeign(..) => {

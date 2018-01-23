@@ -2162,7 +2162,8 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, INDENT_UNIT)?;
             }
-            ast::ExprKind::Closure(capture_clause, ref decl, ref body, _) => {
+            ast::ExprKind::Closure(capture_clause, movability, ref decl, ref body, _) => {
+                self.print_movability(movability)?;
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_fn_block_args(decl)?;
@@ -2774,6 +2775,14 @@ impl<'a> State<'a> {
                 self.maybe_print_comment(ty.span.lo())
             }
             ast::FunctionRetTy::Default(..) => unreachable!(),
+        }
+    }
+
+    pub fn print_movability(&mut self, movability: ast::Movability)
+                                -> io::Result<()> {
+        match movability {
+            ast::Movability::Static => self.word_space("static"),
+            ast::Movability::Movable => Ok(()),
         }
     }
 

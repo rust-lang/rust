@@ -74,11 +74,11 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         match expr.node {
-            hir::ExprClosure(cc, _, body_id, _, is_generator) => {
+            hir::ExprClosure(cc, _, body_id, _, gen) => {
                 let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
                 self.fcx
-                    .analyze_closure(expr.id, expr.hir_id, expr.span, body, cc, is_generator);
+                    .analyze_closure(expr.id, expr.hir_id, expr.span, body, cc, gen);
             }
 
             _ => {}
@@ -96,7 +96,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         body: &hir::Body,
         capture_clause: hir::CaptureClause,
-        is_generator: bool,
+        gen: Option<hir::GeneratorMovability>,
     ) {
         /*!
          * Analysis starting point.
@@ -121,7 +121,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let infer_kind = if is_generator {
+        let infer_kind = if gen.is_some() {
             false
         } else {
             self.closure_kind(closure_def_id, closure_substs).is_none()

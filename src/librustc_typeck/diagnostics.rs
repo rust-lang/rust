@@ -4776,4 +4776,5 @@ register_diagnostics! {
            // argument position.
     E0641, // cannot cast to/from a pointer with an unknown kind
     E0645, // trait aliases not finished
+    E0907, // type inside generator must be known in this context
 }
