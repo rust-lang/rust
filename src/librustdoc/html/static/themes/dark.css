@@ -197,7 +197,7 @@ a.test-arrow {
 
 #help dt {
 	border-color: #bfbfbf;
-	background: #fff;
+	background: rgba(0,0,0,0);
 	color: black;
 }
 
@@ -352,7 +352,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 kbd {
-	color: #444d56;
+	color: #000;
 	background-color: #fafbfc;
 	border-color: #d1d5da;
 	border-bottom-color: #c6cbd1;
@@ -364,16 +364,20 @@ kbd {
 	background: #f0f0f0;
 }
 
+#theme-picker:hover, #theme-picker:focus {
+	border-color: #ffb900;
+}
+
 #theme-choices {
 	border-color: #e0e0e0;
 	background-color: #353535;
 }
 
-#theme-choices > div {
-	border-top: #e0e0e0;
+#theme-choices > button:not(:first-child) {
+	border-top-color: #e0e0e0;
 }
 
-#theme-choices > div:hover {
+#theme-choices > button:hover, #theme-choices > button:focus {
 	background-color: #444;
 }
 

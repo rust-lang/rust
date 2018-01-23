@@ -345,7 +345,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 kbd {
-	color: #444d56;
+	color: #000;
 	background-color: #fafbfc;
 	border-color: #d1d5da;
 	border-bottom-color: #c6cbd1;
@@ -354,6 +354,11 @@ kbd {
 
 #theme-picker {
 	border-color: #e0e0e0;
+	background-color: #fff;
+}
+
+#theme-picker:hover, #theme-picker:focus {
+	border-color: #717171;
 }
 
 #theme-choices {
@@ -361,11 +366,11 @@ kbd {
 	background-color: #fff;
 }
 
-#theme-choices > div {
-	border-top: #e0e0e0;
+#theme-choices > button:not(:first-child) {
+	border-top-color: #e0e0e0;
 }
 
-#theme-choices > div:hover {
+#theme-choices > button:hover, #theme-choices > button:focus {
 	background-color: #eee;
 }
 
