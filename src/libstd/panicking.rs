@@ -391,6 +391,7 @@ fn rust_panic_with_hook(msg: Box<Any + Send>,
     unsafe {
         let info = PanicInfo::internal_constructor(
             &*msg,
+            None,
             Location::internal_constructor(file, line, col),
         );
         HOOK_LOCK.read();

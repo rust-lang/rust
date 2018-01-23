@@ -15,6 +15,7 @@
             issue = "44489")]
 
 use any::Any;
+use fmt;
 
 /// A struct providing information about a panic.
 ///
@@ -38,6 +39,7 @@ use any::Any;
 #[derive(Debug)]
 pub struct PanicInfo<'a> {
     payload: &'a (Any + Send),
+    message: Option<&'a fmt::Arguments<'a>>,
     location: Location<'a>,
 }
 
@@ -47,8 +49,11 @@ impl<'a> PanicInfo<'a> {
                           and related macros",
                 issue = "0")]
     #[doc(hidden)]
-    pub fn internal_constructor(payload: &'a (Any + Send), location: Location<'a>,) -> Self {
-        PanicInfo { payload, location }
+    pub fn internal_constructor(payload: &'a (Any + Send),
+                                message: Option<&'a fmt::Arguments<'a>>,
+                                location: Location<'a>)
+                                -> Self {
+        PanicInfo { payload, location, message }
     }
 
     /// Returns the payload associated with the panic.
@@ -71,6 +76,16 @@ impl<'a> PanicInfo<'a> {
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn payload(&self) -> &(Any + Send) {
         self.payload
+    }
+
+    /// If the `panic!` macro from the `core` crate (not from `std`)
+    /// was used with a formatting string and some additional arguments,
+    /// returns that message ready to be used for example with [`fmt::write`]
+    ///
+    /// [`fmt::write`]: ../fmt/fn.write.html
+    #[unstable(feature = "panic_info_message", issue = "44489")]
+    pub fn message(&self) -> Option<&fmt::Arguments> {
+        self.message
     }
 
     /// Returns information about the location from which the panic originated,
