@@ -131,6 +131,7 @@ matrix:
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
     - env: IMAGE=asmjs
+      if: branch = auto
     - env: IMAGE=i686-gnu
     - env: IMAGE=i686-gnu-nopt
     - env: IMAGE=wasm32-unknown
