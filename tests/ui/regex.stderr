@@ -60,94 +60,106 @@ error: regex syntax error on position 0: unclosed parenthesis
 44 |         OPENING_PAREN,
    |         ^^^^^^^^^^^^^
 
-error: trivial regex
-  --> $DIR/regex.rs:50:33
+error: regex syntax error: unrecognized escape sequence
+  --> $DIR/regex.rs:48:45
    |
-50 |     let trivial_eq = Regex::new("^foobar$");
+48 |     let raw_string_error = Regex::new(r"[...//...]");
+   |                                             ^
+
+error: regex syntax error: unrecognized escape sequence
+  --> $DIR/regex.rs:49:46
+   |
+49 |     let raw_string_error = Regex::new(r#"[...//...]"#);
+   |                                              ^
+
+error: trivial regex
+  --> $DIR/regex.rs:53:33
+   |
+53 |     let trivial_eq = Regex::new("^foobar$");
    |                                 ^^^^^^^^^^
    |
    = note: `-D trivial-regex` implied by `-D warnings`
    = help: consider using consider using `==` on `str`s
 
 error: trivial regex
-  --> $DIR/regex.rs:52:48
+  --> $DIR/regex.rs:55:48
    |
-52 |     let trivial_eq_builder = RegexBuilder::new("^foobar$");
+55 |     let trivial_eq_builder = RegexBuilder::new("^foobar$");
    |                                                ^^^^^^^^^^
    |
    = help: consider using consider using `==` on `str`s
 
 error: trivial regex
-  --> $DIR/regex.rs:54:42
+  --> $DIR/regex.rs:57:42
    |
-54 |     let trivial_starts_with = Regex::new("^foobar");
+57 |     let trivial_starts_with = Regex::new("^foobar");
    |                                          ^^^^^^^^^
    |
    = help: consider using consider using `str::starts_with`
 
 error: trivial regex
-  --> $DIR/regex.rs:56:40
+  --> $DIR/regex.rs:59:40
    |
-56 |     let trivial_ends_with = Regex::new("foobar$");
+59 |     let trivial_ends_with = Regex::new("foobar$");
    |                                        ^^^^^^^^^
    |
    = help: consider using consider using `str::ends_with`
 
 error: trivial regex
-  --> $DIR/regex.rs:58:39
+  --> $DIR/regex.rs:61:39
    |
-58 |     let trivial_contains = Regex::new("foobar");
+61 |     let trivial_contains = Regex::new("foobar");
    |                                       ^^^^^^^^
    |
    = help: consider using consider using `str::contains`
 
 error: trivial regex
-  --> $DIR/regex.rs:60:39
+  --> $DIR/regex.rs:63:39
    |
-60 |     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
+63 |     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
    |                                       ^^^^^^^^^^^^^^^^
    |
    = help: consider using consider using `str::contains`
 
 error: trivial regex
-  --> $DIR/regex.rs:62:40
+  --> $DIR/regex.rs:65:40
    |
-62 |     let trivial_backslash = Regex::new("a/.b");
+65 |     let trivial_backslash = Regex::new("a/.b");
    |                                        ^^^^^^^
    |
    = help: consider using consider using `str::contains`
 
 error: trivial regex
-  --> $DIR/regex.rs:65:36
+  --> $DIR/regex.rs:68:36
    |
-65 |     let trivial_empty = Regex::new("");
+68 |     let trivial_empty = Regex::new("");
    |                                    ^^
    |
    = help: consider using the regex is unlikely to be useful as it is
 
 error: trivial regex
-  --> $DIR/regex.rs:67:36
+  --> $DIR/regex.rs:70:36
    |
-67 |     let trivial_empty = Regex::new("^");
+70 |     let trivial_empty = Regex::new("^");
    |                                    ^^^
    |
    = help: consider using the regex is unlikely to be useful as it is
 
 error: trivial regex
-  --> $DIR/regex.rs:69:36
+  --> $DIR/regex.rs:72:36
    |
-69 |     let trivial_empty = Regex::new("^$");
+72 |     let trivial_empty = Regex::new("^$");
    |                                    ^^^^
    |
    = help: consider using consider using `str::is_empty`
 
 error: trivial regex
-  --> $DIR/regex.rs:71:44
+  --> $DIR/regex.rs:74:44
    |
-71 |     let binary_trivial_empty = BRegex::new("^$");
+74 |     let binary_trivial_empty = BRegex::new("^$");
    |                                            ^^^^
    |
    = help: consider using consider using `str::is_empty`
 
-error: aborting due to 21 previous errors
+error: aborting due to 23 previous errors
 
