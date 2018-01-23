@@ -303,6 +303,7 @@ pub enum CodeModel {
     Kernel,
     Medium,
     Large,
+    None,
 }
 
 /// LLVMRustDiagnosticKind

@@ -220,6 +220,7 @@ enum class LLVMRustCodeModel {
   Kernel,
   Medium,
   Large,
+  None,
 };
 
 static CodeModel::Model fromRust(LLVMRustCodeModel Model) {
@@ -360,7 +361,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool TrapUnreachable,
     bool Singlethread) {
 
-  auto CM = fromRust(RustCM);
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
 
@@ -399,6 +399,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     Options.ThreadModel = ThreadModel::Single;
   }
 
+  Optional<CodeModel::Model> CM;
+  if (RustCM != LLVMRustCodeModel::None)
+    CM = fromRust(RustCM);
   TargetMachine *TM = TheTarget->createTargetMachine(
       Trip.getTriple(), RealCPU, Feature, Options, RM, CM, OptLevel);
   return wrap(TM);
