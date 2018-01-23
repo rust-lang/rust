@@ -354,7 +354,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box explicit_write::Pass);
     reg.register_late_lint_pass(box needless_pass_by_value::NeedlessPassByValue);
     reg.register_early_lint_pass(box literal_representation::LiteralDigitGrouping);
-    reg.register_early_lint_pass(box literal_representation::LiteralRepresentation);
+    reg.register_early_lint_pass(box literal_representation::LiteralRepresentation::new(
+            conf.literal_representation_threshold
+    ));
     reg.register_late_lint_pass(box use_self::UseSelf);
     reg.register_late_lint_pass(box bytecount::ByteCount);
     reg.register_late_lint_pass(box infinite_iter::Pass);

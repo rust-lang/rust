@@ -1,96 +1,56 @@
 error: bad representation of integer literal
   --> $DIR/bad_literal_representation.rs:10:9
    |
-10 |         255,           // 0xFF
-   |         ^^^
+10 |         4096,          // 0x1000
+   |         ^^^^
    |
    = note: `-D bad-literal-representation` implied by `-D warnings`
-   = help: consider: 0xFF
+   = help: consider: 0x1000
 
 error: bad representation of integer literal
   --> $DIR/bad_literal_representation.rs:11:9
    |
-11 |         511,           // 0x1FF
-   |         ^^^
-   |
-   = help: consider: 0x1FF
-
-error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:12:9
-   |
-12 |         1023,          // 0x3FF
-   |         ^^^^
-   |
-   = help: consider: 0x3FF
-
-error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:13:9
-   |
-13 |         2047,          // 0x7FF
-   |         ^^^^
-   |
-   = help: consider: 0x7FF
-
-error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:14:9
-   |
-14 |         4095,          // 0xFFF
-   |         ^^^^
-   |
-   = help: consider: 0xFFF
-
-error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:15:9
-   |
-15 |         4096,          // 0x1000
-   |         ^^^^
-   |
-   = help: consider: 0x1000
-
-error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:16:9
-   |
-16 |         16_371,        // 0x3FF3
+11 |         16_371,        // 0x3FF3
    |         ^^^^^^
    |
    = help: consider: 0x3FF3
 
 error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:17:9
+  --> $DIR/bad_literal_representation.rs:12:9
    |
-17 |         32_773,        // 0x8005
+12 |         32_773,        // 0x8005
    |         ^^^^^^
    |
    = help: consider: 0x8005
 
 error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:18:9
+  --> $DIR/bad_literal_representation.rs:13:9
    |
-18 |         65_280,        // 0xFF00
+13 |         65_280,        // 0xFF00
    |         ^^^^^^
    |
    = help: consider: 0xFF00
 
 error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:19:9
+  --> $DIR/bad_literal_representation.rs:14:9
    |
-19 |         2_131_750_927, // 0x7F0F_F00F
+14 |         2_131_750_927, // 0x7F0F_F00F
    |         ^^^^^^^^^^^^^
    |
    = help: consider: 0x7F0F_F00F
 
 error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:20:9
+  --> $DIR/bad_literal_representation.rs:15:9
    |
-20 |         2_147_483_647, // 0x7FFF_FFFF
+15 |         2_147_483_647, // 0x7FFF_FFFF
    |         ^^^^^^^^^^^^^
    |
    = help: consider: 0x7FFF_FFFF
 
 error: bad representation of integer literal
-  --> $DIR/bad_literal_representation.rs:21:9
+  --> $DIR/bad_literal_representation.rs:16:9
    |
-21 |         4_042_322_160, // 0xF0F0_F0F0
+16 |         4_042_322_160, // 0xF0F0_F0F0
    |         ^^^^^^^^^^^^^
    |
    = help: consider: 0xF0F0_F0F0

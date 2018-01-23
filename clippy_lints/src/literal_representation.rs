@@ -394,7 +394,9 @@ impl LiteralDigitGrouping {
 }
 
 #[derive(Copy, Clone)]
-pub struct LiteralRepresentation;
+pub struct LiteralRepresentation {
+    threshold: u64,
+}
 
 impl LintPass for LiteralRepresentation {
     fn get_lints(&self) -> LintArray {
@@ -415,6 +417,11 @@ impl EarlyLintPass for LiteralRepresentation {
 }
 
 impl LiteralRepresentation {
+    pub fn new(threshold: u64) -> Self {
+        Self {
+            threshold: threshold,
+        }
+    }
     fn check_lit(&self, cx: &EarlyContext, lit: &Lit) {
         // Lint integral literals.
         if_chain! {
@@ -425,11 +432,15 @@ impl LiteralRepresentation {
             then {
                 let digit_info = DigitInfo::new(&src, false);
                 if digit_info.radix == Radix::Decimal {
-                    let hex = format!("{:#X}", digit_info.digits
-                                                            .chars()
-                                                            .filter(|&c| c != '_')
-                                                            .collect::<String>()
-                                                            .parse::<u128>().unwrap());
+                    let val = digit_info.digits
+                        .chars()
+                        .filter(|&c| c != '_')
+                        .collect::<String>()
+                        .parse::<u128>().unwrap();
+                    if val < self.threshold as u128 {
+                        return
+                    }
+                    let hex = format!("{:#X}", val);
                     let digit_info = DigitInfo::new(&hex[..], false);
                     let _ = Self::do_lint(digit_info.digits).map_err(|warning_type| {
                         warning_type.display(&digit_info.grouping_hint(), cx, &lit.span)
@@ -440,22 +451,30 @@ impl LiteralRepresentation {
     }
 
     fn do_lint(digits: &str) -> Result<(), WarningType> {
-        if digits.len() == 2 && digits == "FF" {
-            return Err(WarningType::BadRepresentation);
-        } else if digits.len() == 3 {
-            // Lint for Literals with a hex-representation of 3 digits
-            let f = &digits[0..1]; // first digit
-            let s = &digits[1..]; // suffix
-                                  // Powers of 2 minus 1
-            if (f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && s.eq("FF") {
+        if digits.len() == 1 {
+            // Lint for 1 digit literals, if someone really sets the threshold that low
+            if digits == "1" || digits == "2" || digits == "4" || digits == "8" || digits == "3" || digits == "7"
+                || digits == "F"
+            {
                 return Err(WarningType::BadRepresentation);
             }
-        } else if digits.len() > 3 {
+        } else if digits.len() < 4 {
+            // Lint for Literals with a hex-representation of 2 or 3 digits
+            let f = &digits[0..1]; // first digit
+            let s = &digits[1..]; // suffix
+            // Powers of 2
+            if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && s.chars().all(|c| c == '0'))
+                // Powers of 2 minus 1
+                || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && s.chars().all(|c| c == 'F'))
+            {
+                return Err(WarningType::BadRepresentation);
+            }
+        } else {
             // Lint for Literals with a hex-representation of 4 digits or more
             let f = &digits[0..1]; // first digit
             let m = &digits[1..digits.len() - 1]; // middle digits, except last
             let s = &digits[1..]; // suffix
-                                  // Powers of 2 with a margin of +15/-16
+            // Powers of 2 with a margin of +15/-16
             if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && m.chars().all(|c| c == '0'))
                 || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && m.chars().all(|c| c == 'F'))
                 // Lint for representations with only 0s and Fs, while allowing 7 as the first
