@@ -22,7 +22,7 @@ pub trait StructuredDiagnostic<'tcx> {
 
     fn diagnostic(&self) -> DiagnosticBuilder<'tcx> {
         let err = self.common();
-        if self.session().explain(&self.code()) {
+        if self.session().teach(&self.code()) {
             self.extended(err)
         } else {
             self.regular(err)

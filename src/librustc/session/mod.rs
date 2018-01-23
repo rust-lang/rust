@@ -832,8 +832,8 @@ impl Session {
         }
     }
 
-    pub fn explain(&self, code: &DiagnosticId) -> bool {
-        self.opts.debugging_opts.explain && !self.parse_sess.span_diagnostic.code_emitted(code)
+    pub fn teach(&self, code: &DiagnosticId) -> bool {
+        self.opts.debugging_opts.teach && !self.parse_sess.span_diagnostic.code_emitted(code)
     }
 }
 
