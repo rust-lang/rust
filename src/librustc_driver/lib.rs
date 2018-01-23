@@ -347,8 +347,9 @@ fn parse_pretty(sess: &Session,
     } else {
         None
     };
-    if pretty.is_none() && sess.unstable_options() {
-        matches.opt_str("unpretty").map(|a| {
+
+    if pretty.is_none() {
+        sess.opts.debugging_opts.unpretty.as_ref().map(|a| {
             // extended with unstable pretty-print variants
             pretty::parse_pretty(sess, &a, true)
         })

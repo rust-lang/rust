@@ -778,6 +778,8 @@ macro_rules! options {
             Some(::rustc_back::LinkerFlavor::one_of());
         pub const parse_optimization_fuel: Option<&'static str> =
             Some("crate=integer");
+        pub const parse_unpretty: Option<&'static str> =
+            Some("`string` or `string=string`");
     }
 
     #[allow(dead_code)]
@@ -965,6 +967,17 @@ macro_rules! options {
                 }
             }
         }
+
+        fn parse_unpretty(slot: &mut Option<String>, v: Option<&str>) -> bool {
+            match v {
+                None => false,
+                Some(s) if s.split('=').count() <= 2 => {
+                    *slot = Some(s.to_string());
+                    true
+                }
+                _ => false,
+            }
+        }
     }
 ) }
 
@@ -1104,13 +1117,13 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "write syntax and type analysis (in JSON format) information, in \
          addition to normal output"),
     flowgraph_print_loans: bool = (false, parse_bool, [UNTRACKED],
-        "include loan analysis data in --unpretty flowgraph output"),
+        "include loan analysis data in -Z unpretty flowgraph output"),
     flowgraph_print_moves: bool = (false, parse_bool, [UNTRACKED],
-        "include move analysis data in --unpretty flowgraph output"),
+        "include move analysis data in -Z unpretty flowgraph output"),
     flowgraph_print_assigns: bool = (false, parse_bool, [UNTRACKED],
-        "include assignment analysis data in --unpretty flowgraph output"),
+        "include assignment analysis data in -Z unpretty flowgraph output"),
     flowgraph_print_all: bool = (false, parse_bool, [UNTRACKED],
-        "include all dataflow analysis data in --unpretty flowgraph output"),
+        "include all dataflow analysis data in -Z unpretty flowgraph output"),
     print_region_graph: bool = (false, parse_bool, [UNTRACKED],
          "prints region inference graph. \
           Use with RUST_REGION_GRAPH=help for more info"),
@@ -1241,6 +1254,13 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
          themselves"),
+    unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
+        "Present the input source, unstable (and less-pretty) variants;
+        valid types are any of the types for `--pretty`, as well as:
+        `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
+        `everybody_loops` (all function bodies replaced with `loop {}`),
+        `hir` (the HIR), `hir,identified`, or
+        `hir,typed` (HIR with types for each node)."),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1513,14 +1533,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                   valid types are: `normal` (un-annotated source),
                   `expanded` (crates expanded), or
                   `expanded,identified` (fully parenthesized, AST nodes with IDs).",
-                 "TYPE"),
-        opt::opt("", "unpretty",
-                 "Present the input source, unstable (and less-pretty) variants;
-                  valid types are any of the types for `--pretty`, as well as:
-                  `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
-                  `everybody_loops` (all function bodies replaced with `loop {}`),
-                  `hir` (the HIR), `hir,identified`, or
-                  `hir,typed` (HIR with types for each node).",
                  "TYPE"),
     ]);
     opts
