@@ -16,6 +16,7 @@ matrix:
       if: type = pull_request OR branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
+      if: branch = try OR branch = auto
 
     # "alternate" deployments, these are "nightlies" but have LLVM assertions
     # turned on, they're deployed to a different location primarily for
@@ -111,25 +112,35 @@ matrix:
     - env: IMAGE=armhf-gnu
     - env: IMAGE=dist-various-1 DEPLOY=1
     - env: IMAGE=dist-various-2 DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
     - env: IMAGE=dist-android DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-arm-linux DEPLOY=1
     - env: IMAGE=dist-armhf-linux DEPLOY=1
     - env: IMAGE=dist-armv7-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-i586-gnu-i586-i686-musl DEPLOY=1
     - env: IMAGE=dist-i686-freebsd DEPLOY=1
     - env: IMAGE=dist-i686-linux DEPLOY=1
     - env: IMAGE=dist-mips-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-mips64-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-mips64el-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-mipsel-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-powerpc-linux DEPLOY=1
     - env: IMAGE=dist-powerpc64-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-s390x-linux DEPLOY=1
     - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
+      if: branch = auto
     - env: IMAGE=asmjs
       if: branch = auto
     - env: IMAGE=i686-gnu
@@ -137,9 +148,11 @@ matrix:
     - env: IMAGE=wasm32-unknown
     - env: IMAGE=x86_64-gnu
     - env: IMAGE=x86_64-gnu-full-bootstrap
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-tools
     - env: IMAGE=x86_64-gnu-debug
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-nopt
     - env: IMAGE=x86_64-gnu-distcheck
     - env: IMAGE=x86_64-gnu-incremental
