@@ -174,12 +174,50 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Convert a byte array or byte slice to a byte slice.
+    fn to_slice_operand(&mut self,
+                        block: BasicBlock,
+                        source_info: SourceInfo,
+                        operand: Operand<'tcx>)
+                        -> Operand<'tcx>
+    {
+        let tcx = self.hir.tcx();
+        let ty = operand.ty(&self.local_decls, tcx);
+        debug!("to_slice_operand({:?}, {:?}: {:?})", block, operand, ty);
+        match ty.sty {
+            ty::TyRef(region, mt) => match mt.ty.sty {
+                ty::TyArray(ety, _) => {
+                    let ty = tcx.mk_imm_ref(region, tcx.mk_slice(ety));
+                    let temp = self.temp(ty, source_info.span);
+                    self.cfg.push_assign(block, source_info, &temp,
+                                         Rvalue::Cast(CastKind::Unsize, operand, ty));
+                    Operand::Move(temp)
+                }
+                ty::TySlice(_) => operand,
+                _ => {
+                    span_bug!(source_info.span,
+                              "bad operand {:?}: {:?} to `to_slice_operand`", operand, ty)
+                }
+            }
+            _ => {
+                span_bug!(source_info.span,
+                          "bad operand {:?}: {:?} to `to_slice_operand`", operand, ty)
+            }
+        }
+
+    }
+
     /// Generates the code to perform a test.
     pub fn perform_test(&mut self,
                         block: BasicBlock,
                         place: &Place<'tcx>,
                         test: &Test<'tcx>)
                         -> Vec<BasicBlock> {
+        debug!("perform_test({:?}, {:?}: {:?}, {:?})",
+               block,
+               place,
+               place.ty(&self.local_decls, self.hir.tcx()),
+               test);
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
@@ -258,45 +296,35 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ret
             }
 
-            TestKind::Eq { value, mut ty } => {
+            TestKind::Eq { value, ty } => {
+                let tcx = self.hir.tcx();
                 let mut val = Operand::Copy(place.clone());
 
                 // If we're using b"..." as a pattern, we need to insert an
                 // unsizing coercion, as the byte string has the type &[u8; N].
-                let expect = if let ConstVal::ByteStr(bytes) = value.val {
-                    let tcx = self.hir.tcx();
-
-                    // Unsize the place to &[u8], too, if necessary.
-                    if let ty::TyRef(region, mt) = ty.sty {
-                        if let ty::TyArray(_, _) = mt.ty.sty {
-                            ty = tcx.mk_imm_ref(region, tcx.mk_slice(tcx.types.u8));
-                            let val_slice = self.temp(ty, test.span);
-                            self.cfg.push_assign(block, source_info, &val_slice,
-                                                 Rvalue::Cast(CastKind::Unsize, val, ty));
-                            val = Operand::Move(val_slice);
-                        }
-                    }
-
-                    assert!(ty.is_slice());
-
+                //
+                // We want to do this even when the scrutinee is a reference to an
+                // array, so we can call `<[u8]>::eq` rather than having to find an
+                // `<[u8; N]>::eq`.
+                let (expect, val) = if let ConstVal::ByteStr(bytes) = value.val {
                     let array_ty = tcx.mk_array(tcx.types.u8, bytes.data.len() as u64);
                     let array_ref = tcx.mk_imm_ref(tcx.types.re_static, array_ty);
                     let array = self.literal_operand(test.span, array_ref, Literal::Value {
                         value
                     });
 
-                    let slice = self.temp(ty, test.span);
-                    self.cfg.push_assign(block, source_info, &slice,
-                                         Rvalue::Cast(CastKind::Unsize, array, ty));
-                    Operand::Move(slice)
+                    let val = self.to_slice_operand(block, source_info, val);
+                    let slice = self.to_slice_operand(block, source_info, array);
+                    (slice, val)
                 } else {
-                    self.literal_operand(test.span, ty, Literal::Value {
+                    (self.literal_operand(test.span, ty, Literal::Value {
                         value
-                    })
+                    }), val)
                 };
 
                 // Use PartialEq::eq for &str and &[u8] slices, instead of BinOp::Eq.
                 let fail = self.cfg.start_new_block();
+                let ty = expect.ty(&self.local_decls, tcx);
                 if let ty::TyRef(_, mt) = ty.sty {
                     assert!(ty.is_slice());
                     let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();

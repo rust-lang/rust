@@ -22,6 +22,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
+#![feature(fs_read_write)]
 #![allow(unused_attributes)]
 #![feature(i128_type)]
 #![feature(i128)]

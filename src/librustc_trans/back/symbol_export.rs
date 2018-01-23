@@ -115,9 +115,8 @@ pub fn provide(providers: &mut Providers) {
 
         if let Some(id) = tcx.sess.derive_registrar_fn.get() {
             let def_id = tcx.hir.local_def_id(id);
-            let idx = def_id.index;
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            let registrar = tcx.sess.generate_derive_registrar_symbol(disambiguator, idx);
+            let registrar = tcx.sess.generate_derive_registrar_symbol(disambiguator);
             local_crate.push((registrar, Some(def_id), SymbolExportLevel::C));
         }
 
