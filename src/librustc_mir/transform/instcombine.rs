@@ -11,7 +11,7 @@
 //! Performs various peephole optimizations.
 
 use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, ProjectionElem, Rvalue, Local};
-use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock};
+use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{SourceInfo, ARGUMENT_VISIBILITY_SCOPE, TerminatorKind};
 use rustc::mir::visit::{MutVisitor, Visitor, TyContext};
 use rustc::middle::const_val::ConstVal;
@@ -34,6 +34,7 @@ impl MirPass for InstCombine {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource,
                           mir: &mut Mir<'tcx>) {
+        trace!("InstCombine starting for {:?}", source.def_id);
 
         // First, find optimization opportunities. This is done in a pre-pass to keep the MIR
         // read-only so that we can do global analyses on the MIR in the process (e.g.
@@ -46,6 +47,7 @@ impl MirPass for InstCombine {
 
         // Then carry out those optimizations.
         MutVisitor::visit_mir(&mut InstCombineVisitor { optimizations, tcx }, mir);
+        trace!("InstCombine done for {:?}", source.def_id);
     }
 }
 
@@ -199,7 +201,6 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                 ConstVal::Value(v) => Some((v, value.ty, c.span)),
                 ConstVal::Unevaluated(did, substs) => {
                     let param_env = self.tcx.param_env(self.source.def_id);
-                    let span = self.tcx.def_span(did);
                     let instance = Instance::resolve(
                         self.tcx,
                         param_env,
@@ -211,7 +212,7 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                         promoted: None,
                     };
                     let (value, _, ty) = eval_body(self.tcx, cid, param_env)?;
-                    let val = (value, ty, span);
+                    let val = (value, ty, c.span);
                     trace!("evaluated {:?} to {:?}", c, val);
                     self.optimizations.constants.insert(c.clone(), val);
                     Some(val)
@@ -269,7 +270,24 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
         span: Span,
     ) -> Option<Const<'tcx>> {
         match *rvalue {
-            Rvalue::Use(ref op) => self.simplify_operand(op),
+            // No need to overwrite an already evaluated constant
+            Rvalue::Use(Operand::Constant(box Constant {
+                literal: Literal::Value {
+                    value: &ty::Const {
+                        val: ConstVal::Value(_),
+                        ..
+                    },
+                },
+                ..
+            })) => None,
+            // This branch exists for the sanity type check
+            Rvalue::Use(Operand::Constant(ref c)) => {
+                assert_eq!(c.ty, place_ty);
+                self.eval_constant(c)
+            },
+            Rvalue::Use(ref op) => {
+                self.eval_operand(op)
+            },
             Rvalue::Repeat(..) |
             Rvalue::Ref(..) |
             Rvalue::Cast(..) |
@@ -392,6 +410,17 @@ impl ConstPropVisitor {
         cpv.visit_mir(mir);
         cpv.can_const_prop
     }
+
+    fn is_our_local(&mut self, mut place: &Place) -> bool {
+        while let Place::Projection(ref proj) = place {
+            place = &proj.base;
+        }
+        if let Place::Local(local) = *place {
+            local == self.local
+        } else {
+            false
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for ConstPropVisitor {
@@ -403,9 +432,9 @@ impl<'tcx> Visitor<'tcx> for ConstPropVisitor {
     ) {
         self.super_statement(block, statement, location);
         match statement.kind {
-            StatementKind::SetDiscriminant { place: Place::Local(local), .. } |
-            StatementKind::Assign(Place::Local(local), _) => {
-                if local == self.local {
+            StatementKind::SetDiscriminant { ref place, .. } |
+            StatementKind::Assign(ref place, _) => {
+                if self.is_our_local(place) {
                     if self.found_assignment {
                         self.can_const_prop = false;
                     } else {
@@ -415,15 +444,13 @@ impl<'tcx> Visitor<'tcx> for ConstPropVisitor {
             },
             StatementKind::InlineAsm { ref outputs, .. } => {
                 for place in outputs {
-                    if let Place::Local(local) = *place {
-                        if local == self.local {
-                            if self.found_assignment {
-                                self.can_const_prop = false;
-                            } else {
-                                self.found_assignment = true
-                            }
-                            return;
+                    if self.is_our_local(place) {
+                        if self.found_assignment {
+                            self.can_const_prop = false;
+                        } else {
+                            self.found_assignment = true
                         }
+                        return;
                     }
                 }
             }
@@ -432,8 +459,8 @@ impl<'tcx> Visitor<'tcx> for ConstPropVisitor {
     }
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
-        if let Rvalue::Ref(_, _, Place::Local(local)) = *rvalue {
-            if local == self.local {
+        if let Rvalue::Ref(_, _, ref place) = *rvalue {
+            if self.is_our_local(place) {
                 self.can_const_prop = false;
             }
         }
@@ -517,12 +544,13 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
             if let Some(value) = self.const_prop(rval, place_ty, span) {
                 self.optimizations.const_prop.insert(location, value);
                 if let Place::Local(local) = *place {
-                    if !self.mir.local_decls[local].is_user_variable
+                    if self.mir.local_kind(local) == LocalKind::Temp
                         && ConstPropVisitor::check(local, self.mir) {
                         trace!("storing {:?} to {:?}", value, local);
                         assert!(self.optimizations.places.insert(local, value).is_none());
                     }
                 }
+                return;
             }
         }
         self.super_statement(block, statement, location);
