@@ -487,16 +487,18 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                 // The Rust ABI passes indirect variables using a pointer and a manual copy, so we
                 // need to insert a deref here, but the C ABI uses a pointer and a copy using the
                 // byval attribute, for which LLVM does the deref itself, so we must not add it.
+                // Starting with D31439 in LLVM 5, it *always* does the deref itself.
                 let mut variable_access = VariableAccess::DirectVariable {
                     alloca: place.llval
                 };
-
-                if let PassMode::Indirect(ref attrs) = arg.mode {
-                    if !attrs.contains(ArgAttribute::ByVal) {
-                        variable_access = VariableAccess::IndirectVariable {
-                            alloca: place.llval,
-                            address_operations: &deref_op,
-                        };
+                if unsafe { llvm::LLVMRustVersionMajor() < 5 } {
+                    if let PassMode::Indirect(ref attrs) = arg.mode {
+                        if !attrs.contains(ArgAttribute::ByVal) {
+                            variable_access = VariableAccess::IndirectVariable {
+                                alloca: place.llval,
+                                address_operations: &deref_op,
+                            };
+                        }
                     }
                 }
 
