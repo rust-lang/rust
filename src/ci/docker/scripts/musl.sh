@@ -49,15 +49,7 @@ hide_output make clean
 
 cd ..
 
-# use version 60 for all targets after llvm 6.0 release
-case $TAG in
-  mips|mipsel)
-    LLVM=60
-    ;;
-  *)
-    LLVM=39
-    ;;
-esac
+LLVM=60
 
 # may have been downloaded in a previous run
 if [ ! -d libunwind-release_$LLVM ]; then
