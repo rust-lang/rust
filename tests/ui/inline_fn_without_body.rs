@@ -11,7 +11,6 @@ trait Foo {
     #[inline(always)]fn always_inline();
 
     #[inline(never)]
-
     fn never_inline();
 
     #[inline]

@@ -24,6 +24,29 @@ fn with_one_newline() { assert!(true) }
 
 fn with_two_newlines() { assert!(true) }
 
+
+// This should produce a warning
+#[crate_type = "lib"]
+
+enum Baz {
+    One,
+    Two
+}
+
+// This should produce a warning
+#[crate_type = "lib"]
+
+struct Foo {
+    one: isize,
+    two: isize
+}
+
+// This should produce a warning
+#[crate_type = "lib"]
+
+mod foo {
+}
+
 // This should not produce a warning
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]

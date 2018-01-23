@@ -19,8 +19,7 @@ error: use of `#[inline]` on trait method `never_inline` which has no body
    |
 13 |       #[inline(never)]
    |  _____-^^^^^^^^^^^^^^^
-14 | |
-15 | |     fn never_inline();
+14 | |     fn never_inline();
    | |____- help: remove
 
 error: aborting due to 3 previous errors
