@@ -117,7 +117,7 @@ pub mod large_enum_variant;
 pub mod len_zero;
 pub mod let_if_seq;
 pub mod lifetimes;
-pub mod literal_digit_grouping;
+pub mod literal_representation;
 pub mod loops;
 pub mod map_clone;
 pub mod matches;
@@ -354,7 +354,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box large_enum_variant::LargeEnumVariant::new(conf.enum_variant_size_threshold));
     reg.register_late_lint_pass(box explicit_write::Pass);
     reg.register_late_lint_pass(box needless_pass_by_value::NeedlessPassByValue);
-    reg.register_early_lint_pass(box literal_digit_grouping::LiteralDigitGrouping);
+    reg.register_early_lint_pass(box literal_representation::LiteralDigitGrouping);
+    reg.register_early_lint_pass(box literal_representation::LiteralRepresentation::new(
+            conf.literal_representation_threshold
+    ));
     reg.register_late_lint_pass(box use_self::UseSelf);
     reg.register_late_lint_pass(box bytecount::ByteCount);
     reg.register_late_lint_pass(box infinite_iter::Pass);
@@ -487,9 +490,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         let_if_seq::USELESS_LET_IF_SEQ,
         lifetimes::NEEDLESS_LIFETIMES,
         lifetimes::UNUSED_LIFETIMES,
-        literal_digit_grouping::INCONSISTENT_DIGIT_GROUPING,
-        literal_digit_grouping::LARGE_DIGIT_GROUPS,
-        literal_digit_grouping::UNREADABLE_LITERAL,
+        literal_representation::INCONSISTENT_DIGIT_GROUPING,
+        literal_representation::LARGE_DIGIT_GROUPS,
+        literal_representation::UNREADABLE_LITERAL,
+        literal_representation::DECIMAL_LITERAL_REPRESENTATION,
         loops::EMPTY_LOOP,
         loops::EXPLICIT_COUNTER_LOOP,
         loops::EXPLICIT_INTO_ITER_LOOP,

@@ -62,7 +62,25 @@ declare_lint! {
     "grouping digits into groups that are too large"
 }
 
-#[derive(Debug)]
+/// **What it does:** Warns if there is a better representation for a numeric literal.
+///
+/// **Why is this bad?** Especially for big powers of 2 a hexadecimal representation is more
+/// readable than a decimal representation.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+///
+/// `255` => `0xFF`
+/// `65_535` => `0xFFFF`
+/// `4_042_322_160` => `0xF0F0_F0F0`
+declare_lint! {
+    pub DECIMAL_LITERAL_REPRESENTATION,
+    Warn,
+    "using decimal representation when hexadecimal would be better"
+}
+
+#[derive(Debug, PartialEq)]
 enum Radix {
     Binary,
     Octal,
@@ -168,7 +186,12 @@ impl<'a> DigitInfo<'a> {
                 .map(|chunk| chunk.into_iter().collect())
                 .collect::<Vec<String>>()
                 .join("_");
-            format!("{}.{}{}", int_part_hint, frac_part_hint, self.suffix.unwrap_or(""))
+            format!(
+                "{}.{}{}",
+                int_part_hint,
+                frac_part_hint,
+                self.suffix.unwrap_or("")
+            )
         } else {
             let hint = self.digits
                 .chars()
@@ -180,7 +203,12 @@ impl<'a> DigitInfo<'a> {
                 .rev()
                 .collect::<Vec<String>>()
                 .join("_");
-            format!("{}{}{}", self.prefix.unwrap_or(""), hint, self.suffix.unwrap_or(""))
+            format!(
+                "{}{}{}",
+                self.prefix.unwrap_or(""),
+                hint,
+                self.suffix.unwrap_or("")
+            )
         }
     }
 }
@@ -189,8 +217,8 @@ enum WarningType {
     UnreadableLiteral,
     InconsistentDigitGrouping,
     LargeDigitGroups,
+    DecimalRepresentation,
 }
-
 
 impl WarningType {
     pub fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: &syntax_pos::Span) {
@@ -216,6 +244,13 @@ impl WarningType {
                 "digits grouped inconsistently by underscores",
                 &format!("consider: {}", grouping_hint),
             ),
+            WarningType::DecimalRepresentation => span_help_and_lint(
+                cx,
+                DECIMAL_LITERAL_REPRESENTATION,
+                *span,
+                "integer literal has a better hexadecimal representation",
+                &format!("consider: {}", grouping_hint),
+            ),
         };
     }
 }
@@ -225,7 +260,11 @@ pub struct LiteralDigitGrouping;
 
 impl LintPass for LiteralDigitGrouping {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNREADABLE_LITERAL, INCONSISTENT_DIGIT_GROUPING, LARGE_DIGIT_GROUPS)
+        lint_array!(
+            UNREADABLE_LITERAL,
+            INCONSISTENT_DIGIT_GROUPING,
+            LARGE_DIGIT_GROUPS
+        )
     }
 }
 
@@ -351,5 +390,101 @@ impl LiteralDigitGrouping {
             }
             Ok(group_size)
         }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct LiteralRepresentation {
+    threshold: u64,
+}
+
+impl LintPass for LiteralRepresentation {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(DECIMAL_LITERAL_REPRESENTATION)
+    }
+}
+
+impl EarlyLintPass for LiteralRepresentation {
+    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+        if in_external_macro(cx, expr.span) {
+            return;
+        }
+
+        if let ExprKind::Lit(ref lit) = expr.node {
+            self.check_lit(cx, lit)
+        }
+    }
+}
+
+impl LiteralRepresentation {
+    pub fn new(threshold: u64) -> Self {
+        Self {
+            threshold: threshold,
+        }
+    }
+    fn check_lit(&self, cx: &EarlyContext, lit: &Lit) {
+        // Lint integral literals.
+        if_chain! {
+            if let LitKind::Int(..) = lit.node;
+            if let Some(src) = snippet_opt(cx, lit.span);
+            if let Some(firstch) = src.chars().next();
+            if char::to_digit(firstch, 10).is_some();
+            then {
+                let digit_info = DigitInfo::new(&src, false);
+                if digit_info.radix == Radix::Decimal {
+                    let val = digit_info.digits
+                        .chars()
+                        .filter(|&c| c != '_')
+                        .collect::<String>()
+                        .parse::<u128>().unwrap();
+                    if val < self.threshold as u128 {
+                        return
+                    }
+                    let hex = format!("{:#X}", val);
+                    let digit_info = DigitInfo::new(&hex[..], false);
+                    let _ = Self::do_lint(digit_info.digits).map_err(|warning_type| {
+                        warning_type.display(&digit_info.grouping_hint(), cx, &lit.span)
+                    });
+                }
+            }
+        }
+    }
+
+    fn do_lint(digits: &str) -> Result<(), WarningType> {
+        if digits.len() == 1 {
+            // Lint for 1 digit literals, if someone really sets the threshold that low
+            if digits == "1" || digits == "2" || digits == "4" || digits == "8" || digits == "3" || digits == "7"
+                || digits == "F"
+            {
+                return Err(WarningType::DecimalRepresentation);
+            }
+        } else if digits.len() < 4 {
+            // Lint for Literals with a hex-representation of 2 or 3 digits
+            let f = &digits[0..1]; // first digit
+            let s = &digits[1..]; // suffix
+            // Powers of 2
+            if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && s.chars().all(|c| c == '0'))
+                // Powers of 2 minus 1
+                || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && s.chars().all(|c| c == 'F'))
+            {
+                return Err(WarningType::DecimalRepresentation);
+            }
+        } else {
+            // Lint for Literals with a hex-representation of 4 digits or more
+            let f = &digits[0..1]; // first digit
+            let m = &digits[1..digits.len() - 1]; // middle digits, except last
+            let s = &digits[1..]; // suffix
+            // Powers of 2 with a margin of +15/-16
+            if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && m.chars().all(|c| c == '0'))
+                || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && m.chars().all(|c| c == 'F'))
+                // Lint for representations with only 0s and Fs, while allowing 7 as the first
+                // digit
+                || ((f.eq("7") || f.eq("F")) && s.chars().all(|c| c == '0' || c == 'F'))
+            {
+                return Err(WarningType::DecimalRepresentation);
+            }
+        }
+
+        Ok(())
     }
 }
