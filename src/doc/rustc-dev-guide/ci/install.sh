@@ -12,5 +12,5 @@ if command -v ghp-import >/dev/null 2>&1; then
     echo "ghp-import already installed at $(which ghp-import)"
 else
     echo "installing ghp-import"
-    pip install ghp-import
+    pip install --user ghp-import
 fi
