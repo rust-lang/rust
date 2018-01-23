@@ -330,7 +330,6 @@ pub enum DiagnosticKind {
 pub enum ArchiveKind {
     Other,
     K_GNU,
-    K_MIPS64,
     K_BSD,
     K_COFF,
 }
