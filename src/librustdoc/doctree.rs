@@ -196,6 +196,7 @@ pub struct Constant {
 }
 
 pub struct Trait {
+    pub is_auto: hir::IsAuto,
     pub unsafety: hir::Unsafety,
     pub name: Name,
     pub items: hir::HirVec<hir::TraitItem>,

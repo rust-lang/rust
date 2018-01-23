@@ -2423,9 +2423,10 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Output the trait definition
     write!(w, "<pre class='rust trait'>")?;
     render_attributes(w, it)?;
-    write!(w, "{}{}trait {}{}{}",
+    write!(w, "{}{}{}trait {}{}{}",
            VisSpace(&it.visibility),
            UnsafetySpace(t.unsafety),
+           if t.is_auto { "auto " } else { "" },
            it.name.as_ref().unwrap(),
            t.generics,
            bounds)?;

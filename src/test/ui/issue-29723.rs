@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z unpretty=mir
-// ignore-cloudabi no std::path
+#![feature(nll)]
 
-use std::path::MAIN_SEPARATOR;
+// test for https://github.com/rust-lang/rust/issues/29723
 
 fn main() {
-    let mut foo : String = "hello".to_string();
-    foo.push(MAIN_SEPARATOR);
-    println!("{}", foo);
-    let x: () = 0; //~ ERROR: mismatched types
+    let s = String::new();
+    let _s = match 0 {
+        0 if { drop(s); false } => String::from("oops"),
+        _ => {
+            // This should trigger an error,
+            // s could have been moved from.
+            s
+            //~^ ERROR use of moved value: `s`
+        }
+    };
 }

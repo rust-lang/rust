@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z unpretty=mir
-// ignore-cloudabi no std::path
+// aux-build:auto-traits.rs
 
-use std::path::MAIN_SEPARATOR;
+#![feature(optin_builtin_traits)]
 
-fn main() {
-    let mut foo : String = "hello".to_string();
-    foo.push(MAIN_SEPARATOR);
-    println!("{}", foo);
-    let x: () = 0; //~ ERROR: mismatched types
-}
+#![crate_name = "foo"]
+
+extern crate auto_traits;
+
+// @has 'foo/trait.Foo.html' '//pre' 'pub unsafe auto trait Foo'
+pub unsafe auto trait Foo {}
+
+// @has 'foo/trait.Bar.html' '//pre' 'pub unsafe auto trait Bar'
+pub use auto_traits::Bar;

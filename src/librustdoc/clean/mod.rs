@@ -1800,6 +1800,7 @@ pub struct Trait {
     pub generics: Generics,
     pub bounds: Vec<TyParamBound>,
     pub is_spotlight: bool,
+    pub is_auto: bool,
 }
 
 impl Clean<Item> for doctree::Trait {
@@ -1820,7 +1821,17 @@ impl Clean<Item> for doctree::Trait {
                 generics: self.generics.clean(cx),
                 bounds: self.bounds.clean(cx),
                 is_spotlight: is_spotlight,
+                is_auto: self.is_auto.clean(cx),
             }),
+        }
+    }
+}
+
+impl Clean<bool> for hir::IsAuto {
+    fn clean(&self, _: &DocContext) -> bool {
+        match *self {
+            hir::IsAuto::Yes => true,
+            hir::IsAuto::No => false,
         }
     }
 }

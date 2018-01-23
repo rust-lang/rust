@@ -347,8 +347,9 @@ fn parse_pretty(sess: &Session,
     } else {
         None
     };
-    if pretty.is_none() && sess.unstable_options() {
-        matches.opt_str("unpretty").map(|a| {
+
+    if pretty.is_none() {
+        sess.opts.debugging_opts.unpretty.as_ref().map(|a| {
             // extended with unstable pretty-print variants
             pretty::parse_pretty(sess, &a, true)
         })
@@ -669,7 +670,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.after_hir_lowering.stop = Compilation::Stop;
         }
 
-        if save_analysis(sess) {
+        if sess.opts.debugging_opts.save_analysis {
             enable_save_analysis(&mut control);
         }
 
@@ -702,10 +703,6 @@ pub fn enable_save_analysis(control: &mut CompileController) {
     };
     control.after_analysis.run_callback_on_error = true;
     control.make_glob_map = resolve::MakeGlobMap::Yes;
-}
-
-fn save_analysis(sess: &Session) -> bool {
-    sess.opts.debugging_opts.save_analysis
 }
 
 impl RustcDefaultCalls {
@@ -1329,20 +1326,19 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     Registry::new(&all_errors)
 }
 
-pub fn get_args() -> Vec<String> {
-    env::args_os().enumerate()
-        .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
-             early_error(ErrorOutputType::default(),
-                         &format!("Argument {} is not valid Unicode: {:?}", i, arg))
-         }))
-        .collect()
-}
-
 pub fn main() {
     env_logger::init().unwrap();
-    let result = run(|| run_compiler(&get_args(),
-                                     &mut RustcDefaultCalls,
-                                     None,
-                                     None));
+    let result = run(|| {
+        let args = env::args_os().enumerate()
+            .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
+                early_error(ErrorOutputType::default(),
+                            &format!("Argument {} is not valid Unicode: {:?}", i, arg))
+            }))
+            .collect::<Vec<_>>();
+        run_compiler(&args,
+                     &mut RustcDefaultCalls,
+                     None,
+                     None)
+    });
     process::exit(result as i32);
 }

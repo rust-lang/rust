@@ -150,12 +150,14 @@ pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     let is_spotlight = load_attrs(cx, did).has_doc_flag("spotlight");
+    let is_auto = cx.tcx.trait_is_auto(did);
     clean::Trait {
         unsafety: cx.tcx.trait_def(did).unsafety,
         generics,
         items: trait_items,
         bounds: supertrait_bounds,
         is_spotlight,
+        is_auto,
     }
 }
 

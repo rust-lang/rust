@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z unpretty=mir
-// ignore-cloudabi no std::path
+#![feature(optin_builtin_traits)]
 
-use std::path::MAIN_SEPARATOR;
-
-fn main() {
-    let mut foo : String = "hello".to_string();
-    foo.push(MAIN_SEPARATOR);
-    println!("{}", foo);
-    let x: () = 0; //~ ERROR: mismatched types
-}
+pub unsafe auto trait Bar {}

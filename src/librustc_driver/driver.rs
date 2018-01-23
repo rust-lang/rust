@@ -51,14 +51,12 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::mpsc;
-use syntax::{ast, diagnostics, visit};
-use syntax::attr;
+use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
 use syntax_pos::FileName;
-use syntax;
 use syntax_ext;
 
 use derive_registrar;
@@ -273,10 +271,6 @@ pub fn compile_input(trans: Box<TransCrate>,
     );
 
     Ok(())
-}
-
-fn keep_hygiene_data(sess: &Session) -> bool {
-    sess.opts.debugging_opts.keep_hygiene_data
 }
 
 pub fn source_name(input: &Input) -> FileName {
@@ -900,7 +894,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
          || lint::check_ast_crate(sess, &krate));
 
     // Discard hygiene data, which isn't required after lowering to HIR.
-    if !keep_hygiene_data(sess) {
+    if !sess.opts.debugging_opts.keep_hygiene_data {
         syntax::ext::hygiene::clear_markings();
     }
 
@@ -952,18 +946,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
                             mpsc::Receiver<Box<Any + Send>>,
                             CompileResult) -> R
 {
-    macro_rules! try_with_f {
-        ($e: expr, ($($t:tt)*)) => {
-            match $e {
-                Ok(x) => x,
-                Err(x) => {
-                    f($($t)*, Err(x));
-                    return Err(x);
-                }
-            }
-        }
-    }
-
     let time_passes = sess.time_passes();
 
     let query_result_on_disk_cache = time(time_passes,
@@ -1024,7 +1006,13 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
              || stability::check_unstable_api_usage(tcx));
 
         // passes are timed inside typeck
-        try_with_f!(typeck::check_crate(tcx), (tcx, analysis, rx));
+        match typeck::check_crate(tcx) {
+            Ok(x) => x,
+            Err(x) => {
+                f(tcx, analysis, rx, Err(x));
+                return Err(x);
+            }
+        }
 
         time(time_passes,
              "const checking",

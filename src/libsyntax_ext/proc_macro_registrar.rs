@@ -381,7 +381,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
 
     let __internal = Ident::from_str("__internal");
     let registry = Ident::from_str("Registry");
-    let registrar = Ident::from_str("registrar");
+    let registrar = Ident::from_str("_registrar");
     let register_custom_derive = Ident::from_str("register_custom_derive");
     let register_attr_proc_macro = Ident::from_str("register_attr_proc_macro");
     let register_bang_proc_macro = Ident::from_str("register_bang_proc_macro");

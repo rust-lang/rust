@@ -54,6 +54,7 @@ pub enum Subcommand {
     Test {
         paths: Vec<PathBuf>,
         test_args: Vec<String>,
+        rustc_args: Vec<String>,
         fail_fast: bool,
     },
     Bench {
@@ -150,6 +151,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
             "test"  => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
+                opts.optmulti(
+                    "",
+                    "rustc-args",
+                    "extra options to pass the compiler when running tests",
+                    "ARGS",
+                );
             },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
             "clean" => { opts.optflag("", "all", "clean all build artifacts"); },
@@ -283,6 +290,7 @@ Arguments:
                 Subcommand::Test {
                     paths,
                     test_args: matches.opt_strs("test-args"),
+                    rustc_args: matches.opt_strs("rustc-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
                 }
             }
@@ -357,6 +365,15 @@ impl Subcommand {
             Subcommand::Test { ref test_args, .. } |
             Subcommand::Bench { ref test_args, .. } => {
                 test_args.iter().flat_map(|s| s.split_whitespace()).collect()
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn rustc_args(&self) -> Vec<&str> {
+        match *self {
+            Subcommand::Test { ref rustc_args, .. } => {
+                rustc_args.iter().flat_map(|s| s.split_whitespace()).collect()
             }
             _ => Vec::new(),
         }

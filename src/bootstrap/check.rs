@@ -792,6 +792,7 @@ impl Step for Compiletest {
             flags.push("-g".to_string());
         }
         flags.push("-Zmiri -Zunstable-options".to_string());
+        flags.push(build.config.cmd.rustc_args().join(" "));
 
         if let Some(linker) = build.linker(target) {
             cmd.arg("--linker").arg(linker);
