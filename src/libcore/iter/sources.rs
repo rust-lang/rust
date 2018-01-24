@@ -31,8 +31,12 @@ impl<A: Clone> Iterator for Repeat<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> { Some(self.element.clone()) }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+
+    #[inline]
+    fn nth(&mut self, _: usize) -> Option<A> { self.next() }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
