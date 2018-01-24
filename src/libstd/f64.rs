@@ -970,7 +970,7 @@ impl f64 {
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn to_bits(self) -> u64 {
-        unsafe { ::mem::transmute(self) }
+        num::Float::to_bits(self)
     }
 
     /// Raw transmutation from `u64`.
@@ -1014,8 +1014,7 @@ impl f64 {
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn from_bits(v: u64) -> Self {
-        // It turns out the safety issues with sNaN were overblown! Hooray!
-        unsafe { ::mem::transmute(v) }
+        num::Float::from_bits(v)
     }
 }
 

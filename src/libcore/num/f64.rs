@@ -145,6 +145,8 @@ pub mod consts {
            reason = "stable interface is via `impl f{32,64}` in later crates",
            issue = "32110")]
 impl Float for f64 {
+    type Bits = u64;
+
     /// Returns `true` if the number is NaN.
     #[inline]
     fn is_nan(self) -> bool {
@@ -176,7 +178,7 @@ impl Float for f64 {
         const EXP_MASK: u64 = 0x7ff0000000000000;
         const MAN_MASK: u64 = 0x000fffffffffffff;
 
-        let bits: u64 = unsafe { mem::transmute(self) };
+        let bits = self.to_bits();
         match (bits & MAN_MASK, bits & EXP_MASK) {
             (0, 0) => Fp::Zero,
             (_, 0) => Fp::Subnormal,
@@ -218,12 +220,7 @@ impl Float for f64 {
     /// negative sign bit and negative infinity.
     #[inline]
     fn is_sign_negative(self) -> bool {
-        #[repr(C)]
-        union F64Bytes {
-            f: f64,
-            b: u64
-        }
-        unsafe { F64Bytes { f: self }.b & 0x8000_0000_0000_0000 != 0 }
+        self.to_bits() & 0x8000_0000_0000_0000 != 0
     }
 
     /// Returns the reciprocal (multiplicative inverse) of the number.
@@ -276,5 +273,18 @@ impl Float for f64 {
         // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
         // multiplying by 1.0. Should switch to the `canonicalize` when it works.
         (if other.is_nan() || self < other { self } else { other }) * 1.0
+    }
+
+    /// Raw transmutation to `u64`.
+    #[inline]
+    fn to_bits(self) -> u64 {
+        unsafe { mem::transmute(self) }
+    }
+
+    /// Raw transmutation from `u64`.
+    #[inline]
+    fn from_bits(v: u64) -> Self {
+        // It turns out the safety issues with sNaN were overblown! Hooray!
+        unsafe { mem::transmute(v) }
     }
 }
