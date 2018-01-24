@@ -108,6 +108,7 @@ struct Diagnostic {
 }
 
 #[derive(RustcEncodable)]
+#[allow(unused_attributes)]
 struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
@@ -129,6 +130,7 @@ struct DiagnosticSpan {
     /// that should be sliced in atop this span.
     suggested_replacement: Option<String>,
     /// If the suggestion is approximate
+    #[rustc_serialize_exclude_null]
     suggestion_approximate: Option<bool>,
     /// Macro invocations that created the code at this span, if any.
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
