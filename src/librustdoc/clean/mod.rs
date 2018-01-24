@@ -659,7 +659,8 @@ pub struct Attributes {
     pub other_attrs: Vec<ast::Attribute>,
     pub cfg: Option<Rc<Cfg>>,
     pub span: Option<syntax_pos::Span>,
-    pub links: Vec<(String, DefId)>,
+    /// map from Rust paths to resolved defs and potential URL fragments
+    pub links: Vec<(String, DefId, Option<String>)>,
 }
 
 impl Attributes {
@@ -820,8 +821,12 @@ impl Attributes {
     /// Cache must be populated before call
     pub fn links(&self) -> Vec<(String, String)> {
         use html::format::href;
-        self.links.iter().filter_map(|&(ref s, did)| {
-            if let Some((href, ..)) = href(did) {
+        self.links.iter().filter_map(|&(ref s, did, ref fragment)| {
+            if let Some((mut href, ..)) = href(did) {
+                if let Some(ref fragment) = *fragment {
+                    href.push_str("#");
+                    href.push_str(fragment);
+                }
                 Some((s.clone(), href))
             } else {
                 None
@@ -893,16 +898,67 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
 }
 
 /// Resolve a given string as a path, along with whether or not it is
-/// in the value namespace
-fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<Def, ()> {
+/// in the value namespace. Also returns an optional URL fragment in the case
+/// of variants and methods
+fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option<String>), ()> {
     // In case we're in a module, try to resolve the relative
     // path
     if let Some(id) = cx.mod_ids.borrow().last() {
-        cx.resolver.borrow_mut()
-                   .with_scope(*id, |resolver| {
-                        resolver.resolve_str_path_error(DUMMY_SP,
-                                                        &path_str, is_val)
-                    }).map(|path| path.def)
+        let result = cx.resolver.borrow_mut()
+                                .with_scope(*id,
+            |resolver| {
+                resolver.resolve_str_path_error(DUMMY_SP,
+                                                &path_str, is_val)
+        });
+
+        if result.is_ok() {
+            return result.map(|path| (path.def, None));
+        }
+
+        // Try looking for methods and other associated items
+        let mut split = path_str.rsplitn(2, "::");
+        let mut item_name = if let Some(first) = split.next() {
+            first
+        } else {
+            return Err(())
+        };
+
+        let mut path = if let Some(second) = split.next() {
+            second
+        } else {
+            return Err(())
+        };
+
+        let ty = cx.resolver.borrow_mut()
+                            .with_scope(*id,
+            |resolver| {
+                resolver.resolve_str_path_error(DUMMY_SP,
+                                                &path, false)
+        })?;
+
+
+        match ty.def {
+            Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
+                let item = cx.tcx.inherent_impls(did).iter()
+                                 .flat_map(|imp| cx.tcx.associated_items(*imp))
+                                 .find(|item| item.name == item_name);
+                if let Some(item) = item {
+                    if item.kind == ty::AssociatedKind::Method && is_val {
+                        Ok((ty.def, Some(format!("method.{}", item_name))))
+                    } else {
+                        Err(())
+                    }
+                } else {
+                    Err(())
+                }
+            }
+            Def::Trait(_) => {
+                // XXXManishearth todo
+                Err(())
+            }
+            _ => Err(())
+        }
+
     } else {
         Err(())
     }
@@ -953,7 +1009,7 @@ impl Clean<Attributes> for [ast::Attribute] {
         if UnstableFeatures::from_environment().is_nightly_build() {
             let dox = attrs.collapsed_doc_value().unwrap_or_else(String::new);
             for link in markdown_links(&dox, cx.render_type) {
-                let def = {
+                let (def, fragment)  = {
                     let mut kind = PathKind::Unknown;
                     let path_str = if let Some(prefix) =
                         ["struct@", "enum@", "type@",
@@ -963,7 +1019,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                         link.trim_left_matches(prefix)
                     } else if let Some(prefix) =
                         ["const@", "static@",
-                         "value@", "function@", "mod@", "fn@", "module@"]
+                         "value@", "function@", "mod@",
+                         "fn@", "module@", "method@"]
                             .iter().find(|p| link.starts_with(**p)) {
                         kind = PathKind::Value;
                         link.trim_left_matches(prefix)
@@ -1013,31 +1070,31 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Some(macro_def) = macro_resolve(cx, path_str) {
                                 if let Ok(type_def) = resolve(cx, path_str, false) {
                                     let (type_kind, article, type_disambig)
-                                        = type_ns_kind(type_def, path_str);
+                                        = type_ns_kind(type_def.0, path_str);
                                     ambiguity_error(cx, &attrs, path_str,
                                                     article, type_kind, &type_disambig,
                                                     "a", "macro", &format!("macro@{}", path_str));
                                     continue;
                                 } else if let Ok(value_def) = resolve(cx, path_str, true) {
                                     let (value_kind, value_disambig)
-                                        = value_ns_kind(value_def, path_str)
+                                        = value_ns_kind(value_def.0, path_str)
                                             .expect("struct and mod cases should have been \
                                                      caught in previous branch");
                                     ambiguity_error(cx, &attrs, path_str,
                                                     "a", value_kind, &value_disambig,
                                                     "a", "macro", &format!("macro@{}", path_str));
                                 }
-                                macro_def
+                                (macro_def, None)
                             } else if let Ok(type_def) = resolve(cx, path_str, false) {
                                 // It is imperative we search for not-a-value first
                                 // Otherwise we will find struct ctors for when we are looking
                                 // for structs, and the link won't work.
                                 // if there is something in both namespaces
                                 if let Ok(value_def) = resolve(cx, path_str, true) {
-                                    let kind = value_ns_kind(value_def, path_str);
+                                    let kind = value_ns_kind(value_def.0, path_str);
                                     if let Some((value_kind, value_disambig)) = kind {
                                         let (type_kind, article, type_disambig)
-                                            = type_ns_kind(type_def, path_str);
+                                            = type_ns_kind(type_def.0, path_str);
                                         ambiguity_error(cx, &attrs, path_str,
                                                         article, type_kind, &type_disambig,
                                                         "a", value_kind, &value_disambig);
@@ -1054,7 +1111,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                         }
                         PathKind::Macro => {
                             if let Some(def) = macro_resolve(cx, path_str) {
-                                def
+                                (def, None)
                             } else {
                                 continue
                             }
@@ -1064,7 +1121,7 @@ impl Clean<Attributes> for [ast::Attribute] {
 
 
                 let id = register_def(cx, def);
-                attrs.links.push((link, id));
+                attrs.links.push((link, id, fragment));
             }
 
             cx.sess().abort_if_errors();
