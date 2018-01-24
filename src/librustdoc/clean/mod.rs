@@ -911,11 +911,29 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                                                 &path_str, is_val)
         });
 
-        if result.is_ok() {
-            return result.map(|path| (path.def, None));
+        if let Ok(result) = result {
+            // In case this is a trait item, skip the
+            // early return and try looking for the trait
+            let value = match result.def {
+                Def::Method(_) | Def::AssociatedConst(_) => true,
+                Def::AssociatedTy(_)  => false,
+                // not a trait item, just return what we found
+                _ => return Ok((result.def, None))
+            };
+
+            if value != is_val {
+                return Err(())
+            }
+        } else {
+            // If resolution failed, it may still be a method
+            // because methods are not handled by the resolver
+            // If so, bail when we're not looking for a value
+            if !is_val {
+                return Err(())
+            }
         }
 
-        // Try looking for methods and other associated items
+        // Try looking for methods and associated items
         let mut split = path_str.rsplitn(2, "::");
         let mut item_name = if let Some(first) = split.next() {
             first
@@ -935,8 +953,6 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                 resolver.resolve_str_path_error(DUMMY_SP,
                                                 &path, false)
         })?;
-
-
         match ty.def {
             Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
                 let item = cx.tcx.inherent_impls(did).iter()
@@ -952,9 +968,22 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                     Err(())
                 }
             }
-            Def::Trait(_) => {
-                // XXXManishearth todo
-                Err(())
+            Def::Trait(did) => {
+                let item = cx.tcx.associated_item_def_ids(did).iter()
+                             .map(|item| cx.tcx.associated_item(*item))
+                             .find(|item| item.name == item_name);
+                if let Some(item) = item {
+                    let kind = match item.kind {
+                        ty::AssociatedKind::Const if is_val => "associatedconstant",
+                        ty::AssociatedKind::Type if !is_val => "associatedtype",
+                        ty::AssociatedKind::Method if is_val => "tymethod",
+                        _ => return Err(())
+                    };
+
+                    Ok((ty.def, Some(format!("{}.{}", kind, item_name))))
+                } else {
+                    Err(())
+                }
             }
             _ => Err(())
         }
