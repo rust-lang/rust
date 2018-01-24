@@ -288,16 +288,27 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = then_pat;
                 self.visit_expr(then);
             },
-            Expr_::ExprWhile(ref _cond, ref _body, ref _opt_label) => {
-                println!("While(ref cond, ref body, ref opt_label) = {};", current);
-                println!("    // unimplemented: `ExprWhile` is not further destructured at the moment");
+            Expr_::ExprWhile(ref cond, ref body, _) => {
+                let cond_pat = self.next("cond");
+                let body_pat = self.next("body");
+                let label_pat = self.next("label");
+                println!("While(ref {}, ref {}, ref {}) = {};", cond_pat, body_pat, label_pat, current);
+                self.current = cond_pat;
+                self.visit_expr(cond);
+                self.current = body_pat;
+                self.visit_block(body);
             },
-            Expr_::ExprLoop(ref _body, ref _opt_label, ref _desuraging) => {
-                println!("Loop(ref body, ref opt_label, ref desugaring) = {};", current);
-                println!("    // unimplemented: `ExprLoop` is not further destructured at the moment");
+            Expr_::ExprLoop(ref body, _, desugaring) => {
+                let body_pat = self.next("body");
+                let des = loop_desugaring_name(desugaring);
+                let label_pat = self.next("label");
+                println!("Loop(ref {}, ref {}, {}) = {};", body_pat, label_pat, des, current);
+                self.current = body_pat;
+                self.visit_block(body);
             },
-            Expr_::ExprMatch(ref _expr, ref _arms, ref _desugaring) => {
-                println!("Match(ref expr, ref arms, ref desugaring) = {};", current);
+            Expr_::ExprMatch(ref _expr, ref _arms, desugaring) => {
+                let des = desugaring_name(desugaring);
+                println!("Match(ref expr, ref arms, {}) = {};", des, current);
                 println!("    // unimplemented: `ExprMatch` is not further destructured at the moment");
             },
             Expr_::ExprClosure(ref _capture_clause, ref _func, _, _, _) => {
@@ -454,6 +465,24 @@ fn has_attr(attrs: &[Attribute]) -> bool {
             }
         })
     })
+}
+
+fn desugaring_name(des: hir::MatchSource) -> String {
+    match des {
+        hir::MatchSource::ForLoopDesugar => "MatchSource::ForLoopDesugar".to_string(),
+        hir::MatchSource::TryDesugar => "MatchSource::TryDesugar".to_string(),
+        hir::MatchSource::WhileLetDesugar => "MatchSource::WhileLetDesugar".to_string(),
+        hir::MatchSource::Normal => "MatchSource::Normal".to_string(),
+        hir::MatchSource::IfLetDesugar { contains_else_clause } => format!("MatchSource::IfLetDesugar {{ contains_else_clause: {} }}", contains_else_clause),
+    }
+}
+
+fn loop_desugaring_name(des: hir::LoopSource) -> &'static str {
+    match des {
+        hir::LoopSource::ForLoop => "LoopSource::ForLoop",
+        hir::LoopSource::Loop => "LoopSource::Loop",
+        hir::LoopSource::WhileLet => "LoopSource::WhileLet",
+    }
 }
 
 fn print_path(path: &QPath, first: &mut bool) {

@@ -1,4 +1,4 @@
-#![feature(plugin, inclusive_range_syntax)]
+#![feature(plugin, inclusive_range_syntax, custom_attribute)]
 
 
 use std::collections::*;
@@ -14,7 +14,7 @@ fn for_loop_over_option_and_result() {
     let v = vec![0, 1, 2];
 
     // check FOR_LOOP_OVER_OPTION lint
-    for x in option {
+    #[clippy(author)]for x in option {
         println!("{}", x);
     }
 

@@ -1,0 +1,20 @@
+if_chain! {
+    if let Expr_::ExprBlock(ref block) = stmt.node;
+    if let Expr_::ExprMatch(ref expr, ref arms, MatchSource::ForLoopDesugar) = block.node;
+    // unimplemented: `ExprMatch` is not further destructured at the moment
+    if let Expr_::ExprPath(ref path) = block.node;
+    if match_qpath(path, &["_result"]);
+    then {
+        // report your lint here
+    }
+}
+if_chain! {
+    if let Expr_::ExprBlock(ref block) = expr.node;
+    if let Expr_::ExprMatch(ref expr, ref arms, MatchSource::ForLoopDesugar) = block.node;
+    // unimplemented: `ExprMatch` is not further destructured at the moment
+    if let Expr_::ExprPath(ref path) = block.node;
+    if match_qpath(path, &["_result"]);
+    then {
+        // report your lint here
+    }
+}
