@@ -880,10 +880,10 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
     let sp = attrs.doc_strings.first()
                   .map_or(DUMMY_SP, |a| a.span());
     cx.sess()
-      .struct_span_err(sp,
-                       &format!("`{}` is both {} {} and {} {}",
-                                path_str, article1, kind1,
-                                article2, kind2))
+      .struct_span_warn(sp,
+                        &format!("`{}` is both {} {} and {} {}",
+                                 path_str, article1, kind1,
+                                 article2, kind2))
       .help(&format!("try `{}` if you want to select the {}, \
                       or `{}` if you want to \
                       select the {}",
