@@ -142,7 +142,7 @@ pub struct IntermediateBox<T: ?Sized> {
 #[unstable(feature = "placement_in",
            reason = "placement box design is still being worked out.",
            issue = "27779")]
-impl<T> Place<T> for IntermediateBox<T> {
+unsafe impl<T> Place<T> for IntermediateBox<T> {
     fn pointer(&mut self) -> *mut T {
         self.ptr as *mut T
     }

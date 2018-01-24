@@ -1211,7 +1211,7 @@ where T: Clone + Ord {
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
-impl<'a, T> Place<T> for BinaryHeapPlace<'a, T>
+unsafe impl<'a, T> Place<T> for BinaryHeapPlace<'a, T>
 where T: Clone + Ord {
     fn pointer(&mut self) -> *mut T {
         self.place.pointer()

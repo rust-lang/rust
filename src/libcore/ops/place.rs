@@ -27,10 +27,13 @@
 /// implementation of Place to clean up any intermediate state
 /// (e.g. deallocate box storage, pop a stack, etc).
 #[unstable(feature = "placement_new_protocol", issue = "27779")]
-pub trait Place<Data: ?Sized> {
+pub unsafe trait Place<Data: ?Sized> {
     /// Returns the address where the input value will be written.
     /// Note that the data at this address is generally uninitialized,
     /// and thus one should use `ptr::write` for initializing it.
+    ///
+    /// This function must return a pointer through which a value
+    /// of type `Data` can be written.
     fn pointer(&mut self) -> *mut Data;
 }
 

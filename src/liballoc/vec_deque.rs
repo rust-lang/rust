@@ -2565,7 +2565,7 @@ impl<'a, T> Placer<T> for PlaceBack<'a, T> {
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
-impl<'a, T> Place<T> for PlaceBack<'a, T> {
+unsafe impl<'a, T> Place<T> for PlaceBack<'a, T> {
     fn pointer(&mut self) -> *mut T {
         unsafe { self.vec_deque.ptr().offset(self.vec_deque.head as isize) }
     }
@@ -2611,7 +2611,7 @@ impl<'a, T> Placer<T> for PlaceFront<'a, T> {
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
-impl<'a, T> Place<T> for PlaceFront<'a, T> {
+unsafe impl<'a, T> Place<T> for PlaceFront<'a, T> {
     fn pointer(&mut self) -> *mut T {
         let tail = self.vec_deque.wrap_sub(self.vec_deque.tail, 1);
         unsafe { self.vec_deque.ptr().offset(tail as isize) }

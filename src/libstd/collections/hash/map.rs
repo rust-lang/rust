@@ -1972,7 +1972,7 @@ impl<'a, K, V> Placer<V> for Entry<'a, K, V> {
 #[unstable(feature = "collection_placement",
            reason = "placement protocol is subject to change",
            issue = "30172")]
-impl<'a, K, V> Place<V> for EntryPlace<'a, K, V> {
+unsafe impl<'a, K, V> Place<V> for EntryPlace<'a, K, V> {
     fn pointer(&mut self) -> *mut V {
         self.bucket.read_mut().1
     }
