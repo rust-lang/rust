@@ -894,7 +894,7 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
 
 /// Resolve a given string as a path, along with whether or not it is
 /// in the value namespace
-fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<hir::Path, ()> {
+fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<Def, ()> {
     // In case we're in a module, try to resolve the relative
     // path
     if let Some(id) = cx.mod_ids.borrow().last() {
@@ -902,7 +902,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<hir::Path, (
                    .with_scope(*id, |resolver| {
                         resolver.resolve_str_path_error(DUMMY_SP,
                                                         &path_str, is_val)
-                    })
+                    }).map(|path| path.def)
     } else {
         Err(())
     }
@@ -991,8 +991,8 @@ impl Clean<Attributes> for [ast::Attribute] {
 
                     match kind {
                         PathKind::Value => {
-                            if let Ok(path) = resolve(cx, path_str, true) {
-                                path.def
+                            if let Ok(def) = resolve(cx, path_str, true) {
+                                def
                             } else {
                                 // this could just be a normal link or a broken link
                                 // we could potentially check if something is
@@ -1001,8 +1001,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                             }
                         }
                         PathKind::Type => {
-                            if let Ok(path) = resolve(cx, path_str, false) {
-                                path.def
+                            if let Ok(def) = resolve(cx, path_str, false) {
+                                def
                             } else {
                                 // this could just be a normal link
                                 continue;
@@ -1011,16 +1011,16 @@ impl Clean<Attributes> for [ast::Attribute] {
                         PathKind::Unknown => {
                             // try everything!
                             if let Some(macro_def) = macro_resolve(cx, path_str) {
-                                if let Ok(type_path) = resolve(cx, path_str, false) {
+                                if let Ok(type_def) = resolve(cx, path_str, false) {
                                     let (type_kind, article, type_disambig)
-                                        = type_ns_kind(type_path.def, path_str);
+                                        = type_ns_kind(type_def, path_str);
                                     ambiguity_error(cx, &attrs, path_str,
                                                     article, type_kind, &type_disambig,
                                                     "a", "macro", &format!("macro@{}", path_str));
                                     continue;
-                                } else if let Ok(value_path) = resolve(cx, path_str, true) {
+                                } else if let Ok(value_def) = resolve(cx, path_str, true) {
                                     let (value_kind, value_disambig)
-                                        = value_ns_kind(value_path.def, path_str)
+                                        = value_ns_kind(value_def, path_str)
                                             .expect("struct and mod cases should have been \
                                                      caught in previous branch");
                                     ambiguity_error(cx, &attrs, path_str,
@@ -1028,25 +1028,25 @@ impl Clean<Attributes> for [ast::Attribute] {
                                                     "a", "macro", &format!("macro@{}", path_str));
                                 }
                                 macro_def
-                            } else if let Ok(type_path) = resolve(cx, path_str, false) {
+                            } else if let Ok(type_def) = resolve(cx, path_str, false) {
                                 // It is imperative we search for not-a-value first
                                 // Otherwise we will find struct ctors for when we are looking
                                 // for structs, and the link won't work.
                                 // if there is something in both namespaces
-                                if let Ok(value_path) = resolve(cx, path_str, true) {
-                                    let kind = value_ns_kind(value_path.def, path_str);
+                                if let Ok(value_def) = resolve(cx, path_str, true) {
+                                    let kind = value_ns_kind(value_def, path_str);
                                     if let Some((value_kind, value_disambig)) = kind {
                                         let (type_kind, article, type_disambig)
-                                            = type_ns_kind(type_path.def, path_str);
+                                            = type_ns_kind(type_def, path_str);
                                         ambiguity_error(cx, &attrs, path_str,
                                                         article, type_kind, &type_disambig,
                                                         "a", value_kind, &value_disambig);
                                         continue;
                                     }
                                 }
-                                type_path.def
-                            } else if let Ok(value_path) = resolve(cx, path_str, true) {
-                                value_path.def
+                                type_def
+                            } else if let Ok(value_def) = resolve(cx, path_str, true) {
+                                value_def
                             } else {
                                 // this could just be a normal link
                                 continue;
