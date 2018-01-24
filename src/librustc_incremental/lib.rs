@@ -17,6 +17,8 @@
 #![feature(fs_read_write)]
 #![feature(specialization)]
 
+#![recursion_limit="256"]
+
 extern crate graphviz;
 #[macro_use] extern crate rustc;
 extern crate rustc_data_structures;
