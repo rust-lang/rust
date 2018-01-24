@@ -54,6 +54,7 @@ fn filter_dirs(path: &Path) -> bool {
         "src/dlmalloc",
         "src/jemalloc",
         "src/llvm",
+        "src/llvm-emscripten",
         "src/libbacktrace",
         "src/libcompiler_builtins",
         "src/librustc_data_structures/owning_ref",

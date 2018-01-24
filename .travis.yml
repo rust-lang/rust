@@ -81,7 +81,7 @@ matrix:
     # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended --enable-profiler"
+        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended --enable-profiler --enable-emscripten"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -95,7 +95,7 @@ matrix:
 
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers --enable-profiler"
+        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers --enable-profiler --enable-emscripten"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1

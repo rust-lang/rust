@@ -22,7 +22,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use build_helper::output;
@@ -30,7 +30,7 @@ use cmake;
 use cc;
 
 use Build;
-use util;
+use util::{self, exe};
 use build_helper::up_to_date;
 use builder::{Builder, RunConfig, ShouldRun, Step};
 use cache::Interned;
@@ -38,30 +38,42 @@ use cache::Interned;
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: Interned<String>,
+    pub emscripten: bool,
 }
 
 impl Step for Llvm {
-    type Output = ();
+    type Output = PathBuf; // path to llvm-config
+
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/llvm")
+        run.path("src/llvm").path("src/llvm-emscripten")
     }
 
     fn make_run(run: RunConfig) {
-        run.builder.ensure(Llvm { target: run.target })
+        let emscripten = run.path.map(|p| {
+            p.ends_with("llvm-emscripten")
+        }).unwrap_or(false);
+        run.builder.ensure(Llvm {
+            target: run.target,
+            emscripten,
+        });
     }
 
     /// Compile LLVM for `target`.
-    fn run(self, builder: &Builder) {
+    fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
         let target = self.target;
+        let emscripten = self.emscripten;
 
         // If we're using a custom LLVM bail out here, but we can only use a
         // custom LLVM for the build triple.
-        if let Some(config) = build.config.target_config.get(&target) {
-            if let Some(ref s) = config.llvm_config {
-                return check_llvm_version(build, s);
+        if !self.emscripten {
+            if let Some(config) = build.config.target_config.get(&target) {
+                if let Some(ref s) = config.llvm_config {
+                    check_llvm_version(build, s);
+                    return s.to_path_buf()
+                }
             }
         }
 
@@ -69,8 +81,17 @@ impl Step for Llvm {
         let mut rebuild_trigger_contents = String::new();
         t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
 
-        let out_dir = build.llvm_out(target);
+        let (out_dir, llvm_config_ret_dir) = if emscripten {
+            let dir = build.emscripten_llvm_out(target);
+            let config_dir = dir.join("bin");
+            (dir, config_dir)
+        } else {
+            (build.llvm_out(target),
+                build.llvm_out(build.config.build).join("bin"))
+        };
         let done_stamp = out_dir.join("llvm-finished-building");
+        let build_llvm_config = llvm_config_ret_dir
+            .join(exe("llvm-config", &*build.config.build));
         if done_stamp.exists() {
             let mut done_contents = String::new();
             t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
@@ -78,17 +99,19 @@ impl Step for Llvm {
             // If LLVM was already built previously and contents of the rebuild-trigger file
             // didn't change from the previous build, then no action is required.
             if done_contents == rebuild_trigger_contents {
-                return
+                return build_llvm_config
             }
         }
 
         let _folder = build.fold_output(|| "llvm");
-        println!("Building LLVM for {}", target);
+        let descriptor = if emscripten { "Emscripten " } else { "" };
+        println!("Building {}LLVM for {}", descriptor, target);
         let _time = util::timeit();
         t!(fs::create_dir_all(&out_dir));
 
         // http://llvm.org/docs/CMake.html
-        let mut cfg = cmake::Config::new(build.src.join("src/llvm"));
+        let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm" };
+        let mut cfg = cmake::Config::new(build.src.join(root));
         if build.config.ninja {
             cfg.generator("Ninja");
         }
@@ -99,13 +122,22 @@ impl Step for Llvm {
             (true, true) => "RelWithDebInfo",
         };
 
-        // NOTE: remember to also update `config.toml.example` when changing the defaults!
-        let llvm_targets = match build.config.llvm_targets {
-            Some(ref s) => s,
-            None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX;Hexagon",
+        // NOTE: remember to also update `config.toml.example` when changing the
+        // defaults!
+        let llvm_targets = if self.emscripten {
+            "JSBackend"
+        } else {
+            match build.config.llvm_targets {
+                Some(ref s) => s,
+                None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon",
+            }
         };
 
-        let llvm_exp_targets = &build.config.llvm_experimental_targets;
+        let llvm_exp_targets = if self.emscripten {
+            ""
+        } else {
+            &build.config.llvm_experimental_targets[..]
+        };
 
         let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
@@ -155,7 +187,10 @@ impl Step for Llvm {
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != build.build {
-            builder.ensure(Llvm { target: build.build });
+            builder.ensure(Llvm {
+                target: build.build,
+                emscripten: false,
+            });
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
@@ -241,6 +276,8 @@ impl Step for Llvm {
         cfg.build();
 
         t!(t!(File::create(&done_stamp)).write_all(rebuild_trigger_contents.as_bytes()));
+
+        build_llvm_config
     }
 }
 
