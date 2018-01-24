@@ -12,7 +12,6 @@
 //! parameters. See README.md for details.
 
 use arena;
-use rustc::dep_graph::DepKind;
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
@@ -95,9 +94,6 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
     // Everything else must be inferred.
 
     let crate_map = tcx.crate_variances(LOCAL_CRATE);
-    let dep_node = item_def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
-    tcx.dep_graph.read(dep_node);
-
     crate_map.variances.get(&item_def_id)
                        .unwrap_or(&crate_map.empty_variance)
                        .clone()
