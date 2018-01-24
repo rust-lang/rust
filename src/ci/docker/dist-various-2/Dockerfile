@@ -47,13 +47,6 @@ ENV \
     CC_x86_64_sun_solaris=x86_64-sun-solaris2.10-gcc \
     CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++
 
-# FIXME(EdSchouten): Remove this once cc ≥1.0.4 has been merged. It can
-# automatically pick the right compiler path.
-ENV \
-    AR_x86_64_unknown_cloudabi=x86_64-unknown-cloudabi-ar \
-    CC_x86_64_unknown_cloudabi=x86_64-unknown-cloudabi-clang \
-    CXX_x86_64_unknown_cloudabi=x86_64-unknown-cloudabi-clang++
-
 ENV TARGETS=x86_64-unknown-fuchsia
 ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
