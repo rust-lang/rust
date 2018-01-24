@@ -2045,7 +2045,7 @@ impl<'a> Resolver<'a> {
                     segments: vec![],
                     span: use_tree.span,
                 };
-                self.resolve_use_tree(item, use_tree, &path);
+                self.resolve_use_tree(item.id, use_tree, &path);
             }
 
             ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_) => {
@@ -2056,7 +2056,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_use_tree(&mut self, item: &Item, use_tree: &ast::UseTree, prefix: &Path) {
+    fn resolve_use_tree(&mut self, id: NodeId, use_tree: &ast::UseTree, prefix: &Path) {
         match use_tree.kind {
             ast::UseTreeKind::Nested(ref items) => {
                 let path = Path {
@@ -2070,10 +2070,10 @@ impl<'a> Resolver<'a> {
 
                 if items.len() == 0 {
                     // Resolve prefix of an import with empty braces (issue #28388).
-                    self.smart_resolve_path(item.id, None, &path, PathSource::ImportPrefix);
+                    self.smart_resolve_path(id, None, &path, PathSource::ImportPrefix);
                 } else {
-                    for &(ref tree, _) in items {
-                        self.resolve_use_tree(item, tree, &path);
+                    for &(ref tree, nested_id) in items {
+                        self.resolve_use_tree(nested_id, tree, &path);
                     }
                 }
             }
