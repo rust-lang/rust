@@ -182,6 +182,10 @@ This adds to the ever-expanding API surface of the standard library.
   (Stable APIs that mention traits like `RangeArgument` that are not stable *yet*
   but have a path to stabilization are less of an abuse.)
 
+* Still, we could decide on some answer to “`Zeroable` for abitrary types”,
+  implement and test it, stabilize `NonZero<T>` and `Zeroable` as-is
+  (re-exported in `std`), and not add `num::NonZero*`.
+
 * Instead of `std::num` the new types could be in some other location,
   such as the modules named after their respective primitive types.
   For example `std::u32::NonZeroU32` or `std::u32::NonZero`.
