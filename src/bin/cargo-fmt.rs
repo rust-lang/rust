@@ -97,7 +97,7 @@ fn execute() -> i32 {
 }
 
 macro_rules! print_usage {
-    ($print:ident, $opts:ident, $reason:expr) => ({
+    ($print: ident, $opts: ident, $reason: expr) => ({
         let msg = format!("{}\nusage: cargo fmt [options]", $reason);
         $print!(
             "{}\nThis utility formats all bin and lib files of the current crate using rustfmt. \

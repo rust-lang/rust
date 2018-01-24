@@ -1,5 +1,6 @@
 macro_rules! test {
-    ($($t:tt)*) => {}
+    ($($t: tt)*) => {
+    };
 }
 
 fn main() {
