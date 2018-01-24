@@ -2461,7 +2461,7 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 }
 
 /// Previous name of `NonNull`.
-#[rustc_deprecated(since = "1.24", reason = "renamed to `NonNull`")]
+#[rustc_deprecated(since = "1.25.0", reason = "renamed to `NonNull`")]
 #[unstable(feature = "shared", issue = "27730")]
 pub type Shared<T> = NonNull<T>;
 

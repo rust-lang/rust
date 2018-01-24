@@ -232,7 +232,7 @@ unsafe impl Alloc for Heap {
 ///
 /// This preserves the non-null invariant for types like `Box<T>`. The address
 /// may overlap with non-zero-size memory allocations.
-#[rustc_deprecated(since = "1.19", reason = "Use Unique/NonNull::empty() instead")]
+#[rustc_deprecated(since = "1.19.0", reason = "Use Unique/NonNull::empty() instead")]
 #[unstable(feature = "heap_api", issue = "27700")]
 pub const EMPTY: *mut () = 1 as *mut ();
 
