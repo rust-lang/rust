@@ -733,7 +733,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
             // We can't use the same module for asm and binary output, because that triggers
             // various errors like invalid IR or broken binaries, so we might have to clone the
             // module to produce the asm output
-            let llmod = if config.emit_obj {
+            let llmod = if config.emit_obj && !asm2wasm {
                 llvm::LLVMCloneModule(llmod)
             } else {
                 llmod
@@ -742,7 +742,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
                 write_output_file(diag_handler, tm, cpm, llmod, &path,
                                   llvm::FileType::AssemblyFile)
             })?;
-            if config.emit_obj {
+            if config.emit_obj && !asm2wasm {
                 llvm::LLVMDisposeModule(llmod);
             }
             timeline.record("asm");
