@@ -904,9 +904,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<hir::Path, (
                                                         &path_str, is_val)
                     })
     } else {
-        // FIXME(Manishearth) this branch doesn't seem to ever be hit, really
-        cx.resolver.borrow_mut()
-                   .resolve_str_path_error(DUMMY_SP, &path_str, is_val)
+        Err(())
     }
 }
 
