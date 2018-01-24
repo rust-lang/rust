@@ -848,10 +848,8 @@ impl AttributesExt for Attributes {
 /// they exist in both namespaces (structs and modules)
 fn value_ns_kind(def: Def, path_str: &str) -> Option<(&'static str, String)> {
     match def {
-        // structs and mods exist in both namespaces. skip them
-        Def::StructCtor(..) | Def::Mod(..) => None,
-        Def::Variant(..) | Def::VariantCtor(..)
-            => Some(("variant", format!("{}()", path_str))),
+        // structs, variants, and mods exist in both namespaces. skip them
+        Def::StructCtor(..) | Def::Mod(..) | Def::Variant(..) | Def::VariantCtor(..) => None,
         Def::Fn(..)
             => Some(("function", format!("{}()", path_str))),
         Def::Method(..)
@@ -897,6 +895,20 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
              .emit();
 }
 
+/// Given an enum variant's def, return the def of its enum and the associated fragment
+fn handle_variant(cx: &DocContext, def: Def) -> Result<(Def, Option<String>), ()> {
+    use rustc::ty::DefIdTree;
+
+    let parent = if let Some(parent) = cx.tcx.parent(def.def_id()) {
+        parent
+    } else {
+        return Err(())
+    };
+    let parent_def = Def::Enum(parent);
+    let variant = cx.tcx.expect_variant_def(def);
+    Ok((parent_def, Some(format!("{}.v", variant.name))))
+}
+
 /// Resolve a given string as a path, along with whether or not it is
 /// in the value namespace. Also returns an optional URL fragment in the case
 /// of variants and methods
@@ -917,6 +929,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
             let value = match result.def {
                 Def::Method(_) | Def::AssociatedConst(_) => true,
                 Def::AssociatedTy(_)  => false,
+                Def::Variant(_) => return handle_variant(cx, result.def),
                 // not a trait item, just return what we found
                 _ => return Ok((result.def, None))
             };
