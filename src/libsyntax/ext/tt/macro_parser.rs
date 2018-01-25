@@ -181,6 +181,8 @@ struct MatcherPos {
     match_hi: usize,
 
     // Specifically used if we are matching a repetition. If we aren't both should be `None`.
+    /// The KleeneOp of this sequence if we are in a repetition.
+    seq_op: Option<quoted::KleeneOp>,
     /// The separator if we are in a repetition
     sep: Option<Token>,
     /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
@@ -263,6 +265,7 @@ fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
         stack: vec![],
 
         // Haven't descended into any sequences, so both of these are `None`.
+        seq_op: None,
         sep: None,
         up: None,
     })
@@ -464,10 +467,11 @@ fn inner_parse_loop(
                         item.idx += 1;
                         next_items.push(item);
                     }
-                }
+                } 
                 // We don't need a separator. Move the "dot" back to the beginning of the matcher
-                // and try to match again.
-                else {
+                // and try to match again UNLESS we are only allowed to have _one_ repetition.
+                else if item.seq_op != Some(quoted::KleeneOp::ZeroOrOne) {
+                    // we don't need a separator
                     item.match_cur = item.match_lo;
                     item.idx = 0;
                     cur_items.push(item);
@@ -499,26 +503,20 @@ fn inner_parse_loop(
                         cur_items.push(new_item);
                     }
 
-                    // For ZeroOrMore and OneOrMore, we want to examine the case were there is at
-                    // least one match. For ZeroOrOne, we only want the case where there is exactly
-                    // one match.
-                    if (seq.op == quoted::KleeneOp::ZeroOrOne && seq.num_captures == 1)
-                        || seq.op != quoted::KleeneOp::ZeroOrOne
-                    {
-                        let matches = create_matches(item.matches.len());
-                        cur_items.push(Box::new(MatcherPos {
-                            stack: vec![],
-                            sep: seq.separator.clone(),
-                            idx: 0,
-                            matches,
-                            match_lo: item.match_cur,
-                            match_cur: item.match_cur,
-                            match_hi: item.match_cur + seq.num_captures,
-                            up: Some(item),
-                            sp_lo: sp.lo(),
-                            top_elts: Tt(TokenTree::Sequence(sp, seq)),
-                        }));
-                    }
+                    let matches = create_matches(item.matches.len());
+                    cur_items.push(Box::new(MatcherPos {
+                        stack: vec![],
+                        sep: seq.separator.clone(),
+                        seq_op: Some(seq.op),
+                        idx: 0,
+                        matches,
+                        match_lo: item.match_cur,
+                        match_cur: item.match_cur,
+                        match_hi: item.match_cur + seq.num_captures,
+                        up: Some(item),
+                        sp_lo: sp.lo(),
+                        top_elts: Tt(TokenTree::Sequence(sp, seq)),
+                    }));
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
