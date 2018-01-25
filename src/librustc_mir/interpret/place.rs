@@ -123,6 +123,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
         let field_index = field.index();
         let field = base_layout.field(self, field_index)?;
+        if field.size.bytes() == 0 {
+            return Ok(Some((Value::ByVal(PrimVal::Undef), field.ty)))
+        }
         let offset = base_layout.fields.offset(field_index);
         match base {
             // the field covers the entire type
