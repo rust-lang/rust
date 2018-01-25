@@ -1,6 +1,7 @@
 use rustc::hir;
-use rustc::middle::const_val::{ConstEvalErr, ConstVal};
+use rustc::middle::const_val::{ConstEvalErr, ConstVal, ErrKind};
 use rustc::middle::const_val::ErrKind::{TypeckError, CheckMatchError};
+use rustc::traits;
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::ty::layout::{self, LayoutOf};
@@ -324,6 +325,27 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         _mutability: Mutability,
     ) -> EvalResult<'tcx, bool> {
         Ok(false)
+    }
+
+    fn init_static<'a>(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        cid: GlobalId<'tcx>,
+    ) -> EvalResult<'tcx, AllocId> {
+        let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+        // ensure the static is computed
+        if let Err(err) = ecx.tcx.const_eval(param_env.and(cid)) {
+            match err.kind {
+                ErrKind::Miri(miri) => return Err(miri),
+                ErrKind::TypeckError => return err!(TypeckError),
+                other => bug!("const eval returned {:?}", other),
+            }
+        };
+        Ok(ecx
+            .tcx
+            .interpret_interner
+            .borrow()
+            .get_cached(cid.instance.def_id())
+            .expect("uncached static"))
     }
 
     fn box_alloc<'a>(

@@ -1264,14 +1264,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     self.memory.read_ptr_sized_unsigned(extra, ptr_align)?.to_ptr()?,
                 )),
                 ty::TySlice(..) | ty::TyStr => {
-                    match p.primval {
-                        PrimVal::Bytes(b) => bug!("slice ptr: {:x}", b),
-                        PrimVal::Undef => bug!("undef slice ptr"),
-                        _ => {},
-                    }
-                    Ok(
-                        p.to_value_with_len(self.memory.read_ptr_sized_unsigned(extra, ptr_align)?.to_bytes()? as u64),
-                    )
+                    let len = self
+                        .memory
+                        .read_ptr_sized_unsigned(extra, ptr_align)?
+                        .to_bytes()?;
+                    Ok(p.to_value_with_len(len as u64))
                 },
                 _ => bug!("unsized primval ptr read from {:?}", pointee_ty),
             }
@@ -1621,16 +1618,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 block.terminator().source_info.span
             });
             trace!("reporting const eval failure at {:?}", span);
-            let node_id = self
-                .stack()
-                .iter()
-                .rev()
-                .filter_map(|frame| self.tcx.hir.as_local_node_id(frame.instance.def_id()))
-                .next()
-                .expect("some part of a failing const eval must be local");
             let mut err = if as_err {
                 ::rustc::middle::const_val::struct_error(self.tcx, span, "constant evaluation error")
             } else {
+                let node_id = self
+                    .stack()
+                    .iter()
+                    .rev()
+                    .filter_map(|frame| self.tcx.hir.as_local_node_id(frame.instance.def_id()))
+                    .next()
+                    .expect("some part of a failing const eval must be local");
                 self.tcx.struct_span_lint_node(
                     ::rustc::lint::builtin::CONST_ERR,
                     node_id,

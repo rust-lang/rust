@@ -2,7 +2,7 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use rustc::mir::interpret::{AllocId, EvalResult, PrimVal, MemoryPointer, AccessKind};
+use rustc::mir::interpret::{AllocId, EvalResult, PrimVal, MemoryPointer, AccessKind, GlobalId};
 use super::{EvalContext, Place, ValTy, Memory};
 
 use rustc::mir;
@@ -65,6 +65,13 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _id: AllocId,
         _mutability: Mutability,
     ) -> EvalResult<'tcx, bool>;
+
+    /// Called when requiring a pointer to a static. Non const eval can
+    /// create a mutable memory location for `static mut`
+    fn init_static<'a>(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        cid: GlobalId<'tcx>,
+    ) -> EvalResult<'tcx, AllocId>;
 
     /// Heap allocations via the `box` keyword
     ///

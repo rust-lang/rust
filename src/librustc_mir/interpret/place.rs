@@ -1,13 +1,11 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
-use rustc::traits;
 use rustc_data_structures::indexed_vec::Idx;
 
 use rustc::mir::interpret::{GlobalId, Value, PrimVal, EvalResult, Pointer, MemoryPointer};
 use super::{EvalContext, Machine, ValTy};
 use interpret::memory::HasMemory;
-use rustc::middle::const_val::ErrKind;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Place {
@@ -105,14 +103,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Local(mir::RETURN_PLACE) => err!(ReadFromReturnPointer),
             // Directly reading a local will always succeed
             Local(local) => self.frame().get_local(local).map(Some),
-            // Directly reading a static will always succeed
-            Static(ref static_) => {
-                let instance = ty::Instance::mono(self.tcx, static_.def_id);
-                self.read_global_as_value(GlobalId {
-                    instance,
-                    promoted: None,
-                }, self.place_ty(place)).map(Some)
-            }
+            // No fast path for statics. Reading from statics is rare and would require another
+            // Machine function to handle differently in miri.
+            Static(_) => Ok(None),
             Projection(ref proj) => self.try_read_place_projection(proj),
         }
     }
@@ -219,21 +212,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         instance,
                         promoted: None
                     };
-                    let param_env = ty::ParamEnv::empty(traits::Reveal::All);
-                    // ensure the static is computed
-                    if let Err(err) = self.tcx.const_eval(param_env.and(cid)) {
-                        match err.kind {
-                            ErrKind::Miri(miri) => return Err(miri),
-                            ErrKind::TypeckError => return err!(TypeckError),
-                            other => bug!("const eval returned {:?}", other),
-                        }
-                    };
-                    let alloc = self
-                        .tcx
-                        .interpret_interner
-                        .borrow()
-                        .get_cached(static_.def_id)
-                        .expect("uncached static");
+                    let alloc = Machine::init_static(self, cid)?;
                     Place::Ptr {
                         ptr: MemoryPointer::new(alloc, 0).into(),
                         align: layout.align,
