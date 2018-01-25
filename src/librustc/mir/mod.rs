@@ -803,9 +803,28 @@ pub enum TerminatorKind<'tcx> {
     /// Indicates the end of the dropping of a generator
     GeneratorDrop,
 
+    /// A block where control flow only ever takes one real path, but borrowck
+    /// needs to be more conservative.
     FalseEdges {
+        /// The target normal control flow will take
         real_target: BasicBlock,
-        imaginary_targets: Vec<BasicBlock>
+        /// The list of blocks control flow could conceptually take, but won't
+        /// in practice
+        imaginary_targets: Vec<BasicBlock>,
+    },
+    /// A terminator for blocks that only take one path in reality, but where we
+    /// reserve the right to unwind in borrowck, even if it won't happen in practice.
+    /// This can arise in infinite loops with no function calls for example.
+    FalseUnwind {
+        /// The target normal control flow will take
+        real_target: BasicBlock,
+        /// The imaginary cleanup block link. This particular path will never be taken
+        /// in practice, but in order to avoid fragility we want to always
+        /// consider it in borrowck. We don't want to accept programs which
+        /// pass borrowck only when panic=abort or some assertions are disabled
+        /// due to release vs. debug mode builds. This needs to be an Option because
+        /// of the remove_noop_landing_pads and no_landing_pads passes
+        unwind: Option<BasicBlock>,
     },
 }
 
@@ -865,6 +884,8 @@ impl<'tcx> TerminatorKind<'tcx> {
                 s.extend_from_slice(imaginary_targets);
                 s.into_cow()
             }
+            FalseUnwind { real_target: t, unwind: Some(u) } => vec![t, u].into_cow(),
+            FalseUnwind { real_target: ref t, unwind: None } => slice::from_ref(t).into_cow(),
         }
     }
 
@@ -897,6 +918,8 @@ impl<'tcx> TerminatorKind<'tcx> {
                 s.extend(imaginary_targets.iter_mut());
                 s
             }
+            FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) } => vec![t, u],
+            FalseUnwind { ref mut real_target, unwind: None } => vec![real_target],
         }
     }
 
@@ -916,7 +939,8 @@ impl<'tcx> TerminatorKind<'tcx> {
             TerminatorKind::Call { cleanup: ref mut unwind, .. } |
             TerminatorKind::Assert { cleanup: ref mut unwind, .. } |
             TerminatorKind::DropAndReplace { ref mut unwind, .. } |
-            TerminatorKind::Drop { ref mut unwind, .. } => {
+            TerminatorKind::Drop { ref mut unwind, .. } |
+            TerminatorKind::FalseUnwind { ref mut unwind, .. } => {
                 Some(unwind)
             }
         }
@@ -1045,7 +1069,8 @@ impl<'tcx> TerminatorKind<'tcx> {
 
                 write!(fmt, ")")
             },
-            FalseEdges { .. } => write!(fmt, "falseEdges")
+            FalseEdges { .. } => write!(fmt, "falseEdges"),
+            FalseUnwind { .. } => write!(fmt, "falseUnwind"),
         }
     }
 
@@ -1087,6 +1112,8 @@ impl<'tcx> TerminatorKind<'tcx> {
                 l.resize(imaginary_targets.len() + 1, "imaginary".into());
                 l
             }
+            FalseUnwind { unwind: Some(_), .. } => vec!["real".into(), "cleanup".into()],
+            FalseUnwind { unwind: None, .. } => vec!["real".into()],
         }
     }
 }
@@ -2189,7 +2216,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Return => Return,
             Unreachable => Unreachable,
             FalseEdges { real_target, ref imaginary_targets } =>
-                FalseEdges { real_target, imaginary_targets: imaginary_targets.clone() }
+                FalseEdges { real_target, imaginary_targets: imaginary_targets.clone() },
+            FalseUnwind { real_target, unwind } => FalseUnwind { real_target, unwind },
         };
         Terminator {
             source_info: self.source_info,
@@ -2231,7 +2259,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Return |
             GeneratorDrop |
             Unreachable |
-            FalseEdges { .. } => false
+            FalseEdges { .. } |
+            FalseUnwind { .. } => false
         }
     }
 }

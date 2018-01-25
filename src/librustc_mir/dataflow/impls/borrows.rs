@@ -517,6 +517,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             mir::TerminatorKind::Yield {..} |
             mir::TerminatorKind::Goto {..} |
             mir::TerminatorKind::FalseEdges {..} |
+            mir::TerminatorKind::FalseUnwind {..} |
             mir::TerminatorKind::Unreachable => {}
         }
     }

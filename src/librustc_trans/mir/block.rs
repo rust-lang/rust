@@ -608,8 +608,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         cleanup);
             }
             mir::TerminatorKind::GeneratorDrop |
-            mir::TerminatorKind::Yield { .. } |
-            mir::TerminatorKind::FalseEdges { .. } => bug!("generator ops in trans"),
+            mir::TerminatorKind::Yield { .. } => bug!("generator ops in trans"),
+            mir::TerminatorKind::FalseEdges { .. } |
+            mir::TerminatorKind::FalseUnwind { .. } => bug!("borrowck false edges in trans"),
         }
     }
 
