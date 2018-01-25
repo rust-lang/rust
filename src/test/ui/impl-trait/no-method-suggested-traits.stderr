@@ -95,10 +95,8 @@ error[E0599]: no method named `method` found for type `Foo` in the current scope
    = note: the following traits define an item `method`, perhaps you need to implement one of them:
            candidate #1: `foo::Bar`
            candidate #2: `no_method_suggested_traits::foo::PubPub`
-           candidate #3: `no_method_suggested_traits::bar::PubPriv`
-           candidate #4: `no_method_suggested_traits::qux::PrivPub`
-           candidate #5: `no_method_suggested_traits::quz::PrivPriv`
-           candidate #6: `no_method_suggested_traits::Reexported`
+           candidate #3: `no_method_suggested_traits::qux::PrivPub`
+           candidate #4: `no_method_suggested_traits::Reexported`
 
 error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&Foo>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:52:43
@@ -110,10 +108,8 @@ error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::box
    = note: the following traits define an item `method`, perhaps you need to implement one of them:
            candidate #1: `foo::Bar`
            candidate #2: `no_method_suggested_traits::foo::PubPub`
-           candidate #3: `no_method_suggested_traits::bar::PubPriv`
-           candidate #4: `no_method_suggested_traits::qux::PrivPub`
-           candidate #5: `no_method_suggested_traits::quz::PrivPriv`
-           candidate #6: `no_method_suggested_traits::Reexported`
+           candidate #3: `no_method_suggested_traits::qux::PrivPub`
+           candidate #4: `no_method_suggested_traits::Reexported`
 
 error[E0599]: no method named `method2` found for type `u64` in the current scope
   --> $DIR/no-method-suggested-traits.rs:55:10
