@@ -259,15 +259,15 @@ pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) 
     }
 }
 
-pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath) -> Vec<String> {
-    let mut file = try_something!(File::open(f), Vec::new());
+pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath) -> (bool, Vec<String>) {
+    let mut file = try_something!(File::open(f), (false, Vec::new()));
     let mut data = Vec::with_capacity(1000);
 
-    try_something!(file.read_to_end(&mut data), Vec::new());
+    try_something!(file.read_to_end(&mut data), (false, Vec::new()));
     let pathes = load_css_pathes(&data);
     let mut ret = Vec::new();
     get_differences(against, &pathes, &mut ret);
-    ret
+    (true, ret)
 }
 
 #[cfg(test)]
@@ -319,6 +319,19 @@ rule j end {}
 
         assert!(get_differences(&load_css_pathes(against.as_bytes()),
                                 &load_css_pathes(text.as_bytes())).is_empty());
+    }
+
+    #[test]
+    fn test_text() {
+        let text = r#"
+a
+/* sdfs
+*/ b
+c // sdf
+d {}
+"#;
+        let pathes = load_css_pathes(text.as_bytes());
+        assert!(pathes.children.get("a  b c d").is_some());
     }
 
     #[test]
