@@ -105,7 +105,6 @@ impl FromStr for ArchiveKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "gnu" => Ok(ArchiveKind::K_GNU),
-            "mips64" => Ok(ArchiveKind::K_MIPS64),
             "bsd" => Ok(ArchiveKind::K_BSD),
             "coff" => Ok(ArchiveKind::K_COFF),
             _ => Err(()),

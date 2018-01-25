@@ -69,8 +69,7 @@ pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
     ("ropi-rwpi", llvm::RelocMode::ROPI_RWPI),
 ];
 
-pub const CODE_GEN_MODEL_ARGS : [(&'static str, llvm::CodeModel); 5] = [
-    ("default", llvm::CodeModel::Default),
+pub const CODE_GEN_MODEL_ARGS: &[(&str, llvm::CodeModel)] = &[
     ("small", llvm::CodeModel::Small),
     ("kernel", llvm::CodeModel::Kernel),
     ("medium", llvm::CodeModel::Medium),
@@ -171,20 +170,23 @@ pub fn target_machine_factory(sess: &Session)
     let ffunction_sections = sess.target.target.options.function_sections;
     let fdata_sections = ffunction_sections;
 
-    let code_model_arg = match sess.opts.cg.code_model {
-        Some(ref s) => &s,
-        None => &sess.target.target.options.code_model,
-    };
+    let code_model_arg = sess.opts.cg.code_model.as_ref().or(
+        sess.target.target.options.code_model.as_ref(),
+    );
 
-    let code_model = match CODE_GEN_MODEL_ARGS.iter().find(
-        |&&arg| arg.0 == code_model_arg) {
-        Some(x) => x.1,
-        _ => {
-            sess.err(&format!("{:?} is not a valid code model",
-                              code_model_arg));
-            sess.abort_if_errors();
-            bug!();
+    let code_model = match code_model_arg {
+        Some(s) => {
+            match CODE_GEN_MODEL_ARGS.iter().find(|arg| arg.0 == s) {
+                Some(x) => x.1,
+                _ => {
+                    sess.err(&format!("{:?} is not a valid code model",
+                                      code_model_arg));
+                    sess.abort_if_errors();
+                    bug!();
+                }
+            }
         }
+        None => llvm::CodeModel::None,
     };
 
     let singlethread = sess.target.target.options.singlethread;
@@ -746,7 +748,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
             // We can't use the same module for asm and binary output, because that triggers
             // various errors like invalid IR or broken binaries, so we might have to clone the
             // module to produce the asm output
-            let llmod = if config.emit_obj {
+            let llmod = if config.emit_obj && !asm2wasm {
                 llvm::LLVMCloneModule(llmod)
             } else {
                 llmod
@@ -755,7 +757,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
                 write_output_file(diag_handler, tm, cpm, llmod, &path,
                                   llvm::FileType::AssemblyFile)
             })?;
-            if config.emit_obj {
+            if config.emit_obj && !asm2wasm {
                 llvm::LLVMDisposeModule(llmod);
             }
             timeline.record("asm");
