@@ -1574,8 +1574,14 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     Registry::new(&all_errors)
 }
 
-pub fn main() {
+/// This allows tools to enable rust logging without having to magically match rustc's
+/// log crate version
+pub fn init_rustc_env_logger() {
     env_logger::init();
+}
+
+pub fn main() {
+    init_rustc_env_logger();
     let result = run(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
