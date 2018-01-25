@@ -74,10 +74,12 @@ r##"<!DOCTYPE html>
         {sidebar}
     </nav>
 
-    <button id="theme-picker">
-        <img src="{root_path}brush.svg" width="18" alt="Pick another theme!">
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="{root_path}brush.svg" width="18" alt="Pick another theme!">
+        </button>
         <div id="theme-choices"></div>
-    </button>
+    </div>
     <script src="{root_path}theme.js"></script>
     <nav class="sub">
         <form class="search-form js-only">
