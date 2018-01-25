@@ -330,9 +330,11 @@ pub fn main_args(args: &[String]) -> isize {
         println!("rustdoc: [theme-checker] Starting tests!");
         for theme_file in to_check.iter() {
             print!(" - Checking \"{}\"...", theme_file);
-            if !theme::test_theme_against(theme_file, &pathes) {
+            let differences = theme::test_theme_against(theme_file, &pathes);
+            if !differences.is_empty() {
                 eprintln!(" FAILED");
                 errors += 1;
+                eprintln!("{}", differences.join("\n"));
             } else {
                 println!(" OK");
             }

@@ -14,13 +14,13 @@ use std::hash::{Hash, Hasher};
 use std::io::Read;
 use std::path::Path;
 
-macro_rules! try_false {
-    ($e:expr) => ({
+macro_rules! try_something {
+    ($e:expr, $out:expr) => ({
         match $e {
             Ok(c) => c,
             Err(e) => {
                 eprintln!("rustdoc: got an error: {}", e);
-                return false;
+                return $out;
             }
         }
     })
@@ -215,18 +215,49 @@ pub fn load_css_pathes(v: &[u8]) -> CssPath {
     parent
 }
 
-pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath) -> bool {
-    let mut file = try_false!(File::open(f));
+fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) {
+    if against.name != other.name {
+        return
+    } else {
+        for child in &against.children {
+            let mut found = false;
+            let mut found_working = false;
+            let mut tmp = Vec::new();
+
+            for other_child in &other.children {
+                if child.name == other_child.name {
+                    if child != other_child {
+                        get_differences(child, other_child, &mut tmp);
+                    } else {
+                        found_working = true;
+                    }
+                    found = true;
+                    break
+                }
+            }
+            if found == false {
+                v.push(format!("  Missing \"{}\" rule", child.name));
+            } else if found_working == false {
+                v.extend(tmp.iter().cloned());
+            }
+        }
+    }
+}
+
+pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath) -> Vec<String> {
+    let mut file = try_something!(File::open(f), Vec::new());
     let mut data = Vec::with_capacity(1000);
 
-    try_false!(file.read_to_end(&mut data));
+    try_something!(file.read_to_end(&mut data), Vec::new());
     let pathes = load_css_pathes(&data);
     println!("========= {:?}", pathes);
     println!("========= {:?}", against);
-    pathes == *against
+    let mut ret = Vec::new();
+    get_differences(against, &pathes, &mut ret);
+    ret
 }
 
-#[test]
+/*#[test]
 fn test_comments_in_rules() {
     let text = r#"
 rule a {}
@@ -255,4 +286,4 @@ you like things like "{}" in there? :)
 */
 end {}
 "#;
-}
+}*/
