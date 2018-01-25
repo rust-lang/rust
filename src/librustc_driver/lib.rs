@@ -1273,14 +1273,6 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                              &note,
                              errors::Level::Note);
             }
-            if match env::var_os("RUST_BACKTRACE") {
-                Some(val) => &val != "0",
-                None => false,
-            } {
-                handler.emit(&MultiSpan::new(),
-                             "run with `RUST_BACKTRACE=1` for a backtrace",
-                             errors::Level::Note);
-            }
 
             eprintln!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
         }
