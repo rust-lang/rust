@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,13 +9,26 @@
 // except according to those terms.
 
 #![feature(use_nested_groups)]
+#![allow(dead_code)]
 #![deny(unused_imports)]
 
 mod foo {
-    pub enum Bar {}
+    pub mod bar {
+        pub mod baz {
+            pub struct Bar();
+        }
+        pub mod foobar {}
+    }
+
+    pub struct Foo();
 }
 
-use foo::{*, *}; //~ ERROR unused import: `*`
+use foo::{Foo, bar::{baz::{}, foobar::*}, *};
+    //~^ ERROR unused imports: `*`, `Foo`, `baz::{}`, `foobar::*`
+use foo::bar::baz::{*, *};
+    //~^ ERROR unused import: `*`
+use foo::{};
+    //~^ ERROR unused import: `use foo::{};`
 
 fn main() {
     let _: Bar;
