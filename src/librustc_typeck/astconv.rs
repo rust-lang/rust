@@ -1206,22 +1206,27 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let output = bare_fn_ty.output();
         let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
         for br in late_bound_in_ret.difference(&late_bound_in_args) {
-            let br_name = match *br {
-                ty::BrNamed(_, name) => name,
-                _ => {
-                    span_bug!(
-                        decl.output.span(),
-                        "anonymous bound region {:?} in return but not args",
-                        br);
-                }
+            let lifetime_name = match *br {
+                ty::BrNamed(_, name) => format!("lifetime `{}`,", name),
+                ty::BrAnon(_) | ty::BrFresh(_) | ty::BrEnv => format!("an anonymous lifetime"),
             };
-            struct_span_err!(tcx.sess,
-                             decl.output.span(),
-                             E0581,
-                             "return type references lifetime `{}`, \
-                             which does not appear in the fn input types",
-                             br_name)
-                .emit();
+            let mut err = struct_span_err!(tcx.sess,
+                                           decl.output.span(),
+                                           E0581,
+                                           "return type references {} \
+                                            which is not constrained by the fn input types",
+                                           lifetime_name);
+            if let ty::BrAnon(_) = *br {
+                // The only way for an anonymous lifetime to wind up
+                // in the return type but **also** be unconstrained is
+                // if it only appears in "associated types" in the
+                // input. See #47511 for an example. In this case,
+                // though we can easily give a hint that ought to be
+                // relevant.
+                err.note("lifetimes appearing in an associated type \
+                          are not considered constrained");
+            }
+            err.emit();
         }
 
         bare_fn_ty
