@@ -1,0 +1,26 @@
+error[E0080]: constant evaluation error
+  --> $DIR/conditional_array_execution.rs:13:19
+   |
+13 | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize]; //~ E0080
+   |                   ^^^^^ attempt to subtract with overflow
+   |
+note: inside call to FOO
+  --> $DIR/conditional_array_execution.rs:13:1
+   |
+13 | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize]; //~ E0080
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: constant evaluation error
+  --> $DIR/conditional_array_execution.rs:16:20
+   |
+16 |     println!("{}", FOO); //~ E0080
+   |                    ^^^ attempt to subtract with overflow
+   |
+note: inside call to main
+  --> $DIR/conditional_array_execution.rs:16:20
+   |
+16 |     println!("{}", FOO); //~ E0080
+   |                    ^^^
+
+error: aborting due to 2 previous errors
+
