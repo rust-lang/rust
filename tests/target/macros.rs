@@ -27,9 +27,8 @@ fn main() {
     );
 
     kaas!(
-        // comments
-        a, // post macro
-        b  // another
+        /* comments */ a, /* post macro */
+        b  /* another */
     );
 
     trailingcomma!(a, b, c,);
@@ -890,29 +889,23 @@ fn macro_in_pattern_position() {
     };
 }
 
-macro foo {
-    () => {
+macro foo() {
+}
+
+pub macro bar($x: ident + $y: expr;) {
+    fn foo($x: Foo) {
+        long_function(
+            a_long_argument_to_a_long_function_is_what_this_is(AAAAAAAAAAAAAAAAAAAAAAAAAAAA),
+            $x.bar($y),
+        );
     }
 }
 
-pub macro bar {
-    ($x: ident + $y: expr;) => {
-        fn foo($x: Foo) {
-            long_function(
-                a_long_argument_to_a_long_function_is_what_this_is(AAAAAAAAAAAAAAAAAAAAAAAAAAAA),
-                $x.bar($y),
-            );
-        }
-    }
-}
-
-macro foo {
-    () => {
-        // a comment
-        fn foo() {
-            // another comment
-            bar();
-        }
+macro foo() {
+    // a comment
+    fn foo() {
+        // another comment
+        bar();
     }
 }
 

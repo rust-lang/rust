@@ -305,9 +305,16 @@ pub fn rewrite_macro_def(
 
     result += " ";
     result += &ident.name.as_str();
-    result += " {";
 
-    let mac_indent = indent.block_indent(context.config);
+    let multi_branch_style = def.legacy || parsed_def.branches.len() != 1;
+
+    let mac_indent = if multi_branch_style {
+        result += " {";
+        indent.block_indent(context.config)
+    } else {
+        indent
+    };
+
     let mac_indent_str = mac_indent.to_string(context.config);
 
     for branch in parsed_def.branches {
@@ -317,11 +324,18 @@ pub fn rewrite_macro_def(
             return snippet;
         }
 
-        result += "\n";
-        result += &mac_indent_str;
-        result += "(";
-        result += &format_macro_args(branch.args)?;
-        result += ") => {\n";
+        let args = format!("({})", format_macro_args(branch.args)?);
+
+        if multi_branch_style {
+            result += "\n";
+            result += &mac_indent_str;
+            result += &args;
+            result += " =>";
+        } else {
+            result += &args;
+        }
+
+        result += " {\n";
 
         // The macro body is the most interesting part. It might end up as various
         // AST nodes, but also has special variables (e.g, `$foo`) which can't be
@@ -380,14 +394,16 @@ pub fn rewrite_macro_def(
 
         result += &mac_indent_str;
         result += "}";
-        if def.legacy{
+        if def.legacy {
             result += ";";
         }
         result += "\n";
     }
 
-    result += &indent.to_string(context.config);
-    result += "}";
+    if multi_branch_style {
+        result += &indent.to_string(context.config);
+        result += "}";
+    }
 
     Some(result)
 }
