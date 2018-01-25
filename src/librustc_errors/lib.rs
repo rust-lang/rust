@@ -244,6 +244,10 @@ pub struct Handler {
     continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<Diagnostic>>,
     tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
+
+    // This set contains the `DiagnosticId` of all emitted diagnostics to avoid
+    // emitting the same diagnostic with extended help (`--teach`) twice, which
+    // would be uneccessary repetition.
     tracked_diagnostic_codes: RefCell<FxHashSet<DiagnosticId>>,
 
     // This set contains a hash of every diagnostic that has been emitted by
@@ -577,6 +581,10 @@ impl Handler {
         (ret, diagnostics)
     }
 
+    /// `true` if a diagnostic with this code has already been emitted in this handler.
+    ///
+    /// Used to suppress emitting the same error multiple times with extended explanation when
+    /// calling `-Zteach`.
     pub fn code_emitted(&self, code: &DiagnosticId) -> bool {
         self.tracked_diagnostic_codes.borrow().contains(code)
     }
