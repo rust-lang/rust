@@ -101,7 +101,7 @@ pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::error::TypeError<'tcx>
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum ProjectionTyCandidate<'tcx> {
     // from a where-clause in the env or object type
     ParamEnv(ty::PolyProjectionPredicate<'tcx>),
@@ -838,21 +838,12 @@ fn project_type<'cx, 'gcx, 'tcx>(
     // Drop duplicates.
     //
     // Note: `candidates.vec` seems to be on the critical path of the
-    // compiler. Replacing it with an hash set was also tried, which would
-    // render the following dedup unnecessary. It led to cleaner code but
-    // prolonged compiling time of `librustc` from 5m30s to 6m in one test, or
-    // ~9% performance lost.
-    if candidates.vec.len() > 1 {
-        let mut i = 0;
-        while i < candidates.vec.len() {
-            let has_dup = (0..i).any(|j| candidates.vec[i] == candidates.vec[j]);
-            if has_dup {
-                candidates.vec.swap_remove(i);
-            } else {
-                i += 1;
-            }
-        }
-    }
+    // compiler. Replacing it with an HashSet was also tried, which would
+    // render the following dedup unnecessary. The original comment indicated
+    // that it was 9% slower, but that data is now obsolete and a new
+    // benchmark should be performed.
+    candidates.vec.sort_unstable();
+    candidates.vec.dedup();
 
     // Prefer where-clauses. As in select, if there are multiple
     // candidates, we prefer where-clause candidates over impls.  This
