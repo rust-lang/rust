@@ -5430,10 +5430,8 @@ mod c {
         if target_arch == "arm" && target_os != "ios" {
             sources.extend(
                 &[
-                    "arm/aeabi_dcmp.S",
                     "arm/aeabi_div0.c",
                     "arm/aeabi_drsub.c",
-                    "arm/aeabi_fcmp.S",
                     "arm/aeabi_frsub.c",
                     "arm/bswapdi2.S",
                     "arm/bswapsi2.S",
