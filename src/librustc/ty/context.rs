@@ -869,7 +869,7 @@ pub struct GlobalCtxt<'tcx> {
 
     stability_interner: RefCell<FxHashSet<&'tcx attr::Stability>>,
 
-    pub interpret_interner: RefCell<InterpretInterner<'tcx>>,
+    pub interpret_interner: InterpretInterner<'tcx>,
 
     layout_interner: RefCell<FxHashSet<&'tcx LayoutDetails>>,
 
@@ -893,6 +893,11 @@ pub struct GlobalCtxt<'tcx> {
 /// Everything needed to efficiently work with interned allocations
 #[derive(Debug, Default)]
 pub struct InterpretInterner<'tcx> {
+    inner: RefCell<InterpretInternerInner<'tcx>>,
+}
+
+#[derive(Debug, Default)]
+struct InterpretInternerInner<'tcx> {
     /// Stores the value of constants (and deduplicates the actual memory)
     allocs: FxHashSet<&'tcx interpret::Allocation>,
 
@@ -925,14 +930,15 @@ pub struct InterpretInterner<'tcx> {
 }
 
 impl<'tcx> InterpretInterner<'tcx> {
-    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> interpret::AllocId {
-        if let Some(&alloc_id) = self.function_cache.get(&instance) {
+    pub fn create_fn_alloc(&self, instance: Instance<'tcx>) -> interpret::AllocId {
+        if let Some(&alloc_id) = self.inner.borrow().function_cache.get(&instance) {
             return alloc_id;
         }
         let id = self.reserve();
         debug!("creating fn ptr: {}", id);
-        self.functions.insert(id, instance);
-        self.function_cache.insert(instance, id);
+        let mut inner = self.inner.borrow_mut();
+        inner.functions.insert(id, instance);
+        inner.function_cache.insert(instance, id);
         id
     }
 
@@ -940,30 +946,31 @@ impl<'tcx> InterpretInterner<'tcx> {
         &self,
         id: interpret::AllocId,
     ) -> Option<Instance<'tcx>> {
-        self.functions.get(&id).cloned()
+        self.inner.borrow().functions.get(&id).cloned()
     }
 
     pub fn get_alloc(
         &self,
         id: interpret::AllocId,
     ) -> Option<&'tcx interpret::Allocation> {
-        self.alloc_by_id.get(&id).cloned()
+        self.inner.borrow().alloc_by_id.get(&id).cloned()
     }
 
     pub fn get_cached(
         &self,
         static_id: DefId,
     ) -> Option<interpret::AllocId> {
-        self.alloc_cache.get(&static_id).cloned()
+        self.inner.borrow().alloc_cache.get(&static_id).cloned()
     }
 
     pub fn cache(
-        &mut self,
+        &self,
         static_id: DefId,
         alloc_id: interpret::AllocId,
     ) {
-        self.global_cache.insert(alloc_id, static_id);
-        if let Some(old) = self.alloc_cache.insert(static_id, alloc_id) {
+        let mut inner = self.inner.borrow_mut();
+        inner.global_cache.insert(alloc_id, static_id);
+        if let Some(old) = inner.alloc_cache.insert(static_id, alloc_id) {
             bug!("tried to cache {:?}, but was already existing as {:#?}", static_id, old);
         }
     }
@@ -972,15 +979,15 @@ impl<'tcx> InterpretInterner<'tcx> {
         &self,
         ptr: interpret::AllocId,
     ) -> Option<DefId> {
-        self.global_cache.get(&ptr).cloned()
+        self.inner.borrow().global_cache.get(&ptr).cloned()
     }
 
     pub fn intern_at_reserved(
-        &mut self,
+        &self,
         id: interpret::AllocId,
         alloc: &'tcx interpret::Allocation,
     ) {
-        if let Some(old) = self.alloc_by_id.insert(id, alloc) {
+        if let Some(old) = self.inner.borrow_mut().alloc_by_id.insert(id, alloc) {
             bug!("tried to intern allocation at {}, but was already existing as {:#?}", id, old);
         }
     }
@@ -988,10 +995,11 @@ impl<'tcx> InterpretInterner<'tcx> {
     /// obtains a new allocation ID that can be referenced but does not
     /// yet have an allocation backing it.
     pub fn reserve(
-        &mut self,
+        &self,
     ) -> interpret::AllocId {
-        let next = self.next_id;
-        self.next_id.0 = self.next_id.0
+        let mut inner = self.inner.borrow_mut();
+        let next = inner.next_id;
+        inner.next_id.0 = inner.next_id.0
             .checked_add(1)
             .expect("You overflowed a u64 by incrementing by 1... \
                      You've just earned yourself a free drink if we ever meet. \
@@ -1071,12 +1079,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         alloc: interpret::Allocation,
     ) -> &'gcx interpret::Allocation {
-        if let Some(alloc) = self.interpret_interner.borrow().allocs.get(&alloc) {
+        if let Some(alloc) = self.interpret_interner.inner.borrow().allocs.get(&alloc) {
             return alloc;
         }
 
         let interned = self.global_arenas.const_allocs.alloc(alloc);
-        if let Some(prev) = self.interpret_interner.borrow_mut().allocs.replace(interned) {
+        if let Some(prev) = self.interpret_interner.inner.borrow_mut().allocs.replace(interned) {
             bug!("Tried to overwrite interned Allocation: {:#?}", prev)
         }
         interned
@@ -1085,20 +1093,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Allocates a byte or string literal for `mir::interpret`
     pub fn allocate_cached(self, bytes: &[u8]) -> interpret::AllocId {
         // check whether we already allocated this literal or a constant with the same memory
-        if let Some(&alloc_id) = self.interpret_interner.borrow().literal_alloc_cache.get(bytes) {
+        if let Some(&alloc_id) = self.interpret_interner.inner.borrow()
+                                     .literal_alloc_cache.get(bytes) {
             return alloc_id;
         }
         // create an allocation that just contains these bytes
         let alloc = interpret::Allocation::from_bytes(bytes);
         let alloc = self.intern_const_alloc(alloc);
 
-        let mut int = self.interpret_interner.borrow_mut();
         // the next unique id
-        let id = int.reserve();
+        let id = self.interpret_interner.reserve();
         // make the allocation identifiable
-        int.alloc_by_id.insert(id, alloc);
+        self.interpret_interner.inner.borrow_mut().alloc_by_id.insert(id, alloc);
         // cache it for the future
-        int.literal_alloc_cache.insert(bytes.to_owned(), id);
+        self.interpret_interner.inner.borrow_mut().literal_alloc_cache.insert(bytes.to_owned(), id);
         id
     }
 
@@ -1776,7 +1784,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
         println!("Stability interner: #{}", self.stability_interner.borrow().len());
-        println!("Interpret interner: #{}", self.interpret_interner.borrow().allocs.len());
+        println!("Interpret interner: #{}", self.interpret_interner.inner.borrow().allocs.len());
         println!("Layout interner: #{}", self.layout_interner.borrow().len());
     }
 }

@@ -192,7 +192,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                             assert!(is_array_ptr);
                             let alloc = tcx
                                 .interpret_interner
-                                .borrow()
                                 .get_alloc(ptr.alloc_id)
                                 .unwrap();
                             assert_eq!(ptr.offset, 0);
@@ -568,7 +567,6 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
                 if is_array_ptr {
                     let alloc = cx.tcx
                         .interpret_interner
-                        .borrow()
                         .get_alloc(ptr.alloc_id)
                         .unwrap();
                     max_fixed_len = cmp::max(max_fixed_len, alloc.bytes.len() as u64);
@@ -958,7 +956,6 @@ fn slice_pat_covered_by_constructor(tcx: TyCtxt, _span: Span,
             assert!(is_array_ptr);
             tcx
                 .interpret_interner
-                .borrow()
                 .get_alloc(ptr.alloc_id)
                 .unwrap()
                 .bytes
@@ -1099,7 +1096,6 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                         assert!(is_array_ptr);
                         let data_len = cx.tcx
                             .interpret_interner
-                            .borrow()
                             .get_alloc(ptr.alloc_id)
                             .unwrap()
                             .bytes

@@ -205,14 +205,14 @@ impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx
         // cache the allocation shorthand now, because the allocation itself might recursively
         // point to itself.
         self.interpret_alloc_shorthands.insert(*alloc_id, start);
-        if let Some(alloc) = self.tcx.interpret_interner.borrow().get_alloc(*alloc_id) {
+        if let Some(alloc) = self.tcx.interpret_interner.get_alloc(*alloc_id) {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             usize::max_value().encode(self)?;
             alloc.encode(self)?;
-            self.tcx.interpret_interner.borrow()
+            self.tcx.interpret_interner
                 .get_corresponding_static_def_id(*alloc_id)
                 .encode(self)?;
-        } else if let Some(fn_instance) = self.tcx.interpret_interner.borrow().get_fn(*alloc_id) {
+        } else if let Some(fn_instance) = self.tcx.interpret_interner.get_fn(*alloc_id) {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
             (usize::max_value() - 1).encode(self)?;
             fn_instance.encode(self)?;

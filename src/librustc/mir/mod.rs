@@ -1897,7 +1897,6 @@ pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Resul
             ty::tls::with(|tcx| {
                 let alloc = tcx
                     .interpret_interner
-                    .borrow()
                     .get_alloc(ptr.alloc_id);
                 if let Some(alloc) = alloc {
                     assert_eq!(len as usize as u128, len);

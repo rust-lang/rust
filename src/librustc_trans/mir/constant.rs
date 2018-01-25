@@ -151,18 +151,17 @@ pub fn primval_to_llvm(cx: &CodegenCx,
             }
         },
         PrimVal::Ptr(ptr) => {
-            if let Some(fn_instance) = cx.tcx.interpret_interner.borrow().get_fn(ptr.alloc_id) {
+            if let Some(fn_instance) = cx.tcx.interpret_interner.get_fn(ptr.alloc_id) {
                 callee::get_fn(cx, fn_instance)
             } else {
                 let static_ = cx
                     .tcx
                     .interpret_interner
-                    .borrow()
                     .get_corresponding_static_def_id(ptr.alloc_id);
                 let base_addr = if let Some(def_id) = static_ {
                     assert!(cx.tcx.is_static(def_id).is_some());
                     consts::get_static(cx, def_id)
-                } else if let Some(alloc) = cx.tcx.interpret_interner.borrow()
+                } else if let Some(alloc) = cx.tcx.interpret_interner
                                               .get_alloc(ptr.alloc_id) {
                     let init = global_initializer(cx, alloc);
                     if alloc.mutable {
@@ -239,14 +238,12 @@ pub fn trans_static_initializer<'a, 'tcx>(
     let alloc_id = cx
         .tcx
         .interpret_interner
-        .borrow()
         .get_cached(def_id)
         .expect("global not cached");
 
     let alloc = cx
         .tcx
         .interpret_interner
-        .borrow()
         .get_alloc(alloc_id)
         .expect("miri allocation never successfully created");
     Ok(global_initializer(cx, alloc))

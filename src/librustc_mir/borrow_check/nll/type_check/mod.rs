@@ -263,7 +263,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     ConstVal::Value(Value::ByVal(PrimVal::Ptr(p))) => {
                         self.tcx()
                             .interpret_interner
-                            .borrow()
                             .get_fn(p.alloc_id)
                             .map(|instance| instance.def_id())
                     },
@@ -1044,7 +1043,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 ..
             }) => match val {
                 ConstVal::Value(Value::ByVal(PrimVal::Ptr(p))) => {
-                    let inst = self.tcx().interpret_interner.borrow().get_fn(p.alloc_id);
+                    let inst = self.tcx().interpret_interner.get_fn(p.alloc_id);
                     inst.map_or(false, |inst| {
                         Some(inst.def_id()) == self.tcx().lang_items().box_free_fn()
                     })

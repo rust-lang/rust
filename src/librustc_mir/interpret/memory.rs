@@ -75,7 +75,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> MemoryPointer {
-        let id = self.tcx.interpret_interner.borrow_mut().create_fn_alloc(instance);
+        let id = self.tcx.interpret_interner.create_fn_alloc(instance);
         MemoryPointer::new(id, 0)
     }
 
@@ -107,7 +107,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             align,
             mutable: false,
         };
-        let id = self.tcx.interpret_interner.borrow_mut().reserve();
+        let id = self.tcx.interpret_interner.reserve();
         M::add_lock(self, id);
         match kind {
             Some(kind @ MemoryKind::Stack) |
@@ -186,12 +186,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                     "uninitializedstatic".to_string(),
                     format!("{:?}", kind),
                 ))
-            } else if self.tcx.interpret_interner.borrow().get_fn(ptr.alloc_id).is_some() {
+            } else if self.tcx.interpret_interner.get_fn(ptr.alloc_id).is_some() {
                 return err!(DeallocatedWrongMemoryKind(
                     "function".to_string(),
                     format!("{:?}", kind),
                 ))
-            } else if self.tcx.interpret_interner.borrow().get_alloc(ptr.alloc_id).is_some() {
+            } else if self.tcx.interpret_interner.get_alloc(ptr.alloc_id).is_some() {
                 return err!(DeallocatedWrongMemoryKind(
                     "static".to_string(),
                     format!("{:?}", kind),
@@ -295,11 +295,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             None => match self.uninitialized_statics.get(&id) {
                 Some(alloc) => Ok(alloc),
                 None => {
-                    let int = self.tcx.interpret_interner.borrow();
                     // static alloc?
-                    int.get_alloc(id)
+                    self.tcx.interpret_interner.get_alloc(id)
                         // no alloc? produce an error
-                        .ok_or_else(|| if int.get_fn(id).is_some() {
+                        .ok_or_else(|| if self.tcx.interpret_interner.get_fn(id).is_some() {
                             EvalErrorKind::DerefFunctionPointer.into()
                         } else {
                             EvalErrorKind::DanglingPointerDeref.into()
@@ -320,11 +319,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             None => match self.uninitialized_statics.get_mut(&id) {
                 Some(alloc) => Ok(alloc),
                 None => {
-                    let int = self.tcx.interpret_interner.borrow();
                     // no alloc or immutable alloc? produce an error
-                    if int.get_alloc(id).is_some() {
+                    if self.tcx.interpret_interner.get_alloc(id).is_some() {
                         err!(ModifiedConstantMemory)
-                    } else if int.get_fn(id).is_some() {
+                    } else if self.tcx.interpret_interner.get_fn(id).is_some() {
                         err!(DerefFunctionPointer)
                     } else {
                         err!(DanglingPointerDeref)
@@ -341,7 +339,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         debug!("reading fn ptr: {}", ptr.alloc_id);
         self.tcx
             .interpret_interner
-            .borrow()
             .get_fn(ptr.alloc_id)
             .ok_or(EvalErrorKind::ExecuteMemory.into())
     }
@@ -376,9 +373,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                         Some(a) => (a, " (static in the process of initialization)".to_owned()),
                         None => {
                             // static alloc?
-                            match self.tcx.interpret_interner.borrow().get_alloc(id) {
+                            match self.tcx.interpret_interner.get_alloc(id) {
                                 Some(a) => (a, "(immutable)".to_owned()),
-                                None => if let Some(func) = self.tcx.interpret_interner.borrow().get_fn(id) {
+                                None => if let Some(func) = self.tcx.interpret_interner.get_fn(id) {
                                     trace!("{} {}", msg, func);
                                     continue;
                                 } else {
@@ -549,7 +546,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             // ensure llvm knows not to put this into immutable memroy
             alloc.mutable = mutability == Mutability::Mutable;
             let alloc = self.tcx.intern_const_alloc(alloc);
-            self.tcx.interpret_interner.borrow_mut().intern_at_reserved(alloc_id, alloc);
+            self.tcx.interpret_interner.intern_at_reserved(alloc_id, alloc);
             // recurse into inner allocations
             for &alloc in alloc.relocations.values() {
                 self.mark_inner_allocation_initialized(alloc, mutability)?;

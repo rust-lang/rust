@@ -197,7 +197,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let alloc = self
                     .tcx
                     .interpret_interner
-                    .borrow()
                     .get_cached(static_.def_id);
                 let layout = self.layout_of(self.place_ty(mir_place))?;
                 if let Some(alloc) = alloc {

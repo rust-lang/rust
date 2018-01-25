@@ -548,11 +548,10 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, '
     fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
         const MAX1: usize = usize::max_value() - 1;
         let tcx = self.tcx;
-        let interpret_interner = || tcx.interpret_interner.borrow_mut();
         let pos = TyDecoder::position(self);
         match usize::decode(self)? {
             ::std::usize::MAX => {
-                let alloc_id = interpret_interner().reserve();
+                let alloc_id = tcx.interpret_interner.reserve();
                 trace!("creating alloc id {:?} at {}", alloc_id, pos);
                 // insert early to allow recursive allocs
                 self.interpret_alloc_cache.insert(pos, alloc_id);
@@ -560,10 +559,10 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, '
                 let allocation = interpret::Allocation::decode(self)?;
                 trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
                 let allocation = self.tcx.intern_const_alloc(allocation);
-                interpret_interner().intern_at_reserved(alloc_id, allocation);
+                tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
 
                 if let Some(glob) = Option::<DefId>::decode(self)? {
-                    interpret_interner().cache(glob, alloc_id);
+                    tcx.interpret_interner.cache(glob, alloc_id);
                 }
 
                 Ok(alloc_id)
@@ -572,7 +571,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, '
                 trace!("creating fn alloc id at {}", pos);
                 let instance = ty::Instance::decode(self)?;
                 trace!("decoded fn alloc instance: {:?}", instance);
-                let id = interpret_interner().create_fn_alloc(instance);
+                let id = tcx.interpret_interner.create_fn_alloc(instance);
                 trace!("created fn alloc id: {:?}", id);
                 self.interpret_alloc_cache.insert(pos, id);
                 Ok(id)
@@ -796,14 +795,14 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<interpret::AllocId> for CacheEncoder<
         // cache the allocation shorthand now, because the allocation itself might recursively
         // point to itself.
         self.interpret_alloc_shorthands.insert(*alloc_id, start);
-        if let Some(alloc) = self.tcx.interpret_interner.borrow().get_alloc(*alloc_id) {
+        if let Some(alloc) = self.tcx.interpret_interner.get_alloc(*alloc_id) {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             usize::max_value().encode(self)?;
             alloc.encode(self)?;
-            self.tcx.interpret_interner.borrow()
+            self.tcx.interpret_interner
                 .get_corresponding_static_def_id(*alloc_id)
                 .encode(self)?;
-        } else if let Some(fn_instance) = self.tcx.interpret_interner.borrow().get_fn(*alloc_id) {
+        } else if let Some(fn_instance) = self.tcx.interpret_interner.get_fn(*alloc_id) {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
             (usize::max_value() - 1).encode(self)?;
             fn_instance.encode(self)?;

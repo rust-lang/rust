@@ -945,7 +945,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             let cached = self
                 .tcx
                 .interpret_interner
-                .borrow()
                 .get_cached(gid.instance.def_id());
             if let Some(alloc_id) = cached {
                 let layout = self.layout_of(ty)?;

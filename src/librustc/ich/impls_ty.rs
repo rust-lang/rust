@@ -376,18 +376,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
     ) {
         ty::tls::with_opt(|tcx| {
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            let interner = tcx
-                .interpret_interner
-                .borrow();
-            if let Some(def_id) = interner.get_corresponding_static_def_id(*self) {
+            if let Some(def_id) = tcx.interpret_interner.get_corresponding_static_def_id(*self) {
                 0.hash_stable(hcx, hasher);
                 // statics are unique via their DefId
                 def_id.hash_stable(hcx, hasher);
-            } else if let Some(alloc) = interner.get_alloc(*self) {
+            } else if let Some(alloc) = tcx.interpret_interner.get_alloc(*self) {
                 // not a static, can't be recursive, hash the allocation
                 1.hash_stable(hcx, hasher);
                 alloc.hash_stable(hcx, hasher);
-            } else if let Some(inst) = interner.get_fn(*self) {
+            } else if let Some(inst) = tcx.interpret_interner.get_fn(*self) {
                 2.hash_stable(hcx, hasher);
                 inst.hash_stable(hcx, hasher);
             } else {

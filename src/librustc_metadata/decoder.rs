@@ -283,12 +283,11 @@ impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
         const MAX1: usize = usize::max_value() - 1;
-        let tcx = self.tcx;
-        let interpret_interner = || tcx.unwrap().interpret_interner.borrow_mut();
+        let tcx = self.tcx.unwrap();
         let pos = self.position();
         match usize::decode(self)? {
             ::std::usize::MAX => {
-                let alloc_id = interpret_interner().reserve();
+                let alloc_id = tcx.interpret_interner.reserve();
                 trace!("creating alloc id {:?} at {}", alloc_id, pos);
                 // insert early to allow recursive allocs
                 self.interpret_alloc_cache.insert(pos, alloc_id);
@@ -296,10 +295,10 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
                 let allocation = interpret::Allocation::decode(self)?;
                 trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
                 let allocation = self.tcx.unwrap().intern_const_alloc(allocation);
-                interpret_interner().intern_at_reserved(alloc_id, allocation);
+                tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
 
                 if let Some(glob) = Option::<DefId>::decode(self)? {
-                    interpret_interner().cache(glob, alloc_id);
+                    tcx.interpret_interner.cache(glob, alloc_id);
                 }
 
                 Ok(alloc_id)
@@ -308,7 +307,7 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
                 trace!("creating fn alloc id at {}", pos);
                 let instance = ty::Instance::decode(self)?;
                 trace!("decoded fn alloc instance: {:?}", instance);
-                let id = interpret_interner().create_fn_alloc(instance);
+                let id = tcx.interpret_interner.create_fn_alloc(instance);
                 trace!("created fn alloc id: {:?}", id);
                 self.interpret_alloc_cache.insert(pos, id);
                 Ok(id)

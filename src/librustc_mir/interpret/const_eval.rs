@@ -106,7 +106,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
             mir = &mir.promoted[index];
         }
         let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
-        let alloc = tcx.interpret_interner.borrow().get_cached(cid.instance.def_id());
+        let alloc = tcx.interpret_interner.get_cached(cid.instance.def_id());
         let alloc = match alloc {
             Some(alloc) => {
                 assert!(cid.promoted.is_none());
@@ -121,7 +121,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
                     None,
                 )?;
                 if tcx.is_static(cid.instance.def_id()).is_some() {
-                    tcx.interpret_interner.borrow_mut().cache(cid.instance.def_id(), ptr.alloc_id);
+                    tcx.interpret_interner.cache(cid.instance.def_id(), ptr.alloc_id);
                 }
                 let span = tcx.def_span(cid.instance.def_id());
                 let internally_mutable = !layout.ty.is_freeze(tcx, param_env, span);
@@ -343,7 +343,6 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         Ok(ecx
             .tcx
             .interpret_interner
-            .borrow()
             .get_cached(cid.instance.def_id())
             .expect("uncached static"))
     }
@@ -457,13 +456,13 @@ pub fn const_eval_provider<'a, 'tcx>(
     let span = tcx.def_span(def_id);
 
     if tcx.is_foreign_item(def_id) {
-        let id = tcx.interpret_interner.borrow().get_cached(def_id);
+        let id = tcx.interpret_interner.get_cached(def_id);
         let id = match id {
             // FIXME: due to caches this shouldn't happen, add some assertions
             Some(id) => id,
             None => {
-                let id = tcx.interpret_interner.borrow_mut().reserve();
-                tcx.interpret_interner.borrow_mut().cache(def_id, id);
+                let id = tcx.interpret_interner.reserve();
+                tcx.interpret_interner.cache(def_id, id);
                 id
             },
         };
