@@ -167,36 +167,52 @@ fn get_useful_next(events: &[Events], pos: &mut usize) -> Option<Events> {
     None
 }
 
+fn get_previous_positions(events: &[Events], mut pos: usize) -> Vec<usize> {
+    let mut ret = Vec::with_capacity(3);
+
+    ret.push(events[pos].get_pos() - 1);
+    if pos > 0 {
+        pos -= 1;
+    }
+    loop {
+        ret.push(events[pos].get_pos());
+        if pos < 1 || !events[pos].is_comment() {
+            break
+        }
+        pos -= 1;
+    }
+    if events[pos].is_comment() {
+        ret.push(0);
+    }
+    ret.iter().rev().cloned().collect()
+}
+
+fn build_rule(v: &[u8], positions: &[usize]) -> String {
+    positions.chunks(2)
+             .map(|x| ::std::str::from_utf8(&v[x[0]..x[1]]).unwrap_or("").to_owned())
+             .collect::<String>()
+             .trim()
+             .replace("\n", " ")
+}
+
 fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> HashSet<CssPath> {
     let mut pathes = Vec::with_capacity(50);
 
     while *pos < events.len() {
         if let Some(Events::OutBlock(_)) = get_useful_next(events, pos) {
-            println!("00 => {:?}", events[*pos]);
             *pos += 1;
             break
         }
-        println!("a => {:?}", events[*pos]);
-        if let Some(Events::InBlock(start_pos)) = get_useful_next(events, pos) {
-            println!("aa => {:?}", events[*pos]);
-            pathes.push(CssPath::new(::std::str::from_utf8(if *pos > 0 {
-                &v[events[*pos - 1].get_pos()..start_pos - 1]
-            } else {
-                &v[..start_pos]
-            }).unwrap_or("").trim().to_owned()));
+        if let Some(Events::InBlock(_)) = get_useful_next(events, pos) {
+            pathes.push(CssPath::new(build_rule(v, &get_previous_positions(events, *pos))));
             *pos += 1;
         }
-        println!("b => {:?}", events[*pos]);
         while let Some(Events::InBlock(_)) = get_useful_next(events, pos) {
-            println!("bb => {:?}", events[*pos]);
             if let Some(ref mut path) = pathes.last_mut() {
                 for entry in inner(v, events, pos).iter() {
                     path.children.insert(entry.clone());
                 }
             }
-        }
-        if *pos < events.len() {
-            println!("c => {:?}", events[*pos]);
         }
         if let Some(Events::OutBlock(_)) = get_useful_next(events, pos) {
             *pos += 1;
@@ -209,13 +225,12 @@ pub fn load_css_pathes(v: &[u8]) -> CssPath {
     let events = load_css_events(v);
     let mut pos = 0;
 
-    println!("\n======> {:?}", events);
     let mut parent = CssPath::new("parent".to_owned());
     parent.children = inner(v, &events, &mut pos);
     parent
 }
 
-fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) {
+pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) {
     if against.name != other.name {
         return
     } else {
@@ -250,16 +265,18 @@ pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath) -> Vec<Strin
 
     try_something!(file.read_to_end(&mut data), Vec::new());
     let pathes = load_css_pathes(&data);
-    println!("========= {:?}", pathes);
-    println!("========= {:?}", against);
     let mut ret = Vec::new();
     get_differences(against, &pathes, &mut ret);
     ret
 }
 
-/*#[test]
-fn test_comments_in_rules() {
-    let text = r#"
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_comments_in_rules() {
+        let text = r#"
 rule a {}
 
 rule b, c
@@ -284,6 +301,46 @@ rule j/*commeeeeent
 
 you like things like "{}" in there? :)
 */
-end {}
+end {}"#;
+
+        let against = r#"
+rule a {}
+
+rule b, c {}
+
+rule d e {}
+
+rule f {}
+
+rule gh i {}
+
+rule j end {}
 "#;
-}*/
+
+        assert!(get_differences(&load_css_pathes(against.as_bytes()),
+                                &load_css_pathes(text.as_bytes())).is_empty());
+    }
+
+    #[test]
+    fn test_comparison() {
+        let x = r#"
+a {
+    b {
+        c {}
+    }
+}
+"#;
+
+        let y = r#"
+a {
+    b {}
+}
+"#;
+
+        let against = load_css_pathes(y.as_bytes());
+        let other = load_css_pathes(x.as_bytes());
+
+        assert!(get_differences(&against, &other).is_empty());
+        assert_eq!(get_differences(&other, &against), vec!["  Missing \"c\" rule".to_owned()])
+    }
+}
