@@ -40,8 +40,6 @@ use util::nodemap::FxHashMap;
 
 use rustc_const_math::ConstInt;
 
-use std::collections::BTreeMap;
-
 use syntax::{abi, ast};
 use syntax::codemap::Spanned;
 use syntax::symbol::{Symbol, keywords};
@@ -240,7 +238,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let param_owner = tcx.hir.ty_param_owner(param_id);
     let param_owner_def_id = tcx.hir.local_def_id(param_owner);
     let generics = tcx.generics_of(param_owner_def_id);
-    let index = generics.type_param_to_index[&def_id.index];
+    let index = generics.type_param_to_index[&def_id];
     let ty = tcx.mk_param(index, tcx.hir.ty_param_name(param_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
@@ -1024,10 +1022,9 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         });
     }
 
-    let mut type_param_to_index = BTreeMap::new();
-    for param in &types {
-        type_param_to_index.insert(param.def_id.index, param.index);
-    }
+    let type_param_to_index = types.iter()
+                                   .map(|param| (param.def_id, param.index))
+                                   .collect();
 
     tcx.alloc_generics(ty::Generics {
         parent: parent_def_id,

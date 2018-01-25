@@ -17,7 +17,7 @@ pub use self::fold::TypeFoldable;
 
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
-use hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use hir::map::DefPathData;
 use hir::svh::Svh;
 use ich::Fingerprint;
@@ -39,7 +39,6 @@ use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::cmp;
 use std::cmp::Ordering;
 use std::fmt;
@@ -786,9 +785,8 @@ pub struct Generics {
     pub regions: Vec<RegionParameterDef>,
     pub types: Vec<TypeParameterDef>,
 
-    /// Reverse map to each `TypeParameterDef`'s `index` field, from
-    /// `def_id.index` (`def_id.krate` is the same as the item's).
-    pub type_param_to_index: BTreeMap<DefIndex, u32>,
+    /// Reverse map to each `TypeParameterDef`'s `index` field
+    pub type_param_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
