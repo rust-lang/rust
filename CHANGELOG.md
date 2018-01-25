@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.182
+* Rustup to *rustc 1.25.0-nightly (a0dcecff9 2018-01-24)*
+* New lint: [`decimal_literal_representation`]
+
 ## 0.0.181
 * Rustup to *rustc 1.25.0-nightly (97520ccb1 2018-01-21)*
 * New lints: [`else_if_without_else`], [`option_option`], [`unit_arg`], [`unnecessary_fold`]
@@ -540,6 +544,7 @@ All notable changes to this project will be documented in this file.
 [`const_static_lifetime`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#const_static_lifetime
 [`crosspointer_transmute`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#crosspointer_transmute
 [`cyclomatic_complexity`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cyclomatic_complexity
+[`decimal_literal_representation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#decimal_literal_representation
 [`deprecated_semver`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#deprecated_semver
 [`deref_addrof`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#deref_addrof
 [`derive_hash_xor_eq`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
