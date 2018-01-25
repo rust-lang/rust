@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items)]
+struct T;
 
-#[lang = "cookie"]
-fn cookie() -> ! {
-//~^^ ERROR definition of an unknown language item: `cookie` [E0522]
-    loop {}
+fn main() {
+    T::new();
+    //~^ ERROR no function or associated item named `new` found for type `T` in the current scope
 }

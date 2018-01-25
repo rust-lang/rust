@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z borrowck=mir -Z nll
-
-// This example comes from the NLL RFC.
+#![feature(nll)]
 
 struct List<T> {
     value: T,
     next: Option<Box<List<T>>>,
 }
 
-fn to_refs<T>(list: &mut List<T>) -> Vec<&mut T> {
-    let mut list = list;
+fn to_refs<T>(mut list: &mut List<T>) -> Vec<&mut T> {
     let mut result = vec![];
     loop {
         result.push(&mut list.value);
@@ -31,4 +28,7 @@ fn to_refs<T>(list: &mut List<T>) -> Vec<&mut T> {
 }
 
 fn main() {
+    let mut list = List { value: 1, next: None };
+    let vec = to_refs(&mut list);
+    assert_eq!(vec![&mut 1], vec);
 }

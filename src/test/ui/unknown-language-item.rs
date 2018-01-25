@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_nested_groups)]
-#![deny(unused_imports)]
+#![allow(unused)]
+#![feature(lang_items)]
 
-mod foo {
-    pub enum Bar {}
+#[lang = "foo"]
+fn bar() -> ! {
+//~^^ ERROR definition of an unknown language item: `foo`
+    loop {}
 }
 
-use foo::{*, *}; //~ ERROR unused import: `*`
-
-fn main() {
-    let _: Bar;
-}
+fn main() {}

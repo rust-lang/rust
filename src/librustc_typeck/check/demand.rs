@@ -15,7 +15,7 @@ use rustc::infer::InferOk;
 use rustc::traits::ObligationCause;
 
 use syntax::ast;
-use syntax::util::parser::AssocOp;
+use syntax::util::parser::PREC_POSTFIX;
 use syntax_pos::{self, Span};
 use rustc::hir;
 use rustc::hir::print;
@@ -336,7 +336,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // For now, don't suggest casting with `as`.
         let can_cast = false;
 
-        let needs_paren = expr.precedence().order() < (AssocOp::As.precedence() as i8);
+        let needs_paren = expr.precedence().order() < (PREC_POSTFIX as i8);
 
         if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
             let msg = format!("you can cast an `{}` to `{}`", checked_ty, expected_ty);
