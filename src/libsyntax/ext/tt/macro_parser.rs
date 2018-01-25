@@ -161,6 +161,12 @@ struct MatcherPos {
     /// Moreover, matchers and repetitions can be nested; the `matches` field is shared (hence the
     /// `Rc`) among all "nested" matchers. `match_lo`, `match_cur`, and `match_hi` keep track of
     /// the current position of the `self` matcher position in the shared `matches` list.
+    ///
+    /// Also, note that while we are descending into a sequence, matchers are given their own
+    /// `matches` vector. Only once we reach the end of a full repetition of the sequence do we add
+    /// all bound matches from the submatcher into the shared top-level `matches` vector. If `sep`
+    /// and `up` are `Some`, then `matches` is _not_ the shared top-level list. Instead, if one
+    /// wants the shared `matches`, one should use `up.matches`.
     matches: Vec<Rc<Vec<NamedMatch>>>,
     /// The position in `matches` corresponding to the first metavar in this matcher's sequence of
     /// token trees. In other words, the first metavar in the first token of `top_elts` corresponds
@@ -255,7 +261,7 @@ fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
         // Haven't descended into any delimiters, so empty stack
         stack: vec![],
 
-        // Haven't descended into any sequences, so both of these are `None`
+        // Haven't descended into any sequences, so both of these are `None`.
         sep: None,
         up: None,
     })
@@ -355,6 +361,28 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     }
 }
 
+/// Process the matcher positions of `cur_items` until it is empty. In the process, this will
+/// produce more items in `next_items`, `eof_items`, and `bb_items`.
+///
+/// For more info about the how this happens, see the module-level doc comments and the inline
+/// comments of this function.
+///
+/// # Parameters
+///
+/// - `sess`: the parsing session into which errors are emitted.
+/// - `cur_items`: the set of current items to be processed. This should be empty by the end of a
+///   successful execution of this function.
+/// - `next_items`: the set of newly generated items. These are used to replenish `cur_items` in
+///   the function `parse`.
+/// - `eof_items`: the set of items that would be valid if this was the EOF.
+/// - `bb_items`: the set of items that are waiting for the black-box parser.
+/// - `token`: the current token of the parser.
+/// - `span`: the `Span` in the source code corresponding to the token trees we are trying to match
+///   against the matcher positions in `cur_items`.
+///
+/// # Returns
+///
+/// A `ParseResult`. Note that matches are kept track of through the items generated.
 fn inner_parse_loop(
     sess: &ParseSess,
     cur_items: &mut SmallVector<Box<MatcherPos>>,
@@ -364,8 +392,11 @@ fn inner_parse_loop(
     token: &Token,
     span: syntax_pos::Span,
 ) -> ParseResult<()> {
+    // Pop items from `cur_items` until it is empty.
     while let Some(mut item) = cur_items.pop() {
-        // When unzipped trees end, remove them
+        // When unzipped trees end, remove them. This corresponds to backtracking out of a
+        // delimited submatcher into which we already descended. In backtracking out again, we need
+        // to advance the "dot" past the delimiters in the outer matcher.
         while item.idx >= item.top_elts.len() {
             match item.stack.pop() {
                 Some(MatcherTtFrame { elts, idx }) => {
@@ -376,37 +407,46 @@ fn inner_parse_loop(
             }
         }
 
+        // Get the current position of the "dot" (`idx`) in `item` and the number of token trees in
+        // the matcher (`len`).
         let idx = item.idx;
         let len = item.top_elts.len();
 
-        // at end of sequence
+        // If `idx >= len`, then we are at or past the end of the matcher of `item`.
         if idx >= len {
-            // We are repeating iff there is a parent
+            // We are repeating iff there is a parent. If the matcher is inside of a repetition,
+            // then we could be at the end of a sequence or at the beginning of the next
+            // repetition.
             if item.up.is_some() {
-                // Disregarding the separator, add the "up" case to the tokens that should be
-                // examined.
-                // (remove this condition to make trailing seps ok)
+                // At this point, regardless of whether there is a separator, we should add all
+                // matches from the complete repetition of the sequence to the shared, top-level
+                // `matches` list (actually, `up.matches`, which could itself not be the top-level,
+                // but anyway...). Moreover, we add another item to `cur_items` in which the "dot"
+                // is at the end of the `up` matcher. This ensures that the "dot" in the `up`
+                // matcher is also advanced sufficiently.
+                //
+                // NOTE: removing the condition `idx == len` allows trailing separators.
                 if idx == len {
+                    // Get the `up` matcher
                     let mut new_pos = item.up.clone().unwrap();
 
-                    // update matches (the MBE "parse tree") by appending
-                    // each tree as a subtree.
-
-                    // Only touch the binders we have actually bound
+                    // Add matches from this repetition to the `matches` of `up`
                     for idx in item.match_lo..item.match_hi {
                         let sub = item.matches[idx].clone();
                         let span = span.with_lo(item.sp_lo);
                         new_pos.push_match(idx, MatchedSeq(sub, span));
                     }
 
+                    // Move the "dot" past the repetition in `up`
                     new_pos.match_cur = item.match_hi;
                     new_pos.idx += 1;
                     cur_items.push(new_pos);
                 }
 
-                // Check if we need a separator
+                // Check if we need a separator.
                 if idx == len && item.sep.is_some() {
-                    // We have a separator, and it is the current token.
+                    // We have a separator, and it is the current token. We can advance past the
+                    // separator token.
                     if item.sep
                         .as_ref()
                         .map(|sep| token_name_eq(token, sep))
@@ -415,14 +455,18 @@ fn inner_parse_loop(
                         item.idx += 1;
                         next_items.push(item);
                     }
-                } else {
-                    // we don't need a separator
+                }
+                // We don't need a separator. Move the "dot" back to the beginning of the matcher
+                // and try to match again.
+                else {
                     item.match_cur = item.match_lo;
                     item.idx = 0;
                     cur_items.push(item);
                 }
-            } else {
-                // We aren't repeating, so we must be potentially at the end of the input.
+            }
+            // If we are not in a repetition, then being at the end of a matcher means that we have
+            // reached the potential end of the input.
+            else {
                 eof_items.push(item);
             }
         } else {
