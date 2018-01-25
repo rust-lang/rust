@@ -1,0 +1,13 @@
+error[E0601]: main function not found
+
+error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
+  --> $DIR/issue-47706.rs:21:18
+   |
+16 |     pub fn new(foo: Option<i32>, _: ()) -> Foo {
+   |     ------------------------------------------ takes 2 arguments
+...
+21 |         self.foo.map(Foo::new)
+   |                  ^^^ expected function that takes 1 argument
+
+error: aborting due to 2 previous errors
+
