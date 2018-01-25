@@ -551,24 +551,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let OnUnimplementedNote { message, label }
                             = self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
-                        let span = match self.tcx.sess.codemap().span_to_snippet(span) {
-                            Ok(ref s) if s.starts_with("for ") => {
-                                // On for loops, this error is caused by the element being iterated
-                                // on, but the span points at the entire for loop. Instead of:
-                                //
-                                // / for c in "asdf" {
-                                // |     ...
-                                // | }
-                                // |_^ `&str` is not an iterator
-                                //
-                                // lets point at:
-                                //
-                                // for c in "asdf" {
-                                // ^^^^^^^^^^^^^^^ `&str` is not an iterator
-                                self.tcx.sess.codemap().span_until_char(span, '{')
-                            }
-                            _ => span,
-                        };
 
                         let mut err = struct_span_err!(
                             self.tcx.sess,
