@@ -14,15 +14,11 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::DefId;
-use rustc::dep_graph::{DepGraphSafe, DepKind, DepNodeColor};
-use rustc::ich::StableHashingContext;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-
-use rustc_data_structures::stable_hasher::StableHashingContextProvider;
 
 use super::terms::*;
 use super::terms::VarianceTerm::*;
@@ -132,50 +128,11 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> StableHashingContextProvider for ConstraintContext<'a, 'tcx> {
-    type ContextType = StableHashingContext<'tcx>;
-
-    fn create_stable_hashing_context(&self) -> Self::ContextType {
-         self.terms_cx.tcx.create_stable_hashing_context()
-    }
-}
-
-impl<'a, 'tcx> DepGraphSafe for ConstraintContext<'a, 'tcx> {}
-
 impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn visit_node_helper(&mut self, id: ast::NodeId) {
         let tcx = self.terms_cx.tcx;
         let def_id = tcx.hir.local_def_id(id);
-
-        // Encapsulate constructing the constraints into a task we can
-        // reference later. This can go away once the red-green
-        // algorithm is in place.
-        //
-        // See README.md for a detailed discussion
-        // on dep-graph management.
-        let dep_node = def_id.to_dep_node(tcx, DepKind::ItemVarianceConstraints);
-
-        if let Some(DepNodeColor::Green(_)) = tcx.dep_graph.node_color(&dep_node) {
-            // If the corresponding node has already been marked as green, the
-            // appropriate portion of the DepGraph has already been loaded from
-            // the previous graph, so we don't do any dep-tracking. Since we
-            // don't cache any values though, we still have to re-run the
-            // computation.
-            tcx.dep_graph.with_ignore(|| {
-                self.build_constraints_for_item(def_id);
-            });
-        } else {
-            tcx.dep_graph.with_task(dep_node,
-                                    self,
-                                    def_id,
-                                    visit_item_task);
-        }
-
-        fn visit_item_task<'a, 'tcx>(ccx: &mut ConstraintContext<'a, 'tcx>,
-                                     def_id: DefId)
-        {
-            ccx.build_constraints_for_item(def_id);
-        }
+        self.build_constraints_for_item(def_id);
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
