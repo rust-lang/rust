@@ -170,18 +170,24 @@ fn get_useful_next(events: &[Events], pos: &mut usize) -> Option<Events> {
 fn get_previous_positions(events: &[Events], mut pos: usize) -> Vec<usize> {
     let mut ret = Vec::with_capacity(3);
 
-    ret.push(events[pos].get_pos() - 1);
+    ret.push(events[pos].get_pos());
     if pos > 0 {
         pos -= 1;
     }
     loop {
-        ret.push(events[pos].get_pos());
         if pos < 1 || !events[pos].is_comment() {
+            let x = events[pos].get_pos();
+            if *ret.last().unwrap() != x {
+                ret.push(x);
+            } else {
+                ret.push(0);
+            }
             break
         }
+        ret.push(events[pos].get_pos());
         pos -= 1;
     }
-    if events[pos].is_comment() {
+    if ret.len() & 1 != 0 && events[pos].is_comment() {
         ret.push(0);
     }
     ret.iter().rev().cloned().collect()
@@ -189,14 +195,22 @@ fn get_previous_positions(events: &[Events], mut pos: usize) -> Vec<usize> {
 
 fn build_rule(v: &[u8], positions: &[usize]) -> String {
     positions.chunks(2)
-             .map(|x| ::std::str::from_utf8(&v[x[0]..x[1]]).unwrap_or("").to_owned())
+             .map(|x| ::std::str::from_utf8(&v[x[0]..x[1]]).unwrap_or(""))
              .collect::<String>()
              .trim()
              .replace("\n", " ")
+             .replace("/", "")
+             .replace("\t", " ")
+             .replace("{", "")
+             .replace("}", "")
+             .split(" ")
+             .filter(|s| s.len() > 0)
+             .collect::<Vec<&str>>()
+             .join(" ")
 }
 
 fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> HashSet<CssPath> {
-    let mut pathes = Vec::with_capacity(50);
+    let mut paths = Vec::with_capacity(50);
 
     while *pos < events.len() {
         if let Some(Events::OutBlock(_)) = get_useful_next(events, pos) {
@@ -204,11 +218,11 @@ fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> HashSet<CssPath> {
             break
         }
         if let Some(Events::InBlock(_)) = get_useful_next(events, pos) {
-            pathes.push(CssPath::new(build_rule(v, &get_previous_positions(events, *pos))));
+            paths.push(CssPath::new(build_rule(v, &get_previous_positions(events, *pos))));
             *pos += 1;
         }
         while let Some(Events::InBlock(_)) = get_useful_next(events, pos) {
-            if let Some(ref mut path) = pathes.last_mut() {
+            if let Some(ref mut path) = paths.last_mut() {
                 for entry in inner(v, events, pos).iter() {
                     path.children.insert(entry.clone());
                 }
@@ -218,10 +232,10 @@ fn inner(v: &[u8], events: &[Events], pos: &mut usize) -> HashSet<CssPath> {
             *pos += 1;
         }
     }
-    pathes.iter().cloned().collect()
+    paths.iter().cloned().collect()
 }
 
-pub fn load_css_pathes(v: &[u8]) -> CssPath {
+pub fn load_css_paths(v: &[u8]) -> CssPath {
     let events = load_css_events(v);
     let mut pos = 0;
 
@@ -264,9 +278,9 @@ pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath) -> (bool, Ve
     let mut data = Vec::with_capacity(1000);
 
     try_something!(file.read_to_end(&mut data), (false, Vec::new()));
-    let pathes = load_css_pathes(&data);
+    let paths = load_css_paths(&data);
     let mut ret = Vec::new();
-    get_differences(against, &pathes, &mut ret);
+    get_differences(against, &paths, &mut ret);
     (true, ret)
 }
 
@@ -317,8 +331,11 @@ rule gh i {}
 rule j end {}
 "#;
 
-        assert!(get_differences(&load_css_pathes(against.as_bytes()),
-                                &load_css_pathes(text.as_bytes())).is_empty());
+        let mut ret = Vec::new();
+        get_differences(&load_css_paths(against.as_bytes()),
+                        &load_css_paths(text.as_bytes()),
+                        &mut ret);
+        assert!(ret.is_empty());
     }
 
     #[test]
@@ -330,8 +347,8 @@ a
 c // sdf
 d {}
 "#;
-        let pathes = load_css_pathes(text.as_bytes());
-        assert!(pathes.children.get("a  b c d").is_some());
+        let paths = load_css_paths(text.as_bytes());
+        assert!(paths.children.get(&CssPath::new("a b c d".to_owned())).is_some());
     }
 
     #[test]
@@ -350,10 +367,13 @@ a {
 }
 "#;
 
-        let against = load_css_pathes(y.as_bytes());
-        let other = load_css_pathes(x.as_bytes());
+        let against = load_css_paths(y.as_bytes());
+        let other = load_css_paths(x.as_bytes());
 
-        assert!(get_differences(&against, &other).is_empty());
-        assert_eq!(get_differences(&other, &against), vec!["  Missing \"c\" rule".to_owned()])
+        let mut ret = Vec::new();
+        get_differences(&against, &other, &mut ret);
+        assert!(ret.is_empty());
+        get_differences(&other, &against, &mut ret);
+        assert_eq!(ret, vec!["  Missing \"c\" rule".to_owned()]);
     }
 }

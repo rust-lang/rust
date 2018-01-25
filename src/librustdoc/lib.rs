@@ -324,13 +324,13 @@ pub fn main_args(args: &[String]) -> isize {
 
     let to_check = matches.opt_strs("theme-checker");
     if !to_check.is_empty() {
-        let pathes = theme::load_css_pathes(include_bytes!("html/static/themes/main.css"));
+        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
         let mut errors = 0;
 
         println!("rustdoc: [theme-checker] Starting tests!");
         for theme_file in to_check.iter() {
             print!(" - Checking \"{}\"...", theme_file);
-            let (success, differences) = theme::test_theme_against(theme_file, &pathes);
+            let (success, differences) = theme::test_theme_against(theme_file, &paths);
             if !differences.is_empty() || !success {
                 eprintln!(" FAILED");
                 errors += 1;
@@ -401,7 +401,7 @@ pub fn main_args(args: &[String]) -> isize {
 
     let mut themes = Vec::new();
     if matches.opt_present("themes") {
-        let pathes = theme::load_css_pathes(include_bytes!("html/static/themes/main.css"));
+        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
 
         for (theme_file, theme_s) in matches.opt_strs("themes")
                                             .iter()
@@ -410,7 +410,7 @@ pub fn main_args(args: &[String]) -> isize {
                 eprintln!("rustdoc: option --themes arguments must all be files");
                 return 1;
             }
-            let (success, ret) = theme::test_theme_against(&theme_file, &pathes);
+            let (success, ret) = theme::test_theme_against(&theme_file, &paths);
             if !success || !ret.is_empty() {
                 eprintln!("rustdoc: invalid theme: \"{}\"", theme_s);
                 eprintln!("         Check what's wrong with the \"theme-checker\" option");
