@@ -398,12 +398,23 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     let mut themes = Vec::new();
-    for theme in matches.opt_strs("themes").iter().map(|s| PathBuf::from(&s)) {
-        if !theme.is_file() {
-            eprintln!("rustdoc: option --themes arguments must all be files");
-            return 1;
+    if matches.opt_present("themes") {
+        let pathes = theme::load_css_pathes(include_bytes!("html/static/themes/main.css"));
+
+        for (theme_file, theme_s) in matches.opt_strs("themes")
+                                            .iter()
+                                            .map(|s| (PathBuf::from(&s), s.to_owned())) {
+            if !theme_file.is_file() {
+                eprintln!("rustdoc: option --themes arguments must all be files");
+                return 1;
+            }
+            if !theme::test_theme_against(&theme_file, &pathes).is_empty() {
+                eprintln!("rustdoc: invalid theme: \"{}\"", theme_s);
+                eprintln!("         Check what's wrong with the \"theme-checker\" option");
+                return 1;
+            }
+            themes.push(theme_file);
         }
-        themes.push(theme);
     }
 
     let external_html = match ExternalHtml::load(
