@@ -3,7 +3,8 @@ use rustc::ty::{self, Ty};
 use rustc::hir::*;
 use std::borrow::Cow;
 use syntax::ast;
-use utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then};
+use utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then,
+            alignment};
 use utils::{opt_def_id, sugg};
 
 /// **What it does:** Checks for transmutes that can't ever be correct on any
@@ -168,6 +169,23 @@ declare_lint! {
     "transmutes from an integer to a float"
 }
 
+/// **What it does:** Checks for transmutes to a potentially less-aligned type.
+///
+/// **Why is this bad?** This might result in undefined behavior.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// // u32 is 32-bit aligned; u8 is 8-bit aligned
+/// let _: u32 = unsafe { std::mem::transmute([0u8; 4]) };
+/// ```
+declare_lint! {
+    pub MISALIGNED_TRANSMUTE,
+    Warn,
+    "transmutes to a potentially less-aligned type"
+}
+
 pub struct Transmute;
 
 impl LintPass for Transmute {
@@ -180,7 +198,8 @@ impl LintPass for Transmute {
             TRANSMUTE_INT_TO_CHAR,
             TRANSMUTE_BYTES_TO_STR,
             TRANSMUTE_INT_TO_BOOL,
-            TRANSMUTE_INT_TO_FLOAT
+            TRANSMUTE_INT_TO_FLOAT,
+            MISALIGNED_TRANSMUTE
         )
     }
 }
@@ -200,6 +219,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 USELESS_TRANSMUTE,
                                 e.span,
                                 &format!("transmute from a type (`{}`) to itself", from_ty),
+                            ),
+                            _ if alignment(cx, from_ty).map(|a| a.abi())
+                                < alignment(cx, to_ty).map(|a| a.abi())
+                                => span_lint(
+                                    cx,
+                                    MISALIGNED_TRANSMUTE,
+                                    e.span,
+                                    &format!(
+                                        "transmute from `{}` to a less-aligned type (`{}`)",
+                                        from_ty,
+                                        to_ty,
+                                    )
                             ),
                             (&ty::TyRef(_, rty), &ty::TyRawPtr(ptr_ty)) => span_lint_and_then(
                                 cx,
