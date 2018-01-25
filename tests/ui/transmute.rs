@@ -140,4 +140,11 @@ fn bytes_to_str(b: &[u8], mb: &mut [u8]) {
     let _: &mut str = unsafe { std::mem::transmute(mb) };
 }
 
+#[warn(misaligned_transmute)]
+fn misaligned_transmute() {
+    let _: u32 = unsafe { std::mem::transmute([0u8; 4]) }; // err
+    let _: u32 = unsafe { std::mem::transmute(0f32) }; // ok (alignment-wise)
+    let _: [u8; 4] = unsafe { std::mem::transmute(0u32) }; // ok (alignment-wise)
+}
+
 fn main() { }

@@ -603,6 +603,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         transmute::TRANSMUTE_PTR_TO_REF,
         transmute::USELESS_TRANSMUTE,
         transmute::WRONG_TRANSMUTE,
+        transmute::MISALIGNED_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BORROWED_BOX,
         types::BOX_VEC,

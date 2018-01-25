@@ -204,5 +204,13 @@ error: transmute from a `&mut [u8]` to a `&mut str`
 140 |     let _: &mut str = unsafe { std::mem::transmute(mb) };
     |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_mut(mb).unwrap()`
 
-error: aborting due to 32 previous errors
+error: transmute from `[u8; 4]` to a less-aligned type (`u32`)
+   --> $DIR/transmute.rs:145:27
+    |
+145 |     let _: u32 = unsafe { std::mem::transmute([0u8; 4]) }; // err
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `-D misaligned-transmute` implied by `-D warnings`
+
+error: aborting due to 33 previous errors
 
