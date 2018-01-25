@@ -40,12 +40,6 @@ ln -s ../lib/llvm-5.0/bin/clang /usr/bin/${target}-c++
 ln -s ../lib/llvm-5.0/bin/lld /usr/bin/${target}-ld
 ln -s ../../${target} /usr/lib/llvm-5.0/${target}
 
-# FIXME(EdSchouten): Remove this once cc ≥1.0.4 has been merged. It
-# can make use of ${target}-cc and ${target}-c++, without incorrectly
-# assuming it's MSVC.
-ln -s ../lib/llvm-5.0/bin/clang /usr/bin/${target}-clang
-ln -s ../lib/llvm-5.0/bin/clang /usr/bin/${target}-clang++
-
 # Install the C++ runtime libraries from CloudABI Ports.
 echo deb https://nuxi.nl/distfiles/cloudabi-ports/debian/ cloudabi cloudabi > \
     /etc/apt/sources.list.d/cloudabi.list

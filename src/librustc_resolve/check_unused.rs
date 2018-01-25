@@ -102,11 +102,18 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
         }
 
         if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
+            // If it's the parent group, cover the entire use item
+            let span = if nested {
+                use_tree.span
+            } else {
+                self.item_span
+            };
+
             if items.len() == 0 {
                 self.unused_imports
                     .entry(self.base_id)
                     .or_insert_with(NodeMap)
-                    .insert(id, self.item_span);
+                    .insert(id, span);
             }
         } else {
             let base_id = self.base_id;
