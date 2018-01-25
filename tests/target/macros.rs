@@ -27,8 +27,9 @@ fn main() {
     );
 
     kaas!(
-        /* comments */ a, /* post macro */
-        b  /* another */
+        // comments
+        a, // post macro
+        b  // another
     );
 
     trailingcomma!(a, b, c,);
