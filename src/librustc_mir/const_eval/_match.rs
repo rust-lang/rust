@@ -446,7 +446,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 }))
             }).collect()
         }
-        ty::TyArray(ref sub_ty, len) if len.val.to_u128().is_some() => {
+        ty::TyArray(ref sub_ty, len) if len.val.to_raw_bits().is_some() => {
             let len = len.val.unwrap_u64();
             if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]

@@ -804,7 +804,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
             ty::TyArray(ety, size) => self.open_drop_for_array(
-                ety, size.val.to_u128().map(|i| i as u64)),
+                ety, size.val.to_raw_bits().map(|i| i as u64)),
             ty::TySlice(ety) => self.open_drop_for_array(ety, None),
 
             _ => bug!("open drop from non-ADT `{:?}`", ty)

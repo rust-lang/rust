@@ -262,7 +262,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 }))
             },
             TyArray(ty, len) => {
-                match len.val.to_u128() {
+                match len.val.to_raw_bits() {
                     // If the array is definitely non-empty, it's uninhabited if
                     // the type of its elements is uninhabited.
                     Some(n) if n != 0 => ty.uninhabited_from(visited, tcx),

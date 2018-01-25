@@ -127,7 +127,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 indices.entry(value)
                        .or_insert_with(|| {
-                           options.push(value.val.to_u128().expect("switching on int"));
+                           options.push(value.val.to_raw_bits().expect("switching on int"));
                            options.len() - 1
                        });
                 true

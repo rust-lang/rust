@@ -39,7 +39,7 @@ pub struct ByteArray<'tcx> {
 impl<'tcx> serialize::UseSpecializedDecodable for ByteArray<'tcx> {}
 
 impl<'tcx> ConstVal<'tcx> {
-    pub fn to_u128(&self) -> Option<u128> {
+    pub fn to_raw_bits(&self) -> Option<u128> {
         match *self {
             ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => {
                 Some(b)
@@ -48,7 +48,7 @@ impl<'tcx> ConstVal<'tcx> {
         }
     }
     pub fn unwrap_u64(&self) -> u64 {
-        match self.to_u128() {
+        match self.to_raw_bits() {
             Some(val) => {
                 assert_eq!(val as u64 as u128, val);
                 val as u64
