@@ -270,6 +270,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
         None => {}
     };
+    if sig.output().is_never() {
+        flags = flags | DIFlags::FlagNoReturn;
+    }
 
     let fn_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateFunction(
