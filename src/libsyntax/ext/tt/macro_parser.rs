@@ -469,9 +469,13 @@ fn inner_parse_loop(
             else {
                 eof_items.push(item);
             }
-        } else {
+        }
+        // We are in the middle of a matcher.
+        else {
+            // Look at what token in the matcher we are trying to match the current token (`token`)
+            // against. Depending on that, we may generate new items.
             match item.top_elts.get_tt(idx) {
-                /* need to descend into sequence */
+                // Need to descend into a sequence
                 TokenTree::Sequence(sp, seq) => {
                     if seq.op == quoted::KleeneOp::ZeroOrMore {
                         // Examine the case where there are 0 matches of this sequence
@@ -499,11 +503,16 @@ fn inner_parse_loop(
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
                     }));
                 }
+
+                // We need to match a metavar (but the identifier is invalid)... this is an error
                 TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
                     if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
                         return Error(span, "missing fragment specifier".to_string());
                     }
                 }
+
+                // We need to match a metavar with a valid ident... call out to the black-box
+                // parser by adding an item to `bb_items`.
                 TokenTree::MetaVarDecl(_, _, id) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
@@ -511,6 +520,13 @@ fn inner_parse_loop(
                         bb_items.push(item);
                     }
                 }
+
+                // We need to descend into a delimited submatcher or a doc comment. To do this, we
+                // push the current matcher onto a stack and push a new item containing the
+                // submatcher onto `cur_items`.
+                //
+                // At the beginning of the loop, if we reach the end of the delimited submatcher,
+                // we pop the stack to backtrack out of the descent.
                 seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;
@@ -521,15 +537,23 @@ fn inner_parse_loop(
                     item.idx = 0;
                     cur_items.push(item);
                 }
+
+                // We just matched a normal token. We can just advance the parser.
                 TokenTree::Token(_, ref t) if token_name_eq(t, token) => {
                     item.idx += 1;
                     next_items.push(item);
                 }
+
+                // There was another token that was not `token`... This means we can't add any
+                // rules. NOTE that this is not necessarily an error unless _all_ items in
+                // `cur_items` end up doing this. There may still be some other matchers that do
+                // end up working out.
                 TokenTree::Token(..) | TokenTree::MetaVar(..) => {}
             }
         }
     }
 
+    // Yay a successful parse (so far)!
     Success(())
 }
 
