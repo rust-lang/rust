@@ -12,6 +12,10 @@ macro_rules! foo {
     ($(a)?) => {}
 }
 
+macro_rules! baz {
+    ($(a),?) => {} // comma separator is meaningless for `?`
+}
+
 macro_rules! bar {
     ($(a)?+) => {}
 }
@@ -20,7 +24,13 @@ pub fn main() {
     foo!(a?a?a); //~ ERROR no rules expected the token `?`
     foo!(a?a); //~ ERROR no rules expected the token `?`
     foo!(a?); //~ ERROR no rules expected the token `?`
-    bar!(); //~ ERROR no rules expected the token `)`
+    baz!(a?a?a); //~ ERROR no rules expected the token `?`
+    baz!(a?a); //~ ERROR no rules expected the token `?`
+    baz!(a?); //~ ERROR no rules expected the token `?`
+    baz!(a,); //~ ERROR no rules expected the token `,`
+    baz!(a?a?a,); //~ ERROR no rules expected the token `?`
+    baz!(a?a,); //~ ERROR no rules expected the token `?`
+    baz!(a?,); //~ ERROR no rules expected the token `?`
+    bar!(); //~ ERROR unexpected end of macro invocation
     bar!(a?); //~ ERROR no rules expected the token `?`
 }
-

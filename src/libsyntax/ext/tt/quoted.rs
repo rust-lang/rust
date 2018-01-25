@@ -432,6 +432,6 @@ where
     };
 
     sess.span_diagnostic
-        .span_err(span, "expected one of: `*`,  `+`, or `?`");
+        .span_err(span, "expected one of: `*`, `+`, or `?`");
     (None, KleeneOp::ZeroOrMore)
 }

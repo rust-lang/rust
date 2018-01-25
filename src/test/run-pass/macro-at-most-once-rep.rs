@@ -12,6 +12,10 @@ macro_rules! foo {
     ($(a)?) => {}
 }
 
+macro_rules! baz {
+    ($(a),?) => {} // comma separator is meaningless for `?`
+}
+
 macro_rules! bar {
     ($(a)?+) => {}
 }
@@ -19,6 +23,8 @@ macro_rules! bar {
 pub fn main() {
     foo!();
     foo!(a);
+    baz!();
+    baz!(a);
     bar!(a);
     bar!(a?a);
     bar!(a?a?a);
