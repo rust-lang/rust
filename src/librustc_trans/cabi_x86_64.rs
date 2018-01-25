@@ -182,44 +182,48 @@ pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tc
     let mut sse_regs = 8; // XMM0-7
 
     let mut x86_64_ty = |arg: &mut ArgType<'tcx>, is_arg: bool| {
-        let cls = classify_arg(cx, arg);
+        let mut cls_or_mem = classify_arg(cx, arg);
 
         let mut needed_int = 0;
         let mut needed_sse = 0;
-        let in_mem = match cls {
-            Err(Memory) => true,
-            Ok(ref cls) if is_arg => {
-                for &c in cls {
+        if is_arg {
+            if let Ok(cls) = cls_or_mem {
+                for &c in &cls {
                     match c {
                         Some(Class::Int) => needed_int += 1,
                         Some(Class::Sse) => needed_sse += 1,
                         _ => {}
                     }
                 }
-                arg.layout.is_aggregate() &&
-                    (int_regs < needed_int || sse_regs < needed_sse)
+                if arg.layout.is_aggregate() {
+                    if int_regs < needed_int || sse_regs < needed_sse {
+                        cls_or_mem = Err(Memory);
+                    }
+                }
             }
-            Ok(_) => false
-        };
+        }
 
-        if in_mem {
-            if is_arg {
-                arg.make_indirect_byval();
-            } else {
-                // `sret` parameter thus one less integer register available
-                arg.make_indirect();
-                int_regs -= 1;
+        match cls_or_mem {
+            Err(Memory) => {
+                if is_arg {
+                    arg.make_indirect_byval();
+                } else {
+                    // `sret` parameter thus one less integer register available
+                    arg.make_indirect();
+                    int_regs -= 1;
+                }
             }
-        } else {
-            // split into sized chunks passed individually
-            int_regs -= needed_int;
-            sse_regs -= needed_sse;
+            Ok(ref cls) => {
+                // split into sized chunks passed individually
+                int_regs -= needed_int;
+                sse_regs -= needed_sse;
 
-            if arg.layout.is_aggregate() {
-                let size = arg.layout.size;
-                arg.cast_to(cast_target(cls.as_ref().unwrap(), size))
-            } else {
-                arg.extend_integer_width_to(32);
+                if arg.layout.is_aggregate() {
+                    let size = arg.layout.size;
+                    arg.cast_to(cast_target(cls, size))
+                } else {
+                    arg.extend_integer_width_to(32);
+                }
             }
         }
     };
