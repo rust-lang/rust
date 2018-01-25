@@ -400,7 +400,7 @@ pub fn rewrite_macro_def(
 
         if has_block_body {
             result += new_body.trim();
-        } else {
+        } else if !new_body.is_empty() {
             result += "\n";
             result += &new_body;
             result += &mac_indent_str;

@@ -4,8 +4,7 @@ macro_rules! m {
         $func(x)
     }};
 
-    () => {
-    };
+    () => {};
 
     ($item: ident) => {
         mod macro_item {

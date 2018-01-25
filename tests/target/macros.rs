@@ -141,8 +141,7 @@ fn issue_1555() {
 
 fn issue1178() {
     macro_rules! foo {
-        (#[$attr: meta] $name: ident) => {
-        };
+        (#[$attr: meta] $name: ident) => {};
     }
 
     foo!(
@@ -890,8 +889,7 @@ fn macro_in_pattern_position() {
     };
 }
 
-macro foo() {
-}
+macro foo() {}
 
 pub macro bar($x: ident + $y: expr;) {
     fn foo($x: Foo) {
