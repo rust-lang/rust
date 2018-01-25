@@ -102,9 +102,10 @@ use std::rc::Rc;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-// To avoid costly uniqueness checks, we require that `MatchSeq` always has
-// a nonempty body.
+// To avoid costly uniqueness checks, we require that `MatchSeq` always has a nonempty body.
 
+/// Either a sequence of token trees or a single one. This is used as the representation of the
+/// sequence of tokens that make up a matcher.
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
     Tt(TokenTree),
@@ -112,6 +113,7 @@ enum TokenTreeOrTokenTreeVec {
 }
 
 impl TokenTreeOrTokenTreeVec {
+    /// Returns the number of constituent token trees of `self`.
     fn len(&self) -> usize {
         match *self {
             TtSeq(ref v) => v.len(),
@@ -119,6 +121,7 @@ impl TokenTreeOrTokenTreeVec {
         }
     }
 
+    /// The the `index`-th token tree of `self`.
     fn get_tt(&self, index: usize) -> TokenTree {
         match *self {
             TtSeq(ref v) => v[index].clone(),
@@ -127,36 +130,90 @@ impl TokenTreeOrTokenTreeVec {
     }
 }
 
-/// an unzipping of `TokenTree`s
+/// An unzipping of `TokenTree`s... see the `stack` field of `MatcherPos`.
+///
+/// This is used by `inner_parse_loop` to keep track of delimited submatchers that we have
+/// descended into.
 #[derive(Clone)]
 struct MatcherTtFrame {
+    /// The "parent" matcher that we are descending into.
     elts: TokenTreeOrTokenTreeVec,
+    /// The position of the "dot" in `elts` at the time we descended.
     idx: usize,
 }
 
+/// Represents a single "position" (aka "matcher position", aka "item"), as described in the module
+/// documentation.
 #[derive(Clone)]
 struct MatcherPos {
-    stack: Vec<MatcherTtFrame>,
+    /// The token or sequence of tokens that make up the matcher
     top_elts: TokenTreeOrTokenTreeVec,
-    sep: Option<Token>,
+    /// The position of the "dot" in this matcher
     idx: usize,
-    up: Option<Box<MatcherPos>>,
-    matches: Vec<Rc<Vec<NamedMatch>>>,
-    match_lo: usize,
-    match_cur: usize,
-    match_hi: usize,
+    /// The beginning position in the source that the beginning of this matcher corresponds to. In
+    /// other words, the token in the source at `sp_lo` is matched against the first token of the
+    /// matcher.
     sp_lo: BytePos,
+
+    /// For each named metavar in the matcher, we keep track of token trees matched against the
+    /// metavar by the black box parser. In particular, there may be more than one match per
+    /// metavar if we are in a repetition (each repetition matches each of the variables).
+    /// Moreover, matchers and repetitions can be nested; the `matches` field is shared (hence the
+    /// `Rc`) among all "nested" matchers. `match_lo`, `match_cur`, and `match_hi` keep track of
+    /// the current position of the `self` matcher position in the shared `matches` list.
+    matches: Vec<Rc<Vec<NamedMatch>>>,
+    /// The position in `matches` corresponding to the first metavar in this matcher's sequence of
+    /// token trees. In other words, the first metavar in the first token of `top_elts` corresponds
+    /// to `matches[match_lo]`.
+    match_lo: usize,
+    /// The position in `matches` corresponding to the metavar we are currently trying to match
+    /// against the source token stream. `match_lo <= match_cur <= match_hi`.
+    match_cur: usize,
+    /// Similar to `match_lo` except `match_hi` is the position in `matches` of the _last_ metavar
+    /// in this matcher.
+    match_hi: usize,
+
+    // Specifically used if we are matching a repetition. If we aren't both should be `None`.
+    /// The separator if we are in a repetition
+    sep: Option<Token>,
+    /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
+    /// before we enter the sequence.
+    up: Option<Box<MatcherPos>>,
+
+    // Specifically used to "unzip" token trees. By "unzip", we mean to unwrap the delimiters from
+    // a delimited token tree (e.g. something wrapped in `(` `)`) or to get the contents of a doc
+    // comment...
+    /// When matching against matchers with nested delimited submatchers (e.g. `pat ( pat ( .. )
+    /// pat ) pat`), we need to keep track of the matchers we are descending into. This stack does
+    /// that where the bottom of the stack is the outermost matcher.
+    // Also, throughout the comments, this "descent" is often referred to as "unzipping"...
+    stack: Vec<MatcherTtFrame>,
 }
 
 impl MatcherPos {
+    /// Add `m` as a named match for the `idx`-th metavar.
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
         let matches = Rc::make_mut(&mut self.matches[idx]);
         matches.push(m);
     }
 }
 
+/// Represents the possible results of an attempted parse.
+pub enum ParseResult<T> {
+    /// Parsed successfully.
+    Success(T),
+    /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
+    /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
+    Failure(syntax_pos::Span, Token),
+    /// Fatal error (malformed macro?). Abort compilation.
+    Error(syntax_pos::Span, String),
+}
+
+/// A `ParseResult` where the `Success` variant contains a mapping of `Ident`s to `NamedMatch`es.
+/// This represents the mapping of metavars to the token trees they bind to.
 pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
 
+/// Count how many metavars are named in the given matcher `ms`.
 pub fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count + match *elt {
@@ -169,20 +226,38 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
     })
 }
 
+/// Initialize `len` empty shared `Vec`s to be used to store matches of metavars.
+fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
+    (0..len).into_iter().map(|_| Rc::new(Vec::new())).collect()
+}
+
+/// Generate the top-level matcher position in which the "dot" is before the first token of the
+/// matcher `ms` and we are going to start matching at position `lo` in the source.
 fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
     let match_idx_hi = count_names(&ms[..]);
     let matches = create_matches(match_idx_hi);
     Box::new(MatcherPos {
-        stack: vec![],
-        top_elts: TtSeq(ms),
-        sep: None,
+        // Start with the top level matcher given to us
+        top_elts: TtSeq(ms), // "elts" is an abbr. for "elements"
+        // The "dot" is before the first token of the matcher
         idx: 0,
-        up: None,
+        // We start matching with byte `lo` in the source code
+        sp_lo: lo,
+
+        // Initialize `matches` to a bunch of empty `Vec`s -- one for each metavar in `top_elts`.
+        // `match_lo` for `top_elts` is 0 and `match_hi` is `matches.len()`. `match_cur` is 0 since
+        // we haven't actually matched anything yet.
         matches,
         match_lo: 0,
         match_cur: 0,
         match_hi: match_idx_hi,
-        sp_lo: lo,
+
+        // Haven't descended into any delimiters, so empty stack
+        stack: vec![],
+
+        // Haven't descended into any sequences, so both of these are `None`
+        sep: None,
+        up: None,
     })
 }
 
@@ -202,7 +277,6 @@ fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
 /// token tree. The depth of the `NamedMatch` structure will therefore depend
 /// only on the nesting depth of `ast::TTSeq`s in the originating
 /// token tree it was derived from.
-
 #[derive(Debug, Clone)]
 pub enum NamedMatch {
     MatchedSeq(Rc<Vec<NamedMatch>>, syntax_pos::Span),
@@ -260,16 +334,6 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
     Success(ret_val)
 }
 
-pub enum ParseResult<T> {
-    Success(T),
-    /// Arm failed to match. If the second parameter is `token::Eof`, it
-    /// indicates an unexpected end of macro invocation. Otherwise, it
-    /// indicates that no rules expected the given token.
-    Failure(syntax_pos::Span, Token),
-    /// Fatal error (malformed macro?). Abort compilation.
-    Error(syntax_pos::Span, String),
-}
-
 pub fn parse_failure_msg(tok: Token) -> String {
     match tok {
         token::Eof => "unexpected end of macro invocation".to_string(),
@@ -289,10 +353,6 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     } else {
         *t1 == *t2
     }
-}
-
-fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
-    (0..len).into_iter().map(|_| Rc::new(Vec::new())).collect()
 }
 
 fn inner_parse_loop(
@@ -429,14 +489,14 @@ fn inner_parse_loop(
     Success(())
 }
 
-/// Parse the given set of token trees (`ms`), possibly consuming additional token trees from the
-/// tokenstream (`tts`).
+/// Use the given sequence of token trees (`ms`) as a matcher. Match the given token stream `tts`
+/// against it and return the match.
 ///
 /// # Parameters
 ///
 /// - `sess`: The session into which errors are emitted
-/// - `tts`: The tokenstream from which additional token trees may be consumed if needed
-/// - `ms`: The token trees we want to parse as macros
+/// - `tts`: The tokenstream we are matching against the pattern `ms`
+/// - `ms`: A sequence of token trees representing a pattern against which we are matching
 /// - `directory`: Information about the file locations (needed for the black-box parser)
 /// - `recurse_into_modules`: Whether or not to recurse into modules (needed for the black-box
 ///   parser)
@@ -451,10 +511,10 @@ pub fn parse(
     let mut parser = Parser::new(sess, tts, directory, recurse_into_modules, true);
 
     // A queue of possible matcher positions. We initialize it with the matcher position in which
-    // the "dot" is before the first token of the first token tree. `inner_parse_loop` then
+    // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then
     // processes all of these possible matcher positions and produces posible next positions into
-    // `next_items`. After some post-processing, the contents of `next_items` replenish
-    // `cur_items` and we start over again.
+    // `next_items`. After some post-processing, the contents of `next_items` replenish `cur_items`
+    // and we start over again.
     let mut cur_items = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo()));
     let mut next_items = Vec::new();
 
