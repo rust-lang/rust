@@ -43,55 +43,48 @@ pub fn assert_instr(
         &format!("assert_{}_{}", name.as_ref(), instr.as_ref())[..],
     );
     let shim_name = syn::Ident::from(format!("{}_shim", name.as_ref()));
-    let (to_test, test_name) = if invoc.args.len() == 0 {
-        (TokenStream::empty(), &func.ident)
-    } else {
-        let mut inputs = Vec::new();
-        let mut input_vals = Vec::new();
-        let ret = &func.decl.output;
-        for arg in func.decl.inputs.iter() {
-            let capture = match *arg {
-                syn::FnArg::Captured(ref c) => c,
-                _ => panic!("arguments must not have patterns"),
-            };
-            let ident = match capture.pat {
-                syn::Pat::Ident(ref i) => &i.ident,
-                _ => panic!("must have bare arguments"),
-            };
-            match invoc.args.iter().find(|a| a.0 == ident.as_ref()) {
-                Some(&(_, ref tts)) => {
-                    input_vals.push(quote! { #tts });
-                }
-                None => {
-                    inputs.push(capture);
-                    input_vals.push(quote! { #ident });
-                }
-            };
-        }
+    let mut inputs = Vec::new();
+    let mut input_vals = Vec::new();
+    let ret = &func.decl.output;
+    for arg in func.decl.inputs.iter() {
+        let capture = match *arg {
+            syn::FnArg::Captured(ref c) => c,
+            _ => panic!("arguments must not have patterns"),
+        };
+        let ident = match capture.pat {
+            syn::Pat::Ident(ref i) => &i.ident,
+            _ => panic!("must have bare arguments"),
+        };
+        match invoc.args.iter().find(|a| a.0 == ident.as_ref()) {
+            Some(&(_, ref tts)) => {
+                input_vals.push(quote! { #tts });
+            }
+            None => {
+                inputs.push(capture);
+                input_vals.push(quote! { #ident });
+            }
+        };
+    }
 
-        let attrs = func.attrs
-            .iter()
-            .filter(|attr| {
-                attr.path
-                    .segments
-                    .first()
-                    .unwrap()
-                    .value()
-                    .ident
-                    .as_ref()
-                    .starts_with("target")
-            })
-            .collect::<Vec<_>>();
-        let attrs = Append(&attrs);
-        (
-            quote! {
-                #attrs
-                unsafe fn #shim_name(#(#inputs),*) #ret {
-                    #name(#(#input_vals),*)
-                }
-            }.into(),
-            &shim_name,
-        )
+    let attrs = func.attrs
+        .iter()
+        .filter(|attr| {
+            attr.path
+                .segments
+                .first()
+                .unwrap()
+                .value()
+                .ident
+                .as_ref()
+                .starts_with("target")
+        })
+        .collect::<Vec<_>>();
+    let attrs = Append(&attrs);
+    let to_test = quote! {
+        #attrs
+        unsafe extern fn #shim_name(#(#inputs),*) #ret {
+            #name(#(#input_vals),*)
+        }
     };
 
     let tts: TokenStream = quote_spanned! {
@@ -102,8 +95,8 @@ pub fn assert_instr(
         fn #assert_name() {
             #to_test
 
-            ::stdsimd_test::assert(#test_name as usize,
-                                   stringify!(#test_name),
+            ::stdsimd_test::assert(#shim_name as usize,
+                                   stringify!(#shim_name),
                                    stringify!(#instr));
         }
     }.into();
