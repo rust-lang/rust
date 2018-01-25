@@ -10,7 +10,13 @@
 
 // @has intra_links/index.html
 // @has - '//a/@href' '../intra_links/struct.ThisType.html'
+// @has - '//a/@href' '../intra_links/struct.ThisType.html#method.this_method'
 // @has - '//a/@href' '../intra_links/enum.ThisEnum.html'
+// @has - '//a/@href' '../intra_links/enum.ThisEnum.html#ThisVariant.v'
+// @has - '//a/@href' '../intra_links/trait.ThisTrait.html'
+// @has - '//a/@href' '../intra_links/trait.ThisTrait.html#tymethod.this_associated_method'
+// @has - '//a/@href' '../intra_links/trait.ThisTrait.html#associatedtype.ThisAssociatedType'
+// @has - '//a/@href' '../intra_links/trait.ThisTrait.html#associatedconstant.THIS_ASSOCIATED_CONST'
 // @has - '//a/@href' '../intra_links/trait.ThisTrait.html'
 // @has - '//a/@href' '../intra_links/type.ThisAlias.html'
 // @has - '//a/@href' '../intra_links/union.ThisUnion.html'
@@ -23,8 +29,13 @@
 //! In this crate we would like to link to:
 //!
 //! * [`ThisType`](ThisType)
+//! * [`ThisType::this_method`](ThisType::this_method)
 //! * [`ThisEnum`](ThisEnum)
+//! * [`ThisEnum::ThisVariant`](ThisEnum::ThisVariant)
 //! * [`ThisTrait`](ThisTrait)
+//! * [`ThisTrait::this_associated_method`](ThisTrait::this_associated_method)
+//! * [`ThisTrait::ThisAssociatedType`](ThisTrait::ThisAssociatedType)
+//! * [`ThisTrait::THIS_ASSOCIATED_CONST`](ThisTrait::THIS_ASSOCIATED_CONST)
 //! * [`ThisAlias`](ThisAlias)
 //! * [`ThisUnion`](ThisUnion)
 //! * [`this_function`](this_function())
@@ -45,8 +56,16 @@ macro_rules! this_macro {
 }
 
 pub struct ThisType;
+
+impl ThisType {
+    pub fn this_method() {}
+}
 pub enum ThisEnum { ThisVariant, }
-pub trait ThisTrait {}
+pub trait ThisTrait {
+    type ThisAssociatedType;
+    const THIS_ASSOCIATED_CONST: u8;
+    fn this_associated_method();
+}
 pub type ThisAlias = Result<(), ()>;
 pub union ThisUnion { this_field: usize, }
 

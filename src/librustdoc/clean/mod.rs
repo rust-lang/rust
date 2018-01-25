@@ -659,7 +659,8 @@ pub struct Attributes {
     pub other_attrs: Vec<ast::Attribute>,
     pub cfg: Option<Rc<Cfg>>,
     pub span: Option<syntax_pos::Span>,
-    pub links: Vec<(String, DefId)>,
+    /// map from Rust paths to resolved defs and potential URL fragments
+    pub links: Vec<(String, DefId, Option<String>)>,
 }
 
 impl Attributes {
@@ -820,8 +821,12 @@ impl Attributes {
     /// Cache must be populated before call
     pub fn links(&self) -> Vec<(String, String)> {
         use html::format::href;
-        self.links.iter().filter_map(|&(ref s, did)| {
-            if let Some((href, ..)) = href(did) {
+        self.links.iter().filter_map(|&(ref s, did, ref fragment)| {
+            if let Some((mut href, ..)) = href(did) {
+                if let Some(ref fragment) = *fragment {
+                    href.push_str("#");
+                    href.push_str(fragment);
+                }
                 Some((s.clone(), href))
             } else {
                 None
@@ -843,10 +848,8 @@ impl AttributesExt for Attributes {
 /// they exist in both namespaces (structs and modules)
 fn value_ns_kind(def: Def, path_str: &str) -> Option<(&'static str, String)> {
     match def {
-        // structs and mods exist in both namespaces. skip them
-        Def::StructCtor(..) | Def::Mod(..) => None,
-        Def::Variant(..) | Def::VariantCtor(..)
-            => Some(("variant", format!("{}()", path_str))),
+        // structs, variants, and mods exist in both namespaces. skip them
+        Def::StructCtor(..) | Def::Mod(..) | Def::Variant(..) | Def::VariantCtor(..) => None,
         Def::Fn(..)
             => Some(("function", format!("{}()", path_str))),
         Def::Method(..)
@@ -880,10 +883,10 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
     let sp = attrs.doc_strings.first()
                   .map_or(DUMMY_SP, |a| a.span());
     cx.sess()
-      .struct_span_err(sp,
-                       &format!("`{}` is both {} {} and {} {}",
-                                path_str, article1, kind1,
-                                article2, kind2))
+      .struct_span_warn(sp,
+                        &format!("`{}` is both {} {} and {} {}",
+                                 path_str, article1, kind1,
+                                 article2, kind2))
       .help(&format!("try `{}` if you want to select the {}, \
                       or `{}` if you want to \
                       select the {}",
@@ -892,21 +895,114 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
              .emit();
 }
 
+/// Given an enum variant's def, return the def of its enum and the associated fragment
+fn handle_variant(cx: &DocContext, def: Def) -> Result<(Def, Option<String>), ()> {
+    use rustc::ty::DefIdTree;
+
+    let parent = if let Some(parent) = cx.tcx.parent(def.def_id()) {
+        parent
+    } else {
+        return Err(())
+    };
+    let parent_def = Def::Enum(parent);
+    let variant = cx.tcx.expect_variant_def(def);
+    Ok((parent_def, Some(format!("{}.v", variant.name))))
+}
+
 /// Resolve a given string as a path, along with whether or not it is
-/// in the value namespace
-fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<hir::Path, ()> {
+/// in the value namespace. Also returns an optional URL fragment in the case
+/// of variants and methods
+fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option<String>), ()> {
     // In case we're in a module, try to resolve the relative
     // path
     if let Some(id) = cx.mod_ids.borrow().last() {
-        cx.resolver.borrow_mut()
-                   .with_scope(*id, |resolver| {
-                        resolver.resolve_str_path_error(DUMMY_SP,
-                                                        &path_str, is_val)
-                    })
+        let result = cx.resolver.borrow_mut()
+                                .with_scope(*id,
+            |resolver| {
+                resolver.resolve_str_path_error(DUMMY_SP,
+                                                &path_str, is_val)
+        });
+
+        if let Ok(result) = result {
+            // In case this is a trait item, skip the
+            // early return and try looking for the trait
+            let value = match result.def {
+                Def::Method(_) | Def::AssociatedConst(_) => true,
+                Def::AssociatedTy(_)  => false,
+                Def::Variant(_) => return handle_variant(cx, result.def),
+                // not a trait item, just return what we found
+                _ => return Ok((result.def, None))
+            };
+
+            if value != is_val {
+                return Err(())
+            }
+        } else {
+            // If resolution failed, it may still be a method
+            // because methods are not handled by the resolver
+            // If so, bail when we're not looking for a value
+            if !is_val {
+                return Err(())
+            }
+        }
+
+        // Try looking for methods and associated items
+        let mut split = path_str.rsplitn(2, "::");
+        let mut item_name = if let Some(first) = split.next() {
+            first
+        } else {
+            return Err(())
+        };
+
+        let mut path = if let Some(second) = split.next() {
+            second
+        } else {
+            return Err(())
+        };
+
+        let ty = cx.resolver.borrow_mut()
+                            .with_scope(*id,
+            |resolver| {
+                resolver.resolve_str_path_error(DUMMY_SP,
+                                                &path, false)
+        })?;
+        match ty.def {
+            Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
+                let item = cx.tcx.inherent_impls(did).iter()
+                                 .flat_map(|imp| cx.tcx.associated_items(*imp))
+                                 .find(|item| item.name == item_name);
+                if let Some(item) = item {
+                    if item.kind == ty::AssociatedKind::Method && is_val {
+                        Ok((ty.def, Some(format!("method.{}", item_name))))
+                    } else {
+                        Err(())
+                    }
+                } else {
+                    Err(())
+                }
+            }
+            Def::Trait(did) => {
+                let item = cx.tcx.associated_item_def_ids(did).iter()
+                             .map(|item| cx.tcx.associated_item(*item))
+                             .find(|item| item.name == item_name);
+                if let Some(item) = item {
+                    let kind = match item.kind {
+                        ty::AssociatedKind::Const if is_val => "associatedconstant",
+                        ty::AssociatedKind::Type if !is_val => "associatedtype",
+                        ty::AssociatedKind::Method if is_val => "tymethod",
+                        _ => return Err(())
+                    };
+
+                    Ok((ty.def, Some(format!("{}.{}", kind, item_name))))
+                } else {
+                    Err(())
+                }
+            }
+            _ => Err(())
+        }
+
     } else {
-        // FIXME(Manishearth) this branch doesn't seem to ever be hit, really
-        cx.resolver.borrow_mut()
-                   .resolve_str_path_error(DUMMY_SP, &path_str, is_val)
+        Err(())
     }
 }
 
@@ -955,7 +1051,7 @@ impl Clean<Attributes> for [ast::Attribute] {
         if UnstableFeatures::from_environment().is_nightly_build() {
             let dox = attrs.collapsed_doc_value().unwrap_or_else(String::new);
             for link in markdown_links(&dox, cx.render_type) {
-                let def = {
+                let (def, fragment)  = {
                     let mut kind = PathKind::Unknown;
                     let path_str = if let Some(prefix) =
                         ["struct@", "enum@", "type@",
@@ -965,7 +1061,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                         link.trim_left_matches(prefix)
                     } else if let Some(prefix) =
                         ["const@", "static@",
-                         "value@", "function@", "mod@", "fn@", "module@"]
+                         "value@", "function@", "mod@",
+                         "fn@", "module@", "method@"]
                             .iter().find(|p| link.starts_with(**p)) {
                         kind = PathKind::Value;
                         link.trim_left_matches(prefix)
@@ -993,8 +1090,8 @@ impl Clean<Attributes> for [ast::Attribute] {
 
                     match kind {
                         PathKind::Value => {
-                            if let Ok(path) = resolve(cx, path_str, true) {
-                                path.def
+                            if let Ok(def) = resolve(cx, path_str, true) {
+                                def
                             } else {
                                 // this could just be a normal link or a broken link
                                 // we could potentially check if something is
@@ -1003,8 +1100,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                             }
                         }
                         PathKind::Type => {
-                            if let Ok(path) = resolve(cx, path_str, false) {
-                                path.def
+                            if let Ok(def) = resolve(cx, path_str, false) {
+                                def
                             } else {
                                 // this could just be a normal link
                                 continue;
@@ -1013,42 +1110,42 @@ impl Clean<Attributes> for [ast::Attribute] {
                         PathKind::Unknown => {
                             // try everything!
                             if let Some(macro_def) = macro_resolve(cx, path_str) {
-                                if let Ok(type_path) = resolve(cx, path_str, false) {
+                                if let Ok(type_def) = resolve(cx, path_str, false) {
                                     let (type_kind, article, type_disambig)
-                                        = type_ns_kind(type_path.def, path_str);
+                                        = type_ns_kind(type_def.0, path_str);
                                     ambiguity_error(cx, &attrs, path_str,
                                                     article, type_kind, &type_disambig,
                                                     "a", "macro", &format!("macro@{}", path_str));
                                     continue;
-                                } else if let Ok(value_path) = resolve(cx, path_str, true) {
+                                } else if let Ok(value_def) = resolve(cx, path_str, true) {
                                     let (value_kind, value_disambig)
-                                        = value_ns_kind(value_path.def, path_str)
+                                        = value_ns_kind(value_def.0, path_str)
                                             .expect("struct and mod cases should have been \
                                                      caught in previous branch");
                                     ambiguity_error(cx, &attrs, path_str,
                                                     "a", value_kind, &value_disambig,
                                                     "a", "macro", &format!("macro@{}", path_str));
                                 }
-                                macro_def
-                            } else if let Ok(type_path) = resolve(cx, path_str, false) {
+                                (macro_def, None)
+                            } else if let Ok(type_def) = resolve(cx, path_str, false) {
                                 // It is imperative we search for not-a-value first
                                 // Otherwise we will find struct ctors for when we are looking
                                 // for structs, and the link won't work.
                                 // if there is something in both namespaces
-                                if let Ok(value_path) = resolve(cx, path_str, true) {
-                                    let kind = value_ns_kind(value_path.def, path_str);
+                                if let Ok(value_def) = resolve(cx, path_str, true) {
+                                    let kind = value_ns_kind(value_def.0, path_str);
                                     if let Some((value_kind, value_disambig)) = kind {
                                         let (type_kind, article, type_disambig)
-                                            = type_ns_kind(type_path.def, path_str);
+                                            = type_ns_kind(type_def.0, path_str);
                                         ambiguity_error(cx, &attrs, path_str,
                                                         article, type_kind, &type_disambig,
                                                         "a", value_kind, &value_disambig);
                                         continue;
                                     }
                                 }
-                                type_path.def
-                            } else if let Ok(value_path) = resolve(cx, path_str, true) {
-                                value_path.def
+                                type_def
+                            } else if let Ok(value_def) = resolve(cx, path_str, true) {
+                                value_def
                             } else {
                                 // this could just be a normal link
                                 continue;
@@ -1056,7 +1153,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                         }
                         PathKind::Macro => {
                             if let Some(def) = macro_resolve(cx, path_str) {
-                                def
+                                (def, None)
                             } else {
                                 continue
                             }
@@ -1066,7 +1163,7 @@ impl Clean<Attributes> for [ast::Attribute] {
 
 
                 let id = register_def(cx, def);
-                attrs.links.push((link, id));
+                attrs.links.push((link, id, fragment));
             }
 
             cx.sess().abort_if_errors();
