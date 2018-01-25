@@ -193,6 +193,10 @@ pub trait Folder : Sized {
         noop_fold_macro_def(def, self)
     }
 
+    fn fold_label(&mut self, label: Label) -> Label {
+        noop_fold_label(label, self)
+    }
+
     fn fold_lifetime(&mut self, l: Lifetime) -> Lifetime {
         noop_fold_lifetime(l, self)
     }
@@ -694,6 +698,13 @@ pub fn noop_fold_generic_params<T: Folder>(
     fld: &mut T
 ) -> Vec<GenericParam> {
     params.move_map(|p| fld.fold_generic_param(p))
+}
+
+pub fn noop_fold_label<T: Folder>(label: Label, fld: &mut T) -> Label {
+    Label {
+        ident: fld.fold_ident(label.ident),
+        span: fld.new_span(label.span),
+    }
 }
 
 pub fn noop_fold_lifetime<T: Folder>(l: Lifetime, fld: &mut T) -> Lifetime {
@@ -1206,30 +1217,26 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                           folder.fold_block(tr),
                           fl.map(|x| folder.fold_expr(x)))
             }
-            ExprKind::While(cond, body, opt_ident) => {
+            ExprKind::While(cond, body, opt_label) => {
                 ExprKind::While(folder.fold_expr(cond),
                           folder.fold_block(body),
-                          opt_ident.map(|label| respan(folder.new_span(label.span),
-                                                       folder.fold_ident(label.node))))
+                          opt_label.map(|label| folder.fold_label(label)))
             }
-            ExprKind::WhileLet(pat, expr, body, opt_ident) => {
+            ExprKind::WhileLet(pat, expr, body, opt_label) => {
                 ExprKind::WhileLet(folder.fold_pat(pat),
                              folder.fold_expr(expr),
                              folder.fold_block(body),
-                             opt_ident.map(|label| respan(folder.new_span(label.span),
-                                                          folder.fold_ident(label.node))))
+                             opt_label.map(|label| folder.fold_label(label)))
             }
-            ExprKind::ForLoop(pat, iter, body, opt_ident) => {
+            ExprKind::ForLoop(pat, iter, body, opt_label) => {
                 ExprKind::ForLoop(folder.fold_pat(pat),
                             folder.fold_expr(iter),
                             folder.fold_block(body),
-                            opt_ident.map(|label| respan(folder.new_span(label.span),
-                                                         folder.fold_ident(label.node))))
+                            opt_label.map(|label| folder.fold_label(label)))
             }
-            ExprKind::Loop(body, opt_ident) => {
+            ExprKind::Loop(body, opt_label) => {
                 ExprKind::Loop(folder.fold_block(body),
-                               opt_ident.map(|label| respan(folder.new_span(label.span),
-                                                            folder.fold_ident(label.node))))
+                               opt_label.map(|label| folder.fold_label(label)))
             }
             ExprKind::Match(expr, arms) => {
                 ExprKind::Match(folder.fold_expr(expr),
@@ -1278,15 +1285,13 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 });
                 ExprKind::Path(qself, folder.fold_path(path))
             }
-            ExprKind::Break(opt_ident, opt_expr) => {
-                ExprKind::Break(opt_ident.map(|label| respan(folder.new_span(label.span),
-                                                             folder.fold_ident(label.node))),
+            ExprKind::Break(opt_label, opt_expr) => {
+                ExprKind::Break(opt_label.map(|label| folder.fold_label(label)),
                                 opt_expr.map(|e| folder.fold_expr(e)))
             }
-            ExprKind::Continue(opt_ident) => ExprKind::Continue(opt_ident.map(|label|
-                respan(folder.new_span(label.span),
-                       folder.fold_ident(label.node)))
-            ),
+            ExprKind::Continue(opt_label) => {
+                ExprKind::Continue(opt_label.map(|label| folder.fold_label(label)))
+            }
             ExprKind::Ret(e) => ExprKind::Ret(e.map(|x| folder.fold_expr(x))),
             ExprKind::InlineAsm(asm) => ExprKind::InlineAsm(asm.map(|asm| {
                 InlineAsm {

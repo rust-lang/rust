@@ -148,6 +148,11 @@ impl_stable_hash_for!(enum hir::LifetimeName {
     Name(name)
 });
 
+impl_stable_hash_for!(struct hir::Label {
+    span,
+    name
+});
+
 impl_stable_hash_for!(struct hir::Lifetime {
     id,
     span,
@@ -619,7 +624,7 @@ impl_stable_hash_for!(enum hir::CaptureClause {
 impl_stable_hash_for_spanned!(usize);
 
 impl_stable_hash_for!(struct hir::Destination {
-    ident,
+    label,
     target_id
 });
 
