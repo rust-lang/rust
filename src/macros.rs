@@ -335,8 +335,6 @@ pub fn rewrite_macro_def(
             result += &args;
         }
 
-        result += " {\n";
-
         // The macro body is the most interesting part. It might end up as various
         // AST nodes, but also has special variables (e.g, `$foo`) which can't be
         // parsed as regular Rust code (and note that these can be escaped using
@@ -349,12 +347,22 @@ pub fn rewrite_macro_def(
             None => return snippet,
         };
 
-        // We'll hack the indent below, take this into account when formatting,
         let mut config = context.config.clone();
-        let body_indent = mac_indent.block_indent(&config);
-        let new_width = config.max_width() - body_indent.width();
-        config.set().max_width(new_width);
         config.set().hide_parse_errors(true);
+
+        result += " {";
+
+        let has_block_body = old_body.starts_with("{");
+
+        let body_indent = if has_block_body {
+            mac_indent
+        } else {
+            // We'll hack the indent below, take this into account when formatting,
+            let body_indent = mac_indent.block_indent(&config);
+            let new_width = config.max_width() - body_indent.width();
+            config.set().max_width(new_width);
+            body_indent
+        };
 
         // First try to format as items, then as statements.
         let new_body = match ::format_snippet(&body_str, &config) {
@@ -390,9 +398,14 @@ pub fn rewrite_macro_def(
             new_body = new_body.replace(new, old);
         }
 
-        result += &new_body;
+        if has_block_body {
+            result += new_body.trim();
+        } else {
+            result += "\n";
+            result += &new_body;
+            result += &mac_indent_str;
+        }
 
-        result += &mac_indent_str;
         result += "}";
         if def.legacy {
             result += ";";

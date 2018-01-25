@@ -1,10 +1,8 @@
 macro_rules! m {
-    ($expr: expr, $func: ident) => {
-        {
-            let x = $expr;
-            $func(x)
-        }
-    };
+    ($expr: expr, $func: ident) => {{
+        let x = $expr;
+        $func(x)
+    }};
 
     () => {
     };
