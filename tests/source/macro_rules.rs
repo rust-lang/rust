@@ -1,5 +1,5 @@
 macro_rules! m {
-	($expr :expr, $func : ident) => {
+	($expr :expr,  $( $func : ident    ) *   ) => {
 		{
 		let    x =    $expr;
 									                $func (
