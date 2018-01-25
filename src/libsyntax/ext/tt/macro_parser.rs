@@ -289,11 +289,17 @@ pub enum NamedMatch {
     MatchedNonterminal(Rc<Nonterminal>),
 }
 
+/// Takes a sequence of token trees `ms` representing a matcher which successfully matched input
+/// and an iterator of items that matched input and produces a `NamedParseResult`.
 fn nameize<I: Iterator<Item = NamedMatch>>(
     sess: &ParseSess,
     ms: &[TokenTree],
     mut res: I,
 ) -> NamedParseResult {
+    // Recursively descend into each type of matcher (e.g. sequences, delimited, metavars) and make
+    // sure that each metavar has _exactly one_ binding. If a metavar does not have exactly one
+    // binding, then there is an error. If it does, then we insert the binding into the
+    // `NamedParseResult`.
     fn n_rec<I: Iterator<Item = NamedMatch>>(
         sess: &ParseSess,
         m: &TokenTree,
@@ -340,6 +346,8 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
     Success(ret_val)
 }
 
+/// Generate an appropriate parsing failure message. For EOF, this is "unexpected end...". For
+/// other tokens, this is "unexpected token...".
 pub fn parse_failure_msg(tok: Token) -> String {
     match tok {
         token::Eof => "unexpected end of macro invocation".to_string(),
