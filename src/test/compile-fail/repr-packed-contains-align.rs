@@ -7,8 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(attr_literals)]
-#![feature(repr_align)]
 #![feature(untagged_unions)]
 #![allow(dead_code)]
 

@@ -13,9 +13,6 @@
 
 #![crate_type = "lib"]
 
-#![feature(attr_literals)]
-#![feature(repr_align)]
-
 #[repr(align(64))]
 pub struct Align64(i32);
 // CHECK: %Align64 = type { [0 x i32], i32, [15 x i32] }

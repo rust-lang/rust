@@ -10,7 +10,7 @@
 
 #![feature(attr_literals)]
 
-#[repr(align(16))] //~ ERROR is experimental
+#[repr(align(16))]
 struct Gem {
     mohs_hardness: u8,
     poofed: bool,
