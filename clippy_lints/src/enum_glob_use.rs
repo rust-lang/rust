@@ -12,7 +12,8 @@ use utils::span_lint;
 /// an enumeration variant, rather than importing variants.
 ///
 /// **Known problems:** Old-style enumerations that prefix the variants are
-/// still around.
+/// still around. May cause problems with modules that are not snake_case (see
+/// [#2397](https://github.com/rust-lang-nursery/rust-clippy/issues/2397))
 ///
 /// **Example:**
 /// ```rust
