@@ -11,6 +11,7 @@
 use back::bytecode::{self, RLIB_BYTECODE_EXTENSION};
 use back::lto::{self, ModuleBuffer, ThinBuffer};
 use back::link::{self, get_linker, remove};
+use back::command::Command;
 use back::linker::LinkerInfo;
 use back::symbol_export::ExportedSymbols;
 use base;
@@ -18,7 +19,7 @@ use consts;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
 use rustc::dep_graph::{DepGraph, WorkProductFileKind};
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
-use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Passes, SomePasses,
+use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePasses,
                              AllPasses, Sanitizer};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
@@ -32,7 +33,7 @@ use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
-use rustc::util::fs::{link_or_copy, rename_or_copy_remove};
+use rustc::util::fs::{link_or_copy};
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
 use errors::emitter::{Emitter};
 use syntax::attr;
@@ -258,6 +259,7 @@ pub struct ModuleConfig {
     // make the object file bitcode. Provides easy compatibility with
     // emscripten's ecc compiler, when used as the linker.
     obj_is_bitcode: bool,
+    no_integrated_as: bool,
 }
 
 impl ModuleConfig {
@@ -275,6 +277,7 @@ impl ModuleConfig {
             emit_asm: false,
             emit_obj: false,
             obj_is_bitcode: false,
+            no_integrated_as: false,
 
             no_verify: false,
             no_prepopulate_passes: false,
@@ -311,6 +314,12 @@ impl ModuleConfig {
         self.merge_functions = sess.opts.optimize == config::OptLevel::Default ||
                                sess.opts.optimize == config::OptLevel::Aggressive;
     }
+}
+
+/// Assembler name and command used by codegen when no_integrated_as is enabled
+struct AssemblerCommand {
+    name: PathBuf,
+    cmd: Command,
 }
 
 /// Additional resources used by optimize_and_codegen (not module specific)
@@ -356,6 +365,8 @@ pub struct CodegenContext {
     // A reference to the TimeGraph so we can register timings. None means that
     // measuring is disabled.
     time_graph: Option<TimeGraph>,
+    // The assembler command if no_integrated_as option is enabled, None otherwise
+    assembler_cmd: Option<Arc<AssemblerCommand>>,
 }
 
 impl CodegenContext {
@@ -639,13 +650,17 @@ unsafe fn codegen(cgcx: &CodegenContext,
         !cgcx.crate_types.contains(&config::CrateTypeRlib) &&
         mtrans.kind == ModuleKind::Regular;
 
+    // If we don't have the integrated assembler, then we need to emit asm
+    // from LLVM and use `gcc` to create the object file.
+    let asm_to_obj = config.emit_obj && config.no_integrated_as;
+
     // Change what we write and cleanup based on whether obj files are
     // just llvm bitcode. In that case write bitcode, and possibly
     // delete the bitcode if it wasn't requested. Don't generate the
     // machine code, instead copy the .o file from the .bc
     let write_bc = config.emit_bc || (config.obj_is_bitcode && !asm2wasm);
     let rm_bc = !config.emit_bc && config.obj_is_bitcode && !asm2wasm;
-    let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm2wasm;
+    let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm2wasm && !asm_to_obj;
     let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode && !asm2wasm;
 
     let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
@@ -725,7 +740,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
             timeline.record("ir");
         }
 
-        if config.emit_asm || (asm2wasm && config.emit_obj) {
+        if config.emit_asm || (asm2wasm && config.emit_obj) || asm_to_obj {
             let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
 
             // We can't use the same module for asm and binary output, because that triggers
@@ -760,6 +775,14 @@ unsafe fn codegen(cgcx: &CodegenContext,
                                   llvm::FileType::ObjectFile)
             })?;
             timeline.record("obj");
+        } else if asm_to_obj {
+            let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+            run_assembler(cgcx, diag_handler, &assembly, &obj_out);
+            timeline.record("asm_to_obj");
+
+            if !config.emit_asm && !cgcx.save_temps {
+                drop(fs::remove_file(&assembly));
+            }
         }
 
         Ok(())
@@ -841,7 +864,6 @@ pub fn start_async_translation(tcx: TyCtxt,
                                total_cgus: usize)
                                -> OngoingCrateTranslation {
     let sess = tcx.sess;
-    let crate_output = tcx.output_filenames(LOCAL_CRATE);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let no_builtins = attr::contains_name(&tcx.hir.krate().attrs, "no_builtins");
     let subsystem = attr::first_attr_value_str_by_name(&tcx.hir.krate().attrs,
@@ -855,18 +877,8 @@ pub fn start_async_translation(tcx: TyCtxt,
         subsystem.to_string()
     });
 
-    let no_integrated_as = tcx.sess.opts.cg.no_integrated_as ||
-        (tcx.sess.target.target.options.no_integrated_as &&
-         (crate_output.outputs.contains_key(&OutputType::Object) ||
-          crate_output.outputs.contains_key(&OutputType::Exe)));
     let linker_info = LinkerInfo::new(tcx);
     let crate_info = CrateInfo::new(tcx);
-
-    let output_types_override = if no_integrated_as {
-        OutputTypes::new(&[(OutputType::Assembly, None)])
-    } else {
-        sess.opts.output_types.clone()
-    };
 
     // Figure out what we actually need to build.
     let mut modules_config = ModuleConfig::new(sess.opts.cg.passes.clone());
@@ -913,7 +925,10 @@ pub fn start_async_translation(tcx: TyCtxt,
         allocator_config.emit_bc_compressed = true;
     }
 
-    for output_type in output_types_override.keys() {
+    modules_config.no_integrated_as = tcx.sess.opts.cg.no_integrated_as ||
+        tcx.sess.target.target.options.no_integrated_as;
+
+    for output_type in sess.opts.output_types.keys() {
         match *output_type {
             OutputType::Bitcode => { modules_config.emit_bc = true; }
             OutputType::LlvmAssembly => { modules_config.emit_ir = true; }
@@ -976,7 +991,6 @@ pub fn start_async_translation(tcx: TyCtxt,
         metadata,
         windows_subsystem,
         linker_info,
-        no_integrated_as,
         crate_info,
 
         time_graph,
@@ -1384,6 +1398,18 @@ fn start_executing_work(tcx: TyCtxt,
     let wasm_import_memory =
         attr::contains_name(&tcx.hir.krate().attrs, "wasm_import_memory");
 
+    let assembler_cmd = if modules_config.no_integrated_as {
+        // HACK: currently we use linker (gcc) as our assembler
+        let (name, mut cmd, _) = get_linker(sess);
+        cmd.args(&sess.target.target.options.asm_args);
+        Some(Arc::new(AssemblerCommand {
+            name,
+            cmd,
+        }))
+    } else {
+        None
+    };
+
     let cgcx = CodegenContext {
         crate_types: sess.crate_types.borrow().clone(),
         each_linked_rlib_for_lto,
@@ -1423,6 +1449,7 @@ fn start_executing_work(tcx: TyCtxt,
         binaryen_linker: tcx.sess.linker_flavor() == LinkerFlavor::Binaryen,
         debuginfo: tcx.sess.opts.debuginfo,
         wasm_import_memory: wasm_import_memory,
+        assembler_cmd,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1931,15 +1958,14 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
     });
 }
 
-pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
-    let (pname, mut cmd, _) = get_linker(sess);
+pub fn run_assembler(cgcx: &CodegenContext, handler: &Handler, assembly: &Path, object: &Path) {
+    let assembler = cgcx.assembler_cmd
+        .as_ref()
+        .expect("cgcx.assembler_cmd is missing?");
 
-    for arg in &sess.target.target.options.asm_args {
-        cmd.arg(arg);
-    }
-
-    cmd.arg("-c").arg("-o").arg(&outputs.path(OutputType::Object))
-                           .arg(&outputs.temp_path(OutputType::Assembly, None));
+    let pname = &assembler.name;
+    let mut cmd = assembler.cmd.clone();
+    cmd.arg("-c").arg("-o").arg(object).arg(assembly);
     debug!("{:?}", cmd);
 
     match cmd.output() {
@@ -1948,18 +1974,18 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
                 let mut note = prog.stderr.clone();
                 note.extend_from_slice(&prog.stdout);
 
-                sess.struct_err(&format!("linking with `{}` failed: {}",
-                                         pname.display(),
-                                         prog.status))
+                handler.struct_err(&format!("linking with `{}` failed: {}",
+                                            pname.display(),
+                                            prog.status))
                     .note(&format!("{:?}", &cmd))
                     .note(str::from_utf8(&note[..]).unwrap())
                     .emit();
-                sess.abort_if_errors();
+                handler.abort_if_errors();
             }
         },
         Err(e) => {
-            sess.err(&format!("could not exec the linker `{}`: {}", pname.display(), e));
-            sess.abort_if_errors();
+            handler.err(&format!("could not exec the linker `{}`: {}", pname.display(), e));
+            handler.abort_if_errors();
         }
     }
 }
@@ -2133,7 +2159,6 @@ pub struct OngoingCrateTranslation {
     metadata: EncodedMetadata,
     windows_subsystem: Option<String>,
     linker_info: LinkerInfo,
-    no_integrated_as: bool,
     crate_info: CrateInfo,
     time_graph: Option<TimeGraph>,
     coordinator_send: Sender<Box<Any + Send>>,
@@ -2188,26 +2213,6 @@ impl OngoingCrateTranslation {
             allocator_module: compiled_modules.allocator_module,
             metadata_module: compiled_modules.metadata_module,
         };
-
-        if self.no_integrated_as {
-            run_assembler(sess,  &self.output_filenames);
-
-            // HACK the linker expects the object file to be named foo.0.o but
-            // `run_assembler` produces an object named just foo.o. Rename it if we
-            // are going to build an executable
-            if sess.opts.output_types.contains_key(&OutputType::Exe) {
-                let f =  self.output_filenames.path(OutputType::Object);
-                rename_or_copy_remove(&f,
-                    f.with_file_name(format!("{}.0.o",
-                                             f.file_stem().unwrap().to_string_lossy()))).unwrap();
-            }
-
-            // Remove assembly source, unless --save-temps was specified
-            if !sess.opts.cg.save_temps {
-                fs::remove_file(&self.output_filenames
-                                     .temp_path(OutputType::Assembly, None)).unwrap();
-            }
-        }
 
         trans
     }
