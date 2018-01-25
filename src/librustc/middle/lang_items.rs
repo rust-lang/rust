@@ -28,6 +28,7 @@ use util::nodemap::FxHashMap;
 
 use syntax::ast;
 use syntax::symbol::Symbol;
+use syntax_pos::Span;
 use hir::itemlikevisit::ItemLikeVisitor;
 use hir;
 
@@ -104,17 +105,18 @@ struct LanguageItemCollector<'a, 'tcx: 'a> {
 
 impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        if let Some(value) = extract(&item.attrs) {
+        if let Some((value, span)) = extract(&item.attrs) {
             let item_index = self.item_refs.get(&*value.as_str()).cloned();
 
             if let Some(item_index) = item_index {
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 self.collect_item(item_index, def_id);
             } else {
-                let span = self.tcx.hir.span(item.id);
-                span_err!(self.tcx.sess, span, E0522,
-                          "definition of an unknown language item: `{}`.",
-                          value);
+                let mut err = struct_span_err!(self.tcx.sess, span, E0522,
+                                               "definition of an unknown language item: `{}`",
+                                               value);
+                err.span_label(span, format!("definition of unknown language item `{}`", value));
+                err.emit();
             }
         }
     }
@@ -177,11 +179,11 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 }
 
-pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
+pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
     for attribute in attrs {
         if attribute.check_name("lang") {
             if let Some(value) = attribute.value_str() {
-                return Some(value)
+                return Some((value, attribute.span));
             }
         }
     }
