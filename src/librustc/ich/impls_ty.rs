@@ -489,9 +489,9 @@ for ::mir::interpret::EvalError<'gcx> {
                                           hasher: &mut StableHasher<W>) {
         use mir::interpret::EvalErrorKind::*;
 
-        mem::discriminant(&self.kind).hash_stable(hcx, hasher);
+        mem::discriminant(&*self.kind).hash_stable(hcx, hasher);
 
-        match self.kind {
+        match *self.kind {
             DanglingPointerDeref |
             DoubleFree |
             InvalidMemoryAccess |

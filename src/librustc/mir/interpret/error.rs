@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::{fmt, env};
+use std::rc::Rc;
 
 use mir;
 use ty::{FnSig, Ty, layout};
@@ -14,7 +15,7 @@ use backtrace::Backtrace;
 
 #[derive(Debug, Clone)]
 pub struct EvalError<'tcx> {
-    pub kind: EvalErrorKind<'tcx>,
+    pub kind: Rc<EvalErrorKind<'tcx>>,
     pub backtrace: Option<Backtrace>,
 }
 
@@ -25,7 +26,7 @@ impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
             _ => None
         };
         EvalError {
-            kind,
+            kind: Rc::new(kind),
             backtrace,
         }
     }
@@ -131,7 +132,7 @@ pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 impl<'tcx> Error for EvalError<'tcx> {
     fn description(&self) -> &str {
         use self::EvalErrorKind::*;
-        match self.kind {
+        match *self.kind {
             MachineError(ref inner) => inner,
             FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
@@ -252,7 +253,7 @@ impl<'tcx> Error for EvalError<'tcx> {
 impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::EvalErrorKind::*;
-        match self.kind {
+        match *self.kind {
             PointerOutOfBounds { ptr, access, allocation_size } => {
                 write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
                        if access { "memory access" } else { "pointer computed" },
