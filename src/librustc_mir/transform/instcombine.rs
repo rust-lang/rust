@@ -362,12 +362,8 @@ impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
                             )
                         } else {
                             if overflow {
-                                use rustc::mir::interpret::EvalError;
                                 use rustc::mir::interpret::EvalErrorKind;
-                                let mut err = EvalError {
-                                    kind: EvalErrorKind::OverflowingMath,
-                                    backtrace: None,
-                                };
+                                let mut err = EvalErrorKind::OverflowingMath.into();
                                 ecx.report(&mut err, false, Some(span));
                                 return None;
                             }

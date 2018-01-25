@@ -235,13 +235,15 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         }
         let mir = match ecx.load_mir(instance.def) {
             Ok(mir) => mir,
-            Err(EvalError { kind: EvalErrorKind::NoMirFor(path), .. }) => {
-                return Err(
-                    ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
-                        .into(),
-                );
+            Err(err) => {
+                if let EvalErrorKind::NoMirFor(ref path) = *err.kind {
+                    return Err(
+                        ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
+                            .into(),
+                    );
+                }
+                return Err(err);
             }
-            Err(other) => return Err(other),
         };
         let (return_place, return_to_block) = match destination {
             Some((place, block)) => (place, StackPopCleanup::Goto(block)),
