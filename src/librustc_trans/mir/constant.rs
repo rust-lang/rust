@@ -151,15 +151,19 @@ pub fn primval_to_llvm(cx: &CodegenCx,
             }
         },
         PrimVal::Ptr(ptr) => {
-            let interpret_interner = cx.tcx.interpret_interner.borrow();
-            if let Some(fn_instance) = interpret_interner.get_fn(ptr.alloc_id) {
+            if let Some(fn_instance) = cx.tcx.interpret_interner.borrow().get_fn(ptr.alloc_id) {
                 callee::get_fn(cx, fn_instance)
             } else {
-                let static_ = interpret_interner.get_corresponding_static_def_id(ptr.alloc_id);
+                let static_ = cx
+                    .tcx
+                    .interpret_interner
+                    .borrow()
+                    .get_corresponding_static_def_id(ptr.alloc_id);
                 let base_addr = if let Some(def_id) = static_ {
                     assert!(cx.tcx.is_static(def_id).is_some());
                     consts::get_static(cx, def_id)
-                } else if let Some(alloc) = interpret_interner.get_alloc(ptr.alloc_id) {
+                } else if let Some(alloc) = cx.tcx.interpret_interner.borrow()
+                                              .get_alloc(ptr.alloc_id) {
                     let init = global_initializer(cx, alloc);
                     if alloc.mutable {
                         consts::addr_of_mut(cx, init, alloc.align, "byte_str")

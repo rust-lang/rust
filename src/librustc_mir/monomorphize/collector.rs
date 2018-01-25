@@ -1117,13 +1117,12 @@ fn collect_miri<'a, 'tcx>(
     alloc_id: AllocId,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
-    let interpret_interner = tcx.interpret_interner.borrow();
-    if let Some(alloc) = interpret_interner.get_alloc(alloc_id) {
+    if let Some(alloc) = tcx.interpret_interner.borrow().get_alloc(alloc_id) {
         trace!("collecting {:?} with {:#?}", alloc_id, alloc);
         for &inner in alloc.relocations.values() {
             collect_miri(tcx, inner, output);
         }
-    } else if let Some(fn_instance) = interpret_interner.get_fn(alloc_id) {
+    } else if let Some(fn_instance) = tcx.interpret_interner.borrow().get_fn(alloc_id) {
         if should_monomorphize_locally(tcx, &fn_instance) {
             trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
             output.push(create_fn_mono_item(fn_instance));

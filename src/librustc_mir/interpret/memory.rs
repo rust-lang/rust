@@ -375,11 +375,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                     None => match self.uninitialized_statics.get(&id) {
                         Some(a) => (a, " (static in the process of initialization)".to_owned()),
                         None => {
-                            let int = self.tcx.interpret_interner.borrow();
                             // static alloc?
-                            match int.get_alloc(id) {
+                            match self.tcx.interpret_interner.borrow().get_alloc(id) {
                                 Some(a) => (a, "(immutable)".to_owned()),
-                                None => if let Some(func) = int.get_fn(id) {
+                                None => if let Some(func) = self.tcx.interpret_interner.borrow().get_fn(id) {
                                     trace!("{} {}", msg, func);
                                     continue;
                                 } else {
