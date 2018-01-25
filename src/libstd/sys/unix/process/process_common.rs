@@ -87,6 +87,11 @@ pub enum Stdio {
     Fd(FileDesc),
 }
 
+// Command is not Send by default due to the Command.argv field containing a raw pointers. However
+// it is safe to implement Send, because anyway, these pointers point to memory owned by the
+// Command.args field.
+unsafe impl Send for Command {}
+
 impl Command {
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
