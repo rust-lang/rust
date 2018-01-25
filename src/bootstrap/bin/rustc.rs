@@ -125,11 +125,6 @@ fn main() {
             cmd.arg(format!("-Clinker={}", target_linker));
         }
 
-        // Pass down incremental directory, if any.
-        if let Ok(dir) = env::var("RUSTC_INCREMENTAL") {
-            cmd.arg(format!("-Zincremental={}", dir));
-        }
-
         let crate_name = args.windows(2)
             .find(|a| &*a[0] == "--crate-name")
             .unwrap();
