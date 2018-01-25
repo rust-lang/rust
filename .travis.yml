@@ -51,12 +51,12 @@ matrix:
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
+        MACOSX_DEPLOYMENT_TARGET=10.12
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode8.3
+      osx_image: xcode9.2
       if: branch = auto
 
     - env: >
@@ -65,12 +65,12 @@ matrix:
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
+        MACOSX_DEPLOYMENT_TARGET=10.12
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode8.3
+      osx_image: xcode9.2
       if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
