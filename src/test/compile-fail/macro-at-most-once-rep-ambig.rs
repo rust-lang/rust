@@ -27,10 +27,10 @@ pub fn main() {
     baz!(a?a?a); //~ ERROR no rules expected the token `?`
     baz!(a?a); //~ ERROR no rules expected the token `?`
     baz!(a?); //~ ERROR no rules expected the token `?`
-    baz!(a,); //~ ERROR no rules expected the token `,`
+    baz!(a,); //~ ERROR unexpected end of macro invocation
     baz!(a?a?a,); //~ ERROR no rules expected the token `?`
     baz!(a?a,); //~ ERROR no rules expected the token `?`
     baz!(a?,); //~ ERROR no rules expected the token `?`
     bar!(); //~ ERROR unexpected end of macro invocation
-    bar!(a?); //~ ERROR no rules expected the token `?`
+    bar!(a?); //~ ERROR unexpected end of macro invocation
 }
