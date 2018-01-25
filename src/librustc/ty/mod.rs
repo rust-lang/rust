@@ -2695,6 +2695,20 @@ fn crate_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.hir.crate_hash
 }
 
+fn instance_def_size_estimate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                        instance_def: InstanceDef<'tcx>)
+                                        -> usize {
+    match instance_def {
+        InstanceDef::Item(..) |
+        InstanceDef::DropGlue(..) => {
+            let mir = tcx.instance_mir(instance_def);
+            mir.basic_blocks().iter().map(|bb| bb.statements.len()).sum()
+        },
+        // Estimate the size of other compiler-generated shims to be 1.
+        _ => 1
+    }
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     context::provide(providers);
     erase_regions::provide(providers);
@@ -2712,6 +2726,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         original_crate_name,
         crate_hash,
         trait_impls_of: trait_def::trait_impls_of_provider,
+        instance_def_size_estimate,
         ..*providers
     };
 }

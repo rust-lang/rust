@@ -637,6 +637,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::target_features_whitelist<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> {
+    fn describe(tcx: TyCtxt, def: ty::InstanceDef<'tcx>) -> String {
+        format!("estimating size for `{}`", tcx.item_path_str(def.def_id()))
+    }
+}
+
 macro_rules! impl_disk_cacheable_query(
     ($query_name:ident, |$key:tt| $cond:expr) => {
         impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {
