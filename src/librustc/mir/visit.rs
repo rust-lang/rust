@@ -12,7 +12,6 @@ use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{ClosureSubsts, Region, Ty, GeneratorInterior};
 use mir::*;
-use rustc_const_math::ConstUsize;
 use syntax_pos::Span;
 
 // # The MIR Visitor
@@ -241,12 +240,6 @@ macro_rules! make_mir_visitor {
                                     interior: & $($mutability)* GeneratorInterior<'tcx>,
                                     _: Location) {
                 self.super_generator_interior(interior);
-            }
-
-            fn visit_const_usize(&mut self,
-                                 const_usize: & $($mutability)* ConstUsize,
-                                 _: Location) {
-                self.super_const_usize(const_usize);
             }
 
             fn visit_local_decl(&mut self,
@@ -529,10 +522,8 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(operand, location);
                     }
 
-                    Rvalue::Repeat(ref $($mutability)* value,
-                                   ref $($mutability)* length) => {
+                    Rvalue::Repeat(ref $($mutability)* value, _) => {
                         self.visit_operand(value, location);
-                        self.visit_const_usize(length, location);
                     }
 
                     Rvalue::Ref(ref $($mutability)* r, bk, ref $($mutability)* path) => {
@@ -787,9 +778,6 @@ macro_rules! make_mir_visitor {
 
             fn super_closure_substs(&mut self,
                                     _substs: & $($mutability)* ClosureSubsts<'tcx>) {
-            }
-
-            fn super_const_usize(&mut self, _const_usize: & $($mutability)* ConstUsize) {
             }
 
             // Convenience methods

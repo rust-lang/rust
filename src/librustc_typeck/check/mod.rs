@@ -100,7 +100,8 @@ use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
-use rustc::ty::util::{Representability, IntTypeExt};
+use rustc::ty::util::{Representability, IntTypeExt, Discr};
+use rustc::ty::layout::LayoutOf;
 use errors::{DiagnosticBuilder, DiagnosticId};
 
 use require_c_abi_if_variadic;
@@ -133,7 +134,6 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map::Node;
 use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
-use rustc_const_math::ConstInt;
 
 mod autoderef;
 pub mod dropck;
@@ -1632,10 +1632,10 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let mut disr_vals: Vec<ConstInt> = Vec::new();
+    let mut disr_vals: Vec<Discr<'tcx>> = Vec::new();
     for (discr, v) in def.discriminants(tcx).zip(vs) {
         // Check for duplicate discriminant values
-        if let Some(i) = disr_vals.iter().position(|&x| x == discr) {
+        if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
             let variant_i_node_id = tcx.hir.as_local_node_id(def.variants[i].did).unwrap();
             let variant_i = tcx.hir.expect_variant(variant_i_node_id);
             let i_span = match variant_i.node.disr_expr {

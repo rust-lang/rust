@@ -16,7 +16,6 @@ use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
-use rustc_const_math::ConstUsize;
 use rustc::mir::interpret::{Value, PrimVal};
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -508,13 +507,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             ty: self.tcx.types.usize,
             literal: Literal::Value {
                 value: self.tcx.mk_const(ty::Const {
-                    val: {
-                        let value = ConstUsize::new(
-                            value,
-                            self.tcx.sess.target.usize_ty,
-                        ).unwrap().as_u64();
-                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(value.into())))
-                    },
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(value.into()))),
                     ty: self.tcx.types.usize,
                 })
             }

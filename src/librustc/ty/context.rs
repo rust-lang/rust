@@ -54,7 +54,6 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
 use arena::{TypedArena, DroplessArena};
-use rustc_const_math::ConstUsize;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use std::any::Any;
@@ -2096,13 +2095,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        let n = ConstUsize::new(n, self.sess.target.usize_ty).unwrap();
-        self.mk_array_const_usize(ty, n)
-    }
-
-    pub fn mk_array_const_usize(self, ty: Ty<'tcx>, n: ConstUsize) -> Ty<'tcx> {
         self.mk_ty(TyArray(ty, self.mk_const(ty::Const {
-            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(n.as_u64().into()))),
+            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(n.into()))),
             ty: self.types.usize
         })))
     }

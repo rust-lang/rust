@@ -760,7 +760,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 if let ty::TyAdt(adt_def, _) = ty.sty {
                     trace!("Read discriminant {}, valid discriminants {:?}", discr_val, adt_def.discriminants(self.tcx).collect::<Vec<_>>());
                     if adt_def.discriminants(self.tcx).all(|v| {
-                        discr_val != v.to_u128_unchecked()
+                        discr_val != v.val
                     })
                     {
                         return err!(InvalidDiscriminant);
@@ -916,7 +916,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             layout::Variants::Tagged { .. } => {
                 let discr_val = dest_ty.ty_adt_def().unwrap()
                     .discriminant_for_variant(self.tcx, variant_index)
-                    .to_u128_unchecked();
+                    .val;
 
                 let (discr_dest, discr) = self.place_field(dest, mir::Field::new(0), layout)?;
                 self.write_primval(discr_dest, PrimVal::Bytes(discr_val), discr.ty)?;

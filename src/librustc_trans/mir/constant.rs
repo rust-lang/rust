@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
-use rustc_const_math::{ConstInt, ConstMathErr};
 use rustc::middle::const_val::{ConstVal, ConstEvalErr};
 use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
@@ -17,123 +16,17 @@ use rustc::traits;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{Allocation, GlobalId, MemoryPointer, PrimVal, Value as MiriValue};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar};
-use base;
 use builder::Builder;
 use common::{CodegenCx};
 use common::{C_bytes, C_struct, C_uint_big, C_undef, C_usize};
-use common::const_to_opt_u128;
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
 
 use super::super::callee;
 use super::FunctionCx;
-
-fn to_const_int(value: ValueRef, t: Ty, tcx: TyCtxt) -> Option<ConstInt> {
-    match t.sty {
-        ty::TyInt(int_type) => const_to_opt_u128(value, true)
-            .and_then(|input| ConstInt::new_signed(input as i128, int_type,
-                                                   tcx.sess.target.isize_ty)),
-        ty::TyUint(uint_type) => const_to_opt_u128(value, false)
-            .and_then(|input| ConstInt::new_unsigned(input, uint_type,
-                                                     tcx.sess.target.usize_ty)),
-        _ => None
-
-    }
-}
-
-pub fn const_scalar_binop(op: mir::BinOp,
-                          lhs: ValueRef,
-                          rhs: ValueRef,
-                          input_ty: Ty) -> ValueRef {
-    assert!(!input_ty.is_simd());
-    let is_float = input_ty.is_fp();
-    let signed = input_ty.is_signed();
-
-    unsafe {
-        match op {
-            mir::BinOp::Add if is_float => llvm::LLVMConstFAdd(lhs, rhs),
-            mir::BinOp::Add             => llvm::LLVMConstAdd(lhs, rhs),
-
-            mir::BinOp::Sub if is_float => llvm::LLVMConstFSub(lhs, rhs),
-            mir::BinOp::Sub             => llvm::LLVMConstSub(lhs, rhs),
-
-            mir::BinOp::Mul if is_float => llvm::LLVMConstFMul(lhs, rhs),
-            mir::BinOp::Mul             => llvm::LLVMConstMul(lhs, rhs),
-
-            mir::BinOp::Div if is_float => llvm::LLVMConstFDiv(lhs, rhs),
-            mir::BinOp::Div if signed   => llvm::LLVMConstSDiv(lhs, rhs),
-            mir::BinOp::Div             => llvm::LLVMConstUDiv(lhs, rhs),
-
-            mir::BinOp::Rem if is_float => llvm::LLVMConstFRem(lhs, rhs),
-            mir::BinOp::Rem if signed   => llvm::LLVMConstSRem(lhs, rhs),
-            mir::BinOp::Rem             => llvm::LLVMConstURem(lhs, rhs),
-
-            mir::BinOp::BitXor => llvm::LLVMConstXor(lhs, rhs),
-            mir::BinOp::BitAnd => llvm::LLVMConstAnd(lhs, rhs),
-            mir::BinOp::BitOr  => llvm::LLVMConstOr(lhs, rhs),
-            mir::BinOp::Shl    => {
-                let rhs = base::cast_shift_const_rhs(op.to_hir_binop(), lhs, rhs);
-                llvm::LLVMConstShl(lhs, rhs)
-            }
-            mir::BinOp::Shr    => {
-                let rhs = base::cast_shift_const_rhs(op.to_hir_binop(), lhs, rhs);
-                if signed { llvm::LLVMConstAShr(lhs, rhs) }
-                else      { llvm::LLVMConstLShr(lhs, rhs) }
-            }
-            mir::BinOp::Eq | mir::BinOp::Ne |
-            mir::BinOp::Lt | mir::BinOp::Le |
-            mir::BinOp::Gt | mir::BinOp::Ge => {
-                if is_float {
-                    let cmp = base::bin_op_to_fcmp_predicate(op.to_hir_binop());
-                    llvm::LLVMConstFCmp(cmp, lhs, rhs)
-                } else {
-                    let cmp = base::bin_op_to_icmp_predicate(op.to_hir_binop(),
-                                                                signed);
-                    llvm::LLVMConstICmp(cmp, lhs, rhs)
-                }
-            }
-            mir::BinOp::Offset => unreachable!("BinOp::Offset in const-eval!")
-        }
-    }
-}
-
-pub fn const_scalar_checked_binop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                            op: mir::BinOp,
-                                            lllhs: ValueRef,
-                                            llrhs: ValueRef,
-                                            input_ty: Ty<'tcx>)
-                                            -> Option<(ValueRef, bool)> {
-    if let (Some(lhs), Some(rhs)) = (to_const_int(lllhs, input_ty, tcx),
-                                     to_const_int(llrhs, input_ty, tcx)) {
-        let result = match op {
-            mir::BinOp::Add => lhs + rhs,
-            mir::BinOp::Sub => lhs - rhs,
-            mir::BinOp::Mul => lhs * rhs,
-            mir::BinOp::Shl => lhs << rhs,
-            mir::BinOp::Shr => lhs >> rhs,
-            _ => {
-                bug!("Operator `{:?}` is not a checkable operator", op)
-            }
-        };
-
-        let of = match result {
-            Ok(_) => false,
-            Err(ConstMathErr::Overflow(_)) |
-            Err(ConstMathErr::ShiftNegative) => true,
-            Err(err) => {
-                bug!("Operator `{:?}` on `{:?}` and `{:?}` errored: {}",
-                     op, lhs, rhs, err.description());
-            }
-        };
-
-        Some((const_scalar_binop(op, lllhs, llrhs, input_ty), of))
-    } else {
-        None
-    }
-}
 
 pub fn primval_to_llvm(cx: &CodegenCx,
                        cv: PrimVal,

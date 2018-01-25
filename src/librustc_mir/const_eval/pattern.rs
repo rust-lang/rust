@@ -799,7 +799,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         ).unwrap();
                         let variant_index = adt_def
                             .discriminants(self.tcx)
-                            .position(|var| var.to_u128_unchecked() == discr)
+                            .position(|var| var.val == discr)
                             .unwrap();
                         PatternKind::Variant {
                             adt_def,

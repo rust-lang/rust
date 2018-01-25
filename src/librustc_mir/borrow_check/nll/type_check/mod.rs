@@ -1316,7 +1316,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.check_aggregate_rvalue(mir, rvalue, ak, ops, location)
             }
 
-            Rvalue::Repeat(operand, const_usize) => if const_usize.as_u64() > 1 {
+            Rvalue::Repeat(operand, len) => if *len > 1 {
                 let operand_ty = operand.ty(mir, tcx);
 
                 let trait_ref = ty::TraitRef {

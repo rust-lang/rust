@@ -29,7 +29,7 @@ use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
-use rustc_const_math::{ConstInt, ConstUsize};
+use rustc_const_math::ConstFloat;
 use rustc_data_structures::sync::Lrc;
 use rustc::mir::interpret::{Value, PrimVal};
 
@@ -115,16 +115,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
-        match ConstUsize::new(value, self.tcx.sess.target.usize_ty) {
-            Ok(val) => {
-                Literal::Value {
-                    value: self.tcx.mk_const(ty::Const {
-                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.as_u64() as u128))),
-                        ty: self.tcx.types.usize
-                    })
-                }
-            }
-            Err(_) => bug!("usize literal out of range for target"),
+        Literal::Value {
+            value: self.tcx.mk_const(ty::Const {
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(value as u128))),
+                ty: self.tcx.types.usize
+            })
         }
     }
 

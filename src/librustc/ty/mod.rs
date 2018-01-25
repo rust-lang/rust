@@ -32,7 +32,7 @@ use session::CrateDisambiguator;
 use traits;
 use ty;
 use ty::subst::{Subst, Substs};
-use ty::util::IntTypeExt;
+use ty::util::{IntTypeExt, Discr};
 use ty::walk::TypeWalker;
 use util::common::ErrorReported;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
@@ -53,7 +53,6 @@ use syntax::attr;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
-use rustc_const_math::ConstInt;
 
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
@@ -1826,13 +1825,13 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     #[inline]
     pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                         -> impl Iterator<Item=ConstInt> + 'a {
+                         -> impl Iterator<Item=Discr<'tcx>> + 'a {
         let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
-        let mut prev_discr = None::<ConstInt>;
+        let mut prev_discr = None::<Discr<'tcx>>;
         self.variants.iter().map(move |v| {
-            let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr());
+            let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
             if let VariantDiscr::Explicit(expr_did) = v.discr {
                 let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                 let instance = ty::Instance::new(expr_did, substs);
@@ -1846,12 +1845,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                         ..
                     }) => {
                         trace!("discriminants: {} ({:?})", b, repr_type);
-                        use syntax::attr::IntType;
-                        discr = match repr_type {
-                            IntType::SignedInt(int_type) => ConstInt::new_signed(
-                                b as i128, int_type, tcx.sess.target.isize_ty).unwrap(),
-                            IntType::UnsignedInt(uint_type) => ConstInt::new_unsigned(
-                                b, uint_type, tcx.sess.target.usize_ty).unwrap(),
+                        discr = Discr {
+                            val: b,
+                            ty: repr_type.to_ty(tcx),
                         };
                     }
                     _ => {
@@ -1877,7 +1873,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     pub fn discriminant_for_variant(&self,
                                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                     variant_index: usize)
-                                    -> ConstInt {
+                                    -> Discr<'tcx> {
         let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
         let repr_type = self.repr.discr_type();
         let mut explicit_value = repr_type.initial_discriminant(tcx.global_tcx());
@@ -1901,12 +1897,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                             ..
                         }) => {
                             trace!("discriminants: {} ({:?})", b, repr_type);
-                            use syntax::attr::IntType;
-                            explicit_value = match repr_type {
-                                IntType::SignedInt(int_type) => ConstInt::new_signed(
-                                    b as i128, int_type, tcx.sess.target.isize_ty).unwrap(),
-                                IntType::UnsignedInt(uint_type) => ConstInt::new_unsigned(
-                                    b, uint_type, tcx.sess.target.usize_ty).unwrap(),
+                            explicit_value = Discr {
+                                val: b,
+                                ty: repr_type.to_ty(tcx),
                             };
                             break;
                         }
@@ -1925,18 +1918,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
             }
         }
-        let discr = explicit_value.to_u128_unchecked()
-            .wrapping_add((variant_index - explicit_index) as u128);
-        match repr_type {
-            attr::UnsignedInt(ty) => {
-                ConstInt::new_unsigned_truncating(discr, ty,
-                                                  tcx.sess.target.usize_ty)
-            }
-            attr::SignedInt(ty) => {
-                ConstInt::new_signed_truncating(discr as i128, ty,
-                                                tcx.sess.target.isize_ty)
-            }
-        }
+        explicit_value.checked_add(tcx, (variant_index - explicit_index) as u128).0
     }
 
     pub fn destructor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Destructor> {

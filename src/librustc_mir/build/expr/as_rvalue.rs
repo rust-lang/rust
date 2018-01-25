@@ -10,8 +10,6 @@
 
 //! See docs in build/expr/mod.rs
 
-use std;
-
 use rustc_const_math::{ConstMathErr, Op};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -19,7 +17,6 @@ use rustc_data_structures::indexed_vec::Idx;
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::{Category, RvalueFunc};
 use hair::*;
-use rustc_const_math::{ConstInt, ConstIsize};
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
 use rustc::ty::{self, Ty};
@@ -385,31 +382,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = match ty.sty {
-            ty::TyInt(ity) => {
-                let val = match ity {
-                    ast::IntTy::I8  => ConstInt::I8(-1),
-                    ast::IntTy::I16 => ConstInt::I16(-1),
-                    ast::IntTy::I32 => ConstInt::I32(-1),
-                    ast::IntTy::I64 => ConstInt::I64(-1),
-                    ast::IntTy::I128 => ConstInt::I128(-1),
-                    ast::IntTy::Isize => {
-                        let int_ty = self.hir.tcx().sess.target.isize_ty;
-                        let val = ConstIsize::new(-1, int_ty).unwrap();
-                        ConstInt::Isize(val)
-                    }
-                };
-
-                Literal::Value {
-                    value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.to_u128_unchecked()))),
-                        ty
-                    })
-                }
-            }
-            _ => {
-                span_bug!(span, "Invalid type for neg_1_literal: `{:?}`", ty)
-            }
+        let literal = Literal::Value {
+            value: self.hir.tcx().mk_const(ty::Const {
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(-1i128 as u128))),
+                ty
+            })
         };
 
         self.literal_operand(span, ty, literal)
@@ -419,30 +396,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = match ty.sty {
             ty::TyInt(ity) => {
+                let ity = match ity {
+                    ast::IntTy::Isize => self.hir.tcx().sess.target.isize_ty,
+                    other => other,
+                };
                 let val = match ity {
-                    ast::IntTy::I8  => ConstInt::I8(i8::min_value()),
-                    ast::IntTy::I16 => ConstInt::I16(i16::min_value()),
-                    ast::IntTy::I32 => ConstInt::I32(i32::min_value()),
-                    ast::IntTy::I64 => ConstInt::I64(i64::min_value()),
-                    ast::IntTy::I128 => ConstInt::I128(i128::min_value()),
-                    ast::IntTy::Isize => {
-                        let int_ty = self.hir.tcx().sess.target.isize_ty;
-                        let min = match int_ty {
-                            ast::IntTy::I16 => std::i16::MIN as i64,
-                            ast::IntTy::I32 => std::i32::MIN as i64,
-                            ast::IntTy::I64 => std::i64::MIN,
-                            _ => unreachable!()
-                        };
-                        let val = ConstIsize::new(min, int_ty).unwrap();
-                        ConstInt::Isize(val)
-                    }
+                    ast::IntTy::I8  => i8::min_value() as i128,
+                    ast::IntTy::I16 => i16::min_value() as i128,
+                    ast::IntTy::I32 => i32::min_value() as i128,
+                    ast::IntTy::I64 => i64::min_value() as i128,
+                    ast::IntTy::I128 => i128::min_value() as i128,
+                    ast::IntTy::Isize => unreachable!(),
                 };
 
                 Literal::Value {
                     value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(
-                            val.to_u128_unchecked()
-                        ))),
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val as u128))),
                         ty
                     })
                 }

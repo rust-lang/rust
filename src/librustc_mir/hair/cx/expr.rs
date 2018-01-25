@@ -523,10 +523,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 promoted: None
             };
             let count = match cx.tcx.at(c.span).const_eval(cx.param_env.and(global_id)) {
-                Ok(cv) => cv.val.unwrap_usize(cx.tcx),
+                Ok(cv) => cv.val.unwrap_u64(),
                 Err(e) => {
                     e.report(cx.tcx, cx.tcx.def_span(def_id), "array length");
-                    ConstUsize::new(0, cx.tcx.sess.target.usize_ty).unwrap()
+                    0
                 },
             };
 

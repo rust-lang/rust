@@ -149,7 +149,7 @@ impl<'tcx> Rvalue<'tcx> {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
-                tcx.mk_array_const_usize(operand.ty(local_decls, tcx), count)
+                tcx.mk_array(operand.ty(local_decls, tcx), count)
             }
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).to_ty(tcx);

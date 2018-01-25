@@ -426,7 +426,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     variant_path,
                     &adt.variants[variant_index],
                     substs);
-                values.push(discr.to_u128().unwrap());
+                values.push(discr.val);
                 if let Unwind::To(unwind) = unwind {
                     // We can't use the half-ladder from the original
                     // drop ladder, because this breaks the

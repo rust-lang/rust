@@ -197,7 +197,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let tcx = self.hir.tcx();
                 for (idx, discr) in adt_def.discriminants(tcx).enumerate() {
                     target_blocks.place_back() <- if variants.contains(idx) {
-                        values.push(discr.to_u128_unchecked());
+                        values.push(discr.val);
                         *(targets.place_back() <- self.cfg.start_new_block())
                     } else {
                         if otherwise_block.is_none() {

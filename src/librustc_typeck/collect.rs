@@ -39,8 +39,7 @@ use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::{GlobalId, Value, PrimVal};
-
-use rustc_const_math::ConstInt;
+use rustc::ty::util::Discr;
 
 use syntax::{abi, ast};
 use syntax::ast::MetaItemKind;
@@ -516,11 +515,11 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
     let initial = repr_type.initial_discriminant(tcx);
-    let mut prev_discr = None::<ConstInt>;
+    let mut prev_discr = None::<Discr<'tcx>>;
 
     // fill the discriminant values and field types
     for variant in variants {
-        let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
+        let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
             let substs = Substs::identity_for_item(tcx, expr_did);
@@ -535,19 +534,17 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // so we need to report the real error
             if let Err(ref err) = result {
                 err.report(tcx, variant.span, "enum discriminant");
-}
+            }
 
             match result {
+                // FIXME: just use `to_raw_bits` here?
                 Ok(&ty::Const {
                     val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
                     ..
                 }) => {
-                    use syntax::attr::IntType;
-                    Some(match repr_type {
-                        IntType::SignedInt(int_type) => ConstInt::new_signed(
-                            b as i128, int_type, tcx.sess.target.isize_ty).unwrap(),
-                        IntType::UnsignedInt(uint_type) => ConstInt::new_unsigned(
-                            b, uint_type, tcx.sess.target.usize_ty).unwrap(),
+                    Some(Discr {
+                        val: b,
+                        ty: initial.ty,
                     })
                 }
                 _ => None

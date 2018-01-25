@@ -334,14 +334,6 @@ pub fn cast_shift_expr_rhs(
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
 
-pub fn cast_shift_const_rhs(op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    cast_shift_rhs(op,
-                   lhs,
-                   rhs,
-                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
-                   |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
-}
-
 fn cast_shift_rhs<F, G>(op: hir::BinOp_,
                         lhs: ValueRef,
                         rhs: ValueRef,

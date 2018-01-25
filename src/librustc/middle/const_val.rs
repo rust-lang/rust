@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use rustc_const_math::ConstInt;
-
 use hir::def_id::DefId;
 use ty::{self, TyCtxt, layout};
 use ty::subst::Substs;
@@ -54,18 +52,6 @@ impl<'tcx> ConstVal<'tcx> {
                 val as u64
             },
             None => bug!("expected constant u64, got {:#?}", self),
-        }
-    }
-    pub fn unwrap_usize<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> ConstUsize {
-        match *self {
-            ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => {
-                assert_eq!(b as u64 as u128, b);
-                match ConstUsize::new(b as u64, tcx.sess.target.usize_ty) {
-                    Ok(val) => val,
-                    Err(e) => bug!("{:#?} is not a usize {:?}", self, e),
-                }
-            },
-            _ => bug!("expected constant u64, got {:#?}", self),
         }
     }
 }
