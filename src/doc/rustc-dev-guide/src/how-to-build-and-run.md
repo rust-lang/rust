@@ -19,7 +19,7 @@ To start, copy [`config.toml.example`] to `config.toml`:
 Then you will want to open up the file and change the following
 settings (and possibly others, such as `llvm.ccache`):
 
-```
+```toml
 [llvm]
 # Enables LLVM assertions, which will check that the LLVM bitcode generated
 # by the compiler is internally consistent. These are particularly helpful
@@ -53,7 +53,7 @@ Once you've created a config.toml, you are now ready to run
 probably the best "go to" command for building a local rust:
 
 ```
-./x.py build --incremental --stage 1 src/libstd
+./x.py build -i --stage 1 src/libstd
 ```
 
 What this command will do is the following:
@@ -61,7 +61,7 @@ What this command will do is the following:
 - Using the beta compiler (also called stage 0), it will build the
   standard library and rustc from the `src` directory. The resulting
   compiler is called the "stage 1" compiler.
-  - During this build, the `--incremental` switch enables incremental
+  - During this build, the `-i` (or `--incremental`) switch enables incremental
     compilation, so that if you later rebuild after editing things in
     `src`, you can save a bit of time.
 - Using this stage 1 compiler, it will build the standard library.
@@ -72,7 +72,8 @@ get if you just say `./x.py build`) has quite a few more steps:
 
 - Build stage1 rustc with stage0 compiler
 - Build libstd with stage1 compiler (up to here is the same)
-- Build stage2 rustc with stage1 compiler (this part is new)
+- Build rustc from `src` again, this time with the stage1 compiler (this part is new)
+  - The resulting compiler here is called the "stage2" compiler
 - Build libstd with stage2 compiler
 - Build librustdoc and a bunch of other things
 
@@ -83,7 +84,8 @@ of files in your `build` directory. In order to actually run the
 resulting rustc, we recommend creating rustup toolchains. The first
 one will run the stage1 compiler (which we built above). The second
 will execute the stage2 compiler (which we did not build, but which
-you will likely build at some point).
+you will likely need to build at some point; for example, if you want
+to run the entire test suite).
 
 ```
 > rustup toolchain link stage1 build/<host-triple>/stage1
