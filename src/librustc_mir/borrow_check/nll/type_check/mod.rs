@@ -681,6 +681,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         let data = self.infcx.take_and_reset_region_constraints();
         if !data.is_empty() {
+            debug!("fully_perform_op: constraints generated at {:?} are {:#?}",
+                   locations, data);
             self.constraints
                 .outlives_sets
                 .push(OutlivesSet { locations, data });
@@ -1539,6 +1541,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     where
         T: fmt::Debug + TypeFoldable<'tcx>,
     {
+        debug!("normalize(value={:?}, location={:?})", value, location);
         self.fully_perform_op(location.at_self(), |this| {
             let mut selcx = traits::SelectionContext::new(this.infcx);
             let cause = this.misc(this.last_span);
