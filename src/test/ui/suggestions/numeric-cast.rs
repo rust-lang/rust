@@ -312,4 +312,9 @@ fn main() {
     foo::<f32>(x_f64);
     //~^ ERROR mismatched types
     foo::<f32>(x_f32);
+
+    foo::<u32>(x_u8 as u16);
+    //~^ ERROR mismatched types
+    foo::<i32>(-x_i8);
+    //~^ ERROR mismatched types
 }
