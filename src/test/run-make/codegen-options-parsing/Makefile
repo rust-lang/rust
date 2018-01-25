@@ -16,11 +16,11 @@ all:
 	$(RUSTC) -C extra-filename=foo dummy.rs 2>&1
 	#Option taking no argument
 	$(RUSTC) -C lto= dummy.rs 2>&1 | \
-		$(CGREP) 'codegen option `lto` takes no value'
+		$(CGREP) 'codegen option `lto` - one of `thin`, `fat`, or'
 	$(RUSTC) -C lto=1 dummy.rs 2>&1 | \
-		$(CGREP) 'codegen option `lto` takes no value'
+		$(CGREP) 'codegen option `lto` - one of `thin`, `fat`, or'
 	$(RUSTC) -C lto=foo dummy.rs 2>&1 | \
-		$(CGREP) 'codegen option `lto` takes no value'
+		$(CGREP) 'codegen option `lto` - one of `thin`, `fat`, or'
 	$(RUSTC) -C lto dummy.rs
 
 	# Should not link dead code...

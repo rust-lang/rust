@@ -20,7 +20,7 @@ use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
 use rustc::dep_graph::{DepGraph, WorkProductFileKind};
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePasses,
-                             AllPasses, Sanitizer};
+                             AllPasses, Sanitizer, Lto};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use rustc_back::LinkerFlavor;
@@ -329,8 +329,7 @@ struct AssemblerCommand {
 pub struct CodegenContext {
     // Resouces needed when running LTO
     pub time_passes: bool,
-    pub lto: bool,
-    pub thinlto: bool,
+    pub lto: Lto,
     pub no_landing_pads: bool,
     pub save_temps: bool,
     pub fewer_names: bool,
@@ -589,12 +588,7 @@ fn generate_lto_work(cgcx: &CodegenContext,
                  TRANS_WORK_PACKAGE_KIND,
                  "generate lto")
     }).unwrap_or(Timeline::noop());
-    let mode = if cgcx.lto {
-        lto::LTOMode::WholeCrateGraph
-    } else {
-        lto::LTOMode::JustThisCrate
-    };
-    let lto_modules = lto::run(cgcx, modules, mode, &mut timeline)
+    let lto_modules = lto::run(cgcx, modules, &mut timeline)
         .unwrap_or_else(|e| panic!(e));
 
     lto_modules.into_iter().map(|module| {
@@ -1296,28 +1290,51 @@ fn execute_work_item(cgcx: &CodegenContext,
         unsafe {
             optimize(cgcx, &diag_handler, &mtrans, config, timeline)?;
 
-            let lto = cgcx.lto;
-
-            let auto_thin_lto =
-                cgcx.thinlto &&
-                cgcx.total_cgus > 1 &&
-                mtrans.kind != ModuleKind::Allocator;
-
-            // If we're a metadata module we never participate in LTO.
+            // After we've done the initial round of optimizations we need to
+            // decide whether to synchronously codegen this module or ship it
+            // back to the coordinator thread for further LTO processing (which
+            // has to wait for all the initial modules to be optimized).
             //
-            // If LTO was explicitly requested on the command line, we always
-            // LTO everything else.
-            //
-            // If LTO *wasn't* explicitly requested and we're not a metdata
-            // module, then we may automatically do ThinLTO if we've got
-            // multiple codegen units. Note, however, that the allocator module
-            // doesn't participate here automatically because of linker
-            // shenanigans later on.
-            if mtrans.kind == ModuleKind::Metadata || (!lto && !auto_thin_lto) {
+            // Here we dispatch based on the `cgcx.lto` and kind of module we're
+            // translating...
+            let needs_lto = match cgcx.lto {
+                Lto::No => false,
+
+                // Here we've got a full crate graph LTO requested. We ignore
+                // this, however, if the crate type is only an rlib as there's
+                // no full crate graph to process, that'll happen later.
+                //
+                // This use case currently comes up primarily for targets that
+                // require LTO so the request for LTO is always unconditionally
+                // passed down to the backend, but we don't actually want to do
+                // anything about it yet until we've got a final product.
+                Lto::Yes | Lto::Fat | Lto::Thin => {
+                    cgcx.crate_types.len() != 1 ||
+                        cgcx.crate_types[0] != config::CrateTypeRlib
+                }
+
+                // When we're automatically doing ThinLTO for multi-codegen-unit
+                // builds we don't actually want to LTO the allocator modules if
+                // it shows up. This is due to various linker shenanigans that
+                // we'll encounter later.
+                //
+                // Additionally here's where we also factor in the current LLVM
+                // version. If it doesn't support ThinLTO we skip this.
+                Lto::ThinLocal => {
+                    mtrans.kind != ModuleKind::Allocator &&
+                        llvm::LLVMRustThinLTOAvailable()
+                }
+            };
+
+            // Metadata modules never participate in LTO regardless of the lto
+            // settings.
+            let needs_lto = needs_lto && mtrans.kind != ModuleKind::Metadata;
+
+            if needs_lto {
+                Ok(WorkItemResult::NeedsLTO(mtrans))
+            } else {
                 let module = codegen(cgcx, &diag_handler, mtrans, config, timeline)?;
                 Ok(WorkItemResult::Compiled(module))
-            } else {
-                Ok(WorkItemResult::NeedsLTO(mtrans))
             }
         }
     }
@@ -1393,10 +1410,6 @@ fn start_executing_work(tcx: TyCtxt,
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
 
-    let crate_types = sess.crate_types.borrow();
-    let only_rlib = crate_types.len() == 1 &&
-        crate_types[0] == config::CrateTypeRlib;
-
     let wasm_import_memory =
         attr::contains_name(&tcx.hir.krate().attrs, "wasm_import_memory");
 
@@ -1415,18 +1428,7 @@ fn start_executing_work(tcx: TyCtxt,
     let cgcx = CodegenContext {
         crate_types: sess.crate_types.borrow().clone(),
         each_linked_rlib_for_lto,
-        // If we're only building an rlibc then allow the LTO flag to be passed
-        // but don't actually do anything, the full LTO will happen later
-        lto: sess.lto() && !only_rlib,
-
-        // Enable ThinLTO if requested, but only if the target we're compiling
-        // for doesn't require full LTO. Some targets require one LLVM module
-        // (they effectively don't have a linker) so it's up to us to use LTO to
-        // link everything together.
-        thinlto: sess.thinlto() &&
-            !sess.target.target.options.requires_lto &&
-            unsafe { llvm::LLVMRustThinLTOAvailable() },
-
+        lto: sess.lto(),
         no_landing_pads: sess.no_landing_pads(),
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,

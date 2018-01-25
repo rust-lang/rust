@@ -16,7 +16,7 @@ use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, PrintRequest};
-use rustc::session::config::RUST_CGU_EXT;
+use rustc::session::config::{RUST_CGU_EXT, Lto};
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
@@ -503,7 +503,8 @@ fn link_staticlib(sess: &Session,
         });
         ab.add_rlib(path,
                     &name.as_str(),
-                    sess.lto() && !ignored_for_lto(sess, &trans.crate_info, cnum),
+                    is_full_lto_enabled(sess) &&
+                        !ignored_for_lto(sess, &trans.crate_info, cnum),
                     skip_object_files).unwrap();
 
         all_native_libs.extend(trans.crate_info.native_libraries[&cnum].iter().cloned());
@@ -1211,7 +1212,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
 
-        if (!sess.lto() || ignored_for_lto(sess, &trans.crate_info, cnum)) &&
+        if (!is_full_lto_enabled(sess) ||
+            ignored_for_lto(sess, &trans.crate_info, cnum)) &&
            crate_type != config::CrateTypeDylib &&
            !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
@@ -1264,7 +1266,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 // file, then we don't need the object file as it's part of the
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
-                let skip_because_lto = sess.lto() &&
+                let skip_because_lto = is_full_lto_enabled(sess) &&
                     is_rust_object &&
                     (sess.target.target.options.no_builtins ||
                      !trans.crate_info.is_no_builtins.contains(&cnum));
@@ -1301,7 +1303,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     fn add_dynamic_crate(cmd: &mut Linker, sess: &Session, cratepath: &Path) {
         // If we're performing LTO, then it should have been previously required
         // that all upstream rust dependencies were available in an rlib format.
-        assert!(!sess.lto());
+        assert!(!is_full_lto_enabled(sess));
 
         // Just need to tell the linker about where the library lives and
         // what its name is
@@ -1407,5 +1409,15 @@ fn link_binaryen(sess: &Session,
         sess.fatal(&format!("failed to create `{}`: {}",
                             out_filename.display(),
                             e));
+    }
+}
+
+fn is_full_lto_enabled(sess: &Session) -> bool {
+    match sess.lto() {
+        Lto::Yes |
+        Lto::Thin |
+        Lto::Fat => true,
+        Lto::No |
+        Lto::ThinLocal => false,
     }
 }
