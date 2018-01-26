@@ -134,6 +134,11 @@ fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle {
     }
 }
 
+/// Combine `prev_str` and `next_str` into a single `String`. `span` may contain
+/// comments between two strings. If there are such comments, then that will be
+/// recovered. If `allow_extend` is true and there is no comment between the two
+/// strings, then they will be put on a single line as long as doing so does not
+/// exceed max width.
 pub fn combine_strs_with_missing_comments(
     context: &RewriteContext,
     prev_str: &str,

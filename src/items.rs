@@ -504,7 +504,7 @@ impl<'a> FmtVisitor<'a> {
             items = itemize_list_with(0);
         }
 
-        let shape = self.shape().sub_width(2).unwrap();
+        let shape = self.shape().sub_width(2)?;
         let fmt = ListFormatting {
             tactic: DefinitiveListTactic::Vertical,
             separator: ",",
@@ -558,14 +558,7 @@ impl<'a> FmtVisitor<'a> {
             }
         };
 
-        combine_strs_with_missing_comments(
-            &context,
-            &attrs_str,
-            &variant_body,
-            span,
-            shape,
-            is_attributes_extendable(&attrs_str),
-        )
+        combine_strs_with_missing_comments(&context, &attrs_str, &variant_body, span, shape, false)
     }
 }
 
