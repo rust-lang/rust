@@ -19,6 +19,7 @@ use cargo::util::important_paths::find_root_manifest_for_wd;
 
 use getopts::{Matches, Options};
 
+use std::env;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Stdio, Command};
@@ -114,11 +115,21 @@ impl<'a> WorkInfo<'a> {
     }
 
     /// Obtain the paths to the produced rlib and the dependency output directory.
-    fn rlib_and_dep_output(&self, config: &'a Config, name: &str)
+    fn rlib_and_dep_output(&self, config: &'a Config, name: &str, current: bool)
         -> CargoResult<(PathBuf, PathBuf)>
     {
         let opts = CompileOptions::default(config, CompileMode::Build);
+
+        if current {
+            env::set_var("RUSTFLAGS", "-C metadata=new");
+        } else {
+            env::set_var("RUSTFLAGS", "-C metadata=old");
+        }
+
         let compilation = compile(&self.workspace, &opts)?;
+
+        env::remove_var("RUSTFLAGS");
+
         let rlib = compilation.libraries[self.package.package_id()]
             .iter()
             .find(|t| t.0.name() == name)
@@ -185,8 +196,8 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         (work_info, stable_crate.max_version.clone())
     };
 
-    let (current_rlib, current_deps_output) = current.rlib_and_dep_output(config, &name)?;
-    let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name)?;
+    let (current_rlib, current_deps_output) = current.rlib_and_dep_output(config, &name, true)?;
+    let (stable_rlib, stable_deps_output) = stable.rlib_and_dep_output(config, &name, false)?;
 
     if matches.opt_present("d") {
         println!("--extern old={} -L{} --extern new={} -L{}",
