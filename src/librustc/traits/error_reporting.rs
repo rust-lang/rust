@@ -794,48 +794,56 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn get_fn_like_arguments(&self, node: hir::map::Node) -> (Span, Vec<ArgKind>) {
-        if let hir::map::NodeExpr(&hir::Expr {
-            node: hir::ExprClosure(_, ref _decl, id, span, _),
-            ..
-        }) = node {
-            (self.tcx.sess.codemap().def_span(span), self.tcx.hir.body(id).arguments.iter()
-                .map(|arg| {
-                    if let hir::Pat {
-                        node: hir::PatKind::Tuple(args, _),
-                        span,
-                        ..
-                    } = arg.pat.clone().into_inner() {
-                        ArgKind::Tuple(
+        match node {
+            hir::map::NodeExpr(&hir::Expr {
+                node: hir::ExprClosure(_, ref _decl, id, span, _),
+                ..
+            }) => {
+                (self.tcx.sess.codemap().def_span(span), self.tcx.hir.body(id).arguments.iter()
+                    .map(|arg| {
+                        if let hir::Pat {
+                            node: hir::PatKind::Tuple(args, _),
                             span,
-                            args.iter().map(|pat| {
-                                let snippet = self.tcx.sess.codemap()
-                                    .span_to_snippet(pat.span).unwrap();
-                                (snippet, "_".to_owned())
-                            }).collect::<Vec<_>>(),
-                        )
-                    } else {
-                        let name = self.tcx.sess.codemap().span_to_snippet(arg.pat.span).unwrap();
-                        ArgKind::Arg(name, "_".to_owned())
-                    }
-                })
-                .collect::<Vec<ArgKind>>())
-        } else if let hir::map::NodeItem(&hir::Item {
-            span,
-            node: hir::ItemFn(ref decl, ..),
-            ..
-        }) = node {
-            (self.tcx.sess.codemap().def_span(span), decl.inputs.iter()
-                    .map(|arg| match arg.clone().into_inner().node {
-                hir::TyTup(ref tys) => ArgKind::Tuple(
-                    arg.span,
-                    tys.iter()
-                        .map(|_| ("_".to_owned(), "_".to_owned()))
-                        .collect::<Vec<_>>(),
-                ),
-                _ => ArgKind::Arg("_".to_owned(), "_".to_owned())
-            }).collect::<Vec<ArgKind>>())
-        } else {
-            panic!("non-FnLike node found: {:?}", node);
+                            ..
+                        } = arg.pat.clone().into_inner() {
+                            ArgKind::Tuple(
+                                span,
+                                args.iter().map(|pat| {
+                                    let snippet = self.tcx.sess.codemap()
+                                        .span_to_snippet(pat.span).unwrap();
+                                    (snippet, "_".to_owned())
+                                }).collect::<Vec<_>>(),
+                            )
+                        } else {
+                            let name = self.tcx.sess.codemap()
+                                .span_to_snippet(arg.pat.span).unwrap();
+                            ArgKind::Arg(name, "_".to_owned())
+                        }
+                    })
+                    .collect::<Vec<ArgKind>>())
+            }
+            hir::map::NodeItem(&hir::Item {
+                span,
+                node: hir::ItemFn(ref decl, ..),
+                ..
+            }) |
+            hir::map::NodeImplItem(&hir::ImplItem {
+                span,
+                node: hir::ImplItemKind::Method(hir::MethodSig { ref decl, .. }, _),
+                ..
+            }) => {
+                (self.tcx.sess.codemap().def_span(span), decl.inputs.iter()
+                        .map(|arg| match arg.clone().into_inner().node {
+                    hir::TyTup(ref tys) => ArgKind::Tuple(
+                        arg.span,
+                        tys.iter()
+                            .map(|_| ("_".to_owned(), "_".to_owned()))
+                            .collect::<Vec<_>>(),
+                    ),
+                    _ => ArgKind::Arg("_".to_owned(), "_".to_owned())
+                }).collect::<Vec<ArgKind>>())
+            }
+            _ => panic!("non-FnLike node found: {:?}", node),
         }
     }
 
