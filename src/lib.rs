@@ -165,7 +165,7 @@ impl FormatReport {
         self.file_error_map
             .iter()
             .map(|(_, errors)| errors.len())
-            .fold(0, |acc, x| acc + x)
+            .sum()
     }
 
     pub fn has_warnings(&self) -> bool {

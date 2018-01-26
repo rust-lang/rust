@@ -328,7 +328,7 @@ fn rewrite_comment_inner(
         while let Some(line) = iter.next() {
             result.push_str(line);
             result.push_str(match iter.peek() {
-                Some(ref next_line) if next_line.is_empty() => comment_line_separator.trim_right(),
+                Some(next_line) if next_line.is_empty() => comment_line_separator.trim_right(),
                 Some(..) => &comment_line_separator,
                 None => "",
             });
