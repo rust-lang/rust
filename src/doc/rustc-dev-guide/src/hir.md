@@ -1,4 +1,4 @@
-# HIR lowering
+# The HIR
 
 The HIR -- "High-level IR" -- is the primary IR used in most of
 rustc. It is a desugared version of the "abstract syntax tree" (AST)

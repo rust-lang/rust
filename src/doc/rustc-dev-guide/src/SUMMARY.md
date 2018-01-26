@@ -8,7 +8,7 @@
 - [The parser](./the-parser.md)
 - [Macro expansion](./macro-expansion.md)
 - [Name resolution](./name-resolution.md)
-- [HIR lowering](./hir-lowering.md)
+- [The HIR (High-level IR)](./hir.md)
 - [The `ty` module: representing types](./ty.md)
 - [Type inference](./type-inference.md)
 - [Trait resolution](./trait-resolution.md)
