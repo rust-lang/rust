@@ -54,30 +54,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // Returns a zero literal operand for the appropriate type, works for
     // bool, char and integers.
     pub fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = match ty.sty {
-            ty::TyBool => {
-                self.hir.false_literal()
-            }
-            ty::TyChar => {
-                Literal::Value {
-                    value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
-                        ty
-                    })
-                }
-            }
+        match ty.sty {
+            ty::TyBool |
+            ty::TyChar |
             ty::TyUint(_) |
-            ty::TyInt(_) => {
-                Literal::Value {
-                    value: self.hir.tcx().mk_const(ty::Const {
-                        val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
-                        ty
-                    })
-                }
-            }
+            ty::TyInt(_) => {}
             _ => {
                 span_bug!(span, "Invalid type for zero_literal: `{:?}`", ty)
             }
+        }
+        let literal = Literal::Value {
+            value: self.hir.tcx().mk_const(ty::Const {
+                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
+                ty
+            })
         };
 
         self.literal_operand(span, ty, literal)

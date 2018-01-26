@@ -13,11 +13,9 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc::middle::const_val::ConstVal;
-use rustc::mir::{self, Location, TerminatorKind, Literal};
+use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::mir::traversal;
-use rustc::mir::interpret::{Value, PrimVal};
 use rustc::ty;
 use rustc::ty::layout::LayoutOf;
 use type_of::LayoutLlvmExt;
@@ -112,19 +110,12 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                              location: Location) {
         let check = match *kind {
             mir::TerminatorKind::Call {
-                func: mir::Operand::Constant(box mir::Constant {
-                    literal: Literal::Value {
-                        value: &ty::Const { val, ty }, ..
-                    }, ..
-                }),
+                func: mir::Operand::Constant(ref c),
                 ref args, ..
-            } => match val {
-                ConstVal::Value(Value::ByVal(PrimVal::Undef)) => match ty.sty {
-                    ty::TyFnDef(did, _) => Some((did, args)),
-                    _ => None,
-                },
+            } => match c.ty.sty {
+                ty::TyFnDef(did, _) => Some((did, args)),
                 _ => None,
-            }
+            },
             _ => None,
         };
         if let Some((def_id, args)) = check {

@@ -24,9 +24,7 @@ use rustc::traits::{self, FulfillmentContext};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
-use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
-use rustc::mir::interpret::{Value, PrimVal};
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use std::fmt;
@@ -259,22 +257,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 // constraints on `'a` and `'b`. These constraints
                 // would be lost if we just look at the normalized
                 // value.
-                let did = match value.val {
-                    ConstVal::Value(Value::ByVal(PrimVal::Ptr(p))) => {
-                        self.tcx()
-                            .interpret_interner
-                            .get_fn(p.alloc_id)
-                            .map(|instance| instance.def_id())
-                    },
-                    ConstVal::Value(Value::ByVal(PrimVal::Undef)) => {
-                        match value.ty.sty {
-                            ty::TyFnDef(ty_def_id, _) => Some(ty_def_id),
-                            _ => None,
-                        }
-                    },
-                    _ => None,
-                };
-                if let Some(def_id) = did {
+                if let ty::TyFnDef(def_id, substs) = value.ty.sty {
                     let tcx = self.tcx();
                     let type_checker = &mut self.cx;
 
@@ -287,17 +270,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     // are transitioning to the miri-based system, we
                     // don't have a handy function for that, so for
                     // now we just ignore `value.val` regions.
-                    let substs = match value.ty.sty {
-                        ty::TyFnDef(ty_def_id, substs) => {
-                            assert_eq!(def_id, ty_def_id);
-                            substs
-                        }
-                        _ => span_bug!(
-                            self.last_span,
-                            "unexpected type for constant function: {:?}",
-                            value.ty
-                        ),
-                    };
 
                     let instantiated_predicates =
                         tcx.predicates_of(def_id).instantiate(tcx, substs);
@@ -1029,35 +1001,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     }
 
     fn is_box_free(&self, operand: &Operand<'tcx>) -> bool {
-        match operand {
-            &Operand::Constant(box Constant {
-                literal:
-                    Literal::Value {
-                        value:
-                            &ty::Const {
-                                val,
-                                ty,
-                            },
-                        ..
-                    },
-                ..
-            }) => match val {
-                ConstVal::Value(Value::ByVal(PrimVal::Ptr(p))) => {
-                    let inst = self.tcx().interpret_interner.get_fn(p.alloc_id);
-                    inst.map_or(false, |inst| {
-                        Some(inst.def_id()) == self.tcx().lang_items().box_free_fn()
-                    })
-                },
-                ConstVal::Value(Value::ByVal(PrimVal::Undef)) => {
-                    match ty.sty {
-                        ty::TyFnDef(ty_def_id, _) => {
-                            Some(ty_def_id) == self.tcx().lang_items().box_free_fn()
-                        }
-                        _ => false,
-                    }
+        match *operand {
+            Operand::Constant(ref c) => match c.ty.sty {
+                ty::TyFnDef(ty_def_id, _) => {
+                    Some(ty_def_id) == self.tcx().lang_items().box_free_fn()
                 }
                 _ => false,
-            }
+            },
             _ => false,
         }
     }
