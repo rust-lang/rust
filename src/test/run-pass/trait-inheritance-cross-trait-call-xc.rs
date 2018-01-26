@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:trait_inheritance_cross_trait_call_xc_aux.rs
+// aux-build:trait_xc_call_aux.rs
 
 
-extern crate trait_inheritance_cross_trait_call_xc_aux as aux;
+extern crate trait_xc_call_aux as aux;
 
 use aux::Foo;
 
