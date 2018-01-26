@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::const_val::ConstVal::*;
 use rustc::middle::const_val::ConstVal;
 
 use rustc::hir::def_id::DefId;
@@ -16,8 +15,6 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 
 use syntax::ast;
-
-use std::cmp::Ordering;
 
 use rustc_const_math::*;
 
@@ -127,32 +124,4 @@ pub fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
 fn parse_float<'tcx>(num: &str, fty: ast::FloatTy)
                      -> Result<ConstFloat, ()> {
     ConstFloat::from_str(num, fty).map_err(|_| ())
-}
-
-pub fn compare_const_vals(a: &ConstVal, b: &ConstVal, ty: Ty) -> Option<Ordering> {
-    trace!("compare_const_vals: {:?}, {:?}", a, b);
-    use rustc::mir::interpret::{Value, PrimVal};
-    match (a, b) {
-        (&Value(Value::ByVal(PrimVal::Bytes(a))),
-         &Value(Value::ByVal(PrimVal::Bytes(b)))) => {
-            match ty.sty {
-                ty::TyFloat(ty) => {
-                    let l = ConstFloat {
-                        bits: a,
-                        ty,
-                    };
-                    let r = ConstFloat {
-                        bits: b,
-                        ty,
-                    };
-                    // FIXME(oli-obk): report cmp errors?
-                    l.try_cmp(r).ok()
-                },
-                ty::TyInt(_) => Some((a as i128).cmp(&(b as i128))),
-                _ => Some(a.cmp(&b)),
-            }
-        },
-        _ if a == b => Some(Ordering::Equal),
-        _ => None,
-    }
 }

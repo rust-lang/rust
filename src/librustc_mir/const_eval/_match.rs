@@ -13,13 +13,12 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use rustc::middle::const_val::ConstVal;
-use const_eval::eval::{compare_const_vals};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
 use const_eval::pattern::{FieldPattern, Pattern, PatternKind};
-use const_eval::pattern::{PatternFoldable, PatternFolder};
+use const_eval::pattern::{PatternFoldable, PatternFolder, compare_const_vals};
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;

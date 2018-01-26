@@ -18,10 +18,10 @@ use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
-use const_eval::eval::compare_const_vals;
 
 use rustc_data_structures::indexed_vec::Idx;
 
+use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
 use syntax::ptr::P;
@@ -1058,5 +1058,34 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
                 suffix: suffix.fold_with(folder)
             },
         }
+    }
+}
+
+pub fn compare_const_vals(a: &ConstVal, b: &ConstVal, ty: Ty) -> Option<Ordering> {
+    use rustc_const_math::ConstFloat;
+    trace!("compare_const_vals: {:?}, {:?}", a, b);
+    use rustc::mir::interpret::{Value, PrimVal};
+    match (a, b) {
+        (&ConstVal::Value(Value::ByVal(PrimVal::Bytes(a))),
+         &ConstVal::Value(Value::ByVal(PrimVal::Bytes(b)))) => {
+            match ty.sty {
+                ty::TyFloat(ty) => {
+                    let l = ConstFloat {
+                        bits: a,
+                        ty,
+                    };
+                    let r = ConstFloat {
+                        bits: b,
+                        ty,
+                    };
+                    // FIXME(oli-obk): report cmp errors?
+                    l.try_cmp(r).ok()
+                },
+                ty::TyInt(_) => Some((a as i128).cmp(&(b as i128))),
+                _ => Some(a.cmp(&b)),
+            }
+        },
+        _ if a == b => Some(Ordering::Equal),
+        _ => None,
     }
 }
