@@ -65,10 +65,15 @@ impl Rewrite for Pat {
                     RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
                     RangeEnd::Excluded => "..",
                 };
+                let infix = if context.config.spaces_around_ranges() {
+                    format!(" {} ", infix)
+                } else {
+                    infix.to_owned()
+                };
                 rewrite_pair(
                     &**lhs,
                     &**rhs,
-                    PairParts::new("", infix, ""),
+                    PairParts::new("", &infix, ""),
                     context,
                     shape,
                     SeparatorPlace::Front,
