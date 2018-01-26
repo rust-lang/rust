@@ -26,5 +26,4 @@ fn main() {
     write(|| format_args!("{}", String::from("Hello world")));
     //~^ ERROR borrowed value does not live long enough
     //~| ERROR borrowed value does not live long enough
-    //~| ERROR borrowed value does not live long enough
 }

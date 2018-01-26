@@ -183,7 +183,7 @@ impl fmt::Display for ConstEvalError {
                     msg
                 )
             }
-            NotConst(ref msg) => write!(f, "Cannot evaluate within constants: \"{}\"", msg),
+            NotConst(ref msg) => write!(f, "{}", msg),
         }
     }
 }

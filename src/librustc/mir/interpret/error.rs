@@ -306,7 +306,7 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             PathNotFound(ref path) =>
                 write!(f, "Cannot find path {:?}", path),
             MachineError(ref inner) =>
-                write!(f, "machine error: {}", inner),
+                write!(f, "{}", inner),
             IncorrectAllocationInformation(size, size2, align, align2) =>
                 write!(f, "incorrect alloc info: expected size {} and align {}, got size {} and align {}", size, align, size2, align2),
             _ => write!(f, "{}", self.description()),

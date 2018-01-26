@@ -76,7 +76,7 @@ impl<'tcx> Discr<'tcx> {
             let n = n as i128;
             let oflo = val > max - n;
             let val = if oflo {
-                min + (n - (max - val))
+                min + (n - (max - val) - 1)
             } else {
                 val + n
             };
@@ -95,7 +95,7 @@ impl<'tcx> Discr<'tcx> {
             let val = self.val;
             let oflo = val > max - n;
             let val = if oflo {
-                min + (n - (max - val))
+                min + (n - (max - val) - 1)
             } else {
                 val + n
             };
