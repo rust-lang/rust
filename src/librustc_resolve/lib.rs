@@ -4000,7 +4000,13 @@ impl<'a> Resolver<'a> {
                                            binding.is_renamed_extern_crate()) {
                 err.span_suggestion(binding.span,
                                     rename_msg,
-                                    format!("{} as Other{}", snippet, name));
+                                    if snippet.ends_with(';') {
+                                        format!("{} as Other{};",
+                                                &snippet[..snippet.len()-1],
+                                                name)
+                                    } else {
+                                        format!("{} as Other{}", snippet, name)
+                                    });
             } else {
                 err.span_label(binding.span, rename_msg);
             }

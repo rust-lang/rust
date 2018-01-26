@@ -6128,10 +6128,9 @@ impl<'a> Parser<'a> {
         } else {
             (None, crate_name)
         };
-
-        // We grab this before expecting the `;` so it's not a part of the span
-        let prev_span = self.prev_span;
         self.expect(&token::Semi)?;
+
+        let prev_span = self.prev_span;
 
         Ok(self.mk_item(lo.to(prev_span),
                         ident,
