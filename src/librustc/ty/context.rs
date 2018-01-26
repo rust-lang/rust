@@ -1270,6 +1270,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.get_lang_items(LOCAL_CRATE)
     }
 
+    /// Due to missing llvm support for lowering 128 bit math to software emulation
+    /// (on some targets), the lowering can be done in MIR.
+    ///
+    /// This function only exists until said support is implemented.
     pub fn is_binop_lang_item(&self, def_id: DefId) -> Option<(mir::BinOp, bool)> {
         let items = self.lang_items();
         let def_id = Some(def_id);
