@@ -263,6 +263,10 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
 
     for attr in attrs {
         if attr.style == AttrStyle::Outer {
+            if !is_present_in_source(cx, attr.span) {
+                return;
+            }
+
             let attr_to_item_span = Span::new(attr.span.lo(), span.lo(), span.ctxt());
 
             if let Some(snippet) = snippet_opt(cx, attr_to_item_span) {
@@ -318,4 +322,18 @@ fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
     } else {
         false
     }
+}
+
+// If the snippet is empty, it's an attribute that was inserted during macro
+// expansion and we want to ignore those, because they could come from external
+// sources that the user has no control over.
+// For some reason these attributes don't have any expansion info on them, so
+// we have to check it this way until there is a better way.
+fn is_present_in_source(cx: &LateContext, span: Span) -> bool {
+    if let Some(snippet) = snippet_opt(cx, span) {
+        if snippet.is_empty() {
+            return false;
+        }
+    }
+    true
 }
