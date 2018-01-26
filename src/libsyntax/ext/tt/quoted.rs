@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
+use {ast, attr};
 use ext::tt::macro_parser;
+use feature_gate::{self, emit_feature_err, Features, GateIssue};
 use parse::{token, ParseSess};
 use print::pprust;
 use symbol::keywords;
 use syntax_pos::{BytePos, Span, DUMMY_SP};
 use tokenstream;
 
+use std::cell::RefCell;
 use std::iter::Peekable;
 use std::rc::Rc;
 
@@ -179,6 +181,8 @@ pub fn parse(
     input: tokenstream::TokenStream,
     expect_matchers: bool,
     sess: &ParseSess,
+    features: &RefCell<Features>,
+    attrs: &[ast::Attribute],
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
@@ -187,10 +191,9 @@ pub fn parse(
     // additional trees if need be.
     let mut trees = input.trees().peekable();
     while let Some(tree) = trees.next() {
-        let tree = parse_tree(tree, &mut trees, expect_matchers, sess);
-
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e. in `$id:ident` this would parse the `:` and `ident`).
+        let tree = parse_tree(tree, &mut trees, expect_matchers, sess, features, attrs);
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
@@ -244,6 +247,8 @@ fn parse_tree<I>(
     trees: &mut Peekable<I>,
     expect_matchers: bool,
     sess: &ParseSess,
+    features: &RefCell<Features>,
+    attrs: &[ast::Attribute],
 ) -> TokenTree
 where
     I: Iterator<Item = tokenstream::TokenTree>,
@@ -262,9 +267,9 @@ where
                     sess.span_diagnostic.span_err(span, &msg);
                 }
                 // Parse the contents of the sequence itself
-                let sequence = parse(delimited.tts.into(), expect_matchers, sess);
+                let sequence = parse(delimited.tts.into(), expect_matchers, sess, features, attrs);
                 // Get the Kleene operator and optional separator
-                let (separator, op) = parse_sep_and_kleene_op(trees, span, sess);
+                let (separator, op) = parse_sep_and_kleene_op(trees, span, sess, features, attrs);
                 // Count the number of captured "names" (i.e. named metavars)
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(
@@ -317,7 +322,7 @@ where
             span,
             Rc::new(Delimited {
                 delim: delimited.delim,
-                tts: parse(delimited.tts.into(), expect_matchers, sess),
+                tts: parse(delimited.tts.into(), expect_matchers, sess, features, attrs),
             }),
         ),
     }
@@ -373,6 +378,8 @@ fn parse_sep_and_kleene_op<I>(
     input: &mut Peekable<I>,
     span: Span,
     sess: &ParseSess,
+    features: &RefCell<Features>,
+    attrs: &[ast::Attribute],
 ) -> (Option<token::Token>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
@@ -401,6 +408,21 @@ where
                 // (N.B. We need to advance the input iterator.)
                 match parse_kleene_op(input, span) {
                     // #2 is a KleeneOp (this is the only valid option) :)
+                    Ok(Ok(op)) if op == KleeneOp::ZeroOrOne => {
+                        if !features.borrow().macro_at_most_once_rep
+                            && !attr::contains_name(attrs, "allow_internal_unstable")
+                        {
+                            let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
+                            emit_feature_err(
+                                sess,
+                                "macro_at_most_once_rep",
+                                span,
+                                GateIssue::Language,
+                                explain,
+                            );
+                        }
+                        return (Some(token::Question), op);
+                    }
                     Ok(Ok(op)) => return (Some(token::Question), op),
 
                     // #2 is a random token (this is an error) :(
@@ -410,6 +432,19 @@ where
                     Err(span) => span,
                 }
             } else {
+                if !features.borrow().macro_at_most_once_rep
+                    && !attr::contains_name(attrs, "allow_internal_unstable")
+                {
+                    let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
+                    emit_feature_err(
+                        sess,
+                        "macro_at_most_once_rep",
+                        span,
+                        GateIssue::Language,
+                        explain,
+                    );
+                }
+
                 // #2 is a random tree and #1 is KleeneOp::ZeroOrOne
                 return (None, op);
             }
@@ -418,6 +453,21 @@ where
         // #1 is a separator followed by #2, a KleeneOp
         Ok(Err((tok, span))) => match parse_kleene_op(input, span) {
             // #2 is a KleeneOp :D
+            Ok(Ok(op)) if op == KleeneOp::ZeroOrOne => {
+                if !features.borrow().macro_at_most_once_rep
+                    && !attr::contains_name(attrs, "allow_internal_unstable")
+                {
+                    let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
+                    emit_feature_err(
+                        sess,
+                        "macro_at_most_once_rep",
+                        span,
+                        GateIssue::Language,
+                        explain,
+                    );
+                }
+                return (Some(tok), op);
+            }
             Ok(Ok(op)) => return (Some(tok), op),
 
             // #2 is a random token :(
@@ -431,7 +481,13 @@ where
         Err(span) => span,
     };
 
-    sess.span_diagnostic
-        .span_err(span, "expected one of: `*`, `+`, or `?`");
+    if !features.borrow().macro_at_most_once_rep
+        && !attr::contains_name(attrs, "allow_internal_unstable")
+    {
+        sess.span_diagnostic
+            .span_err(span, "expected one of: `*`, `+`, or `?`");
+    } else {
+        sess.span_diagnostic.span_err(span, "expected `*` or `+`");
+    }
     (None, KleeneOp::ZeroOrMore)
 }
