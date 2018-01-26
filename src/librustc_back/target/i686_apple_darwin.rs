@@ -15,7 +15,6 @@ pub fn target() -> TargetResult {
     let mut base = super::apple_base::opts();
     base.cpu = "yonah".to_string();
     base.max_atomic_width = Some(64);
-    base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m32".to_string()]);
     base.stack_probes = true;
 
     Ok(Target {
@@ -28,7 +27,7 @@ pub fn target() -> TargetResult {
         target_os: "macos".to_string(),
         target_env: "".to_string(),
         target_vendor: "apple".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
+        linker_flavor: LinkerFlavor::Ld,
         options: base,
     })
 }

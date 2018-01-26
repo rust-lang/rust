@@ -23,7 +23,7 @@ use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel};
 use rustc::ty::TyCtxt;
-use rustc_back::LinkerFlavor;
+use rustc_back::{LinkerFlavor, target};
 use serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might
@@ -66,6 +66,7 @@ impl LinkerInfo {
                     info: self,
                     hinted_static: false,
                     is_ld: false,
+                    building_executable: true,
                 }) as Box<Linker>
             }
             LinkerFlavor::Ld => {
@@ -75,6 +76,7 @@ impl LinkerInfo {
                     info: self,
                     hinted_static: false,
                     is_ld: true,
+                    building_executable: true,
                 }) as Box<Linker>
             }
             LinkerFlavor::Binaryen => {
@@ -126,22 +128,29 @@ pub struct GccLinker<'a> {
     hinted_static: bool, // Keeps track of the current hinting mode.
     // Link as ld
     is_ld: bool,
+    // Keeps track of product being an executable.
+    building_executable: bool,
 }
 
 impl<'a> GccLinker<'a> {
     /// Argument that must be passed *directly* to the linker
     ///
-    /// These arguments need to be prepended with '-Wl,' when a gcc-style linker is used
+    /// These arguments need to be preceded by '-Xlinker' when a gcc-style
+    /// linker is used.
     fn linker_arg<S>(&mut self, arg: S) -> &mut Self
         where S: AsRef<OsStr>
     {
         if !self.is_ld {
-            let mut os = OsString::from("-Wl,");
-            os.push(arg.as_ref());
-            self.cmd.arg(os);
-        } else {
-            self.cmd.arg(arg);
+            self.cmd.arg("-Xlinker");
         }
+        self.cmd.arg(arg);
+        self
+    }
+
+    fn add_lib<S: AsRef<OsStr>>(&mut self, lib: S) -> &mut Self {
+        let mut os = OsString::from("-l");
+        os.push(lib.as_ref());
+        self.cmd.arg(os);
         self
     }
 
@@ -171,8 +180,8 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg("-l").arg(lib); }
-    fn link_staticlib(&mut self, lib: &str) { self.hint_static(); self.cmd.arg("-l").arg(lib); }
+    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.add_lib(lib); }
+    fn link_staticlib(&mut self, lib: &str) { self.hint_static(); self.add_lib(lib); }
     fn link_rlib(&mut self, lib: &Path) { self.hint_static(); self.cmd.arg(lib); }
     fn include_path(&mut self, path: &Path) { self.cmd.arg("-L").arg(path); }
     fn framework_path(&mut self, path: &Path) { self.cmd.arg("-F").arg(path); }
@@ -182,11 +191,15 @@ impl<'a> Linker for GccLinker<'a> {
     fn partial_relro(&mut self) { self.linker_arg("-z,relro"); }
     fn full_relro(&mut self) { self.linker_arg("-z,relro,-z,now"); }
     fn build_static_executable(&mut self) { self.cmd.arg("-static"); }
-    fn args(&mut self, args: &[String]) { self.cmd.args(args); }
+    fn args(&mut self, args: &[String]) {
+        for arg in args {
+            self.linker_arg(arg);
+        }
+    }
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
         self.hint_dynamic();
-        self.cmd.arg("-l").arg(lib);
+        self.add_lib(lib);
     }
 
     fn link_framework(&mut self, framework: &str) {
@@ -202,25 +215,22 @@ impl<'a> Linker for GccLinker<'a> {
     // functions, etc.
     fn link_whole_staticlib(&mut self, lib: &str, search_path: &[PathBuf]) {
         self.hint_static();
-        let target = &self.sess.target.target;
-        if !target.options.is_like_osx {
-            self.linker_arg("--whole-archive").cmd.arg("-l").arg(lib);
-            self.linker_arg("--no-whole-archive");
+        if self.sess.target.target.options.is_like_osx {
+            self.linker_arg("-force_load");
+            // let-binding needed to appease borrowck.
+            let lib = archive::find_library(lib, search_path, &self.sess);
+            self.linker_arg(lib);
         } else {
-            // -force_load is the macOS equivalent of --whole-archive, but it
-            // involves passing the full path to the library to link.
-            let mut v = OsString::from("-force_load,");
-            v.push(&archive::find_library(lib, search_path, &self.sess));
-            self.linker_arg(&v);
+            self.linker_arg("--whole-archive").add_lib(lib);
+            self.linker_arg("--no-whole-archive");
         }
     }
 
     fn link_whole_rlib(&mut self, lib: &Path) {
         self.hint_static();
         if self.sess.target.target.options.is_like_osx {
-            let mut v = OsString::from("-force_load,");
-            v.push(lib);
-            self.linker_arg(&v);
+            self.linker_arg("-force_load");
+            self.linker_arg(lib);
         } else {
             self.linker_arg("--whole-archive").cmd.arg(lib);
             self.linker_arg("--no-whole-archive");
@@ -280,18 +290,20 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
+        self.building_executable = false;
+
         // On mac we need to tell the linker to let this library be rpathed
         if self.sess.target.target.options.is_like_osx {
-            self.cmd.arg("-dynamiclib");
             self.linker_arg("-dylib");
 
             // Note that the `osx_rpath_install_name` option here is a hack
             // purely to support rustbuild right now, we should get a more
             // principled solution at some point to force the compiler to pass
-            // the right `-Wl,-install_name` with an `@rpath` in it.
+            // the right `-install_name` with an `@rpath` in it.
             if self.sess.opts.cg.rpath ||
                self.sess.opts.debugging_opts.osx_rpath_install_name {
-                let mut v = OsString::from("-install_name,@rpath/");
+                self.linker_arg("-install_name");
+                let mut v = OsString::from("@rpath/");
                 v.push(out_filename.file_name().unwrap());
                 self.linker_arg(&v);
             }
@@ -313,7 +325,6 @@ impl<'a> Linker for GccLinker<'a> {
             return
         }
 
-        let mut arg = OsString::new();
         let path = tmpdir.join("list");
 
         debug!("EXPORTED SYMBOLS:");
@@ -349,24 +360,16 @@ impl<'a> Linker for GccLinker<'a> {
         }
 
         if self.sess.target.target.options.is_like_osx {
-            if !self.is_ld {
-                arg.push("-Wl,")
-            }
-            arg.push("-exported_symbols_list,");
+            self.linker_arg("-exported_symbols_list");
+            self.linker_arg(&path);
         } else if self.sess.target.target.options.is_like_solaris {
-            if !self.is_ld {
-                arg.push("-Wl,")
-            }
-            arg.push("-M,");
+            self.linker_arg("-M");
+            self.linker_arg(&path);
         } else {
-            if !self.is_ld {
-                arg.push("-Wl,")
-            }
-            arg.push("--version-script=");
+            let mut arg = OsString::from("--version-script=");
+            arg.push(&path);
+            self.linker_arg(&arg);
         }
-
-        arg.push(&path);
-        self.cmd.arg(arg);
     }
 
     fn subsystem(&mut self, subsystem: &str) {
@@ -374,6 +377,20 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn finalize(&mut self) -> Command {
+        if self.sess.target.target.options.is_like_osx && self.is_ld {
+            self.cmd.arg("-macosx_version_min");
+            let deployment_target = target::apple_base::get_deployment_target();
+            self.cmd.arg(&deployment_target);
+
+            if self.building_executable {
+                let mut i = deployment_target.splitn(2, '.').map(|s| s.parse::<u32>().unwrap());
+                let version = (i.next().unwrap(), i.next().unwrap());
+                if version < (10, 8) {
+                    self.cmd.arg("-lcrt1.10.6.o");
+                }
+            }
+        }
+
         self.hint_dynamic(); // Reset to default before returning the composed command line.
         let mut cmd = Command::new("");
         ::std::mem::swap(&mut cmd, &mut self.cmd);

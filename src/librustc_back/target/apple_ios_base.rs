@@ -9,8 +9,6 @@
 // except according to those terms.
 
 use LinkerFlavor;
-use std::io;
-use std::process::Command;
 use target::{LinkArgs, TargetOptions};
 
 use self::Arch::*;
@@ -37,30 +35,6 @@ impl Arch {
     }
 }
 
-pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
-    let res = Command::new("xcrun")
-                      .arg("--show-sdk-path")
-                      .arg("-sdk")
-                      .arg(sdk_name)
-                      .output()
-                      .and_then(|output| {
-                          if output.status.success() {
-                              Ok(String::from_utf8(output.stdout).unwrap())
-                          } else {
-                              let error = String::from_utf8(output.stderr);
-                              let error = format!("process exit with error: {}",
-                                                  error.unwrap());
-                              Err(io::Error::new(io::ErrorKind::Other,
-                                                 &error[..]))
-                          }
-                      });
-
-    match res {
-        Ok(output) => Ok(output.trim().to_string()),
-        Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e))
-    }
-}
-
 fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
     let sdk_name = match arch {
         Armv7 | Armv7s | Arm64 => "iphoneos",
@@ -69,13 +43,13 @@ fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
 
     let arch_name = arch.to_string();
 
-    let sdk_root = get_sdk_root(sdk_name)?;
+    let sdk_root = super::apple_base::get_sdk_root(sdk_name)?;
 
     let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Gcc,
+    args.insert(LinkerFlavor::Ld,
                 vec!["-arch".to_string(),
                      arch_name.to_string(),
-                     "-Wl,-syslibroot".to_string(),
+                     "-syslibroot".to_string(),
                      sdk_root]);
 
     Ok(args)

@@ -24,7 +24,7 @@ pub fn target() -> TargetResult {
         target_os: "ios".to_string(),
         target_env: "".to_string(),
         target_vendor: "apple".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
+        linker_flavor: LinkerFlavor::Ld,
         options: TargetOptions {
             max_atomic_width: Some(64),
             stack_probes: true,

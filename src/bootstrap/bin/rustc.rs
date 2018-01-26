@@ -206,31 +206,35 @@ fn main() {
         // Cargo will be very different than the runtime directory structure.
         //
         // All that's a really long winded way of saying that if we use
-        // `-Crpath` then the executables generated have the wrong rpath of
+        // `-C rpath` then the executables generated have the wrong rpath of
         // something like `$ORIGIN/deps` when in fact the way we distribute
         // rustc requires the rpath to be `$ORIGIN/../lib`.
         //
         // So, all in all, to set up the correct rpath we pass the linker
-        // argument manually via `-C link-args=-Wl,-rpath,...`. Plus isn't it
+        // argument manually via `-C link-args=-rpath,...`. Plus isn't it
         // fun to pass a flag to a tool to pass a flag to pass a flag to a tool
         // to change a flag in a binary?
         if env::var("RUSTC_RPATH") == Ok("true".to_string()) {
-            let rpath = if target.contains("apple") {
-
+            let rpath_flags = if target.contains("apple") {
                 // Note that we need to take one extra step on macOS to also pass
-                // `-Wl,-instal_name,@rpath/...` to get things to work right. To
+                // `-install_name,@rpath/...` to get things to work right. To
                 // do that we pass a weird flag to the compiler to get it to do
                 // so. Note that this is definitely a hack, and we should likely
                 // flesh out rpath support more fully in the future.
                 cmd.arg("-Z").arg("osx-rpath-install-name");
-                Some("-Wl,-rpath,@loader_path/../lib")
+                Some(&["-rpath", "@loader_path/../lib"])
             } else if !target.contains("windows") {
-                Some("-Wl,-rpath,$ORIGIN/../lib")
+                Some(&["-rpath", "$ORIGIN/../lib"])
             } else {
                 None
             };
-            if let Some(rpath) = rpath {
-                cmd.arg("-C").arg(format!("link-args={}", rpath));
+            if let Some(rpath_flags) = rpath_flags {
+                for rpath_flag in rpath_flags {
+                    if stage == "0" {
+                        cmd.arg("-C").arg("link-arg=-Xlinker");
+                    }
+                    cmd.arg("-C").arg(format!("link-arg={}", rpath_flag));
+                }
             }
         }
 
