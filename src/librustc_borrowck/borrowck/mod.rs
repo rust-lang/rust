@@ -46,7 +46,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
-use syntax_pos::{MultiSpan, Span};
+use syntax_pos::{MultiSpan, Span, SyntaxContext};
 use errors::{DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir;
@@ -723,18 +723,17 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
         // Annotate the use and the move in the span. Watch out for
         // the case where the use and the move are the same. This
-        // means the use is in a loop.
-        err = if use_span == move_span {
-            err.span_label(
-                use_span,
-                format!("value moved{} here in previous iteration of loop",
-                         move_note));
-            err
+        // means the use is in a loop or within the same macro invocation.
+        if use_span == move_span && use_span.ctxt() != SyntaxContext::empty() {
+            err.span_label(use_span, format!("value moved{} here in previous iteration of loop",
+                                             move_note));
+        } else if use_span == move_span {
+            err.span_label(use_span, format!("value moved{} inside this macro invocation",
+                                             move_note));
         } else {
             err.span_label(use_span, format!("value {} here after move", verb_participle));
             err.span_label(move_span, format!("value moved{} here", move_note));
-            err
-        };
+        }
 
         if need_note {
             err.note(&format!(

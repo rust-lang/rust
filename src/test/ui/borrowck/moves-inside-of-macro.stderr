@@ -1,0 +1,10 @@
+error[E0382]: use of moved value: `b`
+  --> $DIR/moves-inside-of-macro.rs:20:12
+   |
+20 |     test!({b});
+   |            ^ value moved inside this macro invocation
+   |
+   = note: move occurs because `b` has type `std::boxed::Box<bool>`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+

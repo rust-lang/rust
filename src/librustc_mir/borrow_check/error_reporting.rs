@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax_pos::Span;
+use syntax_pos::{Span, SyntaxContext};
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{BorrowKind, Field, Local, LocalKind, Location, Operand};
 use rustc::mir::{Place, ProjectionElem, Rvalue, Statement, StatementKind};
@@ -66,11 +66,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             for moi in mois {
                 let move_msg = ""; //FIXME: add " (into closure)"
                 let move_span = self.mir.source_info(self.move_data.moves[*moi].source).span;
-                if span == move_span {
-                    err.span_label(
-                        span,
-                        format!("value moved{} here in previous iteration of loop", move_msg),
-                    );
+                if span == move_span && span.ctxt() != SyntaxContext::empty() {
+                    err.span_label(span, format!("value moved{} inside this macro invocation",
+                                                 move_msg));
+                    is_loop_move = true;
+                } else if span == move_span {
+                    err.span_label(span,
+                                   format!("value moved{} here in previous iteration of loop",
+                                           move_msg));
                     is_loop_move = true;
                 } else {
                     err.span_label(move_span, format!("value moved{} here", move_msg));
